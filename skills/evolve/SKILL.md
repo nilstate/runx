@@ -5,128 +5,72 @@ description: Governed repo evolution — diagnose, plan, approve, execute, verif
 
 # Evolve
 
-Evolve the current repository toward a bounded objective through a governed
-pipeline of diagnosis, planning, approval, execution, verification, review,
-and publication.
+Evolve the current repository toward a bounded objective through governed
+phases: preflight, planning, approval, execution, and publication.
 
-This is the primary composite skill in runx. It is not a magic autonomy
-button. It governs the shape around cognition — every phase produces a typed
-artifact, every mutation requires approval, every step emits a receipt.
+This is not autonomous code generation. It governs the shape around
+cognition — every phase produces a typed artifact, every mutation requires
+approval, every step emits a receipt. A single evolve run ends in a bounded
+artifact, not another loop.
 
-## Canonical phases
+## Phases
 
-Every evolve run follows the same phase geometry, regardless of the target
-domain. The concrete skills and adapters change; the shape does not.
+### Preflight
 
-### 1. Preflight
+Deterministic. Inspects the target repo and produces a `repo_profile`:
+repo root, git state, base branch, dirty worktree, `.ai/` presence
+(scafld initialized), detected languages, test commands, risk signals.
+No agent cognition, no mutation.
 
-Inspect the target repo and produce a `repo_profile` artifact.
+### Plan
 
-- Detect repo root, git state, base branch, dirty worktree status.
-- Check for `.ai/` directory (scafld initialization).
-- Identify languages, build tools, test commands.
-- Flag risk signals: missing scafld, no test suite, dirty worktree,
-  uncommitted changes.
+Caller-mediated (agent-step). Given the objective and repo profile,
+produces four artifacts in one pass:
 
-This phase is deterministic. No agent cognition, no mutation.
-
-### 2. Plan
-
-Produce four artifacts from the objective and repo profile:
-
-- `objective_brief`: concise restatement of the objective with target
-  kind (repo, skill, receipt, runx), target ref, constraints, and
+- `objective_brief` — restatement with target kind, constraints,
   success criteria.
-- `diagnosis_report`: analysis of the current repo state relative to
-  the objective. What exists, what is missing, what is broken.
-- `change_plan`: ordered phases with acceptance checks, file touchpoints,
-  and risk level. This is the concrete work plan.
-- `spec_document`: if the objective requires scafld governance, a
-  draft spec with task_id, title, summary, size, risk_level, phases,
-  and rollback strategy.
+- `diagnosis_report` — current repo state relative to the objective.
+- `change_plan` — ordered phases, acceptance checks, touchpoints, risk.
+- `spec_document` — draft scafld spec when governance applies.
 
-This phase is caller-mediated (agent-step). The planning agent has
-full context from preflight and produces all four artifacts in one pass.
+### Approve
 
-### 3. Approve
+Gate before mutation. Presents the plan for explicit approval. If denied,
+the chain stops. The `approval_decision` records: approved, decision_by,
+reason.
 
-Gate the plan before any mutation. Present the objective_brief,
-change_plan, and spec_document for explicit approval.
+### Act
 
-- Approval is caller-mediated: the human, controlling agent, or
-  policy engine decides.
-- If denied, the chain stops here. No mutation occurs.
-- The approval_decision artifact records: approved (boolean),
-  decision_by, reason, and what it applies to.
+Executes the approved plan. Gated by the approval decision via policy
+transition.
 
-### 4. Act
+- If `terminate` is `spec`: no-op. Plan artifacts are the deliverable.
+- If `terminate` is `patch` or `pr`: executes the change plan and
+  produces `execution_report`, `verification_report`, `review_report`.
 
-Execute the approved plan. This phase is where mutation happens.
+**Current status: skeleton.** The act step currently produces synthetic
+output. Real execution (isolated branch, scafld integration, test
+running) is not yet wired.
 
-- If `terminate` is `spec`: no-op. The plan artifacts are the
-  deliverable.
-- If `terminate` is `patch` or `pr`: execute the change plan against
-  the repo, run verification checks, and produce:
-  - `execution_report`: steps completed, files changed, commands run,
-    base and head commits, branch, worktree.
-  - `verification_report`: test results — checks passed, failed,
-    skipped, summary.
-  - `review_report`: verdict (approve/reject), blocking issues,
-    non-blocking issues, review scope, confidence.
+### Publish
 
-This phase requires explicit write scopes and is gated by the
-approval decision.
+Publishes if the review verdict permits.
 
-### 5. Publish
+- If `terminate` is `pr` and verdict is `approve`: produces a
+  publishable artifact.
+- Otherwise: no publication.
 
-Publish the outcome if the review verdict permits it.
+**Current status: skeleton.** Like act, this step produces synthetic
+output. Real PR creation is not yet wired.
 
-- If `terminate` is `pr` and review verdict is `approve`: open a
-  pull request or produce the publishable artifact.
-- Otherwise: no publication. The artifacts remain local.
-- Produces a `publish_report`: published (boolean), target
-  (pull_request/none), artifact references.
+## Termination
 
-This phase is gated by the review verdict via policy transition.
-
-## Termination modes
-
-The `terminate` input controls how far the chain runs:
-
-- `spec` (default): stop after planning. No mutation, no execution.
-  The plan artifacts are the deliverable. Use this for exploration,
-  validation, and review before committing to changes.
-- `patch`: execute the plan and produce a local patch. Mutation happens
-  in an isolated branch or worktree. No PR is opened.
-- `pr`: execute the plan, verify, review, and open a pull request if
-  the review passes.
-
-## Evolution targets
-
-The objective string determines the target. The preflight phase
-resolves the concrete target from the current repo context.
-
-- **Repo evolution**: "add websocket adapter support" — improve the
-  current codebase toward an objective.
-- **Skill evolution**: use with `--skill ./skills/sourcey` — improve
-  a specific skill package.
-- **Receipt-driven repair**: use with `--receipt rx_8f3a` — fix
-  something based on a failed or suspicious run.
-- **Self-evolution**: run against the runx repo itself for dogfooding.
-
-## Boundary rules
-
-- Every mutating run uses an isolated branch or worktree.
-- A single evolve run ends in a bounded artifact, not another loop.
-- If a skill lacks X metadata, evolve falls back to the agent runner.
-- Policy never evaluates prose directly — it evaluates structured fields.
-- Approval gates are first-class steps, not hidden CLI behavior.
+- `spec` (default): stop after planning. No mutation.
+- `patch`: execute and produce a local patch in an isolated branch.
+- `pr`: execute, verify, review, and open a PR if review passes.
 
 ## Inputs
 
-- `objective` (required): the objective to evolve toward. Be specific
-  about the deliverable and success criteria.
-- `repo_root` (optional): repository root to inspect and evolve.
-  Defaults to the current working directory.
-- `terminate` (optional): bounded termination target — `spec`, `patch`,
-  or `pr`. Defaults to `spec`.
+- `objective` (required): what to evolve toward.
+- `repo_root` (optional): repository root. Defaults to cwd.
+- `terminate` (optional): `spec`, `patch`, or `pr`. Defaults to `spec`.
