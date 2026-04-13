@@ -71,6 +71,11 @@ The safest reference shape is the one already used by the passing
 - `source_id`: source record identifier.
 - `source_url`: source URL when available.
 - `target_repo`: intended repo slug for repo-local dispatchers.
+- `repo_snapshot`: bounded structured snapshot of the target repo, when the
+  supervisor or worker can inspect the real workspace before yielding the
+  authoring boundary.
+- `repo_context`: optional textual summary of the target repo shape, notable
+  files, and likely validation hooks.
 - `size`: `micro`, `small`, `medium`, or `large` (default: `micro`).
 - `risk`: `low`, `medium`, or `high` (default: `low`).
 - `phase`: optional scafld execution phase.

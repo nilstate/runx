@@ -39,6 +39,14 @@ runners:
         type: string
         required: false
         description: "Intended repository slug for repo-local dispatchers."
+      repo_snapshot:
+        type: json
+        required: false
+        description: "Bounded structured snapshot of the target repo gathered from a real workspace."
+      repo_context:
+        type: string
+        required: false
+        description: "Operator-authored textual repo context, such as architecture notes or likely validation hooks."
       size:
         type: string
         required: false
@@ -98,7 +106,8 @@ runners:
             Replace the scafld draft TODOs with a valid bounded spec for this
             issue-to-PR lane. Use the issue metadata in inputs, especially
             issue_title/title, issue_body, source, source_id, source_url,
-            target_repo, and draft_spec_path to keep the spec grounded.
+            target_repo, repo_snapshot, repo_context, and draft_spec_path to
+            keep the spec grounded in the real codebase.
             spec_draft.path must point at the canonical scafld draft spec file
             relative to the fixture root. Prefer draft_spec_path when present;
             otherwise derive the exact created path from scafld_new_stdout,
@@ -126,8 +135,10 @@ runners:
             not optional prose. If a required file path cannot be grounded from
             the issue body or available evidence, keep the spec narrowly scoped
             and state the missing path confirmation in assumptions or notes
-            rather than inventing it. Keep the scope minimal and make acceptance
-            criteria executable.
+            rather than inventing it. When repo_snapshot is present, prefer its
+            real top-level files, package scripts, README excerpts, and
+            submodule notes over generic assumptions. Keep the scope minimal and
+            make acceptance criteria executable.
           allowed_tools:
             - fs.read
             - git.status
@@ -187,10 +198,12 @@ runners:
           instructions: >
             Produce the bounded fix described by the approved spec, grounded in
             the declared issue metadata, approved scope, and provided
-            spec_contents. fix_draft.path must reference one declared tracked
-            file relative to the fixture root. change_contents must be the full
-            file contents to write. Do not widen scope, and do not rely on
-            hidden edits outside the deterministic write phase.
+            spec_contents. Use repo_snapshot and repo_context when present to
+            stay aligned with the real repo shape. fix_draft.path must reference
+            one declared tracked file relative to the fixture root.
+            change_contents must be the full file contents to write. Do not
+            widen scope, and do not rely on hidden edits outside the
+            deterministic write phase.
           allowed_tools:
             - fs.read
             - git.status
