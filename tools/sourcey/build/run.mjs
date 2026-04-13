@@ -69,6 +69,22 @@ if (mode === "openapi") {
 }
 sourceyArgs.push("-o", outputDir, "--quiet");
 
+function failureReport(extra = {}) {
+  return {
+    project,
+    brand_name: brandName,
+    homepage_url: homepageUrl,
+    docs_inputs: docsInputs,
+    output_dir: outputDir,
+    command: "sourcey build",
+    sourcey_bin: sourcey,
+    sourcey_args: sourceyArgs,
+    generated: false,
+    index_path: path.join(outputDir, "index.html"),
+    ...extra,
+  };
+}
+
 const result = spawnSync(command, sourceyArgs, {
   cwd: project,
   env: sourceyEnv(),
@@ -77,11 +93,30 @@ const result = spawnSync(command, sourceyArgs, {
 });
 
 if (result.error) {
-  console.error(result.error.message);
+  process.stdout.write(
+    JSON.stringify(
+      failureReport({
+        error: result.error.message,
+        stdout: result.stdout ?? "",
+        stderr: result.stderr ?? "",
+      }),
+    ),
+  );
+  if (result.error.message) {
+    process.stderr.write(`${result.error.message}\n`);
+  }
   process.exit(1);
 }
 if (result.status !== 0) {
-  if (result.stdout) process.stdout.write(result.stdout);
+  process.stdout.write(
+    JSON.stringify(
+      failureReport({
+        exit_code: result.status ?? 1,
+        stdout: result.stdout ?? "",
+        stderr: result.stderr ?? "",
+      }),
+    ),
+  );
   if (result.stderr) process.stderr.write(result.stderr);
   process.exit(result.status ?? 1);
 }
