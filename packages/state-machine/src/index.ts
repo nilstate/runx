@@ -615,7 +615,16 @@ function resolveStructuredField(outputs: Readonly<Record<string, unknown>> | und
 }
 
 function stableValue(value: unknown): string {
-  return JSON.stringify(value, Object.keys(isRecord(value) ? value : {}).sort()) ?? "undefined";
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value) ?? "undefined";
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableValue(item)).join(",")}]`;
+  }
+  const entries = Object.entries(value)
+    .filter(([, entryValue]) => entryValue !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right));
+  return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableValue(entryValue)}`).join(",")}}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

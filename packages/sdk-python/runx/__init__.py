@@ -106,6 +106,15 @@ class RunxClient:
             args.append("--non-interactive")
         return self.run_json(args)
 
+    def resume_run(
+        self,
+        run_id: str,
+        answers: Mapping[str, Any] | None = None,
+        approvals: Mapping[str, bool] | None = None,
+    ) -> dict[str, Any]:
+        payload = {"answers": dict(answers or {}), "approvals": dict(approvals or {})}
+        return self.run_json(["resume", run_id], input=json.dumps(payload))
+
     def connect_list(self) -> dict[str, Any]:
         return self.run_json(["connect", "list"])
 
@@ -114,4 +123,40 @@ def _optional_str(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
-__all__ = ["RunxClient", "RunxCommandError", "SkillSearchResult"]
+from .framework_adapters import (  # noqa: E402
+    FrameworkBoundaryContext,
+    FrameworkBridge,
+    FrameworkCompletedResult,
+    FrameworkDeniedResult,
+    FrameworkFailedResult,
+    FrameworkPausedResult,
+    ProviderFrameworkAdapter,
+    create_anthropic_adapter,
+    create_crewai_adapter,
+    create_framework_bridge,
+    create_langchain_adapter,
+    create_openai_adapter,
+    create_vercel_ai_adapter,
+    normalize_framework_result,
+)
+
+
+__all__ = [
+    "FrameworkBoundaryContext",
+    "FrameworkBridge",
+    "FrameworkCompletedResult",
+    "FrameworkDeniedResult",
+    "FrameworkFailedResult",
+    "FrameworkPausedResult",
+    "ProviderFrameworkAdapter",
+    "RunxClient",
+    "RunxCommandError",
+    "SkillSearchResult",
+    "create_anthropic_adapter",
+    "create_crewai_adapter",
+    "create_framework_bridge",
+    "create_langchain_adapter",
+    "create_openai_adapter",
+    "create_vercel_ai_adapter",
+    "normalize_framework_result",
+]

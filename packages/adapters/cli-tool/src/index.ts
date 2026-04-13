@@ -261,6 +261,15 @@ function stringifyInput(value: unknown): string {
 
 function truncateToBytes(buf: Buffer, limit: number): string {
   if (buf.length <= limit) return buf.toString("utf8");
-  // Find a safe UTF-8 boundary by decoding only up to the limit
-  return buf.subarray(0, limit).toString("utf8");
+
+  const decoder = new TextDecoder("utf8", { fatal: true });
+  const minimumEnd = Math.max(0, limit - 3);
+  for (let end = limit; end >= minimumEnd; end -= 1) {
+    try {
+      return decoder.decode(buf.subarray(0, end));
+    } catch {
+      continue;
+    }
+  }
+  return "";
 }

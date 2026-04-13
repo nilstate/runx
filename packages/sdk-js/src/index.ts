@@ -1,12 +1,17 @@
 export const sdkJsPackage = "@runx/sdk";
 
 export * from "./caller.js";
+export * from "./framework-adapters.js";
 
-import { existsSync } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
+import {
+  loadLocalSkillPackage,
+  resolvePathFromUserInput,
+  resolveRunxHomeDir,
+  resolveRunxRegistryPath,
+  resolveSkillInstallRoot,
+} from "../../config/src/index.js";
 import {
   createFixtureMarketplaceAdapter,
   searchMarketplaceAdapters,
@@ -67,6 +72,7 @@ export interface RunSkillOptions {
   readonly caller?: Caller;
   readonly authResolver?: AuthResolver;
   readonly allowedSourceTypes?: readonly string[];
+  readonly resumeFromRunId?: string;
 }
 
 export interface SearchSkillsOptions {
@@ -116,9 +122,9 @@ export class RunxSdk {
 
   async runSkill(options: RunSkillOptions): Promise<RunLocalSkillResult> {
     return await runLocalSkill({
-      skillPath: resolveUserPath(options.skillPath, this.env()),
+      skillPath: resolvePathFromUserInput(options.skillPath, this.env()),
       inputs: options.inputs,
-      answersPath: options.answersPath ? resolveUserPath(options.answersPath, this.env()) : undefined,
+      answersPath: options.answersPath ? resolvePathFromUserInput(options.answersPath, this.env()) : undefined,
       caller: this.caller(options.caller),
       env: this.env(),
       receiptDir: this.receiptDir(options.receiptDir),
@@ -127,6 +133,7 @@ export class RunxSdk {
       contextFrom: options.contextFrom,
       allowedSourceTypes: options.allowedSourceTypes ?? this.options.allowedSourceTypes,
       authResolver: options.authResolver ?? this.options.authResolver,
+      resumeFromRunId: options.resumeFromRunId,
     });
   }
 
@@ -186,7 +193,7 @@ export class RunxSdk {
       ref: options.ref,
       registryStore: this.registryStore(options.registryUrl),
       marketplaceAdapters: this.marketplaceAdapters(),
-      destinationRoot: options.to ? resolveUserPath(options.to, this.env()) : defaultSkillInstallRoot(this.env()),
+      destinationRoot: resolveSkillInstallRoot(this.env(), options.to),
       version: options.version,
       expectedDigest: options.expectedDigest,
       registryUrl: options.registryUrl ?? this.options.registryUrl,
@@ -194,7 +201,7 @@ export class RunxSdk {
   }
 
   async publishSkill(options: PublishSkillOptions): Promise<PublishSkillMarkdownResult> {
-    const skillPackage = await readSkillPackage(resolveUserPath(options.skillPath, this.env()));
+    const skillPackage = await loadLocalSkillPackage(resolvePathFromUserInput(options.skillPath, this.env()));
     return await publishSkillMarkdown(createLocalRegistryClient(this.registryStore(options.registryUrl)), skillPackage.markdown, {
       owner: options.owner,
       version: options.version,
@@ -225,14 +232,15 @@ export class RunxSdk {
   }
 
   private receiptDir(override?: string): string {
-    return resolveUserPath(
-      override ?? this.options.receiptDir ?? this.env().RUNX_RECEIPT_DIR ?? path.join(defaultRunxDir(this.env()), "receipts"),
+    return resolvePathFromUserInput(
+      override ?? this.options.receiptDir ?? this.env().RUNX_RECEIPT_DIR ?? path.join(resolveRunxHomeDir(this.env()), "receipts"),
       this.env(),
     );
   }
 
   private registryStore(registryUrl = this.options.registryUrl): RegistryStore {
-    return this.options.registryStore ?? createFileRegistryStore(resolveRegistryDir(this.env(), registryUrl, this.options.registryDir));
+    return this.options.registryStore
+      ?? createFileRegistryStore(resolveRunxRegistryPath(this.env(), { registry: registryUrl, registryDir: this.options.registryDir }));
   }
 
   private marketplaceAdapters(source?: string): readonly MarketplaceAdapter[] {
@@ -296,97 +304,4 @@ export async function connectPreprovision(
 
 export async function connectRevoke(options: { readonly grantId: string } & RunxSdkOptions): Promise<unknown> {
   return await createRunxSdk(options).connectRevoke(options.grantId);
-}
-
-function resolveRegistryDir(env: NodeJS.ProcessEnv, registry?: string, registryDir?: string): string {
-  if (registry && isRemoteRegistryUrl(registry) && !env.RUNX_REGISTRY_DIR && !registryDir) {
-    throw new Error("Remote registry transport is not implemented in CE; set RUNX_REGISTRY_DIR for local-backed registry tests.");
-  }
-  if (registry && !isRemoteRegistryUrl(registry)) {
-    return registry.startsWith("file://") ? fileURLToPath(registry) : resolveUserPath(registry, env);
-  }
-  if (registryDir) {
-    return resolveUserPath(registryDir, env);
-  }
-  return env.RUNX_REGISTRY_DIR
-    ? resolveUserPath(env.RUNX_REGISTRY_DIR, env)
-    : path.join(defaultRunxDir(env), "registry");
-}
-
-function isRemoteRegistryUrl(value: string): boolean {
-  return /^https?:\/\//.test(value);
-}
-
-function defaultSkillInstallRoot(env: NodeJS.ProcessEnv): string {
-  return path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), "skills");
-}
-
-interface LocalSkillPackage {
-  readonly markdown: string;
-  readonly xManifest?: string;
-}
-
-async function readSkillPackage(skillPath: string): Promise<LocalSkillPackage> {
-  const resolvedPath = path.resolve(skillPath);
-  const pathStat = await stat(resolvedPath);
-  const markdownPath = pathStat.isDirectory() ? path.join(resolvedPath, "SKILL.md") : resolvedPath;
-  if (path.basename(markdownPath).toLowerCase() !== "skill.md") {
-    throw new Error(
-      `Skill packages must be referenced by directory or SKILL.md. Flat markdown files are not supported: ${resolvedPath}`,
-    );
-  }
-  if (!existsSync(markdownPath)) {
-    throw new Error(`Skill package '${resolvedPath}' is missing SKILL.md.`);
-  }
-  const xManifestPath = pathStat.isDirectory()
-    ? path.join(resolvedPath, "x.yaml")
-    : path.join(path.dirname(resolvedPath), "x.yaml");
-  return {
-    markdown: await readFile(markdownPath, "utf8"),
-    xManifest: await readOptionalFile(xManifestPath),
-  };
-}
-
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch {
-    return undefined;
-  }
-}
-
-function defaultRunxDir(env: NodeJS.ProcessEnv): string {
-  return path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), ".runx");
-}
-
-function resolveUserPath(userPath: string, env: NodeJS.ProcessEnv): string {
-  if (path.isAbsolute(userPath)) {
-    return userPath;
-  }
-
-  for (const base of [env.RUNX_CWD, env.INIT_CWD, findWorkspaceRoot(process.cwd()), process.cwd()]) {
-    if (!base) {
-      continue;
-    }
-    const candidate = path.resolve(base, userPath);
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  return path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), userPath);
-}
-
-function findWorkspaceRoot(start: string): string | undefined {
-  let current = start;
-  while (true) {
-    if (existsSync(path.join(current, "pnpm-workspace.yaml"))) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) {
-      return undefined;
-    }
-    current = parent;
-  }
 }

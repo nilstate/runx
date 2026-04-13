@@ -86,6 +86,7 @@ import {
   transitionSequentialChain,
   transitionSingleStep,
   type FanoutSyncDecision,
+  type SequentialChainPlan,
   type SequentialChainState,
   type SingleStepState,
 } from "../../state-machine/src/index.js";
@@ -107,6 +108,7 @@ export interface ExecutionEvent {
     | "step_started"
     | "step_waiting_resolution"
     | "step_completed"
+    | "warning"
     | "completed";
   readonly message: string;
   readonly data?: unknown;
@@ -239,6 +241,13 @@ async function reportChainStepWaitingResolution(
       runner: chainStepRunner(step) ?? "default",
       kinds: Array.from(new Set(requests.map((request) => request.kind))),
       requestIds: requests.map((request) => request.id),
+      resolutionSkills: Array.from(
+        new Set(
+          requests
+            .filter((request): request is Extract<ResolutionRequest, { kind: "cognitive_work" }> => request.kind === "cognitive_work")
+            .map((request) => request.work.envelope.skill),
+        ),
+      ),
       expectedOutputs: Array.from(
         new Set(
           requests
@@ -713,23 +722,28 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
   });
 
   if (result.status === "needs_resolution") {
+    const pendingResult = {
+      ...result,
+      inputs: inputResolution.inputs,
+    } satisfies Extract<RunLocalSkillResult, { readonly status: "needs_resolution" }>;
     await appendPendingSkillJournalEntries({
       receiptDir: options.receiptDir ?? defaultReceiptDir(options.env),
-      runId: result.runId,
+      runId: pendingResult.runId,
       skill,
       startedAt: new Date().toISOString(),
       kind: "resolution_requested",
       detail: {
         skill_path: resolvedSkill.requestedPath,
         selected_runner: runnerSelection.selectedRunnerName,
-        request_ids: result.requests.map((request) => request.id),
-        resolution_kinds: Array.from(new Set(result.requests.map((request) => request.kind))),
-        step_ids: result.stepIds ?? [],
-        step_labels: result.stepLabels ?? [],
-        inputs: result.inputs,
+        request_ids: pendingResult.requests.map((request) => request.id),
+        resolution_kinds: Array.from(new Set(pendingResult.requests.map((request) => request.kind))),
+        step_ids: pendingResult.stepIds ?? [],
+        step_labels: pendingResult.stepLabels ?? [],
+        inputs: pendingResult.inputs,
       },
       includeRunStarted: !options.resumeFromRunId,
     });
+    return pendingResult;
   }
 
   return result;
@@ -1018,7 +1032,18 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     receiptId: receipt.id,
     includeRunStarted: !options.resumeFromRunId,
   });
-  await indexReceiptIfEnabled(receipt, options.receiptDir ?? defaultReceiptDir(options.env), options);
+  try {
+    await indexReceiptIfEnabled(receipt, options.receiptDir ?? defaultReceiptDir(options.env), options);
+  } catch (error) {
+    await options.caller.report({
+      type: "warning",
+      message: "Local memory indexing failed after receipt write; continuing with the persisted receipt.",
+      data: {
+        receiptId: receipt.id,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
 
   await options.caller.report({
     type: "completed",
@@ -1891,11 +1916,11 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
     }
 
     if (plan.type === "failed") {
-      finalError = plan.reason;
+      finalError = resolveSequentialChainFailureReason(plan, state, stepRuns);
       if (plan.syncDecision) {
         syncPoints.push(toChainReceiptSyncPoint(plan.syncDecision, latestFanoutReceiptIds(stepRuns, plan.syncDecision.groupId)));
       }
-      state = transitionSequentialChain(state, { type: "fail_chain", error: plan.reason });
+      state = transitionSequentialChain(state, { type: "fail_chain", error: finalError });
       break;
     }
 
@@ -1930,11 +1955,6 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         const contextFromReceiptIds = context
           .map((edge) => edge.receiptId)
           .filter((receiptId): receiptId is string => typeof receiptId === "string");
-        const stepInputs = {
-          ...(options.inputs ?? {}),
-          ...step.inputs,
-          ...Object.fromEntries(context.map((edge) => [edge.input, edge.value])),
-        };
         const resolvedStep = await resolveChainStepExecution({
           step,
           chainDirectory,
@@ -1943,6 +1963,11 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         });
         const stepSkillPath = resolvedStep.skillPath;
         const stepSkill = resolvedStep.skill;
+        const stepInputs = materializeDeclaredInputs(stepSkill.inputs, {
+          ...(options.inputs ?? {}),
+          ...step.inputs,
+          ...Object.fromEntries(context.map((edge) => [edge.input, edge.value])),
+        });
         const governance = buildChainStepGovernance(step, chainGrant);
 
         if (governance.scopeAdmission.status === "deny") {
@@ -2244,9 +2269,12 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         continue;
       }
       if ((followUpPlan.type === "failed" || followUpPlan.type === "blocked") && followUpPlan.syncDecision?.groupId === plan.groupId) {
-        finalError = followUpPlan.reason;
+        finalError =
+          followUpPlan.type === "failed"
+            ? resolveSequentialChainFailureReason(followUpPlan, state, stepRuns)
+            : followUpPlan.reason;
         syncPoints.push(toChainReceiptSyncPoint(followUpPlan.syncDecision, latestFanoutReceiptIds(stepRuns, plan.groupId)));
-        state = transitionSequentialChain(state, { type: "fail_chain", error: followUpPlan.reason });
+        state = transitionSequentialChain(state, { type: "fail_chain", error: finalError });
         break;
       }
 
@@ -2278,11 +2306,6 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
     const contextFromReceiptIds = context
       .map((edge) => edge.receiptId)
       .filter((receiptId): receiptId is string => typeof receiptId === "string");
-    const stepInputs = {
-      ...(options.inputs ?? {}),
-      ...step.inputs,
-      ...Object.fromEntries(context.map((edge) => [edge.input, edge.value])),
-    };
     const resolvedStep = await resolveChainStepExecution({
       step,
       chainDirectory,
@@ -2291,6 +2314,11 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
     });
     const stepSkillPath = resolvedStep.skillPath;
     const stepSkill = resolvedStep.skill;
+    const stepInputs = materializeDeclaredInputs(stepSkill.inputs, {
+      ...(options.inputs ?? {}),
+      ...step.inputs,
+      ...Object.fromEntries(context.map((edge) => [edge.input, edge.value])),
+    });
     const governance = buildChainStepGovernance(step, chainGrant);
     const transitionGate = admitChainTransition(chain.policy, step.id, outputs);
     if (transitionGate.status === "deny") {
@@ -2614,6 +2642,28 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
     output: finalOutput,
     errorMessage: finalError,
   };
+}
+
+function resolveSequentialChainFailureReason(
+  plan: Extract<SequentialChainPlan, { type: "failed" }>,
+  state: SequentialChainState,
+  stepRuns: readonly ChainStepRun[],
+): string {
+  const stepState = state.steps.find((candidate) => candidate.stepId === plan.stepId);
+  const stateError = stepState?.error?.trim();
+  if (stateError && stateError !== plan.reason) {
+    return stateError;
+  }
+
+  const stepRun = [...stepRuns]
+    .reverse()
+    .find((candidate) => candidate.stepId === plan.stepId && candidate.status === "failure");
+  const runError = stepRun?.stderr.trim();
+  if (runError && runError !== plan.reason) {
+    return runError;
+  }
+
+  return plan.reason;
 }
 
 export async function inspectLocalChain(options: InspectLocalChainOptions): Promise<InspectLocalChainResult> {
@@ -3491,17 +3541,11 @@ async function resolveInputs(
   | { readonly status: "needs_resolution"; readonly request: ResolutionRequest }
 > {
   const answers = options.answersPath ? await readAnswersFile(options.answersPath) : {};
-  const resolved: Record<string, unknown> = {};
+  const resolved = materializeDeclaredInputs(skill.inputs);
   const resumedInputs = options.resumeFromRunId
     ? await readResumedInputs(options.receiptDir ?? defaultReceiptDir(options.env), options.resumeFromRunId)
     : {};
   const providedInputs = normalizeDeclaredInputAliases(skill.inputs, options.inputs ?? {});
-
-  for (const [key, input] of Object.entries(skill.inputs)) {
-    if (input.default !== undefined) {
-      resolved[key] = input.default;
-    }
-  }
 
   assignDefined(resolved, resumedInputs);
   assignDefined(resolved, answers);
@@ -3561,6 +3605,20 @@ function normalizeDeclaredInputAliases(
     normalized[targetKey] = value;
   }
   return normalized;
+}
+
+function materializeDeclaredInputs(
+  declaredInputs: Readonly<Record<string, SkillInput>>,
+  providedInputs: Readonly<Record<string, unknown>> = {},
+): Record<string, unknown> {
+  const resolved: Record<string, unknown> = {};
+  for (const [key, input] of Object.entries(declaredInputs)) {
+    if (input.default !== undefined) {
+      resolved[key] = input.default;
+    }
+  }
+  assignDefined(resolved, normalizeDeclaredInputAliases(declaredInputs, providedInputs));
+  return resolved;
 }
 
 function resolveDeclaredInputAliasKey(

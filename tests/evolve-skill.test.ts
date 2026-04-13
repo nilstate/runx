@@ -163,7 +163,7 @@ describe("evolve skill", () => {
                 },
                 diagnosis_report: {
                   findings: ["docs missing"],
-                  recommended_phases: ["plan", "act"],
+                  recommended_phases: ["scope", "model"],
                 },
                 change_plan: {
                   steps: ["draft release notes"],
@@ -173,12 +173,9 @@ describe("evolve skill", () => {
                 spec_document: {
                   spec_version: "1.1",
                   task_id: "evolve_release_notes",
-                  phases: ["plan", "act"],
+                  phases: ["scope", "ingest", "model"],
                 },
               },
-            },
-            approvals: {
-              "evolve.plan.approval": true,
             },
           },
           null,
@@ -218,6 +215,35 @@ describe("evolve skill", () => {
       expect(journal).toContain("\"type\":\"run_event\"");
       expect(journal).toContain("\"step_id\":\"plan\"");
       expect(journal).toContain("\"type\":\"receipt_link\"");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("fails honestly when a caller requests unsupported mutation termination", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-evolve-patch-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+
+    try {
+      const exitCode = await runCli(
+        ["evolve", "add release notes", "--terminate", "patch", "--receipt-dir", receiptDir, "--non-interactive", "--json"],
+        { stdin: process.stdin, stdout, stderr },
+        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
+      );
+
+      expect(exitCode).toBe(1);
+      expect(stderr.contents()).toBe("");
+
+      const report = JSON.parse(stdout.contents()) as {
+        status: string;
+        execution: { stderr: string; errorMessage?: string };
+        receipt: { kind: string };
+      };
+      expect(report.status).toBe("failure");
+      expect(report.receipt.kind).toBe("chain_execution");
+      expect(report.execution.stderr || report.execution.errorMessage).toContain("evolve currently stops at spec");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -13,6 +13,41 @@ import {
 } from "./index.js";
 
 describe("local receipts", () => {
+  it("assigns distinct receipt ids to identical rapid executions", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-receipt-ids-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+
+    try {
+      const base = {
+        receiptDir,
+        runxHome,
+        skillName: "echo",
+        sourceType: "cli-tool",
+        inputs: { message: "same" },
+        stdout: "same-output",
+        stderr: "",
+        execution: {
+          status: "success" as const,
+          exitCode: 0,
+          signal: null,
+          durationMs: 1,
+        },
+        startedAt: "2026-04-10T00:00:00Z",
+        completedAt: "2026-04-10T00:00:01Z",
+      };
+
+      const [left, right] = await Promise.all([
+        writeLocalReceipt(base),
+        writeLocalReceipt(base),
+      ]);
+
+      expect(left.id).not.toBe(right.id);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("writes a signed receipt without raw inputs or outputs", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-receipt-"));
     const receiptDir = path.join(tempDir, "receipts");
@@ -47,6 +82,24 @@ describe("local receipts", () => {
       expect(contents).not.toContain("super-secret-value");
       expect(contents).not.toContain("super-secret-output");
       expect(verifyLocalReceipt(parsed, keyPair.publicKey)).toBe(true);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws a specific error when the signing key files are corrupt", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-receipt-corrupt-key-"));
+    const runxHome = path.join(tempDir, "home");
+    const keysDir = path.join(runxHome, "keys");
+
+    try {
+      await mkdir(keysDir, { recursive: true });
+      await writeFile(path.join(keysDir, "local-ed25519-private.pem"), "not-a-private-key\n", { mode: 0o600 });
+      await writeFile(path.join(keysDir, "local-ed25519-public.pem"), "not-a-public-key\n", { mode: 0o644 });
+
+      await expect(loadOrCreateLocalKey(runxHome)).rejects.toThrow(
+        new RegExp("runx signing key unreadable at .*local-ed25519-private\\.pem"),
+      );
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

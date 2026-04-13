@@ -7,6 +7,11 @@ description: Decompose a build objective into governed runx execution steps.
 
 Break a build or automation objective into a bounded runx execution plan.
 
+For cross-repo or cross-surface work, the output must be a phased
+`workspace_change_plan`, not just a loose list of steps. The shared plan is the
+thing that keeps repo-local workers aligned when one issue fans out into
+multiple mutation surfaces.
+
 The central insight: split at governance boundaries, not cognitive boundaries.
 A skill keeps its full context window. If two actions need the same context
 but different scopes, they are two invocations of the same skill with
@@ -35,8 +40,36 @@ condition, action, and exit artifact.
 
 ## Output
 
+- `change_set`: the parent change artifact inherited from intake or constructed
+  for the objective when intake did not already produce one. It should preserve
+  the shared objective, target surfaces, invariants, and success criteria.
 - `objective_summary`: one sentence capturing the deliverable.
-- `orchestration_steps`: ordered array. Each step:
+- `workspace_change_plan`: phased plan for the whole change set. It must
+  contain:
+  - `plan_id`
+  - `change_set_id`
+  - `objective_summary`
+  - `shared_invariants`
+  - `success_criteria`
+  - `phases`: ordered array. Each phase:
+    - `id`
+    - `name`
+    - `depends_on`: prior phase ids
+    - `parallelizable`: boolean
+    - `repo_change_requests`: ordered array. Each request:
+      - `repo`
+      - `task_id`
+      - `objective`
+      - `depends_on`: sibling repo change request ids this request waits on
+      - `shared_context_refs`: references into the parent change set or prior
+        phase outputs
+      - `validation_commands`
+      - `mutating`
+  - `integration_checks`: cross-repo checks that must pass before the overall
+    change set is considered done
+  - `open_questions`
+- `orchestration_steps`: compatibility view of the plan as an ordered array.
+  Each step:
   - `id`: kebab-case identifier
   - `skill`: skill name or path
   - `scopes`: scope strings this step requires
@@ -52,3 +85,5 @@ condition, action, and exit artifact.
 - `objective` (required): the build or skill objective to decompose.
 - `project_context` (optional): repo, product, or user context that
   constrains the decomposition.
+- `change_set` (optional): parent change artifact from `support-triage` or a
+  workspace supervisor. Prefer this when present.

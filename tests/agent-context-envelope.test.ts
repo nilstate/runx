@@ -70,9 +70,6 @@ describe("agent context envelope", () => {
 
     const completionCaller: Caller = {
       resolve: async (request) => {
-        if (request.kind === "approval") {
-          return request.gate.id === "evolve.plan.approval" ? { actor: "human", payload: true } : undefined;
-        }
         if (request.kind === "cognitive_work" && request.id === "agent_step.evolve-plan.output") {
           return {
             actor: "agent",
@@ -84,7 +81,7 @@ describe("agent context envelope", () => {
               },
               diagnosis_report: {
                 findings: ["docs missing"],
-                recommended_phases: ["plan", "act"],
+                recommended_phases: ["scope", "model"],
               },
               change_plan: {
                 steps: ["draft release notes"],
@@ -94,7 +91,7 @@ describe("agent context envelope", () => {
               spec_document: {
                 spec_version: "1.1",
                 task_id: "evolve_release_notes",
-                phases: ["plan", "act"],
+                phases: ["scope", "ingest", "model"],
               },
             },
           };

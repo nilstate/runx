@@ -38,7 +38,6 @@ describe("issue-to-PR composite skill", () => {
       "scafld-start",
       "author-fix",
       "write-fix",
-      "read-fix",
       "scafld-exec",
       "scafld-audit",
       "scafld-review-open",
@@ -70,10 +69,9 @@ describe("issue-to-PR composite skill", () => {
     });
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo_snapshot_path");
     expect(chain.steps.find((step) => step.id === "write-fix")).toMatchObject({
-      tool: "fs.write",
+      tool: "fs.write_bundle",
       context: {
-        path: "author-fix.fix_draft.data.path",
-        contents: "author-fix.change_contents",
+        files: "author-fix.fix_bundle.data.files",
       },
     });
     expect(chain.steps.find((step) => step.id === "author-fix")).toMatchObject({
@@ -83,6 +81,7 @@ describe("issue-to-PR composite skill", () => {
         spec_contents: "read-spec.file_read.data.contents",
       },
     });
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.files");
     expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("repo_snapshot_path");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")).toMatchObject({
       run: {
@@ -92,16 +91,12 @@ describe("issue-to-PR composite skill", () => {
       context: {
         review_file: "scafld-review-open.review_file",
         review_prompt: "scafld-review-open.review_prompt",
-        fix_file: "read-fix.file_read.data",
-        change_contents: "read-fix.file_read.data.contents",
+        fix_bundle: "author-fix.fix_bundle.data",
+        written_files: "write-fix.file_bundle_write.data.files",
+        spec_contents: "read-spec.file_read.data.contents",
       },
     });
-    expect(chain.steps.find((step) => step.id === "read-fix")).toMatchObject({
-      tool: "fs.read",
-      context: {
-        path: "author-fix.fix_draft.data.path",
-      },
-    });
+    expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("fix_bundle.files");
     expect(chain.steps.find((step) => step.id === "write-review")).toMatchObject({
       tool: "fs.write",
       context: {
@@ -204,7 +199,6 @@ describe("issue-to-PR composite skill", () => {
         ["scafld-start", "success"],
         ["author-fix", "success"],
         ["write-fix", "success"],
-        ["read-fix", "success"],
         ["scafld-exec", "success"],
         ["scafld-audit", "success"],
         ["scafld-review-open", "success"],
@@ -212,6 +206,8 @@ describe("issue-to-PR composite skill", () => {
         ["write-review", "success"],
         ["scafld-complete", "success"],
       ]);
+      expect(await readFile(path.join(tempDir, "app.txt"), "utf8")).toBe("fixed\n");
+      expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("governed\n");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -406,6 +402,7 @@ async function initScafldRepo(repo: string): Promise<void> {
   runChecked("git", ["config", "user.name", "Smoke Test"], repo);
   runChecked(scafldBin, ["init"], repo);
   await writeFile(path.join(repo, "app.txt"), "base\n");
+  await writeFile(path.join(repo, "notes.md"), "draft\n");
   runChecked("git", ["add", "."], repo);
   runChecked("git", ["commit", "-m", "init"], repo);
 }
@@ -467,11 +464,19 @@ async function answerForIssueToPrStep(
   }
   if (requestId === "agent_step.issue-to-pr-apply-fix.output") {
     return {
-      fix_draft: {
-        path: "app.txt",
-        rationale: "Apply the bounded fixture fix declared in the spec.",
+      fix_bundle: {
+        summary: "Apply the bounded fixture fix declared in the spec across both tracked files.",
+        files: [
+          {
+            path: "app.txt",
+            contents: "fixed\n",
+          },
+          {
+            path: "notes.md",
+            contents: "governed\n",
+          },
+        ],
       },
-      change_contents: "fixed\n",
     };
   }
   if (requestId === "agent_step.issue-to-pr-review.output") {
@@ -507,19 +512,28 @@ task:
       - "bounded_scope"
   objectives:
     - "Replace the fixture app contents with the fixed output."
+    - "Update the companion notes file so the bounded fixture change stays consistent."
   touchpoints:
     - area: "fixture"
-      description: "Update the tracked fixture file and keep the scafld spec declared."
+      description: "Update the tracked fixture files and keep the scafld spec declared."
   acceptance:
     definition_of_done:
       - id: "dod1"
         description: "app.txt contains the fixed output"
+        status: "pending"
+      - id: "dod2"
+        description: "notes.md contains the governed output"
         status: "pending"
     validation:
       - id: "v1"
         type: "test"
         description: "app.txt contains the fixed output"
         command: "grep -q '^fixed$' app.txt"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "notes.md contains the governed output"
+        command: "grep -q '^governed$' notes.md"
         expected: "exit code 0"
 
 planning_log:
@@ -541,18 +555,27 @@ phases:
         action: "update"
         content_spec: |
           Replace the fixture contents with the fixed output.
+      - file: "notes.md"
+        action: "update"
+        content_spec: |
+          Keep the companion notes file aligned with the bounded fixture fix.
     acceptance_criteria:
       - id: "ac1_1"
         type: "test"
         description: "app.txt contains the fixed output"
         command: "grep -q '^fixed$' app.txt"
         expected: "exit code 0"
+      - id: "ac1_2"
+        type: "test"
+        description: "notes.md contains the governed output"
+        command: "grep -q '^governed$' notes.md"
+        expected: "exit code 0"
     status: "pending"
 
 rollback:
   strategy: "per_phase"
   commands:
-    phase1: "git checkout HEAD -- .ai/specs/in_progress/${taskId}.yaml app.txt"
+    phase1: "git checkout HEAD -- .ai/specs/in_progress/${taskId}.yaml app.txt notes.md"
 `;
 }
 
@@ -569,6 +592,7 @@ Issue to PR JSON Fixture
 
 ## Files Changed
 - app.txt
+- notes.md
 
 ---
 

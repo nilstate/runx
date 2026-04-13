@@ -3,15 +3,29 @@
 export const cliPackage = "@runxai/cli";
 
 import { createInterface } from "node:readline/promises";
-import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { stdin as processStdin, stdout as processStdout } from "node:process";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 
 import { readJournalEntries } from "../../artifacts/src/index.js";
+import {
+  loadLocalSkillPackage,
+  loadRunxConfigFile,
+  lookupRunxConfigValue,
+  maskRunxConfigFile,
+  resolvePathFromUserInput,
+  resolveRunxHomeDir,
+  resolveRunxMemoryDir,
+  resolveRunxRegistryPath,
+  resolveRunxWorkspaceBase,
+  resolveSkillInstallRoot,
+  updateRunxConfigValue,
+  writeRunxConfigFile,
+  type RunxConfigFile,
+} from "../../config/src/index.js";
 import { runHarness, runHarnessTarget } from "../../harness/src/index.js";
 import { createFixtureMarketplaceAdapter, searchMarketplaceAdapters, type SkillSearchResult } from "../../marketplaces/src/index.js";
 import { createFileMemoryStore } from "../../memory/src/index.js";
@@ -32,6 +46,7 @@ import {
   type RunLocalSkillResult,
 } from "../../runner-local/src/index.js";
 import type { ApprovalGate, Question, ResolutionRequest, ResolutionResponse } from "../../executor/src/index.js";
+import { createHttpConnectService } from "./connect-http.js";
 
 export interface CliIo {
   readonly stdout: NodeJS.WriteStream;
@@ -108,9 +123,72 @@ function expectedOutputLabels(requests: readonly ResolutionRequest[]): readonly 
       requests
         .filter((request): request is Extract<ResolutionRequest, { kind: "cognitive_work" }> => request.kind === "cognitive_work")
         .flatMap((request) => Object.keys(request.work.envelope.expected_outputs ?? {}))
-        .map((value) => humanizeLabel(value)),
+        .map((value) => humanizeExpectedOutput(value)),
     ),
   );
+}
+
+function humanizeExpectedOutput(value: string): string {
+  switch (value) {
+    case "discovery_report":
+      return "docs plan";
+    case "doc_bundle":
+      return "docs bundle";
+    case "evaluation_report":
+      return "site review";
+    case "revision_bundle":
+      return "docs revision";
+    case "spec_draft":
+      return "spec draft";
+    case "fix_draft":
+      return "fix draft";
+    case "review_decision":
+      return "review";
+    case "approval_decision":
+      return "approval";
+    default:
+      return humanizeLabel(value);
+  }
+}
+
+function firstCognitiveSkill(requests: readonly ResolutionRequest[]): string | undefined {
+  return requests.find((request): request is Extract<ResolutionRequest, { kind: "cognitive_work" }> => request.kind === "cognitive_work")
+    ?.work.envelope.skill;
+}
+
+function sourceyPauseCopy(
+  requests: readonly ResolutionRequest[],
+): { readonly headline: string; readonly body: string; readonly expected?: string } | undefined {
+  const skill = firstCognitiveSkill(requests);
+  if (skill === "sourcey.discover") {
+    return {
+      headline: "planning docs site",
+      body: "Sourcey paused so it can inspect this repo and draft one bounded docs plan before it writes files or builds the site.",
+      expected: "docs plan",
+    };
+  }
+  if (skill === "sourcey.author") {
+    return {
+      headline: "drafting docs bundle",
+      body: "Sourcey paused so it can draft the config and markdown bundle for the first build pass.",
+      expected: "docs bundle",
+    };
+  }
+  if (skill === "sourcey.critique") {
+    return {
+      headline: "reviewing built site",
+      body: "Sourcey paused so it can review the built site once before the bounded revision pass.",
+      expected: "site review",
+    };
+  }
+  if (skill === "sourcey.revise") {
+    return {
+      headline: "applying docs revision",
+      body: "Sourcey paused so it can apply one bounded docs revision before the final rebuild.",
+      expected: "docs revision",
+    };
+  }
+  return undefined;
 }
 
 function cognitiveNeedPhrase(requests: readonly ResolutionRequest[], skillName: string): string {
@@ -269,14 +347,15 @@ export async function runCli(
   }
 
   try {
+    const connectService = parsed.command === "connect" ? services.connect ?? resolveConfiguredConnectService(env) : services.connect;
     const callerInput = parsed.answersPath
-      ? await readCallerInputFile(resolveUserPath(parsed.answersPath, env))
+      ? await readCallerInputFile(resolvePathFromUserInput(parsed.answersPath, env))
       : { answers: {} };
     const caller = parsed.nonInteractive
       ? createNonInteractiveCaller(callerInput.answers, callerInput.approvals)
       : createInteractiveCaller(io, callerInput.answers, callerInput.approvals, { reportEvents: !parsed.json }, env);
     if (parsed.command === "harness" && parsed.harnessPath) {
-      const result = await runHarnessTarget(resolveUserPath(parsed.harnessPath, env), { env });
+      const result = await runHarnessTarget(resolvePathFromUserInput(parsed.harnessPath, env), { env });
       if (parsed.json) {
         io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
       } else {
@@ -289,16 +368,18 @@ export async function runCli(
     }
 
     if (parsed.command === "connect" && parsed.connectAction) {
-      if (!services.connect) {
-        throw new Error("runx connect requires a configured connect service.");
+      if (!connectService) {
+        throw new Error(
+          "runx connect requires the hosted Connect service. Set RUNX_CONNECT_BASE_URL=https://connect.runx.ai and RUNX_CONNECT_ACCESS_TOKEN, or configure an equivalent hosted connect base URL.",
+        );
       }
       const result =
         parsed.connectAction === "list"
-          ? await services.connect.list()
+          ? await connectService.list()
           : parsed.connectAction === "revoke" && parsed.connectGrantId
-            ? await services.connect.revoke(parsed.connectGrantId)
+            ? await connectService.revoke(parsed.connectGrantId)
             : parsed.connectAction === "preprovision" && parsed.connectProvider
-              ? await services.connect.preprovision(parsed.connectProvider, parsed.connectScopes)
+              ? await connectService.preprovision(parsed.connectProvider, parsed.connectScopes)
               : undefined;
 
       if (!result) {
@@ -346,9 +427,9 @@ export async function runCli(
     if ((parsed.command === "skill" || parsed.command === "add") && parsed.skillAction === "add" && parsed.skillRef) {
       const result = await installLocalSkill({
         ref: parsed.skillRef,
-        registryStore: createFileRegistryStore(resolveRegistryDir(env, parsed.registryUrl)),
+        registryStore: createFileRegistryStore(resolveRunxRegistryPath(env, { registry: parsed.registryUrl })),
         marketplaceAdapters: env.RUNX_ENABLE_FIXTURE_MARKETPLACE === "1" ? [createFixtureMarketplaceAdapter()] : [],
-        destinationRoot: resolveInstallDestinationRoot(parsed.installTo, env),
+        destinationRoot: resolveSkillInstallRoot(env, parsed.installTo),
         version: parsed.installVersion,
         expectedDigest: parsed.expectedDigest,
         registryUrl: parsed.registryUrl,
@@ -362,9 +443,9 @@ export async function runCli(
     }
 
     if (parsed.command === "skill" && parsed.skillAction === "publish" && parsed.publishPath) {
-      const skillPackage = await readSkillPackage(resolveUserPath(parsed.publishPath, env));
+      const skillPackage = await loadLocalSkillPackage(resolvePathFromUserInput(parsed.publishPath, env));
       const result = await publishSkillMarkdown(
-        createLocalRegistryClient(createFileRegistryStore(resolveRegistryDir(env, parsed.registryUrl))),
+        createLocalRegistryClient(createFileRegistryStore(resolveRunxRegistryPath(env, { registry: parsed.registryUrl }))),
         skillPackage.markdown,
         {
           owner: parsed.publishOwner,
@@ -384,7 +465,7 @@ export async function runCli(
     if ((parsed.command === "skill" || parsed.command === "inspect") && parsed.skillAction === "inspect" && parsed.receiptId) {
       const inspection = await inspectLocalReceipt({
         receiptId: parsed.receiptId,
-        receiptDir: parsed.receiptDir ? resolveUserPath(parsed.receiptDir, env) : undefined,
+        receiptDir: parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : undefined,
         env,
       });
       if (parsed.json) {
@@ -397,7 +478,7 @@ export async function runCli(
 
     if (parsed.command === "history") {
       const history = await listLocalHistory({
-        receiptDir: parsed.receiptDir ? resolveUserPath(parsed.receiptDir, env) : undefined,
+        receiptDir: parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : undefined,
         env,
         query: parsed.historyQuery,
       });
@@ -410,7 +491,7 @@ export async function runCli(
     }
 
     if (parsed.command === "memory" && parsed.memoryAction === "show") {
-      const project = resolveUserPath(parsed.memoryProject ?? ".", env);
+      const project = resolvePathFromUserInput(parsed.memoryProject ?? ".", env);
       const facts = await createFileMemoryStore(resolveMemoryDir(env)).listFacts({ project });
       const report = {
         status: "success",
@@ -479,10 +560,10 @@ async function executeLocalSkillCommand(options: {
   return await runLocalSkill({
     skillPath: options.skillPath,
     inputs: options.inputs,
-    answersPath: options.parsed.answersPath ? resolveUserPath(options.parsed.answersPath, options.env) : undefined,
+    answersPath: options.parsed.answersPath ? resolvePathFromUserInput(options.parsed.answersPath, options.env) : undefined,
     caller: options.caller,
     env: options.env,
-    receiptDir: options.parsed.receiptDir ? resolveUserPath(options.parsed.receiptDir, options.env) : undefined,
+    receiptDir: options.parsed.receiptDir ? resolvePathFromUserInput(options.parsed.receiptDir, options.env) : undefined,
     runner: options.parsed.runner,
     resumeFromRunId: options.parsed.resumeReceiptId,
   });
@@ -617,7 +698,14 @@ function writeUsage(stream: NodeJS.WritableStream, env: NodeJS.ProcessEnv = proc
       "  runx config set|get|list [agent.provider|agent.model|agent.api_key] [value] [--json]",
       "  runx harness <fixture.yaml|skill-dir|SKILL.md|x.yaml> [--json]",
       "",
-      "Admin:",
+      "Core Flow:",
+      "  runx search docs",
+      "  runx <skill> --project .",
+      "  runx evolve",
+      "  runx resume <run-id>",
+      "  runx inspect <receipt-id>",
+      "",
+      "Manage Skills:",
       "  runx skill search <query>",
       "  runx skill add <ref>",
       "  runx skill publish <skill-dir|SKILL.md> [--owner owner] [--version version] [--registry url-or-path] [--json]",
@@ -861,11 +949,14 @@ function renderNeedsResolution(
   const steps = (result.stepLabels ?? result.stepIds ?? []).map((value) => humanizeLabel(value)).join(", ");
   const kinds = Array.from(new Set(result.requests.map((request) => request.kind)));
   const cognitivePhrase = cognitiveNeedPhrase(result.requests, result.skill.name);
+  const sourceyCopy = result.skill.name === "sourcey" ? sourceyPauseCopy(result.requests) : undefined;
   const headline =
     kinds.length === 1 && kinds[0] === "approval"
       ? "waiting for approval"
       : kinds.length === 1 && kinds[0] === "input"
         ? "waiting for input"
+        : sourceyCopy?.headline
+          ? sourceyCopy.headline
         : `waiting for ${cognitivePhrase}`;
   const localAgents = detectLocalAgents(env);
   const lines = [""];
@@ -907,10 +998,10 @@ function renderNeedsResolution(
         return task.startsWith(prefix) ? task.slice(prefix.length) : task;
       });
     const expected = expectedOutputLabels(result.requests);
-    lines.push(`  ${t.dim}This run paused because the next step needs ${cognitivePhrase} before it can continue.${t.reset}`);
+    lines.push(`  ${t.dim}${sourceyCopy?.body ?? `This run paused because the next step needs ${cognitivePhrase} before it can continue.`}${t.reset}`);
     if (expected.length > 0) {
       lines.push("");
-      lines.push(`  ${t.dim}expected${t.reset}  ${expected.join(", ")}`);
+      lines.push(`  ${t.dim}expected${t.reset}  ${sourceyCopy?.expected ?? expected.join(", ")}`);
     }
     if (work.length > 0) {
       if (expected.length === 0) {
@@ -971,14 +1062,30 @@ function renderExecutionEvent(event: ExecutionEvent, io: CliIo, env: NodeJS.Proc
     const stepId = typeof detail?.stepId === "string" ? detail.stepId : undefined;
     const stepLabel = typeof detail?.stepLabel === "string" ? detail.stepLabel : undefined;
     const kinds = Array.isArray(detail?.kinds) ? detail.kinds.filter((entry): entry is string => typeof entry === "string") : [];
-    const expectedOutputs = Array.isArray(detail?.expectedOutputs)
-      ? detail.expectedOutputs.filter((entry): entry is string => typeof entry === "string").map((entry) => humanizeLabel(entry))
+    const resolutionSkills = Array.isArray(detail?.resolutionSkills)
+      ? detail.resolutionSkills.filter((entry): entry is string => typeof entry === "string")
       : [];
+    const expectedOutputs = Array.isArray(detail?.expectedOutputs)
+      ? detail.expectedOutputs.filter((entry): entry is string => typeof entry === "string").map((entry) => humanizeExpectedOutput(entry))
+      : [];
+    const sourceySkill = resolutionSkills[0];
+    const sourceyLabel =
+      sourceySkill === "sourcey.discover"
+        ? "needs docs plan"
+        : sourceySkill === "sourcey.author"
+          ? "needs docs bundle"
+          : sourceySkill === "sourcey.critique"
+            ? "needs site review"
+            : sourceySkill === "sourcey.revise"
+              ? "needs docs revision"
+              : undefined;
     const label =
       kinds.length === 1 && kinds[0] === "approval"
         ? "needs approval"
         : kinds.length === 1 && kinds[0] === "input"
           ? "needs input"
+          : sourceyLabel
+            ? sourceyLabel
           : `needs ${expectedOutputs.length === 1 ? expectedOutputs[0] : expectedOutputs.length > 1 ? "expected outputs" : "drafted output"}`;
     return stepId
       ? `  ${t.yellow}◇${t.reset}  ${t.bold}${humanizeLabel(stepLabel ?? stepId)}${t.reset}  ${t.dim}${label}${t.reset}\n`
@@ -1061,6 +1168,33 @@ function renderRunSuccess(
   env: NodeJS.ProcessEnv,
 ): string {
   const t = theme(io.stdout, env);
+  const trimmed = result.execution.stdout.trim();
+  let parsedOutput: Record<string, unknown> | undefined;
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (isRecord(parsed)) {
+      parsedOutput = parsed;
+    }
+  } catch {}
+  if (result.skill.name === "sourcey" && parsedOutput) {
+    const outputDir = typeof parsedOutput.output_dir === "string" ? parsedOutput.output_dir : undefined;
+    const indexPath = typeof parsedOutput.index_path === "string" ? parsedOutput.index_path : undefined;
+    const verified = typeof parsedOutput.verified === "boolean" ? (parsedOutput.verified ? "passed" : "failed") : undefined;
+    const lines = [
+      "",
+      `  ${statusIcon("success", t)}  ${t.bold}sourcey${t.reset}  ${t.dim}site built${t.reset}`,
+      `  ${t.dim}receipt${t.reset}   ${shortId(result.receipt.id)}`,
+      `  ${t.dim}kind${t.reset}      ${result.receipt.kind}`,
+    ];
+    const duration = formatDurationMs(result.receipt.duration_ms);
+    if (duration) lines.push(`  ${t.dim}duration${t.reset}  ${duration}`);
+    if (outputDir) lines.push(`  ${t.dim}site${t.reset}      ${outputDir}`);
+    if (indexPath) lines.push(`  ${t.dim}index${t.reset}     ${indexPath}`);
+    if (verified) lines.push(`  ${t.dim}verify${t.reset}    ${verified}`);
+    lines.push(`  ${t.dim}inspect${t.reset}   runx inspect ${result.receipt.id}`);
+    lines.push("");
+    return lines.join("\n");
+  }
   const lines = [
     "",
     `  ${statusIcon("success", t)}  ${t.bold}${result.skill.name}${t.reset}  ${t.dim}success${t.reset}`,
@@ -1078,7 +1212,7 @@ function renderRunSuccess(
   if (extractOutputHighlights(result.execution.stdout).length === 0 && result.execution.stdout.trim()) {
     lines.push(`  ${t.dim}output${t.reset}    ${truncateMultiline(result.execution.stdout, 6)}`);
   }
-  lines.push(`  ${t.dim}next${t.reset}      runx inspect ${result.receipt.id}`);
+  lines.push(`  ${t.dim}inspect${t.reset}   runx inspect ${result.receipt.id}`);
   lines.push("");
   return lines.join("\n");
 }
@@ -1113,7 +1247,7 @@ function renderRunFailure(
   if (errorText.trim()) {
     lines.push(`  ${t.dim}error${t.reset}     ${truncateMultiline(errorText, 8)}`);
   }
-  lines.push(`  ${t.dim}next${t.reset}      runx inspect ${result.receipt.id} --json`);
+  lines.push(`  ${t.dim}inspect${t.reset}   runx inspect ${result.receipt.id} --json`);
   lines.push("");
   return lines.join("\n");
 }
@@ -1198,40 +1332,16 @@ interface LocalSkillPackage {
 function resolveBundledSkillPath(skillName: string): string {
   const bundledDir = resolveBundledSkillsDir();
   if (bundledDir) {
-    const candidate = path.join(bundledDir, skillName);
+    const resolvedSkillName = bundledSkillCommandAliases[skillName] ?? skillName;
+    const candidate = path.join(bundledDir, resolvedSkillName);
     if (existsSync(candidate)) return candidate;
   }
   throw new Error(`Bundled skill not found: ${skillName}. The @runxai/cli package may be missing its \`skills/\` assets.`);
 }
 
-async function readSkillPackage(skillPath: string): Promise<LocalSkillPackage> {
-  const resolvedPath = path.resolve(skillPath);
-  const pathStat = await stat(resolvedPath);
-  const markdownPath = pathStat.isDirectory() ? path.join(resolvedPath, "SKILL.md") : resolvedPath;
-  if (path.basename(markdownPath).toLowerCase() !== "skill.md") {
-    throw new Error(
-      `Skill packages must be referenced by directory or SKILL.md. Flat markdown files are not supported: ${resolvedPath}`,
-    );
-  }
-  if (!existsSync(markdownPath)) {
-    throw new Error(`Skill package '${resolvedPath}' is missing SKILL.md.`);
-  }
-  const xManifestPath = pathStat.isDirectory()
-    ? path.join(resolvedPath, "x.yaml")
-    : path.join(path.dirname(resolvedPath), "x.yaml");
-  return {
-    markdown: await readFile(markdownPath, "utf8"),
-    xManifest: await readOptionalFile(xManifestPath),
-  };
-}
-
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch {
-    return undefined;
-  }
-}
+const bundledSkillCommandAliases: Readonly<Record<string, string>> = {
+  "bug-to-pr": "issue-to-pr",
+};
 
 async function runSkillSearch(
   query: string,
@@ -1243,7 +1353,7 @@ async function runSkillSearch(
 
   if (!normalizedSource || normalizedSource === "registry" || normalizedSource === "runx-registry") {
     results.push(
-      ...(await searchRegistry(createFileRegistryStore(resolveRegistryDir(env)), query, {
+        ...(await searchRegistry(createFileRegistryStore(resolveRunxRegistryPath(env)), query, {
         registryUrl: env.RUNX_REGISTRY_URL,
       })),
     );
@@ -1334,7 +1444,7 @@ function resolveBundledSkillsDir(): string | undefined {
   }
 }
 
-function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): string {
+export function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): string {
   if (!ref) {
     throw new Error("Missing skill reference.");
   }
@@ -1342,7 +1452,7 @@ function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): string {
   // tilde) or that actually exists on disk as a direct filesystem reference.
   const looksLikePath = ref.includes("/") || ref.includes(path.sep) || ref.startsWith(".") || ref.startsWith("~");
   if (looksLikePath) {
-    const resolved = resolveUserPath(ref, env);
+    const resolved = resolvePathFromUserInput(ref, env);
     if (path.extname(resolved).toLowerCase() === ".md" && path.basename(resolved).toLowerCase() !== "skill.md") {
       throw new Error(
         `Skill references must point to a skill package directory or SKILL.md. Flat markdown files are not supported: ${resolved}`,
@@ -1350,7 +1460,7 @@ function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): string {
     }
     return resolved;
   }
-  const directCandidate = resolveUserPath(ref, env);
+  const directCandidate = resolvePathFromUserInput(ref, env);
   if (existsSync(directCandidate)) {
     if (path.extname(directCandidate).toLowerCase() === ".md" && path.basename(directCandidate).toLowerCase() !== "skill.md") {
       throw new Error(
@@ -1361,7 +1471,8 @@ function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): string {
   }
   const bundled = resolveBundledSkillsDir();
   if (bundled) {
-    const named = path.join(bundled, ref);
+    const resolvedRef = bundledSkillCommandAliases[ref] ?? ref;
+    const named = path.join(bundled, resolvedRef);
     if (existsSync(path.join(named, "SKILL.md"))) {
       return named;
     }
@@ -1374,7 +1485,7 @@ async function resolveResumeSkillPath(
   receiptDir: string | undefined,
   env: NodeJS.ProcessEnv,
 ): Promise<string> {
-  const entries = await readJournalEntries(receiptDir ? resolveUserPath(receiptDir, env) : resolveDefaultReceiptDir(env), runId);
+  const entries = await readJournalEntries(receiptDir ? resolvePathFromUserInput(receiptDir, env) : resolveDefaultReceiptDir(env), runId);
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
     if (entry?.type !== "run_event") {
@@ -1407,22 +1518,22 @@ function parseSkillFrontmatter(raw: string, fallbackName: string): { name: strin
   return { name, description };
 }
 
-function resolveRegistryDir(env: NodeJS.ProcessEnv, registry?: string): string {
-  if (registry && isRemoteRegistryUrl(registry) && !env.RUNX_REGISTRY_DIR) {
-    throw new Error("Remote registry transport is not implemented in CE; set RUNX_REGISTRY_DIR for local-backed registry tests.");
-  }
-  if (registry && !isRemoteRegistryUrl(registry)) {
-    return registry.startsWith("file://") ? fileURLToPath(registry) : resolveUserPath(registry, env);
-  }
-  return env.RUNX_REGISTRY_DIR
-    ? resolveUserPath(env.RUNX_REGISTRY_DIR, env)
-    : path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), ".runx", "registry");
-}
+function resolveConfiguredConnectService(env: NodeJS.ProcessEnv): ConnectService | undefined {
+  const baseUrl = env.RUNX_CONNECT_BASE_URL;
+  const accessToken = env.RUNX_CONNECT_ACCESS_TOKEN;
 
-function resolveInstallDestinationRoot(to: string | undefined, env: NodeJS.ProcessEnv): string {
-  return to
-    ? resolveUserPath(to, env)
-    : path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), "skills");
+  if (!baseUrl || !accessToken) {
+    return undefined;
+  }
+
+  return createHttpConnectService({
+    baseUrl,
+    accessToken,
+    openCommand: env.RUNX_CONNECT_OPEN_COMMAND,
+    pollIntervalMs: parseOptionalInt(env.RUNX_CONNECT_POLL_INTERVAL_MS),
+    timeoutMs: parseOptionalInt(env.RUNX_CONNECT_TIMEOUT_MS),
+    env,
+  });
 }
 
 function normalizeDigest(value: string): string {
@@ -1463,26 +1574,18 @@ function configAction(positionals: readonly string[]): ParsedArgs["configAction"
   return undefined;
 }
 
-interface RunxConfigFile {
-  readonly agent?: {
-    readonly provider?: string;
-    readonly model?: string;
-    readonly api_key_ref?: string;
-  };
-}
-
 type ConfigResult =
   | { readonly action: "set"; readonly key: string; readonly value: unknown }
   | { readonly action: "get"; readonly key: string; readonly value: unknown }
   | { readonly action: "list"; readonly values: RunxConfigFile };
 
 async function handleConfigCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<ConfigResult> {
-  const configDir = resolveRunxDir(env);
+  const configDir = resolveRunxHomeDir(env);
   const configPath = path.join(configDir, "config.json");
-  const config = await readRunxConfig(configPath);
+  const config = await loadRunxConfigFile(configPath);
 
   if (parsed.configAction === "list") {
-    return { action: "list", values: redactConfig(config) };
+    return { action: "list", values: maskRunxConfigFile(config) };
   }
   if (!parsed.configKey) {
     throw new Error("config key is required.");
@@ -1491,133 +1594,31 @@ async function handleConfigCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): 
     return {
       action: "get",
       key: parsed.configKey,
-      value: readConfigValue(config, parsed.configKey),
+      value: lookupRunxConfigValue(config, parsed.configKey as "agent.provider" | "agent.model" | "agent.api_key"),
     };
   }
   if (parsed.configAction === "set") {
     if (parsed.configValue === undefined) {
       throw new Error("config value is required.");
     }
-    const next = await setConfigValue(config, parsed.configKey, parsed.configValue, configDir);
-    await writeRunxConfig(configPath, next);
+    const next = await updateRunxConfigValue(
+      config,
+      parsed.configKey as "agent.provider" | "agent.model" | "agent.api_key",
+      parsed.configValue,
+      configDir,
+    );
+    await writeRunxConfigFile(configPath, next);
     return {
       action: "set",
       key: parsed.configKey,
-      value: readConfigValue(redactConfig(next), parsed.configKey),
+      value: lookupRunxConfigValue(maskRunxConfigFile(next), parsed.configKey as "agent.provider" | "agent.model" | "agent.api_key"),
     };
   }
   throw new Error("Invalid config invocation.");
 }
 
-async function readRunxConfig(configPath: string): Promise<RunxConfigFile> {
-  try {
-    return JSON.parse(await readFile(configPath, "utf8")) as RunxConfigFile;
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return {};
-    }
-    throw error;
-  }
-}
-
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
-}
-
-async function writeRunxConfig(configPath: string, config: RunxConfigFile): Promise<void> {
-  await mkdir(path.dirname(configPath), { recursive: true });
-  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-}
-
-async function setConfigValue(
-  config: RunxConfigFile,
-  key: string,
-  value: string,
-  configDir: string,
-): Promise<RunxConfigFile> {
-  if (key === "agent.provider") {
-    return { ...config, agent: { ...config.agent, provider: value } };
-  }
-  if (key === "agent.model") {
-    return { ...config, agent: { ...config.agent, model: value } };
-  }
-  if (key === "agent.api_key") {
-    return {
-      ...config,
-      agent: {
-        ...config.agent,
-        api_key_ref: await storeLocalAgentApiKey(configDir, value),
-      },
-    };
-  }
-  throw new Error(`Unsupported config key: ${key}`);
-}
-
-function readConfigValue(config: RunxConfigFile, key: string): unknown {
-  if (key === "agent.provider") {
-    return config.agent?.provider;
-  }
-  if (key === "agent.model") {
-    return config.agent?.model;
-  }
-  if (key === "agent.api_key") {
-    return config.agent?.api_key_ref ? "[encrypted]" : undefined;
-  }
-  throw new Error(`Unsupported config key: ${key}`);
-}
-
-function redactConfig(config: RunxConfigFile): RunxConfigFile {
-  return config.agent?.api_key_ref
-    ? { ...config, agent: { ...config.agent, api_key_ref: "[encrypted]" } }
-    : config;
-}
-
-async function storeLocalAgentApiKey(configDir: string, apiKey: string): Promise<string> {
-  const keyDir = path.join(configDir, "keys");
-  await mkdir(keyDir, { recursive: true });
-  const encryptionKey = createHash("sha256").update(await loadOrCreateLocalConfigSecret(keyDir)).digest();
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", encryptionKey, iv);
-  const ciphertext = Buffer.concat([cipher.update(apiKey, "utf8"), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  const ref = `local_agent_key_${createHash("sha256").update(`${iv.toString("hex")}:${Date.now()}`).digest("hex").slice(0, 24)}`;
-  await writeFile(
-    path.join(keyDir, `${ref}.json`),
-    `${JSON.stringify(
-      {
-        ref,
-        alg: "aes-256-gcm",
-        iv: iv.toString("base64url"),
-        ciphertext: ciphertext.toString("base64url"),
-        auth_tag: authTag.toString("base64url"),
-      },
-      null,
-      2,
-    )}\n`,
-    { mode: 0o600 },
-  );
-  return ref;
-}
-
-async function loadOrCreateLocalConfigSecret(keyDir: string): Promise<string> {
-  const keyPath = path.join(keyDir, "local-config-secret");
-  try {
-    return await readFile(keyPath, "utf8");
-  } catch (error) {
-    if (!isNodeError(error) || error.code !== "ENOENT") {
-      throw error;
-    }
-    const secret = randomBytes(32).toString("base64url");
-    try {
-      await writeFile(keyPath, secret, { mode: 0o600, flag: "wx" });
-      return secret;
-    } catch (writeError) {
-      if (isNodeError(writeError) && writeError.code === "EEXIST") {
-        return await readFile(keyPath, "utf8");
-      }
-      throw writeError;
-    }
-  }
 }
 
 function renderConfigResult(result: ConfigResult, env: NodeJS.ProcessEnv = process.env): string {
@@ -1631,8 +1632,12 @@ function renderConfigResult(result: ConfigResult, env: NodeJS.ProcessEnv = proce
   return renderKeyValue("config", "success", [[result.key, value]], t);
 }
 
-function isRemoteRegistryUrl(value: string): boolean {
-  return /^https?:\/\//.test(value);
+function parseOptionalInt(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function renderSearchResults(results: readonly SkillSearchResult[], env: NodeJS.ProcessEnv = process.env): string {
@@ -1650,8 +1655,8 @@ function renderSearchResults(results: readonly SkillSearchResult[], env: NodeJS.
     if (result.runner_mode === "x-manifest" && result.runner_names.length > 0) {
       lines.push(`  ${t.dim}runners:${t.reset} ${result.runner_names.join(", ")}`);
     }
-    lines.push(`  ${t.cyan}${result.run_command}${t.reset}`);
-    lines.push(`  ${t.dim}${result.add_command}${t.reset}`);
+    lines.push(`  ${t.dim}run${t.reset}  ${t.cyan}${result.run_command}${t.reset}`);
+    lines.push(`  ${t.dim}add${t.reset}  ${result.add_command}`);
     lines.push("");
   }
   return lines.join("\n");
@@ -1666,8 +1671,10 @@ function renderReceiptInspection(summary: LocalReceiptSummary, env: NodeJS.Proce
   ];
   if (summary.sourceType) rows.push(["source", summary.sourceType]);
   if (summary.startedAt) rows.push(["started", relativeTime(summary.startedAt)]);
+  if (summary.completedAt) rows.push(["completed", relativeTime(summary.completedAt)]);
   if (summary.verification) rows.push(["verify", `${summary.verification.status}${summary.verification.reason ? ` (${summary.verification.reason})` : ""}`]);
-  rows.push(["next", "runx history"]);
+  rows.push(["history", "runx history"]);
+  rows.push(["json", `runx inspect ${summary.id} --json`]);
   return renderKeyValue(summary.name, summary.status, rows, t);
 }
 
@@ -1680,7 +1687,7 @@ function renderHistory(
   if (receipts.length === 0) {
     return query
       ? `\n  ${t.dim}No receipts matched ${t.cyan}${query}${t.reset}${t.dim}.${t.reset}\n  ${t.dim}Try ${t.cyan}runx history${t.reset}${t.dim} to see every local run.${t.reset}\n\n`
-      : `\n  ${t.dim}No receipts yet. Run a skill to produce one:${t.reset}\n  ${t.cyan}runx search sourcey${t.reset}\n\n`;
+      : `\n  ${t.dim}No receipts yet. Try a run first:${t.reset}\n  ${t.cyan}runx evolve${t.reset}\n  ${t.cyan}runx search docs${t.reset}\n\n`;
   }
   const now = Date.now();
   const nameWidth = Math.min(32, Math.max(...receipts.map((r) => r.name.length)));
@@ -1693,10 +1700,13 @@ function renderHistory(
     const when = summary.startedAt ? relativeTime(summary.startedAt, now) : "";
     const source = summary.sourceType ?? summary.kind;
     const id = shortId(summary.id);
+    const verification = summary.verification?.status ?? "unknown";
     lines.push(
-      `  ${icon}  ${t.bold}${name}${t.reset}  ${t.dim}${source.padEnd(16)}${t.reset}  ${t.dim}${when.padEnd(10)}${t.reset}  ${t.dim}${id}${t.reset}`,
+      `  ${icon}  ${t.bold}${name}${t.reset}  ${t.dim}${source.padEnd(16)}${t.reset}  ${t.dim}${verification.padEnd(10)}${t.reset}  ${t.dim}${when.padEnd(10)}${t.reset}  ${t.dim}${id}${t.reset}`,
     );
   }
+  lines.push("");
+  lines.push(`  ${t.dim}next${t.reset}  runx inspect <receipt-id>`);
   lines.push("");
   return lines.join("\n");
 }
@@ -1818,7 +1828,7 @@ function renderConnectResult(
   if (action === "list") {
     const grants = isRecord(result) && Array.isArray(result.grants) ? result.grants.filter(isRecord) : [];
     if (grants.length === 0) {
-      return `\n  ${t.dim}No connections yet.${t.reset}\n\n`;
+      return `\n  ${t.dim}No connections yet.${t.reset}\n  ${t.dim}start${t.reset}  runx connect github\n\n`;
     }
     const lines = ["", `  ${t.bold}connections${t.reset}  ${t.dim}${grants.length} grant(s)${t.reset}`, ""];
     for (const grant of grants) {
@@ -1844,39 +1854,18 @@ function renderConnectResult(
       ["provider", provider],
       ["grant", grantId],
       ["scopes", scopes],
+      ["next", action === "revoke" ? "runx connect github" : "runx connect list"],
     ],
     t,
   );
 }
 
-function resolveUserPath(userPath: string, env: NodeJS.ProcessEnv): string {
-  if (path.isAbsolute(userPath)) {
-    return userPath;
-  }
-
-  for (const base of [env.RUNX_CWD, env.INIT_CWD, findWorkspaceRoot(process.cwd()), process.cwd()]) {
-    if (!base) {
-      continue;
-    }
-    const candidate = path.resolve(base, userPath);
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  return path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), userPath);
-}
-
 function resolveMemoryDir(env: NodeJS.ProcessEnv): string {
-  return env.RUNX_MEMORY_DIR
-    ? resolveUserPath(env.RUNX_MEMORY_DIR, env)
-    : path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), ".runx", "memory");
+  return resolveRunxMemoryDir(env);
 }
 
 function resolveRunxDir(env: NodeJS.ProcessEnv): string {
-  return env.RUNX_HOME
-    ? resolveUserPath(env.RUNX_HOME, env)
-    : path.resolve(env.RUNX_CWD ?? findWorkspaceRoot(process.cwd()) ?? env.INIT_CWD ?? process.cwd(), ".runx");
+  return resolveRunxHomeDir(env);
 }
 
 function resolveDefaultReceiptDir(env: NodeJS.ProcessEnv): string {
@@ -1885,20 +1874,6 @@ function resolveDefaultReceiptDir(env: NodeJS.ProcessEnv): string {
     ".runx",
     "receipts",
   );
-}
-
-function findWorkspaceRoot(start: string): string | undefined {
-  let current = start;
-  while (true) {
-    if (existsSync(path.join(current, "pnpm-workspace.yaml"))) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) {
-      return undefined;
-    }
-    current = parent;
-  }
 }
 
 function createNonInteractiveCaller(

@@ -193,7 +193,7 @@ async function withIndexLock<T>(memoryDir: string, lockPath: string, fn: () => P
       if (Date.now() - startedAt > 10_000) {
         throw new Error(`Timed out waiting for local memory lock at ${lockPath}.`);
       }
-      await delay(10);
+      await delay(10 + Math.floor(Math.random() * 50));
     }
   }
 
@@ -253,11 +253,68 @@ function normalizeIndex(value: unknown): LocalMemoryIndex {
   }
   return {
     schema_version: "runx.memory.v1",
-    receipts: Array.isArray(value.receipts) ? (value.receipts as MemoryReceiptRecord[]) : [],
-    facts: Array.isArray(value.facts) ? (value.facts as MemoryFactRecord[]) : [],
-    answers: Array.isArray(value.answers) ? (value.answers as MemoryAnswerRecord[]) : [],
-    artifacts: Array.isArray(value.artifacts) ? (value.artifacts as MemoryArtifactRecord[]) : [],
+    receipts: normalizeArray(value.receipts, isMemoryReceiptRecord, "receipts"),
+    facts: normalizeArray(value.facts, isMemoryFactRecord, "facts"),
+    answers: normalizeArray(value.answers, isMemoryAnswerRecord, "answers"),
+    artifacts: normalizeArray(value.artifacts, isMemoryArtifactRecord, "artifacts"),
   };
+}
+
+function normalizeArray<T>(
+  value: unknown,
+  predicate: (entry: unknown) => entry is T,
+  label: string,
+): readonly T[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const normalized: T[] = [];
+  for (const entry of value) {
+    if (predicate(entry)) {
+      normalized.push(entry);
+      continue;
+    }
+    console.warn(`warning: skipping malformed local memory ${label} entry`);
+  }
+  return normalized;
+}
+
+function isMemoryReceiptRecord(value: unknown): value is MemoryReceiptRecord {
+  return isRecord(value)
+    && typeof value.receipt_id === "string"
+    && typeof value.kind === "string"
+    && typeof value.status === "string"
+    && typeof value.subject === "string"
+    && typeof value.indexed_at === "string";
+}
+
+function isMemoryFactRecord(value: unknown): value is MemoryFactRecord {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.project === "string"
+    && typeof value.scope === "string"
+    && typeof value.key === "string"
+    && typeof value.source === "string"
+    && typeof value.confidence === "number"
+    && typeof value.freshness === "string"
+    && typeof value.created_at === "string";
+}
+
+function isMemoryAnswerRecord(value: unknown): value is MemoryAnswerRecord {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.project === "string"
+    && typeof value.question_id === "string"
+    && typeof value.answer_hash === "string"
+    && typeof value.created_at === "string";
+}
+
+function isMemoryArtifactRecord(value: unknown): value is MemoryArtifactRecord {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.project === "string"
+    && typeof value.path === "string"
+    && typeof value.created_at === "string";
 }
 
 function sameProject(left: string, right: string): boolean {

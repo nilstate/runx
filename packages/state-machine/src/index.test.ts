@@ -217,6 +217,53 @@ describe("fanout sync chain policy", () => {
       },
     });
   });
+
+  it("does not treat nested objects with different key order as a conflict", () => {
+    const decision = evaluateFanoutSync(
+      {
+        groupId: "advisors",
+        strategy: "all",
+        minSuccess: 2,
+        onBranchFailure: "halt",
+        thresholdGates: [],
+        conflictGates: [{ field: "report", action: "pause", steps: ["market", "risk"] }],
+      },
+      [
+        {
+          stepId: "market",
+          status: "succeeded",
+          outputs: {
+            report: {
+              summary: {
+                z: 1,
+                a: 2,
+              },
+            },
+          },
+        },
+        {
+          stepId: "risk",
+          status: "succeeded",
+          outputs: {
+            report: {
+              summary: {
+                a: 2,
+                z: 1,
+              },
+            },
+          },
+        },
+      ],
+    );
+
+    expect(decision).toMatchObject({
+      groupId: "advisors",
+      decision: "proceed",
+      ruleFired: "all.min_success",
+      successCount: 2,
+      failureCount: 0,
+    });
+  });
 });
 
 function finishFanoutStep(

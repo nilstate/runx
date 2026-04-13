@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { invokeCliTool } from "./index.js";
 
+const outputLimitBytes = 1024 * 1024;
+
 describe("invokeCliTool", () => {
   it("executes a command with input env injection", async () => {
     const result = await invokeCliTool({
@@ -47,6 +49,48 @@ describe("invokeCliTool", () => {
     expect(result.status).toBe("failure");
     expect(result.errorMessage).toContain("timed out");
     expect(result.durationMs).toBeLessThan(1500);
+  });
+
+  it("kills a running child when the AbortSignal fires", async () => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 50);
+
+    const result = await invokeCliTool({
+      source: {
+        command: "node",
+        args: ["-e", "setInterval(() => {}, 1000)"],
+        timeoutSeconds: 5,
+      },
+      inputs: {},
+      skillDirectory: process.cwd(),
+      signal: controller.signal,
+    });
+
+    expect(result.status).toBe("failure");
+    expect(result.errorMessage).toBe("cli-tool aborted");
+    expect(result.durationMs).toBeLessThan(1500);
+  });
+
+  it("truncates stdout by byte count without emitting broken UTF-8", async () => {
+    const result = await invokeCliTool({
+      source: {
+        command: "node",
+        args: [
+          "-e",
+          "process.stdout.write('a'.repeat(Number(process.argv[1])) + '€')",
+          String(outputLimitBytes - 1),
+        ],
+        timeoutSeconds: 5,
+      },
+      inputs: {},
+      skillDirectory: process.cwd(),
+    });
+
+    expect(result.status).toBe("success");
+    expect(Buffer.byteLength(result.stdout, "utf8")).toBeLessThanOrEqual(outputLimitBytes);
+    expect(result.stdout).not.toContain("\uFFFD");
+    expect(result.stdout.endsWith("€")).toBe(false);
+    expect(result.stdout).toBe("a".repeat(outputLimitBytes - 1));
   });
 
   it("applies declared env allowlist and reports sandbox metadata", async () => {

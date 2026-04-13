@@ -10,7 +10,9 @@ source:
       const path = require("node:path");
 
       const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
-      const repoRoot = path.resolve(String(inputs.repo_root || process.env.RUNX_CWD || process.cwd()));
+      const repoRoot = path.resolve(
+        String(inputs.repo_root || inputs.project || inputs.fixture || process.env.RUNX_CWD || process.cwd()),
+      );
       const targetPath = String(inputs.path || "");
       if (!targetPath) {
         throw new Error("path is required.");
@@ -31,7 +33,7 @@ inputs:
   repo_root:
     type: string
     required: false
-    description: Repository or workspace root; defaults to RUNX_CWD or the current working directory.
+    description: Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory.
 scopes:
   - fs.read
 runx:

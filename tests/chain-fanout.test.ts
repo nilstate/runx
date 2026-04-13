@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -51,6 +51,64 @@ describe("local fanout chain runner", () => {
           required_successes: 3,
         }),
       ]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("executes three one-second fanout branches concurrently", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-fanout-parallel-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+    const chainPath = path.join(tempDir, "parallel.yaml");
+
+    try {
+      await Promise.all([
+        writeSleepSkill(path.join(tempDir, "market"), "market"),
+        writeSleepSkill(path.join(tempDir, "risk"), "risk"),
+        writeSleepSkill(path.join(tempDir, "finance"), "finance"),
+      ]);
+      await writeFile(
+        chainPath,
+        `name: timed-fanout
+owner: runx
+fanout:
+  groups:
+    advisors:
+      strategy: all
+      on_branch_failure: halt
+steps:
+  - id: market
+    mode: fanout
+    fanout_group: advisors
+    skill: ./market
+  - id: risk
+    mode: fanout
+    fanout_group: advisors
+    skill: ./risk
+  - id: finance
+    mode: fanout
+    fanout_group: advisors
+    skill: ./finance
+`,
+      );
+
+      const started = performance.now();
+      const result = await runLocalChain({
+        chainPath,
+        caller: nonInteractiveCaller,
+        receiptDir,
+        runxHome,
+        env: process.env,
+      });
+      const durationMs = performance.now() - started;
+
+      expect(result.status).toBe("success");
+      expect(durationMs).toBeLessThan(2000);
+      if (result.status !== "success") {
+        return;
+      }
+      expect(result.steps.map((step) => step.stepId)).toEqual(["market", "risk", "finance"]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -200,4 +258,26 @@ function createMemoryStream(): NodeJS.WriteStream & { contents: () => string; cl
       buffer = "";
     },
   } as NodeJS.WriteStream & { contents: () => string; clear: () => void };
+}
+
+async function writeSleepSkill(directory: string, label: string): Promise<void> {
+  await mkdir(directory, { recursive: true });
+  await writeFile(
+    path.join(directory, "SKILL.md"),
+    `---
+name: ${label}
+description: Sleep for one second and then emit the skill label.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - -e
+    - "setTimeout(() => process.stdout.write('${label}'), 1000)"
+  timeout_seconds: 5
+inputs: {}
+---
+
+Emit ${label} after a one-second delay.
+`,
+  );
 }

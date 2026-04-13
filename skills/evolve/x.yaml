@@ -54,8 +54,8 @@ harness:
               findings:
                 - docs missing
               recommended_phases:
-                - plan
-                - act
+                - scope
+                - model
             change_plan:
               steps:
                 - draft release notes
@@ -65,10 +65,9 @@ harness:
               spec_version: "1.1"
               task_id: evolve_release_notes
               phases:
-                - plan
-                - act
-        approvals:
-          evolve.plan.approval: true
+                - scope
+                - ingest
+                - model
       expect:
         status: success
         receipt:
@@ -166,10 +165,27 @@ runners:
         type: string
         required: false
         default: "spec"
-        description: "Bounded termination target: spec, patch, or pr."
+        description: "Bounded termination target. Current shipped runner only supports spec."
     chain:
       name: evolve
       steps:
+        - id: validate-mode
+          label: validate mode
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - -e
+              - |
+                const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+                const terminate = String(inputs.terminate || "spec");
+                if (terminate !== "spec") {
+                  console.error(
+                    `evolve currently stops at spec. Received terminate=${terminate}. ` +
+                    `Plan the change with runx evolve, then execute it through a real skill or governed lane.`,
+                  );
+                  process.exit(1);
+                }
         - id: preflight
           label: inspect repo
           run:
@@ -216,9 +232,10 @@ runners:
           instructions: >
             Using the evolve skill environment, produce a bounded objective_brief,
             diagnosis_report, change_plan, and spec_document. Keep them practical
-            and directly actionable for the current repository. This is one
-            bounded planning pass, not an open-ended improvement loop. If a
-            revision path is needed, state it explicitly and keep it limited.
+            and directly actionable for the current repository. This runner ends
+            at plan/spec artifacts. Do not imply hidden mutation, publish, or
+            autonomous execution. If later execution is needed, name the real
+            downstream skill or substrate explicitly and keep the lane bounded.
           allowed_tools:
             - fs.read
             - git.status
@@ -231,90 +248,3 @@ runners:
               diagnosis_report: diagnosis_report
               change_plan: change_plan
               spec_document: spec_document
-        - id: approve
-          label: approve evolve plan
-          run:
-            type: approval
-          inputs:
-            gate_id: evolve.plan.approval
-            reason: Approve the evolve plan before any acting or publishing phase.
-          context:
-            objective_brief: plan.objective_brief.data
-            change_plan: plan.change_plan.data
-            spec_document: plan.spec_document.data
-          artifacts:
-            wrap_as: approval_decision
-        - id: act
-          label: apply bounded change
-          run:
-            type: cli-tool
-            command: node
-            args:
-              - -e
-              - |
-                const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
-                const terminate = String(inputs.terminate || "spec");
-                const approved = Boolean(inputs.approved);
-                const noOp = terminate === "spec" || !approved;
-                process.stdout.write(JSON.stringify({
-                  execution_report: {
-                    steps_completed: noOp ? 0 : 1,
-                    files_changed: noOp ? [] : ["README.md"],
-                    receipt_ids: []
-                  },
-                  verification_report: {
-                    passed: approved,
-                    checks: noOp ? ["bounded_noop"] : ["synthetic_check"]
-                  },
-                  review_report: {
-                    verdict: approved ? "approve" : "reject",
-                    findings: []
-                  }
-                }));
-          scopes:
-            - runx:evolve:draft_write
-          context:
-            approved: approve.approval_decision.data.approved
-            change_plan: plan.change_plan.data
-            spec_document: plan.spec_document.data
-            repo_profile: preflight.repo_profile.data
-          artifacts:
-            named_emits:
-              execution_report: execution_report
-              verification_report: verification_report
-              review_report: review_report
-        - id: publish
-          label: publish result
-          run:
-            type: cli-tool
-            command: node
-            args:
-              - -e
-              - |
-                const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
-                const terminate = String(inputs.terminate || "spec");
-                const reviewVerdict = String(inputs.review_verdict || "reject");
-                const published = terminate === "pr" && reviewVerdict === "approve";
-                process.stdout.write(JSON.stringify({
-                  publish_report: {
-                    published,
-                    target: published ? "pull_request" : "none",
-                    artifact_refs: []
-                  }
-                }));
-          scopes:
-            - runx:evolve:write
-          context:
-            review_verdict: act.review_report.data.verdict
-            execution_report: act.execution_report.data
-          artifacts:
-            named_emits:
-              publish_report: publish_report
-      policy:
-        transitions:
-          - to: act
-            field: approve.approval_decision.data.approved
-            equals: true
-          - to: publish
-            field: act.review_report.data.verdict
-            equals: approve

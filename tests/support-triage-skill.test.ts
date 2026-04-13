@@ -21,6 +21,7 @@ describe("support-triage official skill", () => {
     expect(runner.source.task).toBe("support-triage");
     expect(runner.source.outputs).toEqual({
       triage_report: "object",
+      change_set: "object",
     });
     expect(runner.inputs.title?.type).toBe("string");
     expect(runner.inputs.issue_title?.type).toBe("string");
@@ -30,7 +31,7 @@ describe("support-triage official skill", () => {
     expect(runner.inputs.operator_context?.type).toBe("string");
   });
 
-  it("passes the inline harness suite", async () => {
+  it("passes the inline harness suite, including supervisor-oriented gate examples", async () => {
     const result = await runHarnessTarget(path.resolve("skills/support-triage"));
 
     expect(result.source).toBe("inline");

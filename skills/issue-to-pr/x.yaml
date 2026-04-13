@@ -200,20 +200,20 @@ runners:
             agent: builder
             task: issue-to-pr-apply-fix
             outputs:
-              fix_draft: object
-              change_contents: string
+              fix_bundle: object
           instructions: >
-            Produce the bounded fix described by the approved spec, grounded in
-            the declared issue metadata, approved scope, and provided
-            spec_contents. Use repo_snapshot, repo_snapshot_path, and
+            Produce the bounded fix bundle described by the approved spec,
+            grounded in the declared issue metadata, approved scope, and
+            provided spec_contents. Use repo_snapshot, repo_snapshot_path, and
             repo_context when present to stay aligned with the real repo shape.
             If the inline snapshot is insufficient and repo_snapshot_path is
-            present, read it via fs.read before choosing files. fix_draft.path
-            must reference one declared tracked file relative to the fixture
-            root.
-            change_contents must be the full file contents to write. Do not
-            widen scope, and do not rely on hidden edits outside the
-            deterministic write phase.
+            present, read it via fs.read before choosing files.
+            fix_bundle.files must be an array of { path, contents } entries
+            covering every tracked repo file that must change to satisfy the
+            approved spec. Each path must be relative to the fixture root. When
+            the approved spec requires more than one repo file, a partial bundle
+            is incorrect. Do not widen scope, and do not rely on hidden edits
+            outside the deterministic write phase.
           allowed_tools:
             - fs.read
             - git.status
@@ -223,23 +223,15 @@ runners:
             spec_contents: read-spec.file_read.data.contents
           artifacts:
             named_emits:
-              fix_draft: fix_draft
+              fix_bundle: fix_bundle
         - id: write-fix
           label: write fix
-          tool: fs.write
+          tool: fs.write_bundle
           scopes:
             - fs.write
           mutation: true
           context:
-            path: author-fix.fix_draft.data.path
-            contents: author-fix.change_contents
-        - id: read-fix
-          label: read persisted fix
-          tool: fs.read
-          scopes:
-            - fs.read
-          context:
-            path: author-fix.fix_draft.data.path
+            files: author-fix.fix_bundle.data.files
         - id: scafld-exec
           label: run task
           skill: ../scafld
@@ -279,15 +271,18 @@ runners:
           context:
             review_file: scafld-review-open.review_file
             review_prompt: scafld-review-open.review_prompt
-            fix_draft: author-fix.fix_draft.data
-            fix_file: read-fix.file_read.data
-            change_contents: read-fix.file_read.data.contents
+            fix_bundle: author-fix.fix_bundle.data
+            written_files: write-fix.file_bundle_write.data.files
+            spec_contents: read-spec.file_read.data.contents
           instructions: >
             Fill the scafld review artifact requested by review_prompt. Produce
             review_decision with at least review_file and verdict, plus
             review_contents as the full markdown review file to write. Keep the
-            review grounded in the declared change set and provided
-            change_contents.
+            review grounded in the declared change set, the full
+            fix_bundle.files array, and the persisted write_bundle result. The
+            review file must include the standard scafld sections: Metadata JSON,
+            Pass Results, Regression Hunt, Convention Check, Dark Patterns,
+            Blocking, Non-blocking, and Verdict.
           artifacts:
             named_emits:
               review_decision: review_decision

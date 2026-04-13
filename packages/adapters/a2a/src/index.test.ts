@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createA2aFixtureTransport } from "../../../harness/src/a2a-fixture.js";
 
-import { invokeA2a, type A2aTransport } from "./index.js";
+import { createA2aAdapter, invokeA2a, type A2aTransport } from "./index.js";
 
 const source = {
   type: "a2a",
@@ -16,6 +16,12 @@ const source = {
 };
 
 describe("invokeA2a", () => {
+  it("throws when created without a transport", () => {
+    expect(() => createA2aAdapter()).toThrow(
+      "A2A adapter requires a transport. Pass a transport or use createFixtureA2aTransport() for tests.",
+    );
+  });
+
   it("submits an A2A task through the fixture transport", async () => {
     const result = await invokeA2a(
       {

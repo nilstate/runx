@@ -32,21 +32,22 @@ Then invoke `runx` from anywhere:
 ```bash
 runx --help
 runx ./oss/fixtures/skills/echo --message hello --json
-runx ./oss/skills/objective-to-skill --objective "build sourcey docs skill" --json
+runx objective-to-skill --objective "build sourcey docs skill" --json
 ```
 
-Common commands:
+Recommended flows:
 
 ```bash
 runx search sourcey
+runx sourcey --project .
+runx evolve
+runx bug-to-pr --fixture /path/to/repo --task-id task-123
+runx resume <run-id>
+runx inspect <receipt-id>
+runx history
 runx add 0state/sourcey@1.0.0 --to ./skills
-runx sourcey --project . --json
-runx objective-to-skill --objective "build github review skill" --json
-runx inspect <receipt-id> --json
-runx resume <run-id> --json
-runx history --json
-runx harness ./fixtures/harness/echo-skill.yaml --json
-runx harness ./skills/evolve --json
+runx objective-to-skill --objective "build github review skill"
+runx harness ./fixtures/harness/echo-skill.yaml
 runx config set agent.provider openai
 runx config set agent.model gpt-5.4
 runx config set agent.api_key "$OPENAI_API_KEY"
@@ -73,20 +74,21 @@ See `../docs/skill-x-model.md` for resolution rules, runner trust levels, and co
 See `../docs/evolution-model.md` for the evolve lane, the skill/tool boundary,
 and the canonical composite execution geometry.
 
-## Official Skills
+## Flagship Skills
 
-The bundled catalog now covers both core building blocks and evaluator-facing
-flows:
+The bundled catalog is skill-first. Public entrypoints are capabilities such as:
 
-- Core skills: `research`, `github-triage`, `draft-content`,
-  `evaluate-skill`, `moltbook`, `vuln-scan`, `sourcey`, `support-triage`,
-  `evolve`, `objective-to-skill`, `improve-skill`
-- Public chains: `open-source-triage`, `content-pipeline`,
-  `market-intelligence`, `skill-testing`, `moltbook-presence`,
-  `ecosystem-vuln-scan`
+- `sourcey`
+- `evolve`
+- `issue-to-pr`
+- `bug-to-pr` as a compatibility alias over `issue-to-pr`
+- `objective-to-skill`
+- `improve-skill`
+- `harness-author`
+- `receipt-review`
 
-Each of these packages ships as `SKILL.md` + `x.yaml` and carries inline
-harness coverage.
+Each ships as a package with `SKILL.md` plus `x.yaml` when it exposes runnable
+bindings or inline harness coverage.
 
 ## Receipts
 

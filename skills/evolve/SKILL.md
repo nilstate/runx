@@ -67,36 +67,11 @@ artifacts in one pass:
 - `change_plan` — ordered phases, acceptance checks, touchpoints, risk.
 - `spec_document` — draft scafld spec when governance applies.
 
-### Approve
+### Termination guard
 
-Gate before mutation. Presents the plan for explicit approval. If denied,
-the chain stops. This is the current `ratify` boundary. The
-`approval_decision` records: approved, decision_by, reason.
-
-### Act
-
-Executes the approved plan. This is the current bounded
-`materialize + evaluate + verify` slice. It is gated by the approval decision
-via policy transition.
-
-- If `terminate` is `spec`: no-op. Plan artifacts are the deliverable.
-- If `terminate` is `patch` or `pr`: executes the change plan and
-  produces `execution_report`, `verification_report`, `review_report`.
-
-**Current status: skeleton.** The act step currently produces synthetic
-output. Real execution, critique, bounded revision, and verification are not
-yet fully wired.
-
-### Publish
-
-Publishes if the review verdict permits.
-
-- If `terminate` is `pr` and verdict is `approve`: produces a
-  publishable artifact.
-- Otherwise: no publication.
-
-**Current status: skeleton.** Like act, this step produces synthetic
-output. Real PR creation is not yet wired.
+`evolve` currently stops at plan/spec artifacts. If a caller requests
+`terminate=patch` or `terminate=pr`, the runner fails immediately with a clear
+error instead of pretending it can mutate or publish.
 
 ## Revision policy
 
@@ -109,8 +84,8 @@ example `max_rounds: 1` or `2`, with defined stop and escalation conditions.
 - `runx evolve` — introspect the current repo and recommend one bounded
   improvement
 - `runx evolve "<objective>"` — plan a directed change
-- `runx evolve "<objective>" --terminate patch|pr` — execute a governed
-  change lane
+- `runx evolve "<objective>" --terminate patch|pr` — currently rejected until
+  a real execution lane exists
 
 ## Evolution targets
 
@@ -126,20 +101,20 @@ the concrete target from the current repo context.
 ## Termination
 
 - `spec` (default): stop after planning. No mutation.
-- `patch`: execute and produce a local patch in an isolated branch.
-- `pr`: execute, verify, review, and open a PR if review passes.
+- `patch`: not yet supported in this shipped runner.
+- `pr`: not yet supported in this shipped runner.
 
 ## Boundary rules
 
-- Every mutating run uses an isolated branch or worktree.
 - A single evolve run ends in a bounded artifact, not another hidden loop.
 - Policy evaluates structured fields, never prose.
-- Approval gates are first-class chain steps, not hidden CLI behavior.
-- If a skill lacks X metadata, evolve falls back to the agent runner.
+- If later execution is added, it must route through real tools, scafld, or
+  other governed lanes instead of synthetic internal steps.
 
 ## Inputs
 
 - `objective` (optional): what to evolve toward. If omitted, `evolve` uses the
   introspective recommendation runner.
 - `repo_root` (optional): repository root. Defaults to cwd.
-- `terminate` (optional): `spec`, `patch`, or `pr`. Defaults to `spec`.
+- `terminate` (optional): defaults to `spec`. Other values are currently
+  rejected by the shipped runner.

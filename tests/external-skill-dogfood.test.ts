@@ -143,7 +143,7 @@ const harnessScenarios: readonly HarnessDogfoodScenario[] = [
     skillName: "objective-decompose",
     expectation: {
       requestId: "agent_step.objective-decomposition.output",
-      inputKeys: ["objective", "project_context"],
+      inputKeys: ["objective", "project_context", "change_set"],
       sourceType: "agent-step",
     },
   },
@@ -219,7 +219,7 @@ const harnessScenarios: readonly HarnessDogfoodScenario[] = [
     skillName: "support-triage",
     expectation: {
       requestId: "agent_step.support-triage.output",
-      inputKeys: ["title", "body", "source", "source_id", "source_url", "product_context"],
+      inputKeys: ["title", "body", "source", "source_id", "source_url", "product_context", "operator_context"],
       sourceType: "agent-step",
     },
   },

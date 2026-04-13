@@ -29,7 +29,6 @@ describe("scafld issue-to-PR skill contract", () => {
       "scafld-start",
       "author-fix",
       "write-fix",
-      "read-fix",
       "scafld-exec",
       "scafld-audit",
       "scafld-review-open",
@@ -45,7 +44,6 @@ describe("scafld issue-to-PR skill contract", () => {
       "../scafld",
       "../scafld",
       "../scafld",
-      "",
       "",
       "",
       "../scafld",
@@ -64,8 +62,7 @@ describe("scafld issue-to-PR skill contract", () => {
       "",
       "",
       "",
-      "fs.write",
-      "fs.read",
+      "fs.write_bundle",
       "",
       "",
       "",
@@ -73,24 +70,18 @@ describe("scafld issue-to-PR skill contract", () => {
       "fs.write",
       "",
     ]);
-    expect(chain.steps.map((step) => step.inputs.command)).toEqual([
-      "spec",
-      undefined,
-      undefined,
-      undefined,
-      "validate",
-      "approve",
-      "start",
-      undefined,
-      undefined,
-      undefined,
-      "execute",
-      "audit",
-      "review",
-      undefined,
-      undefined,
-      "complete",
-    ]);
+    expect(
+      Object.fromEntries(chain.steps.filter((step) => step.inputs.command !== undefined).map((step) => [step.id, step.inputs.command])),
+    ).toEqual({
+      "scafld-new": "spec",
+      "scafld-validate": "validate",
+      "scafld-approve": "approve",
+      "scafld-start": "start",
+      "scafld-exec": "execute",
+      "scafld-audit": "audit",
+      "scafld-review-open": "review",
+      "scafld-complete": "complete",
+    });
     expect(chain.steps.some((step) => (step.skill ?? "").includes("fixture-agent"))).toBe(false);
     expect(chain.steps.find((step) => step.id === "author-spec")).toMatchObject({
       run: {
@@ -114,6 +105,8 @@ describe("scafld issue-to-PR skill contract", () => {
       context: {
         review_file: "scafld-review-open.review_file",
         review_prompt: "scafld-review-open.review_prompt",
+        fix_bundle: "author-fix.fix_bundle.data",
+        written_files: "write-fix.file_bundle_write.data.files",
       },
     });
     expect(chain.steps.find((step) => step.id === "scafld-complete")).toMatchObject({

@@ -10,8 +10,9 @@ runx governance, from spec creation through authored fix and adversarial review
 to archived completion.
 
 The chain separates cognition from mutation. Agent phases author the scafld
-spec, the repo change, and the review contents. Deterministic `fs.write` phases
-are the only places files are written to disk. The `scafld` skill then
+spec, the bounded repo change bundle, and the review contents. Deterministic
+`fs.write` and `fs.write_bundle` phases are the only places files are written
+to disk. The `scafld` skill then
 validates, advances, executes, audits, reviews, and archives the lane with
 explicit scopes.
 
@@ -28,10 +29,10 @@ provides the governed handoff boundaries. The caller decides.
 
 ## Lifecycle
 
-The chain runs: `scafld new` -> author spec -> write spec -> validate -> approve
--> start -> author fix -> write fix -> exec -> audit -> review-open -> reviewer
-boundary -> write review -> complete. Each step gets only the scopes it needs.
-See `x.yaml` for the full step graph.
+The chain runs: `scafld new` -> author spec -> write spec -> validate ->
+approve -> start -> author fix bundle -> write fix bundle -> exec -> audit ->
+review-open -> reviewer boundary -> write review -> complete. Each step gets
+only the scopes it needs. See `x.yaml` for the full step graph.
 
 ## Spec authoring contract
 

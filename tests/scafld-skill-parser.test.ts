@@ -8,8 +8,10 @@ import { parseRunnerManifestYaml, parseSkillMarkdown, validateRunnerManifest, va
 describe("scafld skill contract", () => {
   it("keeps the portable skill standard while X wraps the existing scafld CLI", async () => {
     const skillPath = path.resolve("skills/scafld/SKILL.md");
+    const wrapperPath = path.resolve("skills/scafld/run.mjs");
     const skill = validateSkill(parseSkillMarkdown(await readFile(skillPath, "utf8")), { mode: "strict" });
     const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(path.resolve("skills/scafld/x.yaml"), "utf8")));
+    const wrapper = await readFile(wrapperPath, "utf8");
     const runner = manifest.runners["scafld-cli"];
     const agentRunner = manifest.runners.agent;
 
@@ -19,9 +21,11 @@ describe("scafld skill contract", () => {
     expect(runner?.default).toBe(true);
     expect(runner?.source.type).toBe("cli-tool");
     expect(runner?.source.command).toBe("node");
-    expect(runner?.source.args.join("\n")).toContain("spawnSync(scafld, args");
-    expect(runner?.source.args.join("\n")).toContain('if (jsonCommands.has(command)) args.push("--json")');
-    expect(runner?.source.args.join("\n")).not.toContain("env: process.env");
+    expect(runner?.source.args).toEqual(["./run.mjs"]);
+    expect(wrapper).toContain("const result = spawnSync(scafld, args");
+    expect(wrapper).toContain("const command = ({ spec: \"new\", execute: \"exec\" })[requested] || requested;");
+    expect(wrapper).not.toContain("env: process.env");
+    expect(runner?.source.timeoutSeconds).toBe(300);
     expect(agentRunner?.source.type).toBe("agent");
     expect(agentRunner?.inputs.review_file.required).toBe(true);
     expect(agentRunner?.inputs.review_prompt.required).toBe(true);
