@@ -2,7 +2,7 @@ name: retry-mutating-idempotent
 owner: runx
 steps:
   - id: deploy
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     mutation: mutating
     idempotency_key: "{{request_id}}"
     inputs:

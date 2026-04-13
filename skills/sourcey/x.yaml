@@ -7,7 +7,7 @@ harness:
       inputs:
         project: fixtures/sourcey/basic
       expect:
-        status: needs_agent
+        status: needs_resolution
 
 runners:
   agent:
@@ -45,6 +45,7 @@ runners:
       name: sourcey
       steps:
         - id: discover
+          label: inspect repo
           run:
             type: agent-step
             agent: builder
@@ -60,6 +61,16 @@ runners:
             docs_inputs object pointing to the config or spec path the next step
             should build from. Treat this as a bounded scope/ingest/model pass.
             Do not author docs, build the site, or propose open-ended revision.
+            discovery_report must use this canonical shape:
+            {
+              "discovered": {
+                "brand_name": string|null,
+                "homepage_url": string|null,
+                "docs_inputs": object|null
+              }
+            }
+            Additional fields are allowed, but brand_name, homepage_url, and
+            docs_inputs must live under discovery_report.discovered.
           allowed_tools:
             - fs.read
             - git.status
@@ -70,6 +81,7 @@ runners:
             named_emits:
               discovery_report: discovery_report
         - id: approve
+          label: approve docs plan
           run:
             type: approval
           inputs:
@@ -80,6 +92,7 @@ runners:
           artifacts:
             wrap_as: approval_decision
         - id: author
+          label: draft docs
           run:
             type: agent-step
             agent: builder
@@ -93,7 +106,12 @@ runners:
             authored. When the project already has a complete Sourcey config and
             pages, keep the bundle minimal. When config or pages are missing,
             create only the files required to build a strong first documentation
-            site grounded in the discovered evidence. This is one bounded
+            site grounded in the discovered evidence. If docs_inputs was supplied
+            explicitly and discovery did not establish that the referenced config
+            or docs files are missing, preserve the existing repo contents and
+            return an empty files array rather than overwriting the config with a
+            weaker placeholder bundle. Lack of repository inspection evidence is
+            not evidence that the files are absent. This is one bounded
             materialize pass, not an open-ended iteration loop.
           allowed_tools:
             - fs.read
@@ -104,6 +122,7 @@ runners:
             named_emits:
               doc_bundle: doc_bundle
         - id: write-docs
+          label: write docs
           tool: fs.write_bundle
           scopes:
             - fs.write
@@ -111,14 +130,16 @@ runners:
           context:
             files: author.doc_bundle.data.files
         - id: build
+          label: build docs site
           tool: sourcey.build
           scopes:
             - sourcey.build
           context:
-            homepage_url: discover.discovery_report.data.homepage_url
-            brand_name: discover.discovery_report.data.brand_name
-            docs_inputs: discover.discovery_report.data.docs_inputs
+            homepage_url: discover.discovery_report.data.discovered.homepage_url
+            brand_name: discover.discovery_report.data.discovered.brand_name
+            docs_inputs: discover.discovery_report.data.discovered.docs_inputs
         - id: critique
+          label: review built site
           run:
             type: agent-step
             agent: reviewer
@@ -127,10 +148,13 @@ runners:
               evaluation_report: object
           instructions: >
             Evaluate the built Sourcey site against the discovered plan and the
-            authored source bundle. Read the generated output files as needed and
-            produce one bounded evaluation_report covering grounding, clarity,
-            navigation quality, and obvious gaps. Do not propose open-ended
-            revision loops here.
+            authored source bundle. Use the build_report as the primary evidence
+            packet for rendered output, especially generated_files, index_title,
+            index_headings, and index_excerpt. When that evidence is absent or
+            thin, call it out as an evidence gap rather than inventing site
+            content. Produce one bounded evaluation_report covering grounding,
+            clarity, navigation quality, and obvious gaps. Do not propose
+            open-ended revision loops here.
           allowed_tools:
             - fs.read
           context:
@@ -141,6 +165,7 @@ runners:
             named_emits:
               evaluation_report: evaluation_report
         - id: revise
+          label: revise docs
           run:
             type: agent-step
             agent: builder
@@ -165,6 +190,7 @@ runners:
             named_emits:
               revision_bundle: revision_bundle
         - id: write-revisions
+          label: write revisions
           tool: fs.write_bundle
           scopes:
             - fs.write
@@ -172,14 +198,16 @@ runners:
           context:
             files: revise.revision_bundle.data.files
         - id: rebuild
+          label: rebuild docs site
           tool: sourcey.build
           scopes:
             - sourcey.build
           context:
-            homepage_url: discover.discovery_report.data.homepage_url
-            brand_name: discover.discovery_report.data.brand_name
-            docs_inputs: discover.discovery_report.data.docs_inputs
+            homepage_url: discover.discovery_report.data.discovered.homepage_url
+            brand_name: discover.discovery_report.data.discovered.brand_name
+            docs_inputs: discover.discovery_report.data.discovered.docs_inputs
         - id: verify
+          label: verify docs site
           tool: sourcey.verify
           scopes:
             - sourcey.verify

@@ -9,7 +9,7 @@ source:
       - --import
       - tsx
       - packages/harness/src/mcp-fixture.ts
-    cwd: ../..
+    cwd: ../../..
   tool: echo
   arguments:
     message: "{{message}}"

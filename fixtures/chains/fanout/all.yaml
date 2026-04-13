@@ -9,22 +9,22 @@ steps:
   - id: market
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/json-output.md
+    skill: ../../skills/json-output
     inputs:
       recommendation: go
   - id: risk
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/json-output.md
+    skill: ../../skills/json-output
     inputs:
       risk_score: 0.2
   - id: finance
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/json-output.md
+    skill: ../../skills/json-output
     inputs:
       budget: approved
   - id: synthesize
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     context:
       message: finance.budget

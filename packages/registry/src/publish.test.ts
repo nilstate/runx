@@ -10,7 +10,7 @@ describe("publishSkillMarkdown", () => {
   it("publishes valid markdown and is idempotent for unchanged content", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-publish-"));
     const client = createLocalRegistryClient(createFileRegistryStore(tempDir));
-    const markdown = await readFile(path.resolve("fixtures/skills/echo.md"), "utf8");
+    const markdown = await readFile(path.resolve("fixtures/skills/echo/SKILL.md"), "utf8");
 
     try {
       const first = await publishSkillMarkdown(client, markdown, {
@@ -33,7 +33,7 @@ describe("publishSkillMarkdown", () => {
         registry_url: "https://runx.example.test",
       });
       expect(first.digest).toMatch(/^[a-f0-9]{64}$/);
-      expect(first.link.install_command).toBe("runx skill add 0state/echo@1.0.0 --registry https://runx.example.test");
+      expect(first.link.install_command).toBe("runx add 0state/echo@1.0.0 --registry https://runx.example.test");
       expect(second).toMatchObject({
         status: "unchanged",
         skill_id: "0state/echo",
@@ -78,7 +78,7 @@ describe("publishSkillMarkdown", () => {
   it("rejects a duplicate version with different content", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-publish-conflict-"));
     const client = createLocalRegistryClient(createFileRegistryStore(tempDir));
-    const markdown = await readFile(path.resolve("fixtures/skills/echo.md"), "utf8");
+    const markdown = await readFile(path.resolve("fixtures/skills/echo/SKILL.md"), "utf8");
     const changed = markdown.replace("Echo the provided message.", "Echo the changed message.");
 
     try {

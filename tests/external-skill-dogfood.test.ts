@@ -1,0 +1,539 @@
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  parseRunnerManifestYaml,
+  validateRunnerManifest,
+  type RunnerHarnessCase,
+  type SkillRunnerManifest,
+} from "../packages/parser/src/index.js";
+import { runLocalSkill } from "../packages/runner-local/src/index.js";
+import { createStructuredCaller } from "../packages/sdk-js/src/index.js";
+
+interface DogfoodExpectation {
+  readonly requestId: string;
+  readonly inputKeys: readonly string[];
+  readonly allowedTools?: readonly string[];
+  readonly currentContextTypes?: readonly string[];
+  readonly sourceType?: "agent" | "agent-step";
+  readonly minimumInstructionChars?: number;
+}
+
+interface HarnessDogfoodScenario {
+  readonly skillName: string;
+  readonly runner?: string;
+  readonly extraInputKeys?: readonly string[];
+  readonly expectation: DogfoodExpectation;
+}
+
+interface PreparedRun {
+  readonly runner?: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly env?: NodeJS.ProcessEnv;
+}
+
+interface CustomDogfoodScenario {
+  readonly skillName: string;
+  readonly prepare: (tempDir: string) => Promise<PreparedRun>;
+  readonly expectation: DogfoodExpectation;
+}
+
+const harnessScenarios: readonly HarnessDogfoodScenario[] = [
+  {
+    skillName: "content-pipeline",
+    extraInputKeys: ["channel", "deliverable"],
+    expectation: {
+      requestId: "agent_step.research.output",
+      inputKeys: ["objective", "audience", "domain", "operator_context", "target_entities", "channel", "deliverable"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "draft-content",
+    expectation: {
+      requestId: "agent_step.draft-content-draft.output",
+      inputKeys: ["objective", "audience", "channel", "evidence_pack"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "ecosystem-vuln-scan",
+    extraInputKeys: ["objective", "channel"],
+    expectation: {
+      requestId: "agent_step.vuln-scan.output",
+      inputKeys: ["target", "objective", "channel"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "evaluate-skill",
+    expectation: {
+      requestId: "agent_step.evaluate-skill.output",
+      inputKeys: ["skill_ref", "objective", "evidence_pack", "test_constraints"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "evolve",
+    runner: "evolve",
+    expectation: {
+      requestId: "agent_step.evolve-plan.output",
+      inputKeys: ["objective", "repo_root", "terminate"],
+      allowedTools: ["fs.read", "git.status", "shell.exec"],
+      currentContextTypes: ["repo_profile"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "github-triage",
+    runner: "respond",
+    expectation: {
+      requestId: "agent_step.github-triage-respond.output",
+      inputKeys: ["issue_url", "objective", "maintainer_context"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "harness-author",
+    expectation: {
+      requestId: "agent_step.harness-author.output",
+      inputKeys: ["objective", "decomposition", "research"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "improve-skill",
+    expectation: {
+      requestId: "agent_step.receipt-review.output",
+      inputKeys: ["receipt_id", "receipt_summary", "harness_output", "skill_path", "objective"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "market-intelligence",
+    extraInputKeys: ["channel", "deliverable"],
+    expectation: {
+      requestId: "agent_step.research.output",
+      inputKeys: ["objective", "audience", "domain", "operator_context", "target_entities", "channel", "deliverable"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "moltbook",
+    runner: "scan",
+    expectation: {
+      requestId: "agent_step.moltbook-scan.output",
+      inputKeys: ["objective", "community_context", "feed_snapshot"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "moltbook-presence",
+    expectation: {
+      requestId: "agent_step.moltbook-scan.output",
+      inputKeys: ["objective", "community_context", "feed_snapshot"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "objective-decompose",
+    expectation: {
+      requestId: "agent_step.objective-decomposition.output",
+      inputKeys: ["objective", "project_context"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "objective-to-skill",
+    expectation: {
+      requestId: "agent_step.objective-decomposition.output",
+      inputKeys: ["objective", "project_context"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "open-source-triage",
+    extraInputKeys: ["channel"],
+    expectation: {
+      requestId: "agent_step.github-triage-discover.output",
+      inputKeys: ["repository", "query", "objective", "operator_context", "channel"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "receipt-review",
+    expectation: {
+      requestId: "agent_step.receipt-review.output",
+      inputKeys: ["receipt_summary", "harness_output", "skill_path"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "research",
+    expectation: {
+      requestId: "agent_step.research.output",
+      inputKeys: ["objective", "domain", "deliverable", "target_entities"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "scafld",
+    runner: "agent",
+    expectation: {
+      requestId: "agent.scafld.output",
+      inputKeys: ["task_id", "review_file", "review_prompt"],
+      sourceType: "agent",
+    },
+  },
+  {
+    skillName: "skill-research",
+    expectation: {
+      requestId: "agent_step.skill-research.output",
+      inputKeys: ["objective", "decomposition"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "skill-testing",
+    extraInputKeys: ["channel"],
+    expectation: {
+      requestId: "agent_step.evaluate-skill.output",
+      inputKeys: ["skill_ref", "objective", "evidence_pack", "test_constraints", "channel"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "sourcey",
+    expectation: {
+      requestId: "agent_step.sourcey-discover.output",
+      inputKeys: ["project"],
+      allowedTools: ["fs.read", "git.status", "git.current_branch", "git.diff_name_only", "cli.capture_help"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "support-triage",
+    expectation: {
+      requestId: "agent_step.support-triage.output",
+      inputKeys: ["title", "body", "source", "source_id", "source_url", "product_context"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "vuln-scan",
+    runner: "scan",
+    expectation: {
+      requestId: "agent_step.vuln-scan.output",
+      inputKeys: ["target", "objective"],
+      sourceType: "agent-step",
+    },
+  },
+] as const;
+
+const customScenarios: readonly CustomDogfoodScenario[] = [
+  {
+    skillName: "issue-to-pr",
+    prepare: async (tempDir) => {
+      const lane = await createIssueLaneFixture(tempDir);
+      return {
+        inputs: {
+          fixture: lane.repoDir,
+          task_id: "issue-to-pr-dogfood",
+          issue_title: "Clarify the external dogfood guide",
+          issue_body: "Operators should be able to run the lane with no hidden caller help.",
+          source: "github_issue",
+          source_id: "241",
+          source_url: "https://github.com/0state/runx/issues/241",
+          target_repo: "0state/runx",
+          size: "micro",
+          risk: "low",
+          phase: "phase1",
+          draft_spec_path: ".ai/specs/drafts/issue-to-pr-dogfood.yaml",
+          scafld_bin: lane.scafldBin,
+        },
+        env: lane.env,
+      };
+    },
+    expectation: {
+      requestId: "agent_step.issue-to-pr-author-spec.output",
+      inputKeys: [
+        "fixture",
+        "task_id",
+        "issue_title",
+        "issue_body",
+        "source",
+        "source_id",
+        "source_url",
+        "target_repo",
+        "size",
+        "risk",
+        "phase",
+        "draft_spec_path",
+        "scafld_bin",
+      ],
+      allowedTools: ["fs.read", "git.status"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "bug-to-pr",
+    prepare: async (tempDir) => {
+      const lane = await createIssueLaneFixture(tempDir);
+      return {
+        inputs: {
+          fixture: lane.repoDir,
+          task_id: "bug-to-pr-dogfood",
+          title: "Clarify the external dogfood guide",
+          issue_body: "Operators should be able to run the alias with no hidden caller help.",
+          source: "github_issue",
+          source_id: "241",
+          source_url: "https://github.com/0state/runx/issues/241",
+          target_repo: "0state/runx",
+          size: "micro",
+          risk: "low",
+          phase: "phase1",
+          draft_spec_path: ".ai/specs/drafts/bug-to-pr-dogfood.yaml",
+          scafld_bin: lane.scafldBin,
+        },
+        env: lane.env,
+      };
+    },
+    expectation: {
+      requestId: "agent_step.issue-to-pr-author-spec.output",
+      inputKeys: [
+        "fixture",
+        "task_id",
+        "title",
+        "issue_body",
+        "source",
+        "source_id",
+        "source_url",
+        "target_repo",
+        "size",
+        "risk",
+        "phase",
+        "draft_spec_path",
+        "scafld_bin",
+      ],
+      allowedTools: ["fs.read", "git.status"],
+      sourceType: "agent-step",
+    },
+  },
+] as const;
+
+describe("official skills dogfood cleanly with a fresh caller", () => {
+  for (const scenario of harnessScenarios) {
+    it(
+      `${scenario.skillName} yields a first-class fresh-caller boundary`,
+      async () => {
+        const tempDir = await mkdtemp(path.join(os.tmpdir(), `runx-dogfood-${scenario.skillName}-`));
+
+        try {
+          const prepared = await prepareHarnessScenario(scenario);
+          await assertFreshBoundary({ skillName: scenario.skillName, prepared, expectation: scenario.expectation, tempDir });
+        } finally {
+          await rm(tempDir, { recursive: true, force: true });
+        }
+      },
+      20_000,
+    );
+  }
+
+  for (const scenario of customScenarios) {
+    it(
+      `${scenario.skillName} reaches its first authored boundary without hidden caller help`,
+      async () => {
+        const tempDir = await mkdtemp(path.join(os.tmpdir(), `runx-dogfood-${scenario.skillName}-`));
+
+        try {
+          const prepared = await scenario.prepare(tempDir);
+          await assertFreshBoundary({ skillName: scenario.skillName, prepared, expectation: scenario.expectation, tempDir });
+        } finally {
+          await rm(tempDir, { recursive: true, force: true });
+        }
+      },
+      20_000,
+    );
+  }
+});
+
+async function assertFreshBoundary(options: {
+  readonly skillName: string;
+  readonly prepared: PreparedRun;
+  readonly expectation: DogfoodExpectation;
+  readonly tempDir: string;
+}): Promise<void> {
+  const caller = createStructuredCaller();
+  const result = await runLocalSkill({
+    skillPath: path.resolve("skills", options.skillName),
+    runner: options.prepared.runner,
+    inputs: options.prepared.inputs,
+    caller,
+    env: options.prepared.env ?? { ...process.env, RUNX_CWD: process.cwd() },
+    receiptDir: path.join(options.tempDir, "receipts"),
+    runxHome: path.join(options.tempDir, "home"),
+  });
+
+  expect(result.status).toBe("needs_resolution");
+  if (result.status !== "needs_resolution") {
+    return;
+  }
+
+  expect(caller.trace.resolutions).toHaveLength(1);
+  expect(caller.trace.resolutions[0]?.response).toBeUndefined();
+  expect(result.requests).toHaveLength(1);
+
+  const request = result.requests[0];
+  expect(request?.id).toBe(options.expectation.requestId);
+  expect(request?.kind).toBe("cognitive_work");
+  if (!request || request.kind !== "cognitive_work") {
+    return;
+  }
+
+  expect(request.work.source_type).toBe(options.expectation.sourceType ?? "agent-step");
+  expect(request.work.envelope.instructions.trim().length).toBeGreaterThanOrEqual(
+    options.expectation.minimumInstructionChars ?? 80,
+  );
+
+  for (const key of options.expectation.inputKeys) {
+    expect(request.work.envelope.inputs).toHaveProperty(key);
+  }
+
+  if (options.expectation.allowedTools) {
+    expect(request.work.envelope.allowed_tools).toEqual(options.expectation.allowedTools);
+  }
+
+  if (options.expectation.currentContextTypes) {
+    expect(request.work.envelope.current_context.map((artifact) => artifact.type)).toEqual(
+      options.expectation.currentContextTypes,
+    );
+  }
+}
+
+async function prepareHarnessScenario(scenario: HarnessDogfoodScenario): Promise<PreparedRun> {
+  const manifest = await readManifest(scenario.skillName);
+  const runnerName = scenario.runner ?? defaultRunnerName(manifest);
+  const harnessCase = selectHarnessCase(manifest, runnerName);
+  const inputKeys = new Set([...Object.keys(harnessCase.inputs), ...(scenario.extraInputKeys ?? [])]);
+
+  expect([...inputKeys].sort()).toEqual([...new Set(scenario.expectation.inputKeys)].sort());
+
+  return {
+    runner: runnerName,
+    inputs: harnessCase.inputs,
+    env: {
+      ...process.env,
+      RUNX_CWD: process.cwd(),
+      ...harnessCase.env,
+    },
+  };
+}
+
+async function readManifest(skillName: string): Promise<SkillRunnerManifest> {
+  const raw = await readFile(path.resolve("skills", skillName, "x.yaml"), "utf8");
+  return validateRunnerManifest(parseRunnerManifestYaml(raw));
+}
+
+function defaultRunnerName(manifest: SkillRunnerManifest): string {
+  const explicit = Object.values(manifest.runners).find((runner) => runner.default);
+  if (explicit) {
+    return explicit.name;
+  }
+
+  const names = Object.keys(manifest.runners).filter((name) => name !== "agent");
+  if (names.length === 1) {
+    return names[0]!;
+  }
+
+  throw new Error(`Unable to infer default runner for ${manifest.skill ?? "unknown skill"}.`);
+}
+
+function selectHarnessCase(manifest: SkillRunnerManifest, runnerName: string): RunnerHarnessCase {
+  const harnessCase = manifest.harness?.cases.find((entry) => (entry.runner ?? defaultRunnerName(manifest)) === runnerName);
+  if (!harnessCase) {
+    throw new Error(`Expected inline harness case for ${manifest.skill ?? "unknown skill"} runner ${runnerName}.`);
+  }
+  return harnessCase;
+}
+
+async function createIssueLaneFixture(tempDir: string): Promise<{
+  readonly repoDir: string;
+  readonly scafldBin: string;
+  readonly env: NodeJS.ProcessEnv;
+}> {
+  const repoDir = path.join(tempDir, "repo");
+  const scafldBin = path.join(tempDir, "fake-scafld.cjs");
+
+  await mkdir(repoDir, { recursive: true });
+  await writeFile(path.join(repoDir, "README.md"), "# dogfood fixture\n");
+  await writeFile(
+    scafldBin,
+    `#!/usr/bin/env node
+const fs = require("node:fs");
+const path = require("node:path");
+
+const [, , command, taskId] = process.argv;
+if (command !== "new") {
+  process.stderr.write("fake scafld only supports new for dogfood tests\\n");
+  process.exit(1);
+}
+
+const draftDir = path.join(process.cwd(), ".ai", "specs", "drafts");
+fs.mkdirSync(draftDir, { recursive: true });
+fs.writeFileSync(
+  path.join(draftDir, \`\${taskId}.yaml\`),
+  [
+    'spec_version: "1.1"',
+    \`task_id: "\${taskId}"\`,
+    'status: "draft"',
+    'task:',
+    '  title: "Dogfood fixture"',
+    '  summary: "Draft spec created by the fake scafld dogfood stub"',
+  ].join("\\n"),
+);
+process.stdout.write(JSON.stringify({ task_id: taskId, draft_spec: \`.ai/specs/drafts/\${taskId}.yaml\` }));
+`,
+    { mode: 0o755 },
+  );
+
+  runChecked("git", ["init"], repoDir);
+  runChecked("git", ["config", "user.email", "dogfood@example.com"], repoDir);
+  runChecked("git", ["config", "user.name", "Dogfood Fixture"], repoDir);
+  runChecked("git", ["add", "."], repoDir);
+  runChecked("git", ["commit", "-m", "init"], repoDir);
+
+  return {
+    repoDir,
+    scafldBin,
+    env: {
+      ...process.env,
+      RUNX_CWD: process.cwd(),
+    },
+  };
+}
+
+function runChecked(command: string, args: readonly string[], cwd: string): void {
+  const result = spawnSync(command, args, {
+    cwd,
+    encoding: "utf8",
+    shell: false,
+  });
+
+  if (result.status === 0) {
+    return;
+  }
+
+  throw new Error(
+    [
+      `Command failed: ${command} ${args.join(" ")}`,
+      result.stdout?.trim() || "",
+      result.stderr?.trim() || "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  );
+}

@@ -9,29 +9,31 @@ import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/par
 import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
 
 const nonInteractiveCaller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 
 describe("agent-step and harness-hook boundary", () => {
   it("yields agent context by default for explicit agent-step skills", async () => {
     const result = await runLocalSkill({
-      skillPath: path.resolve("fixtures/skills/agent-step.md"),
+      skillPath: path.resolve("fixtures/skills/agent-step"),
       inputs: { prompt: "review this" },
       caller: nonInteractiveCaller,
       env: process.env,
     });
 
-    expect(result.status).toBe("needs_agent");
-    if (result.status !== "needs_agent") {
+    expect(result.status).toBe("needs_resolution");
+    if (result.status !== "needs_resolution") {
       return;
     }
     expect(result.requests).toMatchObject([
       {
         id: "agent_step.review-boundary.output",
-        source_type: "agent-step",
-        task: "review-boundary",
+        kind: "cognitive_work",
+        work: {
+          source_type: "agent-step",
+          task: "review-boundary",
+        },
       },
     ]);
   });
@@ -39,21 +41,22 @@ describe("agent-step and harness-hook boundary", () => {
   it("runs an explicit agent-step when a structured agent result is supplied", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-agent-step-"));
     const caller: Caller = {
-      answer: async () => ({}),
-      resolveAgentResult: async (request) =>
-        request.id === "agent_step.review-boundary.output"
+      resolve: async (request) =>
+        request.kind === "cognitive_work" && request.id === "agent_step.review-boundary.output"
           ? {
-          verdict: "pass",
-          checked: "caller boundary",
-        }
+              actor: "agent",
+              payload: {
+                verdict: "pass",
+                checked: "caller boundary",
+              },
+            }
           : undefined,
-      approve: async () => false,
       report: () => undefined,
     };
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/agent-step.md"),
+        skillPath: path.resolve("fixtures/skills/agent-step"),
         inputs: { prompt: "review this" },
         caller,
         env: process.env,
@@ -92,7 +95,7 @@ describe("agent-step and harness-hook boundary", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/harness-hook.md"),
+        skillPath: path.resolve("fixtures/skills/harness-hook"),
         inputs: { receipt_id: "rx_test" },
         caller: nonInteractiveCaller,
         env: process.env,
@@ -128,7 +131,25 @@ describe("agent-step and harness-hook boundary", () => {
     }
   });
 
-  it("keeps scafld bug-to-pr free of repo-local helper-script skills", async () => {
+  it("keeps scafld issue-to-pr free of repo-local helper-script skills", async () => {
+    const manifest = validateRunnerManifest(
+      parseRunnerManifestYaml(await readFile(path.resolve("skills/issue-to-pr/x.yaml"), "utf8")),
+    );
+    const runner = manifest.runners["issue-to-pr"];
+
+    expect(runner?.source.type).toBe("chain");
+    if (!runner || runner.source.type !== "chain" || !runner.source.chain) {
+      throw new Error("issue-to-pr runner must declare an inline chain.");
+    }
+    const chain = runner.source.chain;
+
+    expect(chain.steps.filter((step) => step.skill).every((step) => step.skill === "../scafld")).toBe(true);
+    expect(chain.steps.some((step) => step.tool === "fs.write")).toBe(true);
+    expect(chain.steps.some((step) => step.run?.type === "agent-step")).toBe(true);
+    expect(chain.steps.some((step) => /fixture-agent|helper-script|\.mjs$/.test(step.skill ?? ""))).toBe(false);
+  });
+
+  it("keeps bug-to-pr as a compatibility wrapper over the canonical issue-to-pr skill", async () => {
     const manifest = validateRunnerManifest(
       parseRunnerManifestYaml(await readFile(path.resolve("skills/bug-to-pr/x.yaml"), "utf8")),
     );
@@ -140,9 +161,13 @@ describe("agent-step and harness-hook boundary", () => {
     }
     const chain = runner.source.chain;
 
-    expect(chain.steps.filter((step) => step.skill).every((step) => step.skill === "../scafld")).toBe(true);
-    expect(chain.steps.some((step) => step.tool === "fs.write")).toBe(true);
-    expect(chain.steps.some((step) => step.run?.type === "agent-step")).toBe(true);
+    expect(chain.steps).toHaveLength(1);
+    expect(chain.steps[0]).toMatchObject({
+      id: "delegate",
+      skill: "../issue-to-pr/SKILL.md",
+      runner: "issue-to-pr",
+      mutating: true,
+    });
     expect(chain.steps.some((step) => /fixture-agent|helper-script|\.mjs$/.test(step.skill ?? ""))).toBe(false);
   });
 });

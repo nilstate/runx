@@ -8,8 +8,7 @@ import { runCli } from "../packages/cli/src/index.js";
 import { inspectLocalChain, runLocalChain, type Caller } from "../packages/runner-local/src/index.js";
 
 const nonInteractiveCaller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 

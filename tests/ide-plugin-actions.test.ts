@@ -9,7 +9,7 @@ import { registerRunxCommands } from "../plugins/antigravity/src/extension.js";
 import { createFileRegistryStore, ingestSkillMarkdown } from "../packages/registry/src/index.js";
 
 describe("ide plugin actions", () => {
-  it("runs skills and surfaces missing-context questions as structured output", async () => {
+  it("runs skills and surfaces input-resolution requests as structured output", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-ide-actions-"));
     try {
       const core = createIdeActionCore({
@@ -17,18 +17,24 @@ describe("ide plugin actions", () => {
         receiptDir: path.join(tempDir, "receipts"),
       });
 
-      const missing = await core.runSkill({ skillPath: "fixtures/skills/echo.md" });
-      expect(missing.status).toBe("missing_context");
-      expect(missing.questions).toEqual([
-        [
-          expect.objectContaining({
-            id: "message",
-            type: "string",
-          }),
+      const missing = await core.runSkill({ skillPath: "fixtures/skills/echo" });
+      expect(missing.status).toBe("needs_resolution");
+      expect(missing.data).toMatchObject({
+        status: "needs_resolution",
+        requests: [
+          {
+            kind: "input",
+            questions: [
+              expect.objectContaining({
+                id: "message",
+                type: "string",
+              }),
+            ],
+          },
         ],
-      ]);
+      });
 
-      const success = await core.runSkill({ skillPath: "fixtures/skills/echo.md", inputs: { message: "from-ide" } });
+      const success = await core.runSkill({ skillPath: "fixtures/skills/echo", inputs: { message: "from-ide" } });
       expect(success.status).toBe("success");
       expect(JSON.stringify(success.data)).toContain("from-ide");
     } finally {
@@ -52,7 +58,7 @@ describe("ide plugin actions", () => {
         connect: createFixtureConnectService(),
       });
 
-      const skillRun = await core.runSkill({ skillPath: "fixtures/skills/echo.md", inputs: { message: "from-ide" } });
+      const skillRun = await core.runSkill({ skillPath: "fixtures/skills/echo", inputs: { message: "from-ide" } });
       expect(skillRun.status).toBe("success");
       const receiptId = receiptIdFrom(skillRun.data);
       expect(receiptId).toBeDefined();

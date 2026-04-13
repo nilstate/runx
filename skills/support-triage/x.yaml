@@ -1,0 +1,146 @@
+skill: support-triage
+
+harness:
+  cases:
+    - name: bounded-docs-fix
+      inputs:
+        title: README still references bug-to-pr instead of issue-to-pr
+        body: The public docs still tell users to run bug-to-pr as the canonical command.
+        source: github_issue
+        source_id: "101"
+        source_url: https://github.com/example/repo/issues/101
+        product_context: OSS runx documentation
+      caller:
+        answers:
+          agent_step.support-triage.output:
+            triage_report:
+              category: docs
+              severity: low
+              summary: The docs are outdated and still point users at the compatibility alias instead of the canonical skill name.
+              suggested_reply: We'll update the public docs to point at issue-to-pr as the canonical command.
+              recommended_lane: issue-to-pr
+              rationale: The report is a bounded one-repo documentation fix with low risk.
+              needs_human: false
+              operator_notes: []
+              issue_to_pr_request:
+                task_id: docs_issue_to_pr_command
+                issue_title: README still references bug-to-pr instead of issue-to-pr
+                issue_body: The public docs still tell users to run bug-to-pr as the canonical command.
+                source: github_issue
+                source_id: "101"
+                source_url: https://github.com/example/repo/issues/101
+                size: micro
+                risk: low
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: support-triage
+            source_type: agent-step
+    - name: feature-needs-decomposition
+      inputs:
+        title: Add abandoned cart recovery across email and SMS
+        body: We need a generated workflow, copy, timing rules, and reporting for abandoned cart recovery.
+        source: support_request
+        source_id: "982"
+        product_context: Multi-channel marketing automation product
+      caller:
+        answers:
+          agent_step.support-triage.output:
+            triage_report:
+              category: feature_request
+              severity: medium
+              summary: The request is a multi-step product capability that spans workflow design, content, and reporting.
+              suggested_reply: This needs decomposition into a governed implementation plan before code changes start.
+              recommended_lane: objective-decompose
+              rationale: The request spans multiple deliverables and should be broken into governed steps first.
+              needs_human: true
+              operator_notes:
+                - Confirm the target repos and user-facing scope before mutation.
+              objective_request:
+                objective: Add abandoned cart recovery across email and SMS
+                project_context: Multi-channel marketing automation product
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: support-triage
+            source_type: agent-step
+    - name: reply-only-question
+      inputs:
+        title: How do I rotate my API key?
+        body: I only need the operator instructions for rotating an API key safely.
+        source: support_request
+        source_id: "983"
+      caller:
+        answers:
+          agent_step.support-triage.output:
+            triage_report:
+              category: question
+              severity: low
+              summary: The user is asking for operator guidance, not a product mutation.
+              suggested_reply: Share the documented API key rotation steps and confirm whether they need a UI walkthrough.
+              recommended_lane: reply-only
+              rationale: No code or planning lane is required to answer this request.
+              needs_human: false
+              operator_notes: []
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: support-triage
+            source_type: agent-step
+
+runners:
+  triage:
+    default: true
+    type: agent-step
+    agent: builder
+    task: support-triage
+    outputs:
+      triage_report: object
+    artifacts:
+      wrap_as: support_triage_packet
+    inputs:
+      title:
+        type: string
+        required: false
+        description: "Canonical report title."
+      issue_title:
+        type: string
+        required: false
+        description: "Compatibility alias for title."
+      body:
+        type: string
+        required: false
+        description: "Canonical report body."
+      issue_body:
+        type: string
+        required: false
+        description: "Compatibility alias for body."
+      source:
+        type: string
+        required: false
+        description: "Source system such as github_issue or support_request."
+      source_id:
+        type: string
+        required: false
+        description: "Source record identifier."
+      source_url:
+        type: string
+        required: false
+        description: "Source URL when available."
+      product_context:
+        type: string
+        required: false
+        description: "Product or repo context that constrains the triage decision."
+      operator_context:
+        type: string
+        required: false
+        description: "Tone, escalation, or operator posture guidance."

@@ -20,7 +20,7 @@ describe("history, inspect, and memory CLI", () => {
       const runExit = await runCli(
         [
           "skill",
-          "fixtures/skills/echo.md",
+          "fixtures/skills/echo",
           "--message",
           "hi",
           "--receipt-dir",
@@ -39,7 +39,7 @@ describe("history, inspect, and memory CLI", () => {
 
       const historyStdout = createMemoryStream();
       const historyExit = await runCli(
-        ["history", "--receipt-dir", receiptDir, "--json"],
+        ["history", "echo", "--receipt-dir", receiptDir, "--json"],
         { stdin: process.stdin, stdout: historyStdout, stderr: createMemoryStream() },
         {
           ...process.env,
@@ -49,6 +49,7 @@ describe("history, inspect, and memory CLI", () => {
       expect(historyExit).toBe(0);
       expect(JSON.parse(historyStdout.contents())).toMatchObject({
         status: "success",
+        query: "echo",
         receipts: [
           {
             id: runReport.receipt.id,

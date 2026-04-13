@@ -8,8 +8,7 @@ import type { SkillAdapter } from "../packages/executor/src/index.js";
 import { runLocalChain, type Caller } from "../packages/runner-local/src/index.js";
 
 const caller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 

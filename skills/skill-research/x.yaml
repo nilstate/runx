@@ -1,5 +1,54 @@
 skill: skill-research
 
+harness:
+  cases:
+    - name: skill-research-validates-proposed-flow
+      inputs:
+        objective: Build a moltbook presence automation lane
+        decomposition:
+          objective_summary: Build a governed Moltbook presence automation lane.
+          orchestration_steps:
+            - id: scan
+              skill: ../moltbook
+              runner: scan
+              scopes:
+                - runx:moltbook:read
+          required_skills:
+            - name: moltbook
+              exists: true
+          open_questions: []
+      caller:
+        answers:
+          agent_step.skill-research.output:
+            findings:
+              - claim: Use separate read and post runners for Moltbook.
+                source: plans/runx.md
+                relevance: Preserves governance boundaries between scanning and posting.
+                confidence: verified
+            recommended_flow:
+              - step: scan
+                rationale: Gather bounded opportunities before drafting.
+              - step: approve
+                rationale: Human approval is required before public posting.
+              - step: post
+                rationale: Use a separate write runner with only publish scopes.
+            sources:
+              - path: plans/runx.md
+                kind: repo-document
+            risks:
+              - risk: Community posting can drift off-brand without explicit moderation.
+                likelihood: medium
+                impact: high
+                mitigation: Require an approval gate and moderation notes.
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: skill-research
+            source_type: agent-step
+
 runners:
   skill-research-agent:
     default: true
@@ -11,12 +60,14 @@ runners:
       recommended_flow: array
       sources: array
       risks: array
+    artifacts:
+      wrap_as: skill_research_report
     inputs:
       objective:
         type: string
         required: true
         description: "The build or skill objective being researched."
       decomposition:
-        type: string
+        type: json
         required: false
         description: "Structured decomposition output from objective-decompose."

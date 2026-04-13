@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -28,16 +28,22 @@ describe("caller approval boundary", () => {
       });
 
       expect(result.status).toBe("success");
-      expect(caller.trace.approvals).toHaveLength(1);
-      expect(caller.trace.approvals[0]).toMatchObject({
-        approved: true,
-        gate: {
-          id: "sandbox.sdk-approval.unrestricted-local-dev",
-          type: "sandbox",
+      expect(caller.trace.resolutions).toHaveLength(1);
+      expect(caller.trace.resolutions[0]).toMatchObject({
+        request: {
+          kind: "approval",
+          gate: {
+            id: "sandbox.sdk-approval.unrestricted-local-dev",
+            type: "sandbox",
+          },
+        },
+        response: {
+          actor: "human",
+          payload: true,
         },
       });
-      expect(caller.trace.events.map((event) => event.type)).toContain("approval_requested");
-      expect(caller.trace.events.map((event) => event.type)).toContain("approval_resolved");
+      expect(caller.trace.events.map((event) => event.type)).toContain("resolution_requested");
+      expect(caller.trace.events.map((event) => event.type)).toContain("resolution_resolved");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -53,7 +59,7 @@ describe("caller approval boundary", () => {
         fixturePath,
         `name: harness-approval
 kind: skill
-target: ./harness-approval.md
+target: ./harness-approval
 caller:
   approvals:
     sandbox.harness-approval.unrestricted-local-dev: true
@@ -64,9 +70,21 @@ expect:
 
       const result = await runHarness(fixturePath);
       expect(result.status).toBe("success");
-      expect(result.trace.approvals).toEqual(["sandbox.harness-approval.unrestricted-local-dev"]);
-      expect(result.trace.events.map((event) => event.type)).toContain("approval_requested");
-      expect(result.trace.events.map((event) => event.type)).toContain("approval_resolved");
+      expect(result.trace.resolutions).toHaveLength(1);
+      expect(result.trace.resolutions[0]).toMatchObject({
+        request: {
+          kind: "approval",
+          gate: {
+            id: "sandbox.harness-approval.unrestricted-local-dev",
+          },
+        },
+        response: {
+          actor: "human",
+          payload: true,
+        },
+      });
+      expect(result.trace.events.map((event) => event.type)).toContain("resolution_requested");
+      expect(result.trace.events.map((event) => event.type)).toContain("resolution_resolved");
       expect(result.assertionErrors).toEqual([]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -83,7 +101,7 @@ expect:
         fixturePath,
         `name: harness-approval-denied
 kind: skill
-target: ./harness-approval-denied.md
+target: ./harness-approval-denied
 caller:
   approvals:
     sandbox.harness-approval-denied.unrestricted-local-dev: false
@@ -114,9 +132,10 @@ expect:
 });
 
 async function writeUnrestrictedSkill(tempDir: string, name: string): Promise<string> {
-  const skillPath = path.join(tempDir, `${name}.md`);
+  const skillPath = path.join(tempDir, name);
+  await mkdir(skillPath, { recursive: true });
   await writeFile(
-    skillPath,
+    path.join(skillPath, "SKILL.md"),
     `---
 name: ${name}
 source:

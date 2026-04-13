@@ -1,0 +1,127 @@
+skill: draft-content
+
+harness:
+  cases:
+    - name: draft-content-produces-brief
+      runner: draft
+      inputs:
+        objective: Publish a concise market-intelligence brief
+        audience: evaluator
+        channel: blog
+        evidence_pack:
+          summary: Governance and package standard enforcement are the strongest signals.
+      caller:
+        answers:
+          agent_step.draft-content-draft.output:
+            content_brief:
+              angle: Show runx by demonstrating governed automation, not by making vague claims.
+              audience: evaluator
+              channel: blog
+            draft:
+              title: runx proves itself by governing its own work
+              sections:
+                - Why package-shaped skills matter
+                - Why receipts beat promises
+            review_checklist:
+              - verify every claim against the evidence pack
+            distribution_notes:
+              primary_channel: blog
+              follow_ups:
+                - summarize for Moltbook
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: draft-content
+            source_type: agent-step
+    - name: draft-content-packages-delivery
+      runner: package
+      inputs:
+        channel: blog
+        draft:
+          title: runx proves itself by governing its own work
+      caller:
+        answers:
+          agent_step.draft-content-package.output:
+            publish_packet:
+              channel: blog
+              headline: runx proves itself by governing its own work
+              body: final polished content
+            qa_checklist:
+              - links verified
+              - evidence claims checked
+            handoff_notes:
+              owner: runx-admin
+              next_action: publish after approval
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: draft-content
+            source_type: agent-step
+
+runners:
+  agent:
+    type: agent
+
+  draft:
+    default: true
+    type: agent-step
+    agent: builder
+    task: draft-content-draft
+    outputs:
+      content_brief: object
+      draft: object
+      review_checklist: array
+      distribution_notes: object
+    artifacts:
+      wrap_as: content_draft_packet
+    inputs:
+      objective:
+        type: string
+        required: false
+        description: "What the content should accomplish."
+      audience:
+        type: string
+        required: false
+        description: "Audience or reader segment."
+      channel:
+        type: string
+        required: false
+        description: "Publishing channel or medium."
+      evidence_pack:
+        type: json
+        required: false
+        description: "Structured evidence or research packet."
+      voice_guide:
+        type: string
+        required: false
+        description: "Tone or style guidance."
+
+  package:
+    type: agent-step
+    agent: builder
+    task: draft-content-package
+    outputs:
+      publish_packet: object
+      qa_checklist: array
+      handoff_notes: object
+    artifacts:
+      wrap_as: content_publish_packet
+    inputs:
+      channel:
+        type: string
+        required: false
+        description: "Target publishing channel."
+      draft:
+        type: json
+        required: true
+        description: "Structured draft to package for delivery."
+      distribution_notes:
+        type: json
+        required: false
+        description: "Channel-specific notes from the draft runner."

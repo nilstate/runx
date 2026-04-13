@@ -7,9 +7,13 @@ import { describe, expect, it } from "vitest";
 import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
 
 const caller: Caller = {
-  answer: async () => ({}),
-  resolveAgentResult: async (request) => ({ status: "agent", id: request.id }),
-  approve: async () => false,
+  resolve: async (request) =>
+    request.kind === "cognitive_work"
+      ? {
+          actor: "agent",
+          payload: { status: "agent", id: request.id },
+        }
+      : undefined,
   report: () => undefined,
 };
 
@@ -123,7 +127,7 @@ runners:
     }
   });
 
-  it("keeps flat skill references supported with sibling x manifests", async () => {
+  it("rejects flat markdown skill references even when a sibling x manifest exists", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-package-flat-"));
     const skillPath = path.join(tempDir, "flat-echo.md");
 
@@ -155,20 +159,16 @@ runners:
 `,
       );
 
-      const result = await runLocalSkill({
-        skillPath,
-        inputs: { message: "from flat" },
-        caller,
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
-      });
-
-      expect(result.status).toBe("success");
-      if (result.status !== "success") {
-        return;
-      }
-      expect(result.execution.stdout).toBe("from flat");
+      await expect(
+        runLocalSkill({
+          skillPath,
+          inputs: { message: "from flat" },
+          caller,
+          receiptDir: path.join(tempDir, "receipts"),
+          runxHome: path.join(tempDir, "home"),
+          env: process.env,
+        }),
+      ).rejects.toThrow("Flat markdown files are not supported");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

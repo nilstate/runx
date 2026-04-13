@@ -50,6 +50,11 @@ The current Sourcey runner deliberately uses a bounded subset:
 The current slice uses exactly one bounded revision window. It never loops
 until good and it never critiques indefinitely.
 
+When `docs_inputs` is supplied explicitly, treat that as a bounded instruction
+to use the existing config target. Do not overwrite the referenced config or
+invent replacement docs files merely because repository inspection evidence is
+thin. Missing evidence is not the same as missing files.
+
 ## Steps
 
 1. Inspect the project and discover a bounded documentation plan from real project evidence.
@@ -63,6 +68,22 @@ until good and it never critiques indefinitely.
 9. Verify the output directory contains `index.html`.
 10. Inspect the receipt and generated site.
 
+The deterministic build report should carry enough rendered evidence for an
+external reviewer to reason about the site without hidden file access. At
+minimum that means the generated file list plus index-page title, headings, and
+an excerpt when `index.html` exists.
+
+## Discovery contract
+
+`discovery_report` may include additional planning metadata, but the canonical
+resolved docs inputs must live under:
+
+- `discovery_report.discovered.brand_name`
+- `discovery_report.discovered.homepage_url`
+- `discovery_report.discovered.docs_inputs`
+
+Downstream deterministic build steps consume that nested `discovered` object.
+
 ## Output
 
 Sourcey build produces: HTML pages, `sourcey.css`, `sourcey.js`,
@@ -75,7 +96,7 @@ Sourcey build produces: HTML pages, `sourcey.css`, `sourcey.js`,
 - `brand_name`: project name (discovered from package evidence if omitted).
 - `homepage_url`: project homepage (discovered from project evidence if omitted).
 - `docs_inputs`: structured docs inputs, e.g. `{"mode":"config","config":"docs/sourcey.config.ts"}` or `{"mode":"openapi","spec":"openapi.yaml"}`. Discovered if omitted and may point at authored config produced by the skill.
-- `output_dir`: output path (default: `<project>/.sourcey/docs`).
+- `output_dir`: output path (default: `<project>/.sourcey/runx-docs`).
 - `sourcey_bin`: explicit sourcey executable path (default: `SOURCEY_BIN` env or `sourcey` on PATH).
 
 ## Config reference

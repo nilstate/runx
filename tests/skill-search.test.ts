@@ -61,7 +61,7 @@ describe("skill-search CLI", () => {
             trust_tier: "runx-derived",
             runner_mode: "standard-only",
             runner_names: [],
-            add_command: "runx skill add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+            add_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
           }),
         ]),
       );

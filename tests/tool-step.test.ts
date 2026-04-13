@@ -43,12 +43,13 @@ steps:
     );
 
     const caller: Caller = {
-      answer: async () => ({}),
-      approve: async () => false,
-      resolveAgentResult: async (request) => {
-        expect(request.envelope.allowed_tools).toEqual(["fs.read", "git.status"]);
-        expect(request.envelope.current_context.map((artifact) => artifact.type)).toEqual(["file_read"]);
-        expect(request.envelope.provenance).toEqual([
+      resolve: async (request) => {
+        if (request.kind !== "cognitive_work") {
+          return undefined;
+        }
+        expect(request.work.envelope.allowed_tools).toEqual(["fs.read", "git.status"]);
+        expect(request.work.envelope.current_context.map((artifact) => artifact.type)).toEqual(["file_read"]);
+        expect(request.work.envelope.provenance).toEqual([
           expect.objectContaining({
             input: "note",
             from_step: "read_note",
@@ -56,9 +57,12 @@ steps:
           }),
         ]);
         return {
-          summary: {
-            verdict: "read",
-            observed: request.envelope.inputs.note,
+          actor: "agent",
+          payload: {
+            summary: {
+              verdict: "read",
+              observed: request.work.envelope.inputs.note,
+            },
           },
         };
       },
@@ -127,8 +131,7 @@ steps:
     );
 
     const caller: Caller = {
-      answer: async () => ({}),
-      approve: async () => false,
+      resolve: async () => undefined,
       report: () => undefined,
     };
 
@@ -178,8 +181,7 @@ steps:
     );
 
     const caller: Caller = {
-      answer: async () => ({}),
-      approve: async () => false,
+      resolve: async () => undefined,
       report: () => undefined,
     };
 
@@ -207,8 +209,7 @@ steps:
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-git-tools-"));
     const receiptDir = path.join(tempDir, "receipts");
     const caller: Caller = {
-      answer: async () => ({}),
-      approve: async () => false,
+      resolve: async () => undefined,
       report: () => undefined,
     };
 
@@ -267,8 +268,7 @@ steps:
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-help-tool-"));
     const receiptDir = path.join(tempDir, "receipts");
     const caller: Caller = {
-      answer: async () => ({}),
-      approve: async () => false,
+      resolve: async () => undefined,
       report: () => undefined,
     };
 

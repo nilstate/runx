@@ -7,14 +7,14 @@ name: sequential-echo
 owner: runx
 steps:
   - id: first
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     runner: echo-cli
     inputs:
       message: hello
     scopes:
       - filesystem:read
   - id: second
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     context:
       message: first.stdout
     retry:
@@ -135,7 +135,7 @@ steps:
 name: retry-idempotency
 steps:
   - id: mutate
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     mutation: mutating
     idempotency_key: "{{request_id}}"
     retry:
@@ -161,7 +161,7 @@ steps:
 name: bad-retry
 steps:
   - id: mutate
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     mutation: mutating
     idempotency_key: ""
     retry:
@@ -177,7 +177,7 @@ steps:
         parseChainYaml(`
 name: bad
 steps:
-  - skill: ../../skills/echo.md
+  - skill: ../../skills/echo
 `),
       ),
     ).toThrow(ChainValidationError);
@@ -190,7 +190,7 @@ steps:
 name: bad-runner
 steps:
   - id: first
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     runner:
       type: cli-tool
       command: node
@@ -206,7 +206,7 @@ steps:
 name: bad
 steps:
   - id: first
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     context:
       message: missing.stdout
 `),
@@ -221,11 +221,11 @@ steps:
 name: bad
 steps:
   - id: first
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     context:
       message: second.stdout
   - id: second
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
 `),
       ),
     ).toThrow(ChainValidationError);
@@ -254,15 +254,15 @@ steps:
   - id: market
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
   - id: risk
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
   - id: finance
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
 `),
     );
 
@@ -298,7 +298,7 @@ name: fanout
 fanout: true
 steps:
   - id: first
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
 `),
       ),
     ).toThrow(ChainValidationError);
@@ -315,7 +315,7 @@ fanout:
       strategy: all
 steps:
   - id: first
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     mode: fanout
 `),
       ),
@@ -340,7 +340,7 @@ steps:
   - id: risk
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
 `),
       ),
     ).toThrow(ChainValidationError);

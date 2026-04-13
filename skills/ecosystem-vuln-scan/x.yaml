@@ -1,0 +1,113 @@
+skill: ecosystem-vuln-scan
+
+harness:
+  cases:
+    - name: ecosystem-vuln-scan-approved-advisory
+      inputs:
+        target: pnpm-lock.yaml
+      caller:
+        answers:
+          agent_step.vuln-scan.output:
+            dependency_inventory:
+              target: pnpm-lock.yaml
+            advisories:
+              - package: example-lib
+                severity: medium
+                exposure: transitive
+            remediation_plan:
+              immediate:
+                - patch example-lib
+            operator_summary:
+              verdict: investigate
+              summary: One advisory is worth preparing.
+          agent_step.vuln-scan-advisory.output:
+            advisory_draft:
+              title: Example advisory
+              body: We identified a medium-severity transitive issue and are preparing remediation.
+            maintainer_summary:
+              audience: repo_owners
+              summary: Patch path prepared.
+            disclosure_checklist:
+              - verify versions
+              - verify patch
+          agent_step.draft-content-package.output:
+            publish_packet:
+              channel: advisory
+              headline: Example advisory
+            qa_checklist:
+              - disclosure checklist reviewed
+            handoff_notes:
+              next_action: publish after approval
+        approvals:
+          ecosystem-vuln-scan.publish.approval: true
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+
+runners:
+  ecosystem-vuln-scan:
+    default: true
+    type: chain
+    inputs:
+      target:
+        type: string
+        required: true
+        description: "Repo, lockfile, package set, or ecosystem slice to review."
+      objective:
+        type: string
+        required: false
+        default: "Identify whether a public-facing advisory should be prepared"
+        description: "Question the scan should answer."
+      channel:
+        type: string
+        required: false
+        default: "advisory"
+        description: "Final publication channel."
+      scan_context:
+        type: json
+        required: false
+        description: "Known incidents or prior findings."
+    chain:
+      name: ecosystem-vuln-scan
+      owner: runx
+      steps:
+        - id: scan-risk
+          skill: ../vuln-scan
+          runner: scan
+          scopes:
+            - runx:security:read
+        - id: draft-advisory
+          skill: ../vuln-scan
+          runner: advisory
+          scopes:
+            - runx:security:write-proposal
+          context:
+            advisories: scan-risk.vulnerability_scan_packet.data.advisories
+            remediation_plan: scan-risk.vulnerability_scan_packet.data.remediation_plan
+        - id: approve-advisory
+          run:
+            type: approval
+          inputs:
+            gate_id: ecosystem-vuln-scan.publish.approval
+            reason: Approve the drafted advisory before packaging it for publication.
+          context:
+            advisory_draft: draft-advisory.vulnerability_advisory_packet.data.advisory_draft
+            disclosure_checklist: draft-advisory.vulnerability_advisory_packet.data.disclosure_checklist
+          artifacts:
+            wrap_as: approval_decision
+        - id: package-advisory
+          skill: ../draft-content
+          runner: package
+          scopes:
+            - runx:content:package
+          inputs:
+            channel: advisory
+          context:
+            draft: draft-advisory.vulnerability_advisory_packet.data.advisory_draft
+      policy:
+        transitions:
+          - to: package-advisory
+            field: approve-advisory.approval_decision.data.approved
+            equals: true

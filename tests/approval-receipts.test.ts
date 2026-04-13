@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -75,14 +75,21 @@ describe("approval receipt metadata", () => {
 
 function approvalCaller(approved: boolean): Caller {
   return {
-    answer: async () => ({}),
-    approve: async () => approved,
+    resolve: async (request) =>
+      request.kind === "approval"
+        ? {
+            actor: "human",
+            payload: approved,
+          }
+        : undefined,
     report: () => undefined,
   };
 }
 
 async function writeUnrestrictedSkill(tempDir: string, name: string): Promise<string> {
-  const skillPath = path.join(tempDir, `${name}.md`);
+  const skillDir = path.join(tempDir, name);
+  const skillPath = path.join(skillDir, "SKILL.md");
+  await mkdir(skillDir, { recursive: true });
   await writeFile(
     skillPath,
     `---

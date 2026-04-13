@@ -1,0 +1,79 @@
+skill: research
+
+harness:
+  cases:
+    - name: research-brief-packet
+      inputs:
+        objective: Find the highest-signal trend in the runx ecosystem this week
+        domain: developer tools
+        deliverable: daily brief
+        target_entities:
+          - runx
+          - sourcey
+      caller:
+        answers:
+          agent_step.research.output:
+            research_brief:
+              objective: Find the highest-signal trend in the runx ecosystem this week.
+              scope: developer tools, OSS skill automation, adjacent agent products
+              summary: Governed automation and package-style skill catalogs are the strongest differentiators.
+              open_questions: []
+            evidence_log:
+              - claim: Evaluators care about visible governance and testability, not just prompt text.
+                source: plans/runx.md
+                confidence: verified
+                relevance: shapes the content angle and what claims can be made publicly
+            decision_support:
+              - option: Lead with package-standard enforcement and dogfood receipts.
+                rationale: It demonstrates product discipline and visible proof.
+            risks:
+              - risk: Trend claims can become stale if they are not tied to recent evidence.
+                likelihood: medium
+                impact: medium
+                mitigation: carry explicit dates and source notes into the brief.
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: research
+            source_type: agent-step
+
+runners:
+  agent:
+    type: agent
+
+  research:
+    default: true
+    type: agent-step
+    agent: researcher
+    task: research
+    outputs:
+      research_brief: object
+      evidence_log: array
+      decision_support: array
+      risks: array
+    artifacts:
+      wrap_as: research_packet
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "Bounded question the research pass must answer."
+      domain:
+        type: string
+        required: false
+        description: "Domain or market context for the question."
+      deliverable:
+        type: string
+        required: false
+        description: "Target artifact the research should support."
+      operator_context:
+        type: string
+        required: false
+        description: "Repo, product, or operator context that constrains the research."
+      target_entities:
+        type: json
+        required: false
+        description: "Structured list or object of entities to include or compare."

@@ -29,6 +29,9 @@ import {
   type AgentWorkRequest,
   type ApprovalGate,
   type CredentialEnvelope,
+  type Question,
+  type ResolutionRequest,
+  type ResolutionResponse,
   type SkillAdapter,
 } from "../../executor/src/index.js";
 import { createFileMemoryStore } from "../../memory/src/index.js";
@@ -87,14 +90,6 @@ import {
   type SingleStepState,
 } from "../../state-machine/src/index.js";
 
-export interface Question {
-  readonly id: string;
-  readonly prompt: string;
-  readonly description?: string;
-  readonly required: boolean;
-  readonly type: string;
-}
-
 export interface ApprovalDecision {
   readonly gate: ApprovalGate;
   readonly approved: boolean;
@@ -105,20 +100,20 @@ export interface ExecutionEvent {
     | "skill_loaded"
     | "inputs_resolved"
     | "auth_resolved"
-    | "approval_requested"
-    | "approval_resolved"
+    | "resolution_requested"
+    | "resolution_resolved"
     | "admitted"
     | "executing"
+    | "step_started"
+    | "step_waiting_resolution"
+    | "step_completed"
     | "completed";
   readonly message: string;
   readonly data?: unknown;
 }
 
 export interface Caller {
-  readonly answer: (questions: readonly Question[]) => Promise<Readonly<Record<string, unknown>>>;
-  readonly approve: (gate: ApprovalGate) => Promise<boolean>;
-  readonly resolveAgentResult?: (request: AgentWorkRequest) => Promise<unknown | undefined>;
-  readonly resolveApproval?: (gate: ApprovalGate) => Promise<boolean | undefined>;
+  readonly resolve: (request: ResolutionRequest) => Promise<ResolutionResponse | undefined>;
   readonly report: (event: ExecutionEvent) => void | Promise<void>;
 }
 
@@ -144,6 +139,13 @@ export interface RunLocalSkillOptions {
 interface ResolvedRunnerSelection {
   readonly skill: ValidatedSkill;
   readonly selectedRunnerName?: string;
+}
+
+async function resolveCallerRequest(
+  caller: Caller,
+  request: ResolutionRequest,
+): Promise<ResolutionResponse | undefined> {
+  return await caller.resolve(request);
 }
 
 interface RunResolvedSkillOptions {
@@ -208,11 +210,77 @@ function chainStepExecutionDirectory(step: ChainStep, stepExecutablePath: string
   return step.skill || step.tool ? path.dirname(stepExecutablePath) : chainDirectory;
 }
 
+async function reportChainStepStarted(caller: Caller, step: ChainStep, reference: string): Promise<void> {
+  await caller.report({
+    type: "step_started",
+    message: `Starting step ${step.id}.`,
+    data: {
+      stepId: step.id,
+      stepLabel: step.label,
+      skill: reference,
+      runner: chainStepRunner(step) ?? "default",
+    },
+  });
+}
+
+async function reportChainStepWaitingResolution(
+  caller: Caller,
+  step: ChainStep,
+  reference: string,
+  requests: readonly ResolutionRequest[],
+): Promise<void> {
+  await caller.report({
+    type: "step_waiting_resolution",
+    message: `Step ${step.id} needs resolution.`,
+    data: {
+      stepId: step.id,
+      stepLabel: step.label,
+      skill: reference,
+      runner: chainStepRunner(step) ?? "default",
+      kinds: Array.from(new Set(requests.map((request) => request.kind))),
+      requestIds: requests.map((request) => request.id),
+      expectedOutputs: Array.from(
+        new Set(
+          requests
+            .filter((request): request is Extract<ResolutionRequest, { kind: "cognitive_work" }> => request.kind === "cognitive_work")
+            .flatMap((request) => Object.keys(request.work.envelope.expected_outputs ?? {})),
+        ),
+      ),
+    },
+  });
+}
+
+async function reportChainStepCompleted(
+  caller: Caller,
+  step: ChainStep,
+  reference: string,
+  status: "success" | "failure",
+  detail?: Readonly<Record<string, unknown>>,
+): Promise<void> {
+  await caller.report({
+    type: "step_completed",
+    message: `Step ${step.id} ${status}.`,
+    data: {
+      stepId: step.id,
+      stepLabel: step.label,
+      skill: reference,
+      runner: chainStepRunner(step) ?? "default",
+      status,
+      ...detail,
+    },
+  });
+}
+
 export type RunLocalSkillResult =
   | {
-      readonly status: "missing_context";
+      readonly status: "needs_resolution";
+      readonly skill: ValidatedSkill;
       readonly skillPath: string;
-      readonly questions: readonly Question[];
+      readonly inputs: Readonly<Record<string, unknown>>;
+      readonly runId: string;
+      readonly requests: readonly ResolutionRequest[];
+      readonly stepIds?: readonly string[];
+      readonly stepLabels?: readonly string[];
     }
   | {
       readonly status: "policy_denied";
@@ -220,22 +288,6 @@ export type RunLocalSkillResult =
       readonly reasons: readonly string[];
       readonly approval?: ApprovalDecision;
       readonly receipt?: LocalSkillReceipt;
-    }
-  | {
-      readonly status: "needs_agent";
-      readonly skill: ValidatedSkill;
-      readonly inputs: Readonly<Record<string, unknown>>;
-      readonly runId: string;
-      readonly requests: readonly AgentWorkRequest[];
-      readonly stepIds?: readonly string[];
-    }
-  | {
-      readonly status: "needs_approval";
-      readonly skill: ValidatedSkill;
-      readonly inputs: Readonly<Record<string, unknown>>;
-      readonly runId: string;
-      readonly gates: readonly ApprovalGate[];
-      readonly stepIds?: readonly string[];
     }
   | {
       readonly status: "success" | "failure";
@@ -309,12 +361,15 @@ interface RetryReceiptContext {
 
 export type RunLocalChainResult =
   | {
-      readonly status: "missing_context";
+      readonly status: "needs_resolution";
       readonly chain: ChainDefinition;
-      readonly stepId: string;
       readonly skillPath: string;
-      readonly questions: readonly Question[];
+      readonly stepIds: readonly string[];
+      readonly requests: readonly ResolutionRequest[];
+      readonly skill: ValidatedSkill;
       readonly state: SequentialChainState;
+      readonly runId: string;
+      readonly stepLabels?: readonly string[];
     }
   | {
       readonly status: "policy_denied";
@@ -324,26 +379,6 @@ export type RunLocalChainResult =
       readonly reasons: readonly string[];
       readonly state: SequentialChainState;
       readonly receipt?: LocalChainReceipt;
-    }
-  | {
-      readonly status: "needs_agent";
-      readonly chain: ChainDefinition;
-      readonly stepIds: readonly string[];
-      readonly skillPath: string;
-      readonly skill: ValidatedSkill;
-      readonly requests: readonly AgentWorkRequest[];
-      readonly state: SequentialChainState;
-      readonly runId: string;
-    }
-  | {
-      readonly status: "needs_approval";
-      readonly chain: ChainDefinition;
-      readonly stepIds: readonly string[];
-      readonly skillPath: string;
-      readonly skill: ValidatedSkill;
-      readonly gates: readonly ApprovalGate[];
-      readonly state: SequentialChainState;
-      readonly runId: string;
     }
   | {
       readonly status: "success" | "failure";
@@ -380,6 +415,7 @@ export interface ListLocalHistoryOptions {
   readonly runxHome?: string;
   readonly env?: NodeJS.ProcessEnv;
   readonly limit?: number;
+  readonly query?: string;
 }
 
 export interface ListLocalHistoryResult {
@@ -427,32 +463,48 @@ export function createCallerAgentStepAdapter(caller: Caller): SkillAdapter {
     invoke: async (request) => {
       const startedAt = Date.now();
       const mediationRequest = buildAgentStepRequest(request);
-      const output = await caller.resolveAgentResult?.(mediationRequest);
+      const resolutionRequest: ResolutionRequest = {
+        id: mediationRequest.id,
+        kind: "cognitive_work",
+        work: mediationRequest,
+      };
+      await caller.report({
+        type: "resolution_requested",
+        message: `Resolution requested for ${mediationRequest.id}.`,
+        data: { kind: resolutionRequest.kind, requestId: resolutionRequest.id },
+      });
+      const resolution = await resolveCallerRequest(caller, resolutionRequest);
 
-      if (output === undefined || output === null || output === "") {
+      if (resolution === undefined || resolution.payload === undefined || resolution.payload === null || resolution.payload === "") {
         return {
-          status: "needs_agent",
+          status: "needs_resolution",
           stdout: "",
           stderr: "",
           exitCode: null,
           signal: null,
           durationMs: Date.now() - startedAt,
-          request: mediationRequest,
+          request: resolutionRequest,
           metadata: {
             agent_hook: {
               source_type: "agent-step",
               agent: request.source.agent,
               task: request.source.task,
               route: "yielded",
-              status: "needs_agent",
+              status: "needs_resolution",
             },
           },
         };
       }
 
+      await caller.report({
+        type: "resolution_resolved",
+        message: `Resolution satisfied for ${mediationRequest.id}.`,
+        data: { kind: resolutionRequest.kind, requestId: resolutionRequest.id, actor: resolution.actor },
+      });
+
       return {
         status: "success",
-        stdout: typeof output === "string" ? output : JSON.stringify(output),
+        stdout: typeof resolution.payload === "string" ? resolution.payload : JSON.stringify(resolution.payload),
         stderr: "",
         exitCode: 0,
         signal: null,
@@ -477,30 +529,46 @@ export function createCallerAgentAdapter(caller: Caller): SkillAdapter {
     invoke: async (request) => {
       const startedAt = Date.now();
       const mediationRequest = buildAgentRunnerRequest(request);
-      const output = await caller.resolveAgentResult?.(mediationRequest);
+      const resolutionRequest: ResolutionRequest = {
+        id: mediationRequest.id,
+        kind: "cognitive_work",
+        work: mediationRequest,
+      };
+      await caller.report({
+        type: "resolution_requested",
+        message: `Resolution requested for ${mediationRequest.id}.`,
+        data: { kind: resolutionRequest.kind, requestId: resolutionRequest.id },
+      });
+      const resolution = await resolveCallerRequest(caller, resolutionRequest);
 
-      if (output === undefined || output === null || output === "") {
+      if (resolution === undefined || resolution.payload === undefined || resolution.payload === null || resolution.payload === "") {
         return {
-          status: "needs_agent",
+          status: "needs_resolution",
           stdout: "",
           stderr: "",
           exitCode: null,
           signal: null,
           durationMs: Date.now() - startedAt,
-          request: mediationRequest,
+          request: resolutionRequest,
           metadata: {
             agent_runner: {
               skill: mediationRequest.envelope.skill,
               route: "yielded",
-              status: "needs_agent",
+              status: "needs_resolution",
             },
           },
         };
       }
 
+      await caller.report({
+        type: "resolution_resolved",
+        message: `Resolution satisfied for ${mediationRequest.id}.`,
+        data: { kind: resolutionRequest.kind, requestId: resolutionRequest.id, actor: resolution.actor },
+      });
+
       return {
         status: "success",
-        stdout: typeof output === "string" ? output : JSON.stringify(output),
+        stdout: typeof resolution.payload === "string" ? resolution.payload : JSON.stringify(resolution.payload),
         stderr: "",
         exitCode: 0,
         signal: null,
@@ -523,17 +591,27 @@ export function createCallerApprovalAdapter(caller: Caller): SkillAdapter {
     invoke: async (request) => {
       const startedAt = Date.now();
       const gate = buildApprovalGate(request);
-      const approved = await caller.resolveApproval?.(gate);
+      const resolutionRequest: ResolutionRequest = {
+        id: gate.id,
+        kind: "approval",
+        gate,
+      };
+      await caller.report({
+        type: "resolution_requested",
+        message: `Resolution requested for ${gate.id}.`,
+        data: { kind: resolutionRequest.kind, requestId: resolutionRequest.id },
+      });
+      const resolution = await resolveCallerRequest(caller, resolutionRequest);
 
-      if (approved === undefined) {
+      if (resolution === undefined) {
         return {
-          status: "needs_approval",
+          status: "needs_resolution",
           stdout: "",
           stderr: "",
           exitCode: null,
           signal: null,
           durationMs: Date.now() - startedAt,
-          gate,
+          request: resolutionRequest,
           metadata: {
             approval: {
               gate_id: gate.id,
@@ -545,6 +623,12 @@ export function createCallerApprovalAdapter(caller: Caller): SkillAdapter {
           },
         };
       }
+      const approved = typeof resolution.payload === "boolean" ? resolution.payload : Boolean(resolution.payload);
+      await caller.report({
+        type: "resolution_resolved",
+        message: `Resolution satisfied for ${gate.id}.`,
+        data: { kind: resolutionRequest.kind, requestId: resolutionRequest.id, actor: resolution.actor, approved },
+      });
 
       return {
         status: "success",
@@ -572,6 +656,7 @@ export function createCallerApprovalAdapter(caller: Caller): SkillAdapter {
 }
 
 export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunLocalSkillResult> {
+  const runId = options.resumeFromRunId ?? uniqueReceiptId("rx");
   const resolvedSkill = await resolveSkillReference(options.skillPath);
   const rawMarkdown = await readFile(resolvedSkill.skillPath, "utf8");
   const rawSkill = parseSkillMarkdown(rawMarkdown);
@@ -593,11 +678,14 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
   });
 
   const inputResolution = await resolveInputs(skill, options);
-  if (inputResolution.status === "missing_context") {
+  if (inputResolution.status === "needs_resolution") {
     return {
-      status: "missing_context",
+      status: "needs_resolution",
+      skill,
       skillPath: resolvedSkill.skillPath,
-      questions: inputResolution.questions,
+      inputs: options.inputs ?? {},
+      runId,
+      requests: [inputResolution.request],
     };
   }
 
@@ -620,38 +708,24 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
     allowedSourceTypes: options.allowedSourceTypes,
     authResolver: options.authResolver,
     receiptMetadata: options.receiptMetadata,
-    resumeFromRunId: options.resumeFromRunId,
+    resumeFromRunId: runId,
     skillPathForMissingContext: resolvedSkill.skillPath,
   });
 
-  if (result.status === "needs_agent") {
+  if (result.status === "needs_resolution") {
     await appendPendingSkillJournalEntries({
       receiptDir: options.receiptDir ?? defaultReceiptDir(options.env),
       runId: result.runId,
       skill,
       startedAt: new Date().toISOString(),
-      kind: "agent_requested",
+      kind: "resolution_requested",
       detail: {
+        skill_path: resolvedSkill.requestedPath,
         selected_runner: runnerSelection.selectedRunnerName,
         request_ids: result.requests.map((request) => request.id),
+        resolution_kinds: Array.from(new Set(result.requests.map((request) => request.kind))),
         step_ids: result.stepIds ?? [],
-        inputs: result.inputs,
-      },
-      includeRunStarted: !options.resumeFromRunId,
-    });
-  }
-
-  if (result.status === "needs_approval") {
-    await appendPendingSkillJournalEntries({
-      receiptDir: options.receiptDir ?? defaultReceiptDir(options.env),
-      runId: result.runId,
-      skill,
-      startedAt: new Date().toISOString(),
-      kind: "approval_requested",
-      detail: {
-        selected_runner: runnerSelection.selectedRunnerName,
-        gate_ids: result.gates.map((gate) => gate.id),
-        step_ids: result.stepIds ?? [],
+        step_labels: result.stepLabels ?? [],
         inputs: result.inputs,
       },
       includeRunStarted: !options.resumeFromRunId,
@@ -724,6 +798,11 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
   });
 
   if (skill.source.type === "chain" && skill.source.chain) {
+    await options.caller.report({
+      type: "executing",
+      message: "Executing chain skill source.",
+    });
+
     const chainResult = await runLocalChain({
       chain: materializeInlineChain(skill),
       chainDirectory: options.skillDirectory,
@@ -743,11 +822,16 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
       resumeFromRunId: options.resumeFromRunId,
     });
 
-    if (chainResult.status === "missing_context") {
+    if (chainResult.status === "needs_resolution") {
       return {
-        status: "missing_context",
+        status: "needs_resolution",
+        skill,
         skillPath: options.skillPathForMissingContext ?? options.skillDirectory,
-        questions: chainResult.questions,
+        inputs: options.inputs,
+        runId: chainResult.runId,
+        requests: chainResult.requests,
+        stepIds: chainResult.stepIds,
+        stepLabels: chainResult.stepLabels,
       };
     }
 
@@ -756,28 +840,6 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
         status: "policy_denied",
         skill,
         reasons: chainResult.reasons,
-      };
-    }
-
-    if (chainResult.status === "needs_agent") {
-      return {
-        status: "needs_agent",
-        skill,
-        inputs: options.inputs,
-        runId: chainResult.runId,
-        requests: chainResult.requests,
-        stepIds: chainResult.stepIds,
-      };
-    }
-
-    if (chainResult.status === "needs_approval") {
-      return {
-        status: "needs_approval",
-        skill,
-        inputs: options.inputs,
-        runId: chainResult.runId,
-        gates: chainResult.gates,
-        stepIds: chainResult.stepIds,
       };
     }
 
@@ -796,6 +858,14 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
         error: chainResult.errorMessage ?? "chain execution failed",
       });
     }
+
+    await options.caller.report({
+      type: "completed",
+      message: `Skill execution ${chainResult.status}.`,
+      data: {
+        receiptId: chainResult.receipt.id,
+      },
+    });
 
     return {
       status: chainResult.status,
@@ -870,23 +940,14 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     contextProvenance: preparedAgentContext.provenance,
   });
 
-  if (execution.status === "needs_agent") {
+  if (execution.status === "needs_resolution") {
     return {
-      status: "needs_agent",
+      status: "needs_resolution",
       skill,
+      skillPath: options.skillPathForMissingContext ?? options.skillDirectory,
       inputs: options.inputs,
       runId,
       requests: [execution.request],
-    };
-  }
-
-  if (execution.status === "needs_approval") {
-    return {
-      status: "needs_approval",
-      skill,
-      inputs: options.inputs,
-      runId,
-      gates: [execution.gate],
     };
   }
 
@@ -990,19 +1051,29 @@ async function approveSandboxEscalationIfNeeded(skill: ValidatedSkill, caller: C
     },
   };
   await caller.report({
-    type: "approval_requested",
+    type: "resolution_requested",
     message: gate.reason,
     data: {
+      kind: "approval",
+      requestId: gate.id,
       gate,
     },
   });
-  const approved = await caller.approve(gate);
+  const resolution = await resolveCallerRequest(caller, {
+    id: gate.id,
+    kind: "approval",
+    gate,
+  });
+  const approved = typeof resolution?.payload === "boolean" ? resolution.payload : false;
   await caller.report({
-    type: "approval_resolved",
+    type: "resolution_resolved",
     message: approved ? `Approval ${gate.id} approved.` : `Approval ${gate.id} denied.`,
     data: {
+      kind: "approval",
+      requestId: gate.id,
       gate,
       approved,
+      actor: resolution?.actor ?? "human",
     },
   });
   return {
@@ -1089,7 +1160,7 @@ async function resolveSkillRunner(
     if (!runnerName) {
       return { skill };
     }
-    throw new Error(`Runner '${runnerName}' requested but no x.yaml or ${skill.name}.x.yaml was found for skill '${skill.name}'.`);
+    throw new Error(`Runner '${runnerName}' requested but no x.yaml was found for skill '${skill.name}'.`);
   }
 
   const manifestContents = await readFile(manifestPath, "utf8");
@@ -1157,36 +1228,36 @@ function applyRunner(skill: ValidatedSkill, runner: SkillRunnerDefinition): Vali
 
 async function resolveSkillReference(skillPath: string): Promise<ResolvedSkillReference> {
   const requestedPath = path.resolve(skillPath);
+  if (!(await pathExists(requestedPath))) {
+    throw new Error(`Skill package not found: ${requestedPath}`);
+  }
   const referenceStat = await stat(requestedPath);
 
   if (referenceStat.isDirectory()) {
+    const skillMarkdownPath = path.join(requestedPath, "SKILL.md");
+    if (!(await pathExists(skillMarkdownPath))) {
+      throw new Error(`Skill package '${requestedPath}' is missing SKILL.md.`);
+    }
     return {
       requestedPath,
-      skillPath: path.join(requestedPath, "SKILL.md"),
+      skillPath: skillMarkdownPath,
       skillDirectory: requestedPath,
-      xManifestCandidates: [
-        path.join(requestedPath, "x.yaml"),
-        path.join(path.dirname(requestedPath), `${path.basename(requestedPath)}.x.yaml`),
-      ],
+      xManifestCandidates: [path.join(requestedPath, "x.yaml")],
     };
   }
 
   const skillDirectory = path.dirname(requestedPath);
-  const skillName = path.basename(requestedPath, path.extname(requestedPath));
   const skillFileName = path.basename(requestedPath).toLowerCase();
+  if (skillFileName !== "skill.md") {
+    throw new Error(
+      `Skill references must point to a skill package directory or SKILL.md. Flat markdown files are not supported: ${requestedPath}`,
+    );
+  }
   return {
     requestedPath,
     skillPath: requestedPath,
     skillDirectory,
-    xManifestCandidates:
-      skillFileName === "skill.md"
-        ? [
-            path.join(skillDirectory, "x.yaml"),
-            path.join(path.dirname(skillDirectory), `${path.basename(skillDirectory)}.x.yaml`),
-          ]
-        : [
-            path.join(skillDirectory, `${skillName}.x.yaml`),
-          ],
+    xManifestCandidates: [path.join(skillDirectory, "x.yaml")],
   };
 }
 
@@ -1382,7 +1453,7 @@ async function appendPendingSkillJournalEntries(options: {
   readonly runId: string;
   readonly skill: ValidatedSkill;
   readonly startedAt: string;
-  readonly kind: "agent_requested" | "approval_requested";
+  readonly kind: "resolution_requested";
   readonly detail: Readonly<Record<string, unknown>>;
   readonly includeRunStarted?: boolean;
 }): Promise<void> {
@@ -1470,7 +1541,7 @@ async function appendPendingChainJournalEntry(options: {
   readonly runId: string;
   readonly topLevelSkillName: string;
   readonly stepId: string;
-  readonly kind: "step_waiting_agent" | "step_waiting_approval";
+  readonly kind: "step_waiting_resolution";
   readonly detail: Readonly<Record<string, unknown>>;
   readonly createdAt: string;
 }): Promise<void> {
@@ -1677,7 +1748,7 @@ function hydrateChainFromJournal(options: {
       });
       break;
     }
-    if (event.data.kind === "step_waiting_agent" || event.data.kind === "step_waiting_approval") {
+    if (event.data.kind === "step_waiting_resolution") {
       break;
     }
     break;
@@ -1951,9 +2022,9 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       }));
 
       const fanoutResults = await runFanout(branchTasks);
-      const pendingAgentRequests: AgentWorkRequest[] = [];
-      const pendingApprovalGates: ApprovalGate[] = [];
+      const pendingResolutionRequests: ResolutionRequest[] = [];
       const pendingStepIds: string[] = [];
+      const pendingStepLabels: string[] = [];
 
       // Apply results to state machine in declaration order
       for (let i = 0; i < branchPreps.length; i++) {
@@ -1976,49 +2047,49 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
 
         const stepResult = result.value;
 
-        if (stepResult.status === "needs_agent") {
-          pendingAgentRequests.push(...stepResult.requests);
+        if (stepResult.status === "needs_resolution") {
+          pendingResolutionRequests.push(...stepResult.requests);
           pendingStepIds.push(prep.step.id);
+          pendingStepLabels.push(prep.step.label ?? prep.step.id);
+          await reportChainStepWaitingResolution(
+            options.caller,
+            prep.step,
+            prep.stepReference,
+            stepResult.requests,
+          );
           await appendPendingChainJournalEntry({
             receiptDir,
             runId: chainId,
             topLevelSkillName: chainProducerSkillName(options, chain),
             stepId: prep.step.id,
-            kind: "step_waiting_agent",
+            kind: "step_waiting_resolution",
             detail: {
               request_ids: stepResult.requests.map((request) => request.id),
+              resolution_kinds: Array.from(new Set(stepResult.requests.map((request) => request.kind))),
               runner: chainStepRunner(prep.step) ?? "default",
+              step_label: prep.step.label,
             },
             createdAt: new Date().toISOString(),
           });
           continue;
         }
 
-        if (stepResult.status === "needs_approval") {
-          pendingApprovalGates.push(...stepResult.gates);
-          pendingStepIds.push(prep.step.id);
-          await appendPendingChainJournalEntry({
-            receiptDir,
-            runId: chainId,
-            topLevelSkillName: chainProducerSkillName(options, chain),
-            stepId: prep.step.id,
-            kind: "step_waiting_approval",
-            detail: {
-              gate_ids: stepResult.gates.map((gate) => gate.id),
-              runner: chainStepRunner(prep.step) ?? "default",
-            },
-            createdAt: new Date().toISOString(),
-          });
-          continue;
-        }
-
-        // In fanout, missing_context and policy_denied are branch failures, not chain halts
-        if (stepResult.status === "missing_context" || stepResult.status === "policy_denied") {
+        // In fanout, policy_denied is a branch failure, not a chain halt.
+        if (stepResult.status === "policy_denied") {
           state = transitionSequentialChain(state, {
             type: "start_step",
             stepId: prep.step.id,
             at: new Date().toISOString(),
           });
+          await reportChainStepCompleted(
+            options.caller,
+            prep.step,
+            prep.stepReference,
+            "failure",
+            {
+              reason: `policy denied: ${stepResult.reasons.join("; ")}`,
+            },
+          );
           await appendJournalEntries({
             receiptDir,
             runId: chainId,
@@ -2033,10 +2104,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
                 kind: "step_failed",
                 status: "failure",
                 detail: {
-                  reason:
-                    stepResult.status === "missing_context"
-                      ? `missing context: ${stepResult.questions.map((q) => q.id).join(", ")}`
-                      : `policy denied: ${stepResult.reasons.join("; ")}`,
+                  reason: `policy denied: ${stepResult.reasons.join("; ")}`,
                 },
               }),
             ],
@@ -2044,9 +2112,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
           state = transitionSequentialChain(state, {
             type: "step_failed", stepId: prep.step.id,
             at: new Date().toISOString(),
-            error: stepResult.status === "missing_context"
-              ? `missing context: ${stepResult.questions.map((q) => q.id).join(", ")}`
-              : `policy denied: ${stepResult.reasons.join("; ")}`,
+            error: `policy denied: ${stepResult.reasons.join("; ")}`,
           });
           continue;
         }
@@ -2057,6 +2123,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
           stepId: prep.step.id,
           at: stepStartedAt,
         });
+        await reportChainStepStarted(options.caller, prep.step, prep.stepReference);
         await appendJournalEntries({
           receiptDir,
           runId: chainId,
@@ -2147,31 +2214,26 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
               at: stepCompletedAt,
               error: stepResult.execution.errorMessage ?? stepResult.execution.stderr,
             });
+        await reportChainStepCompleted(
+          options.caller,
+          prep.step,
+          prep.stepReference,
+          stepResult.status,
+          {
+            receiptId: stepResult.receipt.id,
+          },
+        );
       }
 
-      if (pendingAgentRequests.length > 0 && pendingApprovalGates.length > 0) {
-        throw new Error("fanout yielded both agent requests and approval gates; split the mediation boundary.");
-      }
-      if (pendingApprovalGates.length > 0) {
+      if (pendingResolutionRequests.length > 0) {
         return {
-          status: "needs_approval",
+          status: "needs_resolution",
           chain,
           stepIds: pendingStepIds,
+          stepLabels: pendingStepLabels,
           skillPath: branchPreps.find((prep) => pendingStepIds.includes(prep.step.id))?.stepSkillPath ?? chainDirectory,
           skill: branchPreps.find((prep) => pendingStepIds.includes(prep.step.id))?.stepSkill ?? branchPreps[0]!.stepSkill,
-          gates: pendingApprovalGates,
-          state,
-          runId: chainId,
-        };
-      }
-      if (pendingAgentRequests.length > 0) {
-        return {
-          status: "needs_agent",
-          chain,
-          stepIds: pendingStepIds,
-          skillPath: branchPreps.find((prep) => pendingStepIds.includes(prep.step.id))?.stepSkillPath ?? chainDirectory,
-          skill: branchPreps.find((prep) => pendingStepIds.includes(prep.step.id))?.stepSkill ?? branchPreps[0]!.stepSkill,
-          requests: pendingAgentRequests,
+          requests: pendingResolutionRequests,
           state,
           runId: chainId,
         };
@@ -2330,23 +2392,32 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       currentContext: context,
     });
 
-    if (stepResult.status === "needs_agent") {
+    if (stepResult.status === "needs_resolution") {
+      await reportChainStepWaitingResolution(
+        options.caller,
+        step,
+        resolvedStep.reference,
+        stepResult.requests,
+      );
       await appendPendingChainJournalEntry({
         receiptDir,
         runId: chainId,
         topLevelSkillName: chainProducerSkillName(options, chain),
         stepId: step.id,
-        kind: "step_waiting_agent",
+        kind: "step_waiting_resolution",
         detail: {
           request_ids: stepResult.requests.map((request) => request.id),
+          resolution_kinds: Array.from(new Set(stepResult.requests.map((request) => request.kind))),
           runner: chainStepRunner(step) ?? "default",
+          step_label: step.label,
         },
         createdAt: new Date().toISOString(),
       });
       return {
-        status: "needs_agent",
+        status: "needs_resolution",
         chain,
         stepIds: [step.id],
+        stepLabels: [step.label ?? step.id],
         skillPath: stepSkillPath,
         skill: stepSkill,
         requests: stepResult.requests,
@@ -2355,62 +2426,10 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       };
     }
 
-    if (stepResult.status === "needs_approval") {
-      await appendPendingChainJournalEntry({
-        receiptDir,
-        runId: chainId,
-        topLevelSkillName: chainProducerSkillName(options, chain),
-        stepId: step.id,
-        kind: "step_waiting_approval",
-        detail: {
-          gate_ids: stepResult.gates.map((gate) => gate.id),
-          runner: chainStepRunner(step) ?? "default",
-        },
-        createdAt: new Date().toISOString(),
-      });
-      return {
-        status: "needs_approval",
-        chain,
-        stepIds: [step.id],
-        skillPath: stepSkillPath,
-        skill: stepSkill,
-        gates: stepResult.gates,
-        state,
-        runId: chainId,
-      };
-    }
-
-    if (stepResult.status === "missing_context") {
-      await appendJournalEntries({
-        receiptDir,
-        runId: chainId,
-        entries: [
-          createRunEventEntry({
-            runId: chainId,
-            stepId: step.id,
-            producer: {
-              skill: chainProducerSkillName(options, chain),
-              runner: "chain",
-            },
-            kind: "step_failed",
-            status: "failure",
-            detail: {
-              reason: `missing context: ${stepResult.questions.map((question) => question.id).join(", ")}`,
-            },
-          }),
-        ],
-      });
-      return {
-        status: "missing_context",
-        chain,
-        stepId: step.id,
-        skillPath: stepSkillPath,
-        questions: stepResult.questions,
-        state,
-      };
-    }
-
     if (stepResult.status === "policy_denied") {
+      await reportChainStepCompleted(options.caller, step, resolvedStep.reference, "failure", {
+        reason: `policy denied: ${stepResult.reasons.join("; ")}`,
+      });
       await appendJournalEntries({
         receiptDir,
         runId: chainId,
@@ -2446,6 +2465,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       stepId: step.id,
       at: stepStartedAt,
     });
+    await reportChainStepStarted(options.caller, step, resolvedStep.reference);
     await appendJournalEntries({
       receiptDir,
       runId: chainId,
@@ -2542,6 +2562,9 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
             at: stepCompletedAt,
             error: stepResult.execution.errorMessage ?? stepResult.execution.stderr,
           });
+    await reportChainStepCompleted(options.caller, step, resolvedStep.reference, stepResult.status, {
+      receiptId: stepResult.receipt.id,
+    });
   }
 
   const completedAt = new Date().toISOString();
@@ -2646,10 +2669,21 @@ export async function listLocalHistory(options: ListLocalHistoryOptions = {}): P
     options.receiptDir ?? defaultReceiptDir(options.env),
     options.runxHome ?? options.env?.RUNX_HOME,
   );
+  const normalizedQuery = options.query?.trim().toLowerCase();
   return {
     receipts: receipts
-      .slice(0, options.limit ?? receipts.length)
-      .map(({ receipt, verification }) => summarizeLocalReceipt(receipt, verification)),
+      .map(({ receipt, verification }) => summarizeLocalReceipt(receipt, verification))
+      .filter((summary) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+        return (
+          summary.name.toLowerCase().includes(normalizedQuery) ||
+          summary.id.toLowerCase().includes(normalizedQuery) ||
+          (summary.sourceType?.toLowerCase().includes(normalizedQuery) ?? false)
+        );
+      })
+      .slice(0, options.limit ?? receipts.length),
   };
 }
 
@@ -3441,18 +3475,27 @@ function buildApprovalGate(request: Parameters<SkillAdapter["invoke"]>[0]): Appr
   };
 }
 
+function buildInputResolutionRequest(skill: ValidatedSkill, questions: readonly Question[]): ResolutionRequest {
+  return {
+    id: `input.${normalizeQuestionId(skill.name)}.${questions.map((question) => question.id).join(".")}`,
+    kind: "input",
+    questions,
+  };
+}
+
 async function resolveInputs(
   skill: ValidatedSkill,
   options: RunLocalSkillOptions,
 ): Promise<
   | { readonly status: "resolved"; readonly inputs: Readonly<Record<string, unknown>> }
-  | { readonly status: "missing_context"; readonly questions: readonly Question[] }
+  | { readonly status: "needs_resolution"; readonly request: ResolutionRequest }
 > {
   const answers = options.answersPath ? await readAnswersFile(options.answersPath) : {};
   const resolved: Record<string, unknown> = {};
   const resumedInputs = options.resumeFromRunId
     ? await readResumedInputs(options.receiptDir ?? defaultReceiptDir(options.env), options.resumeFromRunId)
     : {};
+  const providedInputs = normalizeDeclaredInputAliases(skill.inputs, options.inputs ?? {});
 
   for (const [key, input] of Object.entries(skill.inputs)) {
     if (input.default !== undefined) {
@@ -3462,7 +3505,7 @@ async function resolveInputs(
 
   assignDefined(resolved, resumedInputs);
   assignDefined(resolved, answers);
-  assignDefined(resolved, options.inputs ?? {});
+  assignDefined(resolved, providedInputs);
 
   const missing = missingRequiredInputs(skill.inputs, resolved);
   if (missing.length === 0) {
@@ -3472,14 +3515,29 @@ async function resolveInputs(
     };
   }
 
-  const callerAnswers = await options.caller.answer(missing);
-  Object.assign(resolved, callerAnswers);
+  const request = buildInputResolutionRequest(skill, missing);
+  await options.caller.report({
+    type: "resolution_requested",
+    message: `Resolution requested for ${request.id}.`,
+    data: { kind: request.kind, requestId: request.id },
+  });
+  const resolution = await resolveCallerRequest(options.caller, request);
+  if (resolution && isRecord(resolution.payload)) {
+    Object.assign(resolved, resolution.payload);
+  }
+  if (resolution !== undefined) {
+    await options.caller.report({
+      type: "resolution_resolved",
+      message: `Resolution satisfied for ${request.id}.`,
+      data: { kind: request.kind, requestId: request.id, actor: resolution.actor },
+    });
+  }
 
   const stillMissing = missingRequiredInputs(skill.inputs, resolved);
   if (stillMissing.length > 0) {
     return {
-      status: "missing_context",
-      questions: stillMissing,
+      status: "needs_resolution",
+      request: buildInputResolutionRequest(skill, stillMissing),
     };
   }
 
@@ -3487,6 +3545,39 @@ async function resolveInputs(
     status: "resolved",
     inputs: resolved,
   };
+}
+
+function normalizeDeclaredInputAliases(
+  declaredInputs: Readonly<Record<string, SkillInput>>,
+  providedInputs: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  const normalized: Record<string, unknown> = {};
+  const providedKeys = new Set(Object.keys(providedInputs));
+  for (const [key, value] of Object.entries(providedInputs)) {
+    const targetKey = resolveDeclaredInputAliasKey(declaredInputs, key);
+    if (targetKey !== key && providedKeys.has(targetKey)) {
+      continue;
+    }
+    normalized[targetKey] = value;
+  }
+  return normalized;
+}
+
+function resolveDeclaredInputAliasKey(
+  declaredInputs: Readonly<Record<string, SkillInput>>,
+  key: string,
+): string {
+  if (declaredInputs[key] !== undefined) {
+    return key;
+  }
+  const snakeCase = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/-/g, "_")
+    .toLowerCase();
+  if (snakeCase !== key && declaredInputs[snakeCase] !== undefined) {
+    return snakeCase;
+  }
+  return key;
 }
 
 async function readResumedInputs(receiptDir: string, runId: string): Promise<Record<string, unknown>> {
@@ -3498,7 +3589,7 @@ async function readResumedInputs(receiptDir: string, runId: string): Promise<Rec
     }
     const kind = typeof entry.data.kind === "string" ? entry.data.kind : "";
     const detail = isPlainRecord(entry.data.detail) ? entry.data.detail : undefined;
-    if (!detail || (kind !== "agent_requested" && kind !== "approval_requested")) {
+    if (!detail || kind !== "resolution_requested") {
       continue;
     }
     if (isPlainRecord(detail.inputs)) {
@@ -3517,7 +3608,7 @@ async function readResumedSelectedRunner(receiptDir: string, runId: string): Pro
     }
     const kind = typeof entry.data.kind === "string" ? entry.data.kind : "";
     const detail = isPlainRecord(entry.data.detail) ? entry.data.detail : undefined;
-    if (!detail || (kind !== "agent_requested" && kind !== "approval_requested")) {
+    if (!detail || kind !== "resolution_requested") {
       continue;
     }
     return typeof detail.selected_runner === "string" ? detail.selected_runner : undefined;

@@ -15,22 +15,22 @@ steps:
   - id: market
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/json-output.md
+    skill: ../../skills/json-output
     inputs:
       recommendation: go
       confidence: 0.9
   - id: risk
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/json-output.md
+    skill: ../../skills/json-output
     inputs:
       recommendation: go
       risk_score: 0.4
   - id: finance
     mode: fanout
     fanout_group: advisors
-    skill: ../../skills/failing.md
+    skill: ../../skills/failing
   - id: synthesize
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     context:
       message: market.recommendation

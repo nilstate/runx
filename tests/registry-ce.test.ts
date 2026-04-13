@@ -56,8 +56,8 @@ describe("registry CE", () => {
         x_digest: version.x_digest,
         runner_names: ["agent", "sourcey"],
         source_type: "agent",
-        install_command: "runx skill add 0state/sourcey@1.0.0 --registry https://runx.example.test",
-        run_command: "runx skill sourcey",
+        install_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+        run_command: "runx sourcey",
       });
       expect(page?.trust_signals).toEqual(trustSignals);
       expect(page?.versions).toEqual([
@@ -79,7 +79,7 @@ describe("registry CE", () => {
           runner_mode: "x-manifest",
           runner_names: ["agent", "sourcey"],
           x_digest: version.x_digest,
-          add_command: "runx skill add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+          add_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
         }),
       ]);
 
@@ -90,8 +90,8 @@ describe("registry CE", () => {
         version: "1.0.0",
         digest: version.digest,
         registry_url: "https://runx.example.test",
-        install_command: "runx skill add 0state/sourcey@1.0.0 --registry https://runx.example.test",
-        run_command: "runx skill sourcey",
+        install_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+        run_command: "runx sourcey",
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });

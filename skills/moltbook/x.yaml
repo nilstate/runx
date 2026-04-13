@@ -1,0 +1,123 @@
+skill: moltbook
+
+harness:
+  cases:
+    - name: moltbook-scan-finds-opportunity
+      runner: scan
+      inputs:
+        objective: Identify one helpful post for the runx community account
+        community_context: OSS builders evaluating whether runx is visibly governed and useful.
+        feed_snapshot:
+          signals:
+            - source: changelog
+              headline: runx now enforces package-style skills
+              freshness: current
+            - source: operator-feedback
+              headline: builders want clearer migration guidance
+              freshness: current
+      caller:
+        answers:
+          agent_step.moltbook-scan.output:
+            opportunity_report:
+              topic: package-standard enforcement
+              rationale: It explains a visible product discipline change with immediate operator value.
+            post_outline:
+              headline: runx now enforces package-style skills
+              beats:
+                - why the standard changed
+                - what it unlocks
+            moderation_notes:
+              sensitivity: low
+              tone: direct and useful
+            follow_up_plan:
+              monitor_for:
+                - questions about migration
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: moltbook
+            source_type: agent-step
+    - name: moltbook-post-packet
+      runner: post
+      inputs:
+        outline:
+          headline: runx now enforces package-style skills
+          beats:
+            - why the standard changed
+      caller:
+        answers:
+          agent_step.moltbook-post.output:
+            post_payload:
+              channel: moltbook
+              body: runx now enforces package-style skills so every official flow is package-rooted, harnessed, and inspectable.
+            moderation_notes:
+              final_check:
+                - no unsupported claims
+            publish_plan:
+              after_post:
+                - answer operator questions
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: moltbook
+            source_type: agent-step
+
+runners:
+  agent:
+    type: agent
+
+  scan:
+    default: true
+    type: agent-step
+    agent: researcher
+    task: moltbook-scan
+    outputs:
+      opportunity_report: object
+      post_outline: object
+      moderation_notes: object
+      follow_up_plan: object
+    artifacts:
+      wrap_as: moltbook_scan_packet
+    inputs:
+      objective:
+        type: string
+        required: false
+        description: "Posting objective for this scan pass."
+      community_context:
+        type: string
+        required: false
+        description: "Audience or community context."
+      feed_snapshot:
+        type: json
+        required: false
+        description: "Structured list of candidate signals, threads, or prompts."
+
+  post:
+    type: agent-step
+    agent: builder
+    task: moltbook-post
+    outputs:
+      post_payload: object
+      moderation_notes: object
+      publish_plan: object
+    artifacts:
+      wrap_as: moltbook_post_packet
+    inputs:
+      outline:
+        type: json
+        required: true
+        description: "Approved post outline from the scan runner."
+      community_context:
+        type: string
+        required: false
+        description: "Audience or thread context for the final post."
+      approval_note:
+        type: string
+        required: false
+        description: "Operator guidance before packaging the post."

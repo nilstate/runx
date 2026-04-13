@@ -9,9 +9,13 @@ import { createFileRegistryStore, ingestSkillMarkdown } from "../packages/regist
 import { installLocalSkill, runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
 
 const caller: Caller = {
-  answer: async () => ({}),
-  resolveAgentResult: async (request) => ({ status: "agent", id: request.id }),
-  approve: async () => false,
+  resolve: async (request) =>
+    request.kind === "cognitive_work"
+      ? {
+          actor: "agent",
+          payload: { status: "agent", id: request.id },
+        }
+      : undefined,
   report: () => undefined,
 };
 
@@ -195,8 +199,8 @@ runners:
     tags: [],
     runner_mode: "x-manifest",
     runner_names: ["portable-cli"],
-    add_command: "runx skill add invalid-x:portable",
-    run_command: "runx skill portable",
+    add_command: "runx add invalid-x:portable",
+    run_command: "runx portable",
   };
   return {
     source: "invalid-x",

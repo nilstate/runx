@@ -1,5 +1,47 @@
 skill: improve-skill
 
+harness:
+  cases:
+    - name: improve-skill-produces-regression-fixtures
+      inputs:
+        receipt_id: rx_failed
+        receipt_summary: harness failed because required context was flattened
+        harness_output: needs_resolution
+        skill_path: skills/objective-to-skill
+        objective: Preserve structured review data in builder chains
+      caller:
+        answers:
+          agent_step.receipt-review.output:
+            verdict: needs_update
+            failure_summary: The review payload was consumed from stdout instead of an artifact envelope.
+            improvement_proposals:
+              - target: skills/improve-skill/x.yaml
+                change: read review-receipt.receipt_review.data in the harness-author step
+                rationale: Keep the review object structured for downstream planning.
+                risk: Low; only dependent tests need updating.
+            next_harness_checks:
+              - improve-skill passes structured review data
+          agent_step.harness-author.output:
+            skill_spec:
+              name: improve-skill
+            execution_plan:
+              runner: chain
+            harness_fixture:
+              - name: improve-skill-structured-review
+                kind: skill
+                target: ../improve-skill
+                inputs:
+                  receipt_summary: context flattened
+                expect:
+                  status: success
+            acceptance_checks:
+              - improve-skill passes structured review data
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+
 runners:
   improve-skill:
     default: true
@@ -38,4 +80,4 @@ runners:
           scopes:
             - runx:builder:write-proposal
           context:
-            review: review-receipt.stdout
+            review: review-receipt.receipt_review.data

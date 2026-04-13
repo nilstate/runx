@@ -26,7 +26,7 @@ describe("TypeScript SDK", () => {
       });
 
       const result = await sdk.runSkill({
-        skillPath: "fixtures/skills/echo.md",
+        skillPath: "fixtures/skills/echo",
       });
 
       expect(result.status).toBe("success");
@@ -52,23 +52,28 @@ describe("TypeScript SDK", () => {
     }
   });
 
-  it("returns structured missing-context questions without prompting", async () => {
+  it("returns structured resolution requests without prompting", async () => {
     const caller = createStructuredCaller();
     const sdk = createRunxSdk({
       env: { ...process.env, RUNX_CWD: process.cwd() },
       caller,
     });
 
-    const result = await sdk.runSkill({ skillPath: "fixtures/skills/echo.md" });
+    const result = await sdk.runSkill({ skillPath: "fixtures/skills/echo" });
 
-    expect(result.status).toBe("missing_context");
-    expect(caller.trace.questionBundles).toEqual([
-      [
-        expect.objectContaining({
-          id: "message",
-          type: "string",
+    expect(result.status).toBe("needs_resolution");
+    expect(caller.trace.resolutions).toEqual([
+      expect.objectContaining({
+        request: expect.objectContaining({
+          kind: "input",
+          questions: [
+            expect.objectContaining({
+              id: "message",
+              type: "string",
+            }),
+          ],
         }),
-      ],
+      }),
     ]);
   });
 

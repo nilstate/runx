@@ -125,7 +125,7 @@ export interface HarnessReceiptExpectation {
 }
 
 export interface HarnessExpectation {
-  readonly status?: "success" | "failure" | "missing_context" | "policy_denied" | "needs_agent" | "needs_approval";
+  readonly status?: "success" | "failure" | "needs_resolution" | "policy_denied";
   readonly receipt?: HarnessReceiptExpectation;
   readonly steps?: readonly string[];
 }
@@ -299,7 +299,10 @@ export function validateRunnerManifest(raw: RawRunnerManifestIR): SkillRunnerMan
       retry: validateSkillRetry(runner.retry ?? runx?.retry, `runners.${name}.retry`),
       idempotency: validateSkillIdempotency(runner.idempotency ?? runx?.idempotency, `runners.${name}.idempotency`),
       mutating: validateSkillMutation(runner.mutating ?? recordField(risk, "mutating") ?? runx?.mutating, `runners.${name}.mutating`),
-      artifacts: validateArtifactContract(recordField(runx, "artifacts"), `runners.${name}.runx.artifacts`),
+      artifacts: validateArtifactContract(
+        recordField(runner, "artifacts") ?? recordField(runx, "artifacts"),
+        `runners.${name}.artifacts`,
+      ),
       allowedTools: validateAllowedTools(
         recordField(runx, "allowed_tools") ?? recordField(runx, "allowedTools"),
         `runners.${name}.runx.allowed_tools`,
@@ -652,16 +655,12 @@ function optionalHarnessStatus(value: unknown, field: string): HarnessExpectatio
   if (
     value === "success" ||
     value === "failure" ||
-    value === "missing_context" ||
-    value === "policy_denied" ||
-    value === "needs_agent" ||
-    value === "needs_approval"
+    value === "needs_resolution" ||
+    value === "policy_denied"
   ) {
     return value;
   }
-  throw new SkillValidationError(
-    `${field} must be success, failure, missing_context, policy_denied, needs_agent, or needs_approval.`,
-  );
+  throw new SkillValidationError(`${field} must be success, failure, needs_resolution, or policy_denied.`);
 }
 
 function optionalHarnessReceiptStatus(value: unknown, field: string): HarnessReceiptExpectation["status"] {

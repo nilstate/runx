@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -42,16 +42,20 @@ describe("sourcey preflight", () => {
       status: string;
       requests: Array<{
         id: string;
-        envelope: {
-          skill: string;
-          allowed_tools: string[];
+        kind: string;
+        work?: {
+          envelope: {
+            skill: string;
+            allowed_tools: string[];
+          };
         };
       }>;
     };
-    expect(report.status).toBe("needs_agent");
+    expect(report.status).toBe("needs_resolution");
     expect(report.requests[0]?.id).toBe("agent_step.sourcey-discover.output");
-    expect(report.requests[0]?.envelope.skill).toBe("sourcey.discover");
-    expect(report.requests[0]?.envelope.allowed_tools).toEqual([
+    expect(report.requests[0]?.kind).toBe("cognitive_work");
+    expect(report.requests[0]?.work?.envelope.skill).toBe("sourcey.discover");
+    expect(report.requests[0]?.work?.envelope.allowed_tools).toEqual([
       "fs.read",
       "git.status",
       "git.current_branch",
@@ -100,7 +104,7 @@ describe("sourcey preflight", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("does not forward raw runx input environment into the Sourcey subprocess", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sourcey-env-"));
@@ -137,39 +141,105 @@ describe("sourcey preflight", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
+
+  it("runs config-mode builds from the config directory for default Sourcey config names", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sourcey-config-cwd-"));
+    const projectDir = path.join(tempDir, "project");
+    const docsDir = path.join(projectDir, "docs");
+    const sourceyStub = path.join(tempDir, "sourcey-stub.mjs");
+    const invocationPath = path.join(tempDir, "sourcey-invocation.json");
+    const outputDir = path.join(projectDir, ".sourcey", "runx-docs");
+
+    try {
+      await mkdir(docsDir, { recursive: true });
+      await writeFile(path.join(projectDir, "package.json"), JSON.stringify({ name: "sourcey-cwd-fixture" }, null, 2));
+      await writeFile(path.join(docsDir, "sourcey.config.ts"), "export default {};\n");
+      await writeSourceyStub(sourceyStub);
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/sourcey"),
+        inputs: {
+          project: projectDir,
+          output_dir: outputDir,
+          sourcey_bin: sourceyStub,
+        },
+        caller: createSourceyCaller({
+          brandName: "Sourcey Fixture",
+          homepageUrl: "https://sourcey.example.test",
+          configPath: "docs/sourcey.config.ts",
+        }),
+        env: {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          SOURCEY_STUB_INVOCATION_PATH: invocationPath,
+        },
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
+      });
+
+      expect(result.status).toBe("success");
+      const invocation = JSON.parse(await readFile(invocationPath, "utf8")) as { cwd: string; argv: string[] };
+      expect(invocation.cwd).toBe(docsDir);
+      expect(invocation.argv).toEqual(["build", "-o", outputDir, "--quiet"]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
 });
 
-function createSourceyCaller(overrides: { brandName: string; homepageUrl: string }): Caller {
+function createSourceyCaller(overrides: { brandName: string; homepageUrl: string; configPath?: string }): Caller {
   return {
-    answer: async () => ({}),
-    approve: async () => false,
-    resolveApproval: async (gate) => (gate.id === "sourcey.discovery.approval" ? true : undefined),
-    resolveAgentResult: async (request) => {
-      if (request.envelope.skill === "sourcey.discover") {
+    resolve: async (request) => {
+      if (request.kind === "approval") {
+        return request.gate.id === "sourcey.discovery.approval" ? { actor: "human", payload: true } : undefined;
+      }
+      if (request.kind !== "cognitive_work") {
+        return undefined;
+      }
+      if (request.work.envelope.skill === "sourcey.discover") {
         return {
+          actor: "agent",
+          payload: {
           discovery_report: {
-            brand_name: overrides.brandName,
-            homepage_url: overrides.homepageUrl,
-            docs_inputs: {
-              mode: "config",
-              config: "sourcey.config.ts",
+            discovered: {
+              brand_name: overrides.brandName,
+              homepage_url: overrides.homepageUrl,
+              docs_inputs: {
+                mode: "config",
+                config: overrides.configPath || "sourcey.config.ts",
+              },
             },
             confidence: "high",
             rationale: ["existing Sourcey fixture already contains configuration and authored pages"],
           },
+          },
         };
       }
-      if (request.envelope.skill === "sourcey.author") {
+      if (request.work.envelope.skill === "sourcey.author") {
         return {
+          actor: "agent",
+          payload: {
           doc_bundle: {
             files: [],
             summary: "Existing Sourcey fixture already contains the required docs source bundle.",
           },
+          },
         };
       }
-      if (request.envelope.skill === "sourcey.critique") {
+      if (request.work.envelope.skill === "sourcey.critique") {
+        const buildReport = request.work.envelope.current_context.find(
+          (artifact) => artifact.type === "sourcey_build_report",
+        )?.data;
+        expect(buildReport).toMatchObject({
+          generated: true,
+          generated_files: ["index.html"],
+          index_title: "Sourcey Fixture",
+          index_excerpt: "Sourcey Fixture",
+        });
         return {
+          actor: "agent",
+          payload: {
           evaluation_report: {
             verdict: "pass",
             grounding: "strong",
@@ -177,17 +247,21 @@ function createSourceyCaller(overrides: { brandName: string; homepageUrl: string
             navigation: "strong",
             obvious_gaps: [],
           },
+          },
         };
       }
-      if (request.envelope.skill === "sourcey.revise") {
+      if (request.work.envelope.skill === "sourcey.revise") {
         return {
+          actor: "agent",
+          payload: {
           revision_bundle: {
             files: [],
             summary: "No revision required for the existing Sourcey fixture.",
           },
+          },
         };
       }
-      throw new Error(`Unexpected agent step ${request.envelope.skill}`);
+      throw new Error(`Unexpected agent step ${request.work.envelope.skill}`);
     },
     report: () => undefined,
   };
@@ -197,6 +271,9 @@ async function writeSourceyStub(stubPath: string, envCapturePath?: string): Prom
   const lines = [
     'import { mkdirSync, writeFileSync } from "node:fs";',
     'import { join } from "node:path";',
+    'if (process.env.SOURCEY_STUB_INVOCATION_PATH) {',
+    '  writeFileSync(process.env.SOURCEY_STUB_INVOCATION_PATH, JSON.stringify({ cwd: process.cwd(), argv: process.argv.slice(2) }));',
+    '}',
     'const outputFlag = process.argv.indexOf("-o");',
     'const outputDir = outputFlag === -1 ? "dist" : process.argv[outputFlag + 1];',
     'mkdirSync(outputDir, { recursive: true });',

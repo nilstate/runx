@@ -18,10 +18,9 @@ export interface IdeActionCoreOptions extends RunxSdkOptions {
 
 export interface IdeActionResult<T = unknown> {
   readonly action: string;
-  readonly status: "success" | "missing_context" | "policy_denied" | "failure" | "error";
+  readonly status: "success" | "needs_resolution" | "policy_denied" | "failure" | "error";
   readonly data?: T;
-  readonly questions: readonly unknown[];
-  readonly approvals: readonly unknown[];
+  readonly resolutions: readonly unknown[];
   readonly events: readonly unknown[];
   readonly error?: string;
 }
@@ -82,16 +81,14 @@ async function wrapAction<T>(
       action,
       status: normalizeStatus(isRecord(data) && typeof data.status === "string" ? data.status : undefined),
       data,
-      questions: caller?.trace.questionBundles ?? [],
-      approvals: caller?.trace.approvals ?? [],
+      resolutions: caller?.trace.resolutions ?? [],
       events: caller?.trace.events ?? [],
     };
   } catch (error) {
     return {
       action,
       status: "error",
-      questions: caller?.trace.questionBundles ?? [],
-      approvals: caller?.trace.approvals ?? [],
+      resolutions: caller?.trace.resolutions ?? [],
       events: caller?.trace.events ?? [],
       error: error instanceof Error ? error.message : String(error),
     };
@@ -99,7 +96,7 @@ async function wrapAction<T>(
 }
 
 function normalizeStatus(status: string | undefined): IdeActionResult["status"] {
-  if (status === "success" || status === "missing_context" || status === "policy_denied" || status === "failure") {
+  if (status === "success" || status === "needs_resolution" || status === "policy_denied" || status === "failure") {
     return status;
   }
   return "success";

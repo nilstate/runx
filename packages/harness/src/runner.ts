@@ -17,11 +17,10 @@ import {
   runLocalSkill,
   type Caller,
   type ExecutionEvent,
-  type Question,
   type RunLocalChainResult,
   type RunLocalSkillResult,
 } from "../../runner-local/src/index.js";
-import type { AgentWorkRequest } from "../../executor/src/index.js";
+import type { ResolutionRequest, ResolutionResponse } from "../../executor/src/index.js";
 
 type HarnessKind = "skill" | "chain";
 
@@ -42,9 +41,10 @@ export interface HarnessRunOptions {
 }
 
 export interface CallerTrace {
-  readonly questions: readonly Question[];
-  readonly agentRequests: readonly AgentWorkRequest[];
-  readonly approvals: readonly string[];
+  readonly resolutions: readonly {
+    readonly request: ResolutionRequest;
+    readonly response?: ResolutionResponse;
+  }[];
   readonly events: readonly ExecutionEvent[];
 }
 
@@ -279,17 +279,8 @@ async function resolveInlineHarnessTarget(targetPath: string): Promise<ResolvedI
       xManifestPath,
     };
   }
-  if (basename.endsWith(".x.yaml")) {
-    const stem = basename.slice(0, -".x.yaml".length);
-    const skillPath = path.join(path.dirname(resolvedTargetPath), `${stem}.md`);
-    await stat(skillPath);
-    return {
-      skillPath,
-      xManifestPath: resolvedTargetPath,
-    };
-  }
 
-  throw new Error(`Inline harness target must be a skill directory, x.yaml, *.x.yaml, or SKILL.md: ${resolvedTargetPath}`);
+  throw new Error(`Inline harness target must be a skill directory, x.yaml, or SKILL.md: ${resolvedTargetPath}`);
 }
 
 function isInlineHarnessTarget(targetPath: string, targetStat: Awaited<ReturnType<typeof stat>>): boolean {
@@ -297,7 +288,7 @@ function isInlineHarnessTarget(targetPath: string, targetStat: Awaited<ReturnTyp
     return true;
   }
   const basename = path.basename(targetPath).toLowerCase();
-  return basename === "x.yaml" || basename === "skill.md" || basename.endsWith(".x.yaml");
+  return basename === "x.yaml" || basename === "skill.md";
 }
 
 function assertHarnessResult(
@@ -341,37 +332,45 @@ function assertHarnessResult(
 
 function createTrace(): CallerTrace {
   return {
-    questions: [],
-    agentRequests: [],
-    approvals: [],
+    resolutions: [],
     events: [],
   };
 }
 
 function createReplayCaller(fixture: HarnessCallerFixture, trace: CallerTrace): Caller {
   return {
-    answer: async (questions) => {
-      (trace.questions as Question[]).push(...questions);
-      return Object.fromEntries(questions.map((question) => [question.id, fixture.answers?.[question.id]]));
-    },
-    approve: async (gate) => {
-      (trace.approvals as string[]).push(gate.id);
-      return fixture.approvals?.[gate.id] ?? false;
-    },
-    resolveAgentResult: async (request) => {
-      (trace.agentRequests as AgentWorkRequest[]).push(request);
-      return fixture.answers?.[request.id];
-    },
-    resolveApproval: async (gate) => {
-      if (fixture.approvals?.[gate.id] !== undefined) {
-        (trace.approvals as string[]).push(gate.id);
-      }
-      return fixture.approvals?.[gate.id];
+    resolve: async (request) => {
+      const response = resolveHarnessRequest(request, fixture);
+      (trace.resolutions as { request: ResolutionRequest; response?: ResolutionResponse }[]).push({
+        request,
+        response,
+      });
+      return response;
     },
     report: (event) => {
       (trace.events as ExecutionEvent[]).push(event);
     },
   };
+}
+
+function resolveHarnessRequest(
+  request: ResolutionRequest,
+  fixture: HarnessCallerFixture,
+): ResolutionResponse | undefined {
+  if (request.kind === "input") {
+    const payload = Object.fromEntries(
+      request.questions
+        .filter((question) => fixture.answers?.[question.id] !== undefined)
+        .map((question) => [question.id, fixture.answers?.[question.id]]),
+    );
+    return Object.keys(payload).length === 0 ? undefined : { actor: "human", payload };
+  }
+  if (request.kind === "approval") {
+    const approved = fixture.approvals?.[request.gate.id];
+    return approved === undefined ? undefined : { actor: "human", payload: approved };
+  }
+  const payload = fixture.answers?.[request.id];
+  return payload === undefined ? undefined : { actor: "agent", payload };
 }
 
 type SkillReceipt = Extract<RunLocalSkillResult, { readonly status: "success" | "failure" }>["receipt"];
@@ -482,14 +481,13 @@ function optionalStatus(value: unknown, field: string): HarnessExpectation["stat
   if (
     value === "success" ||
     value === "failure" ||
-    value === "missing_context" ||
+    value === "needs_resolution" ||
     value === "policy_denied" ||
-    value === "needs_agent" ||
-    value === "needs_approval"
+    value === "policy_denied"
   ) {
     return value;
   }
-  throw new Error(`${field} must be success, failure, missing_context, policy_denied, needs_agent, or needs_approval.`);
+  throw new Error(`${field} must be success, failure, needs_resolution, or policy_denied.`);
 }
 
 function optionalSuccessFailure(value: unknown, field: string): "success" | "failure" | undefined {

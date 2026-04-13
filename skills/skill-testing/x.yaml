@@ -1,0 +1,129 @@
+skill: skill-testing
+
+harness:
+  cases:
+    - name: skill-testing-publishes-trust-report
+      inputs:
+        skill_ref: 0state/sourcey
+        objective: Decide whether Sourcey is ready for public recommendation
+        evidence_pack:
+          receipts:
+            - kind: harness
+              status: success
+              note: Sourcey inline harness currently passes.
+          docs:
+            - path: docs/skill-x-model.md
+              reason: Describes the package-only SKILL standard.
+        test_constraints: Keep the report grounded in repo-visible evidence and local harness receipts.
+      caller:
+        answers:
+          agent_step.evaluate-skill.output:
+            capability_profile:
+              summary: Bounded docs generation with approval and verification steps.
+            trust_assessment:
+              tier: runx-derived
+              caveats:
+                - Path contract docs needed tightening.
+            test_matrix:
+              - check: harness passes
+                status: required
+            recommendation_report:
+              recommendation: publish_trust_report
+              rationale: Strong enough for evaluators once the docs are aligned.
+          agent_step.draft-content-draft.output:
+            content_brief:
+              angle: trust report
+            draft:
+              title: Sourcey trust report
+            review_checklist:
+              - confirm trust-tier language
+            distribution_notes:
+              primary_channel: trust-report
+          agent_step.draft-content-package.output:
+            publish_packet:
+              channel: trust-report
+              headline: Sourcey trust report
+            qa_checklist:
+              - evidence and caveats checked
+            handoff_notes:
+              next_action: publish after approval
+        approvals:
+          skill-testing.publish.approval: true
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+
+runners:
+  skill-testing:
+    default: true
+    type: chain
+    inputs:
+      skill_ref:
+        type: string
+        required: true
+        description: "Skill package or registry reference to evaluate."
+      objective:
+        type: string
+        required: false
+        default: "Decide whether this skill is ready for public recommendation"
+        description: "Decision the trust report should support."
+      channel:
+        type: string
+        required: false
+        default: "trust-report"
+        description: "Final delivery channel for the report."
+      evidence_pack:
+        type: json
+        required: false
+        description: "Receipts, docs, or source notes that should anchor the evaluation."
+      test_constraints:
+        type: string
+        required: false
+        description: "Safety, environment, or time constraints on evaluation."
+    chain:
+      name: skill-testing
+      owner: runx
+      steps:
+        - id: evaluate-skill
+          skill: ../evaluate-skill
+          runner: evaluate
+          scopes:
+            - runx:skill-eval:read
+        - id: draft-report
+          skill: ../draft-content
+          runner: draft
+          scopes:
+            - runx:content:draft
+          inputs:
+            channel: trust-report
+            audience: operators
+          context:
+            evidence_pack: evaluate-skill.skill_evaluation_packet.data
+        - id: approve-report
+          run:
+            type: approval
+          inputs:
+            gate_id: skill-testing.publish.approval
+            reason: Approve the trust report before packaging it for publication.
+          context:
+            draft: draft-report.content_draft_packet.data.draft
+            review_checklist: draft-report.content_draft_packet.data.review_checklist
+          artifacts:
+            wrap_as: approval_decision
+        - id: package-report
+          skill: ../draft-content
+          runner: package
+          scopes:
+            - runx:content:package
+          inputs:
+            channel: trust-report
+          context:
+            draft: draft-report.content_draft_packet.data.draft
+            distribution_notes: draft-report.content_draft_packet.data.distribution_notes
+      policy:
+        transitions:
+          - to: package-report
+            field: approve-report.approval_decision.data.approved
+            equals: true

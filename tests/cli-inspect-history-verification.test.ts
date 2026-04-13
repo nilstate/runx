@@ -15,7 +15,7 @@ describe("CLI inspect/history receipt verification", () => {
     try {
       const runStdout = createMemoryStream();
       const runExit = await runCli(
-        ["skill", "fixtures/skills/echo.md", "--message", "hi", "--receipt-dir", receiptDir, "--json"],
+        ["skill", "fixtures/skills/echo", "--message", "hi", "--receipt-dir", receiptDir, "--json"],
         { stdin: process.stdin, stdout: runStdout, stderr: createMemoryStream() },
         { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: runxHome },
       );
@@ -60,12 +60,14 @@ describe("CLI inspect/history receipt verification", () => {
 
       const humanHistoryStdout = createMemoryStream();
       const humanHistoryExit = await runCli(
-        ["history", "--receipt-dir", receiptDir],
+        ["history", "echo", "--receipt-dir", receiptDir],
         { stdin: process.stdin, stdout: humanHistoryStdout, stderr: createMemoryStream() },
         { ...process.env, RUNX_HOME: runxHome },
       );
       expect(humanHistoryExit).toBe(0);
       expect(humanHistoryStdout.contents()).toContain(runReport.receipt.id.slice(0, 12));
+      expect(humanHistoryStdout.contents()).toContain("history");
+      expect(humanHistoryStdout.contents()).toContain("echo");
       expect(humanHistoryStdout.contents()).toContain("echo");
       expect(humanHistoryStdout.contents()).toContain("cli-tool");
     } finally {

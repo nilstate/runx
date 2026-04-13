@@ -60,11 +60,16 @@ describe("builder skill objective-to-skill", () => {
         return;
       }
       expect(result.receipt.steps.map((step) => step.step_id)).toEqual(["decompose", "research", "author-harness"]);
-      expect(JSON.parse(result.execution.stdout)).toMatchObject({
-        harness_fixture: {
-          kind: "skill",
-        },
-      });
+      const output = JSON.parse(result.execution.stdout) as {
+        harness_fixture: Array<{ kind: string }>;
+      };
+      expect(output.harness_fixture).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: "skill",
+          }),
+        ]),
+      );
       expect(result.receipt.steps).toHaveLength(3);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -82,7 +87,7 @@ describe("builder skill improve-skill", () => {
         inputs: {
           receipt_id: "rx_failed",
           receipt_summary: "harness failed because required context was missing",
-          harness_output: "missing_context",
+          harness_output: "needs_resolution",
           skill_path: "oss/skills/sourcey",
           objective: "Improve Sourcey skill input resolution",
         },
@@ -113,9 +118,13 @@ describe("builder skill improve-skill", () => {
 
 function createBuilderCaller(): Caller {
   return {
-    answer: async () => ({}),
-    resolveAgentResult: async (request) => answerForAgentStep(request.id),
-    approve: async () => false,
+    resolve: async (request) =>
+      request.kind === "cognitive_work"
+        ? {
+            actor: "agent",
+            payload: answerForAgentStep(request.id),
+          }
+        : undefined,
     report: () => undefined,
   };
 }
@@ -156,12 +165,20 @@ function answerForAgentStep(questionId: string): unknown {
       execution_plan: {
         runner: "chain",
       },
-      harness_fixture: {
-        kind: "skill",
-        expect: {
-          status: "success",
+      harness_fixture: [
+        {
+          kind: "skill",
+          expect: {
+            status: "success",
+          },
         },
-      },
+        {
+          kind: "skill",
+          expect: {
+            status: "needs_resolution",
+          },
+        },
+      ],
       acceptance_checks: ["missing-context fixture passes"],
     };
   }

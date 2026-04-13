@@ -1,5 +1,19 @@
 skill: scafld
 
+harness:
+  cases:
+    - name: scafld-review-boundary-yields-fresh-caller-request
+      runner: agent
+      inputs:
+        task_id: dogfood-scafld
+        review_file: .ai/reviews/dogfood-scafld.md
+        review_prompt: |
+          ADVERSARIAL REVIEW
+
+          Review the bounded change set and return a pass/fail verdict with concrete findings.
+      expect:
+        status: needs_resolution
+
 runners:
   agent:
     type: agent
@@ -26,71 +40,8 @@ runners:
     type: cli-tool
     command: node
     args:
-      - -e
-      - |
-        const { spawnSync } = require("node:child_process");
-        const path = require("node:path");
-        const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
-        const scafld = String(inputs.scafld_bin || process.env.SCAFLD_BIN || "scafld");
-        const cwd = path.resolve(String(inputs.fixture || inputs.cwd || process.cwd()));
-        const taskId = String(inputs.task_id || inputs.taskId || "");
-        const requested = String(inputs.command || inputs.mode || "");
-        const command = ({ spec: "new", execute: "exec" })[requested] || requested;
-        const args = [];
-        const jsonCommands = new Set(["status", "review", "complete", "validate"]);
-        if (!command) throw new Error("command is required.");
-        if (command !== "init" && !taskId) throw new Error("task_id is required.");
-        switch (command) {
-          case "init":
-            args.push("init");
-            break;
-          case "new":
-            args.push("new", taskId);
-            if (inputs.title) args.push("-t", String(inputs.title));
-            if (inputs.size) args.push("-s", String(inputs.size));
-            if (inputs.risk) args.push("-r", String(inputs.risk));
-            break;
-          case "approve":
-          case "start":
-          case "status":
-          case "audit":
-          case "review":
-          case "complete":
-          case "validate":
-            args.push(command, taskId);
-            if (jsonCommands.has(command)) args.push("--json");
-            break;
-          case "exec":
-            args.push("exec", taskId);
-            if (inputs.phase) args.push("--phase", String(inputs.phase));
-            break;
-          default:
-            throw new Error(`Unsupported scafld command: ${command}`);
-        }
-        const env = { ...process.env };
-        delete env.RUNX_INPUTS_JSON;
-        for (const key of Object.keys(env)) {
-          if (key.startsWith("RUNX_INPUT_")) {
-            delete env[key];
-          }
-        }
-        if (path.isAbsolute(scafld) || scafld.includes(path.sep)) {
-          env.PATH = `${path.dirname(scafld)}${path.delimiter}${env.PATH || "/usr/local/bin:/usr/bin:/bin"}`;
-        }
-        const result = spawnSync(scafld, args, {
-          cwd,
-          env,
-          encoding: "utf8",
-          shell: false,
-        });
-        if (result.stdout) process.stdout.write(result.stdout);
-        if (result.stderr) process.stderr.write(result.stderr);
-        if (result.error) {
-          console.error(result.error.message);
-          process.exit(1);
-        }
-        process.exit(result.status ?? 1);
-    timeout_seconds: 60
+      - ./run.mjs
+    timeout_seconds: 300
     input_mode: none
     inputs:
       command:
@@ -109,6 +60,10 @@ runners:
         type: string
         required: false
         description: "Title passed to `scafld new`."
+      issue_title:
+        type: string
+        required: false
+        description: "Canonical issue title alias accepted by composite wrappers that call `scafld new`."
       size:
         type: string
         required: false

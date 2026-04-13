@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import os from "node:os";
 import path from "node:path";
@@ -22,7 +22,8 @@ describe("CLI approval flow", () => {
       );
 
       expect(exitCode).toBe(0);
-      expect(stdout.contents()).toContain("Approval gate sandbox.cli-approval-approve.unrestricted-local-dev");
+      expect(stdout.contents()).toContain("approval needed");
+      expect(stdout.contents()).toContain("gate    sandbox.cli-approval-approve.unrestricted-local-dev");
       expect(stdout.contents()).toContain("approved");
       expect(stderr.contents()).toBe("");
     } finally {
@@ -44,7 +45,8 @@ describe("CLI approval flow", () => {
       );
 
       expect(exitCode).toBe(1);
-      expect(stdout.contents()).toContain("Approve? Type 'yes' to approve [y/N]");
+      expect(stdout.contents()).toContain("approval needed");
+      expect(stdout.contents()).toContain("Approve? [y/N]");
       expect(stderr.contents()).toContain("policy denied");
       expect(stderr.contents()).toContain("unrestricted-local-dev sandbox requires explicit caller approval");
     } finally {
@@ -127,9 +129,10 @@ describe("CLI approval flow", () => {
 });
 
 async function writeUnrestrictedSkill(tempDir: string, name: string): Promise<string> {
-  const skillPath = path.join(tempDir, `${name}.md`);
+  const skillPath = path.join(tempDir, name);
+  await mkdir(skillPath, { recursive: true });
   await writeFile(
-    skillPath,
+    path.join(skillPath, "SKILL.md"),
     `---
 name: ${name}
 source:

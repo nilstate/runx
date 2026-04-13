@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -8,8 +8,7 @@ import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.j
 
 function caller(approved = false): Caller {
   return {
-    answer: async () => ({}),
-    approve: async () => approved,
+    resolve: async (request) => request.kind === "approval" ? { actor: "human", payload: approved } : undefined,
     report: () => undefined,
   };
 }
@@ -21,7 +20,7 @@ describe("cli-tool sandbox profiles", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/sandbox-readonly.md"),
+        skillPath: path.resolve("fixtures/skills/sandbox-readonly"),
         inputs: { output_path: outputPath },
         caller: caller(),
         receiptDir: path.join(tempDir, "receipts"),
@@ -47,7 +46,7 @@ describe("cli-tool sandbox profiles", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/sandbox-workspace-write.md"),
+        skillPath: path.resolve("fixtures/skills/sandbox-workspace-write"),
         inputs: { output_path: outputPath },
         caller: caller(),
         receiptDir,
@@ -71,12 +70,13 @@ describe("cli-tool sandbox profiles", () => {
 
   it("requires explicit approval for unrestricted local development profile", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sandbox-unrestricted-"));
-    const skillPath = path.join(tempDir, "unrestricted.md");
+    const skillPath = path.join(tempDir, "sandbox-unrestricted");
     const receiptDir = path.join(tempDir, "receipts");
 
     try {
+      await mkdir(skillPath, { recursive: true });
       await writeFile(
-        skillPath,
+        path.join(skillPath, "SKILL.md"),
         `---
 name: sandbox-unrestricted
 source:

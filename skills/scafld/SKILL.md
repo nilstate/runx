@@ -38,8 +38,9 @@ The lifecycle commands, in typical order:
 
 3. **`validate <task-id>`** — validate the spec against the JSON schema.
    Checks required fields, valid enums, non-empty phases, and that TODO
-   placeholders have been replaced. With `--json`, returns structured
-   validation result with `valid`, `errors`, and `phase_counts`.
+   placeholders have been replaced. `runx` normalizes the result into a
+   structured report even when the installed `scafld` CLI does not expose a
+   native `--json` flag for `validate`.
 
 4. **`approve <task-id>`** — validate then move the spec from `drafts/`
    to `approved/`. Sets status to `approved`.
@@ -63,25 +64,25 @@ The lifecycle commands, in typical order:
    first (spec_compliance re-runs acceptance criteria, scope_drift runs
    audit). If automated passes fail, exits 1 with instructions to fix.
    On success, creates `.ai/reviews/<task-id>.md` with a Review Artifact
-   v3 template and prints the adversarial review prompt. With `--json`,
-   returns `review_file`, `review_prompt`, `automated_passes`, and
-   `required_sections`. The three adversarial sections (regression_hunt,
-   convention_check, dark_patterns) must be filled by a reviewer before
-   `complete` can run.
+   v3 template and prints the adversarial review prompt. `runx` normalizes the
+   result into structured fields including `review_file`, `review_prompt`,
+   `automated_passes`, and `required_sections` whether or not the installed
+   `scafld` build has native JSON output.
 
 9. **`complete <task-id>`** — finalize the review and archive the spec.
    Validates that the review artifact exists, all adversarial sections
    are filled, verdict is not fail/incomplete, and pass results are
    consistent. On success, writes a `review:` block into the spec and
    moves it to `archive/YYYY-MM/` with status `completed`. On failure,
-   exits 1 with the gate reason. With `--json`, returns `completed_state`,
-   `archive_path`, `verdict`, `pass_results`. Override path:
+   exits 1 with the gate reason. `runx` emits a structured completion report
+   including `completed_state`, `archive_path`, and reviewer summary fields,
+   even when the installed CLI only prints plain text. Override path:
    `--human-reviewed --reason "..."` allows completing with an override
    (requires interactive terminal confirmation).
 
 10. **`status <task-id>`** — show spec status, phase progress, review
-    state. With `--json`, returns structured status with `phase_counts`
-    and `review_state`.
+    state. `runx` wraps the command in a structured status report so callers do
+    not depend on the raw terminal format of the installed CLI.
 
 11. **`fail <task-id>`** — move an in-progress spec to archive with
     status `failed`.
@@ -135,6 +136,6 @@ The spec file (`.ai/specs/.../<task-id>.yaml`) contains:
 
 ## Structured output
 
-Commands `review`, `complete`, `status`, and `validate` are run with
-`--json` so chain policy and reviewer-facing steps consume structured
-fields, not terminal prose.
+Commands `review`, `complete`, `status`, and `validate` are normalized by
+`runx` into structured fields so chain policy and reviewer-facing steps
+consume stable data instead of depending on a drifting terminal format.
