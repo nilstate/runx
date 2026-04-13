@@ -32,11 +32,13 @@ describe("issue-to-PR composite skill", () => {
       "scafld-new",
       "author-spec",
       "write-spec",
+      "read-spec",
       "scafld-validate",
       "scafld-approve",
       "scafld-start",
       "author-fix",
       "write-fix",
+      "read-fix",
       "scafld-exec",
       "scafld-audit",
       "scafld-review-open",
@@ -51,11 +53,22 @@ describe("issue-to-PR composite skill", () => {
         contents: "author-spec.spec_contents",
       },
     });
+    expect(chain.steps.find((step) => step.id === "read-spec")).toMatchObject({
+      tool: "fs.read",
+      context: {
+        path: "author-spec.spec_draft.data.path",
+      },
+    });
     expect(chain.steps.find((step) => step.id === "author-spec")).toMatchObject({
       context: {
         scafld_new_stdout: "scafld-new.stdout",
       },
     });
+    expect(runner.inputs.repo_snapshot_path).toMatchObject({
+      type: "string",
+      required: false,
+    });
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo_snapshot_path");
     expect(chain.steps.find((step) => step.id === "write-fix")).toMatchObject({
       tool: "fs.write",
       context: {
@@ -66,9 +79,11 @@ describe("issue-to-PR composite skill", () => {
     expect(chain.steps.find((step) => step.id === "author-fix")).toMatchObject({
       context: {
         spec_draft: "author-spec.spec_draft.data",
-        spec_contents: "author-spec.spec_contents",
+        spec_file: "read-spec.file_read.data",
+        spec_contents: "read-spec.file_read.data.contents",
       },
     });
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("repo_snapshot_path");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")).toMatchObject({
       run: {
         type: "agent-step",
@@ -77,7 +92,14 @@ describe("issue-to-PR composite skill", () => {
       context: {
         review_file: "scafld-review-open.review_file",
         review_prompt: "scafld-review-open.review_prompt",
-        change_contents: "author-fix.change_contents",
+        fix_file: "read-fix.file_read.data",
+        change_contents: "read-fix.file_read.data.contents",
+      },
+    });
+    expect(chain.steps.find((step) => step.id === "read-fix")).toMatchObject({
+      tool: "fs.read",
+      context: {
+        path: "author-fix.fix_draft.data.path",
       },
     });
     expect(chain.steps.find((step) => step.id === "write-review")).toMatchObject({
@@ -176,11 +198,13 @@ describe("issue-to-PR composite skill", () => {
         ["scafld-new", "success"],
         ["author-spec", "success"],
         ["write-spec", "success"],
+        ["read-spec", "success"],
         ["scafld-validate", "success"],
         ["scafld-approve", "success"],
         ["scafld-start", "success"],
         ["author-fix", "success"],
         ["write-fix", "success"],
+        ["read-fix", "success"],
         ["scafld-exec", "success"],
         ["scafld-audit", "success"],
         ["scafld-review-open", "success"],
@@ -191,7 +215,7 @@ describe("issue-to-PR composite skill", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("keeps the bug-to-pr alias runnable through the canonical issue-to-pr lane", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-bug-to-pr-alias-"));
@@ -246,7 +270,62 @@ describe("issue-to-PR composite skill", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, 90_000);
+
+  it.skipIf(!existsSync(scafldBin))("keeps the bug-to-pr alias runnable with kebab-case caller inputs", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-bug-to-pr-kebab-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const taskId = "bug-to-pr-kebab-fixture";
+    const caller: Caller = {
+      resolve: async (request) =>
+        request.kind === "cognitive_work"
+          ? {
+              actor: "agent",
+              payload: await answerForIssueToPrStep(tempDir, taskId, request.id),
+            }
+          : undefined,
+      report: () => undefined,
+    };
+
+    try {
+      await initScafldRepo(tempDir);
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/bug-to-pr"),
+        inputs: {
+          fixture: tempDir,
+          "task-id": taskId,
+          title: "Fixture bug to PR",
+          size: "micro",
+          risk: "low",
+          phase: "phase1",
+          "draft-spec-path": `.ai/specs/drafts/${taskId}.yaml`,
+          "scafld-bin": scafldBin,
+        },
+        caller,
+        env: process.env,
+        receiptDir,
+        runxHome: path.join(tempDir, ".runx-test-home"),
+      });
+
+      expect(result.status).toBe("success");
+      if (result.status !== "success") {
+        return;
+      }
+      expect(result.receipt.kind).toBe("chain_execution");
+      if (result.receipt.kind !== "chain_execution") {
+        return;
+      }
+      expect(result.receipt.subject.chain_name).toBe("bug-to-pr");
+      expect(result.receipt.steps).toHaveLength(1);
+      expect(result.receipt.steps[0]).toMatchObject({
+        step_id: "delegate",
+        status: "success",
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("opens a structured scafld review, accepts a caller-filled review file, and completes from JSON verdict", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-"));

@@ -42,7 +42,11 @@ runners:
       repo_snapshot:
         type: json
         required: false
-        description: "Bounded structured snapshot of the target repo gathered from a real workspace."
+        description: "Compact structured snapshot of the target repo gathered from a real workspace."
+      repo_snapshot_path:
+        type: string
+        required: false
+        description: "Optional path to a fuller repo snapshot artifact that can be read when the inline snapshot is insufficient."
       repo_context:
         type: string
         required: false
@@ -106,8 +110,11 @@ runners:
             Replace the scafld draft TODOs with a valid bounded spec for this
             issue-to-PR lane. Use the issue metadata in inputs, especially
             issue_title/title, issue_body, source, source_id, source_url,
-            target_repo, repo_snapshot, repo_context, and draft_spec_path to
-            keep the spec grounded in the real codebase.
+            target_repo, repo_snapshot, repo_snapshot_path, repo_context, and
+            draft_spec_path to keep the spec grounded in the real codebase.
+            Prefer repo_context and the inline repo_snapshot first. If you need
+            more grounding and repo_snapshot_path is present, read that file via
+            fs.read rather than guessing.
             spec_draft.path must point at the canonical scafld draft spec file
             relative to the fixture root. Prefer draft_spec_path when present;
             otherwise derive the exact created path from scafld_new_stdout,
@@ -135,10 +142,10 @@ runners:
             not optional prose. If a required file path cannot be grounded from
             the issue body or available evidence, keep the spec narrowly scoped
             and state the missing path confirmation in assumptions or notes
-            rather than inventing it. When repo_snapshot is present, prefer its
-            real top-level files, package scripts, README excerpts, and
-            submodule notes over generic assumptions. Keep the scope minimal and
-            make acceptance criteria executable.
+            rather than inventing it. When repo_snapshot or
+            repo_snapshot_path is present, prefer those real repo artifacts over
+            generic assumptions. Keep the scope minimal and make acceptance
+            criteria executable.
           allowed_tools:
             - fs.read
             - git.status
@@ -198,9 +205,12 @@ runners:
           instructions: >
             Produce the bounded fix described by the approved spec, grounded in
             the declared issue metadata, approved scope, and provided
-            spec_contents. Use repo_snapshot and repo_context when present to
-            stay aligned with the real repo shape. fix_draft.path must reference
-            one declared tracked file relative to the fixture root.
+            spec_contents. Use repo_snapshot, repo_snapshot_path, and
+            repo_context when present to stay aligned with the real repo shape.
+            If the inline snapshot is insufficient and repo_snapshot_path is
+            present, read it via fs.read before choosing files. fix_draft.path
+            must reference one declared tracked file relative to the fixture
+            root.
             change_contents must be the full file contents to write. Do not
             widen scope, and do not rely on hidden edits outside the
             deterministic write phase.

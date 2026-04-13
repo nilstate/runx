@@ -74,6 +74,8 @@ The safest reference shape is the one already used by the passing
 - `repo_snapshot`: bounded structured snapshot of the target repo, when the
   supervisor or worker can inspect the real workspace before yielding the
   authoring boundary.
+- `repo_snapshot_path`: optional path to a fuller repo snapshot artifact when
+  the inline snapshot was intentionally compacted for prompt size.
 - `repo_context`: optional textual summary of the target repo shape, notable
   files, and likely validation hooks.
 - `size`: `micro`, `small`, `medium`, or `large` (default: `micro`).
