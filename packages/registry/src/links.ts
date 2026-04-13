@@ -29,7 +29,7 @@ export function runxLinkForVersion(record: RegistrySkillVersion, registryUrl?: s
     version: record.version,
     digest: record.digest,
     registry_url: registryUrl,
-    install_command: `runx skill add ${ref}${registryFlag}`,
-    run_command: `runx skill ${record.name}`,
+    install_command: `runx add ${ref}${registryFlag}`,
+    run_command: `runx ${record.name}`,
   };
 }

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -19,7 +19,7 @@ describe("skill-publish CLI", () => {
         [
           "skill",
           "publish",
-          "fixtures/skills/echo.md",
+          "fixtures/skills/echo",
           "--owner",
           "0state",
           "--version",
@@ -56,9 +56,9 @@ describe("skill-publish CLI", () => {
         digest: expect.stringMatching(/^[a-f0-9]{64}$/),
         registry_url: registryDir,
       });
-      expect(report.publish.link.install_command).toBe(`runx skill add 0state/echo@1.0.0 --registry ${registryDir}`);
+      expect(report.publish.link.install_command).toBe(`runx add 0state/echo@1.0.0 --registry ${registryDir}`);
       await expect(createFileRegistryStore(registryDir).getVersion("0state/echo", "1.0.0")).resolves.toMatchObject({
-        markdown: await readFile(path.resolve("fixtures/skills/echo.md"), "utf8"),
+        markdown: await readFile(path.resolve("fixtures/skills/echo/SKILL.md"), "utf8"),
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -76,7 +76,7 @@ describe("skill-publish CLI", () => {
         [
           "skill",
           "publish",
-          "fixtures/skills/standard-only.md",
+          "fixtures/skills/standard-only",
           "--owner",
           "0state",
           "--version",
@@ -152,14 +152,16 @@ describe("skill-publish CLI", () => {
   it("rejects invalid skill markdown before creating a registry version", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-publish-invalid-"));
     const registryDir = path.join(tempDir, "registry");
-    const invalidPath = path.join(tempDir, "invalid.md");
+    const invalidDir = path.join(tempDir, "invalid-skill");
+    const invalidPath = path.join(invalidDir, "SKILL.md");
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
 
     try {
+      await mkdir(invalidDir, { recursive: true });
       await writeFile(invalidPath, "not a skill\n");
       const exitCode = await runCli(
-        ["skill", "publish", invalidPath, "--registry", registryDir, "--json"],
+        ["skill", "publish", invalidDir, "--registry", registryDir, "--json"],
         { stdin: process.stdin, stdout, stderr },
         {
           ...process.env,
@@ -186,7 +188,7 @@ describe("skill-publish CLI", () => {
       const args = [
         "skill",
         "publish",
-        "fixtures/skills/echo.md",
+        "fixtures/skills/echo",
         "--owner",
         "0state",
         "--version",
@@ -217,7 +219,7 @@ describe("skill-publish CLI", () => {
     const stderr = createMemoryStream();
 
     const exitCode = await runCli(
-      ["skill", "publish", "fixtures/skills/echo.md", "--registry", "https://runx.example.test", "--json"],
+      ["skill", "publish", "fixtures/skills/echo", "--registry", "https://runx.example.test", "--json"],
       { stdin: process.stdin, stdout, stderr },
       {
         ...process.env,

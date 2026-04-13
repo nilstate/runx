@@ -1,6 +1,6 @@
 name: echo-skill
 kind: skill
-target: ../skills/echo.md
+target: ../skills/echo
 inputs:
   message: hello from harness
 expect:

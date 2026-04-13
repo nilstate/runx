@@ -33,11 +33,47 @@ export interface AgentWorkRequest {
   readonly envelope: AgentContextEnvelope;
 }
 
+export interface Question {
+  readonly id: string;
+  readonly prompt: string;
+  readonly description?: string;
+  readonly required: boolean;
+  readonly type: string;
+}
+
 export interface ApprovalGate {
   readonly id: string;
   readonly reason: string;
   readonly type?: string;
   readonly summary?: Readonly<Record<string, unknown>>;
+}
+
+export interface InputResolutionRequest {
+  readonly id: string;
+  readonly kind: "input";
+  readonly questions: readonly Question[];
+}
+
+export interface ApprovalResolutionRequest {
+  readonly id: string;
+  readonly kind: "approval";
+  readonly gate: ApprovalGate;
+}
+
+export interface CognitiveResolutionRequest {
+  readonly id: string;
+  readonly kind: "cognitive_work";
+  readonly work: AgentWorkRequest;
+}
+
+export type ResolutionRequest =
+  | InputResolutionRequest
+  | ApprovalResolutionRequest
+  | CognitiveResolutionRequest;
+
+export interface ResolutionResponse {
+  readonly actor: "human" | "agent";
+  readonly payload: unknown;
 }
 
 export interface AdapterInvokeRequest {
@@ -70,24 +106,13 @@ export type AdapterInvokeResult =
       readonly metadata?: Readonly<Record<string, unknown>>;
     }
   | {
-      readonly status: "needs_agent";
+      readonly status: "needs_resolution";
       readonly stdout: string;
       readonly stderr: string;
       readonly exitCode: null;
       readonly signal: null;
       readonly durationMs: number;
-      readonly request: AgentWorkRequest;
-      readonly errorMessage?: string;
-      readonly metadata?: Readonly<Record<string, unknown>>;
-    }
-  | {
-      readonly status: "needs_approval";
-      readonly stdout: string;
-      readonly stderr: string;
-      readonly exitCode: null;
-      readonly signal: null;
-      readonly durationMs: number;
-      readonly gate: ApprovalGate;
+      readonly request: ResolutionRequest;
       readonly errorMessage?: string;
       readonly metadata?: Readonly<Record<string, unknown>>;
     };

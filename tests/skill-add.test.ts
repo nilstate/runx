@@ -223,8 +223,8 @@ function createInvalidMarketplaceAdapter(): MarketplaceAdapter {
     tags: [],
     runner_mode: "standard-only",
     runner_names: [],
-    add_command: "runx skill add invalid:sourcey",
-    run_command: "runx skill sourcey",
+    add_command: "runx add invalid:sourcey",
+    run_command: "runx sourcey",
   };
 
   return {

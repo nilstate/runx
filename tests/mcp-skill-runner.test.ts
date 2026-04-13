@@ -7,8 +7,7 @@ import { describe, expect, it } from "vitest";
 import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
 
 const nonInteractiveCaller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 
@@ -20,7 +19,7 @@ describe("MCP skill runner", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/mcp-echo.md"),
+        skillPath: path.resolve("fixtures/skills/mcp-echo"),
         inputs: { message: "super-secret-value" },
         caller: nonInteractiveCaller,
         receiptDir,

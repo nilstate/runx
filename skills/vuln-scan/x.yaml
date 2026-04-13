@@ -1,0 +1,117 @@
+skill: vuln-scan
+
+harness:
+  cases:
+    - name: vuln-scan-risk-packet
+      runner: scan
+      inputs:
+        target: pnpm-lock.yaml
+        objective: identify the highest-risk dependency issue to surface today
+      caller:
+        answers:
+          agent_step.vuln-scan.output:
+            dependency_inventory:
+              target: pnpm-lock.yaml
+              packages:
+                - name: example-lib
+                  version: 1.2.3
+            advisories:
+              - package: example-lib
+                severity: medium
+                exposure: transitive
+                evidence: fixture advisory
+            remediation_plan:
+              immediate:
+                - patch or pin example-lib
+            operator_summary:
+              verdict: investigate
+              summary: One medium-severity transitive issue is worth a bounded advisory.
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: vuln-scan
+            source_type: agent-step
+    - name: vuln-scan-advisory-packet
+      runner: advisory
+      inputs:
+        target: pnpm-lock.yaml
+        advisories:
+          - package: example-lib
+            severity: medium
+      caller:
+        answers:
+          agent_step.vuln-scan-advisory.output:
+            advisory_draft:
+              title: Example advisory
+              body: We identified a medium-severity transitive dependency issue and are preparing the patch path.
+            maintainer_summary:
+              audience: repo_owners
+              summary: Patch planning in progress.
+            disclosure_checklist:
+              - verify affected versions
+              - confirm remediation path
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: vuln-scan
+            source_type: agent-step
+
+runners:
+  agent:
+    type: agent
+
+  scan:
+    default: true
+    type: agent-step
+    agent: reviewer
+    task: vuln-scan
+    outputs:
+      dependency_inventory: object
+      advisories: array
+      remediation_plan: object
+      operator_summary: object
+    artifacts:
+      wrap_as: vulnerability_scan_packet
+    inputs:
+      target:
+        type: string
+        required: true
+        description: "Repo, lockfile, package set, or ecosystem slice to review."
+      objective:
+        type: string
+        required: false
+        description: "Specific question the scan should answer."
+      scan_context:
+        type: json
+        required: false
+        description: "Known packages, incidents, or prior findings."
+
+  advisory:
+    type: agent-step
+    agent: builder
+    task: vuln-scan-advisory
+    outputs:
+      advisory_draft: object
+      maintainer_summary: object
+      disclosure_checklist: array
+    artifacts:
+      wrap_as: vulnerability_advisory_packet
+    inputs:
+      target:
+        type: string
+        required: true
+        description: "Target repo, package set, or advisory scope."
+      advisories:
+        type: json
+        required: true
+        description: "Structured scan findings to communicate."
+      remediation_plan:
+        type: json
+        required: false
+        description: "Structured remediation actions from the scan runner."

@@ -2,7 +2,7 @@ name: retry-mutating-denied
 owner: runx
 steps:
   - id: deploy
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     mutation: mutating
     inputs:
       message: deploy

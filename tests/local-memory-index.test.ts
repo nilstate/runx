@@ -8,8 +8,7 @@ import { createFileMemoryStore } from "../packages/memory/src/index.js";
 import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
 
 const nonInteractiveCaller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 
@@ -22,7 +21,7 @@ describe("local memory index integration", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/echo.md"),
+        skillPath: path.resolve("fixtures/skills/echo"),
         inputs: { message: "hi" },
         caller: nonInteractiveCaller,
         receiptDir,

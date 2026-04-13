@@ -8,8 +8,7 @@ import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.j
 import type { SkillAdapter } from "../packages/executor/src/index.js";
 
 const caller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 
@@ -36,7 +35,7 @@ describe("merge-metadata", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/standard-only.md"),
+        skillPath: path.resolve("fixtures/skills/standard-only"),
         caller,
         adapters: [adapter],
         receiptDir: path.join(tempDir, "receipts"),
@@ -90,7 +89,7 @@ describe("merge-metadata", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/standard-only.md"),
+        skillPath: path.resolve("fixtures/skills/standard-only"),
         caller,
         adapters: [adapter],
         receiptDir: path.join(tempDir, "receipts"),

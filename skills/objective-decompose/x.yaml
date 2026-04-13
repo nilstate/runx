@@ -1,5 +1,57 @@
 skill: objective-decompose
 
+harness:
+  cases:
+    - name: objective-decompose-bounded-plan
+      inputs:
+        objective: Launch a governed market-intelligence briefing flow
+        project_context: OSS skill package catalog
+      caller:
+        answers:
+          agent_step.objective-decomposition.output:
+            objective_summary: Launch a governed market-intelligence briefing flow.
+            orchestration_steps:
+              - id: research-brief
+                skill: ../research
+                scopes:
+                  - runx:research:read
+                mutating: false
+                inputs: {}
+                context_from: []
+                description: Produce a bounded research packet on the ecosystem topic.
+              - id: draft-brief
+                skill: ../draft-content
+                scopes:
+                  - runx:content:draft
+                mutating: false
+                inputs: {}
+                context_from:
+                  - research-brief.research_packet
+                description: Draft the publishable briefing from verified evidence.
+              - id: approve
+                skill: approval
+                scopes:
+                  - runx:content:approve
+                mutating: false
+                inputs: {}
+                context_from:
+                  - draft-brief.content_draft_packet
+                description: Route the draft through the publishing approval gate.
+            required_skills:
+              - name: research
+                exists: true
+              - name: draft-content
+                exists: true
+            open_questions: []
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: objective-decompose
+            source_type: agent-step
+
 runners:
   objective-decompose-agent:
     default: true
@@ -11,6 +63,8 @@ runners:
       orchestration_steps: array
       required_skills: array
       open_questions: array
+    artifacts:
+      wrap_as: objective_decomposition
     inputs:
       objective:
         type: string

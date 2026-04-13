@@ -21,29 +21,29 @@ pnpm typecheck
 
 ## Local CLI
 
-Link the CLI globally once:
+For a live creator workflow, link the global `runx` binary to this checkout once:
 
 ```bash
-pnpm --dir oss build
-pnpm --dir oss/packages/cli link --global
+pnpm --dir oss cli:link-global
 ```
 
 Then invoke `runx` from anywhere:
 
 ```bash
 runx --help
-runx skill ./oss/fixtures/skills/echo.md --message hello --json
-runx skill ./oss/skills/objective-to-skill --objective "build sourcey docs skill" --json
+runx ./oss/fixtures/skills/echo --message hello --json
+runx ./oss/skills/objective-to-skill --objective "build sourcey docs skill" --json
 ```
 
 Common commands:
 
 ```bash
-runx skill search sourcey
-runx skill add 0state/sourcey@1.0.0 --to ./skills
-runx skill ./skills/sourcey --project . --json
-runx skill ./skills/objective-to-skill --objective "build github review skill" --json
-runx skill inspect <receipt-id> --json
+runx search sourcey
+runx add 0state/sourcey@1.0.0 --to ./skills
+runx sourcey --project . --json
+runx objective-to-skill --objective "build github review skill" --json
+runx inspect <receipt-id> --json
+runx resume <run-id> --json
 runx history --json
 runx harness ./fixtures/harness/echo-skill.yaml --json
 runx harness ./skills/evolve --json
@@ -52,9 +52,12 @@ runx config set agent.model gpt-5.4
 runx config set agent.api_key "$OPENAI_API_KEY"
 ```
 
+The global link points at `oss/packages/cli` in this checkout. Rebuild with
+`pnpm --dir oss build`; do not reinstall.
+
 ## Skill And X Model
 
-Portable skills stay as standard markdown instructions. Execution metadata lives in a sibling X file or registry metadata:
+Executable skills now use one enforced package shape:
 
 ```text
 skills/sourcey/
@@ -62,17 +65,28 @@ skills/sourcey/
   x.yaml
 ```
 
-Flat marketplace imports remain supported:
-
-```text
-skills/sourcey.md
-skills/sourcey.x.yaml
-```
+Direct execution accepts the package directory or `SKILL.md` inside it. Flat
+`foo.md` skill files are no longer a supported execution surface.
 
 See `../docs/skill-x-model.md` for resolution rules, runner trust levels, and composite skill behavior.
 
 See `../docs/evolution-model.md` for the evolve lane, the skill/tool boundary,
 and the canonical composite execution geometry.
+
+## Official Skills
+
+The bundled catalog now covers both core building blocks and evaluator-facing
+flows:
+
+- Core skills: `research`, `github-triage`, `draft-content`,
+  `evaluate-skill`, `moltbook`, `vuln-scan`, `sourcey`, `support-triage`,
+  `evolve`, `objective-to-skill`, `improve-skill`
+- Public chains: `open-source-triage`, `content-pipeline`,
+  `market-intelligence`, `skill-testing`, `moltbook-presence`,
+  `ecosystem-vuln-scan`
+
+Each of these packages ships as `SKILL.md` + `x.yaml` and carries inline
+harness coverage.
 
 ## Receipts
 

@@ -330,11 +330,17 @@ async function readSkillPackage(skillPath: string): Promise<LocalSkillPackage> {
   const resolvedPath = path.resolve(skillPath);
   const pathStat = await stat(resolvedPath);
   const markdownPath = pathStat.isDirectory() ? path.join(resolvedPath, "SKILL.md") : resolvedPath;
+  if (path.basename(markdownPath).toLowerCase() !== "skill.md") {
+    throw new Error(
+      `Skill packages must be referenced by directory or SKILL.md. Flat markdown files are not supported: ${resolvedPath}`,
+    );
+  }
+  if (!existsSync(markdownPath)) {
+    throw new Error(`Skill package '${resolvedPath}' is missing SKILL.md.`);
+  }
   const xManifestPath = pathStat.isDirectory()
     ? path.join(resolvedPath, "x.yaml")
-    : path.basename(resolvedPath).toLowerCase() === "skill.md"
-      ? path.join(path.dirname(resolvedPath), "x.yaml")
-      : path.join(path.dirname(resolvedPath), `${path.basename(resolvedPath, path.extname(resolvedPath))}.x.yaml`);
+    : path.join(path.dirname(resolvedPath), "x.yaml");
   return {
     markdown: await readFile(markdownPath, "utf8"),
     xManifest: await readOptionalFile(xManifestPath),

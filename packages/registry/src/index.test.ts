@@ -92,7 +92,7 @@ describe("registry package", () => {
 
     try {
       const store = createFileRegistryStore(tempDir);
-      const markdown = await readFile(path.resolve("fixtures/skills/standard-only.md"), "utf8");
+      const markdown = await readFile(path.resolve("fixtures/skills/standard-only/SKILL.md"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
         owner: "0state",
         version: "1.0.0",

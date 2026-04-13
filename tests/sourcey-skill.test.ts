@@ -22,12 +22,17 @@ describe("sourcey skill", () => {
 
     try {
       const caller: Caller = {
-        answer: async () => ({}),
-        approve: async () => false,
-        resolveApproval: async (gate) => (gate.id === "sourcey.discovery.approval" ? true : undefined),
-        resolveAgentResult: async (request) => {
-          if (request.envelope.skill === "sourcey.discover") {
+        resolve: async (request) => {
+          if (request.kind === "approval") {
+            return request.gate.id === "sourcey.discovery.approval" ? { actor: "human", payload: true } : undefined;
+          }
+          if (request.kind !== "cognitive_work") {
+            return undefined;
+          }
+          if (request.work.envelope.skill === "sourcey.discover") {
             return {
+              actor: "agent",
+              payload: {
               discovery_report: {
                 brand_name: "Sourcey Fixture",
                 homepage_url: "https://sourcey.example.test",
@@ -38,18 +43,24 @@ describe("sourcey skill", () => {
                 confidence: "high",
                 rationale: ["fixture already includes a valid Sourcey config and docs content"],
               },
+              },
             };
           }
-          if (request.envelope.skill === "sourcey.author") {
+          if (request.work.envelope.skill === "sourcey.author") {
             return {
+              actor: "agent",
+              payload: {
               doc_bundle: {
                 files: [],
                 summary: "No authoring needed for the already-configured fixture.",
               },
+              },
             };
           }
-          if (request.envelope.skill === "sourcey.critique") {
+          if (request.work.envelope.skill === "sourcey.critique") {
             return {
+              actor: "agent",
+              payload: {
               evaluation_report: {
                 verdict: "pass",
                 grounding: "strong",
@@ -57,17 +68,21 @@ describe("sourcey skill", () => {
                 navigation: "strong",
                 obvious_gaps: [],
               },
+              },
             };
           }
-          if (request.envelope.skill === "sourcey.revise") {
+          if (request.work.envelope.skill === "sourcey.revise") {
             return {
+              actor: "agent",
+              payload: {
               revision_bundle: {
                 files: [],
                 summary: "No revision needed for the already-configured fixture.",
               },
+              },
             };
           }
-          throw new Error(`Unexpected agent step ${request.envelope.skill}`);
+          throw new Error(`Unexpected agent step ${request.work.envelope.skill}`);
         },
         report: () => undefined,
       };
@@ -134,11 +149,15 @@ describe("sourcey skill", () => {
     const outputDir = path.join(tempDir, "docs");
 
     const caller: Caller = {
-      answer: async () => ({}),
-      approve: async () => false,
-      resolveAgentResult: async (request) => {
-        if (request.envelope.skill === "sourcey.discover") {
-          expect(request.envelope.allowed_tools).toEqual([
+      resolve: async (request) => {
+        if (request.kind === "approval") {
+          return request.gate.id === "sourcey.discovery.approval" ? { actor: "human", payload: true } : undefined;
+        }
+        if (request.kind !== "cognitive_work") {
+          return undefined;
+        }
+        if (request.work.envelope.skill === "sourcey.discover") {
+          expect(request.work.envelope.allowed_tools).toEqual([
             "fs.read",
             "git.status",
             "git.current_branch",
@@ -146,6 +165,8 @@ describe("sourcey skill", () => {
             "cli.capture_help",
           ]);
           return {
+            actor: "agent",
+            payload: {
             discovery_report: {
               brand_name: "Sourcey Incomplete Fixture",
               homepage_url: "https://sourcey.example.test",
@@ -156,11 +177,14 @@ describe("sourcey skill", () => {
               confidence: "high",
               rationale: ["package metadata exists", "project needs an authored Sourcey config and guide page"],
             },
+            },
           };
         }
-        if (request.envelope.skill === "sourcey.author") {
-          expect(request.envelope.allowed_tools).toEqual(["fs.read", "cli.capture_help"]);
+        if (request.work.envelope.skill === "sourcey.author") {
+          expect(request.work.envelope.allowed_tools).toEqual(["fs.read", "cli.capture_help"]);
           return {
+            actor: "agent",
+            payload: {
             doc_bundle: {
               files: [
                 {
@@ -209,11 +233,14 @@ describe("sourcey skill", () => {
               ],
               summary: "Created a minimal Sourcey config and introduction page for the incomplete fixture.",
             },
+            },
           };
         }
-        if (request.envelope.skill === "sourcey.critique") {
-          expect(request.envelope.allowed_tools).toEqual(["fs.read"]);
+        if (request.work.envelope.skill === "sourcey.critique") {
+          expect(request.work.envelope.allowed_tools).toEqual(["fs.read"]);
           return {
+            actor: "agent",
+            payload: {
             evaluation_report: {
               verdict: "revise",
               grounding: "strong",
@@ -221,11 +248,14 @@ describe("sourcey skill", () => {
               navigation: "good",
               obvious_gaps: ["The introduction page should explain the user-visible hook more clearly."],
             },
+            },
           };
         }
-        if (request.envelope.skill === "sourcey.revise") {
-          expect(request.envelope.allowed_tools).toEqual(["fs.read"]);
+        if (request.work.envelope.skill === "sourcey.revise") {
+          expect(request.work.envelope.allowed_tools).toEqual(["fs.read"]);
           return {
+            actor: "agent",
+            payload: {
             revision_bundle: {
               files: [
                 {
@@ -255,11 +285,11 @@ describe("sourcey skill", () => {
               ],
               summary: "Expanded the introduction with a stronger product hook and clearer value statement.",
             },
+            },
           };
         }
-        throw new Error(`Unexpected agent step ${request.envelope.skill}`);
+        throw new Error(`Unexpected agent step ${request.work.envelope.skill}`);
       },
-      resolveApproval: async (gate) => (gate.id === "sourcey.discovery.approval" ? true : undefined),
       report: () => undefined,
     };
 

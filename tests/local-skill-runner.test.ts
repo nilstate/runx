@@ -7,8 +7,7 @@ import { describe, expect, it } from "vitest";
 import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
 
 const nonInteractiveCaller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 
@@ -20,7 +19,7 @@ describe("local skill runner", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/echo.md"),
+        skillPath: path.resolve("fixtures/skills/echo"),
         inputs: { message: "super-secret-value" },
         caller: nonInteractiveCaller,
         receiptDir,
@@ -50,21 +49,22 @@ describe("local skill runner", () => {
   it("runs a standard-only skill through the agent-mediated runner", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-standard-skill-"));
     const caller: Caller = {
-      answer: async () => ({}),
-      resolveAgentResult: async (request) =>
-        request.id === "agent.standard-only.output"
+      resolve: async (request) =>
+        request.kind === "cognitive_work" && request.id === "agent.standard-only.output"
           ? {
-          status: "done",
-          summary: "caller executed the portable skill",
-        }
+              actor: "agent",
+              payload: {
+                status: "done",
+                summary: "caller executed the portable skill",
+              },
+            }
           : undefined,
-      approve: async () => false,
       report: () => undefined,
     };
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/standard-only.md"),
+        skillPath: path.resolve("fixtures/skills/standard-only"),
         inputs: { message: "hi" },
         caller,
         receiptDir: path.join(tempDir, "receipts"),
@@ -106,7 +106,7 @@ describe("local skill runner", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/echo.md"),
+        skillPath: path.resolve("fixtures/skills/echo"),
         inputs: { message: "hi" },
         caller: nonInteractiveCaller,
         receiptDir: path.join(tempDir, "receipts"),
@@ -134,17 +134,22 @@ describe("local skill runner", () => {
     }
   });
 
-  it("returns missing context when required inputs are unresolved", async () => {
+  it("returns a resolution request when required inputs are unresolved", async () => {
     const result = await runLocalSkill({
-      skillPath: path.resolve("fixtures/skills/echo.md"),
+      skillPath: path.resolve("fixtures/skills/echo"),
       caller: nonInteractiveCaller,
       env: process.env,
     });
 
-    expect(result.status).toBe("missing_context");
-    if (result.status !== "missing_context") {
+    expect(result.status).toBe("needs_resolution");
+    if (result.status !== "needs_resolution") {
       return;
     }
-    expect(result.questions.map((question) => question.id)).toEqual(["message"]);
+    expect(result.requests).toMatchObject([
+      {
+        kind: "input",
+        questions: [expect.objectContaining({ id: "message" })],
+      },
+    ]);
   });
 });

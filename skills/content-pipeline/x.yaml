@@ -1,0 +1,128 @@
+skill: content-pipeline
+
+harness:
+  cases:
+    - name: content-pipeline-approved-publish-packet
+      inputs:
+        objective: Publish a brief on why package-style skills matter
+        audience: evaluator
+        domain: OSS developer tools
+        operator_context: Write for skeptical evaluators who want concrete evidence, not roadmap theater.
+        target_entities:
+          - runx
+          - sourcey
+      caller:
+        answers:
+          agent_step.research.output:
+            research_brief:
+              objective: Publish a brief on why package-style skills matter.
+              scope: package standard and governed execution
+              summary: Package roots make the skill surface inspectable, testable, and easier to govern.
+              open_questions: []
+            evidence_log:
+              - claim: Package roots create stable harness and asset boundaries.
+                source: docs/skill-x-model.md
+                confidence: verified
+                relevance: core argument for the article
+            decision_support:
+              - option: Lead with enforcement and dogfood improvements.
+                rationale: Strongest proof point in the repo.
+            risks: []
+          agent_step.draft-content-draft.output:
+            content_brief:
+              angle: show the standard through concrete repo changes
+            draft:
+              title: Package-style skills are now enforced in runx
+            review_checklist:
+              - verify all path examples
+            distribution_notes:
+              primary_channel: blog
+          agent_step.draft-content-package.output:
+            publish_packet:
+              channel: blog
+              headline: Package-style skills are now enforced in runx
+            qa_checklist:
+              - links checked
+            handoff_notes:
+              next_action: publish
+        approvals:
+          content-pipeline.publish.approval: true
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+
+runners:
+  content-pipeline:
+    default: true
+    type: chain
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "What the content should accomplish."
+      audience:
+        type: string
+        required: false
+        description: "Intended audience."
+      channel:
+        type: string
+        required: false
+        default: "blog"
+        description: "Final publishing channel."
+      domain:
+        type: string
+        required: false
+        default: "developer tools"
+        description: "Research domain for the topic."
+      operator_context:
+        type: string
+        required: false
+        description: "Constraints, voice, or campaign context."
+      target_entities:
+        type: json
+        required: false
+        description: "Structured list of products, projects, or actors to keep in view during research."
+    chain:
+      name: content-pipeline
+      owner: runx
+      steps:
+        - id: research-topic
+          skill: ../research
+          runner: research
+          scopes:
+            - runx:research:read
+          inputs:
+            deliverable: content draft
+        - id: draft-content
+          skill: ../draft-content
+          runner: draft
+          scopes:
+            - runx:content:draft
+          context:
+            evidence_pack: research-topic.research_packet.data
+        - id: approve-publication
+          run:
+            type: approval
+          inputs:
+            gate_id: content-pipeline.publish.approval
+            reason: Approve the drafted content before packaging it for publication.
+          context:
+            content_brief: draft-content.content_draft_packet.data.content_brief
+            draft: draft-content.content_draft_packet.data.draft
+          artifacts:
+            wrap_as: approval_decision
+        - id: package-publication
+          skill: ../draft-content
+          runner: package
+          scopes:
+            - runx:content:package
+          context:
+            draft: draft-content.content_draft_packet.data.draft
+            distribution_notes: draft-content.content_draft_packet.data.distribution_notes
+      policy:
+        transitions:
+          - to: package-publication
+            field: approve-publication.approval_decision.data.approved
+            equals: true

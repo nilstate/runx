@@ -2,7 +2,7 @@ name: retry-read-only
 owner: runx
 steps:
   - id: flaky-read
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo
     inputs:
       message: retry ok
     retry:

@@ -1,0 +1,144 @@
+skill: open-source-triage
+
+harness:
+  cases:
+    - name: open-source-triage-governed-response
+      inputs:
+        repository: 0state/runx
+        query: find one unanswered thread where a reply would unblock a user
+        objective: draft the next high-signal maintainer response
+        operator_context: Prefer terse maintainer replies that acknowledge confusion and point to the canonical contract.
+      caller:
+        answers:
+          agent_step.github-triage-discover.output:
+            issue_candidates:
+              - id: issue-241
+                title: Sourcey output path is unclear
+            selection_rationale:
+              chosen_issue: issue-241
+              rationale: Quick answer, high unblock value.
+            operator_notes:
+              escalation: none
+          agent_step.research.output:
+            research_brief:
+              objective: Validate the chosen issue and shape a helpful answer.
+              scope: one issue thread
+              summary: The core user confusion comes from conflicting docs, not a runtime defect.
+              open_questions: []
+            evidence_log:
+              - claim: The canonical output path is `.sourcey/runx-docs`.
+                source: skills/sourcey/x.yaml
+                confidence: verified
+                relevance: grounds the maintainer response
+            decision_support:
+              - option: Acknowledge the docs mismatch and point to the canonical path.
+                rationale: Most helpful next step.
+            risks: []
+          agent_step.github-triage-respond.output:
+            issue_profile:
+              title: Sourcey output path is unclear
+              summary: User hit conflicting docs.
+            response_strategy:
+              stance: clarify and acknowledge
+              next_action: point to canonical path and mention doc fix
+            response_draft:
+              body: The canonical output directory is `.sourcey/runx-docs`; the docs mismatch is being corrected.
+            follow_up_actions:
+              - land the doc fix
+          agent_step.draft-content-package.output:
+            publish_packet:
+              channel: github_issue_comment
+              body: The canonical output directory is `.sourcey/runx-docs`; the docs mismatch is being corrected.
+            qa_checklist:
+              - confirm issue title and path before posting
+            handoff_notes:
+              next_action: post after approval
+        approvals:
+          open-source-triage.response.approval: true
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+
+runners:
+  open-source-triage:
+    default: true
+    type: chain
+    inputs:
+      repository:
+        type: string
+        required: false
+        description: "Repository slug or local reference."
+      query:
+        type: string
+        required: false
+        default: "find one unanswered thread where a reply would unblock a user"
+        description: "Discovery objective for the issue queue."
+      objective:
+        type: string
+        required: false
+        default: "draft the next high-signal maintainer response"
+        description: "What the operator wants from the triage pass."
+      channel:
+        type: string
+        required: false
+        default: "github_issue_comment"
+        description: "Final response channel."
+      operator_context:
+        type: string
+        required: false
+        description: "Maintainer norms or project-specific context."
+    chain:
+      name: open-source-triage
+      owner: runx
+      steps:
+        - id: discover-issue
+          skill: ../github-triage
+          runner: discover
+          scopes:
+            - runx:github:read
+        - id: research-thread
+          skill: ../research
+          runner: research
+          scopes:
+            - runx:research:read
+          inputs:
+            objective: Validate the chosen issue and shape a helpful answer.
+            deliverable: maintainer response
+          context:
+            target_entities: discover-issue.github_triage_queue.data.issue_candidates
+            operator_context: discover-issue.github_triage_queue.data.selection_rationale.rationale
+        - id: draft-response
+          skill: ../github-triage
+          runner: respond
+          scopes:
+            - runx:github:write-proposal
+          context:
+            issue_snapshot: discover-issue.github_triage_queue.data
+            maintainer_context: research-thread.research_packet.data.research_brief.summary
+        - id: approve-response
+          run:
+            type: approval
+          inputs:
+            gate_id: open-source-triage.response.approval
+            reason: Approve the drafted open-source response before it is packaged for dispatch.
+          context:
+            response_strategy: draft-response.github_triage_packet.data.response_strategy
+            response_draft: draft-response.github_triage_packet.data.response_draft
+          artifacts:
+            wrap_as: approval_decision
+        - id: package-response
+          skill: ../draft-content
+          runner: package
+          scopes:
+            - runx:content:package
+          context:
+            draft: draft-response.github_triage_packet.data.response_draft
+          inputs:
+            channel: github_issue_comment
+      policy:
+        transitions:
+          - to: package-response
+            field: approve-response.approval_decision.data.approved
+            equals: true

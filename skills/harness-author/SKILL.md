@@ -22,7 +22,7 @@ target: ../path/to/SKILL.md   # relative path to skill or chain YAML
 inputs:
   input_name: value
 expect:
-  status: success              # or failure, missing_context, etc.
+  status: success              # or failure, needs_resolution, etc.
   receipt:
     kind: skill_execution      # or chain_execution
     status: success
@@ -56,7 +56,7 @@ Start from the skill contract (SKILL.md + x.yaml). Design fixtures for:
 - **Happy path**: one fixture with valid inputs exercising the primary
   flow. Assert the receipt kind, status, and subject fields.
 - **Missing required input**: one fixture omitting a required input.
-  Expect `missing_context` status.
+  Expect `needs_resolution` status.
 - **Tool not found**: if the skill wraps a CLI tool, one fixture with an
   invalid tool path. Expect failure with meaningful error.
 - **Governance gates** (composite skills only): one fixture per approval
@@ -74,7 +74,8 @@ wall clock dependencies. They should run in seconds.
 - `execution_plan`: proposed x.yaml chain definition when the skill is
   composite. Step ids, skill references, scopes, context edges, policy.
 - `harness_fixture`: array of fixture definitions in the format above.
-  Minimum: one happy-path, one error-boundary.
+  Minimum: one happy-path, one error-boundary. Return the full array even
+  when only two fixtures are needed.
 - `acceptance_checks`: concrete assertions the implementation must pass.
 
 ## Inputs

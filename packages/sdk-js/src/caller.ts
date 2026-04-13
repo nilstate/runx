@@ -1,15 +1,13 @@
-import type { AgentWorkRequest, ApprovalGate } from "../../executor/src/index.js";
-import type { Caller, ExecutionEvent, Question } from "../../runner-local/src/index.js";
+import type { ResolutionRequest, ResolutionResponse } from "../../executor/src/index.js";
+import type { Caller, ExecutionEvent } from "../../runner-local/src/index.js";
 
-export interface StructuredApproval {
-  readonly gate: ApprovalGate;
-  readonly approved: boolean;
+export interface StructuredResolution {
+  readonly request: ResolutionRequest;
+  readonly response?: ResolutionResponse;
 }
 
 export interface StructuredCallerTrace {
-  readonly questionBundles: readonly (readonly Question[])[];
-  readonly agentRequests: readonly AgentWorkRequest[];
-  readonly approvals: readonly StructuredApproval[];
+  readonly resolutions: readonly StructuredResolution[];
   readonly events: readonly ExecutionEvent[];
 }
 
@@ -23,46 +21,44 @@ export type StructuredCaller = Caller & {
 };
 
 export function createStructuredCaller(options: StructuredCallerOptions = {}): StructuredCaller {
-  const questionBundles: (readonly Question[])[] = [];
-  const agentRequests: AgentWorkRequest[] = [];
-  const approvals: StructuredApproval[] = [];
+  const resolutions: StructuredResolution[] = [];
   const events: ExecutionEvent[] = [];
 
   return {
     trace: {
-      questionBundles,
-      agentRequests,
-      approvals,
+      resolutions,
       events,
     },
-    answer: async (questions) => {
-      questionBundles.push(questions);
-      return Object.fromEntries(
-        questions
-          .filter((question) => options.answers?.[question.id] !== undefined)
-          .map((question) => [question.id, options.answers?.[question.id]]),
-      );
-    },
-    approve: async (gate) => {
-      const approved =
-        typeof options.approvals === "boolean" ? options.approvals : Boolean(options.approvals?.[gate.id]);
-      approvals.push({ gate, approved });
-      return approved;
-    },
-    resolveAgentResult: async (request) => {
-      agentRequests.push(request);
-      return options.answers?.[request.id];
-    },
-    resolveApproval: async (gate) => {
-      const approved =
-        typeof options.approvals === "boolean" ? options.approvals : options.approvals?.[gate.id];
-      if (approved !== undefined) {
-        approvals.push({ gate, approved });
-      }
-      return approved;
+    resolve: async (request) => {
+      const response = resolveStructuredRequest(request, options);
+      resolutions.push({ request, response });
+      return response;
     },
     report: (event) => {
       events.push(event);
     },
   };
+}
+
+function resolveStructuredRequest(
+  request: ResolutionRequest,
+  options: StructuredCallerOptions,
+): ResolutionResponse | undefined {
+  if (request.kind === "input") {
+    const payload = Object.fromEntries(
+      request.questions
+        .filter((question) => options.answers?.[question.id] !== undefined)
+        .map((question) => [question.id, options.answers?.[question.id]]),
+    );
+    return Object.keys(payload).length === 0 ? undefined : { actor: "human", payload };
+  }
+
+  if (request.kind === "approval") {
+    const approved =
+      typeof options.approvals === "boolean" ? options.approvals : options.approvals?.[request.gate.id];
+    return approved === undefined ? undefined : { actor: "human", payload: approved };
+  }
+
+  const payload = options.answers?.[request.id];
+  return payload === undefined ? undefined : { actor: "agent", payload };
 }

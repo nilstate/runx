@@ -1,5 +1,19 @@
 skill: scafld
 
+harness:
+  cases:
+    - name: scafld-review-boundary-yields-fresh-caller-request
+      runner: agent
+      inputs:
+        task_id: dogfood-scafld
+        review_file: .ai/reviews/dogfood-scafld.md
+        review_prompt: |
+          ADVERSARIAL REVIEW
+
+          Review the bounded change set and return a pass/fail verdict with concrete findings.
+      expect:
+        status: needs_resolution
+
 runners:
   agent:
     type: agent
@@ -46,7 +60,9 @@ runners:
             break;
           case "new":
             args.push("new", taskId);
-            if (inputs.title) args.push("-t", String(inputs.title));
+            if (inputs.title || inputs.issue_title || inputs.issueTitle) {
+              args.push("-t", String(inputs.title || inputs.issue_title || inputs.issueTitle));
+            }
             if (inputs.size) args.push("-s", String(inputs.size));
             if (inputs.risk) args.push("-r", String(inputs.risk));
             break;
@@ -109,6 +125,10 @@ runners:
         type: string
         required: false
         description: "Title passed to `scafld new`."
+      issue_title:
+        type: string
+        required: false
+        description: "Canonical issue title alias accepted by composite wrappers that call `scafld new`."
       size:
         type: string
         required: false

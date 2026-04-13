@@ -2,4 +2,4 @@ name: sequential-input
 owner: runx
 steps:
   - id: first
-    skill: ../../skills/echo.md
+    skill: ../../skills/echo

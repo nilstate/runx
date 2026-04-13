@@ -64,12 +64,12 @@ class RunxClientTests(unittest.TestCase):
 
             client = RunxClient(command=(sys.executable, str(fake_runx)))
             results = client.search_skills("sourcey")
-            run_report = client.run_skill("skill.md", inputs={"message": "hi"})
+            run_report = client.run_skill("skills/example", inputs={"message": "hi"})
 
             self.assertEqual(results[0].skill_id, "0state/sourcey")
             self.assertEqual(
                 run_report["args"],
-                ["skill", "skill.md", "--message", "hi", "--non-interactive", "--json"],
+                ["skill", "skills/example", "--message", "hi", "--non-interactive", "--json"],
             )
 
 

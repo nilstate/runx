@@ -2,6 +2,6 @@ name: retry-skill-mutating-denied
 owner: runx
 steps:
   - id: deploy
-    skill: ../../skills/mutating-skill-level-retry.md
+    skill: ../../skills/mutating-skill-level-retry
     inputs:
       message: deploy

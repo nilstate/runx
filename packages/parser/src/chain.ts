@@ -56,6 +56,7 @@ export interface ChainPolicy {
 
 export interface ChainStep {
   readonly id: string;
+  readonly label?: string;
   readonly skill?: string;
   readonly tool?: string;
   readonly run?: Readonly<Record<string, unknown>>;
@@ -159,6 +160,7 @@ function validateStep(
   if (previousStepIds.has(id)) {
     throw new ChainValidationError(`${field}.id '${id}' must be unique.`);
   }
+  const label = optionalNonEmptyString(rawStep.label, `${field}.label`);
 
   const skill = optionalNonEmptyString(rawStep.skill, `${field}.skill`);
   const tool = optionalNonEmptyString(rawStep.tool, `${field}.tool`);
@@ -193,6 +195,7 @@ function validateStep(
 
   return {
     id,
+    label,
     skill,
     tool,
     run,

@@ -5,20 +5,20 @@ import { describe, expect, it } from "vitest";
 
 import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/parser/src/index.js";
 
-describe("scafld bug-to-PR skill contract", () => {
+describe("scafld issue-to-PR skill contract", () => {
   it("parses as a composite skill with explicit author, write, execute, and review phases", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("skills/bug-to-pr/x.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("skills/issue-to-pr/x.yaml"), "utf8")),
     );
-    const runner = manifest.runners["bug-to-pr"];
+    const runner = manifest.runners["issue-to-pr"];
 
     expect(runner?.source.type).toBe("chain");
     if (!runner || runner.source.type !== "chain" || !runner.source.chain) {
-      throw new Error("bug-to-pr runner must declare an inline chain.");
+      throw new Error("issue-to-pr runner must declare an inline chain.");
     }
     const chain = runner.source.chain;
 
-    expect(chain.name).toBe("bug-to-pr");
+    expect(chain.name).toBe("issue-to-pr");
     expect(chain.steps.map((step) => step.id)).toEqual([
       "scafld-new",
       "author-spec",
@@ -87,19 +87,19 @@ describe("scafld bug-to-PR skill contract", () => {
     expect(chain.steps.find((step) => step.id === "author-spec")).toMatchObject({
       run: {
         type: "agent-step",
-        task: "bug-to-pr-author-spec",
+        task: "issue-to-pr-author-spec",
       },
     });
     expect(chain.steps.find((step) => step.id === "author-fix")).toMatchObject({
       run: {
         type: "agent-step",
-        task: "bug-to-pr-apply-fix",
+        task: "issue-to-pr-apply-fix",
       },
     });
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")).toMatchObject({
       run: {
         type: "agent-step",
-        task: "bug-to-pr-review",
+        task: "issue-to-pr-review",
       },
       context: {
         review_file: "scafld-review-open.review_file",

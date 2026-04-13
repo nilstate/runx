@@ -7,8 +7,7 @@ import { describe, expect, it } from "vitest";
 import { runLocalChain, type Caller } from "../packages/runner-local/src/index.js";
 
 const caller: Caller = {
-  answer: async () => ({}),
-  approve: async () => false,
+  resolve: async () => undefined,
   report: () => undefined,
 };
 

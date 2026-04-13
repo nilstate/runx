@@ -42,16 +42,20 @@ describe("sourcey preflight", () => {
       status: string;
       requests: Array<{
         id: string;
-        envelope: {
-          skill: string;
-          allowed_tools: string[];
+        kind: string;
+        work?: {
+          envelope: {
+            skill: string;
+            allowed_tools: string[];
+          };
         };
       }>;
     };
-    expect(report.status).toBe("needs_agent");
+    expect(report.status).toBe("needs_resolution");
     expect(report.requests[0]?.id).toBe("agent_step.sourcey-discover.output");
-    expect(report.requests[0]?.envelope.skill).toBe("sourcey.discover");
-    expect(report.requests[0]?.envelope.allowed_tools).toEqual([
+    expect(report.requests[0]?.kind).toBe("cognitive_work");
+    expect(report.requests[0]?.work?.envelope.skill).toBe("sourcey.discover");
+    expect(report.requests[0]?.work?.envelope.allowed_tools).toEqual([
       "fs.read",
       "git.status",
       "git.current_branch",
@@ -100,7 +104,7 @@ describe("sourcey preflight", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("does not forward raw runx input environment into the Sourcey subprocess", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sourcey-env-"));
@@ -137,17 +141,22 @@ describe("sourcey preflight", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 });
 
 function createSourceyCaller(overrides: { brandName: string; homepageUrl: string }): Caller {
   return {
-    answer: async () => ({}),
-    approve: async () => false,
-    resolveApproval: async (gate) => (gate.id === "sourcey.discovery.approval" ? true : undefined),
-    resolveAgentResult: async (request) => {
-      if (request.envelope.skill === "sourcey.discover") {
+    resolve: async (request) => {
+      if (request.kind === "approval") {
+        return request.gate.id === "sourcey.discovery.approval" ? { actor: "human", payload: true } : undefined;
+      }
+      if (request.kind !== "cognitive_work") {
+        return undefined;
+      }
+      if (request.work.envelope.skill === "sourcey.discover") {
         return {
+          actor: "agent",
+          payload: {
           discovery_report: {
             brand_name: overrides.brandName,
             homepage_url: overrides.homepageUrl,
@@ -158,18 +167,24 @@ function createSourceyCaller(overrides: { brandName: string; homepageUrl: string
             confidence: "high",
             rationale: ["existing Sourcey fixture already contains configuration and authored pages"],
           },
+          },
         };
       }
-      if (request.envelope.skill === "sourcey.author") {
+      if (request.work.envelope.skill === "sourcey.author") {
         return {
+          actor: "agent",
+          payload: {
           doc_bundle: {
             files: [],
             summary: "Existing Sourcey fixture already contains the required docs source bundle.",
           },
+          },
         };
       }
-      if (request.envelope.skill === "sourcey.critique") {
+      if (request.work.envelope.skill === "sourcey.critique") {
         return {
+          actor: "agent",
+          payload: {
           evaluation_report: {
             verdict: "pass",
             grounding: "strong",
@@ -177,17 +192,21 @@ function createSourceyCaller(overrides: { brandName: string; homepageUrl: string
             navigation: "strong",
             obvious_gaps: [],
           },
+          },
         };
       }
-      if (request.envelope.skill === "sourcey.revise") {
+      if (request.work.envelope.skill === "sourcey.revise") {
         return {
+          actor: "agent",
+          payload: {
           revision_bundle: {
             files: [],
             summary: "No revision required for the existing Sourcey fixture.",
           },
+          },
         };
       }
-      throw new Error(`Unexpected agent step ${request.envelope.skill}`);
+      throw new Error(`Unexpected agent step ${request.work.envelope.skill}`);
     },
     report: () => undefined,
   };

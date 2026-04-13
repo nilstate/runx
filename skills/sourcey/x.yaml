@@ -7,7 +7,7 @@ harness:
       inputs:
         project: fixtures/sourcey/basic
       expect:
-        status: needs_agent
+        status: needs_resolution
 
 runners:
   agent:
@@ -45,6 +45,7 @@ runners:
       name: sourcey
       steps:
         - id: discover
+          label: inspect repo
           run:
             type: agent-step
             agent: builder
@@ -70,6 +71,7 @@ runners:
             named_emits:
               discovery_report: discovery_report
         - id: approve
+          label: approve docs plan
           run:
             type: approval
           inputs:
@@ -80,6 +82,7 @@ runners:
           artifacts:
             wrap_as: approval_decision
         - id: author
+          label: draft docs
           run:
             type: agent-step
             agent: builder
@@ -104,6 +107,7 @@ runners:
             named_emits:
               doc_bundle: doc_bundle
         - id: write-docs
+          label: write docs
           tool: fs.write_bundle
           scopes:
             - fs.write
@@ -111,6 +115,7 @@ runners:
           context:
             files: author.doc_bundle.data.files
         - id: build
+          label: build docs site
           tool: sourcey.build
           scopes:
             - sourcey.build
@@ -119,6 +124,7 @@ runners:
             brand_name: discover.discovery_report.data.brand_name
             docs_inputs: discover.discovery_report.data.docs_inputs
         - id: critique
+          label: review built site
           run:
             type: agent-step
             agent: reviewer
@@ -141,6 +147,7 @@ runners:
             named_emits:
               evaluation_report: evaluation_report
         - id: revise
+          label: revise docs
           run:
             type: agent-step
             agent: builder
@@ -165,6 +172,7 @@ runners:
             named_emits:
               revision_bundle: revision_bundle
         - id: write-revisions
+          label: write revisions
           tool: fs.write_bundle
           scopes:
             - fs.write
@@ -172,6 +180,7 @@ runners:
           context:
             files: revise.revision_bundle.data.files
         - id: rebuild
+          label: rebuild docs site
           tool: sourcey.build
           scopes:
             - sourcey.build
@@ -180,6 +189,7 @@ runners:
             brand_name: discover.discovery_report.data.brand_name
             docs_inputs: discover.discovery_report.data.docs_inputs
         - id: verify
+          label: verify docs site
           tool: sourcey.verify
           scopes:
             - sourcey.verify

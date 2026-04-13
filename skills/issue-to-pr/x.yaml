@@ -1,0 +1,252 @@
+skill: issue-to-pr
+
+runners:
+  issue-to-pr:
+    default: true
+    type: chain
+    inputs:
+      task_id:
+        type: string
+        required: false
+        default: "issue-to-pr-fixture"
+        description: "scafld task id for the governed issue-to-PR lane."
+      issue_title:
+        type: string
+        required: false
+        default: "Fixture issue to PR"
+        description: "Canonical issue title passed to the lane."
+      title:
+        type: string
+        required: false
+        description: "Compatibility alias for issue_title."
+      issue_body:
+        type: string
+        required: false
+        description: "Issue or support body describing the change request."
+      source:
+        type: string
+        required: false
+        description: "Source system for the issue, such as github_issue or support_request."
+      source_id:
+        type: string
+        required: false
+        description: "Source record identifier."
+      source_url:
+        type: string
+        required: false
+        description: "Source URL for the issue or support request."
+      target_repo:
+        type: string
+        required: false
+        description: "Intended repository slug for repo-local dispatchers."
+      size:
+        type: string
+        required: false
+        default: "micro"
+        description: "Size passed to scafld spec/new."
+      risk:
+        type: string
+        required: false
+        default: "low"
+        description: "Risk passed to scafld spec/new."
+      phase:
+        type: string
+        required: false
+        default: "phase1"
+        description: "Optional scafld execution phase."
+      draft_spec_path:
+        type: string
+        required: false
+        description: "Canonical scafld draft spec path relative to fixture root."
+      fixture:
+        type: string
+        required: false
+        description: "Workspace root containing the target .ai/ directory."
+      scafld_bin:
+        type: string
+        required: false
+        description: "Explicit scafld executable path."
+    chain:
+      name: issue-to-pr
+      owner: runx
+      notes:
+        status: governed
+        rationale: >
+          This execution graph keeps cognition and mutation separate. Agent
+          phases author the spec, fix, and review contents. Deterministic
+          fs.write phases make the on-disk mutations visible before the
+          scafld lifecycle advances.
+      steps:
+        - id: scafld-new
+          label: open task lane
+          skill: ../scafld
+          scopes:
+            - scafld:spec:write
+          mutation: true
+          inputs:
+            command: spec
+        - id: author-spec
+          label: draft spec
+          run:
+            type: agent-step
+            agent: builder
+            task: issue-to-pr-author-spec
+            outputs:
+              spec_draft: object
+              spec_contents: string
+          instructions: >
+            Replace the scafld draft TODOs with a valid bounded spec for this
+            issue-to-PR lane. Use the issue metadata in inputs, especially
+            issue_title/title, issue_body, source, source_id, source_url,
+            target_repo, and draft_spec_path to keep the spec grounded.
+            spec_draft.path must point at the canonical scafld draft spec file
+            relative to the fixture root. Prefer draft_spec_path when present;
+            otherwise derive the exact created path from scafld_new_stdout,
+            which comes from the preceding scafld new step. spec_contents must
+            be the full YAML text to write. The spec must declare every tracked
+            file that will be changed before scafld audit runs, including the
+            in-progress spec path if that file will appear in git diff. Keep
+            the scope minimal and make acceptance criteria executable.
+          allowed_tools:
+            - fs.read
+            - git.status
+          context:
+            scafld_new_stdout: scafld-new.stdout
+          artifacts:
+            named_emits:
+              spec_draft: spec_draft
+        - id: write-spec
+          label: write spec
+          tool: fs.write
+          scopes:
+            - fs.write
+          mutation: true
+          context:
+            path: author-spec.spec_draft.data.path
+            contents: author-spec.spec_contents
+        - id: scafld-validate
+          label: validate spec
+          skill: ../scafld
+          scopes:
+            - scafld:spec:validate
+          inputs:
+            command: validate
+        - id: scafld-approve
+          label: approve spec
+          skill: ../scafld
+          scopes:
+            - scafld:spec:approve
+          mutation: true
+          inputs:
+            command: approve
+        - id: scafld-start
+          label: start task
+          skill: ../scafld
+          scopes:
+            - scafld:exec:start
+          mutation: true
+          inputs:
+            command: start
+        - id: author-fix
+          label: draft fix
+          run:
+            type: agent-step
+            agent: builder
+            task: issue-to-pr-apply-fix
+            outputs:
+              fix_draft: object
+              change_contents: string
+          instructions: >
+            Produce the bounded fix described by the approved spec, grounded in
+            the declared issue metadata, approved scope, and provided
+            spec_contents. fix_draft.path must reference one declared tracked
+            file relative to the fixture root. change_contents must be the full
+            file contents to write. Do not widen scope, and do not rely on
+            hidden edits outside the deterministic write phase.
+          allowed_tools:
+            - fs.read
+            - git.status
+          context:
+            spec_draft: author-spec.spec_draft.data
+            spec_contents: author-spec.spec_contents
+          artifacts:
+            named_emits:
+              fix_draft: fix_draft
+        - id: write-fix
+          label: write fix
+          tool: fs.write
+          scopes:
+            - fs.write
+          mutation: true
+          context:
+            path: author-fix.fix_draft.data.path
+            contents: author-fix.change_contents
+        - id: scafld-exec
+          label: run task
+          skill: ../scafld
+          scopes:
+            - scafld:exec:write
+          mutation: true
+          inputs:
+            command: execute
+        - id: scafld-audit
+          label: audit changes
+          skill: ../scafld
+          scopes:
+            - scafld:review:read
+          inputs:
+            command: audit
+        - id: scafld-review-open
+          label: open review
+          skill: ../scafld
+          scopes:
+            - scafld:review:write
+          mutation: true
+          inputs:
+            command: review
+        - id: reviewer-boundary
+          label: draft review
+          run:
+            type: agent-step
+            agent: reviewer
+            task: issue-to-pr-review
+            outputs:
+              review_decision: object
+              review_contents: string
+          scopes:
+            - scafld:review:fill
+          allowed_tools:
+            - fs.read
+          context:
+            review_file: scafld-review-open.review_file
+            review_prompt: scafld-review-open.review_prompt
+            fix_draft: author-fix.fix_draft.data
+            change_contents: author-fix.change_contents
+          instructions: >
+            Fill the scafld review artifact requested by review_prompt. Produce
+            review_decision with at least review_file and verdict, plus
+            review_contents as the full markdown review file to write. Keep the
+            review grounded in the declared change set and provided
+            change_contents.
+          artifacts:
+            named_emits:
+              review_decision: review_decision
+        - id: write-review
+          label: write review
+          tool: fs.write
+          scopes:
+            - fs.write
+          mutation: true
+          context:
+            path: scafld-review-open.review_file
+            contents: reviewer-boundary.review_contents
+        - id: scafld-complete
+          label: complete task
+          skill: ../scafld
+          scopes:
+            - scafld:archive:write
+          mutation: true
+          context:
+            reviewer_result: reviewer-boundary.review_decision.data
+          inputs:
+            command: complete

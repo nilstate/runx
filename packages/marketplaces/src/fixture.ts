@@ -51,8 +51,8 @@ const fixtureResults: readonly SkillSearchResult[] = [
     runner_names: ["sourcey-docs-cli"],
     x_digest: hashString(fixtureXManifest),
     x_trust_tier: "external-unverified",
-    add_command: "runx skill add fixture-marketplace:sourcey-docs",
-    run_command: "runx skill sourcey-docs",
+    add_command: "runx add fixture-marketplace:sourcey-docs",
+    run_command: "runx sourcey-docs",
   },
   {
     skill_id: "fixture/marketplace-standard-only",
@@ -69,8 +69,8 @@ const fixtureResults: readonly SkillSearchResult[] = [
     tags: ["portable"],
     runner_mode: "standard-only",
     runner_names: [],
-    add_command: "runx skill add fixture-marketplace:marketplace-standard-only",
-    run_command: "runx skill marketplace-standard-only",
+    add_command: "runx add fixture-marketplace:marketplace-standard-only",
+    run_command: "runx marketplace-standard-only",
   },
 ];
 

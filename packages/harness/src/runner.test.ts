@@ -7,7 +7,7 @@ describe("harness runner", () => {
     const fixture = parseHarnessFixture(`
 name: echo-fixture
 kind: skill
-target: ../skills/echo.md
+target: ../skills/echo
 inputs:
   message: hello
 caller:

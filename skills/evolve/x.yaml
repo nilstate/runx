@@ -88,6 +88,7 @@ runners:
       name: evolve-introspect
       steps:
         - id: preflight
+          label: inspect repo
           run:
             type: cli-tool
             command: node
@@ -119,6 +120,7 @@ runners:
             named_emits:
               repo_profile: repo_profile
         - id: introspect
+          label: recommend next improvement
           run:
             type: agent-step
             agent: builder
@@ -169,6 +171,7 @@ runners:
       name: evolve
       steps:
         - id: preflight
+          label: inspect repo
           run:
             type: cli-tool
             command: node
@@ -200,6 +203,7 @@ runners:
             named_emits:
               repo_profile: repo_profile
         - id: plan
+          label: draft evolve plan
           run:
             type: agent-step
             agent: builder
@@ -228,6 +232,7 @@ runners:
               change_plan: change_plan
               spec_document: spec_document
         - id: approve
+          label: approve evolve plan
           run:
             type: approval
           inputs:
@@ -240,6 +245,7 @@ runners:
           artifacts:
             wrap_as: approval_decision
         - id: act
+          label: apply bounded change
           run:
             type: cli-tool
             command: node
@@ -278,6 +284,7 @@ runners:
               verification_report: verification_report
               review_report: review_report
         - id: publish
+          label: publish result
           run:
             type: cli-tool
             command: node

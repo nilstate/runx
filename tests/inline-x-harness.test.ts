@@ -27,6 +27,6 @@ describe("inline x harness", () => {
     expect(result.status).toBe("success");
     expect(result.assertionErrors).toEqual([]);
     expect(result.cases.map((entry) => entry.fixture.name)).toEqual(["sourcey-discovery-yield"]);
-    expect(result.cases[0]?.status).toBe("needs_agent");
+    expect(result.cases[0]?.status).toBe("needs_resolution");
   });
 });

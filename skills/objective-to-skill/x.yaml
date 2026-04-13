@@ -1,5 +1,85 @@
 skill: objective-to-skill
 
+harness:
+  cases:
+    - name: objective-to-skill-produces-structured-skill-packet
+      inputs:
+        objective: Build a runx market-intelligence flow
+        project_context: OSS evaluator demo
+      caller:
+        answers:
+          agent_step.objective-decomposition.output:
+            objective_summary: Build a runx market-intelligence flow.
+            orchestration_steps:
+              - id: research
+                skill: ../research
+                scopes:
+                  - runx:research:read
+                mutating: false
+                inputs: {}
+                context_from: []
+                description: Gather the evidence pack.
+              - id: draft
+                skill: ../draft-content
+                scopes:
+                  - runx:content:draft
+                mutating: false
+                inputs: {}
+                context_from:
+                  - research.research_packet
+                description: Draft the briefing.
+            required_skills:
+              - name: research
+                exists: true
+              - name: draft-content
+                exists: true
+            open_questions: []
+          agent_step.skill-research.output:
+            findings:
+              - claim: Market-intelligence should keep research and drafting as separate steps.
+                source: plans/runx.md
+                relevance: Protects evidence integrity.
+                confidence: verified
+            recommended_flow:
+              - step: research
+              - step: draft
+            sources:
+              - path: plans/runx.md
+            risks:
+              - risk: Unverified claims weaken evaluator trust.
+                likelihood: medium
+                impact: high
+                mitigation: Require a cited evidence log.
+          agent_step.harness-author.output:
+            skill_spec:
+              name: market-intelligence
+              description: Research and draft a daily ecosystem brief.
+            execution_plan:
+              runner: chain
+              phases:
+                - research
+                - draft
+                - approve
+            harness_fixture:
+              - name: market-intelligence-success
+                kind: skill
+                target: ../market-intelligence
+                expect:
+                  status: success
+              - name: market-intelligence-missing-objective
+                kind: skill
+                target: ../market-intelligence
+                expect:
+                  status: needs_resolution
+            acceptance_checks:
+              - structured context reaches harness-author
+              - market-intelligence success fixture passes
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+
 runners:
   objective-to-skill:
     default: true
@@ -26,11 +106,11 @@ runners:
           scopes:
             - runx:builder:research
           context:
-            decomposition: decompose.stdout
+            decomposition: decompose.objective_decomposition.data
         - id: author-harness
           skill: ../harness-author
           scopes:
             - runx:builder:write-proposal
           context:
-            decomposition: decompose.stdout
-            research: research.stdout
+            decomposition: decompose.objective_decomposition.data
+            research: research.skill_research_report.data

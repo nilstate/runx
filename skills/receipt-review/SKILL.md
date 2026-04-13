@@ -10,8 +10,8 @@ smallest change that fixes it.
 
 Read the receipt or failure summary. Identify what was attempted, what
 succeeded, and where it broke. The receipt contains step statuses
-(`success`, `failure`, `policy_denied`, `missing_context`,
-`approval_required`), exit codes, stderr, scope admission decisions,
+(`success`, `failure`, `policy_denied`, `needs_resolution`),
+exit codes, stderr, scope admission decisions,
 and timing.
 
 Distinguish root cause from symptoms. A chain may report failure at step 4,
