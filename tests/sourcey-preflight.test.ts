@@ -228,6 +228,15 @@ function createSourceyCaller(overrides: { brandName: string; homepageUrl: string
         };
       }
       if (request.work.envelope.skill === "sourcey.critique") {
+        const buildReport = request.work.envelope.current_context.find(
+          (artifact) => artifact.type === "sourcey_build_report",
+        )?.data;
+        expect(buildReport).toMatchObject({
+          generated: true,
+          generated_files: ["index.html"],
+          index_title: "Sourcey Fixture",
+          index_excerpt: "Sourcey Fixture",
+        });
         return {
           actor: "agent",
           payload: {

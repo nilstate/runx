@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
@@ -38,6 +38,96 @@ function sourceyEnv() {
     }
   }
   return env;
+}
+
+function collectGeneratedFiles(rootDir, currentDir = rootDir, files = [], maxFiles = 64) {
+  if (!existsSync(currentDir) || files.length >= maxFiles) {
+    return files;
+  }
+
+  const entries = readdirSync(currentDir, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  for (const entry of entries) {
+    if (files.length >= maxFiles) {
+      break;
+    }
+
+    const absolutePath = path.join(currentDir, entry.name);
+    if (entry.isDirectory()) {
+      collectGeneratedFiles(rootDir, absolutePath, files, maxFiles);
+      continue;
+    }
+
+    if (entry.isFile()) {
+      files.push(path.relative(rootDir, absolutePath));
+    }
+  }
+
+  return files;
+}
+
+function decodeHtmlEntities(text) {
+  return text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+}
+
+function stripHtml(html) {
+  return decodeHtmlEntities(
+    html
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractTagText(html, tagName) {
+  const match = html.match(new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, "i"));
+  if (!match) {
+    return undefined;
+  }
+  const text = stripHtml(match[1]);
+  return text || undefined;
+}
+
+function extractHeadingTexts(html, maxHeadings = 4) {
+  const headings = [];
+  const matcher = /<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/gi;
+  let match = matcher.exec(html);
+  while (match && headings.length < maxHeadings) {
+    const text = stripHtml(match[1]);
+    if (text) {
+      headings.push(text);
+    }
+    match = matcher.exec(html);
+  }
+  return headings;
+}
+
+function buildIndexEvidence(indexPath) {
+  if (!existsSync(indexPath)) {
+    return {};
+  }
+
+  const stats = statSync(indexPath);
+  if (!stats.isFile()) {
+    return {};
+  }
+
+  const html = readFileSync(indexPath, "utf8");
+  const excerpt = stripHtml(html).slice(0, 1200);
+  return {
+    index_title: extractTagText(html, "title") ?? null,
+    index_headings: extractHeadingTexts(html),
+    index_excerpt: excerpt || null,
+  };
 }
 
 const inputBase = process.env.RUNX_CWD || process.env.INIT_CWD || process.cwd();
@@ -87,6 +177,10 @@ function failureReport(extra = {}) {
     cwd: buildCwd,
     generated: false,
     index_path: path.join(outputDir, "index.html"),
+    generated_files: [],
+    index_title: null,
+    index_headings: [],
+    index_excerpt: null,
     ...extra,
   };
 }
@@ -128,6 +222,7 @@ if (result.status !== 0) {
 }
 
 const indexPath = path.join(outputDir, "index.html");
+const generated = existsSync(indexPath);
 process.stdout.write(
   JSON.stringify({
     project,
@@ -137,7 +232,9 @@ process.stdout.write(
     output_dir: outputDir,
     command: "sourcey build",
     cwd: buildCwd,
-    generated: existsSync(indexPath),
+    generated,
     index_path: indexPath,
+    generated_files: collectGeneratedFiles(outputDir),
+    ...buildIndexEvidence(indexPath),
   }),
 );

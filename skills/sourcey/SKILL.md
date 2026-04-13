@@ -68,6 +68,11 @@ thin. Missing evidence is not the same as missing files.
 9. Verify the output directory contains `index.html`.
 10. Inspect the receipt and generated site.
 
+The deterministic build report should carry enough rendered evidence for an
+external reviewer to reason about the site without hidden file access. At
+minimum that means the generated file list plus index-page title, headings, and
+an excerpt when `index.html` exists.
+
 ## Discovery contract
 
 `discovery_report` may include additional planning metadata, but the canonical

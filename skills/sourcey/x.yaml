@@ -148,10 +148,13 @@ runners:
               evaluation_report: object
           instructions: >
             Evaluate the built Sourcey site against the discovered plan and the
-            authored source bundle. Read the generated output files as needed and
-            produce one bounded evaluation_report covering grounding, clarity,
-            navigation quality, and obvious gaps. Do not propose open-ended
-            revision loops here.
+            authored source bundle. Use the build_report as the primary evidence
+            packet for rendered output, especially generated_files, index_title,
+            index_headings, and index_excerpt. When that evidence is absent or
+            thin, call it out as an evidence gap rather than inventing site
+            content. Produce one bounded evaluation_report covering grounding,
+            clarity, navigation quality, and obvious gaps. Do not propose
+            open-ended revision loops here.
           allowed_tools:
             - fs.read
           context:
