@@ -104,18 +104,29 @@ runners:
             otherwise derive the exact created path from scafld_new_stdout,
             which comes from the preceding scafld new step. spec_contents must
             be the full YAML text to write. spec_contents must be a complete
-            scafld v1.1 document with spec_version, task_id, created, updated,
-            status, a task block, planning_log, at least one phase, and
-            rollback. The spec must declare every tracked file that will be
-            changed before scafld audit runs, including the in-progress spec
-            path if that file will appear in git diff. Use concrete repo-relative
-            file paths only in tracked_files, task.context.files_impacted,
-            phases[].changes[].file, and rollback commands. Never use prose
-            placeholders such as "the relevant docs file" or "the minimal set
-            of files". If a required file path cannot be grounded from the
-            issue body or available evidence, keep the spec narrowly scoped and
-            state the missing path confirmation in assumptions or notes rather
-            than inventing it. Keep the scope minimal and make acceptance
+            scafld v1.1 document with this structure:
+            - spec_version, task_id, created, updated, status
+            - task.title, task.summary, task.size, task.risk_level
+            - task.context with grounded files_impacted and any relevant invariants
+            - task.objectives as an explicit list of bounded outcomes
+            - task.touchpoints describing the concrete repo areas being changed
+            - task.acceptance.definition_of_done and task.acceptance.validation
+            - planning_log entries with timestamp, actor, and summary
+            - at least one phases[] entry with id, name, objective, changes[],
+              acceptance_criteria[], and status
+            - rollback.strategy and rollback.commands
+            The spec must declare every tracked file that will be changed before
+            scafld audit runs, including the in-progress spec path if that file
+            will appear in git diff. Use concrete repo-relative file paths only
+            in task.context.files_impacted, phases[].changes[].file, and
+            rollback commands. Never use prose placeholders such as "the relevant
+            docs file" or "the minimal set of files". Mirror the scafld schema
+            used by the passing issue-to-pr fixture tests: task.summary/size/
+            risk_level and task.acceptance.validation are required semantics,
+            not optional prose. If a required file path cannot be grounded from
+            the issue body or available evidence, keep the spec narrowly scoped
+            and state the missing path confirmation in assumptions or notes
+            rather than inventing it. Keep the scope minimal and make acceptance
             criteria executable.
           allowed_tools:
             - fs.read

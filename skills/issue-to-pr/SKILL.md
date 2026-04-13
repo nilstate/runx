@@ -41,14 +41,25 @@ The `issue-to-pr-author-spec` boundary must emit a full scafld `spec_version:
 That means the authored spec must include:
 
 - `spec_version`, `task_id`, `created`, `updated`, `status`
-- a `task` block with concrete scope and acceptance details
+- `task.title`, `task.summary`, `task.size`, `task.risk_level`
+- `task.context` with grounded file impact and relevant invariants
+- `task.objectives`
+- `task.touchpoints`
+- `task.acceptance.definition_of_done`
+- `task.acceptance.validation`
 - `planning_log`
-- at least one `phases[]` entry
-- `rollback`
+- at least one `phases[]` entry with `objective`, `changes[]`,
+  `acceptance_criteria[]`, and `status`
+- `rollback.strategy` and `rollback.commands`
 
 All changed-file declarations must use concrete repo-relative paths. The spec
 must never use prose placeholders like "the relevant docs file" inside
-`tracked_files`, `files_impacted`, `changes[].file`, or rollback commands.
+`files_impacted`, `changes[].file`, or rollback commands.
+
+The safest reference shape is the one already used by the passing
+`tests/issue-to-pr-chain.test.ts` fixture: `task.summary`, `task.size`,
+`task.risk_level`, `task.acceptance.validation`, and phase-level
+`acceptance_criteria` should be present explicitly.
 
 ## Inputs
 
