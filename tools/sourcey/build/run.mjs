@@ -50,6 +50,7 @@ const outputDir = path.resolve(project, String(inputs.output_dir || ".sourcey/ru
 const command = /\.(mjs|cjs|js)$/.test(sourcey) ? process.execPath : sourcey;
 const sourceyArgs = /\.(mjs|cjs|js)$/.test(sourcey) ? [sourcey] : [];
 const mode = String(docsInputs.mode || "config");
+let buildCwd = project;
 
 sourceyArgs.push("build");
 if (mode === "openapi") {
@@ -63,7 +64,11 @@ if (mode === "openapi") {
   if (!existsSync(configPath)) {
     throw new Error(`Sourcey config not found: ${configPath}`);
   }
-  sourceyArgs.push("--config", configPath);
+  buildCwd = path.dirname(configPath);
+  const configFile = path.basename(configPath);
+  if (configFile !== "sourcey.config.ts") {
+    sourceyArgs.push("--config", configFile);
+  }
 } else {
   throw new Error(`Unsupported docs_inputs.mode: ${mode}`);
 }
@@ -79,6 +84,7 @@ function failureReport(extra = {}) {
     command: "sourcey build",
     sourcey_bin: sourcey,
     sourcey_args: sourceyArgs,
+    cwd: buildCwd,
     generated: false,
     index_path: path.join(outputDir, "index.html"),
     ...extra,
@@ -86,7 +92,7 @@ function failureReport(extra = {}) {
 }
 
 const result = spawnSync(command, sourceyArgs, {
-  cwd: project,
+  cwd: buildCwd,
   env: sourceyEnv(),
   encoding: "utf8",
   shell: false,
@@ -130,6 +136,7 @@ process.stdout.write(
     docs_inputs: docsInputs,
     output_dir: outputDir,
     command: "sourcey build",
+    cwd: buildCwd,
     generated: existsSync(indexPath),
     index_path: indexPath,
   }),

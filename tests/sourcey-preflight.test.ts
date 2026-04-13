@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -142,9 +142,53 @@ describe("sourcey preflight", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   }, 15_000);
+
+  it("runs config-mode builds from the config directory for default Sourcey config names", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sourcey-config-cwd-"));
+    const projectDir = path.join(tempDir, "project");
+    const docsDir = path.join(projectDir, "docs");
+    const sourceyStub = path.join(tempDir, "sourcey-stub.mjs");
+    const invocationPath = path.join(tempDir, "sourcey-invocation.json");
+    const outputDir = path.join(projectDir, ".sourcey", "runx-docs");
+
+    try {
+      await mkdir(docsDir, { recursive: true });
+      await writeFile(path.join(projectDir, "package.json"), JSON.stringify({ name: "sourcey-cwd-fixture" }, null, 2));
+      await writeFile(path.join(docsDir, "sourcey.config.ts"), "export default {};\n");
+      await writeSourceyStub(sourceyStub);
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/sourcey"),
+        inputs: {
+          project: projectDir,
+          output_dir: outputDir,
+          sourcey_bin: sourceyStub,
+        },
+        caller: createSourceyCaller({
+          brandName: "Sourcey Fixture",
+          homepageUrl: "https://sourcey.example.test",
+          configPath: "docs/sourcey.config.ts",
+        }),
+        env: {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          SOURCEY_STUB_INVOCATION_PATH: invocationPath,
+        },
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
+      });
+
+      expect(result.status).toBe("success");
+      const invocation = JSON.parse(await readFile(invocationPath, "utf8")) as { cwd: string; argv: string[] };
+      expect(invocation.cwd).toBe(docsDir);
+      expect(invocation.argv).toEqual(["build", "-o", outputDir, "--quiet"]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
 });
 
-function createSourceyCaller(overrides: { brandName: string; homepageUrl: string }): Caller {
+function createSourceyCaller(overrides: { brandName: string; homepageUrl: string; configPath?: string }): Caller {
   return {
     resolve: async (request) => {
       if (request.kind === "approval") {
@@ -163,7 +207,7 @@ function createSourceyCaller(overrides: { brandName: string; homepageUrl: string
               homepage_url: overrides.homepageUrl,
               docs_inputs: {
                 mode: "config",
-                config: "sourcey.config.ts",
+                config: overrides.configPath || "sourcey.config.ts",
               },
             },
             confidence: "high",
@@ -218,6 +262,9 @@ async function writeSourceyStub(stubPath: string, envCapturePath?: string): Prom
   const lines = [
     'import { mkdirSync, writeFileSync } from "node:fs";',
     'import { join } from "node:path";',
+    'if (process.env.SOURCEY_STUB_INVOCATION_PATH) {',
+    '  writeFileSync(process.env.SOURCEY_STUB_INVOCATION_PATH, JSON.stringify({ cwd: process.cwd(), argv: process.argv.slice(2) }));',
+    '}',
     'const outputFlag = process.argv.indexOf("-o");',
     'const outputDir = outputFlag === -1 ? "dist" : process.argv[outputFlag + 1];',
     'mkdirSync(outputDir, { recursive: true });',
