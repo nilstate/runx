@@ -34,11 +34,13 @@ describe("sourcey skill", () => {
               actor: "agent",
               payload: {
               discovery_report: {
-                brand_name: "Sourcey Fixture",
-                homepage_url: "https://sourcey.example.test",
-                docs_inputs: {
-                  mode: "config",
-                  config: "sourcey.config.ts",
+                discovered: {
+                  brand_name: "Sourcey Fixture",
+                  homepage_url: "https://sourcey.example.test",
+                  docs_inputs: {
+                    mode: "config",
+                    config: "sourcey.config.ts",
+                  },
                 },
                 confidence: "high",
                 rationale: ["fixture already includes a valid Sourcey config and docs content"],
@@ -168,11 +170,13 @@ describe("sourcey skill", () => {
             actor: "agent",
             payload: {
             discovery_report: {
-              brand_name: "Sourcey Incomplete Fixture",
-              homepage_url: "https://sourcey.example.test",
-              docs_inputs: {
-                mode: "config",
-                config: "sourcey.config.ts",
+              discovered: {
+                brand_name: "Sourcey Incomplete Fixture",
+                homepage_url: "https://sourcey.example.test",
+                docs_inputs: {
+                  mode: "config",
+                  config: "sourcey.config.ts",
+                },
               },
               confidence: "high",
               rationale: ["package metadata exists", "project needs an authored Sourcey config and guide page"],

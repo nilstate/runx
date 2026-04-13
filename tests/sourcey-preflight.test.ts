@@ -158,11 +158,13 @@ function createSourceyCaller(overrides: { brandName: string; homepageUrl: string
           actor: "agent",
           payload: {
           discovery_report: {
-            brand_name: overrides.brandName,
-            homepage_url: overrides.homepageUrl,
-            docs_inputs: {
-              mode: "config",
-              config: "sourcey.config.ts",
+            discovered: {
+              brand_name: overrides.brandName,
+              homepage_url: overrides.homepageUrl,
+              docs_inputs: {
+                mode: "config",
+                config: "sourcey.config.ts",
+              },
             },
             confidence: "high",
             rationale: ["existing Sourcey fixture already contains configuration and authored pages"],

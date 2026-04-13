@@ -61,6 +61,16 @@ runners:
             docs_inputs object pointing to the config or spec path the next step
             should build from. Treat this as a bounded scope/ingest/model pass.
             Do not author docs, build the site, or propose open-ended revision.
+            discovery_report must use this canonical shape:
+            {
+              "discovered": {
+                "brand_name": string|null,
+                "homepage_url": string|null,
+                "docs_inputs": object|null
+              }
+            }
+            Additional fields are allowed, but brand_name, homepage_url, and
+            docs_inputs must live under discovery_report.discovered.
           allowed_tools:
             - fs.read
             - git.status
@@ -120,9 +130,9 @@ runners:
           scopes:
             - sourcey.build
           context:
-            homepage_url: discover.discovery_report.data.homepage_url
-            brand_name: discover.discovery_report.data.brand_name
-            docs_inputs: discover.discovery_report.data.docs_inputs
+            homepage_url: discover.discovery_report.data.discovered.homepage_url
+            brand_name: discover.discovery_report.data.discovered.brand_name
+            docs_inputs: discover.discovery_report.data.discovered.docs_inputs
         - id: critique
           label: review built site
           run:
@@ -185,9 +195,9 @@ runners:
           scopes:
             - sourcey.build
           context:
-            homepage_url: discover.discovery_report.data.homepage_url
-            brand_name: discover.discovery_report.data.brand_name
-            docs_inputs: discover.discovery_report.data.docs_inputs
+            homepage_url: discover.discovery_report.data.discovered.homepage_url
+            brand_name: discover.discovery_report.data.discovered.brand_name
+            docs_inputs: discover.discovery_report.data.discovered.docs_inputs
         - id: verify
           label: verify docs site
           tool: sourcey.verify
