@@ -68,6 +68,9 @@ describe("issue-to-PR composite skill", () => {
       required: false,
     });
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo_snapshot_path");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Never author acceptance criteria that depend on git history");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("HEAD~1");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("anchor on the exact expected text");
     expect(chain.steps.find((step) => step.id === "write-fix")).toMatchObject({
       tool: "fs.write_bundle",
       context: {

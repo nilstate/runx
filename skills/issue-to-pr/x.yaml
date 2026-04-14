@@ -145,7 +145,15 @@ runners:
             rather than inventing it. When repo_snapshot or
             repo_snapshot_path is present, prefer those real repo artifacts over
             generic assumptions. Keep the scope minimal and make acceptance
-            criteria executable.
+            criteria executable in the current workspace state before any
+            commit exists. Never author acceptance criteria that depend on git
+            history or revision ranges such as HEAD~1, merge-base comparisons,
+            or prior commits being available. Prefer current-tree checks or
+            exact file-path checks such as git diff --name-only -- <path> or
+            git status --short -- <path>. When checking file contents, target
+            the declared changed file directly and anchor on the exact expected
+            text so the command cannot accidentally match the issue title, spec
+            prose, or unrelated strings elsewhere in the repo.
           allowed_tools:
             - fs.read
             - git.status

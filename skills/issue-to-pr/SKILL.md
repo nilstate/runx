@@ -62,6 +62,19 @@ The safest reference shape is the one already used by the passing
 `task.risk_level`, `task.acceptance.validation`, and phase-level
 `acceptance_criteria` should be present explicitly.
 
+Acceptance criteria must be executable in the current workspace state produced
+by the lane before any commit exists. Do not depend on git history or revision
+ranges such as `HEAD~1`, merge-base comparisons, or prior commits being
+available. Prefer checks against the working tree or directly against the
+declared changed files.
+
+For file-scope assertions, prefer exact path filters or current-tree checks
+such as `git diff --name-only -- <path>` or `git status --short -- <path>`
+over history-dependent diffs. For content assertions, target the changed file
+directly and anchor on the exact expected text so the check cannot accidentally
+match issue titles, spec prose, or other unrelated strings elsewhere in the
+repo.
+
 ## Inputs
 
 - `task_id`: scafld task id (default: `issue-to-pr-fixture`).
