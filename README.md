@@ -38,6 +38,8 @@ runx objective-to-skill --objective "build sourcey docs skill" --json
 Recommended flows:
 
 ```bash
+runx init
+runx init -g --prefetch official
 runx search sourcey
 runx sourcey --project .
 runx evolve
@@ -76,7 +78,7 @@ and the canonical composite execution geometry.
 
 ## Flagship Skills
 
-The bundled catalog is skill-first. Public entrypoints are capabilities such as:
+The official catalog is skill-first. Public entrypoints are capabilities such as:
 
 - `sourcey`
 - `evolve`
@@ -87,7 +89,9 @@ The bundled catalog is skill-first. Public entrypoints are capabilities such as:
 - `receipt-review`
 
 Each ships as a package with `SKILL.md` plus `x.yaml` when it exposes runnable
-bindings or inline harness coverage.
+bindings or inline harness coverage. Official skills are registry-backed and
+cached locally on first acquisition. The npm CLI package no longer needs to
+ship the official runtime skill bodies for normal execution.
 
 ## Receipts
 

@@ -127,4 +127,33 @@ describe("TypeScript SDK", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("runs declared inline harnesses before registry publish", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sdk-js-publish-"));
+    const registryDir = path.join(tempDir, "registry");
+
+    try {
+      const sdk = createRunxSdk({
+        env: { ...process.env, RUNX_CWD: process.cwd() },
+        registryStore: createFileRegistryStore(registryDir),
+      });
+
+      const published = await sdk.publishSkill({
+        skillPath: "skills/sourcey",
+        owner: "0state",
+        version: "1.0.0",
+      });
+
+      expect(published).toMatchObject({
+        status: "published",
+        skill_id: "0state/sourcey",
+        harness: {
+          status: "passed",
+          case_count: 1,
+        },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });

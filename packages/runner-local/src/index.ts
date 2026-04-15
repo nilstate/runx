@@ -73,10 +73,16 @@ import {
   writeLocalReceipt,
   type ChainReceiptStep,
   type ChainReceiptSyncPoint,
+  type ExecutionSemantics,
+  type GovernedDisposition,
   type LocalChainReceipt,
   type LocalReceipt,
   type LocalSkillReceipt,
+  type OutcomeState,
   type ReceiptVerification,
+  type ReceiptInputContext,
+  type ReceiptOutcome,
+  type ReceiptSurfaceRef,
 } from "../../receipts/src/index.js";
 import {
   createSingleStepState,
@@ -136,6 +142,7 @@ export interface RunLocalSkillOptions {
   readonly authResolver?: AuthResolver;
   readonly receiptMetadata?: Readonly<Record<string, unknown>>;
   readonly resumeFromRunId?: string;
+  readonly executionSemantics?: ExecutionSemantics;
 }
 
 interface ResolvedRunnerSelection {
@@ -169,6 +176,7 @@ interface RunResolvedSkillOptions {
   readonly orchestrationRunId?: string;
   readonly orchestrationStepId?: string;
   readonly currentContext?: readonly MaterializedContextEdge[];
+  readonly executionSemantics?: ExecutionSemantics;
 }
 
 export interface AuthResolver {
@@ -326,6 +334,7 @@ export interface RunLocalChainOptions {
     readonly body: string;
   };
   readonly resumeFromRunId?: string;
+  readonly executionSemantics?: ExecutionSemantics;
 }
 
 export interface ChainStepRun {
@@ -349,6 +358,124 @@ export interface ChainStepRun {
   }[];
   readonly governance?: ChainStepGovernance;
   readonly artifactIds?: readonly string[];
+  readonly disposition?: GovernedDisposition;
+  readonly inputContext?: ReceiptInputContext;
+  readonly outcomeState?: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly surfaceRefs?: readonly ReceiptSurfaceRef[];
+  readonly evidenceRefs?: readonly ReceiptSurfaceRef[];
+}
+
+interface NormalizedExecutionSemantics {
+  readonly disposition: GovernedDisposition;
+  readonly inputContext?: ReceiptInputContext;
+  readonly outcomeState: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly surfaceRefs?: readonly ReceiptSurfaceRef[];
+  readonly evidenceRefs?: readonly ReceiptSurfaceRef[];
+}
+
+const DEFAULT_INPUT_CONTEXT_MAX_BYTES = 4096;
+
+function normalizeExecutionSemantics(
+  semantics: ExecutionSemantics | undefined,
+  inputs: Readonly<Record<string, unknown>>,
+): NormalizedExecutionSemantics {
+  return {
+    disposition: semantics?.disposition ?? "completed",
+    inputContext: captureInputContext(semantics?.input_context, inputs),
+    outcomeState: semantics?.outcome_state ?? "complete",
+    outcome: semantics?.outcome,
+    surfaceRefs: normalizeSurfaceRefs(semantics?.surface_refs),
+    evidenceRefs: normalizeSurfaceRefs(semantics?.evidence_refs),
+  };
+}
+
+function mergeExecutionSemantics(
+  base: ExecutionSemantics | undefined,
+  override: ExecutionSemantics | undefined,
+): ExecutionSemantics | undefined {
+  if (!base) {
+    return override;
+  }
+  if (!override) {
+    return base;
+  }
+
+  return {
+    disposition: override.disposition ?? base.disposition,
+    outcome_state: override.outcome_state ?? base.outcome_state,
+    outcome: override.outcome ?? base.outcome,
+    input_context: override.input_context ?? base.input_context,
+    surface_refs: override.surface_refs ?? base.surface_refs,
+    evidence_refs: override.evidence_refs ?? base.evidence_refs,
+  };
+}
+
+function captureInputContext(
+  directive: ExecutionSemantics["input_context"] | undefined,
+  inputs: Readonly<Record<string, unknown>>,
+): ReceiptInputContext | undefined {
+  if (!directive) {
+    return undefined;
+  }
+
+  const snapshotSource = directive.snapshot ?? inputs;
+  if (directive.capture === false && directive.snapshot === undefined) {
+    return undefined;
+  }
+
+  const redacted = sanitizeInputContextValue(snapshotSource);
+  const serialized = JSON.stringify(redacted);
+  const bytes = Buffer.byteLength(serialized);
+  const maxBytes = directive.max_bytes ?? DEFAULT_INPUT_CONTEXT_MAX_BYTES;
+  return {
+    source: directive.source ?? "inputs",
+    snapshot: bytes <= maxBytes ? redacted : undefined,
+    preview: bytes <= maxBytes ? undefined : serialized.slice(0, maxBytes),
+    bytes,
+    max_bytes: maxBytes,
+    truncated: bytes > maxBytes,
+    value_hash: hashStable(redacted),
+  };
+}
+
+function normalizeSurfaceRefs(
+  refs: readonly ReceiptSurfaceRef[] | undefined,
+): readonly ReceiptSurfaceRef[] | undefined {
+  if (!refs || refs.length === 0) {
+    return undefined;
+  }
+  return refs.map((ref) => ({
+    type: ref.type,
+    uri: ref.uri,
+    label: ref.label,
+  }));
+}
+
+function sanitizeInputContextValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeInputContextValue(entry));
+  }
+  if (typeof value === "string") {
+    return "[redacted]";
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      isSensitiveInputContextKey(key) ? "[redacted]" : sanitizeInputContextValue(entry),
+    ]),
+  );
+}
+
+function isSensitiveInputContextKey(key: string): boolean {
+  return /(access[_-]?token|refresh[_-]?token|api[_-]?key|client[_-]?secret|password|raw[_-]?secret|raw[_-]?token)/i.test(
+    key,
+  );
 }
 
 interface ChainStepGovernance {
@@ -719,6 +846,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
     receiptMetadata: options.receiptMetadata,
     resumeFromRunId: runId,
     skillPathForMissingContext: resolvedSkill.skillPath,
+    executionSemantics: options.executionSemantics,
   });
 
   if (result.status === "needs_resolution") {
@@ -753,6 +881,10 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
   const { skill } = options;
   const runId = options.resumeFromRunId ?? uniqueReceiptId("rx");
   const contextEnvelopeRunId = options.orchestrationRunId ?? runId;
+  const executionSemantics = normalizeExecutionSemantics(
+    mergeExecutionSemantics(skill.execution, options.executionSemantics),
+    options.inputs,
+  );
 
   const structuralAdmission = admitLocalSkill(skill, {
     allowedSourceTypes: options.allowedSourceTypes,
@@ -795,6 +927,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
             reasons: admission.reasons,
             approval: sandboxApproval,
             runOptions: options,
+            executionSemantics,
           })
         : undefined;
     return {
@@ -834,6 +967,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
         body: skill.body,
       },
       resumeFromRunId: options.resumeFromRunId,
+      executionSemantics: mergeExecutionSemantics(skill.execution, options.executionSemantics),
     });
 
     if (chainResult.status === "needs_resolution") {
@@ -1020,6 +1154,12 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     parentReceipt: options.parentReceipt,
     contextFrom: options.contextFrom,
     artifactIds: artifactResult.envelopes.map((envelope) => envelope.meta.artifact_id),
+    disposition: executionSemantics.disposition,
+    inputContext: executionSemantics.inputContext,
+    outcomeState: executionSemantics.outcomeState,
+    outcome: executionSemantics.outcome,
+    surfaceRefs: executionSemantics.surfaceRefs,
+    evidenceRefs: executionSemantics.evidenceRefs,
   });
   await appendSkillJournalEntries({
     receiptDir: options.receiptDir ?? defaultReceiptDir(options.env),
@@ -1130,6 +1270,7 @@ async function writeApprovalDeniedReceipt(options: {
   readonly inputs: Readonly<Record<string, unknown>>;
   readonly reasons: readonly string[];
   readonly approval: ApprovalDecision;
+  readonly executionSemantics: NormalizedExecutionSemantics;
   readonly runOptions: Pick<
     RunResolvedSkillOptions,
     "receiptDir" | "runxHome" | "env" | "receiptMetadata" | "parentReceipt" | "contextFrom"
@@ -1160,6 +1301,12 @@ async function writeApprovalDeniedReceipt(options: {
     completedAt: startedAt,
     parentReceipt: options.runOptions.parentReceipt,
     contextFrom: options.runOptions.contextFrom,
+    disposition: "policy_denied",
+    inputContext: options.executionSemantics.inputContext,
+    outcomeState: options.executionSemantics.outcomeState,
+    outcome: options.executionSemantics.outcome,
+    surfaceRefs: options.executionSemantics.surfaceRefs,
+    evidenceRefs: options.executionSemantics.evidenceRefs,
   });
 }
 
@@ -1247,6 +1394,7 @@ function applyRunner(skill: ValidatedSkill, runner: SkillRunnerDefinition): Vali
     mutating: runner.mutating ?? skill.mutating,
     artifacts: runner.artifacts ?? skill.artifacts,
     allowedTools: runner.allowedTools ?? skill.allowedTools,
+    execution: runner.execution ?? skill.execution,
     runx: runner.runx ?? skill.runx,
   };
 }
@@ -1590,6 +1738,37 @@ async function appendPendingChainJournalEntry(options: {
   });
 }
 
+async function appendChainStepStartedJournalEntry(options: {
+  readonly receiptDir: string;
+  readonly runId: string;
+  readonly topLevelSkillName: string;
+  readonly step: ChainStep;
+  readonly reference: string;
+  readonly createdAt: string;
+}): Promise<void> {
+  await appendJournalEntries({
+    receiptDir: options.receiptDir,
+    runId: options.runId,
+    entries: [
+      createRunEventEntry({
+        runId: options.runId,
+        stepId: options.step.id,
+        producer: {
+          skill: options.topLevelSkillName,
+          runner: "chain",
+        },
+        kind: "step_started",
+        status: "started",
+        detail: {
+          skill: options.reference,
+          runner: chainStepRunner(options.step) ?? "default",
+        },
+        createdAt: options.createdAt,
+      }),
+    ],
+  });
+}
+
 function admitChainTransition(
   policy: ChainPolicy | undefined,
   stepId: string,
@@ -1855,6 +2034,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
   const receiptDir = options.receiptDir ?? defaultReceiptDir(options.env);
   const startedAt = new Date().toISOString();
   const startedAtMs = Date.now();
+  const executionSemantics = normalizeExecutionSemantics(options.executionSemantics, options.inputs ?? {});
   const chain = chainResolution.chain;
   const chainDirectory = chainResolution.chainDirectory;
   const chainId = options.runId ?? options.resumeFromRunId ?? uniqueReceiptId("cx");
@@ -1985,6 +2165,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
             inputs: options.inputs ?? {},
             stepRuns: [...stepRuns, deniedRun],
             errorMessage: governance.scopeAdmission.reasons?.join("; ") ?? "chain step scope denied",
+            executionSemantics,
           });
           return {
             status: "policy_denied", chain, stepId: step.id,
@@ -2018,6 +2199,24 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
           contextFromReceiptIds,
           governance,
           retryContext,
+        });
+      }
+
+      for (const prep of branchPreps) {
+        const stepStartedAt = new Date().toISOString();
+        state = transitionSequentialChain(state, {
+          type: "start_step",
+          stepId: prep.step.id,
+          at: stepStartedAt,
+        });
+        await reportChainStepStarted(options.caller, prep.step, prep.stepReference);
+        await appendChainStepStartedJournalEntry({
+          receiptDir,
+          runId: chainId,
+          topLevelSkillName: chainProducerSkillName(options, chain),
+          step: prep.step,
+          reference: prep.stepReference,
+          createdAt: stepStartedAt,
         });
       }
 
@@ -2058,11 +2257,6 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
 
         if (result.status === "aborted" || !result.value) {
           state = transitionSequentialChain(state, {
-            type: "start_step",
-            stepId: prep.step.id,
-            at: new Date().toISOString(),
-          });
-          state = transitionSequentialChain(state, {
             type: "step_failed", stepId: prep.step.id,
             at: new Date().toISOString(),
             error: result.error ?? "fanout branch aborted",
@@ -2101,11 +2295,6 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
 
         // In fanout, policy_denied is a branch failure, not a chain halt.
         if (stepResult.status === "policy_denied") {
-          state = transitionSequentialChain(state, {
-            type: "start_step",
-            stepId: prep.step.id,
-            at: new Date().toISOString(),
-          });
           await reportChainStepCompleted(
             options.caller,
             prep.step,
@@ -2142,34 +2331,6 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
           continue;
         }
 
-        const stepStartedAt = new Date().toISOString();
-        state = transitionSequentialChain(state, {
-          type: "start_step",
-          stepId: prep.step.id,
-          at: stepStartedAt,
-        });
-        await reportChainStepStarted(options.caller, prep.step, prep.stepReference);
-        await appendJournalEntries({
-          receiptDir,
-          runId: chainId,
-          entries: [
-            createRunEventEntry({
-              runId: chainId,
-              stepId: prep.step.id,
-              producer: {
-                skill: chainProducerSkillName(options, chain),
-                runner: "chain",
-              },
-              kind: "step_started",
-              status: "started",
-              detail: {
-                skill: prep.stepReference,
-                runner: chainStepRunner(prep.step) ?? "default",
-              },
-              createdAt: stepStartedAt,
-            }),
-          ],
-        });
         const stepCompletedAt = new Date().toISOString();
         const artifactResult = materializeArtifacts({
           stdout: stepResult.execution.stdout,
@@ -2197,6 +2358,12 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
           retry: prep.retryContext.receipt,
           governance: prep.governance,
           artifactIds: artifactResult.envelopes.map((envelope) => envelope.meta.artifact_id),
+          disposition: stepResult.receipt.disposition,
+          inputContext: stepResult.receipt.input_context,
+          outcomeState: stepResult.receipt.outcome_state,
+          outcome: stepResult.receipt.outcome,
+          surfaceRefs: stepResult.receipt.surface_refs,
+          evidenceRefs: stepResult.receipt.evidence_refs,
           contextFrom: prep.context.map((edge) => ({
             input: edge.input, fromStep: edge.fromStep,
             output: edge.output, receiptId: edge.receiptId,
@@ -2341,6 +2508,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         inputs: options.inputs ?? {},
         stepRuns: [...stepRuns, deniedRun],
         errorMessage: transitionGate.reason,
+        executionSemantics,
       });
       return {
         status: "policy_denied",
@@ -2371,6 +2539,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         inputs: options.inputs ?? {},
         stepRuns: [...stepRuns, deniedRun],
         errorMessage: governance.scopeAdmission.reasons?.join("; ") ?? "chain step scope denied",
+        executionSemantics,
       });
       return {
         status: "policy_denied",
@@ -2400,6 +2569,22 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         state,
       };
     }
+
+    const stepStartedAt = new Date().toISOString();
+    state = transitionSequentialChain(state, {
+      type: "start_step",
+      stepId: step.id,
+      at: stepStartedAt,
+    });
+    await reportChainStepStarted(options.caller, step, resolvedStep.reference);
+    await appendChainStepStartedJournalEntry({
+      receiptDir,
+      runId: chainId,
+      topLevelSkillName: chainProducerSkillName(options, chain),
+      step,
+      reference: resolvedStep.reference,
+      createdAt: stepStartedAt,
+    });
 
     const stepResult = await runResolvedSkill({
       skill: stepSkill,
@@ -2483,38 +2668,15 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         stepId: step.id,
         skill: stepResult.skill,
         reasons: stepResult.reasons,
-        state,
+        state: transitionSequentialChain(state, {
+          type: "step_failed",
+          stepId: step.id,
+          at: new Date().toISOString(),
+          error: `policy denied: ${stepResult.reasons.join("; ")}`,
+        }),
       };
     }
 
-    const stepStartedAt = new Date().toISOString();
-    state = transitionSequentialChain(state, {
-      type: "start_step",
-      stepId: step.id,
-      at: stepStartedAt,
-    });
-    await reportChainStepStarted(options.caller, step, resolvedStep.reference);
-    await appendJournalEntries({
-      receiptDir,
-      runId: chainId,
-      entries: [
-        createRunEventEntry({
-          runId: chainId,
-          stepId: step.id,
-          producer: {
-            skill: chainProducerSkillName(options, chain),
-            runner: "chain",
-          },
-          kind: "step_started",
-          status: "started",
-          detail: {
-            skill: resolvedStep.reference,
-            runner: chainStepRunner(step) ?? "default",
-          },
-          createdAt: stepStartedAt,
-        }),
-      ],
-    });
     const stepCompletedAt = new Date().toISOString();
     const artifactResult = materializeArtifacts({
       stdout: stepResult.execution.stdout,
@@ -2541,6 +2703,12 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       retry: retryContext.receipt,
       governance,
       artifactIds: artifactResult.envelopes.map((envelope) => envelope.meta.artifact_id),
+      disposition: stepResult.receipt.disposition,
+      inputContext: stepResult.receipt.input_context,
+      outcomeState: stepResult.receipt.outcome_state,
+      outcome: stepResult.receipt.outcome,
+      surfaceRefs: stepResult.receipt.surface_refs,
+      evidenceRefs: stepResult.receipt.evidence_refs,
       contextFrom: context.map((edge) => ({
         input: edge.input,
         fromStep: edge.fromStep,
@@ -2611,6 +2779,12 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
     completedAt,
     durationMs: Date.now() - startedAtMs,
     errorMessage: finalError,
+    disposition: executionSemantics.disposition,
+    inputContext: executionSemantics.inputContext,
+    outcomeState: executionSemantics.outcomeState,
+    outcome: executionSemantics.outcome,
+    surfaceRefs: executionSemantics.surfaceRefs,
+    evidenceRefs: executionSemantics.evidenceRefs,
   });
   await appendJournalEntries({
     receiptDir,
@@ -3095,6 +3269,8 @@ function buildDeniedChainStepRun(options: {
     fanoutGroup: options.fanoutGroup,
     governance: options.governance,
     artifactIds: [],
+    disposition: "policy_denied",
+    outcomeState: "complete",
     contextFrom: options.context.map((edge) => ({
       input: edge.input,
       fromStep: edge.fromStep,
@@ -3114,6 +3290,7 @@ async function writePolicyDeniedChainReceipt(options: {
   readonly inputs: Readonly<Record<string, unknown>>;
   readonly stepRuns: readonly ChainStepRun[];
   readonly errorMessage: string;
+  readonly executionSemantics: NormalizedExecutionSemantics;
 }): Promise<LocalChainReceipt> {
   return await writeLocalChainReceipt({
     receiptDir: options.receiptDir,
@@ -3129,6 +3306,12 @@ async function writePolicyDeniedChainReceipt(options: {
     completedAt: new Date().toISOString(),
     durationMs: Date.now() - options.startedAtMs,
     errorMessage: options.errorMessage,
+    disposition: "policy_denied",
+    inputContext: options.executionSemantics.inputContext,
+    outcomeState: options.executionSemantics.outcomeState,
+    outcome: options.executionSemantics.outcome,
+    surfaceRefs: options.executionSemantics.surfaceRefs,
+    evidenceRefs: options.executionSemantics.evidenceRefs,
   });
 }
 
@@ -3158,6 +3341,12 @@ function toChainReceiptStep(step: ChainStepRun): ChainReceiptStep {
     })),
     governance: step.governance ? toReceiptGovernance(step.governance) : undefined,
     artifact_ids: step.artifactIds && step.artifactIds.length > 0 ? step.artifactIds : undefined,
+    disposition: step.disposition,
+    input_context: step.inputContext,
+    outcome_state: step.outcomeState,
+    outcome: step.outcome,
+    surface_refs: step.surfaceRefs,
+    evidence_refs: step.evidenceRefs,
   };
 }
 

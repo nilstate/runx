@@ -1,6 +1,7 @@
 export const registryPackage = "@runx/registry";
 
 export { createLocalRegistryClient, type RegistryClient } from "./client.js";
+export { acquireRegistrySkill, type AcquiredRegistrySkill, type AcquireRegistrySkillOptions } from "./http-client.js";
 export {
   buildRegistrySkillVersion,
   createRegistrySkillVersion,

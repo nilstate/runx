@@ -144,10 +144,16 @@ steps:
       }
       expect(result.reasons).toEqual(["step 'deploy' requested scope(s) outside chain grant: deployments:write"]);
       expect(adapter.callCount()).toBe(0);
+      expect(result.receipt).toMatchObject({
+        disposition: "policy_denied",
+        outcome_state: "complete",
+      });
       expect(result.receipt?.steps[0]).toMatchObject({
         step_id: "deploy",
         runner: "package-echo-cli",
         status: "failure",
+        disposition: "policy_denied",
+        outcome_state: "complete",
         governance: {
           scope_admission: {
             status: "deny",

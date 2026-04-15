@@ -5,9 +5,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  latestVerifiedReceiptOutcomeResolution,
   loadOrCreateLocalKey,
   readLocalReceipt,
   verifyLocalReceipt,
+  writeReceiptOutcomeResolution,
   writeLocalReceipt,
   type LocalReceipt,
 } from "./index.js";
@@ -142,6 +144,73 @@ describe("local receipts", () => {
       const contents = await readFile(path.join(receiptDir, `${receipt.id}.json`), "utf8");
       expect(contents).toContain('"access_token": "[redacted]"');
       expect(contents).not.toContain("super-secret-token");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("appends outcome resolutions without mutating the original receipt", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-receipt-outcome-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+
+    try {
+      const receipt = await writeLocalReceipt({
+        receiptDir,
+        runxHome,
+        skillName: "echo",
+        sourceType: "cli-tool",
+        inputs: { message: "pending" },
+        stdout: "ok",
+        stderr: "",
+        execution: {
+          status: "success",
+          exitCode: 0,
+          signal: null,
+          durationMs: 5,
+        },
+        outcomeState: "pending",
+        disposition: "observing",
+        inputContext: {
+          source: "inputs",
+          snapshot: { message: "pending" },
+          bytes: 20,
+          max_bytes: 256,
+          truncated: false,
+          value_hash: "hash",
+        },
+        surfaceRefs: [{ type: "issue", uri: "github://owner/repo/issues/1" }],
+      });
+
+      const receiptPath = path.join(receiptDir, `${receipt.id}.json`);
+      const before = await readFile(receiptPath, "utf8");
+
+      const resolution = await writeReceiptOutcomeResolution({
+        receiptDir,
+        runxHome,
+        receiptId: receipt.id,
+        outcomeState: "complete",
+        source: "observer",
+        outcome: {
+          code: "confirmed",
+          summary: "Observed the durable outcome.",
+        },
+      });
+
+      const after = await readFile(receiptPath, "utf8");
+      const latest = await latestVerifiedReceiptOutcomeResolution(receiptDir, receipt.id, runxHome);
+
+      expect(after).toBe(before);
+      expect(resolution.receipt_id).toBe(receipt.id);
+      expect(latest).toMatchObject({
+        verification: { status: "verified" },
+        resolution: {
+          id: resolution.id,
+          receipt_id: receipt.id,
+          outcome_state: "complete",
+          source: "observer",
+        },
+      });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

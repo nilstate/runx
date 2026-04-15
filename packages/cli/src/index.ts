@@ -4,7 +4,7 @@ export const cliPackage = "@runxai/cli";
 
 import { createInterface } from "node:readline/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { stdin as processStdin, stdout as processStdout } from "node:process";
 import { fileURLToPath } from "node:url";
@@ -15,18 +15,21 @@ import {
   loadLocalSkillPackage,
   loadRunxConfigFile,
   lookupRunxConfigValue,
-  maskRunxConfigFile,
-  resolvePathFromUserInput,
-  resolveRunxHomeDir,
-  resolveRunxMemoryDir,
-  resolveRunxRegistryPath,
-  resolveRunxWorkspaceBase,
-  resolveSkillInstallRoot,
-  updateRunxConfigValue,
-  writeRunxConfigFile,
+    maskRunxConfigFile,
+    resolvePathFromUserInput,
+    resolveRunxGlobalHomeDir,
+    resolveRunxHomeDir,
+    resolveRunxMemoryDir,
+    resolveRunxOfficialSkillsDir,
+    resolveRunxProjectDir,
+    resolveRunxRegistryPath,
+    resolveRunxWorkspaceBase,
+    resolveSkillInstallRoot,
+    updateRunxConfigValue,
+    writeRunxConfigFile,
   type RunxConfigFile,
 } from "../../config/src/index.js";
-import { runHarness, runHarnessTarget } from "../../harness/src/index.js";
+import { runHarness, runHarnessTarget, validatePublishHarness } from "../../harness/src/index.js";
 import { createFixtureMarketplaceAdapter, searchMarketplaceAdapters, type SkillSearchResult } from "../../marketplaces/src/index.js";
 import { createFileMemoryStore } from "../../memory/src/index.js";
 import {
@@ -45,8 +48,10 @@ import {
   type LocalReceiptSummary,
   type RunLocalSkillResult,
 } from "../../runner-local/src/index.js";
+import { ensureOfficialSkillCached, type OfficialSkillLockEntry } from "../../runner-local/src/official-cache.js";
 import type { ApprovalGate, Question, ResolutionRequest, ResolutionResponse } from "../../executor/src/index.js";
 import { createHttpConnectService } from "./connect-http.js";
+import { ensureRunxInstallState, ensureRunxProjectState } from "./runx-state.js";
 
 export interface CliIo {
   readonly stdout: NodeJS.WriteStream;
@@ -312,6 +317,8 @@ export interface ParsedArgs {
   readonly configAction?: "set" | "get" | "list";
   readonly configKey?: string;
   readonly configValue?: string;
+  readonly initAction?: "project" | "global";
+  readonly prefetchOfficial: boolean;
 }
 
 const builtinRootCommands = new Set([
@@ -326,6 +333,7 @@ const builtinRootCommands = new Set([
   "harness",
   "connect",
   "config",
+  "init",
 ]);
 
 export async function runCli(
@@ -403,6 +411,16 @@ export async function runCli(
       return 0;
     }
 
+    if (parsed.command === "init" && parsed.initAction) {
+      const result = await handleInitCommand(parsed, env);
+      if (parsed.json) {
+        io.stdout.write(`${JSON.stringify({ status: "success", init: result }, null, 2)}\n`);
+      } else {
+        io.stdout.write(renderInitResult(result, env));
+      }
+      return 0;
+    }
+
     if ((parsed.command === "skill" || parsed.command === "search") && parsed.skillAction === "search" && parsed.searchQuery) {
       const results = await runSkillSearch(parsed.searchQuery, parsed.sourceFilter, env);
       if (parsed.json) {
@@ -443,7 +461,14 @@ export async function runCli(
     }
 
     if (parsed.command === "skill" && parsed.skillAction === "publish" && parsed.publishPath) {
-      const skillPackage = await loadLocalSkillPackage(resolvePathFromUserInput(parsed.publishPath, env));
+      const resolvedPublishPath = resolvePathFromUserInput(parsed.publishPath, env);
+      const harness = await validatePublishHarness(resolvedPublishPath, {
+        env,
+      });
+      if (harness.status === "failed") {
+        throw new Error(`Harness failed for ${resolvedPublishPath}: ${harness.assertion_errors.join("; ")}`);
+      }
+      const skillPackage = await loadLocalSkillPackage(resolvedPublishPath);
       const result = await publishSkillMarkdown(
         createLocalRegistryClient(createFileRegistryStore(resolveRunxRegistryPath(env, { registry: parsed.registryUrl }))),
         skillPackage.markdown,
@@ -455,9 +480,9 @@ export async function runCli(
         },
       );
       if (parsed.json) {
-        io.stdout.write(`${JSON.stringify({ status: "success", publish: result }, null, 2)}\n`);
+        io.stdout.write(`${JSON.stringify({ status: "success", publish: { ...result, harness } }, null, 2)}\n`);
       } else {
-        io.stdout.write(renderPublishResult(result, env));
+        io.stdout.write(renderPublishResult({ ...result, harness }, env));
       }
       return 0;
     }
@@ -512,7 +537,7 @@ export async function runCli(
         evolveInputs.objective = parsed.evolveObjective;
       }
       const result = await executeLocalSkillCommand({
-        skillPath: resolveBundledSkillPath("evolve"),
+        skillPath: await resolveRunnableSkillReference("evolve", env),
         inputs: evolveInputs,
         parsed: {
           ...parsed,
@@ -536,7 +561,7 @@ export async function runCli(
     }
 
     const result = await executeLocalSkillCommand({
-      skillPath: resolveSkillReference(parsed.skillPath ?? "", env),
+      skillPath: await resolveRunnableSkillReference(parsed.skillPath ?? "", env),
       inputs: parsed.inputs,
       parsed,
       caller,
@@ -580,6 +605,9 @@ function writeNeedsResolutionResult(
       `${JSON.stringify(
         {
           status: "needs_resolution",
+          execution_status: null,
+          disposition: "needs_resolution",
+          outcome_state: "pending",
           skill: result.skill.name,
           skill_path: result.skillPath,
           run_id: result.runId,
@@ -604,10 +632,16 @@ function writePolicyDeniedResult(
 ): number {
   if (parsed.json) {
     const approvalRequired = parsed.nonInteractive && result.approval !== undefined;
+    const disposition = approvalRequired ? "approval_required" : (result.receipt?.disposition ?? "policy_denied");
+    const executionStatus = approvalRequired ? null : "failure";
+    const outcomeState = approvalRequired ? "pending" : (result.receipt?.outcome_state ?? "complete");
     io.stdout.write(
       `${JSON.stringify(
         {
           status: approvalRequired ? "approval_required" : "policy_denied",
+          execution_status: executionStatus,
+          disposition,
+          outcome_state: outcomeState,
           skill: result.skill.name,
           reasons: result.reasons,
           approval: result.approval
@@ -627,7 +661,7 @@ function writePolicyDeniedResult(
     );
     return approvalRequired ? 2 : 1;
   }
-  io.stderr.write(renderPolicyDenied(result.skill.name, result.reasons));
+  io.stderr.write(renderPolicyDenied(result.skill.name, result.reasons, result.receipt));
   return 1;
 }
 
@@ -644,7 +678,18 @@ function writeLocalSkillResult(
     return writePolicyDeniedResult(io, parsed, result);
   }
   if (parsed.json) {
-    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    io.stdout.write(
+      `${JSON.stringify(
+        {
+          ...result,
+          execution_status: result.status,
+          disposition: result.receipt.disposition ?? "completed",
+          outcome_state: result.receipt.outcome_state ?? "complete",
+        },
+        null,
+        2,
+      )}\n`,
+    );
   } else {
     writeRunResult(io, env, result);
   }
@@ -696,12 +741,15 @@ function writeUsage(stream: NodeJS.WritableStream, env: NodeJS.ProcessEnv = proc
       "  runx memory show --project . [--json]",
       "  runx connect list|revoke <grant-id>|<provider> [--scope scope] [--json]",
       "  runx config set|get|list [agent.provider|agent.model|agent.api_key] [value] [--json]",
+      "  runx init [-g|--global] [--prefetch official] [--json]",
       "  runx harness <fixture.yaml|skill-dir|SKILL.md|x.yaml> [--json]",
       "",
       "Core Flow:",
       "  runx search docs",
       "  runx <skill> --project .",
       "  runx evolve",
+      "  runx init",
+      "  runx init -g --prefetch official",
       "  runx resume <run-id>",
       "  runx inspect <receipt-id>",
       "",
@@ -728,6 +776,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   let runner: string | undefined;
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
+
+    if (token === "-g") {
+      inputs.global = true;
+      continue;
+    }
 
     if (!token.startsWith("--")) {
       positionals.push(token);
@@ -784,6 +837,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const isMemoryShow = command === "memory" && positionals[0] === "show";
   const isConnect = command === "connect";
   const isConfig = command === "config";
+  const isInit = command === "init";
   const isResume = command === "resume";
   const isTopLevelSkillInvoke = Boolean(command) && !builtinRootCommands.has(command);
   const searchPositionals = positionals.slice(adminOffset);
@@ -798,6 +852,10 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const registryUrl = (isSkillAdd || isSkillPublish) && typeof inputs.registry === "string" ? inputs.registry : undefined;
   const expectedDigest = isSkillAdd && typeof inputs.digest === "string" ? normalizeDigest(inputs.digest) : undefined;
   const connectScopes = isConnect ? normalizeScopes(inputs.scope) : [];
+  const initAction = isInit && truthyFlag(inputs.global) ? "global" : isInit ? "project" : undefined;
+  const prefetchOfficial =
+    isInit
+    && (inputs.prefetch === "official" || truthyFlag(inputs.prefetch) || truthyFlag(inputs.prefetchOfficial));
   const effectiveInputs = isSkillSearch
     ? omitInput(inputs, "source")
     : isSkillAdd
@@ -808,6 +866,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
           ? omitInput(inputs, "scope")
           : isConfig
             ? {}
+            : isInit
+              ? omitInputs(inputs, ["global", "prefetch", "prefetchOfficial"])
             : inputs;
 
   return {
@@ -850,6 +910,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     configAction: isConfig ? configAction(positionals) : undefined,
     configKey: isConfig ? positionals[1] : undefined,
     configValue: isConfig ? positionals.slice(2).join(" ") || undefined : undefined,
+    initAction,
+    prefetchOfficial,
   };
 }
 
@@ -902,6 +964,9 @@ function isSupportedCommand(parsed: ParsedArgs): boolean {
   if (parsed.command === "config" && parsed.configAction === "set" && parsed.configKey && parsed.configValue !== undefined) {
     return true;
   }
+  if (parsed.command === "init" && parsed.initAction) {
+    return true;
+  }
   return false;
 }
 
@@ -931,6 +996,10 @@ function mergeInputValue(existing: unknown, next: unknown): unknown {
     return next;
   }
   return Array.isArray(existing) ? [...existing, next] : [existing, next];
+}
+
+function truthyFlag(value: unknown): boolean {
+  return value === true || value === "true";
 }
 
 interface RunStateSummary {
@@ -1036,11 +1105,24 @@ function renderNeedsResolution(
   return lines.join("\n");
 }
 
-function renderPolicyDenied(skillName: string, reasons: readonly string[]): string {
+function renderPolicyDenied(
+  skillName: string,
+  reasons: readonly string[],
+  receipt?: {
+    readonly disposition?: string;
+    readonly outcome_state?: string;
+  },
+): string {
   const t = theme(process.stderr);
   const icon = statusIcon("denied", t);
   const lines = [""];
   lines.push(`  ${icon}  ${t.bold}${skillName}${t.reset}  ${t.dim}policy denied${t.reset}`);
+  if (receipt?.disposition) {
+    lines.push(`  ${t.dim}disposition${t.reset}  ${receipt.disposition}`);
+  }
+  if (receipt?.outcome_state) {
+    lines.push(`  ${t.dim}outcome${t.reset}      ${receipt.outcome_state}`);
+  }
   for (const reason of reasons) {
     lines.push(`  ${t.dim}·${t.reset} ${reason}`);
   }
@@ -1161,6 +1243,8 @@ function renderRunSuccess(
       readonly id: string;
       readonly kind: string;
       readonly duration_ms: number;
+      readonly disposition?: string;
+      readonly outcome_state?: string;
       readonly steps?: readonly unknown[];
     };
   },
@@ -1203,6 +1287,8 @@ function renderRunSuccess(
   ];
   const duration = formatDurationMs(result.receipt.duration_ms);
   if (duration) lines.push(`  ${t.dim}duration${t.reset}  ${duration}`);
+  if (result.receipt.disposition) lines.push(`  ${t.dim}disposition${t.reset}  ${result.receipt.disposition}`);
+  if (result.receipt.outcome_state) lines.push(`  ${t.dim}outcome${t.reset}      ${result.receipt.outcome_state}`);
   if (Array.isArray(result.receipt.steps)) {
     lines.push(`  ${t.dim}steps${t.reset}     ${result.receipt.steps.length}`);
   }
@@ -1225,6 +1311,8 @@ function renderRunFailure(
       readonly id: string;
       readonly kind: string;
       readonly duration_ms: number;
+      readonly disposition?: string;
+      readonly outcome_state?: string;
       readonly steps?: readonly unknown[];
     };
   },
@@ -1240,6 +1328,8 @@ function renderRunFailure(
   ];
   const duration = formatDurationMs(result.receipt.duration_ms);
   if (duration) lines.push(`  ${t.dim}duration${t.reset}  ${duration}`);
+  if (result.receipt.disposition) lines.push(`  ${t.dim}disposition${t.reset}  ${result.receipt.disposition}`);
+  if (result.receipt.outcome_state) lines.push(`  ${t.dim}outcome${t.reset}      ${result.receipt.outcome_state}`);
   if (Array.isArray(result.receipt.steps)) {
     lines.push(`  ${t.dim}steps${t.reset}     ${result.receipt.steps.length}`);
   }
@@ -1263,6 +1353,8 @@ function writeRunResult(
       readonly id: string;
       readonly kind: string;
       readonly duration_ms: number;
+      readonly disposition?: string;
+      readonly outcome_state?: string;
       readonly steps?: readonly unknown[];
     };
   },
@@ -1327,15 +1419,6 @@ function normalizeKnownFlag(rawKey: string): string {
 interface LocalSkillPackage {
   readonly markdown: string;
   readonly xManifest?: string;
-}
-
-function resolveBundledSkillPath(skillName: string): string {
-  const bundledDir = resolveBundledSkillsDir();
-  if (bundledDir) {
-    const candidate = path.join(bundledDir, skillName);
-    if (existsSync(candidate)) return candidate;
-  }
-  throw new Error(`Bundled skill not found: ${skillName}. The @runxai/cli package may be missing its \`skills/\` assets.`);
 }
 
 async function runSkillSearch(
@@ -1405,6 +1488,7 @@ async function searchBundledSkills(query: string): Promise<readonly SkillSearchR
 }
 
 let cachedBundledSkillsDir: string | undefined | null = null;
+let cachedOfficialSkillLock: readonly OfficialSkillLockEntry[] | undefined;
 
 function resolveBundledSkillsDir(): string | undefined {
   if (cachedBundledSkillsDir !== null) return cachedBundledSkillsDir ?? undefined;
@@ -1439,7 +1523,37 @@ function resolveBundledSkillsDir(): string | undefined {
   }
 }
 
+function officialSkillEntry(ref: string): OfficialSkillLockEntry | undefined {
+  if (!/^[A-Za-z0-9_.-]+$/.test(ref)) {
+    return undefined;
+  }
+  return loadOfficialSkillLock().find((entry) => entry.skill_id === `runx/${ref}`);
+}
+
+function loadOfficialSkillLock(): readonly OfficialSkillLockEntry[] {
+  if (cachedOfficialSkillLock) {
+    return cachedOfficialSkillLock;
+  }
+  try {
+    const raw = readFileSync(new URL("./official-skills.lock.json", import.meta.url), "utf8");
+    const parsed = JSON.parse(raw) as readonly OfficialSkillLockEntry[];
+    cachedOfficialSkillLock = Array.isArray(parsed) ? parsed : [];
+    return cachedOfficialSkillLock;
+  } catch {
+    cachedOfficialSkillLock = [];
+    return cachedOfficialSkillLock;
+  }
+}
+
 export function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): string {
+  const resolved = resolveLocalSkillReference(ref, env);
+  if (resolved) {
+    return resolved;
+  }
+  throw new Error(`Skill not found: ${ref}. Try \`runx search ${ref}\` to discover available skills.`);
+}
+
+function resolveLocalSkillReference(ref: string, env: NodeJS.ProcessEnv): string | undefined {
   if (!ref) {
     throw new Error("Missing skill reference.");
   }
@@ -1464,14 +1578,39 @@ export function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): stri
     }
     return directCandidate;
   }
-  const bundled = resolveBundledSkillsDir();
-  if (bundled) {
-    const named = path.join(bundled, ref);
-    if (existsSync(path.join(named, "SKILL.md"))) {
-      return named;
-    }
+
+  const projectSkillDir = path.join(resolveRunxProjectDir(env), "skills", ref);
+  if (existsSync(path.join(projectSkillDir, "SKILL.md"))) {
+    return projectSkillDir;
   }
-  throw new Error(`Skill not found: ${ref}. Try \`runx search ${ref}\` to discover available skills.`);
+
+  const installedSkillDir = path.join(resolveSkillInstallRoot(env), ref);
+  if (existsSync(path.join(installedSkillDir, "SKILL.md"))) {
+    return installedSkillDir;
+  }
+
+  return undefined;
+}
+
+export async function resolveRunnableSkillReference(ref: string, env: NodeJS.ProcessEnv): Promise<string> {
+  const local = resolveLocalSkillReference(ref, env);
+  if (local) {
+    return local;
+  }
+  const official = officialSkillEntry(ref);
+  if (!official) {
+    throw new Error(`Skill not found: ${ref}. Try \`runx search ${ref}\` to discover available skills.`);
+  }
+  const globalHomeDir = resolveRunxGlobalHomeDir(env);
+  const install = await ensureRunxInstallState(globalHomeDir);
+  const registryBaseUrl = env.RUNX_REGISTRY_URL ?? "https://runx.ai";
+  const cache = await ensureOfficialSkillCached({
+    cacheRoot: resolveRunxOfficialSkillsDir(env),
+    registryBaseUrl,
+    installationId: install.state.installation_id,
+    entry: official,
+  });
+  return cache.skillPath;
 }
 
 async function resolveResumeSkillPath(
@@ -1573,6 +1712,16 @@ type ConfigResult =
   | { readonly action: "get"; readonly key: string; readonly value: unknown }
   | { readonly action: "list"; readonly values: RunxConfigFile };
 
+interface InitResult {
+  readonly action: "project" | "global";
+  readonly created: boolean;
+  readonly project_dir?: string;
+  readonly project_id?: string;
+  readonly global_home_dir?: string;
+  readonly installation_id?: string;
+  readonly official_cache_dir?: string;
+}
+
 async function handleConfigCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<ConfigResult> {
   const configDir = resolveRunxHomeDir(env);
   const configPath = path.join(configDir, "config.json");
@@ -1624,6 +1773,55 @@ function renderConfigResult(result: ConfigResult, env: NodeJS.ProcessEnv = proce
   }
   const value = String(result.value ?? "");
   return renderKeyValue("config", "success", [[result.key, value]], t);
+}
+
+async function handleInitCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<InitResult> {
+  if (!parsed.initAction) {
+    throw new Error("Invalid init invocation.");
+  }
+  if (parsed.initAction === "global") {
+    const globalHomeDir = resolveRunxGlobalHomeDir(env);
+    const install = await ensureRunxInstallState(globalHomeDir);
+    const officialCacheDir = resolveRunxOfficialSkillsDir(env);
+    if (parsed.prefetchOfficial) {
+      await mkdir(officialCacheDir, { recursive: true });
+    }
+    return {
+      action: "global",
+      created: install.created,
+      global_home_dir: globalHomeDir,
+      installation_id: install.state.installation_id,
+      official_cache_dir: parsed.prefetchOfficial ? officialCacheDir : undefined,
+    };
+  }
+
+  const projectDir = resolveRunxProjectDir(env);
+  const project = await ensureRunxProjectState(projectDir);
+  await mkdir(path.join(projectDir, "skills"), { recursive: true });
+  await mkdir(path.join(projectDir, "tools"), { recursive: true });
+  return {
+    action: "project",
+    created: project.created,
+    project_dir: projectDir,
+    project_id: project.state.project_id,
+  };
+}
+
+function renderInitResult(result: InitResult, env: NodeJS.ProcessEnv = process.env): string {
+  const t = theme(undefined, env);
+  return renderKeyValue(
+    result.action === "global" ? "runx global init" : "runx project init",
+    "success",
+    [
+      ["created", result.created ? "yes" : "no"],
+      ["project", result.project_dir],
+      ["project_id", result.project_id],
+      ["home", result.global_home_dir],
+      ["installation_id", result.installation_id],
+      ["official_cache", result.official_cache_dir],
+    ],
+    t,
+  );
 }
 
 function parseOptionalInt(value: string | undefined): number | undefined {
@@ -1796,6 +1994,10 @@ function renderPublishResult(
     readonly digest: string;
     readonly runner_names: readonly string[];
     readonly link: { readonly install_command?: string; readonly run_command?: string };
+    readonly harness?: {
+      readonly status: "passed" | "failed" | "not_declared";
+      readonly case_count: number;
+    };
   },
   env: NodeJS.ProcessEnv = process.env,
 ): string {
@@ -1806,6 +2008,7 @@ function renderPublishResult(
     [
       ["digest", `sha256:${result.digest.slice(0, 12)}…`],
       ["runners", result.runner_names.length > 0 ? result.runner_names.join(", ") : "standard-only"],
+      ["harness", result.harness ? `${result.harness.status} · ${result.harness.case_count} case${result.harness.case_count === 1 ? "" : "s"}` : "not checked"],
       ["install", result.link.install_command],
       ["run", result.link.run_command],
     ],

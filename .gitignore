@@ -9,6 +9,7 @@ node_modules/
 dist/
 .build/
 coverage/
+.sourcey/
 .turbo/
 *.tsbuildinfo
 __pycache__/

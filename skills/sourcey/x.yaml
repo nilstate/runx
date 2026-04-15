@@ -36,7 +36,7 @@ runners:
       output_dir:
         type: string
         required: false
-        description: "Output directory for Sourcey docs; defaults to <project>/.sourcey/runx-docs."
+        description: "Generated site output directory for Sourcey docs; defaults to <project>/.sourcey/runx-docs and should remain separate from authored docs source."
       sourcey_bin:
         type: string
         required: false
@@ -59,8 +59,15 @@ runners:
             such as package.json, README, existing docs, and specs. Do not invent
             APIs or pages. When config does not already exist, propose a practical
             docs_inputs object pointing to the config or spec path the next step
-            should build from. Treat this as a bounded scope/ingest/model pass.
-            Do not author docs, build the site, or propose open-ended revision.
+            should build from. Treat authored docs source and generated site
+            output as separate surfaces. Prefer committed docs source in the
+            config-relative docs tree and generated output under
+            <project>/.sourcey/runx-docs unless explicit inputs say otherwise.
+            Do not propose writing built HTML back into the docs source tree. If
+            the chosen output directory is inside the repo and not gitignored,
+            record that as an operational gap. Treat this as a bounded
+            scope/ingest/model pass. Do not author docs, build the site, or
+            propose open-ended revision.
             discovery_report must use this canonical shape:
             {
               "discovered": {
@@ -111,8 +118,13 @@ runners:
             or docs files are missing, preserve the existing repo contents and
             return an empty files array rather than overwriting the config with a
             weaker placeholder bundle. Lack of repository inspection evidence is
-            not evidence that the files are absent. This is one bounded
-            materialize pass, not an open-ended iteration loop.
+            not evidence that the files are absent. Only write source docs,
+            config, assets, and minimal supporting repo metadata. Never write
+            generated HTML, search indexes, or OG assets into the source docs
+            tree. When the approved plan uses a generated output_dir under the
+            repo root and the repo does not already ignore it, include the
+            minimal .gitignore change needed to ignore that build artifact. This
+            is one bounded materialize pass, not an open-ended iteration loop.
           allowed_tools:
             - fs.read
             - cli.capture_help
@@ -153,7 +165,9 @@ runners:
             index_headings, and index_excerpt. When that evidence is absent or
             thin, call it out as an evidence gap rather than inventing site
             content. Produce one bounded evaluation_report covering grounding,
-            clarity, navigation quality, and obvious gaps. Do not propose
+            clarity, navigation quality, and obvious gaps. Flag operational
+            mistakes such as generated output living in source control without
+            intent or deploy-time authoring assumptions. Do not propose
             open-ended revision loops here.
           allowed_tools:
             - fs.read
@@ -178,7 +192,8 @@ runners:
             entries to update under the target project, plus a summary of the
             deltas applied. If the first build is already strong, return an
             empty files array and explain why. Do not open a second critique
-            loop and do not widen scope beyond the discovered plan.
+            loop, do not widen scope beyond the discovered plan, and do not turn
+            generated site output into committed source.
           allowed_tools:
             - fs.read
           context:

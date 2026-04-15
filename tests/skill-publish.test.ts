@@ -55,6 +55,10 @@ describe("skill-publish CLI", () => {
         version: "1.0.0",
         digest: expect.stringMatching(/^[a-f0-9]{64}$/),
         registry_url: registryDir,
+        harness: {
+          status: "not_declared",
+          case_count: 0,
+        },
       });
       expect(report.publish.link.install_command).toBe(`runx add 0state/echo@1.0.0 --registry ${registryDir}`);
       await expect(createFileRegistryStore(registryDir).getVersion("0state/echo", "1.0.0")).resolves.toMatchObject({
@@ -135,10 +139,18 @@ describe("skill-publish CLI", () => {
         publish: {
           runner_names: string[];
           x_digest: string;
+          harness: {
+            status: string;
+            case_count: number;
+          };
         };
       };
       expect(report.publish.runner_names).toEqual(["agent", "sourcey"]);
       expect(report.publish.x_digest).toMatch(/^[a-f0-9]{64}$/);
+      expect(report.publish.harness).toMatchObject({
+        status: "passed",
+        case_count: 1,
+      });
       await expect(createFileRegistryStore(registryDir).getVersion("0state/sourcey", "1.0.0")).resolves.toMatchObject({
         markdown: await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"),
         x_manifest: await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8"),
@@ -171,6 +183,72 @@ describe("skill-publish CLI", () => {
 
       expect(exitCode).toBe(1);
       expect(stderr.contents()).toContain("Skill markdown must start with YAML frontmatter");
+      await expect(createFileRegistryStore(registryDir).listSkills()).resolves.toEqual([]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects registry publish when inline harness assertions fail", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-publish-harness-fail-"));
+    const registryDir = path.join(tempDir, "registry");
+    const skillDir = path.join(tempDir, "broken-skill");
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+
+    try {
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(
+        path.join(skillDir, "SKILL.md"),
+        `---
+name: broken-skill
+description: Broken publish harness.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - -e
+    - process.stdout.write("ok")
+---
+
+Broken skill.
+`,
+      );
+      await writeFile(
+        path.join(skillDir, "x.yaml"),
+        `skill: broken-skill
+runners:
+  default:
+    default: true
+    source:
+      type: cli-tool
+      command: node
+      args:
+        - -e
+        - process.stdout.write("ok")
+harness:
+  cases:
+    - name: fails-on-purpose
+      inputs: {}
+      env: {}
+      caller: {}
+      expect:
+        status: failure
+`,
+      );
+
+      const exitCode = await runCli(
+        ["skill", "publish", skillDir, "--owner", "0state", "--registry", registryDir, "--json"],
+        { stdin: process.stdin, stdout, stderr },
+        {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+        },
+      );
+
+      expect(exitCode).toBe(1);
+      expect(stdout.contents()).toBe("");
+      expect(stderr.contents()).toContain("Harness failed");
       await expect(createFileRegistryStore(registryDir).listSkills()).resolves.toEqual([]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });

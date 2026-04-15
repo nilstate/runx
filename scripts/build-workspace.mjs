@@ -104,14 +104,9 @@ async function writeCliPackDist({ directory, dist }) {
 }
 
 async function syncCliAssets(directory) {
-  for (const assetName of ["skills", "tools"]) {
-    const source = path.join(workspaceRoot, assetName);
-    const target = path.join(directory, assetName);
-    await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
-    if (await exists(source)) {
-      await cp(source, target, { recursive: true });
-    }
-  }
+  await syncCliTools(directory);
+  await syncCliSkillRuntimeAssets(directory);
+  await syncOfficialSkillLock(directory);
 }
 
 async function writeEntryWrapper({ dist, compiledEntry, executable }) {
@@ -158,6 +153,67 @@ async function copyIntoDist(source, target) {
   }
   await mkdir(path.dirname(target), { recursive: true });
   await cp(source, target, { recursive: true });
+}
+
+async function syncCliTools(directory) {
+  const source = path.join(workspaceRoot, "tools");
+  const target = path.join(directory, "tools");
+  await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  if (await exists(source)) {
+    await cp(source, target, { recursive: true });
+  }
+}
+
+async function syncCliSkillRuntimeAssets(directory) {
+  const source = path.join(workspaceRoot, "skills");
+  const target = path.join(directory, "skills");
+  await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  if (!(await exists(source))) {
+    return;
+  }
+  await copyFilteredTree(source, target, (filePath) => {
+    const base = path.basename(filePath);
+    return base !== "SKILL.md" && base !== "x.yaml";
+  });
+}
+
+async function syncOfficialSkillLock(directory) {
+  const source = path.join(directory, "src", "official-skills.lock.json");
+  if (!(await exists(source))) {
+    return;
+  }
+  const distTarget = path.join(directory, "dist", "packages", "cli", "src", "official-skills.lock.json");
+  if (await exists(path.dirname(distTarget))) {
+    await copyFileToTarget(source, distTarget);
+  }
+}
+
+async function copyFilteredTree(sourceRoot, targetRoot, includeFile) {
+  const entries = await readdir(sourceRoot, { withFileTypes: true });
+  let copiedAny = false;
+  for (const entry of entries) {
+    const sourcePath = path.join(sourceRoot, entry.name);
+    const targetPath = path.join(targetRoot, entry.name);
+    if (entry.isDirectory()) {
+      const nestedCopied = await copyFilteredTree(sourcePath, targetPath, includeFile);
+      copiedAny = copiedAny || nestedCopied;
+      continue;
+    }
+    if (!entry.isFile() || !includeFile(sourcePath)) {
+      continue;
+    }
+    await copyFileToTarget(sourcePath, targetPath);
+    copiedAny = true;
+  }
+  if (!copiedAny) {
+    await rm(targetRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+  return copiedAny;
+}
+
+async function copyFileToTarget(source, target) {
+  await mkdir(path.dirname(target), { recursive: true });
+  await cp(source, target);
 }
 
 async function exists(filePath) {

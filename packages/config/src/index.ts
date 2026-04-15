@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import os from "node:os";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -70,16 +71,43 @@ export function resolvePathFromUserInput(
   return path.resolve(resolveRunxWorkspaceBase(env, { cwd }), userPath);
 }
 
-export function resolveRunxHomeDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
+export function findNearestProjectRunxDir(start: string): string | undefined {
+  let current = path.resolve(start);
+  while (true) {
+    const candidate = path.join(current, ".runx");
+    if (existsSync(path.join(candidate, "project.json"))) {
+      return candidate;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
+  }
+}
+
+export function resolveRunxProjectDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
+  if (env.RUNX_PROJECT_DIR) {
+    return resolvePathFromUserInput(env.RUNX_PROJECT_DIR, env, options);
+  }
+  const cwd = options.cwd ?? process.cwd();
+  return findNearestProjectRunxDir(cwd) ?? path.resolve(resolveRunxWorkspaceBase(env, options), ".runx");
+}
+
+export function resolveRunxGlobalHomeDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
   return env.RUNX_HOME
     ? resolvePathFromUserInput(env.RUNX_HOME, env, options)
-    : path.resolve(resolveRunxWorkspaceBase(env, options), ".runx");
+    : path.join(os.homedir(), ".runx");
+}
+
+export function resolveRunxHomeDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
+  return resolveRunxGlobalHomeDir(env, options);
 }
 
 export function resolveRunxMemoryDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
   return env.RUNX_MEMORY_DIR
     ? resolvePathFromUserInput(env.RUNX_MEMORY_DIR, env, options)
-    : path.join(resolveRunxHomeDir(env, options), "memory");
+    : path.join(resolveRunxProjectDir(env, options), "memory");
 }
 
 export function resolveSkillInstallRoot(env: NodeJS.ProcessEnv, to?: string, options: PathResolutionOptions = {}): string {
@@ -101,7 +129,17 @@ export function resolveRunxRegistryPath(env: NodeJS.ProcessEnv, options: Registr
   }
   return env.RUNX_REGISTRY_DIR
     ? resolvePathFromUserInput(env.RUNX_REGISTRY_DIR, env, options)
-    : path.join(resolveRunxHomeDir(env, options), "registry");
+    : path.join(resolveRunxGlobalHomeDir(env, options), "registry");
+}
+
+export function resolveRunxOfficialSkillsDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
+  return env.RUNX_OFFICIAL_SKILLS_DIR
+    ? resolvePathFromUserInput(env.RUNX_OFFICIAL_SKILLS_DIR, env, options)
+    : path.join(resolveRunxGlobalHomeDir(env, options), "official-skills");
+}
+
+export function resolveRunxProjectPinsPath(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
+  return path.join(resolveRunxProjectDir(env, options), "pins.json");
 }
 
 export async function loadLocalSkillPackage(skillPath: string): Promise<LocalSkillPackage> {

@@ -152,4 +152,55 @@ describe("local skill runner", () => {
       },
     ]);
   });
+
+  it("records caller-supplied execution semantics in the receipt", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-runtime-semantics-"));
+
+    try {
+      const result = await runLocalSkill({
+        skillPath: path.resolve("fixtures/skills/echo"),
+        inputs: { message: "capture this" },
+        caller: nonInteractiveCaller,
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
+        env: process.env,
+        executionSemantics: {
+          disposition: "observing",
+          outcome_state: "pending",
+          outcome: {
+            code: "awaiting_observation",
+            summary: "Execution succeeded but the durable outcome is pending.",
+          },
+          input_context: {
+            capture: true,
+            max_bytes: 256,
+          },
+          surface_refs: [{ type: "issue", uri: "github://owner/repo/issues/1" }],
+          evidence_refs: [{ type: "log", uri: "file://receipt-log" }],
+        },
+      });
+
+      expect(result.status).toBe("success");
+      if (result.status !== "success" || result.receipt.kind !== "skill_execution") {
+        return;
+      }
+
+      expect(result.receipt).toMatchObject({
+        disposition: "observing",
+        outcome_state: "pending",
+        outcome: {
+          code: "awaiting_observation",
+        },
+        surface_refs: [{ type: "issue", uri: "github://owner/repo/issues/1" }],
+        evidence_refs: [{ type: "log", uri: "file://receipt-log" }],
+      });
+      expect(result.receipt.input_context).toMatchObject({
+        source: "inputs",
+        truncated: false,
+      });
+      expect(result.receipt.input_context?.snapshot).toEqual({ message: "[redacted]" });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });

@@ -47,14 +47,24 @@ for (const required of [
   "dist/index.js",
   "dist/index.d.ts",
   "dist/packages/cli/src/index.js",
+  "dist/packages/cli/src/official-skills.lock.json",
   "dist/packages/runner-local/src/index.js",
-  "skills/evolve/SKILL.md",
-  "skills/evolve/x.yaml",
+  "skills/scafld/run.mjs",
   "tools/sourcey/build/tool.yaml",
   "tools/sourcey/build/run.mjs",
   "tools/sourcey/verify/tool.yaml",
 ]) {
   if (!files.has(required)) {
     throw new Error(`CLI package is missing ${required}`);
+  }
+}
+for (const forbidden of [
+  "skills/evolve/SKILL.md",
+  "skills/evolve/x.yaml",
+  "skills/sourcey/SKILL.md",
+  "skills/sourcey/x.yaml",
+]) {
+  if (files.has(forbidden)) {
+    throw new Error(`CLI package unexpectedly ships ${forbidden}`);
   }
 }

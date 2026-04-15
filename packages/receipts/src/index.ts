@@ -1,17 +1,22 @@
 export const receiptsPackage = "@runx/receipts";
+export * from "./local-signing.js";
+export * from "./outcome-resolution.js";
 
-import crypto, {
-  createHash,
-  createPrivateKey,
-  createPublicKey,
-  generateKeyPairSync,
-  sign,
-  verify,
-  type KeyObject,
-} from "node:crypto";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
-import os from "node:os";
+import crypto, { createHash, type KeyObject } from "node:crypto";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import {
+  defaultRunxHome,
+  loadLocalPublicKey,
+  loadOrCreateLocalKey,
+  localIssuer,
+  signPayloadString,
+  stableStringify,
+  verifyPayloadString,
+  type LocalKeyPair,
+} from "./local-signing.js";
+import type { OutcomeState, ReceiptOutcome } from "./outcome-resolution.js";
 
 export interface ReceiptExecution {
   readonly status: "success" | "failure";
@@ -63,6 +68,40 @@ export interface RunnerReceiptMetadata {
   };
 }
 
+export type GovernedDisposition = "completed" | "needs_resolution" | "policy_denied" | "approval_required" | "observing";
+
+export interface ReceiptSurfaceRef {
+  readonly type: string;
+  readonly uri: string;
+  readonly label?: string;
+}
+
+export interface ReceiptInputContext {
+  readonly source?: string;
+  readonly snapshot?: unknown;
+  readonly preview?: string;
+  readonly bytes: number;
+  readonly max_bytes: number;
+  readonly truncated: boolean;
+  readonly value_hash: string;
+}
+
+export interface InputContextCapture {
+  readonly capture?: boolean;
+  readonly source?: string;
+  readonly max_bytes?: number;
+  readonly snapshot?: unknown;
+}
+
+export interface ExecutionSemantics {
+  readonly disposition?: GovernedDisposition;
+  readonly outcome_state?: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly input_context?: InputContextCapture;
+  readonly surface_refs?: readonly ReceiptSurfaceRef[];
+  readonly evidence_refs?: readonly ReceiptSurfaceRef[];
+}
+
 export interface BuildLocalReceiptOptions {
   readonly receiptId?: string;
   readonly skillName: string;
@@ -76,6 +115,12 @@ export interface BuildLocalReceiptOptions {
   readonly parentReceipt?: string;
   readonly contextFrom?: readonly string[];
   readonly artifactIds?: readonly string[];
+  readonly disposition?: GovernedDisposition;
+  readonly inputContext?: ReceiptInputContext;
+  readonly outcomeState?: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly surfaceRefs?: readonly ReceiptSurfaceRef[];
+  readonly evidenceRefs?: readonly ReceiptSurfaceRef[];
 }
 
 export interface WriteLocalReceiptOptions extends BuildLocalReceiptOptions {
@@ -106,6 +151,12 @@ export interface ChainReceiptStep {
   }[];
   readonly governance?: ChainReceiptGovernance;
   readonly artifact_ids?: readonly string[];
+  readonly disposition?: GovernedDisposition;
+  readonly input_context?: ReceiptInputContext;
+  readonly outcome_state?: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly surface_refs?: readonly ReceiptSurfaceRef[];
+  readonly evidence_refs?: readonly ReceiptSurfaceRef[];
 }
 
 export interface ChainReceiptGovernance {
@@ -145,6 +196,12 @@ export interface BuildLocalChainReceiptOptions {
   readonly completedAt?: string;
   readonly durationMs: number;
   readonly errorMessage?: string;
+  readonly disposition?: GovernedDisposition;
+  readonly inputContext?: ReceiptInputContext;
+  readonly outcomeState?: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly surfaceRefs?: readonly ReceiptSurfaceRef[];
+  readonly evidenceRefs?: readonly ReceiptSurfaceRef[];
 }
 
 export interface WriteLocalChainReceiptOptions extends BuildLocalChainReceiptOptions {
@@ -189,6 +246,12 @@ export interface LocalSkillReceipt {
   readonly context_from: readonly string[];
   readonly parent_receipt?: string;
   readonly artifact_ids?: readonly string[];
+  readonly disposition?: GovernedDisposition;
+  readonly input_context?: ReceiptInputContext;
+  readonly outcome_state?: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly surface_refs?: readonly ReceiptSurfaceRef[];
+  readonly evidence_refs?: readonly ReceiptSurfaceRef[];
   readonly execution: {
     readonly exit_code: number | null;
     readonly signal: NodeJS.Signals | null;
@@ -221,19 +284,18 @@ export interface LocalChainReceipt {
   readonly input_hash: string;
   readonly output_hash: string;
   readonly error_hash?: string;
+  readonly disposition?: GovernedDisposition;
+  readonly input_context?: ReceiptInputContext;
+  readonly outcome_state?: OutcomeState;
+  readonly outcome?: ReceiptOutcome;
+  readonly surface_refs?: readonly ReceiptSurfaceRef[];
+  readonly evidence_refs?: readonly ReceiptSurfaceRef[];
   readonly steps: readonly ChainReceiptStep[];
   readonly sync_points?: readonly ChainReceiptSyncPoint[];
   readonly signature: {
     readonly alg: "Ed25519";
     readonly value: string;
   };
-}
-
-interface LocalKeyPair {
-  readonly privateKey: KeyObject;
-  readonly publicKey: KeyObject;
-  readonly kid: string;
-  readonly publicKeySha256: string;
 }
 
 export async function writeLocalReceipt(options: WriteLocalReceiptOptions): Promise<LocalSkillReceipt> {
@@ -321,11 +383,7 @@ export function buildLocalReceipt(options: BuildLocalReceiptOptions, keyPair: Lo
   const unsignedBase = {
     schema_version: "runx.receipt.v1" as const,
     kind: "skill_execution" as const,
-    issuer: {
-      type: "local" as const,
-      kid: keyPair.kid,
-      public_key_sha256: keyPair.publicKeySha256,
-    },
+    issuer: localIssuer(keyPair),
     subject: {
       skill_name: options.skillName,
       source_type: options.sourceType,
@@ -340,6 +398,12 @@ export function buildLocalReceipt(options: BuildLocalReceiptOptions, keyPair: Lo
     context_from: options.contextFrom ?? [],
     parent_receipt: options.parentReceipt,
     artifact_ids: options.artifactIds && options.artifactIds.length > 0 ? options.artifactIds : undefined,
+    disposition: options.disposition ?? "completed",
+    input_context: options.inputContext,
+    outcome_state: options.outcomeState ?? "complete",
+    outcome: options.outcome,
+    surface_refs: options.surfaceRefs && options.surfaceRefs.length > 0 ? options.surfaceRefs : undefined,
+    evidence_refs: options.evidenceRefs && options.evidenceRefs.length > 0 ? options.evidenceRefs : undefined,
     execution: {
       exit_code: options.execution.exitCode,
       signal: options.execution.signal,
@@ -352,14 +416,11 @@ export function buildLocalReceipt(options: BuildLocalReceiptOptions, keyPair: Lo
     ...unsignedBase,
     id,
   };
-  const signature = signPayload(stableStringify(signedPayload), keyPair.privateKey);
+  const signature = signPayloadString(stableStringify(signedPayload), keyPair.privateKey);
 
   return {
     ...signedPayload,
-    signature: {
-      alg: "Ed25519",
-      value: signature,
-    },
+    signature,
   };
 }
 
@@ -371,11 +432,7 @@ export function buildLocalChainReceipt(
     schema_version: "runx.receipt.v1" as const,
     id: options.chainId,
     kind: "chain_execution" as const,
-    issuer: {
-      type: "local" as const,
-      kid: keyPair.kid,
-      public_key_sha256: keyPair.publicKeySha256,
-    },
+    issuer: localIssuer(keyPair),
     subject: {
       chain_name: options.chainName,
       owner: options.owner,
@@ -387,93 +444,26 @@ export function buildLocalChainReceipt(
     input_hash: hashStable(options.inputs),
     output_hash: hashString(options.output),
     error_hash: options.errorMessage ? hashString(options.errorMessage) : undefined,
+    disposition: options.disposition ?? "completed",
+    input_context: options.inputContext,
+    outcome_state: options.outcomeState ?? "complete",
+    outcome: options.outcome,
+    surface_refs: options.surfaceRefs && options.surfaceRefs.length > 0 ? options.surfaceRefs : undefined,
+    evidence_refs: options.evidenceRefs && options.evidenceRefs.length > 0 ? options.evidenceRefs : undefined,
     steps: options.steps,
     sync_points: options.syncPoints && options.syncPoints.length > 0 ? options.syncPoints : undefined,
   };
-  const signature = signPayload(stableStringify(signedPayload), keyPair.privateKey);
+  const signature = signPayloadString(stableStringify(signedPayload), keyPair.privateKey);
 
   return {
     ...signedPayload,
-    signature: {
-      alg: "Ed25519",
-      value: signature,
-    },
+    signature,
   };
-}
-
-export async function loadOrCreateLocalKey(runxHome = defaultRunxHome()): Promise<LocalKeyPair> {
-  const keyDir = path.join(runxHome, "keys");
-  const privateKeyPath = path.join(keyDir, "local-ed25519-private.pem");
-  const publicKeyPath = path.join(keyDir, "local-ed25519-public.pem");
-
-  // Try to load existing keys
-  const loaded = await tryLoadKeyPair(privateKeyPath, publicKeyPath);
-  if (loaded) return loaded;
-
-  // Keys don't exist — generate new ones
-  try {
-    await mkdir(keyDir, { recursive: true });
-    const { privateKey, publicKey } = generateKeyPairSync("ed25519");
-    const privatePem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
-    const publicPem = publicKey.export({ format: "pem", type: "spki" }).toString();
-    await Promise.all([
-      writeFile(privateKeyPath, privatePem, { flag: "wx", mode: 0o600 }),
-      writeFile(publicKeyPath, publicPem, { flag: "wx", mode: 0o644 }),
-    ]);
-    return keyPairFromPem(privatePem, publicPem);
-  } catch (writeError: unknown) {
-    // Another process created the keys concurrently — read what they wrote
-    if (isNodeError(writeError) && writeError.code === "EEXIST") {
-      const retried = await tryLoadKeyPair(privateKeyPath, publicKeyPath);
-      if (retried) return retried;
-    }
-    throw new Error(
-      `runx signing key creation failed at ${privateKeyPath}: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
-    );
-  }
-}
-
-async function tryLoadKeyPair(privatePath: string, publicPath: string, retries = 2): Promise<LocalKeyPair | null> {
-  try {
-    const [privatePem, publicPem] = await Promise.all([
-      readFile(privatePath, "utf8"),
-      readFile(publicPath, "utf8"),
-    ]);
-
-    if (process.platform !== "win32") {
-      const info = await stat(privatePath);
-      const mode = info.mode & 0o777;
-      if (mode !== 0o600) {
-        process.stderr.write(
-          `warning: ${privatePath} has permissions ${mode.toString(8)}, expected 600\n`,
-        );
-      }
-    }
-
-    return keyPairFromPem(privatePem, publicPem);
-  } catch (error: unknown) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      // A concurrent writer may have created one key file but not both yet.
-      // Brief retry before concluding keys don't exist.
-      if (retries > 0) {
-        await new Promise((r) => setTimeout(r, 10));
-        return tryLoadKeyPair(privatePath, publicPath, retries - 1);
-      }
-      return null;
-    }
-    throw new Error(
-      `runx signing key unreadable at ${privatePath}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
 }
 
 export function verifyLocalReceipt(receipt: LocalReceipt, publicKey: KeyObject): boolean {
   const { signature, ...signedPayload } = receipt;
-  return verify(null, Buffer.from(stableStringify(signedPayload)), publicKey, fromBase64Url(signature.value));
+  return verifyPayloadString(stableStringify(signedPayload), signature, publicKey);
 }
 
 async function verifyLocalReceiptFromLocalKey(receipt: LocalReceipt, runxHome: string): Promise<ReceiptVerification> {
@@ -508,24 +498,6 @@ async function verifyLocalReceiptFromLocalKey(receipt: LocalReceipt, runxHome: s
   }
 }
 
-async function loadLocalPublicKey(runxHome: string): Promise<Pick<LocalKeyPair, "publicKey" | "publicKeySha256"> | undefined> {
-  const publicKeyPath = path.join(runxHome, "keys", "local-ed25519-public.pem");
-  try {
-    const publicPem = await readFile(publicKeyPath, "utf8");
-    const publicKey = createPublicKey(publicPem);
-    const publicDer = publicKey.export({ format: "der", type: "spki" });
-    return {
-      publicKey,
-      publicKeySha256: createHash("sha256").update(publicDer).digest("hex"),
-    };
-  } catch (error) {
-    if (isNotFound(error)) {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
 export function hashStable(value: unknown): string {
   return hashString(stableStringify(value));
 }
@@ -542,44 +514,14 @@ export function redactReceiptMetadata(value: Readonly<Record<string, unknown>>):
   return redactValue(value) as Readonly<Record<string, unknown>>;
 }
 
+export function redactReceiptValue<T>(value: T): T {
+  return redactValue(value) as T;
+}
+
 function assertLocalReceiptId(id: string): void {
   if (!/^(rx|cx)_[A-Za-z0-9_-]+$/.test(id)) {
     throw new Error(`Invalid receipt id '${id}'.`);
   }
-}
-
-function keyPairFromPem(privatePem: string, publicPem: string): LocalKeyPair {
-  const privateKey = createPrivateKey(privatePem);
-  const publicKey = createPublicKey(publicPem);
-  const publicDer = publicKey.export({ format: "der", type: "spki" });
-  const publicKeySha256 = createHash("sha256").update(publicDer).digest("hex");
-
-  return {
-    privateKey,
-    publicKey,
-    kid: `local_${publicKeySha256.slice(0, 16)}`,
-    publicKeySha256,
-  };
-}
-
-function signPayload(payload: string, privateKey: KeyObject): string {
-  return toBase64Url(sign(null, Buffer.from(payload), privateKey));
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
-  }
-
-  const record = value as Record<string, unknown>;
-  const entries = Object.entries(record)
-    .filter(([, entryValue]) => entryValue !== undefined)
-    .sort(([left], [right]) => left.localeCompare(right));
-  return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableStringify(entryValue)}`).join(",")}}`;
 }
 
 function redactValue(value: unknown): unknown {
@@ -608,16 +550,4 @@ function receiptTimestamp(receipt: LocalReceipt): string {
 
 function isNotFound(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
-}
-
-function toBase64Url(value: Buffer): string {
-  return value.toString("base64url");
-}
-
-function fromBase64Url(value: string): Buffer {
-  return Buffer.from(value, "base64url");
-}
-
-function defaultRunxHome(): string {
-  return process.env.RUNX_HOME ?? path.join(os.homedir(), ".runx");
 }

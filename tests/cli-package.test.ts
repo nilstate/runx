@@ -72,21 +72,27 @@ describe("Node CLI package", () => {
     const [pack] = JSON.parse(stdout) as [
       {
         readonly name: string;
+        readonly version: string;
         readonly files: readonly { readonly path: string }[];
       },
     ];
 
     expect(pack.name).toBe("@runxai/cli");
+    expect(pack.version).not.toBe("0.0.0");
     const files = pack.files.map((file) => file.path);
     expect(files).toContain("bin/runx.js");
     expect(files).toContain("dist/index.js");
     expect(files).toContain("dist/index.d.ts");
     expect(files).toContain("dist/packages/cli/src/index.js");
+    expect(files).toContain("dist/packages/cli/src/official-skills.lock.json");
     expect(files).toContain("dist/packages/runner-local/src/index.js");
-    expect(files).toContain("skills/evolve/SKILL.md");
-    expect(files).toContain("skills/evolve/x.yaml");
+    expect(files).toContain("skills/scafld/run.mjs");
     expect(files).toContain("tools/sourcey/build/tool.yaml");
     expect(files).toContain("tools/sourcey/build/run.mjs");
     expect(files).toContain("tools/sourcey/verify/tool.yaml");
+    expect(files).not.toContain("skills/evolve/SKILL.md");
+    expect(files).not.toContain("skills/evolve/x.yaml");
+    expect(files).not.toContain("skills/sourcey/SKILL.md");
+    expect(files).not.toContain("skills/sourcey/x.yaml");
   }, 60_000);
 });

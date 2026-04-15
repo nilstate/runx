@@ -1,6 +1,7 @@
 import { parseDocument } from "yaml";
 
 import { validateChainDocument, type ChainDefinition } from "./chain.js";
+import type { ExecutionSemantics } from "../../receipts/src/index.js";
 
 export const parserPackage = "@runx/parser";
 
@@ -82,6 +83,7 @@ export interface ValidatedSkill {
   readonly mutating?: boolean;
   readonly artifacts?: SkillArtifactContract;
   readonly allowedTools?: readonly string[];
+  readonly execution?: ExecutionSemantics;
   readonly runx?: Record<string, unknown>;
   readonly raw: RawSkillIR;
 }
@@ -109,6 +111,7 @@ export interface SkillRunnerDefinition {
   readonly mutating?: boolean;
   readonly artifacts?: SkillArtifactContract;
   readonly allowedTools?: readonly string[];
+  readonly execution?: ExecutionSemantics;
   readonly runx?: Record<string, unknown>;
   readonly raw: Record<string, unknown>;
 }
@@ -274,6 +277,7 @@ export function validateSkill(raw: RawSkillIR, options: ValidateSkillOptions = {
       recordField(runx, "allowed_tools") ?? recordField(runx, "allowedTools"),
       "runx.allowed_tools",
     ),
+    execution: validateExecutionSemantics(raw.frontmatter.execution ?? recordField(runx, "execution"), "execution"),
     runx,
     raw,
   };
@@ -307,6 +311,7 @@ export function validateRunnerManifest(raw: RawRunnerManifestIR): SkillRunnerMan
         recordField(runx, "allowed_tools") ?? recordField(runx, "allowedTools"),
         `runners.${name}.runx.allowed_tools`,
       ),
+      execution: validateExecutionSemantics(runner.execution ?? recordField(runx, "execution"), `runners.${name}.execution`),
       runx,
       raw: runner,
     };
@@ -478,6 +483,94 @@ function validateInputs(inputs: Record<string, unknown>): Readonly<Record<string
   }
 
   return validated;
+}
+
+function validateExecutionSemantics(value: unknown, field: string): ExecutionSemantics | undefined {
+  const record = optionalRecord(value, field);
+  if (!record) {
+    return undefined;
+  }
+
+  return {
+    disposition: optionalDisposition(record.disposition, `${field}.disposition`),
+    outcome_state: optionalOutcomeState(record.outcome_state ?? record.outcomeState, `${field}.outcome_state`),
+    outcome: validateOutcome(record.outcome, `${field}.outcome`),
+    input_context: validateInputContext(record.input_context ?? record.inputContext, `${field}.input_context`),
+    surface_refs: validateSurfaceRefs(record.surface_refs ?? record.surfaceRefs, `${field}.surface_refs`),
+    evidence_refs: validateSurfaceRefs(record.evidence_refs ?? record.evidenceRefs, `${field}.evidence_refs`),
+  };
+}
+
+function validateOutcome(value: unknown, field: string): ExecutionSemantics["outcome"] {
+  const record = optionalRecord(value, field);
+  if (!record) {
+    return undefined;
+  }
+  return {
+    code: optionalString(record.code, `${field}.code`),
+    summary: optionalString(record.summary, `${field}.summary`),
+    observed_at: optionalString(record.observed_at ?? record.observedAt, `${field}.observed_at`),
+    data: optionalRecord(record.data, `${field}.data`),
+  };
+}
+
+function validateInputContext(value: unknown, field: string): ExecutionSemantics["input_context"] {
+  const record = optionalRecord(value, field);
+  if (!record) {
+    return undefined;
+  }
+  const maxBytes = optionalNumber(record.max_bytes ?? record.maxBytes, `${field}.max_bytes`);
+  if (maxBytes !== undefined && (!Number.isInteger(maxBytes) || maxBytes < 1)) {
+    throw new SkillValidationError(`${field}.max_bytes must be a positive integer.`);
+  }
+  return {
+    capture: optionalBoolean(record.capture, `${field}.capture`),
+    source: optionalString(record.source, `${field}.source`),
+    max_bytes: maxBytes,
+    snapshot: record.snapshot,
+  };
+}
+
+function validateSurfaceRefs(value: unknown, field: string): ExecutionSemantics["surface_refs"] {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new SkillValidationError(`${field} must be an array when present.`);
+  }
+
+  return value.map((entry, index) => {
+    const record = requiredRecord(entry, `${field}[${index}]`);
+    return {
+      type: requiredString(record.type, `${field}[${index}].type`),
+      uri: requiredString(record.uri, `${field}[${index}].uri`),
+      label: optionalString(record.label, `${field}[${index}].label`),
+    };
+  });
+}
+
+function optionalDisposition(value: unknown, field: string): ExecutionSemantics["disposition"] {
+  const disposition = optionalString(value, field);
+  if (disposition === undefined) {
+    return undefined;
+  }
+  if (!["completed", "needs_resolution", "policy_denied", "approval_required", "observing"].includes(disposition)) {
+    throw new SkillValidationError(
+      `${field} must be one of completed, needs_resolution, policy_denied, approval_required, or observing.`,
+    );
+  }
+  return disposition as ExecutionSemantics["disposition"];
+}
+
+function optionalOutcomeState(value: unknown, field: string): ExecutionSemantics["outcome_state"] {
+  const outcomeState = optionalString(value, field);
+  if (outcomeState === undefined) {
+    return undefined;
+  }
+  if (!["pending", "complete", "expired"].includes(outcomeState)) {
+    throw new SkillValidationError(`${field} must be one of pending, complete, or expired.`);
+  }
+  return outcomeState as ExecutionSemantics["outcome_state"];
 }
 
 function validateSkillRetry(value: unknown, field: string): SkillRetryPolicy | undefined {

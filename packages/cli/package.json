@@ -1,16 +1,23 @@
 {
   "name": "@runxai/cli",
-  "version": "0.0.0",
+  "version": "0.3.0",
   "private": false,
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "runx": "./bin/runx.js"
   },
   "files": [
     "bin",
     "dist",
-    "skills",
-    "tools"
+    "tools",
+    "skills/run.mjs",
+    "skills/scafld/run.mjs"
   ],
   "scripts": {
     "runx": "tsx src/index.ts"

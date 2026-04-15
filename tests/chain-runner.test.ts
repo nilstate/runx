@@ -1,9 +1,10 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { readJournalEntries } from "../packages/artifacts/src/index.js";
 import { runCli } from "../packages/cli/src/index.js";
 import { inspectLocalChain, runLocalChain, type Caller } from "../packages/runner-local/src/index.js";
 
@@ -153,6 +154,48 @@ describe("local chain runner", () => {
       expect(stdout.contents()).toContain("chain_execution");
       expect(stdout.contents()).toContain(result.receipt.id);
       expect(stdout.contents()).toContain("verified");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes step_started before step_waiting_resolution for agent-mediated chain steps", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-chain-started-before-waiting-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+    const chainPath = path.join(tempDir, "waiting-chain.yaml");
+
+    try {
+      await writeFile(
+        chainPath,
+        `name: waiting-chain
+owner: runx
+steps:
+  - id: review
+    skill: ${JSON.stringify(path.resolve("fixtures/skills/agent-step"))}
+    inputs:
+      prompt: review this
+`,
+      );
+
+      const result = await runLocalChain({
+        chainPath,
+        caller: nonInteractiveCaller,
+        receiptDir,
+        runxHome,
+        env: process.env,
+      });
+
+      expect(result.status).toBe("needs_resolution");
+      if (result.status !== "needs_resolution") {
+        return;
+      }
+
+      const stepEvents = (await readJournalEntries(receiptDir, result.runId))
+        .filter((entry) => entry.type === "run_event" && entry.data.step_id === "review")
+        .map((entry) => entry.data.kind);
+
+      expect(stepEvents).toEqual(["step_started", "step_waiting_resolution"]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

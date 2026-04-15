@@ -8,7 +8,7 @@ import path from "node:path";
 import {
   loadLocalSkillPackage,
   resolvePathFromUserInput,
-  resolveRunxHomeDir,
+  resolveRunxProjectDir,
   resolveRunxRegistryPath,
   resolveSkillInstallRoot,
 } from "../../config/src/index.js";
@@ -38,6 +38,7 @@ import {
   type InstallLocalSkillResult,
   type RunLocalSkillResult,
 } from "../../runner-local/src/index.js";
+import { validatePublishHarness, type PublishHarnessSummary } from "../../harness/src/index.js";
 import { createStructuredCaller, type StructuredCallerOptions } from "./caller.js";
 
 export interface ConnectService {
@@ -91,6 +92,10 @@ export interface AddSkillOptions {
 
 export interface PublishSkillOptions extends PublishSkillMarkdownOptions {
   readonly skillPath: string;
+}
+
+export interface PublishSkillResult extends PublishSkillMarkdownResult {
+  readonly harness: PublishHarnessSummary;
 }
 
 export interface InspectReceiptOptions {
@@ -200,15 +205,26 @@ export class RunxSdk {
     });
   }
 
-  async publishSkill(options: PublishSkillOptions): Promise<PublishSkillMarkdownResult> {
-    const skillPackage = await loadLocalSkillPackage(resolvePathFromUserInput(options.skillPath, this.env()));
-    return await publishSkillMarkdown(createLocalRegistryClient(this.registryStore(options.registryUrl)), skillPackage.markdown, {
+  async publishSkill(options: PublishSkillOptions): Promise<PublishSkillResult> {
+    const resolvedSkillPath = resolvePathFromUserInput(options.skillPath, this.env());
+    const harness = await validatePublishHarness(resolvedSkillPath, {
+      env: this.env(),
+    });
+    if (harness.status === "failed") {
+      throw new Error(`Harness failed for ${resolvedSkillPath}: ${harness.assertion_errors.join("; ")}`);
+    }
+    const skillPackage = await loadLocalSkillPackage(resolvedSkillPath);
+    const publish = await publishSkillMarkdown(createLocalRegistryClient(this.registryStore(options.registryUrl)), skillPackage.markdown, {
       owner: options.owner,
       version: options.version,
       createdAt: options.createdAt,
       registryUrl: options.registryUrl ?? this.options.registryUrl,
       xManifest: skillPackage.xManifest,
     });
+    return {
+      ...publish,
+      harness,
+    };
   }
 
   async connectList(): Promise<unknown> {
@@ -233,7 +249,7 @@ export class RunxSdk {
 
   private receiptDir(override?: string): string {
     return resolvePathFromUserInput(
-      override ?? this.options.receiptDir ?? this.env().RUNX_RECEIPT_DIR ?? path.join(resolveRunxHomeDir(this.env()), "receipts"),
+      override ?? this.options.receiptDir ?? this.env().RUNX_RECEIPT_DIR ?? path.join(resolveRunxProjectDir(this.env()), "receipts"),
       this.env(),
     );
   }

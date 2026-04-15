@@ -25,6 +25,10 @@ discover step can confirm existing config, the author/revise passes can return
 empty bundles, and the deterministic tool steps still perform the build and
 verification work.
 
+For repository-backed projects, Sourcey owns two separate surfaces: committed
+docs source and generated site output. Keep those separate. Do not mix emitted
+HTML, search indexes, or OG assets back into the authored docs tree.
+
 ## Canonical semantics
 
 Complex runx skills share a reusable phase language:
@@ -96,8 +100,20 @@ Sourcey build produces: HTML pages, `sourcey.css`, `sourcey.js`,
 - `brand_name`: project name (discovered from package evidence if omitted).
 - `homepage_url`: project homepage (discovered from project evidence if omitted).
 - `docs_inputs`: structured docs inputs, e.g. `{"mode":"config","config":"docs/sourcey.config.ts"}` or `{"mode":"openapi","spec":"openapi.yaml"}`. Discovered if omitted and may point at authored config produced by the skill.
-- `output_dir`: output path (default: `<project>/.sourcey/runx-docs`).
+- `output_dir`: generated site output path (default: `<project>/.sourcey/runx-docs`).
 - `sourcey_bin`: explicit sourcey executable path (default: `SOURCEY_BIN` env or `sourcey` on PATH).
+
+## Repository Contract
+
+- Keep authored docs source in the repository, usually under `docs/` when using
+  `docs/sourcey.config.ts`.
+- Keep generated site output in `output_dir`, separate from the source tree.
+- The default generated output path is `<project>/.sourcey/runx-docs`.
+- Generated output should be gitignored unless the project explicitly chooses to
+  version release artifacts.
+- CI or deploy may run deterministic `sourcey build` from committed source.
+- Deploy must not be the step where docs scope, prose, or IA is invented. Do
+  discovery, authoring, and review before deploy.
 
 ## Config reference
 
@@ -203,5 +219,11 @@ Content here. Standard markdown with code blocks, tables, links.
 - Keep navigation shallow: 1-2 tabs, 2-4 groups for most projects.
 - Use project brand colors if identifiable. Otherwise use a neutral palette.
 - Match the project's existing voice and terminology.
+- Do not write generated HTML, search indexes, or OG assets into the authored
+  docs source tree.
+- If `output_dir` lives under the repo root, gitignore it or call out the
+  missing ignore rule as an operational gap.
+- Build output may be regenerated in CI or deploy, but deploy must not author
+  or revise docs content.
 - Do not encode open-ended critique or revision behavior. Critique is one
   bounded evaluation pass. Revision is at most one explicit bounded pass.

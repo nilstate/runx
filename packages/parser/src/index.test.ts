@@ -252,6 +252,42 @@ Governed agent.
     expect(skill.allowedTools).toEqual(["fs.read", "git.status"]);
   });
 
+  it("projects optional execution semantics from skill frontmatter", () => {
+    const skill = validateSkill(
+      parseSkillMarkdown(`---
+name: runtime-hints
+source:
+  type: cli-tool
+  command: node
+execution:
+  disposition: observing
+  outcome_state: pending
+  input_context:
+    capture: true
+    max_bytes: 128
+  surface_refs:
+    - type: issue
+      uri: github://owner/repo/issues/7
+---
+Runtime hints.
+`),
+    );
+
+    expect(skill.execution).toEqual({
+      disposition: "observing",
+      outcome_state: "pending",
+      input_context: {
+        capture: true,
+        max_bytes: 128,
+        source: undefined,
+        snapshot: undefined,
+      },
+      surface_refs: [{ type: "issue", uri: "github://owner/repo/issues/7", label: undefined }],
+      evidence_refs: undefined,
+      outcome: undefined,
+    });
+  });
+
   it("validates a2a source metadata", () => {
     const skill = validateSkill(
       parseSkillMarkdown(`---
@@ -517,6 +553,32 @@ harness:
         },
       },
     ]);
+  });
+
+  it("projects optional execution semantics from runner manifests", () => {
+    const manifest = validateRunnerManifest(
+      parseRunnerManifestYaml(`skill: runtime-hints
+runners:
+  default:
+    type: cli-tool
+    command: node
+    execution:
+      disposition: observing
+      outcome_state: pending
+      evidence_refs:
+        - type: log
+          uri: file://receipt-log
+`),
+    );
+
+    expect(manifest.runners.default?.execution).toEqual({
+      disposition: "observing",
+      outcome_state: "pending",
+      evidence_refs: [{ type: "log", uri: "file://receipt-log", label: undefined }],
+      input_context: undefined,
+      outcome: undefined,
+      surface_refs: undefined,
+    });
   });
 
   it("rejects invalid inline harness approval values", () => {

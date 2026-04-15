@@ -71,6 +71,9 @@ describe("CLI approval flow", () => {
       expect(stderr.contents()).toBe("");
       expect(JSON.parse(stdout.contents())).toMatchObject({
         status: "approval_required",
+        execution_status: null,
+        disposition: "approval_required",
+        outcome_state: "pending",
         skill: "cli-approval-json",
         approval: {
           gate_id: "sandbox.cli-approval-json.unrestricted-local-dev",
