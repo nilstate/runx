@@ -29,8 +29,8 @@ describe("builder-chain skills", () => {
   it("ships builder flows as skill packages instead of standalone chain assets", () => {
     expect(existsSync(path.resolve("chains/objective-to-skill.yaml"))).toBe(false);
     expect(existsSync(path.resolve("chains/improve-skill.yaml"))).toBe(false);
-    expect(existsSync(path.resolve("bindings/runx/objective-to-skill/X.yaml"))).toBe(true);
-    expect(existsSync(path.resolve("bindings/runx/improve-skill/X.yaml"))).toBe(true);
+    expect(existsSync(path.resolve("skills/objective-to-skill/X.yaml"))).toBe(true);
+    expect(existsSync(path.resolve("skills/improve-skill/X.yaml"))).toBe(true);
   });
 });
 

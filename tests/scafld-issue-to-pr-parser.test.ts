@@ -8,7 +8,7 @@ import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/par
 describe("scafld issue-to-PR skill contract", () => {
   it("parses as a composite skill with explicit author, write, execute, and review phases", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("bindings/runx/issue-to-pr/X.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("skills/issue-to-pr/X.yaml"), "utf8")),
     );
     const runner = manifest.runners["issue-to-pr"];
 

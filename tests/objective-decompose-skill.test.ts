@@ -9,7 +9,7 @@ import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/par
 describe("objective-decompose official skill", () => {
   it("ships as an explicit agent-step boundary with phased workspace-plan outputs", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("bindings/runx/objective-decompose/X.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("skills/objective-decompose/X.yaml"), "utf8")),
     );
     const runner = manifest.runners["objective-decompose-agent"];
 

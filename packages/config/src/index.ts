@@ -24,7 +24,7 @@ export interface LocalSkillPackage {
 export interface ResolvedLocalProfile {
   readonly profileDocument?: string;
   readonly profileSourcePath?: string;
-  readonly source: "profile-state" | "workspace-bindings" | "none";
+  readonly source: "profile-state" | "skill-profile" | "workspace-bindings" | "none";
 }
 
 type RunxConfigKey = "agent.provider" | "agent.model" | "agent.api_key";
@@ -239,6 +239,15 @@ export async function resolveLocalSkillProfile(
     };
   }
 
+  const checkedInProfile = await readSkillProfile(skillDirectory, skillName);
+  if (checkedInProfile) {
+    return {
+      profileDocument: checkedInProfile.profileDocument,
+      profileSourcePath: checkedInProfile.profileSourcePath,
+      source: "skill-profile",
+    };
+  }
+
   for (const bindingRoot of collectBindingRoots(skillDirectory)) {
     const match = await readWorkspaceProfile(skillDirectory, bindingRoot, skillName);
     if (!match) {
@@ -395,6 +404,22 @@ async function readProfileState(
   return {
     profileDocument: profile.document,
     profileSourcePath: profileStatePath,
+  };
+}
+
+async function readSkillProfile(
+  skillDirectory: string,
+  skillName: string,
+): Promise<{ readonly profileDocument: string; readonly profileSourcePath: string } | undefined> {
+  const candidatePath = path.join(skillDirectory, "X.yaml");
+  const manifestText = await readOptionalFile(candidatePath);
+  if (!manifestText) {
+    return undefined;
+  }
+  validateBindingManifestSkill(candidatePath, manifestText, skillName);
+  return {
+    profileDocument: manifestText,
+    profileSourcePath: candidatePath,
   };
 }
 

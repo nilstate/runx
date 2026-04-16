@@ -169,7 +169,7 @@ describe("TypeScript SDK", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sdk-js-remote-registry-"));
     const installDir = path.join(tempDir, "skills");
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
 
     try {
       globalThis.fetch = vi.fn(async (input, init) => {

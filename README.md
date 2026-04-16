@@ -65,8 +65,6 @@ Executable skills now split authored skill content from execution profiles:
 ```text
 skills/sourcey/
   SKILL.md
-
-bindings/runx/sourcey/
   X.yaml
 ```
 
@@ -90,9 +88,11 @@ The official catalog is skill-first. Public entrypoints are capabilities such as
 - `harness-author`
 - `receipt-review`
 
-Each ships as a portable `SKILL.md` plus a execution profile under
-`bindings/runx/<skill>/X.yaml` when it exposes deterministic runners or inline
-harness coverage. Official skills are registry-backed and cached locally on
+Each ships as a portable `SKILL.md` plus a colocated execution profile at
+`skills/<skill>/X.yaml` when it exposes deterministic runners or inline harness
+coverage. Upstream skills that runx does not own keep their execution profiles
+under `bindings/<owner>/<skill>/X.yaml` with adjacent `binding.json`
+governance metadata. Official skills are registry-backed and cached locally on
 first acquisition. The npm CLI package no longer needs to ship the official
 runtime skill bodies for normal execution.
 

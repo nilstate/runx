@@ -420,7 +420,7 @@ runners:
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
     const digest = hashString(markdown);
     const profileDigest = hashString(profileDocument);
 

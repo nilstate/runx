@@ -49,7 +49,7 @@ await writeFile(path.join(outputDir, ".runx/profile.json"), `${JSON.stringify({
     trust_tier: binding.registry.trust_tier,
   },
 }, null, 2)}\n`);
-await writeFile(path.join(outputDir, "registry-binding.json"), `${JSON.stringify(binding, null, 2)}\n`);
+await writeFile(path.join(outputDir, "binding.json"), `${JSON.stringify(binding, null, 2)}\n`);
 await writeFile(path.join(outputDir, "materialization.json"), `${JSON.stringify({
   schema: "runx.registry_binding_materialization.v1",
   materialized_at: new Date().toISOString(),
@@ -251,7 +251,7 @@ function parseArgs(argv) {
     throw new Error(`Unknown argument: ${token}`);
   }
   if (!parsed.profilePath) {
-    throw new Error("Usage: node scripts/materialize-upstream-skill-binding.mjs <registry-binding.json> [--output-dir dist/path] [--skill-file SKILL.md] [--registry-dir .tmp/registry]");
+    throw new Error("Usage: node scripts/materialize-upstream-skill-binding.mjs <binding.json> [--output-dir dist/path] [--skill-file SKILL.md] [--registry-dir .tmp/registry]");
   }
   return parsed;
 }

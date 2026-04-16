@@ -50,7 +50,7 @@ describe("publishSkillMarkdown", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-publish-x-"));
     const client = createLocalRegistryClient(createFileRegistryStore(tempDir));
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
 
     try {
       const result = await publishSkillMarkdown(client, markdown, {

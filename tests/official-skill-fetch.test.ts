@@ -25,7 +25,7 @@ describe("official skill fetch", () => {
       RUNX_REGISTRY_URL: "https://runx.example.test",
     };
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
 
     try {
       globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({
@@ -99,7 +99,7 @@ describe("official skill fetch", () => {
       RUNX_REGISTRY_URL: "https://runx.example.test",
     };
     const markdown = await readFile(path.resolve("skills/scafld/SKILL.md"), "utf8");
-    const profileDocument = await readFile(path.resolve("bindings/runx/scafld/X.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("skills/scafld/X.yaml"), "utf8");
     const officialLock = JSON.parse(
       await readFile(path.resolve("packages/cli/src/official-skills.lock.json"), "utf8"),
     ) as ReadonlyArray<{

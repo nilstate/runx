@@ -2,6 +2,10 @@ export const receiptsPackage = "@runx/receipts";
 export * from "./local-signing.js";
 export * from "./outcome-resolution.js";
 
+export const CONTROL_SCHEMA_REFS = {
+  scope_admission: "https://runx.ai/spec/scope-admission.schema.json",
+} as const;
+
 import crypto, { createHash, type KeyObject } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -167,6 +171,7 @@ export interface ChainReceiptGovernance {
     readonly granted_scopes: readonly string[];
     readonly grant_id?: string;
     readonly reasons?: readonly string[];
+    readonly decision_summary?: string;
   };
 }
 
@@ -429,6 +434,10 @@ export function buildLocalChainReceipt(
   options: BuildLocalChainReceiptOptions,
   keyPair: LocalKeyPair,
 ): LocalChainReceipt {
+  const normalizedSteps = options.steps.map((step, index) => ({
+    ...step,
+    governance: validateChainReceiptGovernance(step.governance, `steps[${index}].governance`),
+  }));
   const signedPayload = {
     schema_version: "runx.receipt.v1" as const,
     id: options.chainId,
@@ -451,7 +460,7 @@ export function buildLocalChainReceipt(
     outcome: options.outcome,
     surface_refs: options.surfaceRefs && options.surfaceRefs.length > 0 ? options.surfaceRefs : undefined,
     evidence_refs: options.evidenceRefs && options.evidenceRefs.length > 0 ? options.evidenceRefs : undefined,
-    steps: options.steps,
+    steps: normalizedSteps,
     sync_points: options.syncPoints && options.syncPoints.length > 0 ? options.syncPoints : undefined,
   };
   const signature = signPayloadString(stableStringify(signedPayload), keyPair.privateKey);
@@ -519,6 +528,47 @@ export function redactReceiptValue<T>(value: T): T {
   return redactValue(value) as T;
 }
 
+export function validateChainReceiptGovernance(
+  value: ChainReceiptGovernance | undefined,
+  label = "governance",
+): ChainReceiptGovernance | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return {
+    scope_admission: validateScopeAdmission(value.scope_admission, `${label}.scope_admission`),
+  };
+}
+
+export function validateScopeAdmission(
+  value: ChainReceiptGovernance["scope_admission"] | undefined,
+  label = "scope_admission",
+): ChainReceiptGovernance["scope_admission"] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    throw new Error(`${label} must match ${CONTROL_SCHEMA_REFS.scope_admission}.`);
+  }
+
+  const status = requireEnum(value.status, `${label}.status`, ["allow", "deny"]);
+  const requestedScopes = requireStringArray(value.requested_scopes, `${label}.requested_scopes`);
+  const grantedScopes = requireStringArray(value.granted_scopes, `${label}.granted_scopes`);
+  const grantId = optionalString(value.grant_id, `${label}.grant_id`);
+  const reasons = value.reasons === undefined ? undefined : requireStringArray(value.reasons, `${label}.reasons`);
+  const decisionSummary = optionalString(value.decision_summary, `${label}.decision_summary`, { allowEmpty: true });
+
+  return {
+    status,
+    requested_scopes: requestedScopes,
+    granted_scopes: grantedScopes,
+    grant_id: grantId,
+    reasons,
+    decision_summary: decisionSummary,
+  };
+}
+
 function assertLocalReceiptId(id: string): void {
   if (!/^(rx|cx)_[A-Za-z0-9_-]+$/.test(id)) {
     throw new Error(`Invalid receipt id '${id}'.`);
@@ -551,4 +601,48 @@ function receiptTimestamp(receipt: LocalReceipt): string {
 
 function isNotFound(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+function requireEnum<T extends string>(value: unknown, label: string, allowed: readonly T[]): T {
+  const normalized = optionalString(value, label);
+  if (!normalized || !allowed.includes(normalized as T)) {
+    throw new Error(`${label} must be one of ${allowed.join(", ")} (${CONTROL_SCHEMA_REFS.scope_admission}).`);
+  }
+  return normalized as T;
+}
+
+function requireStringArray(value: unknown, label: string): readonly string[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array (${CONTROL_SCHEMA_REFS.scope_admission}).`);
+  }
+  return value.map((entry, index) => requireNonEmptyString(entry, `${label}[${index}]`));
+}
+
+function requireNonEmptyString(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${label} must be a non-empty string (${CONTROL_SCHEMA_REFS.scope_admission}).`);
+  }
+  return value.trim();
+}
+
+function optionalString(
+  value: unknown,
+  label: string,
+  options: { readonly allowEmpty?: boolean } = {},
+): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`${label} must be a string (${CONTROL_SCHEMA_REFS.scope_admission}).`);
+  }
+  const normalized = options.allowEmpty ? value : value.trim();
+  if (normalized.length === 0 && !options.allowEmpty) {
+    throw new Error(`${label} must be a non-empty string (${CONTROL_SCHEMA_REFS.scope_admission}).`);
+  }
+  return normalized;
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -12,6 +12,7 @@ export const CONTROL_SCHEMA_REFS = {
   resolution_request: "https://runx.ai/spec/resolution-request.schema.json",
   resolution_response: "https://runx.ai/spec/resolution-response.schema.json",
   adapter_invoke_result: "https://runx.ai/spec/adapter-invoke-result.schema.json",
+  credential_envelope: "https://runx.ai/spec/credential-envelope.schema.json",
 } as const;
 
 export type OutputContractEntry =
@@ -146,7 +147,7 @@ export interface SkillAdapter {
 }
 
 export interface CredentialEnvelope {
-  readonly kind: string;
+  readonly kind: "runx.credential-envelope.v1";
   readonly grant_id: string;
   readonly provider: string;
   readonly connection_id: string;
@@ -195,7 +196,7 @@ export async function executeSkill(options: ExecuteSkillOptions): Promise<Adapte
     resolvedInputs: options.resolvedInputs,
     skillDirectory: options.skillDirectory,
     env: options.env,
-    credential: options.credential,
+    credential: options.credential ? validateCredentialEnvelope(options.credential, "credential") : undefined,
     signal: options.signal,
     runId: options.runId,
     stepId: options.stepId,
@@ -435,6 +436,30 @@ export function validateAdapterInvokeResult(
     durationMs,
     errorMessage,
     metadata,
+  };
+}
+
+export function validateCredentialEnvelope(
+  value: unknown,
+  label = "credential_envelope",
+): CredentialEnvelope {
+  const record = asRecord(value);
+  if (!record) {
+    throw new Error(`${label} must match ${CONTROL_SCHEMA_REFS.credential_envelope}.`);
+  }
+
+  const kind = requireString(record.kind, `${label}.kind`);
+  if (kind !== "runx.credential-envelope.v1") {
+    throw new Error(`${label}.kind must equal 'runx.credential-envelope.v1' (${CONTROL_SCHEMA_REFS.credential_envelope}).`);
+  }
+
+  return {
+    kind: "runx.credential-envelope.v1",
+    grant_id: requireString(record.grant_id, `${label}.grant_id`),
+    provider: requireString(record.provider, `${label}.provider`),
+    connection_id: requireString(record.connection_id, `${label}.connection_id`),
+    scopes: requireStringArray(record.scopes, `${label}.scopes`, { allowEmptyValues: false }),
+    material_ref: requireString(record.material_ref, `${label}.material_ref`),
   };
 }
 

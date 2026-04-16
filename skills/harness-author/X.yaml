@@ -56,7 +56,7 @@ harness:
         review:
           verdict: needs_update
           improvement_proposals:
-            - target: bindings/runx/objective-to-skill/X.yaml
+            - target: skills/objective-to-skill/X.yaml
               change: swap stdout edges for artifact data edges
       caller:
         answers:

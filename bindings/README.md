@@ -1,11 +1,11 @@
-# Upstream Registry Bindings
+# Upstream Bindings
 
 Bindings connect an upstream-owned `SKILL.md` to a runx execution profile.
 
 The upstream repository remains the source of truth for the portable skill
 document. This directory stores runx-owned binding data:
 
-- `registry-binding.json`: upstream repo/path/commit provenance, trust tier,
+- `binding.json`: upstream repo/path/commit provenance, trust tier,
   registry owner, publication state, and proof pointers.
 - `X.yaml`: the execution profile artifact containing runner metadata,
   harness cases, policy, scopes, and receipt expectations.
@@ -18,6 +18,6 @@ Example:
 
 ```bash
 node scripts/materialize-upstream-skill-binding.mjs \
-  bindings/nilstate/icey-server-operator/registry-binding.json \
+  bindings/nilstate/icey-server-operator/binding.json \
   --output-dir dist/upstream-bindings/nilstate/icey-server-operator
 ```

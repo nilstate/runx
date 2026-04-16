@@ -9,9 +9,9 @@ import { describe, expect, it } from "vitest";
 import { runHarnessTarget } from "../packages/harness/src/index.js";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/parser/src/index.js";
 
-describe("upstream registry bindings", () => {
+describe("upstream bindings", () => {
   it("declares the nilstate icey-cli binding as upstream-owned and harnessed", async () => {
-    const binding = JSON.parse(await readFile("bindings/nilstate/icey-server-operator/registry-binding.json", "utf8")) as {
+    const binding = JSON.parse(await readFile("bindings/nilstate/icey-server-operator/binding.json", "utf8")) as {
       schema: string;
       state: string;
       skill: { id: string; name: string };
@@ -175,13 +175,13 @@ harness:
       const bindingDir = path.join(tempDir, "binding");
       const outputDir = path.join(tempDir, "out");
       await mkdir(bindingDir);
-      await writeFile(path.join(bindingDir, "registry-binding.json"), `${JSON.stringify(binding, null, 2)}\n`);
+      await writeFile(path.join(bindingDir, "binding.json"), `${JSON.stringify(binding, null, 2)}\n`);
       await writeFile(path.join(bindingDir, "X.yaml"), profileDocument);
       await writeFile(path.join(tempDir, "SKILL.md"), skill);
 
       execFileSync("node", [
         "scripts/materialize-upstream-skill-binding.mjs",
-        path.join(bindingDir, "registry-binding.json"),
+        path.join(bindingDir, "binding.json"),
         "--skill-file",
         path.join(tempDir, "SKILL.md"),
         "--output-dir",

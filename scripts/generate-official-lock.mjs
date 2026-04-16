@@ -9,14 +9,13 @@ import { buildRegistrySkillVersion } from "../packages/registry/src/index.ts";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "..");
 const skillsRoot = path.join(workspaceRoot, "skills");
-const bindingsRoot = path.join(workspaceRoot, "bindings", "runx");
 const outputPath = path.join(workspaceRoot, "packages", "cli", "src", "official-skills.lock.json");
 
 const entries = [];
 for (const entry of (await readdir(skillsRoot, { withFileTypes: true })).sort((left, right) => left.name.localeCompare(right.name))) {
   if (!entry.isDirectory()) continue;
   const skillDir = path.join(skillsRoot, entry.name);
-  const profilePath = path.join(bindingsRoot, entry.name, "X.yaml");
+  const profilePath = path.join(skillDir, "X.yaml");
   try {
     await access(path.join(skillDir, "SKILL.md"));
     await access(profilePath);

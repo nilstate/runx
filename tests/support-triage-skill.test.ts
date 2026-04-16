@@ -9,7 +9,7 @@ import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/par
 describe("support-triage official skill", () => {
   it("ships as an explicit agent-step boundary with a generic triage report contract", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("bindings/runx/support-triage/X.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("skills/support-triage/X.yaml"), "utf8")),
     );
     const runner = manifest.runners.triage;
 

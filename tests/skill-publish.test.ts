@@ -153,7 +153,7 @@ describe("skill-publish CLI", () => {
       });
       await expect(createFileRegistryStore(registryDir).getVersion("0state/sourcey", "1.0.0")).resolves.toMatchObject({
         markdown: await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"),
-        profile_document: await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8"),
+        profile_document: await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8"),
         runner_names: ["agent", "sourcey"],
       });
     } finally {

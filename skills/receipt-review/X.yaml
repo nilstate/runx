@@ -13,7 +13,7 @@ harness:
             verdict: needs_update
             failure_summary: Context edges are reading stdout instead of an artifact envelope, so structured data is flattened before the next step.
             improvement_proposals:
-              - target: bindings/runx/objective-to-skill/X.yaml
+              - target: skills/objective-to-skill/X.yaml
                 change: Emit a wrapped artifact from the upstream step and consume <step>.<artifact>.data in downstream context.
                 rationale: Preserves structured objects across governed chain steps.
                 risk: Existing tests that parse stdout-shaped context will need updates.

@@ -23,7 +23,7 @@ describe("skill-add", () => {
         owner: "0state",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
-        profileDocument: await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8"),
+        profileDocument: await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8"),
       });
 
       const exitCode = await runCli(
@@ -138,7 +138,7 @@ describe("skill-add", () => {
         owner: "0state",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
-        profileDocument: await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8"),
+        profileDocument: await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8"),
       });
 
       const install = await installLocalSkill({

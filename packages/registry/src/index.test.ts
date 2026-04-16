@@ -22,7 +22,7 @@ describe("registry package", () => {
     try {
       const store = createFileRegistryStore(tempDir);
       const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-      const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
+      const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
         owner: "0state",
         version: "1.0.0",
