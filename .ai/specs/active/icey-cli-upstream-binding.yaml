@@ -118,7 +118,7 @@ planning_log:
     summary: "nilstate/icey-cli PR #2 merged upstream."
   - timestamp: "2026-04-16T01:29:28Z"
     actor: "agent"
-    summary: "Automaton watcher produced accepted_upstream and registry_binding_request artifacts."
+    summary: "Maton watcher produced accepted_upstream and registry_binding_request artifacts."
   - timestamp: "2026-04-16T01:35:44Z"
     actor: "agent"
     summary: "Implemented runx upstream binding, harness, materializer, registry tag extraction, and tests."

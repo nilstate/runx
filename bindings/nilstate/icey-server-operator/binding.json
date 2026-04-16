@@ -41,8 +41,8 @@
   "proof": {
     "contribution_pr": "https://github.com/nilstate/icey-cli/pull/2",
     "upstream_ci": "https://github.com/nilstate/icey-cli/actions/runs/24486423144/job/71562291942",
-    "automaton_contribution_run": "https://github.com/nilstate/automaton/actions/runs/24486417144",
-    "automaton_watch_lane": "skill-contribution-watch"
+    "maton_contribution_run": "https://github.com/nilstate/maton/actions/runs/24486417144",
+    "maton_watch_lane": "skill-contribution-watch"
   },
   "publication": {
     "status": "pending_remote_publish",
