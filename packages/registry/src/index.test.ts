@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createFileRegistryStore,
+  createRegistrySkillVersion,
+  buildRegistrySkillVersion,
   deriveTrustSignals,
   ingestSkillMarkdown,
   resolveRegistrySkill,
@@ -118,6 +120,66 @@ runners:
       });
 
       expect(version.tags).toEqual(["upstream-owned", "operator"]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("refreshes derived registry metadata for unchanged artifact digests", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-derived-refresh-"));
+
+    try {
+      const store = createFileRegistryStore(tempDir);
+      const markdown = `---
+name: upstream-tagged
+description: Upstream portable skill.
+---
+
+Portable skill markdown without runx-specific frontmatter.
+`;
+      const xManifest = `skill: upstream-tagged
+runners:
+  default:
+    default: true
+    type: agent-step
+    agent: operator
+    task: upstream-tagged
+    runx:
+      tags:
+        - upstream-owned
+        - operator
+`;
+      const derived = buildRegistrySkillVersion(markdown, {
+        owner: "nilstate",
+        version: "upstream-abc123",
+        createdAt: "2026-04-10T00:00:00.000Z",
+        xManifest,
+      });
+      const legacyRecord = {
+        ...derived,
+        tags: [],
+        created_at: "2026-04-01T00:00:00.000Z",
+      };
+      await mkdir(path.join(tempDir, "nilstate", "upstream-tagged"), { recursive: true });
+      await writeFile(
+        path.join(tempDir, "nilstate", "upstream-tagged", "upstream-abc123.json"),
+        `${JSON.stringify(legacyRecord, null, 2)}\n`,
+      );
+
+      const refreshed = await createRegistrySkillVersion(store, markdown, {
+        owner: "nilstate",
+        version: "upstream-abc123",
+        createdAt: "2026-04-10T00:00:00.000Z",
+        xManifest,
+      });
+
+      expect(refreshed.created).toBe(false);
+      expect(refreshed.record.tags).toEqual(["upstream-owned", "operator"]);
+      expect(refreshed.record.created_at).toBe("2026-04-01T00:00:00.000Z");
+      await expect(store.getVersion("nilstate/upstream-tagged", "upstream-abc123")).resolves.toMatchObject({
+        tags: ["upstream-owned", "operator"],
+        created_at: "2026-04-01T00:00:00.000Z",
+      });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

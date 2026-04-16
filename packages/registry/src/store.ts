@@ -57,7 +57,14 @@ export class FileRegistryStore implements RegistryStore {
       if (existing.digest !== version.digest || existing.x_digest !== version.x_digest) {
         throw new Error(`Registry version ${version.skill_id}@${version.version} already exists with a different digest.`);
       }
-      return existing;
+      const refreshed = {
+        ...version,
+        created_at: existing.created_at,
+      };
+      if (JSON.stringify(existing) !== JSON.stringify(refreshed)) {
+        await writeFile(versionPath, `${JSON.stringify(refreshed, null, 2)}\n`, { flag: "w", mode: 0o600 });
+      }
+      return refreshed;
     }
 
     await writeFile(versionPath, `${JSON.stringify(version, null, 2)}\n`, { flag: "wx", mode: 0o600 });

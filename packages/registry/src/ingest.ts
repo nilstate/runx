@@ -42,7 +42,10 @@ export async function createRegistrySkillVersion(
       throw new Error(`Registry version ${record.skill_id}@${record.version} already exists with a different digest.`);
     }
     return {
-      record: existing,
+      record: await store.putVersion({
+        ...record,
+        created_at: existing.created_at,
+      }),
       created: false,
     };
   }
