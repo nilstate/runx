@@ -26,6 +26,17 @@ describe("official skill fetch", () => {
     };
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
     const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
+    const officialLock = JSON.parse(
+      await readFile(path.resolve("packages/cli/src/official-skills.lock.json"), "utf8"),
+    ) as ReadonlyArray<{
+      readonly skill_id: string;
+      readonly version: string;
+      readonly digest: string;
+    }>;
+    const sourceyLock = officialLock.find((entry) => entry.skill_id === "runx/sourcey");
+    if (!sourceyLock) {
+      throw new Error("Missing runx/sourcey entry in official-skills.lock.json.");
+    }
 
     try {
       globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({
@@ -35,8 +46,8 @@ describe("official skill fetch", () => {
           skill_id: "runx/sourcey",
           owner: "runx",
           name: "sourcey",
-          version: "sha-19586564c28e",
-          digest: "19586564c28e0cc5bc8affa207362ddc1e590a419a515196fe1653beece1ceea",
+          version: sourceyLock.version,
+          digest: sourceyLock.digest,
           markdown,
           profile_document: profileDocument,
           profile_digest: "stub-x-digest",
@@ -45,7 +56,7 @@ describe("official skill fetch", () => {
       }), { status: 200 })) as typeof fetch;
 
       const firstPath = await resolveRunnableSkillReference("sourcey", env);
-      expect(firstPath).toBe(path.join(globalHomeDir, "official-skills", "runx", "sourcey", "sha-19586564c28e"));
+      expect(firstPath).toBe(path.join(globalHomeDir, "official-skills", "runx", "sourcey", sourceyLock.version));
       expect((await stat(path.join(globalHomeDir, "install.json"))).isFile()).toBe(true);
       expect((await stat(path.join(firstPath, "SKILL.md"))).isFile()).toBe(true);
 
@@ -68,6 +79,17 @@ describe("official skill fetch", () => {
       RUNX_HOME: path.join(tempDir, "home"),
       RUNX_REGISTRY_URL: "https://runx.example.test",
     };
+    const officialLock = JSON.parse(
+      await readFile(path.resolve("packages/cli/src/official-skills.lock.json"), "utf8"),
+    ) as ReadonlyArray<{
+      readonly skill_id: string;
+      readonly version: string;
+      readonly digest: string;
+    }>;
+    const sourceyLock = officialLock.find((entry) => entry.skill_id === "runx/sourcey");
+    if (!sourceyLock) {
+      throw new Error("Missing runx/sourcey entry in official-skills.lock.json.");
+    }
 
     try {
       globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({
@@ -77,8 +99,8 @@ describe("official skill fetch", () => {
           skill_id: "runx/sourcey",
           owner: "runx",
           name: "sourcey",
-          version: "sha-19586564c28e",
-          digest: "19586564c28e0cc5bc8affa207362ddc1e590a419a515196fe1653beece1ceea",
+          version: sourceyLock.version,
+          digest: sourceyLock.digest,
           markdown: "---\nname: sourcey\ndescription: wrong\nsource:\n  type: prompt\ninstructions: []\n---\n",
           runner_names: [],
         },

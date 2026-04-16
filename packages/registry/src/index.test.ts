@@ -125,6 +125,47 @@ runners:
     }
   });
 
+  it("derives a new default version when the execution profile changes", async () => {
+    const markdown = `---
+name: profiled-skill
+description: Profile-sensitive versioning.
+---
+
+Profile-sensitive versioning fixture.
+`;
+    const profileA = `skill: profiled-skill
+runners:
+  default:
+    default: true
+    type: agent-step
+    agent: alpha
+    task: profiled-skill
+`;
+    const profileB = `skill: profiled-skill
+runners:
+  default:
+    default: true
+    type: agent-step
+    agent: beta
+    task: profiled-skill
+`;
+
+    const versionA = buildRegistrySkillVersion(markdown, {
+      owner: "runx",
+      profileDocument: profileA,
+    });
+    const versionB = buildRegistrySkillVersion(markdown, {
+      owner: "runx",
+      profileDocument: profileB,
+    });
+
+    expect(versionA.digest).toBe(versionB.digest);
+    expect(versionA.profile_digest).not.toBe(versionB.profile_digest);
+    expect(versionA.version).not.toBe(versionB.version);
+    expect(versionA.version).toMatch(/^sha-[a-f0-9]{12}$/);
+    expect(versionB.version).toMatch(/^sha-[a-f0-9]{12}$/);
+  });
+
   it("refreshes derived registry metadata for unchanged artifact digests", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-derived-refresh-"));
 

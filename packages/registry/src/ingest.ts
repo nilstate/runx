@@ -69,7 +69,7 @@ export function buildRegistrySkillVersion(markdown: string, options: IngestSkill
   const digest = hashString(markdown);
   const bindingArtifact = buildBindingArtifact(skill, options.profileDocument);
   const owner = options.owner ?? "local";
-  const version = options.version ?? `sha-${digest.slice(0, 12)}`;
+  const version = options.version ?? `sha-${defaultRegistryVersionSeed(digest, bindingArtifact.digest).slice(0, 12)}`;
   return {
     skill_id: buildSkillId(owner, skill.name),
     owner,
@@ -118,6 +118,16 @@ function buildBindingArtifact(skill: ValidatedSkill, profileDocument: string | u
     runnerNames: Object.keys(manifest.runners),
     manifest,
   };
+}
+
+function defaultRegistryVersionSeed(markdownDigest: string, profileDigest: string | undefined): string {
+  if (!profileDigest) {
+    return markdownDigest;
+  }
+  return hashString(JSON.stringify({
+    markdown_digest: markdownDigest,
+    profile_digest: profileDigest,
+  }));
 }
 
 function extractScopes(skill: ValidatedSkill): readonly string[] {
