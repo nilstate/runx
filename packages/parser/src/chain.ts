@@ -178,17 +178,14 @@ function validateStep(
   const inputs = optionalRecord(rawStep.inputs, `${field}.inputs`) ?? {};
   const context = optionalStringRecord(rawStep.context, `${field}.context`) ?? {};
   const scopes = optionalStringArray(rawStep.scopes, `${field}.scopes`) ?? [];
-  const allowedTools = optionalStringArray(rawStep.allowed_tools ?? rawStep.allowedTools, `${field}.allowed_tools`);
+  const allowedTools = optionalStringArray(rawStep.allowed_tools, `${field}.allowed_tools`);
   const retry = validateRetry(rawStep.retry, `${field}.retry`);
   const policy = optionalRecord(rawStep.policy, `${field}.policy`);
-  const fanoutGroup = optionalString(rawStep.fanout_group ?? rawStep.fanoutGroup, `${field}.fanout_group`);
-  const mutating = validateMutation(rawStep.mutation ?? rawStep.mutating, `${field}.mutation`);
+  const fanoutGroup = optionalString(rawStep.fanout_group, `${field}.fanout_group`);
+  const mutating = validateMutation(rawStep.mutation, `${field}.mutation`);
   const instructions = optionalString(rawStep.instructions, `${field}.instructions`);
   const artifacts = optionalRecord(rawStep.artifacts, `${field}.artifacts`);
-  const idempotencyKey = optionalNonEmptyString(
-    rawStep.idempotency_key ?? rawStep.idempotencyKey,
-    `${field}.idempotency_key`,
-  );
+  const idempotencyKey = optionalNonEmptyString(rawStep.idempotency_key, `${field}.idempotency_key`);
   const contextEdges = Object.entries(context).map(([input, reference]) =>
     parseContextReference(input, reference, previousStepIds, `${field}.context.${input}`),
   );
@@ -234,7 +231,7 @@ function rejectUnsupportedStepFields(rawStep: Readonly<Record<string, unknown>>,
   if (mode !== undefined && mode !== "sequential" && mode !== "fanout") {
     throw new ChainValidationError(`${field}.mode '${String(mode)}' is not supported by the local chain runner.`);
   }
-  if (mode === "fanout" && typeof (rawStep.fanout_group ?? rawStep.fanoutGroup) !== "string") {
+  if (mode === "fanout" && typeof rawStep.fanout_group !== "string") {
     throw new ChainValidationError(`${field}.fanout_group is required when mode is fanout.`);
   }
   const declaredTargets = [rawStep.run, rawStep.skill, rawStep.tool].filter((value) => value !== undefined).length;
@@ -254,20 +251,12 @@ function validateFanoutGroups(value: unknown, field: string): Readonly<Record<st
   for (const [groupId, rawGroup] of Object.entries(groups)) {
     const group = requiredRecord(rawGroup, `${field}.groups.${groupId}`);
     const strategy = optionalSyncStrategy(group.strategy, `${field}.groups.${groupId}.strategy`) ?? "all";
-    const minSuccess = optionalNumber(group.min_success ?? group.minSuccess, `${field}.groups.${groupId}.min_success`);
+    const minSuccess = optionalNumber(group.min_success, `${field}.groups.${groupId}.min_success`);
     const onBranchFailure =
-      optionalBranchFailurePolicy(
-        group.on_branch_failure ?? group.onBranchFailure,
-        `${field}.groups.${groupId}.on_branch_failure`,
-      ) ?? (strategy === "all" ? "halt" : "continue");
-    const thresholdGates = validateThresholdGates(
-      group.threshold_gates ?? group.thresholdGates,
-      `${field}.groups.${groupId}.threshold_gates`,
-    );
-    const conflictGates = validateConflictGates(
-      group.conflict_gates ?? group.conflictGates,
-      `${field}.groups.${groupId}.conflict_gates`,
-    );
+      optionalBranchFailurePolicy(group.on_branch_failure, `${field}.groups.${groupId}.on_branch_failure`)
+      ?? (strategy === "all" ? "halt" : "continue");
+    const thresholdGates = validateThresholdGates(group.threshold_gates, `${field}.groups.${groupId}.threshold_gates`);
+    const conflictGates = validateConflictGates(group.conflict_gates, `${field}.groups.${groupId}.conflict_gates`);
     if (strategy === "quorum" && (!Number.isInteger(minSuccess) || minSuccess === undefined || minSuccess < 1)) {
       throw new ChainValidationError(`${field}.groups.${groupId}.min_success must be a positive integer for quorum sync.`);
     }
@@ -289,7 +278,7 @@ function validateChainPolicy(value: unknown, field: string): ChainPolicy | undef
   if (!policy) {
     return undefined;
   }
-  const transitionsValue = policy.transitions ?? policy.transition_gates ?? policy.transitionGates;
+  const transitionsValue = policy.transitions;
   if (transitionsValue === undefined || transitionsValue === null) {
     return undefined;
   }
@@ -297,7 +286,7 @@ function validateChainPolicy(value: unknown, field: string): ChainPolicy | undef
     const gateField = `${field}.transitions.${index}`;
     const gate = requiredRecord(rawGate, gateField);
     const equals = gate.equals;
-    const notEquals = gate.not_equals ?? gate.notEquals;
+    const notEquals = gate.not_equals;
     if (equals !== undefined && notEquals !== undefined) {
       throw new ChainValidationError(`${gateField} must not declare both equals and not_equals.`);
     }
@@ -451,9 +440,8 @@ function validateRetry(value: unknown, field: string): ChainRetryPolicy | undefi
     return undefined;
   }
 
-  const rawMaxAttempts = retry.max_attempts ?? retry.maxAttempts;
-  const maxAttempts = optionalNumber(rawMaxAttempts, `${field}.max_attempts`) ?? 1;
-  const backoffMs = optionalNumber(retry.backoff_ms ?? retry.backoffMs, `${field}.backoff_ms`);
+  const maxAttempts = optionalNumber(retry.max_attempts, `${field}.max_attempts`) ?? 1;
+  const backoffMs = optionalNumber(retry.backoff_ms, `${field}.backoff_ms`);
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
     throw new ChainValidationError(`${field}.max_attempts must be a positive integer.`);
   }
@@ -474,13 +462,7 @@ function validateMutation(value: unknown, field: string): boolean {
   if (typeof value === "boolean") {
     return value;
   }
-  if (value === "read" || value === "readonly" || value === "read-only" || value === "none") {
-    return false;
-  }
-  if (value === "write" || value === "mutating" || value === "destructive") {
-    return true;
-  }
-  throw new ChainValidationError(`${field} must be a boolean or one of read, mutating, write, destructive.`);
+  throw new ChainValidationError(`${field} must be a boolean.`);
 }
 
 function requiredString(value: unknown, field: string): string {

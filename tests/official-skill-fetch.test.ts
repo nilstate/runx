@@ -25,7 +25,7 @@ describe("official skill fetch", () => {
       RUNX_REGISTRY_URL: "https://runx.example.test",
     };
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const xManifest = await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
 
     try {
       globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({
@@ -38,8 +38,8 @@ describe("official skill fetch", () => {
           version: "sha-19586564c28e",
           digest: "19586564c28e0cc5bc8affa207362ddc1e590a419a515196fe1653beece1ceea",
           markdown,
-          x_manifest: xManifest,
-          x_digest: "stub-x-digest",
+          profile_document: profileDocument,
+          profile_digest: "stub-x-digest",
           runner_names: ["agent", "sourcey"],
         },
       }), { status: 200 })) as typeof fetch;
@@ -99,7 +99,7 @@ describe("official skill fetch", () => {
       RUNX_REGISTRY_URL: "https://runx.example.test",
     };
     const markdown = await readFile(path.resolve("skills/scafld/SKILL.md"), "utf8");
-    const xManifest = await readFile(path.resolve("skills/scafld/x.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("bindings/runx/scafld/X.yaml"), "utf8");
     const officialLock = JSON.parse(
       await readFile(path.resolve("packages/cli/src/official-skills.lock.json"), "utf8"),
     ) as ReadonlyArray<{
@@ -123,7 +123,7 @@ describe("official skill fetch", () => {
           version: lockEntry.version,
           digest: lockEntry.digest,
           markdown,
-          x_manifest: xManifest,
+          profile_document: profileDocument,
           runner_names: ["agent", "scafld-cli"],
         },
       }), { status: 200 })) as typeof fetch;

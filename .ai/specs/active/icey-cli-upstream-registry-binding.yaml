@@ -8,7 +8,7 @@ task:
   title: "Bind merged icey-cli SKILL.md into runx registry"
   summary: >
     nilstate/icey-cli accepted the upstream portable SKILL.md. Add the runx-owned
-    registry binding layer that pins the upstream source, supplies x.yaml runner
+    registry binding layer that pins the upstream source, supplies X.yaml runner
     metadata and harness cases, and materializes a reproducible registry package
     without treating a copied SKILL.md as source of truth.
   size: "medium"
@@ -23,15 +23,15 @@ task:
       - path: "bindings/nilstate/icey-server-operator/registry-binding.json"
         lines: "all"
         reason: "Pinned upstream source, trust tier, harness state, and publication metadata"
-      - path: "bindings/nilstate/icey-server-operator/x.yaml"
+      - path: "bindings/nilstate/icey-server-operator/X.yaml"
         lines: "all"
         reason: "runx-owned runner metadata and harness cases for the upstream skill"
       - path: "scripts/materialize-upstream-skill-binding.mjs"
         lines: "all"
-        reason: "Materialize upstream SKILL.md plus local x.yaml into a registry package"
+        reason: "Materialize upstream SKILL.md plus local X.yaml into a registry package"
       - path: "packages/registry/src/ingest.ts"
         lines: "all"
-        reason: "Carry runner tags from x.yaml into registry rows"
+        reason: "Carry runner tags from X.yaml into registry rows"
       - path: "tests/upstream-registry-binding.test.ts"
         lines: "all"
         reason: "Binding, harness, and materialization coverage"
@@ -44,9 +44,9 @@ task:
       - "../docs/skill-learning-contribution-spec.md"
   objectives:
     - "Represent nilstate/icey-cli as an upstream-owned registry binding"
-    - "Add harnessed x.yaml metadata without modifying upstream"
+    - "Add harnessed X.yaml metadata without modifying upstream"
     - "Materialize and locally publish the binding from the pinned upstream blob"
-    - "Propagate x.yaml tags to registry search metadata"
+    - "Propagate X.yaml tags to registry search metadata"
   scope:
     in_scope:
       - "runx/oss binding files, materializer script, registry metadata extraction, and tests"
@@ -61,7 +61,7 @@ task:
     - "Registry publish stores a pinned copy as an immutable artifact while preserving upstream provenance"
   touchpoints:
     - area: "bindings"
-      description: "New upstream-owned binding contract and x.yaml harness"
+      description: "New upstream-owned binding contract and X.yaml harness"
     - area: "registry ingest"
       description: "Runner-level runx.tags become registry search tags"
     - area: "materialization"
@@ -81,11 +81,11 @@ task:
         status: "done"
         checked_at: "2026-04-16T01:35:44Z"
       - id: "dod2"
-        description: "x.yaml declares a default runner and two passing harness cases"
+        description: "X.yaml declares a default runner and two passing harness cases"
         status: "done"
         checked_at: "2026-04-16T01:35:44Z"
       - id: "dod3"
-        description: "Materializer verifies blob sha and writes SKILL.md, x.yaml, binding, and materialization report"
+        description: "Materializer verifies blob sha and writes SKILL.md, X.yaml, binding, and materialization report"
         status: "done"
         checked_at: "2026-04-16T01:35:44Z"
       - id: "dod4"
@@ -126,13 +126,13 @@ planning_log:
 phases:
   - id: "phase1"
     name: "Declare upstream binding"
-    objective: "Pin the upstream icey-cli SKILL.md and add runx-owned x.yaml metadata."
+    objective: "Pin the upstream icey-cli SKILL.md and add runx-owned X.yaml metadata."
     changes:
       - file: "bindings/nilstate/icey-server-operator/registry-binding.json"
         action: "create"
         lines: "all"
         content_spec: "Upstream repo/path/commit/blob, trust tier, harness status, proof links, and publication pending state."
-      - file: "bindings/nilstate/icey-server-operator/x.yaml"
+      - file: "bindings/nilstate/icey-server-operator/X.yaml"
         action: "create"
         lines: "all"
         content_spec: "Default operator-plan runner with two harness cases for web smoke and release pin preservation."
@@ -154,7 +154,7 @@ phases:
 
   - id: "phase2"
     name: "Materialize registry artifact"
-    objective: "Build a reproducible registry package from upstream SKILL.md and local x.yaml."
+    objective: "Build a reproducible registry package from upstream SKILL.md and local X.yaml."
     dependencies:
       - "phase1"
     changes:
@@ -189,7 +189,7 @@ phases:
 
   - id: "phase3"
     name: "Complete registry metadata"
-    objective: "Expose x.yaml tags in registry rows so upstream bindings are searchable without modifying upstream SKILL.md."
+    objective: "Expose X.yaml tags in registry rows so upstream bindings are searchable without modifying upstream SKILL.md."
     dependencies:
       - "phase1"
     changes:
@@ -216,7 +216,7 @@ phases:
 rollback:
   strategy: "per_phase"
   commands:
-    phase1: "git checkout HEAD -- bindings/README.md bindings/nilstate/icey-server-operator/registry-binding.json bindings/nilstate/icey-server-operator/x.yaml"
+    phase1: "git checkout HEAD -- bindings/README.md bindings/nilstate/icey-server-operator/registry-binding.json bindings/nilstate/icey-server-operator/X.yaml"
     phase2: "git checkout HEAD -- scripts/materialize-upstream-skill-binding.mjs schemas/registry-binding.schema.json"
     phase3: "git checkout HEAD -- packages/registry/src/ingest.ts packages/registry/src/index.test.ts"
 

@@ -21,11 +21,11 @@ harness:
               open_questions: []
             evidence_log:
               - claim: Package roots create stable harness and asset boundaries.
-                source: docs/skill-x-model.md
+                source: docs/skill-profile-model.md
                 confidence: verified
                 relevance: core argument for the article
             decision_support:
-              - option: Lead with enforcement and dogfood improvements.
+              - option: Lead with enforcement and proving-ground improvements.
                 rationale: Strongest proof point in the repo.
             risks: []
           agent_step.draft-content-draft.output:

@@ -274,7 +274,7 @@ export function validateSkill(raw: RawSkillIR, options: ValidateSkillOptions = {
     mutating: validateSkillMutation(raw.frontmatter.mutating ?? recordField(risk, "mutating") ?? runx?.mutating, "mutating"),
     artifacts: validateArtifactContract(recordField(runx, "artifacts"), "runx.artifacts"),
     allowedTools: validateAllowedTools(
-      recordField(runx, "allowed_tools") ?? recordField(runx, "allowedTools"),
+      recordField(runx, "allowed_tools"),
       "runx.allowed_tools",
     ),
     execution: validateExecutionSemantics(raw.frontmatter.execution ?? recordField(runx, "execution"), "execution"),
@@ -308,7 +308,7 @@ export function validateRunnerManifest(raw: RawRunnerManifestIR): SkillRunnerMan
         `runners.${name}.artifacts`,
       ),
       allowedTools: validateAllowedTools(
-        recordField(runx, "allowed_tools") ?? recordField(runx, "allowedTools"),
+        recordField(runx, "allowed_tools"),
         `runners.${name}.runx.allowed_tools`,
       ),
       execution: validateExecutionSemantics(runner.execution ?? recordField(runx, "execution"), `runners.${name}.execution`),
@@ -376,8 +376,8 @@ export function validateSkillArtifactContract(
 function validateSource(source: Record<string, unknown>, runx: Record<string, unknown> | undefined): SkillSource {
   const type = requiredString(source.type, "source.type");
   const args = optionalStringArray(source.args, "source.args") ?? [];
-  const inputMode = optionalInputMode(source.input_mode ?? source.inputMode);
-  const timeoutSeconds = optionalNumber(source.timeout_seconds ?? source.timeoutSeconds, "source.timeout_seconds");
+  const inputMode = optionalInputMode(source.input_mode);
+  const timeoutSeconds = optionalNumber(source.timeout_seconds, "source.timeout_seconds");
   const cwd = optionalString(source.cwd, "source.cwd");
 
   if (type === "cli-tool") {
@@ -389,9 +389,9 @@ function validateSource(source: Record<string, unknown>, runx: Record<string, un
   const mcpArguments = optionalRecord(source.arguments, "source.arguments");
   const a2aAgentCardUrl =
     type === "a2a"
-      ? requiredString(source.agent_card_url ?? source.agentCardUrl ?? recordField(source.agent_card, "url"), "source.agent_card_url")
-      : optionalString(source.agent_card_url ?? source.agentCardUrl, "source.agent_card_url");
-  const a2aAgentIdentity = optionalString(source.agent_identity ?? source.agentIdentity, "source.agent_identity");
+      ? requiredString(source.agent_card_url, "source.agent_card_url")
+      : optionalString(source.agent_card_url, "source.agent_card_url");
+  const a2aAgentIdentity = optionalString(source.agent_identity, "source.agent_identity");
   const agent = type === "agent-step" ? requiredString(source.agent, "source.agent") : optionalString(source.agent, "source.agent");
   const task =
     type === "agent-step" || type === "a2a"
@@ -449,10 +449,10 @@ function validateSandbox(value: unknown): SkillSandbox | undefined {
   const profile = requiredSandboxProfile(record.profile, "sandbox.profile");
   return {
     profile,
-    cwdPolicy: optionalCwdPolicy(record.cwd_policy ?? record.cwdPolicy),
-    envAllowlist: optionalStringArray(record.env_allowlist ?? record.envAllowlist, "sandbox.env_allowlist"),
+    cwdPolicy: optionalCwdPolicy(record.cwd_policy),
+    envAllowlist: optionalStringArray(record.env_allowlist, "sandbox.env_allowlist"),
     network: optionalBoolean(record.network, "sandbox.network"),
-    writablePaths: optionalStringArray(record.writable_paths ?? record.writablePaths, "sandbox.writable_paths") ?? [],
+    writablePaths: optionalStringArray(record.writable_paths, "sandbox.writable_paths") ?? [],
     raw: record,
   };
 }
@@ -493,11 +493,11 @@ function validateExecutionSemantics(value: unknown, field: string): ExecutionSem
 
   return {
     disposition: optionalDisposition(record.disposition, `${field}.disposition`),
-    outcome_state: optionalOutcomeState(record.outcome_state ?? record.outcomeState, `${field}.outcome_state`),
+    outcome_state: optionalOutcomeState(record.outcome_state, `${field}.outcome_state`),
     outcome: validateOutcome(record.outcome, `${field}.outcome`),
-    input_context: validateInputContext(record.input_context ?? record.inputContext, `${field}.input_context`),
-    surface_refs: validateSurfaceRefs(record.surface_refs ?? record.surfaceRefs, `${field}.surface_refs`),
-    evidence_refs: validateSurfaceRefs(record.evidence_refs ?? record.evidenceRefs, `${field}.evidence_refs`),
+    input_context: validateInputContext(record.input_context, `${field}.input_context`),
+    surface_refs: validateSurfaceRefs(record.surface_refs, `${field}.surface_refs`),
+    evidence_refs: validateSurfaceRefs(record.evidence_refs, `${field}.evidence_refs`),
   };
 }
 
@@ -509,7 +509,7 @@ function validateOutcome(value: unknown, field: string): ExecutionSemantics["out
   return {
     code: optionalString(record.code, `${field}.code`),
     summary: optionalString(record.summary, `${field}.summary`),
-    observed_at: optionalString(record.observed_at ?? record.observedAt, `${field}.observed_at`),
+    observed_at: optionalString(record.observed_at, `${field}.observed_at`),
     data: optionalRecord(record.data, `${field}.data`),
   };
 }
@@ -519,7 +519,7 @@ function validateInputContext(value: unknown, field: string): ExecutionSemantics
   if (!record) {
     return undefined;
   }
-  const maxBytes = optionalNumber(record.max_bytes ?? record.maxBytes, `${field}.max_bytes`);
+  const maxBytes = optionalNumber(record.max_bytes, `${field}.max_bytes`);
   if (maxBytes !== undefined && (!Number.isInteger(maxBytes) || maxBytes < 1)) {
     throw new SkillValidationError(`${field}.max_bytes must be a positive integer.`);
   }
@@ -578,7 +578,7 @@ function validateSkillRetry(value: unknown, field: string): SkillRetryPolicy | u
   if (!retry) {
     return undefined;
   }
-  const maxAttempts = optionalNumber(retry.max_attempts ?? retry.maxAttempts, `${field}.max_attempts`) ?? 1;
+  const maxAttempts = optionalNumber(retry.max_attempts, `${field}.max_attempts`) ?? 1;
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
     throw new SkillValidationError(`${field}.max_attempts must be a positive integer.`);
   }
@@ -607,13 +607,7 @@ function validateSkillMutation(value: unknown, field: string): boolean | undefin
   if (typeof value === "boolean") {
     return value;
   }
-  if (value === "read" || value === "readonly" || value === "read-only" || value === "none") {
-    return false;
-  }
-  if (value === "write" || value === "mutating" || value === "destructive") {
-    return true;
-  }
-  throw new SkillValidationError(`${field} must be a boolean or one of read, mutating, write, destructive.`);
+  throw new SkillValidationError(`${field} must be a boolean.`);
 }
 
 function validateArtifactContract(value: unknown, field: string): SkillArtifactContract | undefined {

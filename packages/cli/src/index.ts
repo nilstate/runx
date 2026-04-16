@@ -496,7 +496,7 @@ export async function runCli(
           owner: parsed.publishOwner,
           version: parsed.publishVersion,
           registryUrl: parsed.registryUrl,
-          xManifest: skillPackage.xManifest,
+          profileDocument: skillPackage.profileDocument,
         },
       );
       if (parsed.json) {
@@ -780,7 +780,7 @@ function writeUsage(stream: NodeJS.WritableStream, env: NodeJS.ProcessEnv = proc
       "  runx connect list|revoke <grant-id>|<provider> [--scope scope] [--json]",
       "  runx config set|get|list [agent.provider|agent.model|agent.api_key] [value] [--json]",
       "  runx init [-g|--global] [--prefetch official] [--json]",
-      "  runx harness <fixture.yaml|skill-dir|SKILL.md|x.yaml> [--json]",
+      "  runx harness <fixture.yaml|skill-dir|SKILL.md> [--json]",
       "",
       "Core Flow:",
       "  runx search docs",
@@ -1467,7 +1467,7 @@ function normalizeKnownFlag(rawKey: string): string {
 
 interface LocalSkillPackage {
   readonly markdown: string;
-  readonly xManifest?: string;
+  readonly profileDocument?: string;
 }
 
 async function runSkillSearch(
@@ -1523,7 +1523,7 @@ async function searchBundledSkills(query: string): Promise<readonly SkillSearchR
     const { name, description } = parseSkillFrontmatter(raw, entry.name);
     const hay = `${name}\n${description}`.toLowerCase();
     if (needle && !hay.includes(needle)) continue;
-    const hasXManifest = existsSync(path.join(bundledDir, entry.name, "x.yaml"));
+    const hasProfile = existsSync(path.join(path.dirname(bundledDir), "bindings", "runx", entry.name, "X.yaml"));
     out.push({
       skill_id: `runx/${name}`,
       name,
@@ -1535,7 +1535,7 @@ async function searchBundledSkills(query: string): Promise<readonly SkillSearchR
       trust_tier: "runx-derived",
       required_scopes: [],
       tags: [],
-      runner_mode: hasXManifest ? "x-manifest" : "standard-only",
+      profile_mode: hasProfile ? "profiled" : "portable",
       runner_names: [],
       add_command: `runx add runx/${name}`,
       run_command: preferredRunCommand(name),
@@ -1901,7 +1901,7 @@ function renderSearchResults(results: readonly SkillSearchResult[], env: NodeJS.
     if (result.summary) {
       lines.push(`  ${t.dim}${result.summary}${t.reset}`);
     }
-    if (result.runner_mode === "x-manifest" && result.runner_names.length > 0) {
+    if (result.profile_mode === "profiled" && result.runner_names.length > 0) {
       lines.push(`  ${t.dim}runners:${t.reset} ${result.runner_names.join(", ")}`);
     }
     lines.push(`  ${t.dim}run${t.reset}  ${t.cyan}${result.run_command}${t.reset}`);
@@ -2035,7 +2035,7 @@ function renderInstallResult(
       ["source", result.source_label],
       ["version", result.version],
       ["trust", result.trust_tier],
-      ["runners", result.runnerNames.length > 0 ? result.runnerNames.join(", ") : "standard-only"],
+      ["runners", result.runnerNames.length > 0 ? result.runnerNames.join(", ") : "portable"],
       ["path", result.destination],
       ["next", preferredRunCommand(result.skill_name)],
     ],
@@ -2064,7 +2064,7 @@ function renderPublishResult(
     result.status,
     [
       ["digest", `sha256:${result.digest.slice(0, 12)}…`],
-      ["runners", result.runner_names.length > 0 ? result.runner_names.join(", ") : "standard-only"],
+      ["runners", result.runner_names.length > 0 ? result.runner_names.join(", ") : "portable"],
       ["harness", result.harness ? `${result.harness.status} · ${result.harness.case_count} case${result.harness.case_count === 1 ? "" : "s"}` : "not checked"],
       ["install", result.link.install_command],
       ["run", result.link.run_command],

@@ -96,7 +96,7 @@ the concrete target from the current repo context.
   toward an objective.
 - **Skill**: `--skill ./skills/sourcey` — improve a specific skill package.
 - **Receipt**: `--receipt rx_8f3a` — repair based on a failed run.
-- **Self**: run against the runx repo itself for dogfooding.
+- **Self**: run against the runx repo itself in the proving ground.
 
 ## Termination
 

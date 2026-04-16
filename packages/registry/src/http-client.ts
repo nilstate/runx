@@ -29,7 +29,7 @@ export interface RemoteRegistrySkillDetail {
   readonly version: string;
   readonly digest: string;
   readonly markdown: string;
-  readonly x_digest?: string;
+  readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly source_type: string;
   readonly required_scopes: readonly string[];
@@ -51,8 +51,8 @@ export interface AcquiredRegistrySkill {
   readonly version: string;
   readonly digest: string;
   readonly markdown: string;
-  readonly x_manifest?: string;
-  readonly x_digest?: string;
+  readonly profile_document?: string;
+  readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly install_count: number;
 }
@@ -80,7 +80,7 @@ export async function searchRemoteRegistry(
       readonly owner?: string;
       readonly version?: string;
       readonly source_type?: string;
-      readonly runner_mode?: "standard-only" | "x-manifest";
+      readonly profile_mode?: "portable" | "profiled";
       readonly runner_names?: readonly string[];
       readonly required_scopes?: readonly string[];
       readonly tags?: readonly string[];
@@ -98,7 +98,7 @@ export async function searchRemoteRegistry(
       || typeof skill.name !== "string"
       || typeof skill.owner !== "string"
       || typeof skill.source_type !== "string"
-      || (skill.runner_mode !== "standard-only" && skill.runner_mode !== "x-manifest")
+      || (skill.profile_mode !== "portable" && skill.profile_mode !== "profiled")
       || !Array.isArray(skill.runner_names)
       || !Array.isArray(skill.required_scopes)
       || !Array.isArray(skill.tags)
@@ -116,7 +116,7 @@ export async function searchRemoteRegistry(
       source_type: skill.source_type,
       required_scopes: skill.required_scopes,
       tags: skill.tags,
-      runner_mode: skill.runner_mode,
+      profile_mode: skill.profile_mode,
       runner_names: skill.runner_names,
       trust_signals: Array.isArray(skill.trust_signals) ? skill.trust_signals : undefined,
       add_command: skill.install_command,
@@ -151,7 +151,7 @@ export async function readRemoteRegistrySkill(
       readonly version?: string;
       readonly digest?: string;
       readonly markdown?: string;
-      readonly x_digest?: string;
+      readonly profile_digest?: string;
       readonly runner_names?: readonly string[];
       readonly source_type?: string;
       readonly required_scopes?: readonly string[];
@@ -187,7 +187,7 @@ export async function readRemoteRegistrySkill(
     version: skill.version,
     digest: skill.digest,
     markdown: skill.markdown,
-    x_digest: typeof skill.x_digest === "string" ? skill.x_digest : undefined,
+    profile_digest: typeof skill.profile_digest === "string" ? skill.profile_digest : undefined,
     runner_names: skill.runner_names,
     source_type: skill.source_type,
     required_scopes: skill.required_scopes,
@@ -262,8 +262,8 @@ export async function acquireRegistrySkill(
       readonly version?: string;
       readonly digest?: string;
       readonly markdown?: string;
-      readonly x_manifest?: string;
-      readonly x_digest?: string;
+      readonly profile_document?: string;
+      readonly profile_digest?: string;
       readonly runner_names?: readonly string[];
     };
   };
@@ -289,8 +289,8 @@ export async function acquireRegistrySkill(
     version: acquisition.version,
     digest: acquisition.digest,
     markdown: acquisition.markdown,
-    x_manifest: acquisition.x_manifest,
-    x_digest: acquisition.x_digest,
+    profile_document: acquisition.profile_document,
+    profile_digest: acquisition.profile_digest,
     runner_names: acquisition.runner_names,
     install_count: typeof payload.install_count === "number" ? payload.install_count : 0,
   };

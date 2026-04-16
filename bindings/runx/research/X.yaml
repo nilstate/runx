@@ -24,7 +24,7 @@ harness:
                 confidence: verified
                 relevance: shapes the content angle and what claims can be made publicly
             decision_support:
-              - option: Lead with package-standard enforcement and dogfood receipts.
+              - option: Lead with package-standard enforcement and proving-ground receipts.
                 rationale: It demonstrates product discipline and visible proof.
             risks:
               - risk: Trend claims can become stale if they are not tied to recent evidence.

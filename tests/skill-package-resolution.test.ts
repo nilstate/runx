@@ -18,12 +18,14 @@ const caller: Caller = {
 };
 
 describe("skill package resolution", () => {
-  it("runs a folder package through its default x.yaml runner", async () => {
+  it("runs a folder package through its resolved workspace binding", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-package-folder-"));
     const skillDir = path.join(tempDir, "skills", "package-echo");
+    const bindingDir = path.join(tempDir, "bindings", "runx", "package-echo");
 
     try {
       await mkdir(skillDir, { recursive: true });
+      await mkdir(bindingDir, { recursive: true });
       await writeFile(
         path.join(skillDir, "SKILL.md"),
         `---
@@ -34,7 +36,7 @@ Package echo.
 `,
       );
       await writeFile(
-        path.join(skillDir, "x.yaml"),
+        path.join(bindingDir, "X.yaml"),
         `skill: package-echo
 runners:
   package-echo-cli:
@@ -75,12 +77,14 @@ runners:
     }
   });
 
-  it("pairs a direct SKILL.md file with sibling x.yaml", async () => {
+  it("pairs a direct SKILL.md file with a resolved workspace binding", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-package-skillmd-"));
     const skillDir = path.join(tempDir, "skills", "package-echo");
+    const bindingDir = path.join(tempDir, "bindings", "runx", "package-echo");
 
     try {
       await mkdir(skillDir, { recursive: true });
+      await mkdir(bindingDir, { recursive: true });
       await writeFile(
         path.join(skillDir, "SKILL.md"),
         `---
@@ -91,7 +95,7 @@ Package echo.
 `,
       );
       await writeFile(
-        path.join(skillDir, "x.yaml"),
+        path.join(bindingDir, "X.yaml"),
         `skill: package-echo
 runners:
   package-echo-cli:
@@ -127,7 +131,7 @@ runners:
     }
   });
 
-  it("rejects flat markdown skill references even when a sibling x manifest exists", async () => {
+  it("rejects flat markdown skill references even when an adjacent binding artifact exists", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-package-flat-"));
     const skillPath = path.join(tempDir, "flat-echo.md");
 
@@ -142,7 +146,7 @@ Flat echo.
 `,
       );
       await writeFile(
-        path.join(tempDir, "flat-echo.x.yaml"),
+        path.join(tempDir, "flat-echo.X.yaml"),
         `skill: flat-echo
 runners:
   flat-echo-cli:
@@ -174,7 +178,7 @@ runners:
     }
   });
 
-  it("runs standard-only folder packages through the agent runner", async () => {
+  it("runs portable folder packages through the agent runner", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-package-agent-"));
     const skillDir = path.join(tempDir, "skills", "standard-folder");
 

@@ -10,7 +10,7 @@ import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.j
 
 const builderSkillPaths = [
   "skills/objective-decompose",
-  "skills/skill-research",
+  "skills/skill-recon",
   "skills/harness-author",
   "skills/receipt-review",
 ];
@@ -29,8 +29,8 @@ describe("builder-chain skills", () => {
   it("ships builder flows as skill packages instead of standalone chain assets", () => {
     expect(existsSync(path.resolve("chains/objective-to-skill.yaml"))).toBe(false);
     expect(existsSync(path.resolve("chains/improve-skill.yaml"))).toBe(false);
-    expect(existsSync(path.resolve("skills/objective-to-skill/x.yaml"))).toBe(true);
-    expect(existsSync(path.resolve("skills/improve-skill/x.yaml"))).toBe(true);
+    expect(existsSync(path.resolve("bindings/runx/objective-to-skill/X.yaml"))).toBe(true);
+    expect(existsSync(path.resolve("bindings/runx/improve-skill/X.yaml"))).toBe(true);
   });
 });
 
@@ -134,12 +134,12 @@ function answerForAgentStep(questionId: string): unknown {
     return {
       objective_summary: "Build a governed runx skill",
       orchestration_steps: ["decompose", "research", "author-harness"],
-      required_skills: ["objective-decompose", "skill-research", "harness-author"],
+      required_skills: ["objective-decompose", "skill-recon", "harness-author"],
       open_questions: [],
     };
   }
 
-  if (questionId.includes("skill-research")) {
+  if (questionId.includes("skill-recon")) {
     return {
       findings: ["Use portable skills and explicit agent-step boundaries."],
       recommended_flow: ["decompose", "research", "author-harness"],

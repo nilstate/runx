@@ -27,7 +27,7 @@ harness:
               open_questions: []
             evidence_log:
               - claim: The canonical output path is `.sourcey/runx-docs`.
-                source: skills/sourcey/x.yaml
+                source: bindings/runx/sourcey/X.yaml
                 confidence: verified
                 relevance: grounds the maintainer response
             decision_support:

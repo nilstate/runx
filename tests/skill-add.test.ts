@@ -23,7 +23,7 @@ describe("skill-add", () => {
         owner: "0state",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
-        xManifest: await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8"),
+        profileDocument: await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8"),
       });
 
       const exitCode = await runCli(
@@ -42,31 +42,29 @@ describe("skill-add", () => {
         install: {
           status: string;
           destination: string;
-          lockfile: string;
           source: string;
           source_label: string;
           version: string;
           digest: string;
-          xDigest: string;
-          xDestination: string;
+          profileDigest: string;
+          profileStatePath: string;
           runnerNames: string[];
         };
       };
       expect(report.install).toMatchObject({
         status: "installed",
         destination: path.join(skillsDir, "sourcey", "SKILL.md"),
-        lockfile: path.join(skillsDir, "sourcey", "runx.lock.json"),
         source: "runx-registry",
         source_label: "runx registry",
         version: "1.0.0",
         digest: version.digest,
-        xDigest: version.x_digest,
-        xDestination: path.join(skillsDir, "sourcey", "x.yaml"),
+        profileDigest: version.profile_digest,
+        profileStatePath: path.join(skillsDir, "sourcey", ".runx", "profile.json"),
         runnerNames: ["agent", "sourcey"],
       });
       await expect(readFile(path.join(skillsDir, "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
-      await expect(readFile(path.join(skillsDir, "sourcey", "x.yaml"), "utf8")).resolves.toContain("tool: sourcey.build");
-      await expect(readFile(path.join(skillsDir, "sourcey", "runx.lock.json"), "utf8")).resolves.toContain(
+      await expect(readFile(path.join(skillsDir, "sourcey", ".runx", "profile.json"), "utf8")).resolves.toContain("tool: sourcey.build");
+      await expect(readFile(path.join(skillsDir, "sourcey", ".runx/profile.json"), "utf8")).resolves.toContain(
         '"source": "runx-registry"',
       );
     } finally {
@@ -101,8 +99,8 @@ describe("skill-add", () => {
           trust_tier: string;
           version: string;
           digest: string;
-          xDigest: string;
-          xDestination: string;
+          profileDigest: string;
+          profileStatePath: string;
           runnerNames: string[];
         };
       };
@@ -114,14 +112,14 @@ describe("skill-add", () => {
         trust_tier: "external-unverified",
         version: "2026.04.10",
         digest: expect.stringMatching(/^[a-f0-9]{64}$/),
-        xDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
-        xDestination: path.join(tempDir, "skills", "sourcey-docs", "x.yaml"),
+        profileDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+        profileStatePath: path.join(tempDir, "skills", "sourcey-docs", ".runx", "profile.json"),
         runnerNames: ["sourcey-docs-cli"],
       });
       await expect(readFile(path.join(tempDir, "skills", "sourcey-docs", "SKILL.md"), "utf8")).resolves.toContain(
         "name: sourcey-docs",
       );
-      await expect(readFile(path.join(tempDir, "skills", "sourcey-docs", "x.yaml"), "utf8")).resolves.toContain(
+      await expect(readFile(path.join(tempDir, "skills", "sourcey-docs", ".runx", "profile.json"), "utf8")).resolves.toContain(
         "sourcey-docs-cli",
       );
     } finally {
@@ -140,7 +138,7 @@ describe("skill-add", () => {
         owner: "0state",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
-        xManifest: await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8"),
+        profileDocument: await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8"),
       });
 
       const install = await installLocalSkill({
@@ -150,10 +148,10 @@ describe("skill-add", () => {
       });
 
       expect(install.destination).toBe(path.join(skillsDir, "0state", "sourcey", "SKILL.md"));
-      expect(install.xDestination).toBe(path.join(skillsDir, "0state", "sourcey", "x.yaml"));
+      expect(install.profileStatePath).toBe(path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"));
       expect(install.runnerNames).toEqual(["agent", "sourcey"]);
       await expect(readFile(path.join(skillsDir, "0state", "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
-      await expect(readFile(path.join(skillsDir, "0state", "sourcey", "x.yaml"), "utf8")).resolves.toContain("tool: sourcey.build");
+      await expect(readFile(path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"), "utf8")).resolves.toContain("tool: sourcey.build");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -221,7 +219,7 @@ function createInvalidMarketplaceAdapter(): MarketplaceAdapter {
     trust_tier: "external-unverified",
     required_scopes: [],
     tags: [],
-    runner_mode: "standard-only",
+    profile_mode: "portable",
     runner_names: [],
     add_command: "runx add invalid:sourcey",
     run_command: "runx sourcey",

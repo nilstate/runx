@@ -19,8 +19,8 @@ const caller: Caller = {
   report: () => undefined,
 };
 
-describe("skill add X metadata", () => {
-  it("installs registry X metadata and runs through the installed default runner", async () => {
+describe("skill add execution profile", () => {
+  it("installs registry execution profile and runs through the installed default runner", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-add-x-registry-"));
     const registryDir = path.join(tempDir, "registry");
     const skillsDir = path.join(tempDir, "skills");
@@ -31,7 +31,7 @@ description: Portable echo package.
 
 Echo a message.
 `;
-    const xManifest = `skill: package-echo
+    const profileDocument = `skill: package-echo
 runners:
   package-echo-cli:
     default: true
@@ -50,7 +50,7 @@ runners:
       const version = await ingestSkillMarkdown(createFileRegistryStore(registryDir), markdown, {
         owner: "0state",
         version: "1.0.0",
-        xManifest,
+        profileDocument,
       });
 
       const install = await installLocalSkill({
@@ -61,11 +61,14 @@ runners:
 
       expect(install).toMatchObject({
         destination: path.join(skillsDir, "0state", "package-echo", "SKILL.md"),
-        xDestination: path.join(skillsDir, "0state", "package-echo", "x.yaml"),
-        xDigest: version.x_digest,
+        profileStatePath: path.join(skillsDir, "0state", "package-echo", ".runx", "profile.json"),
+        profileDigest: version.profile_digest,
         runnerNames: ["package-echo-cli"],
       });
-      await expect(readFile(path.join(skillsDir, "0state", "package-echo", "x.yaml"), "utf8")).resolves.toBe(xManifest);
+      const installedProfileState = JSON.parse(
+        await readFile(path.join(skillsDir, "0state", "package-echo", ".runx", "profile.json"), "utf8"),
+      ) as { profile: { document: string } };
+      expect(installedProfileState.profile.document).toBe(profileDocument);
 
       const run = await runLocalSkill({
         skillPath: path.join(skillsDir, "0state", "package-echo"),
@@ -91,7 +94,7 @@ runners:
     }
   });
 
-  it("installs marketplace X metadata when the upstream source provides it", async () => {
+  it("installs marketplace execution profile when the upstream source provides it", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-add-x-marketplace-"));
 
     try {
@@ -104,11 +107,11 @@ runners:
 
       expect(install).toMatchObject({
         destination: path.join(tempDir, "skills", "sourcey-docs", "SKILL.md"),
-        xDestination: path.join(tempDir, "skills", "sourcey-docs", "x.yaml"),
+        profileStatePath: path.join(tempDir, "skills", "sourcey-docs", ".runx", "profile.json"),
         runnerNames: ["sourcey-docs-cli"],
         trust_tier: "external-unverified",
       });
-      await expect(readFile(path.join(tempDir, "skills", "sourcey-docs", "x.yaml"), "utf8")).resolves.toContain(
+      await expect(readFile(path.join(tempDir, "skills", "sourcey-docs", ".runx", "profile.json"), "utf8")).resolves.toContain(
         "sourcey-docs-cli",
       );
     } finally {
@@ -116,25 +119,25 @@ runners:
     }
   });
 
-  it("keeps standard-only marketplace skills runnable through the agent runner", async () => {
+  it("keeps portable marketplace skills runnable through the agent runner", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-add-x-standard-"));
 
     try {
       const install = await installLocalSkill({
-        ref: "fixture:marketplace-standard-only",
+        ref: "fixture:marketplace-portable",
         registryStore: createFileRegistryStore(path.join(tempDir, "registry")),
         marketplaceAdapters: [createFixtureMarketplaceAdapter()],
         destinationRoot: path.join(tempDir, "skills"),
       });
 
       expect(install).toMatchObject({
-        destination: path.join(tempDir, "skills", "marketplace-standard-only", "SKILL.md"),
-        xDestination: undefined,
+        destination: path.join(tempDir, "skills", "marketplace-portable", "SKILL.md"),
+        profileStatePath: undefined,
         runnerNames: [],
       });
 
       const run = await runLocalSkill({
-        skillPath: path.join(tempDir, "skills", "marketplace-standard-only"),
+        skillPath: path.join(tempDir, "skills", "marketplace-portable"),
         caller,
         receiptDir: path.join(tempDir, "receipts"),
         runxHome: path.join(tempDir, "home"),
@@ -155,7 +158,7 @@ runners:
     }
   });
 
-  it("rejects marketplace X metadata that does not match the installed skill", async () => {
+  it("rejects marketplace execution profile that does not match the installed skill", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-add-x-invalid-"));
 
     try {
@@ -181,7 +184,7 @@ description: Portable skill.
 
 Portable.
 `;
-  const xManifest = `skill: other-skill
+  const profileDocument = `skill: other-skill
 runners:
   portable-cli:
     type: cli-tool
@@ -197,7 +200,7 @@ runners:
     trust_tier: "external-unverified",
     required_scopes: [],
     tags: [],
-    runner_mode: "x-manifest",
+    profile_mode: "profiled",
     runner_names: ["portable-cli"],
     add_command: "runx add invalid-x:portable",
     run_command: "runx portable",
@@ -206,6 +209,6 @@ runners:
     source: "invalid-x",
     label: "Invalid X Fixture",
     search: async () => [result],
-    resolve: async () => ({ markdown, xManifest, result }),
+    resolve: async () => ({ markdown, profileDocument, result }),
   };
 }

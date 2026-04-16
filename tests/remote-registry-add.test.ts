@@ -22,9 +22,9 @@ describe("remote registry add", () => {
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const xManifest = await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
     const digest = hashString(markdown);
-    const xDigest = hashString(xManifest);
+    const profileDigest = hashString(profileDocument);
 
     try {
       globalThis.fetch = vi.fn(async (input, init) => {
@@ -48,8 +48,8 @@ describe("remote registry add", () => {
             version: "1.0.0",
             digest,
             markdown,
-            x_manifest: xManifest,
-            x_digest: xDigest,
+            profile_document: profileDocument,
+            profile_digest: profileDigest,
             runner_names: ["agent", "sourcey"],
           },
         }), { status: 200 });
@@ -72,18 +72,20 @@ describe("remote registry add", () => {
         install: {
           status: "installed",
           destination: path.join(skillsDir, "runx", "sourcey", "SKILL.md"),
-          lockfile: path.join(skillsDir, "runx", "sourcey", "runx.lock.json"),
           source: "runx-registry",
           source_label: "runx registry",
           skill_id: "runx/sourcey",
           version: "1.0.0",
-          xDestination: path.join(skillsDir, "runx", "sourcey", "x.yaml"),
+          profileStatePath: path.join(skillsDir, "runx", "sourcey", ".runx", "profile.json"),
           runnerNames: ["agent", "sourcey"],
         },
       });
       await expect(readFile(path.join(homeDir, "install.json"), "utf8")).resolves.toContain("\"installation_id\"");
       await expect(readFile(path.join(skillsDir, "runx", "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
-      await expect(readFile(path.join(skillsDir, "runx", "sourcey", "x.yaml"), "utf8")).resolves.toBe(xManifest);
+      const installedProfileState = JSON.parse(
+        await readFile(path.join(skillsDir, "runx", "sourcey", ".runx", "profile.json"), "utf8"),
+      ) as { profile: { document: string } };
+      expect(installedProfileState.profile.document).toBe(profileDocument);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -109,7 +111,7 @@ describe("remote registry add", () => {
                 name: "sourcey",
                 version: "1.0.0",
                 source_type: "agent",
-                runner_mode: "standard-only",
+                profile_mode: "portable",
                 runner_names: [],
                 required_scopes: [],
                 tags: [],
@@ -180,7 +182,7 @@ describe("remote registry add", () => {
               name: "sourcey",
               version: "1.0.0",
               source_type: "agent",
-              runner_mode: "standard-only",
+              profile_mode: "portable",
               runner_names: [],
               required_scopes: [],
               tags: [],
@@ -194,7 +196,7 @@ describe("remote registry add", () => {
               name: "sourcey",
               version: "1.0.0",
               source_type: "agent",
-              runner_mode: "standard-only",
+              profile_mode: "portable",
               runner_names: [],
               required_scopes: [],
               tags: [],

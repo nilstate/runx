@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../packages/cli/src/index.js";
 
 describe("A2A skill runner", () => {
-  it("runs a standard skill through a sibling x.yaml A2A runner and writes sanitized receipt metadata", async () => {
+  it("runs a standard skill through a materialized A2A binding and writes sanitized receipt metadata", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-a2a-skill-"));
     const receiptDir = path.join(tempDir, "receipts");
     const stdout = createMemoryStream();

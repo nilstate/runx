@@ -173,7 +173,7 @@ async function syncCliSkillRuntimeAssets(directory) {
   }
   await copyFilteredTree(source, target, (filePath) => {
     const base = path.basename(filePath);
-    return base !== "SKILL.md" && base !== "x.yaml";
+    return base !== "SKILL.md" && base !== "X.yaml";
   });
 }
 

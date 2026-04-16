@@ -7,7 +7,7 @@ export interface SkillInstallOrigin {
   readonly skill_id?: string;
   readonly version?: string;
   readonly digest?: string;
-  readonly x_digest?: string;
+  readonly profile_digest?: string;
   readonly runner_names?: readonly string[];
   readonly trust_tier?: string;
 }

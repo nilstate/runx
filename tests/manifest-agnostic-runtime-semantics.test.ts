@@ -84,7 +84,7 @@ describe("manifest-agnostic runtime semantics", () => {
   });
 
   it("lets a manifest project optional execution hints into the same runtime contract", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-manifest-semantics-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runprofiled-semantics-"));
 
     try {
       const skillDir = path.join(tempDir, "manifest-skill");

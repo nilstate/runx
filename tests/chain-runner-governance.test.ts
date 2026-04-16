@@ -13,7 +13,7 @@ const caller: Caller = {
 };
 
 describe("chain runner governance", () => {
-  it("selects a named cli-tool X runner from a chain step", async () => {
+  it("selects a named cli-tool binding runner from a chain step", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-composite-runner-cli-"));
 
     try {
@@ -64,7 +64,7 @@ steps:
     }
   });
 
-  it("selects an A2A X runner from a chain step", async () => {
+  it("selects an A2A binding runner from a chain step", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-composite-runner-a2a-"));
     const chainPath = path.join(tempDir, "chain.yaml");
 
@@ -172,6 +172,7 @@ steps:
 
 async function writePackageEchoSkill(skillDir: string): Promise<void> {
   await mkdir(skillDir, { recursive: true });
+  await mkdir(path.join(skillDir, ".runx"), { recursive: true });
   await writeFile(
     path.join(skillDir, "SKILL.md"),
     `---
@@ -182,9 +183,7 @@ description: Portable package echo.
 Echo a message.
 `,
   );
-  await writeFile(
-    path.join(skillDir, "x.yaml"),
-    `skill: package-echo
+  const profileDocument = `skill: package-echo
 runners:
   package-echo-cli:
     type: cli-tool
@@ -196,7 +195,29 @@ runners:
       message:
         type: string
         required: true
-`,
+`;
+  await writeFile(
+    path.join(skillDir, ".runx/profile.json"),
+    `${JSON.stringify(
+      {
+        schema_version: "runx.skill-profile.v1",
+        skill: {
+          name: "package-echo",
+          path: "SKILL.md",
+          digest: "fixture-skill-digest",
+        },
+        profile: {
+          document: profileDocument,
+          digest: "fixture-profile-digest",
+          runner_names: ["package-echo-cli"],
+        },
+        origin: {
+          source: "fixture",
+        },
+      },
+      null,
+      2,
+    )}\n`,
   );
 }
 

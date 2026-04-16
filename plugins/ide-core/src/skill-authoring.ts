@@ -14,7 +14,7 @@ export interface SkillSnippet {
 export interface SkillPreview {
   readonly title: string;
   readonly summary: string;
-  readonly runnerMode: "standard-only" | "x-manifest";
+  readonly runnerMode: "portable" | "profiled";
   readonly diagnostics: readonly SkillDiagnostic[];
 }
 
@@ -38,7 +38,7 @@ export function validateSkillMarkdown(markdown: string): readonly SkillDiagnosti
     diagnostics.push({ severity: "warning", path: "frontmatter.description", message: "Skill frontmatter should include description for registry search." });
   }
   if (fields.runx) {
-    diagnostics.push({ severity: "warning", path: "frontmatter.runx", message: "Normalize executable metadata into x.yaml before distribution." });
+    diagnostics.push({ severity: "warning", path: "frontmatter.runx", message: "Normalize executable metadata into a execution profile before distribution." });
   }
 
   return diagnostics;
@@ -53,33 +53,33 @@ export function skillSnippets(): readonly SkillSnippet[] {
       body: ["---", "name: ${1:skill-name}", "description: ${2:What this skill does.}", "---", "", "${3:Instructions for the agent.}"],
     },
     {
-      name: "CLI X Runner",
-      prefix: "runx-x-cli",
-      description: "Sibling x.yaml cli-tool runner.",
+      name: "CLI Binding Runner",
+      prefix: "runx-binding-cli",
+      description: "Materialized X.yaml cli-tool runner.",
       body: ["skill: ${1:skill-name}", "", "runners:", "  ${2:local-cli}:", "    type: cli-tool", "    command: ${3:command}", "    args: []"],
     },
     {
-      name: "MCP X Runner",
-      prefix: "runx-x-mcp",
-      description: "Sibling x.yaml MCP runner.",
+      name: "MCP Binding Runner",
+      prefix: "runx-binding-mcp",
+      description: "Materialized X.yaml MCP runner.",
       body: ["skill: ${1:skill-name}", "", "runners:", "  ${2:mcp-runner}:", "    type: mcp", "    server:", "      command: ${3:server}", "      args: []", "    tool: ${4:tool_name}"],
     },
     {
-      name: "A2A X Runner",
-      prefix: "runx-x-a2a",
-      description: "Sibling x.yaml A2A runner.",
+      name: "A2A Binding Runner",
+      prefix: "runx-binding-a2a",
+      description: "Materialized X.yaml A2A runner.",
       body: ["skill: ${1:skill-name}", "", "runners:", "  ${2:a2a-runner}:", "    type: a2a", "    agent_card_url: ${3:https://agent.example/card.json}", "    task: ${4:task}"],
     },
     {
       name: "Auth Requirement",
       prefix: "runx-auth",
-      description: "Execution auth requirement for X metadata.",
+      description: "Execution auth requirement for execution profile.",
       body: ["auth:", "  type: ${1:nango}", "  provider: ${2:github}", "  scopes:", "    - ${3:repo:read}"],
     },
     {
       name: "Runtime And Sandbox",
       prefix: "runx-runtime",
-      description: "Runtime and sandbox metadata for deterministic runners.",
+      description: "Runtime and sandboprofile metadata for deterministic runners.",
       body: ["runtime:", "  platforms: [darwin, linux, win32]", "  commands: [${1:command}]", "sandbox:", "  profile: ${2:workspace-write}"],
     },
     {
@@ -97,12 +97,12 @@ export function skillSnippets(): readonly SkillSnippet[] {
   ];
 }
 
-export function buildSkillPreview(options: { readonly markdown: string; readonly xManifest?: string }): SkillPreview {
+export function buildSkillPreview(options: { readonly markdown: string; readonly profileDocument?: string }): SkillPreview {
   const fields = parseSimpleFrontmatterFields(extractFrontmatter(options.markdown) ?? "");
   return {
     title: fields.name ?? "Untitled skill",
     summary: fields.description ?? "No description.",
-    runnerMode: options.xManifest?.trim() ? "x-manifest" : "standard-only",
+    runnerMode: options.profileDocument?.trim() ? "profiled" : "portable",
     diagnostics: validateSkillMarkdown(options.markdown),
   };
 }

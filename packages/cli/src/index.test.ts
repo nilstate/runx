@@ -92,6 +92,7 @@ Return the provided task id.
 
     await mkdir(childDir, { recursive: true });
     await mkdir(wrapperDir, { recursive: true });
+    await mkdir(path.join(wrapperDir, ".runx"), { recursive: true });
 
     await writeFile(
       path.join(childDir, "SKILL.md"),
@@ -122,9 +123,7 @@ description: Compatibility wrapper that delegates to child-task.
 Delegate to child-task.
 `,
     );
-    await writeFile(
-      path.join(wrapperDir, "x.yaml"),
-      `skill: wrapper-task
+    const profileDocument = `skill: wrapper-task
 
 runners:
   wrapper-task:
@@ -143,7 +142,29 @@ runners:
           label: delegate task
           skill: ../child-task/SKILL.md
           mutation: false
-`,
+`;
+    await writeFile(
+      path.join(wrapperDir, ".runx/profile.json"),
+      `${JSON.stringify(
+        {
+          schema_version: "runx.skill-profile.v1",
+          skill: {
+            name: "wrapper-task",
+            path: "SKILL.md",
+            digest: "fixture-skill-digest",
+          },
+          profile: {
+            document: profileDocument,
+            digest: "fixture-profile-digest",
+            runner_names: ["wrapper-task"],
+          },
+          origin: {
+            source: "fixture",
+          },
+        },
+        null,
+        2,
+      )}\n`,
     );
     await writeFile(
       answersPath,
@@ -399,9 +420,9 @@ runners:
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const xManifest = await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
     const digest = hashString(markdown);
-    const xDigest = hashString(xManifest);
+    const profileDigest = hashString(profileDocument);
 
     globalThis.fetch = vi.fn(async (input, init) => {
       expect(String(input)).toBe("https://runx.example.test/v1/skills/0state/sourcey/acquire");
@@ -416,8 +437,8 @@ runners:
           version: "1.0.0",
           digest,
           markdown,
-          x_manifest: xManifest,
-          x_digest: xDigest,
+          profile_document: profileDocument,
+          profile_digest: profileDigest,
           runner_names: ["agent", "sourcey"],
         },
       }), { status: 200 });
@@ -437,7 +458,10 @@ runners:
     expect(stderr.contents()).toBe("");
     expect(stdout.contents()).toContain(path.join(installDir, "0state", "sourcey", "SKILL.md"));
     await expect(readFile(path.join(installDir, "0state", "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
-    await expect(readFile(path.join(installDir, "0state", "sourcey", "x.yaml"), "utf8")).resolves.toBe(xManifest);
+    const installedProfileState = JSON.parse(
+      await readFile(path.join(installDir, "0state", "sourcey", ".runx", "profile.json"), "utf8"),
+    ) as { profile: { document: string } };
+    expect(installedProfileState.profile.document).toBe(profileDocument);
   });
 
   it("renders top-level help with starter flows and admin commands", async () => {

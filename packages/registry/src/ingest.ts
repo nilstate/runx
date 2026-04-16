@@ -14,7 +14,8 @@ export interface IngestSkillOptions {
   readonly owner?: string;
   readonly version?: string;
   readonly createdAt?: string;
-  readonly xManifest?: string;
+  readonly profileDocument?: string;
+  readonly upsert?: boolean;
 }
 
 export interface CreateRegistrySkillVersionResult {
@@ -38,8 +39,14 @@ export async function createRegistrySkillVersion(
   const record = buildRegistrySkillVersion(markdown, options);
   const existing = await store.getVersion(record.skill_id, record.version);
   if (existing) {
-    if (existing.digest !== record.digest || existing.x_digest !== record.x_digest) {
-      throw new Error(`Registry version ${record.skill_id}@${record.version} already exists with a different digest.`);
+    if (existing.digest !== record.digest || existing.profile_digest !== record.profile_digest) {
+      if (!options.upsert) {
+        throw new Error(`Registry version ${record.skill_id}@${record.version} already exists with a different digest.`);
+      }
+      return {
+        record: await store.putVersion(record, { upsert: true }),
+        created: false,
+      };
     }
     return {
       record: await store.putVersion({
@@ -60,7 +67,7 @@ export function buildRegistrySkillVersion(markdown: string, options: IngestSkill
   const raw = parseSkillMarkdown(markdown);
   const skill = validateSkill(raw, { mode: "strict" });
   const digest = hashString(markdown);
-  const xArtifact = buildXArtifact(skill, options.xManifest);
+  const bindingArtifact = buildBindingArtifact(skill, options.profileDocument);
   const owner = options.owner ?? "local";
   const version = options.version ?? `sha-${digest.slice(0, 12)}`;
   return {
@@ -71,42 +78,43 @@ export function buildRegistrySkillVersion(markdown: string, options: IngestSkill
     version,
     digest,
     markdown,
-    x_manifest: options.xManifest,
-    x_digest: xArtifact.digest,
-    runner_names: xArtifact.runnerNames,
+    profile_document: options.profileDocument,
+    profile_digest: bindingArtifact.digest,
+    runner_names: bindingArtifact.runnerNames,
     source_type: skill.source.type,
-    required_scopes: unique([...extractScopes(skill), ...extractRunnerScopes(xArtifact.manifest)]),
-    runtime: skill.runtime ?? recordField(skill.runx, "runtime") ?? extractRunnerRuntime(xArtifact.manifest),
+    required_scopes: unique([...extractScopes(skill), ...extractRunnerScopes(bindingArtifact.manifest)]),
+    runtime: skill.runtime ?? recordField(skill.runx, "runtime") ?? extractRunnerRuntime(bindingArtifact.manifest),
     auth: skill.auth,
     risk: skill.risk ?? recordField(skill.runx, "risk"),
     runx: skill.runx,
-    tags: unique([...extractTags(skill), ...extractRunnerTags(xArtifact.manifest)]),
+    tags: unique([...extractTags(skill), ...extractRunnerTags(bindingArtifact.manifest)]),
     publisher: {
       type: "placeholder",
       id: owner,
     },
     created_at: options.createdAt ?? new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 }
 
-interface XArtifact {
+interface BindingArtifact {
   readonly digest?: string;
   readonly runnerNames: readonly string[];
   readonly manifest?: SkillRunnerManifest;
 }
 
-function buildXArtifact(skill: ValidatedSkill, xManifest: string | undefined): XArtifact {
-  if (!xManifest) {
+function buildBindingArtifact(skill: ValidatedSkill, profileDocument: string | undefined): BindingArtifact {
+  if (!profileDocument) {
     return {
       runnerNames: [],
     };
   }
-  const manifest = validateRunnerManifest(parseRunnerManifestYaml(xManifest));
+  const manifest = validateRunnerManifest(parseRunnerManifestYaml(profileDocument));
   if (manifest.skill && manifest.skill !== skill.name) {
     throw new Error(`Runner manifest skill '${manifest.skill}' does not match skill '${skill.name}'.`);
   }
   return {
-    digest: hashString(xManifest),
+    digest: hashString(profileDocument),
     runnerNames: Object.keys(manifest.runners),
     manifest,
   };

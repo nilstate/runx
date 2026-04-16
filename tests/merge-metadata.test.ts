@@ -36,7 +36,7 @@ describe("merge-metadata", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/standard-only"),
+        skillPath: path.resolve("fixtures/skills/portable"),
         caller,
         adapters: [adapter],
         receiptDir: path.join(tempDir, "receipts"),
@@ -92,7 +92,7 @@ describe("merge-metadata", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/standard-only"),
+        skillPath: path.resolve("fixtures/skills/portable"),
         caller,
         adapters: [adapter],
         receiptDir: path.join(tempDir, "receipts"),

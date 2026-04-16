@@ -236,7 +236,7 @@ export class RunxSdk {
       version: options.version,
       createdAt: options.createdAt,
       registryUrl: options.registryUrl ?? this.options.registryUrl,
-      xManifest: skillPackage.xManifest,
+      profileDocument: skillPackage.profileDocument,
     });
     return {
       ...publish,

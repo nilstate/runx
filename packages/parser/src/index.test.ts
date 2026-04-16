@@ -61,10 +61,10 @@ body
 });
 
 describe("validateSkill", () => {
-  it("defaults standard-only skills to the agent runner", () => {
+  it("defaults portable skills to the agent runner", () => {
     const skill = validateSkill(
       parseSkillMarkdown(`---
-name: standard-only
+name: portable
 description: A portable marketplace skill.
 ---
 # Standard Only
@@ -73,7 +73,7 @@ Follow the instructions.
 `),
     );
 
-    expect(skill.name).toBe("standard-only");
+    expect(skill.name).toBe("portable");
     expect(skill.source).toMatchObject({
       type: "agent",
       args: [],
@@ -104,7 +104,7 @@ Follow the instructions.
     });
   });
 
-  it("validates cli-tool sandbox metadata from runx", () => {
+  it("validates cli-tool sandboprofile metadata from runx", () => {
     const skill = validateSkill(
       parseSkillMarkdown(`---
 name: sandboxed
@@ -374,9 +374,9 @@ Invalid.
     ).toThrow("harness-hook sources must not declare source.command or source.args");
   });
 
-  it("accepts standard-only skills in lenient mode", () => {
+  it("accepts portable skills in lenient mode", () => {
     const raw = parseSkillMarkdown(`---
-name: standard-only
+name: portable
 ---
 Body
 `);
@@ -386,7 +386,7 @@ Body
     expect(skill.source.type).toBe("agent");
   });
 
-  it("fails strict validation for malformed runx metadata", () => {
+  it("fails strict validation for malformed runprofile metadata", () => {
     const raw = parseSkillMarkdown(`---
 name: bad-runx
 source:

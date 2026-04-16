@@ -14,8 +14,8 @@ export interface RegistrySkillVersion {
   readonly version: string;
   readonly digest: string;
   readonly markdown: string;
-  readonly x_manifest?: string;
-  readonly x_digest?: string;
+  readonly profile_document?: string;
+  readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly source_type: string;
   readonly required_scopes: readonly string[];
@@ -26,6 +26,7 @@ export interface RegistrySkillVersion {
   readonly tags: readonly string[];
   readonly publisher: RegistryPublisher;
   readonly created_at: string;
+  readonly updated_at: string;
 }
 
 export interface RegistrySkill {
@@ -38,8 +39,12 @@ export interface RegistrySkill {
   readonly versions: readonly RegistrySkillVersion[];
 }
 
+export interface PutVersionOptions {
+  readonly upsert?: boolean;
+}
+
 export interface RegistryStore {
-  readonly putVersion: (version: RegistrySkillVersion) => Promise<RegistrySkillVersion>;
+  readonly putVersion: (version: RegistrySkillVersion, options?: PutVersionOptions) => Promise<RegistrySkillVersion>;
   readonly getVersion: (skillId: string, version?: string) => Promise<RegistrySkillVersion | undefined>;
   readonly listVersions: (skillId: string) => Promise<readonly RegistrySkillVersion[]>;
   readonly listSkills: () => Promise<readonly RegistrySkill[]>;
@@ -48,18 +53,24 @@ export interface RegistryStore {
 export class FileRegistryStore implements RegistryStore {
   constructor(private readonly root: string) {}
 
-  async putVersion(version: RegistrySkillVersion): Promise<RegistrySkillVersion> {
+  async putVersion(version: RegistrySkillVersion, options?: PutVersionOptions): Promise<RegistrySkillVersion> {
     const versionPath = this.versionPath(version.skill_id, version.version);
     await mkdir(path.dirname(versionPath), { recursive: true });
 
     const existing = await this.getVersion(version.skill_id, version.version);
     if (existing) {
-      if (existing.digest !== version.digest || existing.x_digest !== version.x_digest) {
-        throw new Error(`Registry version ${version.skill_id}@${version.version} already exists with a different digest.`);
+      if (existing.digest !== version.digest || existing.profile_digest !== version.profile_digest) {
+        if (!options?.upsert) {
+          throw new Error(`Registry version ${version.skill_id}@${version.version} already exists with a different digest.`);
+        }
+        const upserted = { ...version, updated_at: new Date().toISOString() };
+        await writeFile(versionPath, `${JSON.stringify(upserted, null, 2)}\n`, { flag: "w", mode: 0o600 });
+        return upserted;
       }
       const refreshed = {
         ...version,
         created_at: existing.created_at,
+        updated_at: new Date().toISOString(),
       };
       if (JSON.stringify(existing) !== JSON.stringify(refreshed)) {
         await writeFile(versionPath, `${JSON.stringify(refreshed, null, 2)}\n`, { flag: "w", mode: 0o600 });
@@ -147,6 +158,7 @@ function normalizeRegistrySkillVersion(value: RegistrySkillVersion): RegistrySki
   return {
     ...value,
     runner_names: value.runner_names ?? [],
+    updated_at: value.updated_at ?? value.created_at,
   };
 }
 

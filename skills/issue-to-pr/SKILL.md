@@ -32,7 +32,8 @@ provides the governed handoff boundaries. The caller decides.
 The chain runs: `scafld new` -> author spec -> write spec -> validate ->
 approve -> start -> author fix bundle -> write fix bundle -> exec -> audit ->
 review-open -> reviewer boundary -> write review -> complete. Each step gets
-only the scopes it needs. See `x.yaml` for the full step graph.
+only the scopes it needs. See the execution profile (`X.yaml`) for the full
+step graph.
 
 ## Spec authoring contract
 

@@ -41,7 +41,7 @@ export async function ensureOfficialSkillCached(
         version: options.entry.version,
         digest: options.entry.digest,
         markdown: cachedMarkdown,
-        x_manifest: await readOptionalFile(path.join(skillPath, "x.yaml")),
+        profile_document: await readProfileDocumentState(skillPath),
         runner_names: [],
         install_count: 0,
       },
@@ -67,26 +67,8 @@ export async function ensureOfficialSkillCached(
 
   await mkdir(skillPath, { recursive: true });
   await writeFile(path.join(skillPath, "SKILL.md"), acquisition.markdown, "utf8");
-  if (acquisition.x_manifest) {
-    await writeFile(path.join(skillPath, "x.yaml"), acquisition.x_manifest, "utf8");
-  }
+  await writeProfileState(skillPath, acquisition);
   await syncPackagedRuntimeAssets(skillPath, acquisition.skill_id);
-  await writeFile(
-    path.join(skillPath, "runx.lock.json"),
-    `${JSON.stringify(
-      {
-        source: "runx-registry",
-        skill_id: acquisition.skill_id,
-        version: acquisition.version,
-        digest: acquisition.digest,
-        x_digest: acquisition.x_digest,
-        runner_names: acquisition.runner_names,
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
   return {
     skillPath,
     fromCache: false,
@@ -131,7 +113,7 @@ async function syncPackagedRuntimeAssets(targetSkillPath: string, skillId: strin
     if (!entry.isFile()) {
       continue;
     }
-    if (entry.name === "SKILL.md" || entry.name === "x.yaml") {
+    if (entry.name === "SKILL.md") {
       continue;
     }
     const sourcePath = path.join(packagedSkillDir, entry.name);
@@ -206,4 +188,51 @@ async function readOptionalFile(filePath: string): Promise<string | undefined> {
     }
     throw error;
   }
+}
+
+async function readProfileDocumentState(skillPath: string): Promise<string | undefined> {
+  const state = await readOptionalFile(path.join(skillPath, ".runx", "profile.json"));
+  if (!state) {
+    return undefined;
+  }
+  const parsed = JSON.parse(state) as {
+    readonly profile?: {
+      readonly document?: string;
+    };
+  };
+  return typeof parsed.profile?.document === "string" ? parsed.profile.document : undefined;
+}
+
+async function writeProfileState(skillPath: string, acquisition: AcquiredRegistrySkill): Promise<void> {
+  const profileStatePath = path.join(skillPath, ".runx", "profile.json");
+  if (!acquisition.profile_document) {
+    return;
+  }
+  await mkdir(path.dirname(profileStatePath), { recursive: true });
+  await writeFile(
+    profileStatePath,
+    `${JSON.stringify(
+      {
+        schema_version: "runx.skill-profile.v1",
+        skill: {
+          name: acquisition.name,
+          path: "SKILL.md",
+          digest: acquisition.digest,
+        },
+        profile: {
+          document: acquisition.profile_document,
+          digest: acquisition.profile_digest,
+          runner_names: acquisition.runner_names,
+        },
+        origin: {
+          source: "runx-registry",
+          skill_id: acquisition.skill_id,
+          version: acquisition.version,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
 }

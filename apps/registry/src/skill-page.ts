@@ -19,7 +19,7 @@ export interface SkillPageModel {
   readonly owner: string;
   readonly version: string;
   readonly digest: string;
-  readonly x_digest?: string;
+  readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly source_type: string;
   readonly required_scopes: readonly string[];
@@ -56,7 +56,7 @@ export function skillPageModelForVersion(
     owner: record.owner,
     version: record.version,
     digest: record.digest,
-    x_digest: record.x_digest,
+    profile_digest: record.profile_digest,
     runner_names: record.runner_names,
     source_type: record.source_type,
     required_scopes: record.required_scopes,

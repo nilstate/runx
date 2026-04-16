@@ -26,7 +26,7 @@ harness:
                 confidence: verified
                 relevance: determines the lead angle for the brief
             decision_support:
-              - option: Lead with enforcement and dogfood gaps closed in the repo.
+              - option: Lead with enforcement and proving-ground gaps closed in the repo.
                 rationale: Most concrete proof point available now.
             risks: []
           agent_step.draft-content-draft.output:

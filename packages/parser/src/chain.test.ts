@@ -136,7 +136,7 @@ name: retry-idempotency
 steps:
   - id: mutate
     skill: ../../skills/echo
-    mutation: mutating
+    mutation: true
     idempotency_key: "{{request_id}}"
     retry:
       max_attempts: 2
@@ -162,7 +162,7 @@ name: bad-retry
 steps:
   - id: mutate
     skill: ../../skills/echo
-    mutation: mutating
+    mutation: true
     idempotency_key: ""
     retry:
       max_attempts: 0

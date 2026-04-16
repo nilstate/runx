@@ -4,7 +4,9 @@ import path from "node:path";
 
 import { parseDocument } from "yaml";
 
+import { resolveLocalSkillProfile } from "../../config/src/index.js";
 import {
+  parseSkillMarkdown,
   parseRunnerManifestYaml,
   validateRunnerManifest,
   type HarnessCallerFixture,
@@ -74,7 +76,7 @@ export interface HarnessSuiteResult {
   readonly source: "inline";
   readonly targetPath: string;
   readonly skillPath: string;
-  readonly xManifestPath: string;
+  readonly profileSourcePath: string;
   readonly status: "success" | "failure";
   readonly cases: readonly HarnessRunResult[];
   readonly assertionErrors: readonly string[];
@@ -84,7 +86,8 @@ export type HarnessTargetResult = HarnessRunResult | HarnessSuiteResult;
 
 interface ResolvedInlineHarnessTarget {
   readonly skillPath: string;
-  readonly xManifestPath: string;
+  readonly profileDocument: string;
+  readonly profileSourcePath: string;
 }
 
 export async function parseHarnessFixtureFile(fixturePath: string): Promise<HarnessFixture> {
@@ -146,9 +149,9 @@ export async function runHarness(fixturePath: string, options: HarnessRunOptions
 
 async function runInlineHarnessSuite(targetPath: string, options: HarnessRunOptions): Promise<HarnessSuiteResult> {
   const resolved = await resolveInlineHarnessTarget(targetPath);
-  const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(resolved.xManifestPath, "utf8")));
+  const manifest = validateRunnerManifest(parseRunnerManifestYaml(resolved.profileDocument));
   if (!manifest.harness || manifest.harness.cases.length === 0) {
-    throw new Error(`Inline harness target does not declare harness.cases: ${resolved.xManifestPath}`);
+    throw new Error(`Inline harness target does not declare harness.cases: ${resolved.profileSourcePath}`);
   }
 
   const cases: HarnessRunResult[] = [];
@@ -157,7 +160,7 @@ async function runInlineHarnessSuite(targetPath: string, options: HarnessRunOpti
     cases.push(
       await executeHarnessFixture({
         fixture,
-        fixturePath: resolved.xManifestPath,
+        fixturePath: resolved.profileSourcePath,
         targetPath: resolved.skillPath,
         source: "inline",
         options,
@@ -170,7 +173,7 @@ async function runInlineHarnessSuite(targetPath: string, options: HarnessRunOpti
     source: "inline",
     targetPath: resolved.skillPath,
     skillPath: resolved.skillPath,
-    xManifestPath: resolved.xManifestPath,
+    profileSourcePath: resolved.profileSourcePath,
     status: assertionErrors.length === 0 ? "success" : "failure",
     cases,
     assertionErrors,
@@ -254,33 +257,25 @@ function createInlineHarnessFixture(entry: RunnerHarnessCase, skillPath: string)
 async function resolveInlineHarnessTarget(targetPath: string): Promise<ResolvedInlineHarnessTarget> {
   const resolvedTargetPath = path.resolve(targetPath);
   const targetStat = await stat(resolvedTargetPath);
-
-  if (targetStat.isDirectory()) {
-    const xManifestPath = path.join(resolvedTargetPath, "x.yaml");
-    await stat(xManifestPath);
-    return {
-      skillPath: resolvedTargetPath,
-      xManifestPath,
-    };
+  const skillPath = targetStat.isDirectory() ? path.join(resolvedTargetPath, "SKILL.md") : resolvedTargetPath;
+  const basename = path.basename(skillPath).toLowerCase();
+  if (basename !== "skill.md") {
+    throw new Error(`Inline harness target must be a skill directory or SKILL.md: ${resolvedTargetPath}`);
   }
 
-  const basename = path.basename(resolvedTargetPath).toLowerCase();
-  if (basename === "x.yaml") {
-    return {
-      skillPath: path.dirname(resolvedTargetPath),
-      xManifestPath: resolvedTargetPath,
-    };
-  }
-  if (basename === "skill.md") {
-    const xManifestPath = path.join(path.dirname(resolvedTargetPath), "x.yaml");
-    await stat(xManifestPath);
-    return {
-      skillPath: path.dirname(resolvedTargetPath),
-      xManifestPath,
-    };
+  const markdown = await readFile(skillPath, "utf8");
+  const raw = parseSkillMarkdown(markdown);
+  const skillName = requiredString(raw.frontmatter.name, "frontmatter.name");
+  const profile = await resolveLocalSkillProfile(skillPath, skillName);
+  if (!profile.profileDocument || !profile.profileSourcePath) {
+    throw new Error(`Inline harness target does not have a execution profile: ${resolvedTargetPath}`);
   }
 
-  throw new Error(`Inline harness target must be a skill directory, x.yaml, or SKILL.md: ${resolvedTargetPath}`);
+  return {
+    skillPath: path.dirname(skillPath),
+    profileDocument: profile.profileDocument,
+    profileSourcePath: profile.profileSourcePath,
+  };
 }
 
 function isInlineHarnessTarget(targetPath: string, targetStat: Awaited<ReturnType<typeof stat>>): boolean {
@@ -288,7 +283,7 @@ function isInlineHarnessTarget(targetPath: string, targetStat: Awaited<ReturnTyp
     return true;
   }
   const basename = path.basename(targetPath).toLowerCase();
-  return basename === "x.yaml" || basename === "skill.md";
+  return basename === "skill.md";
 }
 
 function assertHarnessResult(

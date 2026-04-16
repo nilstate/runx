@@ -2,7 +2,7 @@ skill: evaluate-skill
 
 harness:
   cases:
-    - name: evaluate-skill-produces-trust-report
+    - name: evaluate-skill-produces-trust-audit
       inputs:
         skill_ref: 0state/sourcey
         objective: Decide whether Sourcey is ready for evaluator-facing demos
@@ -12,7 +12,7 @@ harness:
               status: success
               note: Sourcey inline harness passes in OSS CI.
           docs:
-            - path: docs/skill-x-model.md
+            - path: docs/skill-profile-model.md
               reason: Confirms the enforced package-only SKILL standard.
         test_constraints: Keep the evaluation bounded to repo-visible evidence and local harness signals.
       caller:

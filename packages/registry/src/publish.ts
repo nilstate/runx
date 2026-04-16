@@ -13,7 +13,7 @@ export interface PublishSkillMarkdownResult {
   readonly name: string;
   readonly version: string;
   readonly digest: string;
-  readonly x_digest?: string;
+  readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly source_type: string;
   readonly registry_url?: string;
@@ -36,7 +36,7 @@ export async function publishSkillMarkdown(
     name: result.record.name,
     version: result.record.version,
     digest: result.record.digest,
-    x_digest: result.record.x_digest,
+    profile_digest: result.record.profile_digest,
     runner_names: result.record.runner_names,
     source_type: result.record.source_type,
     registry_url: registryUrl,

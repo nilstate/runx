@@ -148,6 +148,7 @@ steps:
 
 async function writeGovernedSkill(skillDir: string): Promise<void> {
   await mkdir(skillDir, { recursive: true });
+  await mkdir(path.join(skillDir, ".runx"), { recursive: true });
   await writeFile(
     path.join(skillDir, "SKILL.md"),
     `---
@@ -158,9 +159,7 @@ description: Portable governed echo.
 Echo a message.
 `,
   );
-  await writeFile(
-    path.join(skillDir, "x.yaml"),
-    `skill: governed-echo
+  const profileDocument = `skill: governed-echo
 runners:
   governed-echo-cli:
     type: cli-tool
@@ -172,6 +171,28 @@ runners:
       message:
         type: string
         required: true
-`,
+`;
+  await writeFile(
+    path.join(skillDir, ".runx/profile.json"),
+    `${JSON.stringify(
+      {
+        schema_version: "runx.skill-profile.v1",
+        skill: {
+          name: "governed-echo",
+          path: "SKILL.md",
+          digest: "fixture-skill-digest",
+        },
+        profile: {
+          document: profileDocument,
+          digest: "fixture-profile-digest",
+          runner_names: ["governed-echo-cli"],
+        },
+        origin: {
+          source: "fixture",
+        },
+      },
+      null,
+      2,
+    )}\n`,
   );
 }

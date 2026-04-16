@@ -5,8 +5,8 @@ harness:
     - name: scafld-review-boundary-yields-fresh-caller-request
       runner: agent
       inputs:
-        task_id: dogfood-scafld
-        review_file: .ai/reviews/dogfood-scafld.md
+        task_id: proving-ground-scafld
+        review_file: .ai/reviews/proving-ground-scafld.md
         review_prompt: |
           ADVERSARIAL REVIEW
 

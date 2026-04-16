@@ -72,7 +72,7 @@ harness:
                       shared_context_refs:
                         - change_set.target_surfaces[0]
                       validation_commands:
-                        - pnpm --dir oss test tests/external-skill-dogfood.test.ts
+                        - pnpm --dir oss test tests/external-skill-proving-ground.test.ts
                       mutating: false
               integration_checks:
                 - The resulting content lane remains approval-gated before publication.

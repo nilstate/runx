@@ -3,7 +3,7 @@ owner: runx
 steps:
   - id: deploy
     skill: ../../skills/echo
-    mutation: mutating
+    mutation: true
     idempotency_key: "{{request_id}}"
     inputs:
       message: deploy

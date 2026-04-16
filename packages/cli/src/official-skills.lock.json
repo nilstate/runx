@@ -21,8 +21,8 @@
   },
   {
     "skill_id": "runx/evolve",
-    "version": "sha-faa2c7253670",
-    "digest": "faa2c72536704fe7561c0cb3ef7de259366e617b449abc3fae825aa3f955f059"
+    "version": "sha-3df173a71661",
+    "digest": "3df173a71661a3b95e34b8176389f8f48c453d441f83c9fc9b89d13ec6163c63"
   },
   {
     "skill_id": "runx/github-triage",
@@ -31,18 +31,18 @@
   },
   {
     "skill_id": "runx/harness-author",
-    "version": "sha-d1c7a539bac3",
-    "digest": "d1c7a539bac3a196d22789720b14c3833479a73826bc55dcbfff66bd77d86f83"
+    "version": "sha-09d21d6bc775",
+    "digest": "09d21d6bc77560915e4dc065bbfa0782279ff60ecb6d085144b8bf21f05d5ce4"
   },
   {
     "skill_id": "runx/improve-skill",
-    "version": "sha-c408801c6b78",
-    "digest": "c408801c6b78253460c7f2f13d67668b27917d1e9bd573e9677565b3901acd3d"
+    "version": "sha-1c81ba4b355a",
+    "digest": "1c81ba4b355aa10ad69dcc30383d26cbcaae84a179d59f22b9691376ffbb799a"
   },
   {
     "skill_id": "runx/issue-to-pr",
-    "version": "sha-5627526736d7",
-    "digest": "5627526736d71c79699d741c9e371934bf24451675dbaadb558fd9290c8e9078"
+    "version": "sha-61d09406d731",
+    "digest": "61d09406d731af3bd2c3e2752f1d8c23b72f4724e9d11298f7e80ed52f380f8d"
   },
   {
     "skill_id": "runx/market-intelligence",
@@ -66,8 +66,8 @@
   },
   {
     "skill_id": "runx/objective-to-skill",
-    "version": "sha-0eceecddd75c",
-    "digest": "0eceecddd75ce4717663d7782be32763b0d72fe59631b8035739389376b2dd1a"
+    "version": "sha-5b6adde5b29a",
+    "digest": "5b6adde5b29a58b307800181597b3c6362b06806c856c2dea90b6cac91dd94b8"
   },
   {
     "skill_id": "runx/open-source-triage",
@@ -76,8 +76,8 @@
   },
   {
     "skill_id": "runx/receipt-review",
-    "version": "sha-76be6d331e9a",
-    "digest": "76be6d331e9aa13b3778025436fef33abb254bc81b67e4aac42fc662cdc65cc5"
+    "version": "sha-d0e0fff73b71",
+    "digest": "d0e0fff73b71dbaf00fbe0fc0828e195866075021023c3a234a1b73e93468eac"
   },
   {
     "skill_id": "runx/research",
@@ -90,14 +90,14 @@
     "digest": "9ad4b017293df0c2b811d5b9ac9e197b57eb07b44487dc73f0f12aa876107af6"
   },
   {
-    "skill_id": "runx/skill-research",
-    "version": "sha-de3371d48fbc",
-    "digest": "de3371d48fbc76a637e430fa591a9c8e0e20cb6795782dde228999cc08909828"
+    "skill_id": "runx/skill-recon",
+    "version": "sha-f9ee7a9bfe25",
+    "digest": "f9ee7a9bfe25918553791a75a20430de0d687857a69f229889bb94a12c222d5c"
   },
   {
     "skill_id": "runx/skill-testing",
-    "version": "sha-d0910e28f32a",
-    "digest": "d0910e28f32a75dcbc6786464fa84631aec744f75b32a166c69c87174705af07"
+    "version": "sha-d286a1f52827",
+    "digest": "d286a1f52827dac1788e06a1ebe597e3aa0481ab39c81c6b59799ae25f1e24de"
   },
   {
     "skill_id": "runx/sourcey",

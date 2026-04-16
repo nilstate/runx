@@ -2,7 +2,7 @@ import type { SkillSearchResult } from "./index.js";
 
 export interface MarketplaceResolvedSkill {
   readonly markdown: string;
-  readonly xManifest?: string;
+  readonly profileDocument?: string;
   readonly result: SkillSearchResult;
 }
 

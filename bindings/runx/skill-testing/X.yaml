@@ -2,7 +2,7 @@ skill: skill-testing
 
 harness:
   cases:
-    - name: skill-testing-publishes-trust-report
+    - name: skill-testing-publishes-trust-audit
       inputs:
         skill_ref: 0state/sourcey
         objective: Decide whether Sourcey is ready for public recommendation
@@ -12,7 +12,7 @@ harness:
               status: success
               note: Sourcey inline harness currently passes.
           docs:
-            - path: docs/skill-x-model.md
+            - path: docs/skill-profile-model.md
               reason: Describes the package-only SKILL standard.
         test_constraints: Keep the report grounded in repo-visible evidence and local harness receipts.
       caller:
@@ -28,21 +28,21 @@ harness:
               - check: harness passes
                 status: required
             recommendation_report:
-              recommendation: publish_trust_report
+              recommendation: publish_trust_audit
               rationale: Strong enough for evaluators once the docs are aligned.
           agent_step.draft-content-draft.output:
             content_brief:
-              angle: trust report
+              angle: trust audit
             draft:
-              title: Sourcey trust report
+              title: Sourcey trust audit
             review_checklist:
               - confirm trust-tier language
             distribution_notes:
-              primary_channel: trust-report
+              primary_channel: trust-audit
           agent_step.draft-content-package.output:
             publish_packet:
-              channel: trust-report
-              headline: Sourcey trust report
+              channel: trust-audit
+              headline: Sourcey trust audit
             qa_checklist:
               - evidence and caveats checked
             handoff_notes:
@@ -68,11 +68,11 @@ runners:
         type: string
         required: false
         default: "Decide whether this skill is ready for public recommendation"
-        description: "Decision the trust report should support."
+        description: "Decision the trust audit should support."
       channel:
         type: string
         required: false
-        default: "trust-report"
+        default: "trust-audit"
         description: "Final delivery channel for the report."
       evidence_pack:
         type: json
@@ -97,7 +97,7 @@ runners:
           scopes:
             - runx:content:draft
           inputs:
-            channel: trust-report
+            channel: trust-audit
             audience: operators
           context:
             evidence_pack: evaluate-skill.skill_evaluation_packet.data
@@ -106,7 +106,7 @@ runners:
             type: approval
           inputs:
             gate_id: skill-testing.publish.approval
-            reason: Approve the trust report before packaging it for publication.
+            reason: Approve the trust audit before packaging it for publication.
           context:
             draft: draft-report.content_draft_packet.data.draft
             review_checklist: draft-report.content_draft_packet.data.review_checklist
@@ -118,7 +118,7 @@ runners:
           scopes:
             - runx:content:package
           inputs:
-            channel: trust-report
+            channel: trust-audit
           context:
             draft: draft-report.content_draft_packet.data.draft
             distribution_notes: draft-report.content_draft_packet.data.distribution_notes

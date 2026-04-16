@@ -169,7 +169,7 @@ describe("TypeScript SDK", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sdk-js-remote-registry-"));
     const installDir = path.join(tempDir, "skills");
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const xManifest = await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
 
     try {
       globalThis.fetch = vi.fn(async (input, init) => {
@@ -184,7 +184,7 @@ describe("TypeScript SDK", () => {
                 name: "sourcey",
                 version: "1.0.0",
                 source_type: "agent",
-                runner_mode: "x-manifest",
+                profile_mode: "profiled",
                 runner_names: ["agent", "sourcey"],
                 required_scopes: [],
                 tags: [],
@@ -207,8 +207,8 @@ describe("TypeScript SDK", () => {
             version: "1.0.0",
             digest: hashString(markdown),
             markdown,
-            x_manifest: xManifest,
-            x_digest: hashString(xManifest),
+            profile_document: profileDocument,
+            profile_digest: hashString(profileDocument),
             runner_names: ["agent", "sourcey"],
           },
         }), { status: 200 });

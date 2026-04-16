@@ -133,7 +133,7 @@ describe("agent-step and harness-hook boundary", () => {
 
   it("keeps scafld issue-to-pr free of repo-local helper-script skills", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("skills/issue-to-pr/x.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("bindings/runx/issue-to-pr/X.yaml"), "utf8")),
     );
     const runner = manifest.runners["issue-to-pr"];
 

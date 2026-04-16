@@ -20,22 +20,22 @@ describe("registry CE", () => {
 
     try {
       const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-      const xManifest = await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8");
+      const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
         owner: "0state",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
-        xManifest,
+        profileDocument,
       });
 
       expect(version.skill_id).toBe("0state/sourcey");
       expect(version.version).toBe("1.0.0");
       expect(version.digest).toMatch(/^[a-f0-9]{64}$/);
-      expect(version.x_digest).toMatch(/^[a-f0-9]{64}$/);
+      expect(version.profile_digest).toMatch(/^[a-f0-9]{64}$/);
       expect(version.source_type).toBe("agent");
       expect(version.runner_names).toEqual(["agent", "sourcey"]);
       expect(version.markdown).toBe(markdown);
-      expect(version.x_manifest).toBe(xManifest);
+      expect(version.profile_document).toBe(profileDocument);
 
       const trustSignals = deriveTrustSignals(version);
       expect(trustSignals).toEqual(
@@ -53,7 +53,7 @@ describe("registry CE", () => {
         name: "sourcey",
         version: "1.0.0",
         digest: version.digest,
-        x_digest: version.x_digest,
+        profile_digest: version.profile_digest,
         runner_names: ["agent", "sourcey"],
         source_type: "agent",
         install_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
@@ -76,9 +76,9 @@ describe("registry CE", () => {
           source_label: "runx registry",
           source_type: "agent",
           trust_tier: "runx-derived",
-          runner_mode: "x-manifest",
+          profile_mode: "profiled",
           runner_names: ["agent", "sourcey"],
-          x_digest: version.x_digest,
+          profile_digest: version.profile_digest,
           add_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
         }),
       ]);

@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../packages/cli/src/index.js";
 import { createFileRegistryStore } from "../packages/registry/src/index.js";
 
-describe("CLI skill registry X metadata", () => {
-  it("publishes, searches, and adds folder package X metadata", async () => {
+describe("CLI skill registry execution profile", () => {
+  it("publishes, searches, and adds folder package execution profile", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-registry-x-"));
     const registryDir = path.join(tempDir, "registry");
     const skillsDir = path.join(tempDir, "skills");
@@ -27,7 +27,7 @@ describe("CLI skill registry X metadata", () => {
       expect(JSON.parse(publishOut.contents()).publish).toMatchObject({
         skill_id: "0state/sourcey",
         runner_names: ["agent", "sourcey"],
-        x_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
+        profile_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
       });
 
       const searchOut = createMemoryStream();
@@ -44,9 +44,9 @@ describe("CLI skill registry X metadata", () => {
         expect.arrayContaining([
           expect.objectContaining({
             skill_id: "0state/sourcey",
-            runner_mode: "x-manifest",
+            profile_mode: "profiled",
             runner_names: ["agent", "sourcey"],
-            x_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
+            profile_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
           }),
         ]),
       );
@@ -63,10 +63,10 @@ describe("CLI skill registry X metadata", () => {
       expect(addErr.contents()).toBe("");
       expect(JSON.parse(addOut.contents()).install).toMatchObject({
         destination: path.join(skillsDir, "0state", "sourcey", "SKILL.md"),
-        xDestination: path.join(skillsDir, "0state", "sourcey", "x.yaml"),
+        profileStatePath: path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"),
         runnerNames: ["agent", "sourcey"],
       });
-      await expect(readFile(path.join(skillsDir, "0state", "sourcey", "x.yaml"), "utf8")).resolves.toContain(
+      await expect(readFile(path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"), "utf8")).resolves.toContain(
         "tool: sourcey.build",
       );
       await expect(createFileRegistryStore(registryDir).getVersion("0state/sourcey", "1.0.0")).resolves.toMatchObject({

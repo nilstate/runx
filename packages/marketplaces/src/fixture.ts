@@ -12,7 +12,7 @@ description: External fixture skill for generating Sourcey documentation.
 Fixture marketplace skill used by runx tests. It is installed as markdown only; \`skill add\` must not execute it.
 `;
 
-const fixtureXManifest = `skill: sourcey-docs
+const fixtureProfileDocument = `skill: sourcey-docs
 runners:
   sourcey-docs-cli:
     default: true
@@ -24,13 +24,13 @@ runners:
 `;
 
 const standardOnlyMarkdown = `---
-name: marketplace-standard-only
-description: External standard-only fixture skill.
+name: marketplace-portable
+description: External portable fixture skill.
 ---
 
 # Marketplace Standard Only
 
-Fixture marketplace skill without runx X metadata.
+Fixture marketplace skill without runx execution profile.
 `;
 
 const fixtureResults: readonly SkillSearchResult[] = [
@@ -47,17 +47,17 @@ const fixtureResults: readonly SkillSearchResult[] = [
     trust_tier: "external-unverified",
     required_scopes: [],
     tags: ["sourcey", "docs"],
-    runner_mode: "x-manifest",
+    profile_mode: "profiled",
     runner_names: ["sourcey-docs-cli"],
-    x_digest: hashString(fixtureXManifest),
-    x_trust_tier: "external-unverified",
+    profile_digest: hashString(fixtureProfileDocument),
+    profile_trust_tier: "external-unverified",
     add_command: "runx add fixture-marketplace:sourcey-docs",
     run_command: "runx sourcey-docs",
   },
   {
-    skill_id: "fixture/marketplace-standard-only",
-    name: "marketplace-standard-only",
-    summary: "External standard-only fixture skill.",
+    skill_id: "fixture/marketplace-portable",
+    name: "marketplace-portable",
+    summary: "External portable fixture skill.",
     owner: "fixture",
     version: "2026.04.10",
     digest: hashString(standardOnlyMarkdown),
@@ -67,10 +67,10 @@ const fixtureResults: readonly SkillSearchResult[] = [
     trust_tier: "external-unverified",
     required_scopes: [],
     tags: ["portable"],
-    runner_mode: "standard-only",
+    profile_mode: "portable",
     runner_names: [],
-    add_command: "runx add fixture-marketplace:marketplace-standard-only",
-    run_command: "runx marketplace-standard-only",
+    add_command: "runx add fixture-marketplace:marketplace-portable",
+    run_command: "runx marketplace-portable",
   },
 ];
 
@@ -96,8 +96,8 @@ export function createFixtureMarketplaceAdapter(results: readonly SkillSearchRes
         return undefined;
       }
       return {
-        markdown: match.name === "marketplace-standard-only" ? standardOnlyMarkdown : fixtureMarkdown,
-        xManifest: match.name === "marketplace-standard-only" ? undefined : fixtureXManifest,
+        markdown: match.name === "marketplace-portable" ? standardOnlyMarkdown : fixtureMarkdown,
+        profileDocument: match.name === "marketplace-portable" ? undefined : fixtureProfileDocument,
         result: match,
       };
     },

@@ -14,7 +14,7 @@ import {
 import { runLocalSkill } from "../packages/runner-local/src/index.js";
 import { createStructuredCaller } from "../packages/sdk-js/src/index.js";
 
-interface DogfoodExpectation {
+interface ProvingGroundExpectation {
   readonly requestId: string;
   readonly inputKeys: readonly string[];
   readonly allowedTools?: readonly string[];
@@ -23,11 +23,11 @@ interface DogfoodExpectation {
   readonly minimumInstructionChars?: number;
 }
 
-interface HarnessDogfoodScenario {
+interface HarnessProvingGroundScenario {
   readonly skillName: string;
   readonly runner?: string;
   readonly extraInputKeys?: readonly string[];
-  readonly expectation: DogfoodExpectation;
+  readonly expectation: ProvingGroundExpectation;
 }
 
 interface PreparedRun {
@@ -36,13 +36,13 @@ interface PreparedRun {
   readonly env?: NodeJS.ProcessEnv;
 }
 
-interface CustomDogfoodScenario {
+interface CustomProvingGroundScenario {
   readonly skillName: string;
   readonly prepare: (tempDir: string) => Promise<PreparedRun>;
-  readonly expectation: DogfoodExpectation;
+  readonly expectation: ProvingGroundExpectation;
 }
 
-const harnessScenarios: readonly HarnessDogfoodScenario[] = [
+const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
   {
     skillName: "content-pipeline",
     extraInputKeys: ["channel", "deliverable"],
@@ -190,9 +190,9 @@ const harnessScenarios: readonly HarnessDogfoodScenario[] = [
     },
   },
   {
-    skillName: "skill-research",
+    skillName: "skill-recon",
     expectation: {
-      requestId: "agent_step.skill-research.output",
+      requestId: "agent_step.skill-recon.output",
       inputKeys: ["objective", "decomposition"],
       sourceType: "agent-step",
     },
@@ -234,7 +234,7 @@ const harnessScenarios: readonly HarnessDogfoodScenario[] = [
   },
 ] as const;
 
-const customScenarios: readonly CustomDogfoodScenario[] = [
+const customScenarios: readonly CustomProvingGroundScenario[] = [
   {
     skillName: "issue-to-pr",
     prepare: async (tempDir) => {
@@ -242,8 +242,8 @@ const customScenarios: readonly CustomDogfoodScenario[] = [
       return {
         inputs: {
           fixture: lane.repoDir,
-          task_id: "issue-to-pr-dogfood",
-          issue_title: "Clarify the external dogfood guide",
+          task_id: "issue-to-pr-proving-ground",
+          issue_title: "Clarify the external proving-ground guide",
           issue_body: "Operators should be able to run the lane with no hidden caller help.",
           source: "github_issue",
           source_id: "241",
@@ -252,7 +252,7 @@ const customScenarios: readonly CustomDogfoodScenario[] = [
           size: "micro",
           risk: "low",
           phase: "phase1",
-          draft_spec_path: ".ai/specs/drafts/issue-to-pr-dogfood.yaml",
+          draft_spec_path: ".ai/specs/drafts/issue-to-pr-proving-ground.yaml",
           scafld_bin: lane.scafldBin,
         },
         env: lane.env,
@@ -281,12 +281,12 @@ const customScenarios: readonly CustomDogfoodScenario[] = [
   },
 ] as const;
 
-describe("official skills dogfood cleanly with a fresh caller", () => {
+describe("official skills prove out cleanly with a fresh caller", () => {
   for (const scenario of harnessScenarios) {
     it(
       `${scenario.skillName} yields a first-class fresh-caller boundary`,
       async () => {
-        const tempDir = await mkdtemp(path.join(os.tmpdir(), `runx-dogfood-${scenario.skillName}-`));
+        const tempDir = await mkdtemp(path.join(os.tmpdir(), `proving-ground-${scenario.skillName}-`));
 
         try {
           const prepared = await prepareHarnessScenario(scenario);
@@ -303,7 +303,7 @@ describe("official skills dogfood cleanly with a fresh caller", () => {
     it(
       `${scenario.skillName} reaches its first authored boundary without hidden caller help`,
       async () => {
-        const tempDir = await mkdtemp(path.join(os.tmpdir(), `runx-dogfood-${scenario.skillName}-`));
+        const tempDir = await mkdtemp(path.join(os.tmpdir(), `proving-ground-${scenario.skillName}-`));
 
         try {
           const prepared = await scenario.prepare(tempDir);
@@ -320,7 +320,7 @@ describe("official skills dogfood cleanly with a fresh caller", () => {
 async function assertFreshBoundary(options: {
   readonly skillName: string;
   readonly prepared: PreparedRun;
-  readonly expectation: DogfoodExpectation;
+  readonly expectation: ProvingGroundExpectation;
   readonly tempDir: string;
 }): Promise<void> {
   const caller = createStructuredCaller();
@@ -370,7 +370,7 @@ async function assertFreshBoundary(options: {
   }
 }
 
-async function prepareHarnessScenario(scenario: HarnessDogfoodScenario): Promise<PreparedRun> {
+async function prepareHarnessScenario(scenario: HarnessProvingGroundScenario): Promise<PreparedRun> {
   const manifest = await readManifest(scenario.skillName);
   const runnerName = scenario.runner ?? defaultRunnerName(manifest);
   const harnessCase = selectHarnessCase(manifest, runnerName);
@@ -390,7 +390,7 @@ async function prepareHarnessScenario(scenario: HarnessDogfoodScenario): Promise
 }
 
 async function readManifest(skillName: string): Promise<SkillRunnerManifest> {
-  const raw = await readFile(path.resolve("skills", skillName, "x.yaml"), "utf8");
+  const raw = await readFile(path.resolve("bindings", "runx", skillName, "X.yaml"), "utf8");
   return validateRunnerManifest(parseRunnerManifestYaml(raw));
 }
 
@@ -425,7 +425,7 @@ async function createIssueLaneFixture(tempDir: string): Promise<{
   const scafldBin = path.join(tempDir, "fake-scafld.cjs");
 
   await mkdir(repoDir, { recursive: true });
-  await writeFile(path.join(repoDir, "README.md"), "# dogfood fixture\n");
+  await writeFile(path.join(repoDir, "README.md"), "# proving ground fixture\n");
   await writeFile(
     scafldBin,
     `#!/usr/bin/env node
@@ -434,7 +434,7 @@ const path = require("node:path");
 
 const [, , command, taskId] = process.argv;
 if (command !== "new") {
-  process.stderr.write("fake scafld only supports new for dogfood tests\\n");
+  process.stderr.write("fake scafld only supports new for proving-ground tests\\n");
   process.exit(1);
 }
 
@@ -447,8 +447,8 @@ fs.writeFileSync(
     \`task_id: "\${taskId}"\`,
     'status: "draft"',
     'task:',
-    '  title: "Dogfood fixture"',
-    '  summary: "Draft spec created by the fake scafld dogfood stub"',
+    '  title: "Proving Ground Fixture"',
+    '  summary: "Draft spec created by the fake scafld proving-ground stub"',
   ].join("\\n"),
 );
 process.stdout.write(JSON.stringify({ task_id: taskId, draft_spec: \`.ai/specs/drafts/\${taskId}.yaml\` }));
@@ -457,8 +457,8 @@ process.stdout.write(JSON.stringify({ task_id: taskId, draft_spec: \`.ai/specs/d
   );
 
   runChecked("git", ["init"], repoDir);
-  runChecked("git", ["config", "user.email", "dogfood@example.com"], repoDir);
-  runChecked("git", ["config", "user.name", "Dogfood Fixture"], repoDir);
+  runChecked("git", ["config", "user.email", "proving-ground@example.com"], repoDir);
+  runChecked("git", ["config", "user.name", "Proving Ground Fixture"], repoDir);
   runChecked("git", ["add", "."], repoDir);
   runChecked("git", ["commit", "-m", "init"], repoDir);
 

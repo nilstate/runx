@@ -18,7 +18,7 @@ const caller: Caller = {
 describe("issue-to-PR composite skill", () => {
   it("models authored spec, authored fix, and authored review as explicit boundaries around the scafld lifecycle", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("skills/issue-to-pr/x.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("bindings/runx/issue-to-pr/X.yaml"), "utf8")),
     );
     const runner = manifest.runners["issue-to-pr"];
 

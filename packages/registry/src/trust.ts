@@ -43,11 +43,11 @@ export function deriveTrustSignals(version: RegistrySkillVersion): readonly Trus
     },
     {
       id: "runner_metadata",
-      label: "Runner metadata",
-      status: version.x_digest ? "verified" : "not_declared",
-      value: version.x_digest
-        ? `${version.runner_names.length} runner(s), x sha256:${version.x_digest}`
-        : "standard-only agent runner",
+      label: "Materialized binding",
+      status: version.profile_digest ? "verified" : "not_declared",
+      value: version.profile_digest
+        ? `${version.runner_names.length} runner(s), binding sha256:${version.profile_digest}`
+        : "portable agent runner",
     },
   ];
 }

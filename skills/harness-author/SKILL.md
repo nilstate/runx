@@ -51,7 +51,7 @@ expect:
 
 ## Coverage strategy
 
-Start from the skill contract (SKILL.md + x.yaml). Design fixtures for:
+Start from the skill contract (SKILL.md + execution profile). Design fixtures for:
 
 - **Happy path**: one fixture with valid inputs exercising the primary
   flow. Assert the receipt kind, status, and subject fields.
@@ -71,7 +71,7 @@ wall clock dependencies. They should run in seconds.
 ## Output
 
 - `skill_spec`: proposed SKILL.md content or update.
-- `execution_plan`: proposed x.yaml chain definition when the skill is
+- `execution_plan`: proposed execution profile chain definition when the skill is
   composite. Step ids, skill references, scopes, context edges, policy.
 - `harness_fixture`: array of fixture definitions in the format above.
   Minimum: one happy-path, one error-boundary. Return the full array even
@@ -82,6 +82,6 @@ wall clock dependencies. They should run in seconds.
 
 - `objective` (required): the skill objective to harness.
 - `decomposition` (optional): output from `objective-decompose`.
-- `research` (optional): output from `skill-research`.
+- `research` (optional): output from `skill-recon`.
 - `review` (optional): output from `receipt-review` — write fixtures
   that specifically cover the diagnosed failure.

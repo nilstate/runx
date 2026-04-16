@@ -34,7 +34,7 @@ replayable fixtures that cover the failure.
 ## When not to use this skill
 
 - For designing a new skill from scratch — use `objective-to-skill`.
-- For general research — use `skill-research`.
+- For general research — use `skill-recon`.
 - When you already know the fix — just make the change directly.
 
 ## Improvement philosophy
@@ -54,6 +54,6 @@ All inputs are optional. Supply whichever evidence is available:
   receipt is not available.
 - `harness_output`: sanitized harness output or assertion failure text.
 - `skill_path`: path to the skill package being improved. The review
-  step will read the SKILL.md and x.yaml to understand the contract.
+  step will read the SKILL.md and execution profile to understand the contract.
 - `objective`: operator intent for the improvement pass. Guides the
   review toward specific aspects of the failure.

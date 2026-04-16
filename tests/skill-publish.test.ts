@@ -69,7 +69,7 @@ describe("skill-publish CLI", () => {
     }
   });
 
-  it("publishes standard-only skill markdown with the agent runner as the portable fallback", async () => {
+  it("publishes portable skill markdown with the agent runner as the portable fallback", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-publish-standard-"));
     const registryDir = path.join(tempDir, "registry");
     const stdout = createMemoryStream();
@@ -80,7 +80,7 @@ describe("skill-publish CLI", () => {
         [
           "skill",
           "publish",
-          "fixtures/skills/standard-only",
+          "fixtures/skills/portable",
           "--owner",
           "0state",
           "--version",
@@ -98,7 +98,7 @@ describe("skill-publish CLI", () => {
 
       expect(exitCode).toBe(0);
       expect(stderr.contents()).toBe("");
-      await expect(createFileRegistryStore(registryDir).getVersion("0state/standard-only", "1.0.0")).resolves.toMatchObject({
+      await expect(createFileRegistryStore(registryDir).getVersion("0state/portable", "1.0.0")).resolves.toMatchObject({
         source_type: "agent",
       });
     } finally {
@@ -106,7 +106,7 @@ describe("skill-publish CLI", () => {
     }
   });
 
-  it("publishes folder package X metadata separately from portable SKILL.md", async () => {
+  it("publishes folder package execution profile separately from portable SKILL.md", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-skill-publish-x-"));
     const registryDir = path.join(tempDir, "registry");
     const stdout = createMemoryStream();
@@ -138,7 +138,7 @@ describe("skill-publish CLI", () => {
       const report = JSON.parse(stdout.contents()) as {
         publish: {
           runner_names: string[];
-          x_digest: string;
+          profile_digest: string;
           harness: {
             status: string;
             case_count: number;
@@ -146,14 +146,14 @@ describe("skill-publish CLI", () => {
         };
       };
       expect(report.publish.runner_names).toEqual(["agent", "sourcey"]);
-      expect(report.publish.x_digest).toMatch(/^[a-f0-9]{64}$/);
+      expect(report.publish.profile_digest).toMatch(/^[a-f0-9]{64}$/);
       expect(report.publish.harness).toMatchObject({
         status: "passed",
         case_count: 1,
       });
       await expect(createFileRegistryStore(registryDir).getVersion("0state/sourcey", "1.0.0")).resolves.toMatchObject({
         markdown: await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"),
-        x_manifest: await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8"),
+        profile_document: await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8"),
         runner_names: ["agent", "sourcey"],
       });
     } finally {
@@ -198,6 +198,7 @@ describe("skill-publish CLI", () => {
 
     try {
       await mkdir(skillDir, { recursive: true });
+      await mkdir(path.join(skillDir, ".runx"), { recursive: true });
       await writeFile(
         path.join(skillDir, "SKILL.md"),
         `---
@@ -214,9 +215,7 @@ source:
 Broken skill.
 `,
       );
-      await writeFile(
-        path.join(skillDir, "x.yaml"),
-        `skill: broken-skill
+      const profileDocument = `skill: broken-skill
 runners:
   default:
     default: true
@@ -234,7 +233,29 @@ harness:
       caller: {}
       expect:
         status: failure
-`,
+`;
+      await writeFile(
+        path.join(skillDir, ".runx/profile.json"),
+        `${JSON.stringify(
+          {
+            schema_version: "runx.skill-profile.v1",
+            skill: {
+              name: "broken-skill",
+              path: "SKILL.md",
+              digest: "fixture-skill-digest",
+            },
+            profile: {
+              document: profileDocument,
+              digest: "fixture-profile-digest",
+              runner_names: ["default"],
+            },
+            origin: {
+              source: "fixture",
+            },
+          },
+          null,
+          2,
+        )}\n`,
       );
 
       const exitCode = await runCli(

@@ -3,7 +3,7 @@ owner: runx
 steps:
   - id: deploy
     skill: ../../skills/echo
-    mutation: mutating
+    mutation: true
     inputs:
       message: deploy
     retry:

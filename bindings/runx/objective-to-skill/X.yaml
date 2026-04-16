@@ -34,7 +34,7 @@ harness:
               - name: draft-content
                 exists: true
             open_questions: []
-          agent_step.skill-research.output:
+          agent_step.skill-recon.output:
             findings:
               - claim: Market-intelligence should keep research and drafting as separate steps.
                 source: plans/runx.md
@@ -102,7 +102,7 @@ runners:
           scopes:
             - runx:builder:read
         - id: research
-          skill: ../skill-research
+          skill: ../skill-recon
           scopes:
             - runx:builder:research
           context:
@@ -113,4 +113,4 @@ runners:
             - runx:builder:write-proposal
           context:
             decomposition: decompose.objective_decomposition.data
-            research: research.skill_research_report.data
+            research: research.skill_recon_report.data

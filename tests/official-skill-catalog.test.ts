@@ -26,7 +26,7 @@ const officialSkillPackages = [
   "receipt-review",
   "research",
   "scafld",
-  "skill-research",
+  "skill-recon",
   "skill-testing",
   "sourcey",
   "support-triage",
@@ -51,7 +51,7 @@ const harnessedShowcasePackages = [
   "receipt-review",
   "research",
   "scafld",
-  "skill-research",
+  "skill-recon",
   "skill-testing",
   "sourcey",
   "support-triage",
@@ -59,11 +59,11 @@ const harnessedShowcasePackages = [
 ] as const;
 
 describe("official skill catalog", () => {
-  it("ships official skills exclusively as package directories with SKILL.md and x.yaml", async () => {
+  it("ships official skills as portable packages plus checked-in execution profiles", async () => {
     for (const skillName of officialSkillPackages) {
       const skillDir = path.resolve("skills", skillName);
       const skillMarkdownPath = path.join(skillDir, "SKILL.md");
-      const manifestPath = path.join(skillDir, "x.yaml");
+      const manifestPath = path.resolve("bindings", "runx", skillName, "X.yaml");
 
       expect(existsSync(skillDir)).toBe(true);
       expect(existsSync(skillMarkdownPath)).toBe(true);

@@ -4,30 +4,30 @@
     "body": ["---", "name: ${1:skill-name}", "description: ${2:What this skill does.}", "---", "", "${3:Instructions for the agent.}"],
     "description": "Portable SKILL.md instructions"
   },
-  "CLI X runner": {
-    "prefix": "runx-x-cli",
+  "CLI Binding runner": {
+    "prefix": "runx-binding-cli",
     "body": ["skill: ${1:skill-name}", "", "runners:", "  ${2:local-cli}:", "    type: cli-tool", "    command: ${3:command}", "    args: []"],
-    "description": "Sibling x.yaml cli-tool runner"
+    "description": "Materialized X.yaml cli-tool runner"
   },
-  "MCP X runner": {
-    "prefix": "runx-x-mcp",
+  "MCP Binding runner": {
+    "prefix": "runx-binding-mcp",
     "body": ["skill: ${1:skill-name}", "", "runners:", "  ${2:mcp-runner}:", "    type: mcp", "    server:", "      command: ${3:server}", "      args: []", "    tool: ${4:tool_name}"],
-    "description": "Sibling x.yaml MCP runner"
+    "description": "Materialized X.yaml MCP runner"
   },
-  "A2A X runner": {
-    "prefix": "runx-x-a2a",
+  "A2A Binding runner": {
+    "prefix": "runx-binding-a2a",
     "body": ["skill: ${1:skill-name}", "", "runners:", "  ${2:a2a-runner}:", "    type: a2a", "    agent_card_url: ${3:https://agent.example/card.json}", "    task: ${4:task}"],
-    "description": "Sibling x.yaml A2A runner"
+    "description": "Materialized X.yaml A2A runner"
   },
   "Auth requirement": {
     "prefix": "runx-auth",
     "body": ["auth:", "  type: ${1:nango}", "  provider: ${2:github}", "  scopes:", "    - ${3:repo:read}"],
-    "description": "Execution auth requirement for X metadata"
+    "description": "Execution auth requirement for execution profile"
   },
   "Runtime and sandbox": {
     "prefix": "runx-runtime",
     "body": ["runtime:", "  platforms: [darwin, linux, win32]", "  commands: [${1:command}]", "sandbox:", "  profile: ${2:workspace-write}"],
-    "description": "Runtime and sandbox metadata for deterministic runners"
+    "description": "Runtime and sandboprofile metadata for deterministic runners"
   },
   "Input resolution": {
     "prefix": "runx-inputs",

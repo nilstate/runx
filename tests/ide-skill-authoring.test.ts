@@ -4,7 +4,7 @@ import { buildSkillPreview, skillSnippets, validateSkillMarkdown } from "../plug
 import { buildSkillPreview as antigravityPreview } from "../plugins/antigravity/src/skill-authoring.js";
 
 describe("ide skill authoring", () => {
-  it("validates portable skills, exposes snippets, and previews X metadata mode", () => {
+  it("validates portable skills, exposes snippets, and previews execution profile mode", () => {
     const markdown = `---
 name: sourcey
 description: Generate deep project docs.
@@ -22,14 +22,16 @@ Use the provided context to generate documentation.
     );
 
     const snippets = skillSnippets();
-    expect(snippets.map((snippet) => snippet.prefix)).toEqual(expect.arrayContaining(["runx-skill", "runx-x-cli", "runx-x-mcp", "runx-x-a2a"]));
+    expect(snippets.map((snippet) => snippet.prefix)).toEqual(
+      expect.arrayContaining(["runx-skill", "runx-binding-cli", "runx-binding-mcp", "runx-binding-a2a"]),
+    );
 
-    const preview = buildSkillPreview({ markdown, xManifest: "runners:\n  agent:\n    type: agent\n" });
+    const preview = buildSkillPreview({ markdown, profileDocument: "runners:\n  agent:\n    type: agent\n" });
     expect(preview).toMatchObject({
       title: "sourcey",
       summary: "Generate deep project docs.",
-      runnerMode: "x-manifest",
+      runnerMode: "profiled",
     });
-    expect(antigravityPreview({ markdown }).runnerMode).toBe("standard-only");
+    expect(antigravityPreview({ markdown }).runnerMode).toBe("portable");
   });
 });

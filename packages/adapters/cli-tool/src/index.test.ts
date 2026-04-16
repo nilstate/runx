@@ -96,7 +96,7 @@ describe("invokeCliTool", () => {
     expect(result.stdout).toBe("a".repeat(outputLimitBytes - 1));
   });
 
-  it("applies declared env allowlist and reports sandbox metadata", async () => {
+  it("applies declared env allowlist and reports sandboprofile metadata", async () => {
     const result = await invokeCliTool({
       source: {
         command: "node",

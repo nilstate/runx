@@ -5,37 +5,62 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const options = parseArgs(process.argv.slice(2));
-const bindingPath = path.resolve(options.bindingPath);
-const bindingDir = path.dirname(bindingPath);
-const binding = JSON.parse(await readFile(bindingPath, "utf8"));
-const xManifestPath = path.resolve(bindingDir, options.xManifestPath ?? path.basename(binding.registry?.x_yaml_path ?? "x.yaml"));
+const profilePath = path.resolve(options.profilePath);
+const profileDir = path.dirname(profilePath);
+const binding = JSON.parse(await readFile(profilePath, "utf8"));
+const profileDocumentPath = path.resolve(profileDir, options.profileDocumentPath ?? path.basename(binding.registry?.profile_path ?? "X.yaml"));
 const outputDir = path.resolve(options.outputDir ?? path.join("dist/upstream-bindings", binding.skill?.id ?? "upstream-skill"));
 const markdown = options.skillFile
   ? await readFile(path.resolve(options.skillFile), "utf8")
   : await fetchUpstreamSkill(binding);
-const xManifest = await readFile(xManifestPath, "utf8");
+const profileDocument = await readFile(profileDocumentPath, "utf8");
 const skillFrontmatter = parseSkillFrontmatter(markdown);
 const observedBlobSha = gitBlobSha(markdown);
 const markdownDigest = sha256(markdown);
-const xDigest = sha256(xManifest);
+const profileDigest = sha256(profileDocument);
+const runnerNames = extractRunnerNames(profileDocument);
 
-validateBinding(binding, skillFrontmatter, observedBlobSha, xManifestPath);
+validateBinding(binding, skillFrontmatter, observedBlobSha, profileDocumentPath);
 
 await mkdir(outputDir, { recursive: true });
+await mkdir(path.join(outputDir, ".runx"), { recursive: true });
 await writeFile(path.join(outputDir, "SKILL.md"), markdown);
-await writeFile(path.join(outputDir, "x.yaml"), xManifest);
+await writeFile(path.join(outputDir, ".runx/profile.json"), `${JSON.stringify({
+  schema_version: "runx.skill-profile.v1",
+  skill: {
+    name: binding.skill.name,
+    path: "SKILL.md",
+    digest: markdownDigest,
+  },
+  profile: {
+    document: profileDocument,
+    digest: profileDigest,
+    runner_names: runnerNames,
+  },
+  origin: {
+    source: "runx-registry",
+    source_label: "runx registry",
+    ref: binding.skill.id,
+    skill_id: binding.skill.id,
+    version: binding.registry.version,
+    digest: markdownDigest,
+    profile_digest: profileDigest,
+    runner_names: runnerNames,
+    trust_tier: binding.registry.trust_tier,
+  },
+}, null, 2)}\n`);
 await writeFile(path.join(outputDir, "registry-binding.json"), `${JSON.stringify(binding, null, 2)}\n`);
 await writeFile(path.join(outputDir, "materialization.json"), `${JSON.stringify({
   schema: "runx.registry_binding_materialization.v1",
   materialized_at: new Date().toISOString(),
-  binding_path: path.relative(process.cwd(), bindingPath),
+  profile_path: path.relative(process.cwd(), profilePath),
   output_dir: path.relative(process.cwd(), outputDir),
   skill: binding.skill,
   upstream: binding.upstream,
   registry: binding.registry,
   digests: {
     markdown_sha256: markdownDigest,
-    x_sha256: xDigest,
+    profile_sha256: profileDigest,
     upstream_blob_sha: observedBlobSha,
   },
 }, null, 2)}\n`);
@@ -58,7 +83,7 @@ process.stdout.write(`${JSON.stringify({
   upstream_commit: binding.upstream.commit,
   upstream_blob_sha: observedBlobSha,
   markdown_sha256: markdownDigest,
-  x_sha256: xDigest,
+  profile_sha256: profileDigest,
   publish: publish ? JSON.parse(publish).publish : undefined,
 }, null, 2)}\n`);
 
@@ -87,7 +112,7 @@ async function fetchUpstreamSkill(binding) {
   return Buffer.from(content.content.replace(/\n/g, ""), "base64").toString("utf8");
 }
 
-function validateBinding(binding, skillFrontmatter, observedBlobSha, xManifestPath) {
+function validateBinding(binding, skillFrontmatter, observedBlobSha, profileDocumentPath) {
   if (binding.schema !== "runx.registry_binding.v1") {
     throw new Error("registry binding schema must be runx.registry_binding.v1");
   }
@@ -109,8 +134,8 @@ function validateBinding(binding, skillFrontmatter, observedBlobSha, xManifestPa
   if (binding.registry?.materialized_package_is_registry_artifact !== true) {
     throw new Error("binding must mark materialized_package_is_registry_artifact=true");
   }
-  if (path.basename(xManifestPath) !== "x.yaml") {
-    throw new Error("registry binding x manifest must be named x.yaml");
+  if (path.basename(profileDocumentPath) !== "X.yaml") {
+    throw new Error("registry profile artifact must be named X.yaml");
   }
 }
 
@@ -174,12 +199,37 @@ function encodePath(value) {
   return value.split("/").map(encodeURIComponent).join("/");
 }
 
+function extractRunnerNames(profileDocument) {
+  const names = [];
+  let inRunners = false;
+
+  for (const line of profileDocument.split(/\r?\n/)) {
+    if (!inRunners) {
+      if (/^runners:\s*$/.test(line)) {
+        inRunners = true;
+      }
+      continue;
+    }
+
+    if (!line.startsWith("  ")) {
+      break;
+    }
+
+    const match = line.match(/^  ([A-Za-z0-9_.-]+):\s*$/);
+    if (match?.[1]) {
+      names.push(match[1]);
+    }
+  }
+
+  return names;
+}
+
 function parseArgs(argv) {
   const parsed = {};
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
-    if (!parsed.bindingPath && !token.startsWith("--")) {
-      parsed.bindingPath = token;
+    if (!parsed.profilePath && !token.startsWith("--")) {
+      parsed.profilePath = token;
       continue;
     }
     if (token === "--output-dir") {
@@ -190,8 +240,8 @@ function parseArgs(argv) {
       parsed.skillFile = requireValue(argv, ++index, token);
       continue;
     }
-    if (token === "--x-manifest") {
-      parsed.xManifestPath = requireValue(argv, ++index, token);
+    if (token === "--profiled") {
+      parsed.profileDocumentPath = requireValue(argv, ++index, token);
       continue;
     }
     if (token === "--registry-dir") {
@@ -200,7 +250,7 @@ function parseArgs(argv) {
     }
     throw new Error(`Unknown argument: ${token}`);
   }
-  if (!parsed.bindingPath) {
+  if (!parsed.profilePath) {
     throw new Error("Usage: node scripts/materialize-upstream-skill-binding.mjs <registry-binding.json> [--output-dir dist/path] [--skill-file SKILL.md] [--registry-dir .tmp/registry]");
   }
   return parsed;

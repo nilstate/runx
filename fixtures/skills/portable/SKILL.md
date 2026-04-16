@@ -1,5 +1,5 @@
 ---
-name: standard-only
+name: portable
 description: A portable standard skill without runx execution metadata.
 ---
 

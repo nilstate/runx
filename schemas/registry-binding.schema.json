@@ -72,7 +72,7 @@
     },
     "registry": {
       "type": "object",
-      "required": ["owner", "trust_tier", "version", "x_yaml_path", "materialized_package_is_registry_artifact"],
+      "required": ["owner", "trust_tier", "version", "profile_path", "materialized_package_is_registry_artifact"],
       "properties": {
         "owner": {
           "type": "string"
@@ -89,7 +89,7 @@
         "run_command": {
           "type": "string"
         },
-        "x_yaml_path": {
+        "profile_path": {
           "type": "string"
         },
         "materialized_package_is_registry_artifact": {

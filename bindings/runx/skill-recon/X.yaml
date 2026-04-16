@@ -1,8 +1,8 @@
-skill: skill-research
+skill: skill-recon
 
 harness:
   cases:
-    - name: skill-research-validates-proposed-flow
+    - name: skill-recon-validates-proposed-flow
       inputs:
         objective: Build a moltbook presence automation lane
         decomposition:
@@ -19,7 +19,7 @@ harness:
           open_questions: []
       caller:
         answers:
-          agent_step.skill-research.output:
+          agent_step.skill-recon.output:
             findings:
               - claim: Use separate read and post runners for Moltbook.
                 source: plans/runx.md
@@ -46,22 +46,22 @@ harness:
           kind: skill_execution
           status: success
           subject:
-            skill_name: skill-research
+            skill_name: skill-recon
             source_type: agent-step
 
 runners:
-  skill-research-agent:
+  skill-recon-agent:
     default: true
     type: agent-step
     agent: researcher
-    task: skill-research
+    task: skill-recon
     outputs:
       findings: array
       recommended_flow: array
       sources: array
       risks: array
     artifacts:
-      wrap_as: skill_research_report
+      wrap_as: skill_recon_report
     inputs:
       objective:
         type: string

@@ -1,9 +1,9 @@
 ---
-name: skill-research
+name: skill-recon
 description: Research best-in-class skill and composite execution patterns for a proposed runx flow.
 ---
 
-# Skill Research
+# Skill Recon
 
 Research existing tools, standards, protocols, and skill patterns relevant to
 a proposed runx skill or execution flow. Produce verified findings that

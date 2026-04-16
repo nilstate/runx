@@ -11,7 +11,7 @@ import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.j
 describe("sourcey parser", () => {
   it("keeps the portable skill standard while X owns the mixed-runner contract", async () => {
     const skill = validateSkill(parseSkillMarkdown(await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8")));
-    const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8")));
+    const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8")));
     const runner = manifest.runners.sourcey;
 
     expect(skill.name).toBe("sourcey");

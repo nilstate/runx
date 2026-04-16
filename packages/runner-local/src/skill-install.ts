@@ -31,22 +31,21 @@ export interface InstallLocalSkillOptions {
 export interface InstallLocalSkillResult {
   readonly status: "installed" | "unchanged";
   readonly destination: string;
-  readonly lockfile: string;
   readonly skill_name: string;
   readonly source: string;
   readonly source_label: string;
   readonly skill_id?: string;
   readonly version?: string;
   readonly digest: string;
-  readonly xDigest?: string;
-  readonly xDestination?: string;
+  readonly profileDigest?: string;
+  readonly profileStatePath?: string;
   readonly runnerNames: readonly string[];
   readonly trust_tier?: string;
 }
 
 interface FetchedInstallCandidate {
   readonly markdown: string;
-  readonly xManifest?: string;
+  readonly profileDocument?: string;
   readonly origin: SkillInstallOrigin;
 }
 
@@ -65,32 +64,33 @@ export async function installLocalSkill(options: InstallLocalSkillOptions): Prom
     ...candidate.origin,
     digest: actualDigest,
   });
-  const xDigest = candidate.xManifest ? hashString(candidate.xManifest) : undefined;
-  if (candidate.origin.x_digest && candidate.origin.x_digest !== xDigest) {
+  const profileDigest = candidate.profileDocument ? hashString(candidate.profileDocument) : undefined;
+  if (candidate.origin.profile_digest && candidate.origin.profile_digest !== profileDigest) {
     throw new Error(
-      `X metadata digest mismatch for ${options.ref}: expected sha256:${candidate.origin.x_digest}, received sha256:${xDigest ?? "none"}.`,
+      `Binding digest mismatch for ${options.ref}: expected sha256:${candidate.origin.profile_digest}, received sha256:${profileDigest ?? "none"}.`,
     );
   }
-  const runnerNames = validateInstallXManifest(install.skill.name, candidate.xManifest, candidate.origin.runner_names);
+  const runnerNames = validateInstallBindingManifest(install.skill.name, candidate.profileDocument, candidate.origin.runner_names);
   const packageRoot = path.join(options.destinationRoot, ...safeSkillPackageParts(options.ref, install.skill.name));
   const destination = path.join(packageRoot, "SKILL.md");
-  const xDestination = candidate.xManifest ? path.join(packageRoot, "x.yaml") : undefined;
-  const lockfile = path.join(packageRoot, "runx.lock.json");
+  const profileStatePath = candidate.profileDocument ? path.join(packageRoot, ".runx", "profile.json") : undefined;
   const existing = await readExisting(destination);
-  const existingX = xDestination ? await readExisting(xDestination) : undefined;
-  const shouldWriteX = xDestination !== undefined && existingX === undefined;
+  const existingProfileState = profileStatePath ? await readExisting(profileStatePath) : undefined;
+  const nextProfileState = candidate.profileDocument
+    ? `${JSON.stringify(buildProfileState(install.skill.name, actualDigest, candidate.profileDocument, profileDigest, runnerNames, install.origin), null, 2)}\n`
+    : undefined;
+  const shouldWriteProfileState = profileStatePath !== undefined && existingProfileState === undefined;
   const result: InstallLocalSkillResult = {
-    status: existing === undefined || shouldWriteX ? "installed" : "unchanged",
+    status: existing === undefined || shouldWriteProfileState ? "installed" : "unchanged",
     destination,
-    lockfile,
     skill_name: install.skill.name,
     source: install.origin.source,
     source_label: install.origin.source_label,
     skill_id: install.origin.skill_id,
     version: install.origin.version,
     digest: actualDigest,
-    xDigest,
-    xDestination,
+    profileDigest,
+    profileStatePath,
     runnerNames,
     trust_tier: install.origin.trust_tier,
   };
@@ -98,18 +98,18 @@ export async function installLocalSkill(options: InstallLocalSkillOptions): Prom
   if (existing !== undefined && hashString(existing) !== actualDigest) {
     throw new Error(`Skill install destination already exists with different content: ${destination}`);
   }
-  if (candidate.xManifest && xDestination && existingX !== undefined && hashString(existingX) !== xDigest) {
-    throw new Error(`Skill install X metadata already exists with different content: ${xDestination}`);
+  if (profileStatePath && existingProfileState !== undefined && nextProfileState !== undefined && existingProfileState !== nextProfileState) {
+    throw new Error(`Skill install profile state already exists with different content: ${profileStatePath}`);
   }
 
   await mkdir(packageRoot, { recursive: true });
   if (existing === undefined) {
     await writeAtomic(destination, install.markdown);
   }
-  if (candidate.xManifest && xDestination && shouldWriteX) {
-    await writeAtomic(xDestination, candidate.xManifest);
+  if (profileStatePath && nextProfileState && shouldWriteProfileState) {
+    await mkdir(path.dirname(profileStatePath), { recursive: true });
+    await writeAtomic(profileStatePath, nextProfileState);
   }
-  await writeAtomic(lockfile, `${JSON.stringify(buildInstallLock(result, install.origin), null, 2)}\n`, true);
 
   return result;
 }
@@ -124,7 +124,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
     }
     return {
       markdown: resolved.markdown,
-      xManifest: resolved.xManifest,
+      profileDocument: resolved.profileDocument,
       origin: {
         source: resolved.result.source,
         source_label: resolved.result.source_label,
@@ -132,7 +132,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
         skill_id: resolved.result.skill_id,
         version: resolved.result.version,
         digest: resolved.result.digest,
-        x_digest: resolved.result.x_digest,
+        profile_digest: resolved.result.profile_digest,
         runner_names: resolved.result.runner_names,
         trust_tier: resolved.result.trust_tier,
       },
@@ -158,7 +158,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
     });
     return {
       markdown: acquired.markdown,
-      xManifest: acquired.x_manifest,
+      profileDocument: acquired.profile_document,
       origin: {
         source: "runx-registry",
         source_label: "runx registry",
@@ -166,7 +166,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
         skill_id: acquired.skill_id,
         version: acquired.version,
         digest: acquired.digest,
-        x_digest: acquired.x_digest,
+        profile_digest: acquired.profile_digest,
         runner_names: acquired.runner_names,
         trust_tier: "runx-derived",
       },
@@ -186,7 +186,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
   }
   return {
     markdown: resolved.markdown,
-    xManifest: resolved.x_manifest,
+    profileDocument: resolved.profile_document,
     origin: {
       source: resolved.source,
       source_label: resolved.source_label,
@@ -194,7 +194,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
       skill_id: resolved.skill_id,
       version: resolved.version,
       digest: resolved.digest,
-      x_digest: resolved.x_digest,
+      profile_digest: resolved.profile_digest,
       runner_names: resolved.runner_names,
       trust_tier: "runx-derived",
     },
@@ -205,39 +205,40 @@ function isRemoteRegistryUrl(value: string | undefined): value is string {
   return typeof value === "string" && /^https?:\/\//i.test(value);
 }
 
-function buildInstallLock(result: InstallLocalSkillResult, origin: SkillInstallOrigin): Readonly<Record<string, unknown>> {
+function buildProfileState(
+  skillName: string,
+  digest: string,
+  profileDocument: string,
+  profileDigest: string | undefined,
+  runnerNames: readonly string[],
+  origin: SkillInstallOrigin,
+): Readonly<Record<string, unknown>> {
   return {
-    schema_version: "runx.skill-lock.v1",
-    skill_name: result.skill_name,
-    destination: result.destination,
-    digest: result.digest,
-    artifacts: {
-      skill: {
-        path: result.destination,
-        digest: result.digest,
-      },
-      x: result.xDestination && result.xDigest
-        ? {
-            path: result.xDestination,
-            digest: result.xDigest,
-            runner_names: result.runnerNames,
-          }
-        : undefined,
+    schema_version: "runx.skill-profile.v1",
+    skill: {
+      name: skillName,
+      path: "SKILL.md",
+      digest,
+    },
+    profile: {
+      document: profileDocument,
+      digest: profileDigest,
+      runner_names: runnerNames,
     },
     origin,
   };
 }
 
-function validateInstallXManifest(
+function validateInstallBindingManifest(
   skillName: string,
-  xManifest: string | undefined,
+  profileDocument: string | undefined,
   advertisedRunnerNames: readonly string[] | undefined,
 ): readonly string[] {
-  if (!xManifest) {
+  if (!profileDocument) {
     return advertisedRunnerNames ?? [];
   }
 
-  const manifest = validateRunnerManifest(parseRunnerManifestYaml(xManifest));
+  const manifest = validateRunnerManifest(parseRunnerManifestYaml(profileDocument));
   if (manifest.skill && manifest.skill !== skillName) {
     throw new Error(`Runner manifest skill '${manifest.skill}' does not match skill '${skillName}'.`);
   }

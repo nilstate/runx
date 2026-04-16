@@ -15,7 +15,7 @@ harness:
             verdict: needs_update
             failure_summary: The review payload was consumed from stdout instead of an artifact envelope.
             improvement_proposals:
-              - target: skills/improve-skill/x.yaml
+              - target: bindings/runx/improve-skill/X.yaml
                 change: read review-receipt.receipt_review.data in the harness-author step
                 rationale: Keep the review object structured for downstream planning.
                 risk: Low; only dependent tests need updating.

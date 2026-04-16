@@ -19,7 +19,7 @@ describe("upstream registry bindings", () => {
       registry: { owner: string; trust_tier: string; version: string; materialized_package_is_registry_artifact: boolean };
       harness: { status: string; case_count: number };
     };
-    const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile("bindings/nilstate/icey-server-operator/x.yaml", "utf8")));
+    const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile("bindings/nilstate/icey-server-operator/X.yaml", "utf8")));
 
     expect(binding).toMatchObject({
       schema: "runx.registry_binding.v1",
@@ -69,7 +69,31 @@ description: Safely build, validate, package, release, and operate the icey-serv
 Fixture markdown used only to exercise the runx-owned binding harness.
 `,
       );
-      await writeFile(path.join(tempDir, "x.yaml"), await readFile("bindings/nilstate/icey-server-operator/x.yaml", "utf8"));
+      const profileDocument = await readFile("bindings/nilstate/icey-server-operator/X.yaml", "utf8");
+      await mkdir(path.join(tempDir, ".runx"), { recursive: true });
+      await writeFile(
+        path.join(tempDir, ".runx/profile.json"),
+        `${JSON.stringify(
+          {
+            schema_version: "runx.skill-profile.v1",
+            skill: {
+              name: "icey-server-operator",
+              path: "SKILL.md",
+              digest: "fixture-skill-digest",
+            },
+            profile: {
+              document: profileDocument,
+              digest: "fixture-profile-digest",
+              runner_names: ["operator-plan"],
+            },
+            origin: {
+              source: "fixture",
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
 
       const result = await runHarnessTarget(tempDir);
 
@@ -118,7 +142,7 @@ Portable upstream skill fixture.
           owner: "fixture",
           trust_tier: "upstream-owned",
           version: "upstream-abc123",
-          x_yaml_path: "x.yaml",
+          profile_path: "X.yaml",
           materialized_package_is_registry_artifact: true,
         },
         harness: {
@@ -126,7 +150,7 @@ Portable upstream skill fixture.
           case_count: 1,
         },
       };
-      const xManifest = `skill: temp-upstream
+      const profileDocument = `skill: temp-upstream
 runners:
   default:
     default: true
@@ -152,7 +176,7 @@ harness:
       const outputDir = path.join(tempDir, "out");
       await mkdir(bindingDir);
       await writeFile(path.join(bindingDir, "registry-binding.json"), `${JSON.stringify(binding, null, 2)}\n`);
-      await writeFile(path.join(bindingDir, "x.yaml"), xManifest);
+      await writeFile(path.join(bindingDir, "X.yaml"), profileDocument);
       await writeFile(path.join(tempDir, "SKILL.md"), skill);
 
       execFileSync("node", [
@@ -165,7 +189,14 @@ harness:
       ], { encoding: "utf8" });
 
       await expect(readFile(path.join(outputDir, "SKILL.md"), "utf8")).resolves.toBe(skill);
-      await expect(readFile(path.join(outputDir, "x.yaml"), "utf8")).resolves.toBe(xManifest);
+      const profileState = JSON.parse(await readFile(path.join(outputDir, ".runx/profile.json"), "utf8")) as {
+        schema_version: string;
+        profile: {
+          document: string;
+        };
+      };
+      expect(profileState.schema_version).toBe("runx.skill-profile.v1");
+      expect(profileState.profile.document).toBe(profileDocument);
       await expect(readFile(path.join(outputDir, "materialization.json"), "utf8")).resolves.toContain(gitBlobSha(skill));
     } finally {
       await rm(tempDir, { recursive: true, force: true });

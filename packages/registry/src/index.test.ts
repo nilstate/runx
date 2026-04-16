@@ -22,12 +22,12 @@ describe("registry package", () => {
     try {
       const store = createFileRegistryStore(tempDir);
       const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-      const xManifest = await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8");
+      const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
         owner: "0state",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
-        xManifest,
+        profileDocument,
       });
 
       expect(version).toMatchObject({
@@ -35,10 +35,10 @@ describe("registry package", () => {
         name: "sourcey",
         source_type: "agent",
         version: "1.0.0",
-        x_manifest: xManifest,
+        profile_document: profileDocument,
         runner_names: ["agent", "sourcey"],
       });
-      expect(version.x_digest).toMatch(/^[a-f0-9]{64}$/);
+      expect(version.profile_digest).toMatch(/^[a-f0-9]{64}$/);
       expect(version.markdown).toBe(markdown);
 
       const trustSignals = deriveTrustSignals(version);
@@ -64,9 +64,9 @@ describe("registry package", () => {
         source_label: "runx registry",
         source_type: "agent",
         trust_tier: "runx-derived",
-        runner_mode: "x-manifest",
+        profile_mode: "profiled",
         runner_names: ["agent", "sourcey"],
-        x_digest: version.x_digest,
+        profile_digest: version.profile_digest,
       });
 
       await expect(resolveRunxLink(store, "0state/sourcey", "1.0.0")).resolves.toMatchObject({
@@ -80,8 +80,8 @@ describe("registry package", () => {
         version: "1.0.0",
         digest: version.digest,
         markdown,
-        x_manifest: xManifest,
-        x_digest: version.x_digest,
+        profile_document: profileDocument,
+        profile_digest: version.profile_digest,
         runner_names: ["agent", "sourcey"],
       });
     } finally {
@@ -89,7 +89,7 @@ describe("registry package", () => {
     }
   });
 
-  it("extracts registry tags from X runner metadata without requiring runx frontmatter", async () => {
+  it("extracts registry tags from binding runner metadata without requiring runx frontmatter", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-x-tags-"));
 
     try {
@@ -101,7 +101,7 @@ description: Upstream portable skill.
 
 Portable skill markdown without runx-specific frontmatter.
 `;
-      const xManifest = `skill: upstream-tagged
+      const profileDocument = `skill: upstream-tagged
 runners:
   default:
     default: true
@@ -116,7 +116,7 @@ runners:
       const version = await ingestSkillMarkdown(store, markdown, {
         owner: "nilstate",
         version: "upstream-abc123",
-        xManifest,
+        profileDocument,
       });
 
       expect(version.tags).toEqual(["upstream-owned", "operator"]);
@@ -137,7 +137,7 @@ description: Upstream portable skill.
 
 Portable skill markdown without runx-specific frontmatter.
 `;
-      const xManifest = `skill: upstream-tagged
+      const profileDocument = `skill: upstream-tagged
 runners:
   default:
     default: true
@@ -153,7 +153,7 @@ runners:
         owner: "nilstate",
         version: "upstream-abc123",
         createdAt: "2026-04-10T00:00:00.000Z",
-        xManifest,
+        profileDocument,
       });
       const legacyRecord = {
         ...derived,
@@ -170,7 +170,7 @@ runners:
         owner: "nilstate",
         version: "upstream-abc123",
         createdAt: "2026-04-10T00:00:00.000Z",
-        xManifest,
+        profileDocument,
       });
 
       expect(refreshed.created).toBe(false);
@@ -185,12 +185,12 @@ runners:
     }
   });
 
-  it("keeps standard-only registry skills compatible without X metadata", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-standard-only-"));
+  it("keeps portable registry skills compatible without a execution profile", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-portable-"));
 
     try {
       const store = createFileRegistryStore(tempDir);
-      const markdown = await readFile(path.resolve("fixtures/skills/standard-only/SKILL.md"), "utf8");
+      const markdown = await readFile(path.resolve("fixtures/skills/portable/SKILL.md"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
         owner: "0state",
         version: "1.0.0",
@@ -198,20 +198,20 @@ runners:
       });
 
       expect(version).toMatchObject({
-        skill_id: "0state/standard-only",
+        skill_id: "0state/portable",
         source_type: "agent",
         runner_names: [],
       });
-      expect(version.x_manifest).toBeUndefined();
-      expect(version.x_digest).toBeUndefined();
+      expect(version.profile_document).toBeUndefined();
+      expect(version.profile_digest).toBeUndefined();
 
-      const searchResults = await searchRegistry(store, "standard-only");
+      const searchResults = await searchRegistry(store, "portable");
       expect(searchResults).toEqual([
         expect.objectContaining({
-          skill_id: "0state/standard-only",
-          runner_mode: "standard-only",
+          skill_id: "0state/portable",
+          profile_mode: "portable",
           runner_names: [],
-          x_digest: undefined,
+          profile_digest: undefined,
         }),
       ]);
     } finally {

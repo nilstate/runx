@@ -46,17 +46,17 @@ describe("publishSkillMarkdown", () => {
     }
   });
 
-  it("publishes X metadata as a separate artifact", async () => {
+  it("publishes the execution profile as a separate artifact", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-registry-publish-x-"));
     const client = createLocalRegistryClient(createFileRegistryStore(tempDir));
     const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
-    const xManifest = await readFile(path.resolve("skills/sourcey/x.yaml"), "utf8");
+    const profileDocument = await readFile(path.resolve("bindings/runx/sourcey/X.yaml"), "utf8");
 
     try {
       const result = await publishSkillMarkdown(client, markdown, {
         owner: "0state",
         version: "1.0.0",
-        xManifest,
+        profileDocument,
       });
 
       expect(result).toMatchObject({
@@ -65,11 +65,11 @@ describe("publishSkillMarkdown", () => {
         runner_names: ["agent", "sourcey"],
         record: {
           markdown,
-          x_manifest: xManifest,
+          profile_document: profileDocument,
           runner_names: ["agent", "sourcey"],
         },
       });
-      expect(result.x_digest).toMatch(/^[a-f0-9]{64}$/);
+      expect(result.profile_digest).toMatch(/^[a-f0-9]{64}$/);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

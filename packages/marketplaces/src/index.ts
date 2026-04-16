@@ -2,7 +2,7 @@ export const marketplacesPackage = "@runx/marketplaces";
 
 export type SkillSearchSource = "runx-registry" | string;
 export type SkillSearchTrustTier = "runx-derived" | "external-unverified";
-export type SkillRunnerMode = "standard-only" | "x-manifest";
+export type SkillRunnerMode = "portable" | "profiled";
 
 export interface SkillSearchResult {
   readonly skill_id: string;
@@ -17,10 +17,10 @@ export interface SkillSearchResult {
   readonly trust_tier: SkillSearchTrustTier;
   readonly required_scopes: readonly string[];
   readonly tags: readonly string[];
-  readonly runner_mode: SkillRunnerMode;
+  readonly profile_mode: SkillRunnerMode;
   readonly runner_names: readonly string[];
-  readonly x_digest?: string;
-  readonly x_trust_tier?: SkillSearchTrustTier;
+  readonly profile_digest?: string;
+  readonly profile_trust_tier?: SkillSearchTrustTier;
   readonly trust_signals?: readonly {
     readonly id: string;
     readonly label: string;
@@ -41,7 +41,7 @@ export interface MarketplaceAdapter {
   readonly search: (query: string, options?: MarketplaceSearchOptions) => Promise<readonly SkillSearchResult[]>;
   readonly resolve?: (ref: string, options?: { readonly version?: string }) => Promise<{
     readonly markdown: string;
-    readonly xManifest?: string;
+    readonly profileDocument?: string;
     readonly result: SkillSearchResult;
   } | undefined>;
 }

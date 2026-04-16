@@ -1,9 +1,11 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import os from "node:os";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { parseRunnerManifestYaml, parseSkillMarkdown, validateRunnerManifest } from "../../parser/src/index.js";
 
 export interface RunxConfigFile {
   readonly agent?: {
@@ -15,7 +17,14 @@ export interface RunxConfigFile {
 
 export interface LocalSkillPackage {
   readonly markdown: string;
-  readonly xManifest?: string;
+  readonly profileDocument?: string;
+  readonly profileSourcePath?: string;
+}
+
+export interface ResolvedLocalProfile {
+  readonly profileDocument?: string;
+  readonly profileSourcePath?: string;
+  readonly source: "profile-state" | "workspace-bindings" | "none";
 }
 
 type RunxConfigKey = "agent.provider" | "agent.model" | "agent.api_key";
@@ -200,12 +209,50 @@ export async function loadLocalSkillPackage(skillPath: string): Promise<LocalSki
   if (!existsSync(markdownPath)) {
     throw new Error(`Skill package '${resolvedPath}' is missing SKILL.md.`);
   }
-  const xManifestPath = pathStat.isDirectory()
-    ? path.join(resolvedPath, "x.yaml")
-    : path.join(path.dirname(resolvedPath), "x.yaml");
+  const markdown = await readFile(markdownPath, "utf8");
+  const raw = parseSkillMarkdown(markdown);
+  const skillName = typeof raw.frontmatter.name === "string" ? raw.frontmatter.name : undefined;
+  const binding = skillName
+    ? await resolveLocalSkillProfile(markdownPath, skillName)
+    : { source: "none" as const };
   return {
-    markdown: await readFile(markdownPath, "utf8"),
-    xManifest: await readOptionalFile(xManifestPath),
+    markdown,
+    profileDocument: binding.profileDocument,
+    profileSourcePath: binding.profileSourcePath,
+  };
+}
+
+export async function resolveLocalSkillProfile(
+  skillPath: string,
+  skillName: string,
+): Promise<ResolvedLocalProfile> {
+  const resolvedPath = path.resolve(skillPath);
+  const targetStat = await stat(resolvedPath);
+  const skillDirectory = targetStat.isDirectory() ? resolvedPath : path.dirname(resolvedPath);
+
+  const profileState = await readProfileState(skillDirectory, skillName);
+  if (profileState) {
+    return {
+      profileDocument: profileState.profileDocument,
+      profileSourcePath: profileState.profileSourcePath,
+      source: "profile-state",
+    };
+  }
+
+  for (const bindingRoot of collectBindingRoots(skillDirectory)) {
+    const match = await readWorkspaceProfile(skillDirectory, bindingRoot, skillName);
+    if (!match) {
+      continue;
+    }
+    return {
+      profileDocument: match.profileDocument,
+      profileSourcePath: match.profileSourcePath,
+      source: "workspace-bindings",
+    };
+  }
+
+  return {
+    source: "none",
   };
 }
 
@@ -318,8 +365,140 @@ async function readOptionalFile(filePath: string): Promise<string | undefined> {
   }
 }
 
+async function readProfileState(
+  skillDirectory: string,
+  skillName: string,
+): Promise<{ readonly profileDocument: string; readonly profileSourcePath: string } | undefined> {
+  const profileStatePath = path.join(skillDirectory, ".runx", "profile.json");
+  const profileState = await readOptionalFile(profileStatePath);
+  if (!profileState) {
+    return undefined;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(profileState);
+  } catch (error) {
+    throw new Error(`Skill profile state is not valid JSON: ${profileStatePath}`);
+  }
+
+  if (!isRecord(parsed)) {
+    throw new Error(`Skill profile state must be an object: ${profileStatePath}`);
+  }
+
+  const profile = parsed.profile;
+  if (!isRecord(profile) || typeof profile.document !== "string" || profile.document.length === 0) {
+    return undefined;
+  }
+
+  validateBindingManifestSkill(profileStatePath, profile.document, skillName);
+  return {
+    profileDocument: profile.document,
+    profileSourcePath: profileStatePath,
+  };
+}
+
+function collectBindingRoots(start: string): readonly string[] {
+  const roots: string[] = [];
+  const seen = new Set<string>();
+  let current = path.resolve(start);
+  while (true) {
+    for (const candidate of [path.join(current, "bindings")]) {
+      if (existsSync(candidate) && !seen.has(candidate)) {
+        roots.push(candidate);
+        seen.add(candidate);
+      }
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+  return roots;
+}
+
+async function readWorkspaceProfile(
+  skillDirectory: string,
+  bindingRoot: string,
+  skillName: string,
+): Promise<{ readonly profileDocument: string; readonly profileSourcePath: string } | undefined> {
+  const locator = resolveBindingLocator(skillDirectory, bindingRoot);
+  if (!locator) {
+    return undefined;
+  }
+  if (locator.skillName !== skillName) {
+    throw new Error(
+      `Skill package '${skillDirectory}' resolves to binding path ${locator.owner}/${locator.skillName}, but SKILL.md declares '${skillName}'.`,
+    );
+  }
+
+  const candidatePath = path.join(bindingRoot, locator.owner, locator.skillName, "X.yaml");
+  if (!existsSync(candidatePath)) {
+    return undefined;
+  }
+
+  const manifestText = await readOptionalFile(candidatePath);
+  if (!manifestText) {
+    return undefined;
+  }
+  validateBindingManifestSkill(candidatePath, manifestText, skillName);
+  return {
+    profileDocument: manifestText,
+    profileSourcePath: candidatePath,
+  };
+}
+
+function validateBindingManifestSkill(candidatePath: string, manifestText: string, skillName: string): void {
+  const manifest = validateRunnerManifest(parseRunnerManifestYaml(manifestText));
+  if (manifest.skill && manifest.skill !== skillName) {
+    throw new Error(`Binding manifest skill '${manifest.skill}' does not match skill '${skillName}': ${candidatePath}`);
+  }
+}
+
+function resolveBindingLocator(
+  skillDirectory: string,
+  bindingRoot: string,
+): { readonly owner: string; readonly skillName: string } | undefined {
+  const bindingContainer = path.dirname(bindingRoot);
+  const relativeSkillPath = path.relative(bindingContainer, skillDirectory);
+  if (
+    !relativeSkillPath
+    || relativeSkillPath.startsWith("..")
+    || path.isAbsolute(relativeSkillPath)
+  ) {
+    return undefined;
+  }
+
+  const segments = relativeSkillPath.split(path.sep).filter((segment) => segment.length > 0);
+  const skillSegments =
+    segments[0] === "skills"
+      ? segments.slice(1)
+      : undefined;
+  if (!skillSegments || skillSegments.length === 0) {
+    return undefined;
+  }
+  if (skillSegments.length === 1) {
+    return {
+      owner: "runx",
+      skillName: skillSegments[0]!,
+    };
+  }
+  if (skillSegments.length === 2) {
+    return {
+      owner: skillSegments[0]!,
+      skillName: skillSegments[1]!,
+    };
+  }
+  return undefined;
+}
+
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function configKeyReadError(keyPath: string, cause?: unknown): Error {

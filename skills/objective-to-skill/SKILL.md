@@ -9,7 +9,7 @@ Convert an automation or product objective into a practical, testable runx
 skill package.
 
 This is a composite skill that chains three reusable builder capabilities:
-`objective-decompose` → `skill-research` → `harness-author`. It takes a
+`objective-decompose` → `skill-recon` → `harness-author`. It takes a
 high-level goal and produces everything needed to implement and test a
 new skill.
 
@@ -20,21 +20,21 @@ new skill.
    deliverable, governance boundaries, required skills, data dependencies,
    scope requirements, and open questions.
 
-2. **Research the domain** (via `skill-research`). Given the decomposition,
+2. **Research the domain** (via `skill-recon`). Given the decomposition,
    investigates existing tools, protocols, prior art in the runx ecosystem,
    and failure modes. Produces verified findings with source references
    that constrain the skill design.
 
 3. **Author the skill and fixtures** (via `harness-author`). Using the
    decomposition and research, drafts the skill contract (SKILL.md),
-   composite execution plan (x.yaml chain definition if needed), replayable
+   composite execution plan (execution profile chain definition if needed), replayable
    harness fixtures, and acceptance checks.
 
 ## What this skill produces
 
 - **Skill contract**: a complete SKILL.md with frontmatter, instructions,
   inputs, outputs, and boundary rules. Ready to implement.
-- **Execution plan**: an x.yaml chain definition when the skill needs
+- **Execution plan**: a execution profile chain definition when the skill needs
   multiple governed steps. Includes step ids, skill references, scopes,
   context edges, and policy transitions.
 - **Harness fixtures**: replayable test cases covering the happy path
@@ -55,7 +55,7 @@ new skill.
 
 - For improving an existing skill — use `improve-skill` instead.
 - For just the decomposition step — use `objective-decompose` directly.
-- For just research — use `skill-research` directly.
+- For just research — use `skill-recon` directly.
 - When the skill is trivial enough that writing SKILL.md directly is
   faster than running a three-step chain.
 

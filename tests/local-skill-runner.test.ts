@@ -46,11 +46,11 @@ describe("local skill runner", () => {
     }
   });
 
-  it("runs a standard-only skill through the agent-mediated runner", async () => {
+  it("runs a portable skill through the agent-mediated runner", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-standard-skill-"));
     const caller: Caller = {
       resolve: async (request) =>
-        request.kind === "cognitive_work" && request.id === "agent.standard-only.output"
+        request.kind === "cognitive_work" && request.id === "agent.portable.output"
           ? {
               actor: "agent",
               payload: {
@@ -64,7 +64,7 @@ describe("local skill runner", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/standard-only"),
+        skillPath: path.resolve("fixtures/skills/portable"),
         inputs: { message: "hi" },
         caller,
         receiptDir: path.join(tempDir, "receipts"),
@@ -87,7 +87,7 @@ describe("local skill runner", () => {
       expect(result.receipt.subject.source_type).toBe("agent");
       expect(result.receipt.metadata).toMatchObject({
         agent_runner: {
-          skill: "standard-only",
+          skill: "portable",
           status: "success",
         },
         runner: {

@@ -43,9 +43,9 @@ describe("skill-search CLI", () => {
           source_label: string;
           trust_tier: string;
           add_command: string;
-          runner_mode: string;
+          profile_mode: string;
           runner_names: string[];
-          x_digest?: string;
+          profile_digest?: string;
         }[];
       };
       expect(report).toMatchObject({
@@ -59,7 +59,7 @@ describe("skill-search CLI", () => {
             source: "runx-registry",
             source_label: "runx registry",
             trust_tier: "runx-derived",
-            runner_mode: "standard-only",
+            profile_mode: "portable",
             runner_names: [],
             add_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
           }),
@@ -95,7 +95,7 @@ describe("skill-search CLI", () => {
           source: string;
           source_label: string;
           trust_tier: string;
-          runner_mode: string;
+          profile_mode: string;
           runner_names: string[];
         }[];
       };
@@ -105,7 +105,7 @@ describe("skill-search CLI", () => {
           source: "fixture-marketplace",
           source_label: "Fixture Marketplace",
           trust_tier: "external-unverified",
-          runner_mode: "x-manifest",
+          profile_mode: "profiled",
           runner_names: ["sourcey-docs-cli"],
         }),
       ]);

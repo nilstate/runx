@@ -12,9 +12,9 @@ describe("marketplace search models", () => {
         source: "fixture-marketplace",
         source_label: "Fixture Marketplace",
         trust_tier: "external-unverified",
-        runner_mode: "x-manifest",
+        profile_mode: "profiled",
         runner_names: ["sourcey-docs-cli"],
-        x_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
+        profile_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     ]);
   });
@@ -25,13 +25,13 @@ describe("marketplace search models", () => {
     expect(resolved).toEqual(
       expect.objectContaining({
         markdown: expect.stringContaining("name: sourcey-docs"),
-        xManifest: expect.stringContaining("sourcey-docs-cli"),
+        profileDocument: expect.stringContaining("sourcey-docs-cli"),
         result: expect.objectContaining({
           skill_id: "fixture/sourcey-docs",
           source: "fixture-marketplace",
           source_type: "agent",
           trust_tier: "external-unverified",
-          runner_mode: "x-manifest",
+          profile_mode: "profiled",
           runner_names: ["sourcey-docs-cli"],
           digest: expect.stringMatching(/^[a-f0-9]{64}$/),
         }),
@@ -39,17 +39,17 @@ describe("marketplace search models", () => {
     );
   });
 
-  it("resolves standard-only marketplace skills without X metadata", async () => {
-    const resolved = await resolveMarketplaceSkill([createFixtureMarketplaceAdapter()], "fixture:marketplace-standard-only");
+  it("resolves portable marketplace skills without execution profile", async () => {
+    const resolved = await resolveMarketplaceSkill([createFixtureMarketplaceAdapter()], "fixture:marketplace-portable");
 
     expect(resolved).toEqual(
       expect.objectContaining({
-        markdown: expect.stringContaining("name: marketplace-standard-only"),
-        xManifest: undefined,
+        markdown: expect.stringContaining("name: marketplace-portable"),
+        profileDocument: undefined,
         result: expect.objectContaining({
-          skill_id: "fixture/marketplace-standard-only",
+          skill_id: "fixture/marketplace-portable",
           source_type: "agent",
-          runner_mode: "standard-only",
+          profile_mode: "portable",
           runner_names: [],
         }),
       }),

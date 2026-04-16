@@ -1,7 +1,8 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { parseRunnerManifestYaml, validateRunnerManifest } from "../../parser/src/index.js";
+import { resolveLocalSkillProfile } from "../../config/src/index.js";
+import { parseRunnerManifestYaml, parseSkillMarkdown, validateRunnerManifest } from "../../parser/src/index.js";
 
 import { runHarnessTarget, type HarnessRunOptions, type HarnessSuiteResult } from "./runner.js";
 
@@ -18,12 +19,12 @@ export async function validatePublishHarness(
   targetPath: string,
   options: HarnessRunOptions = {},
 ): Promise<PublishHarnessSummary> {
-  const manifestPath = await resolveInlineHarnessManifestPath(targetPath);
-  if (!manifestPath) {
+  const profileDocument = await resolveInlineHarnessProfileDocument(targetPath);
+  if (!profileDocument) {
     return emptyHarnessSummary();
   }
 
-  const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(manifestPath, "utf8")));
+  const manifest = validateRunnerManifest(parseRunnerManifestYaml(profileDocument));
   if (!manifest.harness || manifest.harness.cases.length === 0) {
     return emptyHarnessSummary();
   }
@@ -44,32 +45,21 @@ export async function validatePublishHarness(
   };
 }
 
-async function resolveInlineHarnessManifestPath(targetPath: string): Promise<string | undefined> {
+async function resolveInlineHarnessProfileDocument(targetPath: string): Promise<string | undefined> {
   const resolvedTargetPath = path.resolve(targetPath);
   const targetStat = await stat(resolvedTargetPath);
-
-  if (targetStat.isDirectory()) {
-    return await optionalExistingPath(path.join(resolvedTargetPath, "x.yaml"));
-  }
-
-  const basename = path.basename(resolvedTargetPath).toLowerCase();
-  if (basename === "x.yaml") {
-    return resolvedTargetPath;
-  }
-  if (basename === "skill.md") {
-    return await optionalExistingPath(path.join(path.dirname(resolvedTargetPath), "x.yaml"));
-  }
-
-  return undefined;
-}
-
-async function optionalExistingPath(filePath: string): Promise<string | undefined> {
-  try {
-    await stat(filePath);
-    return filePath;
-  } catch {
+  const skillPath = targetStat.isDirectory() ? path.join(resolvedTargetPath, "SKILL.md") : resolvedTargetPath;
+  if (path.basename(skillPath).toLowerCase() !== "skill.md") {
     return undefined;
   }
+  const markdown = await readFile(skillPath, "utf8");
+  const raw = parseSkillMarkdown(markdown);
+  const skillName = typeof raw.frontmatter.name === "string" ? raw.frontmatter.name : undefined;
+  if (!skillName) {
+    return undefined;
+  }
+  const profile = await resolveLocalSkillProfile(skillPath, skillName);
+  return profile.profileDocument;
 }
 
 function emptyHarnessSummary(): PublishHarnessSummary {

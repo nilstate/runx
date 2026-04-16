@@ -33,8 +33,10 @@ import {
   type ResolutionRequest,
   type ResolutionResponse,
   type SkillAdapter,
+  validateOutputContract,
 } from "../../executor/src/index.js";
 import { createFileMemoryStore } from "../../memory/src/index.js";
+import { resolveLocalSkillProfile } from "../../config/src/index.js";
 import {
   parseChainYaml,
   parseRunnerManifestYaml,
@@ -206,7 +208,6 @@ interface ResolvedSkillReference {
   readonly requestedPath: string;
   readonly skillPath: string;
   readonly skillDirectory: string;
-  readonly xManifestCandidates: readonly string[];
 }
 
 interface ResolvedToolReference {
@@ -802,7 +803,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
       : await readResumedSelectedRunner(options.receiptDir ?? defaultReceiptDir(options.env), options.resumeFromRunId);
   const runnerSelection = await resolveSkillRunner(
     validateSkill(rawSkill, { mode: "strict" }),
-    resolvedSkill.xManifestCandidates,
+    resolvedSkill.skillPath,
     options.runner ?? resumedRunnerName,
   );
   const skill = runnerSelection.skill;
@@ -1324,19 +1325,19 @@ function approvalReceiptMetadata(approval: ApprovalDecision): Readonly<Record<st
 
 async function resolveSkillRunner(
   skill: ValidatedSkill,
-  xManifestCandidates: readonly string[],
+  skillPath: string,
   runnerName: string | undefined,
 ): Promise<ResolvedRunnerSelection> {
-  const manifestPath = await findSkillXManifestPath(xManifestCandidates);
-  if (!manifestPath) {
+  const profile = await resolveLocalSkillProfile(skillPath, skill.name);
+  const profileDocument = profile.profileDocument;
+  if (!profileDocument) {
     if (!runnerName) {
       return { skill };
     }
-    throw new Error(`Runner '${runnerName}' requested but no x.yaml was found for skill '${skill.name}'.`);
+    throw new Error(`Runner '${runnerName}' requested but no execution profile was found for skill '${skill.name}'.`);
   }
 
-  const manifestContents = await readFile(manifestPath, "utf8");
-  const manifest = validateRunnerManifest(parseRunnerManifestYaml(manifestContents));
+  const manifest = validateRunnerManifest(parseRunnerManifestYaml(profileDocument));
   if (manifest.skill && manifest.skill !== skill.name) {
     throw new Error(`Runner manifest skill '${manifest.skill}' does not match skill '${skill.name}'.`);
   }
@@ -1355,19 +1356,6 @@ async function resolveSkillRunner(
     skill: applyRunner(skill, runner),
     selectedRunnerName,
   };
-}
-
-async function findSkillXManifestPath(candidates: readonly string[]): Promise<string | undefined> {
-  for (const candidate of candidates) {
-    try {
-      await readFile(candidate, "utf8");
-      return candidate;
-    } catch {
-      // Try the next supported layout.
-    }
-  }
-
-  return undefined;
 }
 
 function defaultRunnerName(runners: Readonly<Record<string, SkillRunnerDefinition>>): string | undefined {
@@ -1415,7 +1403,6 @@ async function resolveSkillReference(skillPath: string): Promise<ResolvedSkillRe
       requestedPath,
       skillPath: skillMarkdownPath,
       skillDirectory: requestedPath,
-      xManifestCandidates: [path.join(requestedPath, "x.yaml")],
     };
   }
 
@@ -1430,7 +1417,6 @@ async function resolveSkillReference(skillPath: string): Promise<ResolvedSkillRe
     requestedPath,
     skillPath: requestedPath,
     skillDirectory,
-    xManifestCandidates: [path.join(skillDirectory, "x.yaml")],
   };
 }
 
@@ -3405,7 +3391,7 @@ async function loadValidatedSkill(skillPath: string, runner?: string): Promise<V
   const rawSkill = parseSkillMarkdown(await readFile(resolvedSkill.skillPath, "utf8"));
   const selection = await resolveSkillRunner(
     validateSkill(rawSkill, { mode: "strict" }),
-    resolvedSkill.xManifestCandidates,
+    resolvedSkill.skillPath,
     runner,
   );
   return selection.skill;
@@ -3675,7 +3661,7 @@ function buildAgentStepRequest(request: Parameters<SkillAdapter["invoke"]>[0]): 
       current_context: request.currentContext ?? [],
       historical_context: request.historicalContext ?? [],
       provenance: request.contextProvenance ?? [],
-      expected_outputs: request.source.outputs ?? {},
+      expected_outputs: validateOutputContract(request.source.outputs, "source.outputs") ?? {},
       trust_boundary: "agent-mediated: runx yields skill context and receipts the supplied result on completion",
     },
   };

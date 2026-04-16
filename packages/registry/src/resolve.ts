@@ -3,8 +3,8 @@ import { slugify, type RegistrySkillVersion, type RegistryStore } from "./store.
 
 export interface RegistrySkillResolution {
   readonly markdown: string;
-  readonly x_manifest?: string;
-  readonly x_digest?: string;
+  readonly profile_document?: string;
+  readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly skill_id: string;
   readonly name: string;
@@ -41,8 +41,8 @@ export async function resolveRegistrySkill(
   const link = runxLinkForVersion(record, options.registryUrl);
   return {
     markdown: record.markdown,
-    x_manifest: record.x_manifest,
-    x_digest: record.x_digest,
+    profile_document: record.profile_document,
+    profile_digest: record.profile_digest,
     runner_names: record.runner_names,
     skill_id: record.skill_id,
     name: record.name,

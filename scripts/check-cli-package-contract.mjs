@@ -60,9 +60,9 @@ for (const required of [
 }
 for (const forbidden of [
   "skills/evolve/SKILL.md",
-  "skills/evolve/x.yaml",
+  "bindings/runx/evolve/X.yaml",
   "skills/sourcey/SKILL.md",
-  "skills/sourcey/x.yaml",
+  "bindings/runx/sourcey/X.yaml",
 ]) {
   if (files.has(forbidden)) {
     throw new Error(`CLI package unexpectedly ships ${forbidden}`);
