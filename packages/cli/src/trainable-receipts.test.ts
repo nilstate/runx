@@ -9,6 +9,7 @@ import { runCli } from "./index.js";
 import { writeLocalReceipt, writeReceiptOutcomeResolution } from "../../receipts/src/index.js";
 import { runLocalSkill, type Caller } from "../../runner-local/src/index.js";
 import type { SkillAdapter } from "../../executor/src/index.js";
+import { TRAINING_SCHEMA_REFS } from "./trainable-receipts.js";
 
 const caller: Caller = {
   resolve: async () => undefined,
@@ -16,6 +17,10 @@ const caller: Caller = {
 };
 
 describe("trainable receipts export", () => {
+  it("publishes the canonical trainable receipt row schema ref", () => {
+    expect(TRAINING_SCHEMA_REFS.trainable_receipt_row).toBe("https://runx.ai/spec/training/trainable-receipt-row.schema.json");
+  });
+
   it("streams filtered JSONL records with outcome resolution, journal entries, and prompt provenance without mutating receipts", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-trainable-receipts-"));
     const receiptDir = path.join(tempDir, "receipts");
@@ -125,6 +130,15 @@ describe("trainable receipts export", () => {
       const rows = stdout.contents().trim().split("\n").map((line) => JSON.parse(line));
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
+        kind: "runx.trainable-receipt-row.v1",
+        receipt_id: completeReceipt.id,
+        receipt_kind: "skill_execution",
+        skill_name: "github-triage",
+        chain_name: null,
+        owner: null,
+        source_type: "cli-tool",
+        status: "success",
+        disposition: "observing",
         receipt: {
           id: completeReceipt.id,
           kind: "skill_execution",
@@ -135,6 +149,11 @@ describe("trainable receipts export", () => {
         },
         receipt_verification: { status: "verified" },
         effective_outcome_state: "complete",
+        input_context: null,
+        surface_refs: [],
+        evidence_refs: [],
+        context_from: [],
+        artifact_ids: [],
         latest_outcome_resolution: {
           verification: { status: "verified" },
           resolution: {
@@ -153,6 +172,7 @@ describe("trainable receipts export", () => {
           prompt_version: "triage-v1",
         },
       });
+      expect(typeof rows[0].exported_at).toBe("string");
 
       const after = await readFile(completeReceiptPath, "utf8");
       expect(after).toBe(before);
