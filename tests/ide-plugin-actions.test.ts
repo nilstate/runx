@@ -47,7 +47,7 @@ describe("ide plugin actions", () => {
     try {
       const registryStore = createFileRegistryStore(path.join(tempDir, "registry"));
       await ingestSkillMarkdown(registryStore, await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"), {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
       });
@@ -69,8 +69,8 @@ describe("ide plugin actions", () => {
       expect(JSON.stringify(history.data)).toContain(receiptId ?? "");
 
       const search = await core.searchSkills({ query: "sourcey" });
-      expect(JSON.stringify(search.data)).toContain("0state/sourcey");
-      const add = await core.addSkill({ ref: "0state/sourcey@1.0.0", to: path.join(tempDir, "installed") });
+      expect(JSON.stringify(search.data)).toContain("acme/sourcey");
+      const add = await core.addSkill({ ref: "acme/sourcey@1.0.0", to: path.join(tempDir, "installed") });
       expect(add.status).toBe("success");
 
       await expect(core.connectList()).resolves.toMatchObject({ status: "success" });

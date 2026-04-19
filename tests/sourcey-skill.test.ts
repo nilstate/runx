@@ -196,7 +196,7 @@ describe("sourcey skill", () => {
                   contents: [
                     "export default {",
                     '  name: "Sourcey Incomplete Fixture",',
-                    '  repo: "https://github.com/0state/sourcey-incomplete-fixture",',
+                    '  repo: "https://github.com/sourcey/sourcey-incomplete-fixture",',
                     "  navigation: {",
                     "    tabs: [",
                     "      {",

@@ -4,7 +4,7 @@ harness:
   cases:
     - name: evaluate-skill-produces-trust-audit
       inputs:
-        skill_ref: 0state/sourcey
+        skill_ref: sourcey/sourcey
         objective: Decide whether Sourcey is ready for evaluator-facing demos
         evidence_pack:
           receipts:
@@ -19,7 +19,7 @@ harness:
         answers:
           agent_step.evaluate-skill.output:
             capability_profile:
-              skill_ref: 0state/sourcey
+              skill_ref: sourcey/sourcey
               summary: Generates a bounded docs site with approval and verification steps.
             trust_assessment:
               tier: runx-derived

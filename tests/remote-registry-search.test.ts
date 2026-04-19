@@ -21,8 +21,8 @@ describe("remote registry search", () => {
         total: 1,
         skills: [
           {
-            skill_id: "0state/sourcey",
-            owner: "0state",
+            skill_id: "acme/sourcey",
+            owner: "acme",
             name: "sourcey",
             description: "Generate docs from repo evidence.",
             version: "1.0.0",
@@ -32,7 +32,7 @@ describe("remote registry search", () => {
             required_scopes: [],
             tags: ["docs"],
             trust_signals: [],
-            install_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+            install_command: "runx add acme/sourcey@1.0.0 --registry https://runx.example.test",
             run_command: "runx sourcey",
           },
         ],
@@ -56,13 +56,13 @@ describe("remote registry search", () => {
       query: "sourcey",
       results: [
         {
-          skill_id: "0state/sourcey",
+          skill_id: "acme/sourcey",
           source: "runx-registry",
           source_label: "runx registry",
           trust_tier: "runx-derived",
           profile_mode: "profiled",
           runner_names: ["agent", "sourcey"],
-          add_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+          add_command: "runx add acme/sourcey@1.0.0 --registry https://runx.example.test",
         },
       ],
     });

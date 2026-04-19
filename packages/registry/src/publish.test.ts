@@ -14,29 +14,29 @@ describe("publishSkillMarkdown", () => {
 
     try {
       const first = await publishSkillMarkdown(client, markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
         registryUrl: "https://runx.example.test",
       });
       const second = await publishSkillMarkdown(client, markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         registryUrl: "https://runx.example.test",
       });
 
       expect(first).toMatchObject({
         status: "published",
-        skill_id: "0state/echo",
+        skill_id: "acme/echo",
         version: "1.0.0",
         source_type: "cli-tool",
         registry_url: "https://runx.example.test",
       });
       expect(first.digest).toMatch(/^[a-f0-9]{64}$/);
-      expect(first.link.install_command).toBe("runx add 0state/echo@1.0.0 --registry https://runx.example.test");
+      expect(first.link.install_command).toBe("runx add acme/echo@1.0.0 --registry https://runx.example.test");
       expect(second).toMatchObject({
         status: "unchanged",
-        skill_id: "0state/echo",
+        skill_id: "acme/echo",
         version: "1.0.0",
         digest: first.digest,
         runner_names: [],
@@ -54,14 +54,14 @@ describe("publishSkillMarkdown", () => {
 
     try {
       const result = await publishSkillMarkdown(client, markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         profileDocument,
       });
 
       expect(result).toMatchObject({
         status: "published",
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         runner_names: ["agent", "sourcey"],
         record: {
           markdown,
@@ -82,8 +82,8 @@ describe("publishSkillMarkdown", () => {
     const changed = markdown.replace("Echo the provided message.", "Echo the changed message.");
 
     try {
-      await publishSkillMarkdown(client, markdown, { owner: "0state", version: "1.0.0" });
-      await expect(publishSkillMarkdown(client, changed, { owner: "0state", version: "1.0.0" })).rejects.toThrow(
+      await publishSkillMarkdown(client, markdown, { owner: "acme", version: "1.0.0" });
+      await expect(publishSkillMarkdown(client, changed, { owner: "acme", version: "1.0.0" })).rejects.toThrow(
         "already exists with a different digest",
       );
     } finally {

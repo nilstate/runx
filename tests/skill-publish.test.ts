@@ -21,7 +21,7 @@ describe("skill-publish CLI", () => {
           "publish",
           "fixtures/skills/echo",
           "--owner",
-          "0state",
+          "acme",
           "--version",
           "1.0.0",
           "--registry",
@@ -51,7 +51,7 @@ describe("skill-publish CLI", () => {
       };
       expect(report.publish).toMatchObject({
         status: "published",
-        skill_id: "0state/echo",
+        skill_id: "acme/echo",
         version: "1.0.0",
         digest: expect.stringMatching(/^[a-f0-9]{64}$/),
         registry_url: registryDir,
@@ -60,8 +60,8 @@ describe("skill-publish CLI", () => {
           case_count: 0,
         },
       });
-      expect(report.publish.link.install_command).toBe(`runx add 0state/echo@1.0.0 --registry ${registryDir}`);
-      await expect(createFileRegistryStore(registryDir).getVersion("0state/echo", "1.0.0")).resolves.toMatchObject({
+      expect(report.publish.link.install_command).toBe(`runx add acme/echo@1.0.0 --registry ${registryDir}`);
+      await expect(createFileRegistryStore(registryDir).getVersion("acme/echo", "1.0.0")).resolves.toMatchObject({
         markdown: await readFile(path.resolve("fixtures/skills/echo/SKILL.md"), "utf8"),
       });
     } finally {
@@ -82,7 +82,7 @@ describe("skill-publish CLI", () => {
           "publish",
           "fixtures/skills/portable",
           "--owner",
-          "0state",
+          "acme",
           "--version",
           "1.0.0",
           "--registry",
@@ -98,7 +98,7 @@ describe("skill-publish CLI", () => {
 
       expect(exitCode).toBe(0);
       expect(stderr.contents()).toBe("");
-      await expect(createFileRegistryStore(registryDir).getVersion("0state/portable", "1.0.0")).resolves.toMatchObject({
+      await expect(createFileRegistryStore(registryDir).getVersion("acme/portable", "1.0.0")).resolves.toMatchObject({
         source_type: "agent",
       });
     } finally {
@@ -119,7 +119,7 @@ describe("skill-publish CLI", () => {
           "publish",
           "skills/sourcey",
           "--owner",
-          "0state",
+          "acme",
           "--version",
           "1.0.0",
           "--registry",
@@ -151,7 +151,7 @@ describe("skill-publish CLI", () => {
         status: "passed",
         case_count: 1,
       });
-      await expect(createFileRegistryStore(registryDir).getVersion("0state/sourcey", "1.0.0")).resolves.toMatchObject({
+      await expect(createFileRegistryStore(registryDir).getVersion("acme/sourcey", "1.0.0")).resolves.toMatchObject({
         markdown: await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"),
         profile_document: await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8"),
         runner_names: ["agent", "sourcey"],
@@ -259,7 +259,7 @@ harness:
       );
 
       const exitCode = await runCli(
-        ["skill", "publish", skillDir, "--owner", "0state", "--registry", registryDir, "--json"],
+        ["skill", "publish", skillDir, "--owner", "acme", "--registry", registryDir, "--json"],
         { stdin: process.stdin, stdout, stderr },
         {
           ...process.env,
@@ -289,7 +289,7 @@ harness:
         "publish",
         "fixtures/skills/echo",
         "--owner",
-        "0state",
+        "acme",
         "--version",
         "1.0.0",
         "--registry",
@@ -306,7 +306,7 @@ harness:
 
       expect(JSON.parse(first.contents()).publish.status).toBe("published");
       expect(JSON.parse(second.contents()).publish.status).toBe("unchanged");
-      const versions = await createFileRegistryStore(registryDir).listVersions("0state/echo");
+      const versions = await createFileRegistryStore(registryDir).listVersions("acme/echo");
       expect(versions).toHaveLength(1);
     } finally {
       await rm(tempDir, { recursive: true, force: true });

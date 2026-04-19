@@ -16,7 +16,7 @@ describe("skill-search CLI", () => {
 
     try {
       await ingestSkillMarkdown(createFileRegistryStore(registryDir), await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"), {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
       });
@@ -55,13 +55,13 @@ describe("skill-search CLI", () => {
       expect(report.results).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            skill_id: "0state/sourcey",
+            skill_id: "acme/sourcey",
             source: "runx-registry",
             source_label: "runx registry",
             trust_tier: "runx-derived",
             profile_mode: "portable",
             runner_names: [],
-            add_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+            add_command: "runx add acme/sourcey@1.0.0 --registry https://runx.example.test",
           }),
         ]),
       );

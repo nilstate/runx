@@ -4,7 +4,7 @@ harness:
   cases:
     - name: open-source-triage-governed-response
       inputs:
-        repository: 0state/runx
+        repository: nilstate/runx
         query: find one unanswered thread where a reply would unblock a user
         objective: draft the next high-signal maintainer response
         operator_context: Prefer terse maintainer replies that acknowledge confusion and point to the canonical contract.

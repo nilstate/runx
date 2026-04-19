@@ -57,7 +57,7 @@ describe("marketplace search models", () => {
   });
 
   it("does not classify runx registry links as marketplace refs", () => {
-    expect(isMarketplaceRef("runx://skill/0state%2Fsourcey@1.0.0")).toBe(false);
+    expect(isMarketplaceRef("runx://skill/acme%2Fsourcey@1.0.0")).toBe(false);
     expect(isMarketplaceRef("fixture:sourcey-docs")).toBe(true);
   });
 });

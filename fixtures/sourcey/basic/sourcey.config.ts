@@ -1,6 +1,6 @@
 export default {
   name: "Sourcey Fixture",
-  repo: "https://github.com/0state/sourcey-basic-fixture",
+  repo: "https://github.com/sourcey/sourcey-basic-fixture",
   ogImage: "https://sourcey.example.test/og.png",
   navigation: {
     tabs: [

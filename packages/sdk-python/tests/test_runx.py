@@ -20,9 +20,9 @@ class RunxClientTests(unittest.TestCase):
     def test_parses_search_results(self) -> None:
         result = SkillSearchResult.from_dict(
             {
-                "skill_id": "0state/sourcey",
+                "skill_id": "acme/sourcey",
                 "name": "sourcey",
-                "owner": "0state",
+                "owner": "acme",
                 "source": "runx-registry",
                 "source_label": "runx registry",
                 "source_type": "cli-tool",
@@ -33,7 +33,7 @@ class RunxClientTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(result.skill_id, "0state/sourcey")
+        self.assertEqual(result.skill_id, "acme/sourcey")
         self.assertEqual(result.required_scopes, ("repo:read",))
         self.assertEqual(result.tags, ("docs",))
 
@@ -51,9 +51,9 @@ class RunxClientTests(unittest.TestCase):
                         print(json.dumps({
                             "status": "success",
                             "results": [{
-                                "skill_id": "0state/sourcey",
+                                "skill_id": "acme/sourcey",
                                 "name": "sourcey",
-                                "owner": "0state",
+                                "owner": "acme",
                                 "source": "runx-registry",
                                 "source_label": "runx registry",
                                 "source_type": "cli-tool",
@@ -72,7 +72,7 @@ class RunxClientTests(unittest.TestCase):
             results = client.search_skills("sourcey")
             run_report = client.run_skill("skills/example", inputs={"message": "hi"})
 
-            self.assertEqual(results[0].skill_id, "0state/sourcey")
+            self.assertEqual(results[0].skill_id, "acme/sourcey")
             self.assertEqual(
                 run_report["args"],
                 ["skill", "skills/example", "--message", "hi", "--non-interactive", "--json"],

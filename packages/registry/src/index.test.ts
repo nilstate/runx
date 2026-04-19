@@ -24,14 +24,14 @@ describe("registry package", () => {
       const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
       const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
         profileDocument,
       });
 
       expect(version).toMatchObject({
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         name: "sourcey",
         source_type: "agent",
         version: "1.0.0",
@@ -59,7 +59,7 @@ describe("registry package", () => {
       const searchResults = await searchRegistry(store, "sourcey");
       expect(searchResults).toHaveLength(1);
       expect(searchResults[0]).toMatchObject({
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         source: "runx-registry",
         source_label: "runx registry",
         source_type: "agent",
@@ -69,14 +69,14 @@ describe("registry package", () => {
         profile_digest: version.profile_digest,
       });
 
-      await expect(resolveRunxLink(store, "0state/sourcey", "1.0.0")).resolves.toMatchObject({
-        skill_id: "0state/sourcey",
+      await expect(resolveRunxLink(store, "acme/sourcey", "1.0.0")).resolves.toMatchObject({
+        skill_id: "acme/sourcey",
         version: "1.0.0",
         digest: version.digest,
       });
 
       await expect(resolveRegistrySkill(store, "registry:sourcey")).resolves.toMatchObject({
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         version: "1.0.0",
         digest: version.digest,
         markdown,
@@ -233,13 +233,13 @@ runners:
       const store = createFileRegistryStore(tempDir);
       const markdown = await readFile(path.resolve("fixtures/skills/portable/SKILL.md"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
       });
 
       expect(version).toMatchObject({
-        skill_id: "0state/portable",
+        skill_id: "acme/portable",
         source_type: "agent",
         runner_names: [],
       });
@@ -249,7 +249,7 @@ runners:
       const searchResults = await searchRegistry(store, "portable");
       expect(searchResults).toEqual([
         expect.objectContaining({
-          skill_id: "0state/portable",
+          skill_id: "acme/portable",
           profile_mode: "portable",
           runner_names: [],
           profile_digest: undefined,

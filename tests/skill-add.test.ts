@@ -20,7 +20,7 @@ describe("skill-add", () => {
 
     try {
       const version = await ingestSkillMarkdown(createFileRegistryStore(registryDir), markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
         profileDocument: await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8"),
@@ -135,23 +135,23 @@ describe("skill-add", () => {
 
     try {
       await ingestSkillMarkdown(createFileRegistryStore(registryDir), markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
         profileDocument: await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8"),
       });
 
       const install = await installLocalSkill({
-        ref: "runx://skill/0state%2Fsourcey@1.0.0",
+        ref: "runx://skill/acme%2Fsourcey@1.0.0",
         registryStore: createFileRegistryStore(registryDir),
         destinationRoot: skillsDir,
       });
 
-      expect(install.destination).toBe(path.join(skillsDir, "0state", "sourcey", "SKILL.md"));
-      expect(install.profileStatePath).toBe(path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"));
+      expect(install.destination).toBe(path.join(skillsDir, "acme", "sourcey", "SKILL.md"));
+      expect(install.profileStatePath).toBe(path.join(skillsDir, "acme", "sourcey", ".runx", "profile.json"));
       expect(install.runnerNames).toEqual(["agent", "sourcey"]);
-      await expect(readFile(path.join(skillsDir, "0state", "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
-      await expect(readFile(path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"), "utf8")).resolves.toContain("tool: sourcey.build");
+      await expect(readFile(path.join(skillsDir, "acme", "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
+      await expect(readFile(path.join(skillsDir, "acme", "sourcey", ".runx", "profile.json"), "utf8")).resolves.toContain("tool: sourcey.build");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -166,12 +166,12 @@ describe("skill-add", () => {
 
     try {
       await ingestSkillMarkdown(createFileRegistryStore(registryDir), await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"), {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
       });
 
       const exitCode = await runCli(
-        ["skill", "add", "0state/sourcey@1.0.0", "--to", skillsDir, "--digest", "sha256:0000", "--json"],
+        ["skill", "add", "acme/sourcey@1.0.0", "--to", skillsDir, "--digest", "sha256:0000", "--json"],
         { stdin: process.stdin, stdout, stderr },
         {
           ...process.env,

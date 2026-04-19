@@ -109,7 +109,7 @@ describe("TypeScript SDK", () => {
         createFileRegistryStore(registryDir),
         await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"),
         {
-          owner: "0state",
+          owner: "acme",
           version: "1.0.0",
           createdAt: "2026-04-10T00:00:00.000Z",
         },
@@ -117,12 +117,12 @@ describe("TypeScript SDK", () => {
 
       const searchResults = await sdk.searchSkills({ query: "sourcey" });
       expect(searchResults[0]).toMatchObject({
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         source: "runx-registry",
       });
 
-      const install = await sdk.addSkill({ ref: "0state/sourcey@1.0.0", to: installDir });
-      expect(install.destination).toBe(path.join(installDir, "0state", "sourcey", "SKILL.md"));
+      const install = await sdk.addSkill({ ref: "acme/sourcey@1.0.0", to: installDir });
+      expect(install.destination).toBe(path.join(installDir, "acme", "sourcey", "SKILL.md"));
       expect(install.source).toBe("runx-registry");
 
       const connectResult = await sdk.connectPreprovision("github", ["repo:read"]);
@@ -148,13 +148,13 @@ describe("TypeScript SDK", () => {
 
       const published = await sdk.publishSkill({
         skillPath: "skills/sourcey",
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
       });
 
       expect(published).toMatchObject({
         status: "published",
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         harness: {
           status: "passed",
           case_count: 1,

@@ -47,7 +47,7 @@ runx issue-to-pr --fixture /path/to/repo --task-id task-123
 runx resume <run-id>
 runx inspect <receipt-id>
 runx history
-runx add 0state/sourcey@1.0.0 --to ./skills
+runx add sourcey/sourcey@1.0.0 --to ./skills
 runx objective-to-skill --objective "build github review skill"
 runx harness ./fixtures/harness/echo-skill.yaml
 runx config set agent.provider openai

@@ -26,7 +26,12 @@ export function deriveTrustSignals(version: RegistrySkillVersion): readonly Trus
     {
       id: "publisher",
       label: "Publisher identity",
-      status: version.publisher.type === "placeholder" ? "placeholder" : "verified",
+      // runx-owned skills are official; everything else stays at placeholder
+      // until a publisher identity is formally attested.
+      status:
+        version.owner === "runx" || version.publisher.type !== "placeholder"
+          ? "verified"
+          : "placeholder",
       value: version.publisher.id,
     },
     {

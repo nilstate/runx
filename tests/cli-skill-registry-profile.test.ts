@@ -18,14 +18,14 @@ describe("CLI skill registry execution profile", () => {
       const publishErr = createMemoryStream();
       await expect(
         runCli(
-          ["skill", "publish", "skills/sourcey", "--owner", "0state", "--version", "1.0.0", "--registry", registryDir, "--json"],
+          ["skill", "publish", "skills/sourcey", "--owner", "acme", "--version", "1.0.0", "--registry", registryDir, "--json"],
           { stdin: process.stdin, stdout: publishOut, stderr: publishErr },
           { ...process.env, RUNX_CWD: process.cwd() },
         ),
       ).resolves.toBe(0);
       expect(publishErr.contents()).toBe("");
       expect(JSON.parse(publishOut.contents()).publish).toMatchObject({
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         runner_names: ["agent", "sourcey"],
         profile_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
       });
@@ -43,7 +43,7 @@ describe("CLI skill registry execution profile", () => {
       expect(JSON.parse(searchOut.contents()).results).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            skill_id: "0state/sourcey",
+            skill_id: "acme/sourcey",
             profile_mode: "profiled",
             runner_names: ["agent", "sourcey"],
             profile_digest: expect.stringMatching(/^[a-f0-9]{64}$/),
@@ -55,21 +55,21 @@ describe("CLI skill registry execution profile", () => {
       const addErr = createMemoryStream();
       await expect(
         runCli(
-          ["skill", "add", "0state/sourcey@1.0.0", "--to", skillsDir, "--json"],
+          ["skill", "add", "acme/sourcey@1.0.0", "--to", skillsDir, "--json"],
           { stdin: process.stdin, stdout: addOut, stderr: addErr },
           { ...process.env, RUNX_CWD: process.cwd(), RUNX_REGISTRY_DIR: registryDir },
         ),
       ).resolves.toBe(0);
       expect(addErr.contents()).toBe("");
       expect(JSON.parse(addOut.contents()).install).toMatchObject({
-        destination: path.join(skillsDir, "0state", "sourcey", "SKILL.md"),
-        profileStatePath: path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"),
+        destination: path.join(skillsDir, "acme", "sourcey", "SKILL.md"),
+        profileStatePath: path.join(skillsDir, "acme", "sourcey", ".runx", "profile.json"),
         runnerNames: ["agent", "sourcey"],
       });
-      await expect(readFile(path.join(skillsDir, "0state", "sourcey", ".runx", "profile.json"), "utf8")).resolves.toContain(
+      await expect(readFile(path.join(skillsDir, "acme", "sourcey", ".runx", "profile.json"), "utf8")).resolves.toContain(
         "tool: sourcey.build",
       );
-      await expect(createFileRegistryStore(registryDir).getVersion("0state/sourcey", "1.0.0")).resolves.toMatchObject({
+      await expect(createFileRegistryStore(registryDir).getVersion("acme/sourcey", "1.0.0")).resolves.toMatchObject({
         runner_names: ["agent", "sourcey"],
       });
     } finally {

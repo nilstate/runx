@@ -48,30 +48,30 @@ runners:
 
     try {
       const version = await ingestSkillMarkdown(createFileRegistryStore(registryDir), markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         profileDocument,
       });
 
       const install = await installLocalSkill({
-        ref: "0state/package-echo@1.0.0",
+        ref: "acme/package-echo@1.0.0",
         registryStore: createFileRegistryStore(registryDir),
         destinationRoot: skillsDir,
       });
 
       expect(install).toMatchObject({
-        destination: path.join(skillsDir, "0state", "package-echo", "SKILL.md"),
-        profileStatePath: path.join(skillsDir, "0state", "package-echo", ".runx", "profile.json"),
+        destination: path.join(skillsDir, "acme", "package-echo", "SKILL.md"),
+        profileStatePath: path.join(skillsDir, "acme", "package-echo", ".runx", "profile.json"),
         profileDigest: version.profile_digest,
         runnerNames: ["package-echo-cli"],
       });
       const installedProfileState = JSON.parse(
-        await readFile(path.join(skillsDir, "0state", "package-echo", ".runx", "profile.json"), "utf8"),
+        await readFile(path.join(skillsDir, "acme", "package-echo", ".runx", "profile.json"), "utf8"),
       ) as { profile: { document: string } };
       expect(installedProfileState.profile.document).toBe(profileDocument);
 
       const run = await runLocalSkill({
-        skillPath: path.join(skillsDir, "0state", "package-echo"),
+        skillPath: path.join(skillsDir, "acme", "package-echo"),
         inputs: { message: "installed x ok" },
         caller,
         receiptDir: path.join(tempDir, "receipts"),

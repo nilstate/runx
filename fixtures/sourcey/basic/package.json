@@ -5,6 +5,6 @@
   "homepage": "https://sourcey.example.test",
   "repository": {
     "type": "git",
-    "url": "https://github.com/0state/sourcey-basic-fixture.git"
+    "url": "https://github.com/sourcey/sourcey-basic-fixture.git"
   }
 }

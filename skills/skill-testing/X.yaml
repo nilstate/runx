@@ -4,7 +4,7 @@ harness:
   cases:
     - name: skill-testing-publishes-trust-audit
       inputs:
-        skill_ref: 0state/sourcey
+        skill_ref: sourcey/sourcey
         objective: Decide whether Sourcey is ready for public recommendation
         evidence_pack:
           receipts:

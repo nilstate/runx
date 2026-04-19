@@ -22,13 +22,13 @@ describe("registry CE", () => {
       const markdown = await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8");
       const profileDocument = await readFile(path.resolve("skills/sourcey/X.yaml"), "utf8");
       const version = await ingestSkillMarkdown(store, markdown, {
-        owner: "0state",
+        owner: "acme",
         version: "1.0.0",
         createdAt: "2026-04-10T00:00:00.000Z",
         profileDocument,
       });
 
-      expect(version.skill_id).toBe("0state/sourcey");
+      expect(version.skill_id).toBe("acme/sourcey");
       expect(version.version).toBe("1.0.0");
       expect(version.digest).toMatch(/^[a-f0-9]{64}$/);
       expect(version.profile_digest).toMatch(/^[a-f0-9]{64}$/);
@@ -42,21 +42,21 @@ describe("registry CE", () => {
         expect.arrayContaining([
           expect.objectContaining({ id: "digest", status: "verified", value: `sha256:${version.digest}` }),
           expect.objectContaining({ id: "source_type", status: "declared", value: "agent" }),
-          expect.objectContaining({ id: "publisher", status: "placeholder", value: "0state" }),
+          expect.objectContaining({ id: "publisher", status: "placeholder", value: "acme" }),
           expect.objectContaining({ id: "runner_metadata", status: "verified" }),
         ]),
       );
 
-      const page = await buildSkillPageModel(store, "0state/sourcey", "1.0.0", "https://runx.example.test");
+      const page = await buildSkillPageModel(store, "acme/sourcey", "1.0.0", "https://runx.example.test");
       expect(page).toMatchObject({
-        skill_id: "0state/sourcey",
+        skill_id: "acme/sourcey",
         name: "sourcey",
         version: "1.0.0",
         digest: version.digest,
         profile_digest: version.profile_digest,
         runner_names: ["agent", "sourcey"],
         source_type: "agent",
-        install_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+        install_command: "runx add acme/sourcey@1.0.0 --registry https://runx.example.test",
         run_command: "runx sourcey",
       });
       expect(page?.trust_signals).toEqual(trustSignals);
@@ -71,7 +71,7 @@ describe("registry CE", () => {
       const results = await searchRegistry(store, "sourcey", { registryUrl: "https://runx.example.test" });
       expect(results).toEqual([
         expect.objectContaining({
-          skill_id: "0state/sourcey",
+          skill_id: "acme/sourcey",
           source: "runx-registry",
           source_label: "runx registry",
           source_type: "agent",
@@ -79,18 +79,18 @@ describe("registry CE", () => {
           profile_mode: "profiled",
           runner_names: ["agent", "sourcey"],
           profile_digest: version.profile_digest,
-          add_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+          add_command: "runx add acme/sourcey@1.0.0 --registry https://runx.example.test",
         }),
       ]);
 
-      const link = await resolveRunxLink(store, "0state/sourcey", "1.0.0", "https://runx.example.test");
+      const link = await resolveRunxLink(store, "acme/sourcey", "1.0.0", "https://runx.example.test");
       expect(link).toEqual({
-        link: "runx://skill/0state%2Fsourcey@1.0.0",
-        skill_id: "0state/sourcey",
+        link: "runx://skill/acme%2Fsourcey@1.0.0",
+        skill_id: "acme/sourcey",
         version: "1.0.0",
         digest: version.digest,
         registry_url: "https://runx.example.test",
-        install_command: "runx add 0state/sourcey@1.0.0 --registry https://runx.example.test",
+        install_command: "runx add acme/sourcey@1.0.0 --registry https://runx.example.test",
         run_command: "runx sourcey",
       });
     } finally {

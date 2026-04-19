@@ -413,7 +413,7 @@ runners:
     const stderr = createMemoryStream();
 
     await ingestSkillMarkdown(createFileRegistryStore(registryDir), await readFile(path.resolve("skills/sourcey/SKILL.md"), "utf8"), {
-      owner: "0state",
+      owner: "acme",
       version: "1.0.0",
       createdAt: "2026-04-10T00:00:00.000Z",
     });
@@ -431,11 +431,11 @@ runners:
 
     expect(exitCode).toBe(0);
     expect(stderr.contents()).toBe("");
-    expect(stdout.contents()).toContain("0state/sourcey");
+    expect(stdout.contents()).toContain("acme/sourcey");
     expect(stdout.contents()).toContain("runx registry");
     expect(stdout.contents()).toContain("run  ");
     expect(stdout.contents()).toContain("add  ");
-    expect(stdout.contents()).toContain("runx add 0state/sourcey@1.0.0 --registry https://runx.example.test");
+    expect(stdout.contents()).toContain("runx add acme/sourcey@1.0.0 --registry https://runx.example.test");
     expect(stdout.contents()).toContain("runx sourcey");
   });
 
@@ -451,14 +451,14 @@ runners:
     const profileDigest = hashString(profileDocument);
 
     globalThis.fetch = vi.fn(async (input, init) => {
-      expect(String(input)).toBe("https://runx.example.test/v1/skills/0state/sourcey/acquire");
+      expect(String(input)).toBe("https://runx.example.test/v1/skills/acme/sourcey/acquire");
       expect(init?.method).toBe("POST");
       return new Response(JSON.stringify({
         status: "success",
         install_count: 1,
         acquisition: {
-          skill_id: "0state/sourcey",
-          owner: "0state",
+          skill_id: "acme/sourcey",
+          owner: "acme",
           name: "sourcey",
           version: "1.0.0",
           digest,
@@ -471,7 +471,7 @@ runners:
     }) as typeof fetch;
 
     const exitCode = await runCli(
-      ["add", "0state/sourcey@1.0.0", "--registry", "https://runx.example.test", "--to", installDir],
+      ["add", "acme/sourcey@1.0.0", "--registry", "https://runx.example.test", "--to", installDir],
       { stdin: process.stdin, stdout, stderr },
       {
         ...process.env,
@@ -482,10 +482,10 @@ runners:
 
     expect(exitCode).toBe(0);
     expect(stderr.contents()).toBe("");
-    expect(stdout.contents()).toContain(path.join(installDir, "0state", "sourcey", "SKILL.md"));
-    await expect(readFile(path.join(installDir, "0state", "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
+    expect(stdout.contents()).toContain(path.join(installDir, "acme", "sourcey", "SKILL.md"));
+    await expect(readFile(path.join(installDir, "acme", "sourcey", "SKILL.md"), "utf8")).resolves.toBe(markdown);
     const installedProfileState = JSON.parse(
-      await readFile(path.join(installDir, "0state", "sourcey", ".runx", "profile.json"), "utf8"),
+      await readFile(path.join(installDir, "acme", "sourcey", ".runx", "profile.json"), "utf8"),
     ) as { profile: { document: string } };
     expect(installedProfileState.profile.document).toBe(profileDocument);
   });
