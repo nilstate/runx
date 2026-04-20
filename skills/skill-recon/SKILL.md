@@ -24,6 +24,12 @@ Priority order:
 3. **Prior art in runx.** Check `skills/` and the registry. Could an existing
    skill be composed or extended instead of building from scratch?
 
+   When `decomposition.required_skills` contains entries where `exists: true`,
+   recommending reuse is a first-class output. Do not draft new primitives
+   for work an existing skill already covers. Cite the existing skill by
+   path in `recommended_flow` and `findings`, and scope any new design work
+   to the composition glue around it rather than duplicating its internals.
+
 4. **Governance patterns.** What scopes does this skill need? Where are the
    mutation boundaries? What approval or review checkpoints does the domain
    imply?

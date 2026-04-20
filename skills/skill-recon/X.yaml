@@ -49,6 +49,43 @@ harness:
             skill_name: skill-recon
             source_type: agent-step
 
+    - name: skill-recon-recommends-reuse
+      inputs:
+        objective: Add a moltbook content scan to the governed pipeline
+        decomposition:
+          objective_summary: Add a moltbook content scan step.
+          orchestration_steps:
+            - id: scan
+              skill: ../moltbook
+              runner: scan
+          required_skills:
+            - name: moltbook
+              exists: true
+          open_questions: []
+      caller:
+        answers:
+          agent_step.skill-recon.output:
+            findings:
+              - claim: moltbook already exposes a scan runner with the required scopes.
+                source: skills/moltbook/X.yaml
+                relevance: Reusing the existing skill is cheaper and better-governed than drafting a new primitive.
+                confidence: verified
+            recommended_flow:
+              - step: scan
+                rationale: Reuse ../moltbook scan runner rather than drafting a new scanner.
+            sources:
+              - path: skills/moltbook/X.yaml
+                kind: repo-document
+            risks: []
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: skill-recon
+            source_type: agent-step
+
 runners:
   skill-recon-agent:
     default: true
