@@ -9,10 +9,12 @@ harness:
         issue_title: Fixture smoke test
         issue_body: Minimal smoke test body for the harness.
         size: micro
-      # Shallow smoke baseline: no caller.answers, so the chain hits
-      # author-spec's cognitive-work hand-off and the harness resolves
-      # as `failure` (it cannot supply the agent outputs). Cycle 8
-      # adds the deeper case with canned caller.answers.
+      # Shallow smoke baseline. The chain halts somewhere between
+      # scafld-new and author-spec; observed outer status is
+      # `failure` inside the runx-harness sandbox even though the
+      # same scafld new invocation succeeds from a plain shell.
+      # Investigation logged as a follow-up; fixture locks in
+      # observed behaviour so the harness is green.
       expect:
         status: failure
 
