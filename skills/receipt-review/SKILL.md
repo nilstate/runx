@@ -55,6 +55,11 @@ cause. Do not bundle unrelated improvements.
 
 ## Output
 
+The output shape is formalised as JSON Schema at
+[receipt-review-output.schema.json](../../schemas/receipt-review-output.schema.json).
+Agents should self-validate before returning, and downstream
+consumers (notably `harness-author`) may validate on receipt.
+
 - `verdict`: `pass`, `needs_update`, or `blocked`.
 - `failure_summary`: which step, which failure class, what root cause.
   One to three sentences.
