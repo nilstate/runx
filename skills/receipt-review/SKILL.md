@@ -38,6 +38,18 @@ Classify the failure:
 - **Harness assertion** — fixture expectations did not match actual
   output. Fix: skill logic or stale fixture expectations.
 
+## Agent-mediated suspension is not a failure
+
+A receipt with status `needs_resolution` denotes a healthy
+agent-mediated suspension, not a defect. The runtime yielded to the
+caller for cognitive work and the chain is waiting to be resumed.
+This is a normal part of chain execution, not one of the failure
+classes above. When the only evidence is `needs_resolution` without
+any exit code, scope denial, schema mismatch, or other concrete
+failure signal, return `verdict: pass` with an empty
+`improvement_proposals` array and note that the chain is paused as
+designed.
+
 One failure, one fix. Propose the smallest change that addresses the root
 cause. Do not bundle unrelated improvements.
 

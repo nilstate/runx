@@ -29,6 +29,28 @@ harness:
             skill_name: receipt-review
             source_type: agent-step
 
+    - name: receipt-review-passes-on-paused-chain
+      inputs:
+        receipt_summary: Chain paused at step 1 awaiting caller cognitive work; status needs_resolution with one outstanding agent-step request.
+        harness_output: needs_resolution
+        skill_path: skills/research
+      caller:
+        answers:
+          agent_step.receipt-review.output:
+            verdict: pass
+            failure_summary: No failure. The chain paused at step 1 as designed, awaiting caller cognitive work; needs_resolution is a healthy agent-mediated suspension in runx, not a failure class.
+            improvement_proposals: []
+            next_harness_checks:
+              - target skill completes successfully on the happy path when valid agent outputs are supplied
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: receipt-review
+            source_type: agent-step
+
 runners:
   receipt-review-agent:
     default: true
