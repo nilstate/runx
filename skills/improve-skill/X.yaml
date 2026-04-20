@@ -42,6 +42,42 @@ harness:
           kind: chain_execution
           status: success
 
+    - name: improve-skill-passes-on-paused-chain
+      inputs:
+        receipt_id: rx_paused
+        receipt_summary: chain paused at step 1 awaiting caller cognitive work; status needs_resolution with one outstanding agent-step request
+        harness_output: needs_resolution
+        skill_path: skills/content-pipeline
+        objective: Distinguish paused-but-healthy chains from broken skills in diagnosis
+      caller:
+        answers:
+          agent_step.receipt-review.output:
+            verdict: pass
+            failure_summary: No failure. The chain paused as designed awaiting caller cognitive work; needs_resolution is a healthy agent-mediated suspension, not a defect.
+            improvement_proposals: []
+            next_harness_checks:
+              - target skill harness still passes on the happy path where the agent step receives valid outputs
+          agent_step.harness-author.output:
+            skill_spec:
+              name: content-pipeline
+              note: No SKILL.md change proposed; receipt review verdict was pass.
+            execution_plan:
+              runner: chain
+              note: No change to chain definition.
+            harness_fixture:
+              - name: content-pipeline-paused-run-is-healthy-suspension
+                kind: skill
+                target: ../content-pipeline
+                expect:
+                  status: needs_resolution
+            acceptance_checks:
+              - needs_resolution is treated as a healthy caller hand-off, not a skill failure
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+
 runners:
   improve-skill:
     default: true
