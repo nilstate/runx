@@ -98,6 +98,12 @@ import {
   type SequentialChainState,
   type SingleStepState,
 } from "../../state-machine/src/index.js";
+import type { RegistryStore } from "../../registry/src/index.js";
+import {
+  defaultRegistrySkillCacheDir,
+  isRegistryRef,
+  materializeRegistrySkill,
+} from "./registry-resolver.js";
 
 export interface ApprovalDecision {
   readonly gate: ApprovalGate;
@@ -145,6 +151,8 @@ export interface RunLocalSkillOptions {
   readonly receiptMetadata?: Readonly<Record<string, unknown>>;
   readonly resumeFromRunId?: string;
   readonly executionSemantics?: ExecutionSemantics;
+  readonly registryStore?: RegistryStore;
+  readonly skillCacheDir?: string;
 }
 
 interface ResolvedRunnerSelection {
@@ -179,6 +187,8 @@ interface RunResolvedSkillOptions {
   readonly orchestrationStepId?: string;
   readonly currentContext?: readonly MaterializedContextEdge[];
   readonly executionSemantics?: ExecutionSemantics;
+  readonly registryStore?: RegistryStore;
+  readonly skillCacheDir?: string;
 }
 
 export interface AuthResolver {
@@ -336,6 +346,8 @@ export interface RunLocalChainOptions {
   };
   readonly resumeFromRunId?: string;
   readonly executionSemantics?: ExecutionSemantics;
+  readonly registryStore?: RegistryStore;
+  readonly skillCacheDir?: string;
 }
 
 export interface ChainStepRun {
@@ -553,6 +565,11 @@ export interface ListLocalHistoryOptions {
   readonly env?: NodeJS.ProcessEnv;
   readonly limit?: number;
   readonly query?: string;
+  readonly skill?: string;
+  readonly status?: string;
+  readonly sourceType?: string;
+  readonly sinceMs?: number;
+  readonly untilMs?: number;
 }
 
 export interface ListLocalHistoryResult {
@@ -866,6 +883,8 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
     resumeFromRunId: runId,
     skillPathForMissingContext: resolvedSkill.skillPath,
     executionSemantics: options.executionSemantics,
+    registryStore: options.registryStore,
+    skillCacheDir: options.skillCacheDir,
   });
 
   if (result.status === "needs_resolution") {
@@ -987,6 +1006,8 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
       },
       resumeFromRunId: options.resumeFromRunId,
       executionSemantics: mergeExecutionSemantics(skill.execution, options.executionSemantics),
+      registryStore: options.registryStore,
+      skillCacheDir: options.skillCacheDir,
     });
 
     if (chainResult.status === "needs_resolution") {
@@ -2042,7 +2063,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
   const chain = chainResolution.chain;
   const chainDirectory = chainResolution.chainDirectory;
   const chainId = options.runId ?? options.resumeFromRunId ?? uniqueReceiptId("cx");
-  const chainStepCache = await loadChainStepExecutables(chain, chainDirectory);
+  const chainStepCache = await loadChainStepExecutables(chain, chainDirectory, options.registryStore, options.skillCacheDir);
   const chainGrant = options.chainGrant ?? defaultLocalChainGrant();
   const chainSteps = chain.steps.map((step) => ({
     id: step.id,
@@ -2144,6 +2165,8 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
           chainDirectory,
           chainStepCache,
           skillEnvironment: options.skillEnvironment,
+          registryStore: options.registryStore,
+          skillCacheDir: options.skillCacheDir,
         });
         const stepSkillPath = resolvedStep.skillPath;
         const stepSkill = resolvedStep.skill;
@@ -2245,6 +2268,8 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
             orchestrationRunId: chainId,
             orchestrationStepId: prep.step.id,
             currentContext: prep.context,
+            registryStore: options.registryStore,
+            skillCacheDir: options.skillCacheDir,
           });
         },
       }));
@@ -2482,6 +2507,8 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       chainDirectory,
       chainStepCache,
       skillEnvironment: options.skillEnvironment,
+      registryStore: options.registryStore,
+      skillCacheDir: options.skillCacheDir,
     });
     const stepSkillPath = resolvedStep.skillPath;
     const stepSkill = resolvedStep.skill;
@@ -2607,6 +2634,8 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       orchestrationRunId: chainId,
       orchestrationStepId: step.id,
       currentContext: context,
+      registryStore: options.registryStore,
+      skillCacheDir: options.skillCacheDir,
     });
 
     if (stepResult.status === "needs_resolution") {
@@ -2898,18 +2927,40 @@ export async function listLocalHistory(options: ListLocalHistoryOptions = {}): P
     options.runxHome ?? options.env?.RUNX_HOME,
   );
   const normalizedQuery = options.query?.trim().toLowerCase();
+  const skillFilter = options.skill?.trim().toLowerCase();
+  const statusFilter = options.status?.trim().toLowerCase();
+  const sourceFilter = options.sourceType?.trim().toLowerCase();
+  const sinceMs = options.sinceMs;
+  const untilMs = options.untilMs;
   return {
     receipts: receipts
       .map(({ receipt, verification }) => summarizeLocalReceipt(receipt, verification))
       .filter((summary) => {
-        if (!normalizedQuery) {
-          return true;
+        if (normalizedQuery) {
+          const matchesQuery =
+            summary.name.toLowerCase().includes(normalizedQuery) ||
+            summary.id.toLowerCase().includes(normalizedQuery) ||
+            (summary.sourceType?.toLowerCase().includes(normalizedQuery) ?? false);
+          if (!matchesQuery) return false;
         }
-        return (
-          summary.name.toLowerCase().includes(normalizedQuery) ||
-          summary.id.toLowerCase().includes(normalizedQuery) ||
-          (summary.sourceType?.toLowerCase().includes(normalizedQuery) ?? false)
-        );
+        if (skillFilter && !summary.name.toLowerCase().includes(skillFilter)) {
+          return false;
+        }
+        if (statusFilter && String(summary.status ?? "").toLowerCase() !== statusFilter) {
+          return false;
+        }
+        if (sourceFilter && (summary.sourceType ?? "").toLowerCase() !== sourceFilter) {
+          return false;
+        }
+        if (sinceMs !== undefined) {
+          const startedMs = summary.startedAt ? Date.parse(summary.startedAt) : NaN;
+          if (!Number.isFinite(startedMs) || startedMs < sinceMs) return false;
+        }
+        if (untilMs !== undefined) {
+          const startedMs = summary.startedAt ? Date.parse(summary.startedAt) : NaN;
+          if (!Number.isFinite(startedMs) || startedMs > untilMs) return false;
+        }
+        return true;
       })
       .slice(0, options.limit ?? receipts.length),
   };
@@ -3444,14 +3495,39 @@ function validatedToolToExecutableSkill(tool: ValidatedTool): ValidatedSkill {
   };
 }
 
+async function resolveChainStepSkillPath(
+  stepSkill: string,
+  chainDirectory: string,
+  registryStore: RegistryStore | undefined,
+  skillCacheDir: string | undefined,
+): Promise<string> {
+  if (isRegistryRef(stepSkill)) {
+    if (!registryStore) {
+      throw new Error(
+        `Registry ref '${stepSkill}' used in chain step, but no registry store is configured. Pass registryStore to runLocalChain, or set RUNX_REGISTRY_URL / RUNX_REGISTRY_DIR to a local registry path.`,
+      );
+    }
+    const materialized = await materializeRegistrySkill({
+      ref: stepSkill,
+      store: registryStore,
+      cacheDir: skillCacheDir ?? defaultRegistrySkillCacheDir(),
+    });
+    return materialized.skillDirectory;
+  }
+  return path.resolve(chainDirectory, stepSkill);
+}
+
 async function loadChainStepExecutables(
   chain: ChainDefinition,
   chainDirectory: string,
+  registryStore?: RegistryStore,
+  skillCacheDir?: string,
 ): Promise<ReadonlyMap<string, ValidatedSkill>> {
   const skills = new Map<string, ValidatedSkill>();
   for (const step of chain.steps) {
     if (step.skill) {
-      skills.set(step.id, await loadValidatedSkill(path.resolve(chainDirectory, step.skill), step.runner));
+      const resolvedPath = await resolveChainStepSkillPath(step.skill, chainDirectory, registryStore, skillCacheDir);
+      skills.set(step.id, await loadValidatedSkill(resolvedPath, step.runner));
       continue;
     }
     if (step.tool) {
@@ -3469,17 +3545,25 @@ async function resolveChainStepExecution(options: {
     readonly name: string;
     readonly body: string;
   };
+  readonly registryStore?: RegistryStore;
+  readonly skillCacheDir?: string;
 }): Promise<{
   readonly skill: ValidatedSkill;
   readonly skillPath: string;
   readonly reference: string;
 }> {
   if (options.step.skill) {
+    const resolvedPath = await resolveChainStepSkillPath(
+      options.step.skill,
+      options.chainDirectory,
+      options.registryStore,
+      options.skillCacheDir,
+    );
     return {
       skill:
         options.chainStepCache.get(options.step.id)
-        ?? (await loadValidatedSkill(path.resolve(options.chainDirectory, options.step.skill), options.step.runner)),
-      skillPath: path.resolve(options.chainDirectory, options.step.skill),
+        ?? (await loadValidatedSkill(resolvedPath, options.step.runner)),
+      skillPath: resolvedPath,
       reference: options.step.skill,
     };
   }

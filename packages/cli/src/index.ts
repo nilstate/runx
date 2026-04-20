@@ -35,11 +35,13 @@ import { runHarness, runHarnessTarget, validatePublishHarness } from "../../harn
 import { createFixtureMarketplaceAdapter, searchMarketplaceAdapters, type SkillSearchResult } from "../../marketplaces/src/index.js";
 import { createFileMemoryStore } from "../../memory/src/index.js";
 import {
+  createDefaultHttpCachedRegistryStore,
   createFileRegistryStore,
   createLocalRegistryClient,
   publishSkillMarkdown,
   searchRemoteRegistry,
   searchRegistry,
+  type RegistryStore,
 } from "../../registry/src/index.js";
 import {
   installLocalSkill,
@@ -78,6 +80,15 @@ interface UiTheme {
 
 function isTtyStream(stream: unknown): boolean {
   return typeof stream === "object" && stream !== null && (stream as { isTTY?: boolean }).isTTY === true;
+}
+
+function parseDateFilter(value: string | undefined, flag: string): number | undefined {
+  if (value === undefined) return undefined;
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms)) {
+    throw new Error(`invalid date for ${flag}: ${value}`);
+  }
+  return ms;
 }
 
 function theme(stream: NodeJS.WritableStream | undefined = process.stdout, env: NodeJS.ProcessEnv = process.env): UiTheme {
@@ -298,6 +309,11 @@ export interface ParsedArgs {
   readonly receiptId?: string;
   readonly resumeReceiptId?: string;
   readonly historyQuery?: string;
+  readonly historySkill?: string;
+  readonly historyStatus?: string;
+  readonly historySource?: string;
+  readonly historySince?: string;
+  readonly historyUntil?: string;
   readonly skillPath?: string;
   readonly harnessPath?: string;
   readonly evolveObjective?: string;
@@ -373,7 +389,10 @@ export async function runCli(
       ? createNonInteractiveCaller(callerInput.answers, callerInput.approvals)
       : createInteractiveCaller(io, callerInput.answers, callerInput.approvals, { reportEvents: !parsed.json }, env);
     if (parsed.command === "harness" && parsed.harnessPath) {
-      const result = await runHarnessTarget(resolvePathFromUserInput(parsed.harnessPath, env), { env });
+      const result = await runHarnessTarget(resolvePathFromUserInput(parsed.harnessPath, env), {
+        env,
+        registryStore: await resolveRegistryStoreForChains(env),
+      });
       if (parsed.json) {
         io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
       } else {
@@ -484,6 +503,7 @@ export async function runCli(
       const resolvedPublishPath = resolvePathFromUserInput(parsed.publishPath, env);
       const harness = await validatePublishHarness(resolvedPublishPath, {
         env,
+        registryStore: await resolveRegistryStoreForChains(env),
       });
       if (harness.status === "failed") {
         throw new Error(`Harness failed for ${resolvedPublishPath}: ${harness.assertion_errors.join("; ")}`);
@@ -522,10 +542,17 @@ export async function runCli(
     }
 
     if (parsed.command === "history") {
+      const sinceMs = parseDateFilter(parsed.historySince, "--since");
+      const untilMs = parseDateFilter(parsed.historyUntil, "--until");
       const history = await listLocalHistory({
         receiptDir: parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : undefined,
         env,
         query: parsed.historyQuery,
+        skill: parsed.historySkill,
+        status: parsed.historyStatus,
+        sourceType: parsed.historySource,
+        sinceMs,
+        untilMs,
       });
       if (parsed.json) {
         io.stdout.write(`${JSON.stringify({ status: "success", query: parsed.historyQuery, ...history }, null, 2)}\n`);
@@ -612,6 +639,24 @@ export async function runCli(
   }
 }
 
+async function resolveRegistryStoreForChains(env: NodeJS.ProcessEnv): Promise<RegistryStore | undefined> {
+  const target = resolveRunxRegistryTarget(env);
+  if (target.mode === "local") {
+    return createFileRegistryStore(target.registryPath);
+  }
+  if (!target.registryUrl) {
+    return undefined;
+  }
+  const globalHomeDir = resolveRunxGlobalHomeDir(env);
+  const install = await ensureRunxInstallState(globalHomeDir);
+  return createDefaultHttpCachedRegistryStore({
+    remoteBaseUrl: target.registryUrl,
+    cacheRoot: resolveRunxRegistryPath(env),
+    installationId: install.state.installation_id,
+    channel: "cli-chain",
+  });
+}
+
 async function executeLocalSkillCommand(options: {
   readonly skillPath: string;
   readonly inputs: Readonly<Record<string, unknown>>;
@@ -628,6 +673,7 @@ async function executeLocalSkillCommand(options: {
     receiptDir: options.parsed.receiptDir ? resolvePathFromUserInput(options.parsed.receiptDir, options.env) : undefined,
     runner: options.parsed.runner,
     resumeFromRunId: options.parsed.resumeReceiptId,
+    registryStore: await resolveRegistryStoreForChains(options.env),
   });
 }
 
@@ -774,7 +820,7 @@ function writeUsage(stream: NodeJS.WritableStream, env: NodeJS.ProcessEnv = proc
       "  runx search <query> [--source registry|marketplace|fixture-marketplace] [--json]",
       "  runx add <ref> [--version version] [--to skills-dir] [--registry url] [--digest sha256] [--json]",
       "  runx inspect <receipt-id> [--receipt-dir dir] [--json]",
-      "  runx history [query] [--receipt-dir dir] [--json]",
+      "  runx history [query] [--skill s] [--status s] [--source s] [--since iso] [--until iso] [--receipt-dir dir] [--json]",
       "  runx export-receipts --trainable [--receipt-dir dir] [--since iso] [--until iso] [--status pending|complete|expired] [--source source-type]",
       "  runx memory show --project . [--json]",
       "  runx connect list|revoke <grant-id>|<provider> [--scope scope] [--json]",
@@ -922,6 +968,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     publishPath: isSkillPublish ? positionals[1] : undefined,
     receiptId: isSkillInspect ? inspectPositionals[0] : undefined,
     historyQuery: command === "history" ? positionals.join(" ") || undefined : undefined,
+    historySkill: command === "history" && typeof inputs.skill === "string" ? inputs.skill : undefined,
+    historyStatus: command === "history" && typeof inputs.status === "string" ? inputs.status : undefined,
+    historySource: command === "history" && typeof inputs.source === "string" ? inputs.source : undefined,
+    historySince: command === "history" && typeof inputs.since === "string" ? inputs.since : undefined,
+    historyUntil: command === "history" && typeof inputs.until === "string" ? inputs.until : undefined,
     skillPath:
       isTopLevelSkillInvoke
         ? command
