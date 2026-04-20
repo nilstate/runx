@@ -683,13 +683,14 @@ function writeNeedsResolutionResult(
   parsed: ParsedArgs,
   result: Extract<RunLocalSkillResult, { readonly status: "needs_resolution" }>,
 ): number {
+  const productionMode = env.RUNX_PRODUCTION === "1";
   if (parsed.json) {
     io.stdout.write(
       `${JSON.stringify(
         {
-          status: "needs_resolution",
-          execution_status: null,
-          disposition: "needs_resolution",
+          status: productionMode ? "failure" : "needs_resolution",
+          disposition: productionMode ? "failure_no_resolver" : "needs_resolution",
+          execution_status: productionMode ? "failure" : null,
           outcome_state: "pending",
           skill: result.skill.name,
           skill_path: result.skillPath,
@@ -697,6 +698,9 @@ function writeNeedsResolutionResult(
           step_ids: result.stepIds,
           step_labels: result.stepLabels,
           requests: result.requests,
+          ...(productionMode
+            ? { failure_reason: "RUNX_PRODUCTION=1 forbids unresolved cognitive-work requests" }
+            : {}),
         },
         null,
         2,
@@ -704,6 +708,13 @@ function writeNeedsResolutionResult(
     );
   } else {
     io.stdout.write(renderNeedsResolution(result, env));
+  }
+  if (productionMode) {
+    const requestIds = result.requests.map((r) => r.id).join(", ");
+    io.stderr.write(
+      `runx: production run ${result.runId} halted with unresolved cognitive-work request(s): ${requestIds}\n` +
+      `  RUNX_PRODUCTION=1 forbids pausing; supply --answers or unset RUNX_PRODUCTION to allow pause semantics.\n`,
+    );
   }
   return 2;
 }
