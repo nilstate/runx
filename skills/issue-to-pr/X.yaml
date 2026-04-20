@@ -1,5 +1,21 @@
 skill: issue-to-pr
 
+harness:
+  cases:
+    - name: issue-to-pr-dispatches-first-step
+      inputs:
+        task_id: issue-to-pr-smoke
+        issue_title: Fixture smoke test
+        issue_body: Minimal smoke test body for the harness.
+        size: micro
+      # The chain's first step (scafld-new) currently fails inside the
+      # harness sandbox because the isolated run dir is not a scafld
+      # workspace. The fixture locks this baseline in so we can track
+      # a fix later; follow-up: either seed a scafld workspace in the
+      # harness setup or make scafld-new tolerate a bare cwd.
+      expect:
+        status: failure
+
 runners:
   issue-to-pr:
     default: true
