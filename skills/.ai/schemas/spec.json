@@ -1,0 +1,514 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/nilstate/scafld/spec-v1.1.json",
+  "title": "scafld Task Specification",
+  "description": "Machine-readable conversational task specification for AI agents",
+  "type": "object",
+  "required": ["spec_version", "task_id", "status", "task", "phases", "planning_log", "created", "updated"],
+  "additionalProperties": false,
+
+  "properties": {
+    "spec_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of this spec format",
+      "examples": ["1.1"]
+    },
+
+    "task_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique identifier for this task (kebab-case)",
+      "examples": ["add-user-metrics", "refactor-auth-module"]
+    },
+
+    "created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when spec was generated"
+    },
+
+    "updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when spec was last modified"
+    },
+
+    "status": {
+      "type": "string",
+      "enum": ["draft", "blocked", "under_review", "approved", "in_progress", "completed", "failed", "cancelled"],
+      "description": "Current lifecycle state of this task"
+    },
+
+    "task": {
+      "type": "object",
+      "required": ["title", "summary", "size", "risk_level", "context", "objectives", "touchpoints", "acceptance"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Human friendly title for this task"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Concise description of the problem/goal"
+        },
+        "size": {
+          "type": "string",
+          "enum": ["micro", "small", "medium", "large"],
+          "description": "Relative task size to guide planning and validation depth"
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Overall risk tier for this task; used to select validation profile when not explicitly set"
+        },
+        "context": {
+          "type": "object",
+          "required": ["packages", "invariants"],
+          "properties": {
+            "packages": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1,
+              "description": "Modules or packages affected"
+            },
+            "files_impacted": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "reason"],
+                "properties": {
+                  "path": {"type": "string"},
+                  "lines": {
+                    "oneOf": [
+                      {"type": "array", "items": {"type": "integer"}},
+                      {"type": "string", "pattern": "^[0-9]+-[0-9]+$"},
+                      {"type": "string", "enum": ["all"]}
+                    ]
+                  },
+                  "reason": {"type": "string"}
+                }
+              }
+            },
+            "invariants": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "description": "Architectural/contract invariants that must be preserved (customize in config.yaml)"
+            },
+            "related_docs": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "cwd": {
+              "type": "string",
+              "description": "Default working directory for acceptance criteria commands, relative to workspace root. Individual criteria can override with their own cwd."
+            }
+          }
+        },
+        "objectives": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "description": "Primary goals for this task"
+        },
+        "scope": {
+          "type": "object",
+          "properties": {
+            "in_scope": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "out_of_scope": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "touchpoints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["area", "description"],
+            "properties": {
+              "area": {"type": "string"},
+              "description": {"type": "string"},
+              "owners": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "links": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+              "description": {"type": "string"},
+              "impact": {
+                "type": "string",
+                "enum": ["low", "medium", "high"]
+              },
+              "mitigation": {"type": "string"}
+            }
+          }
+        },
+        "acceptance": {
+          "type": "object",
+          "required": ["definition_of_done", "validation"],
+          "properties": {
+            "validation_profile": {
+              "type": "string",
+              "enum": ["light", "standard", "strict"],
+              "description": "Validation profile to apply; defaults based on risk_level if omitted"
+            },
+            "definition_of_done": {
+              "type": "array",
+              "minItems": 1,
+              "description": "Checklist items that must be explicitly checked off during execution",
+              "items": {
+                "type": "object",
+                "required": ["id", "description"],
+                "properties": {
+                  "id": {"type": "string"},
+                  "description": {"type": "string"},
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "in_progress", "done"],
+                    "default": "pending"
+                  },
+                  "checked_at": {"type": "string", "format": "date-time"},
+                  "notes": {"type": "string"}
+                }
+              }
+            },
+            "validation": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "type", "description"],
+                "properties": {
+                  "id": {"type": "string"},
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "compile",
+                      "test",
+                      "boundary",
+                      "integration",
+                      "security",
+                      "documentation",
+                      "custom"
+                    ]
+                  },
+                  "description": {"type": "string"},
+                  "command": {"type": "string"},
+                  "expected": {"type": "string"},
+                  "cwd": {"type": "string", "description": "Working directory relative to workspace root"},
+                  "timeout_seconds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Command timeout in seconds. Defaults to 600 when omitted."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "notes": {"type": "string"}
+      }
+    },
+
+    "planning_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "summary"],
+        "properties": {
+          "timestamp": {"type": "string", "format": "date-time"},
+          "actor": {"type": "string"},
+          "summary": {"type": "string"},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "objective", "changes", "acceptance_criteria"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^phase[0-9]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 5
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 10
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["file", "action", "content_spec"],
+              "properties": {
+                "file": {"type": "string"},
+                "action": {
+                  "type": "string",
+                  "enum": ["create", "update", "delete", "move"]
+                },
+                "move_to": {
+                  "type": "string",
+                  "description": "Destination path when action is 'move'"
+                },
+                "lines": {
+                  "oneOf": [
+                    {"type": "array", "items": {"type": "integer"}},
+                    {"type": "string", "pattern": "^[0-9]+-[0-9]+$"},
+                    {"type": "string", "enum": ["all"]}
+                  ]
+                },
+                "content_spec": {"type": "string"}
+              }
+            }
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "type", "description"],
+              "properties": {
+                "id": {"type": "string"},
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "compile",
+                    "test",
+                    "boundary",
+                    "integration",
+                    "security",
+                    "documentation",
+                    "custom"
+                  ],
+                  "description": "Criterion type. For automated types (compile, test, boundary, integration, security), a 'command' field is expected. For manual types (documentation, custom), 'command' is optional."
+                },
+                "description": {"type": "string"},
+                "command": {
+                  "type": "string",
+                  "description": "Shell command to run for automated validation. Expected for compile, test, boundary, integration, and security types."
+                },
+                "expected": {"type": "string"},
+                "cwd": {
+                  "type": "string",
+                  "description": "Working directory for the command, relative to workspace root. Useful in monorepo/workspace setups where different criteria target different submodules."
+                },
+                "timeout_seconds": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Command timeout in seconds. Defaults to 600 when omitted."
+                },
+                "result": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": ["pass", "fail"],
+                      "description": "Flat result recorded by scafld exec"
+                    },
+                    {
+                      "type": "object",
+                      "required": ["status"],
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": ["pass", "fail"]
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "output": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "description": "Nested result block supported for execution records"
+                    }
+                  ]
+                },
+                "executed_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the criterion was last executed"
+                },
+                "result_output": {
+                  "type": "string",
+                  "description": "Truncated command output from scafld exec"
+                }
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed", "skipped"]
+          }
+        }
+      }
+    },
+
+    "rollback": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["per_phase", "atomic", "manual"],
+          "default": "per_phase"
+        },
+        "commands": {
+          "type": "object",
+          "patternProperties": {
+            "^phase[0-9]+$": {"type": "string"}
+          }
+        }
+      }
+    },
+
+    "review": {
+      "type": "object",
+      "description": "Adversarial review results recorded by scafld complete",
+      "properties": {
+        "timestamp": {"type": "string", "format": "date-time"},
+        "verdict": {
+          "type": "string",
+          "enum": ["pass", "fail", "pass_with_issues"],
+          "description": "pass = no findings, fail = blocking findings, pass_with_issues = non-blocking only"
+        },
+        "passes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "result"],
+            "properties": {
+              "id": {"type": "string"},
+              "result": {
+                "type": "string",
+                "enum": ["pass", "fail", "pass_with_issues"]
+              }
+            }
+          }
+        },
+        "review_rounds": {"type": "integer", "minimum": 0, "description": "Number of review rounds before passing"},
+        "blocking_count": {"type": "integer", "minimum": 0},
+        "non_blocking_count": {"type": "integer", "minimum": 0}
+      }
+    },
+
+    "self_eval": {
+      "type": "object",
+      "properties": {
+        "completeness": {"type": "integer", "minimum": 0, "maximum": 3},
+        "architecture_fidelity": {"type": "integer", "minimum": 0, "maximum": 3},
+        "spec_alignment": {"type": "integer", "minimum": 0, "maximum": 2},
+        "validation_depth": {"type": "integer", "minimum": 0, "maximum": 2},
+        "total": {"type": "integer", "minimum": 0, "maximum": 10},
+        "notes": {"type": "string"},
+        "second_pass_performed": {"type": "boolean"}
+      }
+    },
+
+    "deviations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "reason"],
+        "properties": {
+          "rule": {"type": "string"},
+          "reason": {"type": "string"},
+          "mitigation": {"type": "string"},
+          "approved_by": {"type": "string"}
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "estimated_effort_hours": {"type": "number", "minimum": 0},
+        "actual_effort_hours": {"type": "number", "minimum": 0},
+        "ai_model": {"type": "string"},
+        "react_cycles": {"type": "integer"},
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+
+    "harden_status": {
+      "type": "string",
+      "enum": ["not_run", "in_progress", "passed"],
+      "description": "Optional. Tracks whether the operator has run `scafld harden` against this spec. Independent of the lifecycle `status` field; not consulted by `scafld approve`."
+    },
+
+    "harden_rounds": {
+      "type": "array",
+      "description": "Optional. One entry per `scafld harden` invocation.",
+      "items": {
+        "type": "object",
+        "required": ["round", "started_at", "questions"],
+        "properties": {
+          "round": {"type": "integer", "minimum": 1},
+          "started_at": {"type": "string", "format": "date-time"},
+          "ended_at": {"type": "string", "format": "date-time"},
+          "outcome": {"type": "string", "enum": ["in_progress", "passed", "abandoned"]},
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["question", "grounded_in"],
+              "properties": {
+                "question": {"type": "string"},
+                "grounded_in": {
+                  "type": "string",
+                  "pattern": "^(spec_gap:|code:|archive:).+"
+                },
+                "recommended_answer": {"type": "string"},
+                "if_unanswered": {"type": "string"},
+                "answered_with": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

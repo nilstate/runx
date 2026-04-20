@@ -1,0 +1,61 @@
+spec_version: "1.1"
+task_id: "issue-to-pr-smoke"
+created: "2026-04-20T13:36:44Z"
+updated: "2026-04-20T13:36:44Z"
+status: "draft"
+harden_status: "not_run"
+
+task:
+  title: "Fixture smoke test"
+  summary: >
+    TODO: Describe the problem or goal.
+  size: "micro"
+  risk_level: "low"
+  context:
+    packages:
+      - "TODO"
+    invariants:
+      - "domain_boundaries"
+  objectives:
+    - "TODO: Primary objective"
+  touchpoints:
+    - area: "TODO"
+      description: "TODO"
+  acceptance:
+    definition_of_done:
+      - id: "dod1"
+        description: "TODO"
+        status: "pending"
+    validation:
+      - id: "v1"
+        type: "test"
+        description: "TODO"
+        command: "TODO"
+        expected: "0 failures"
+
+planning_log:
+  - timestamp: "2026-04-20T13:36:44Z"
+    actor: "user"
+    summary: "Spec created via scafld new"
+
+phases:
+  - id: "phase1"
+    name: "TODO: Phase name"
+    objective: "TODO: What this phase accomplishes"
+    changes:
+      - file: "TODO"
+        action: "update"
+        content_spec: |
+          TODO: Describe the changes.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "TODO"
+        command: "TODO"
+        expected: "0 failures"
+    status: "pending"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- TODO"

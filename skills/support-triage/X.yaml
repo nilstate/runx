@@ -1,4 +1,5 @@
 skill: support-triage
+version: "0.1.0"
 
 harness:
   cases:

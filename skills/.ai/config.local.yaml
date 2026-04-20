@@ -1,0 +1,26 @@
+# Project-specific config overlay
+# Values here merge on top of .ai/config.yaml.
+# Only include sections you want to override - everything else inherits.
+
+# CUSTOMIZE: Replace with your actual build/test/lint commands
+validation:
+  per_phase:
+    compile_check: "echo 'Replace: your build command'"
+    targeted_tests: "echo 'Replace: your test command'"
+  pre_commit:
+    full_test_suite: "echo 'Replace: your full test suite'"
+    linter_suite: "echo 'Replace: your linter'"
+    typecheck: "echo 'Replace: your typecheck'"
+
+# CUSTOMIZE: Replace with your actual tech stack
+tech_stack:
+  backend:
+    language: "Your language (e.g., Python 3.11, Ruby 3.2)"
+    framework: "Your framework (e.g., Django, Rails, FastAPI)"
+  frontend:
+    framework: "Your framework (e.g., React, Vue, Next.js)"
+
+# CUSTOMIZE: Replace with your actual directory layout
+repo_layout:
+  backend: "backend/"
+  frontend: "frontend/"
