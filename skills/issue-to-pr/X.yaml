@@ -8,11 +8,12 @@ harness:
         issue_title: Fixture smoke test
         issue_body: Minimal smoke test body for the harness.
         size: micro
-      # The chain's first step (scafld-new) currently fails inside the
-      # harness sandbox because the isolated run dir is not a scafld
-      # workspace. The fixture locks this baseline in so we can track
-      # a fix later; follow-up: either seed a scafld workspace in the
-      # harness setup or make scafld-new tolerate a bare cwd.
+      # The scafld-init prelude step now succeeds in harness isolation
+      # (thanks to scafld 1.4.1 auto-init), but scafld-new still fails
+      # because the chain does not wire the top-level task_id input
+      # into the step's inputs block. Follow-up: pass task_id explicitly
+      # to scafld-new, scafld-validate, scafld-approve, scafld-start,
+      # scafld-exec, scafld-audit, scafld-review-open, scafld-complete.
       expect:
         status: failure
 
@@ -105,6 +106,14 @@ runners:
           fs.write phases make the on-disk mutations visible before the
           scafld lifecycle advances.
       steps:
+        - id: scafld-init
+          label: ensure scafld workspace
+          skill: ../scafld
+          scopes:
+            - scafld:workspace:write
+          mutation: true
+          inputs:
+            command: init
         - id: scafld-new
           label: open task lane
           skill: ../scafld
