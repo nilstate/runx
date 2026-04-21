@@ -29,6 +29,7 @@ describe("issue-to-PR composite skill", () => {
     const chain = runner.source.chain;
 
     expect(chain.steps.map((step) => step.id)).toEqual([
+      "scafld-init",
       "scafld-new",
       "author-spec",
       "write-spec",
@@ -36,6 +37,7 @@ describe("issue-to-PR composite skill", () => {
       "scafld-validate",
       "scafld-approve",
       "scafld-start",
+      "read-declared-files",
       "author-fix",
       "write-fix",
       "scafld-exec",
@@ -71,6 +73,12 @@ describe("issue-to-PR composite skill", () => {
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Never author acceptance criteria that depend on git history");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("HEAD~1");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("anchor on the exact expected text");
+    expect(chain.steps.find((step) => step.id === "read-declared-files")).toMatchObject({
+      tool: "spec.read_declared_files",
+      context: {
+        spec_contents: "read-spec.file_read.data.contents",
+      },
+    });
     expect(chain.steps.find((step) => step.id === "write-fix")).toMatchObject({
       tool: "fs.write_bundle",
       context: {
@@ -82,10 +90,13 @@ describe("issue-to-PR composite skill", () => {
         spec_draft: "author-spec.spec_draft.data",
         spec_file: "read-spec.file_read.data",
         spec_contents: "read-spec.file_read.data.contents",
+        declared_file_context: "read-declared-files.declared_file_context.data",
       },
     });
     expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.files");
     expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("repo_snapshot_path");
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("declared_file_context");
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.status: blocked");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")).toMatchObject({
       run: {
         type: "agent-step",
@@ -112,6 +123,13 @@ describe("issue-to-PR composite skill", () => {
         reviewer_result: "reviewer-boundary.review_decision.data",
       },
     });
+    expect(chain.policy?.transitions).toEqual([
+      {
+        to: "write-fix",
+        field: "author-fix.fix_bundle.data.files",
+        notEquals: [],
+      },
+    ]);
   });
 
   it.skipIf(!existsSync(scafldBin))("completes the canonical issue-to-pr lane through authored spec, fix, and review outputs", async () => {
@@ -171,6 +189,7 @@ describe("issue-to-PR composite skill", () => {
         non_blocking_count: 0,
       });
       expect(result.receipt.steps.map((step) => [step.step_id, step.status])).toEqual([
+        ["scafld-init", "success"],
         ["scafld-new", "success"],
         ["author-spec", "success"],
         ["write-spec", "success"],
@@ -178,6 +197,7 @@ describe("issue-to-PR composite skill", () => {
         ["scafld-validate", "success"],
         ["scafld-approve", "success"],
         ["scafld-start", "success"],
+        ["read-declared-files", "success"],
         ["author-fix", "success"],
         ["write-fix", "success"],
         ["scafld-exec", "success"],
@@ -189,6 +209,79 @@ describe("issue-to-PR composite skill", () => {
       ]);
       expect(await readFile(path.join(tempDir, "app.txt"), "utf8")).toBe("fixed\n");
       expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("governed\n");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 90_000);
+
+  it.skipIf(!existsSync(scafldBin))("halts before write-fix when author-fix explicitly reports blocked after declared-file preload", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-blocked-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const taskId = "issue-to-pr-blocked-fixture";
+    const caller: Caller = {
+      resolve: async (request) =>
+        request.kind === "cognitive_work"
+          ? {
+              actor: "agent",
+              payload:
+                request.id === "agent_step.issue-to-pr-author-spec.output"
+                  ? {
+                      spec_draft: {
+                        path: `.ai/specs/drafts/${taskId}.yaml`,
+                        changed_files: [`.ai/specs/in_progress/${taskId}.yaml`, "app.txt", "notes.md"],
+                      },
+                      spec_contents: buildIssueToPrSpec(taskId),
+                    }
+                  : request.id === "agent_step.issue-to-pr-apply-fix.output"
+                    ? {
+                        fix_bundle: {
+                          status: "blocked",
+                          reason: "Need one more grounded read before editing.",
+                          files: [],
+                        },
+                      }
+                    : undefined,
+            }
+          : undefined,
+      report: () => undefined,
+    };
+
+    try {
+      await initScafldRepo(tempDir);
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/issue-to-pr"),
+        inputs: {
+          fixture: tempDir,
+          task_id: taskId,
+          issue_title: "Blocked fixture issue to PR",
+          source: "github_issue",
+          source_id: "456",
+          source_url: "https://github.com/example/repo/issues/456",
+          target_repo: "fixtures/repo",
+          size: "micro",
+          risk: "low",
+          phase: "phase1",
+          draft_spec_path: `.ai/specs/drafts/${taskId}.yaml`,
+          scafld_bin: scafldBin,
+        },
+        caller,
+        env: process.env,
+        receiptDir,
+        runxHome: path.join(tempDir, ".runx-test-home"),
+      });
+
+      expect(result.status).toBe("policy_denied");
+      if (result.status !== "policy_denied") {
+        return;
+      }
+
+      expect(result.reasons).toEqual([
+        "transition policy blocked step 'write-fix': expected author-fix.fix_bundle.data.files != []",
+      ]);
+      expect(result.receipt).toBeUndefined();
+      expect(await readFile(path.join(tempDir, "app.txt"), "utf8")).toBe("base\n");
+      expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("draft\n");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

@@ -303,4 +303,107 @@ steps:
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("reads spec-declared file contents before bounded fix authoring", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-read-declared-files-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const specPath = path.join(tempDir, ".ai", "specs", "active", "task.yaml");
+    await mkdir(path.dirname(specPath), { recursive: true });
+    await mkdir(path.join(tempDir, "docs"), { recursive: true });
+    await writeFile(path.join(tempDir, "docs", "flows.md"), "live flow\n");
+    await writeFile(
+      specPath,
+      `spec_version: "1.1"
+task_id: "task"
+task:
+  title: "Fixture"
+  summary: "Read declared files"
+  size: "micro"
+  risk_level: "low"
+  context:
+    files_impacted:
+      - "docs/flows.md"
+phases:
+  - id: "phase1"
+    name: "Fixture"
+    objective: "Read the declared file set"
+    changes:
+      - file: ".ai/specs/in_progress/task.yaml"
+        action: "update"
+      - file: "docs/flows.md"
+        action: "update"
+`,
+    );
+
+    const chain = validateChain(
+      parseChainYaml(`
+name: read-declared-files
+steps:
+  - id: read_spec
+    tool: fs.read
+    inputs:
+      path: .ai/specs/active/task.yaml
+      repo_root: ${JSON.stringify(tempDir)}
+  - id: load_declared
+    tool: spec.read_declared_files
+    inputs:
+      repo_root: ${JSON.stringify(tempDir)}
+    context:
+      spec_contents: read_spec.file_read.data.contents
+`),
+    );
+
+    const caller: Caller = {
+      resolve: async () => undefined,
+      report: () => undefined,
+    };
+
+    try {
+      const result = await runLocalChain({
+        chain,
+        chainDirectory: tempDir,
+        caller,
+        env: { ...process.env, RUNX_CWD: tempDir },
+        receiptDir,
+        runxHome: path.join(tempDir, "home"),
+      });
+
+      expect(result.status).toBe("success");
+      if (result.status !== "success") {
+        return;
+      }
+
+      const declaredContext = JSON.parse(result.steps[1]?.stdout ?? "") as {
+        declared_count: number;
+        files: Array<{
+          path: string;
+          exists: boolean;
+          kind: string;
+          declared_in: string[];
+          contents: string | null;
+        }>;
+      };
+      expect(declaredContext).toMatchObject({
+        declared_count: 2,
+      });
+      expect(declaredContext.files).toEqual([
+        {
+          path: ".ai/specs/in_progress/task.yaml",
+          exists: false,
+          kind: "governance_artifact",
+          declared_in: ["phases[].changes[].file"],
+          contents: null,
+        },
+        {
+          path: "docs/flows.md",
+          exists: true,
+          kind: "repo_file",
+          declared_in: ["phases[].changes[].file", "task.context.files_impacted"],
+          contents: "live flow\n",
+        },
+      ]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });

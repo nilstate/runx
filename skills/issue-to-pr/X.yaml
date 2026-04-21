@@ -1,5 +1,5 @@
 skill: issue-to-pr
-version: "0.1.2"
+version: "0.1.3"
 
 harness:
   cases:
@@ -45,11 +45,14 @@ harness:
                 context:
                   packages: []
                   invariants: []
-                  files_impacted: []
+                  files_impacted:
+                    - "README.md"
                   cwd: "/tmp"
                 objectives:
-                  - "Stub objective"
-                touchpoints: []
+                  - "Update the stub readme"
+                touchpoints:
+                  - area: "docs"
+                    description: "Keep the stub README aligned with the fixture."
                 acceptance:
                   definition_of_done:
                     - id: "dod1"
@@ -124,17 +127,27 @@ harness:
                 - id: "phase1"
                   name: "Stub"
                   objective: "Stub"
-                  changes: []
-                  acceptance_criteria: []
+                  changes:
+                    - file: "README.md"
+                      action: "update"
+                      content_spec: "Write the fixture README text."
+                  acceptance_criteria:
+                    - id: "ac1"
+                      type: "test"
+                      description: "README contains the stub output"
+                      command: "grep -q '^stub fixture$' README.md"
+                      expected: "exit code 0"
                   status: "pending"
               rollback:
                 strategy: "per_phase"
                 commands:
-                  phase1: "true"
+                  phase1: "git checkout HEAD -- README.md"
           agent_step.issue-to-pr-apply-fix.output:
             fix_bundle:
-              files: []
-              summary: Stub fix bundle with no file mutations.
+              files:
+                - path: "README.md"
+                  contents: "stub fixture\n"
+              summary: Stub fix bundle writing one declared fixture file.
           agent_step.issue-to-pr-review.output:
             review_decision:
               review_file: .ai/reviews/issue-to-pr-full-chain.md
@@ -407,6 +420,13 @@ runners:
           mutation: true
           inputs:
             command: start
+        - id: read-declared-files
+          label: read declared files
+          tool: spec.read_declared_files
+          scopes:
+            - spec.read_declared_files
+          context:
+            spec_contents: read-spec.file_read.data.contents
         - id: author-fix
           label: draft fix
           run:
@@ -420,14 +440,23 @@ runners:
             grounded in the declared issue metadata, approved scope, and
             provided spec_contents. Use repo_snapshot, repo_snapshot_path, and
             repo_context when present to stay aligned with the real repo shape.
-            If the inline snapshot is insufficient and repo_snapshot_path is
-            present, read it via fs.read before choosing files.
+            declared_file_context is the deterministic preloaded current-file
+            surface for every path the approved spec already declared. Review
+            declared_file_context.files before deciding what to edit, and
+            prefer those grounded contents over generic assumptions. If the
+            inline snapshot is insufficient and repo_snapshot_path is present,
+            read it via fs.read before choosing files. Use fs.read only when
+            you need additional grounded repo files beyond the declared set.
             fix_bundle.files must be an array of { path, contents } entries
             covering every tracked repo file that must change to satisfy the
             approved spec. Each path must be relative to the fixture root. When
             the approved spec requires more than one repo file, a partial bundle
             is incorrect. Do not widen scope, and do not rely on hidden edits
-            outside the deterministic write phase.
+            outside the deterministic write phase. If the declared context is
+            still insufficient after reviewing declared_file_context and any
+            justified fs.read calls, return fix_bundle.status: blocked with a
+            reason and leave fix_bundle.files empty rather than guessing or
+            emitting a silent no-op bundle.
           allowed_tools:
             - fs.read
             - git.status
@@ -435,6 +464,7 @@ runners:
             spec_draft: author-spec.spec_draft.data
             spec_file: read-spec.file_read.data
             spec_contents: read-spec.file_read.data.contents
+            declared_file_context: read-declared-files.declared_file_context.data
           artifacts:
             named_emits:
               fix_bundle: fix_bundle
@@ -519,3 +549,8 @@ runners:
             reviewer_result: reviewer-boundary.review_decision.data
           inputs:
             command: complete
+      policy:
+        transitions:
+          - to: write-fix
+            field: author-fix.fix_bundle.data.files
+            not_equals: []

@@ -20,6 +20,7 @@ describe("scafld issue-to-PR skill contract", () => {
 
     expect(chain.name).toBe("issue-to-pr");
     expect(chain.steps.map((step) => step.id)).toEqual([
+      "scafld-init",
       "scafld-new",
       "author-spec",
       "write-spec",
@@ -27,6 +28,7 @@ describe("scafld issue-to-PR skill contract", () => {
       "scafld-validate",
       "scafld-approve",
       "scafld-start",
+      "read-declared-files",
       "author-fix",
       "write-fix",
       "scafld-exec",
@@ -38,12 +40,14 @@ describe("scafld issue-to-PR skill contract", () => {
     ]);
     expect(chain.steps.map((step) => step.skill ?? "")).toEqual([
       "../scafld",
+      "../scafld",
       "",
       "",
       "",
       "../scafld",
       "../scafld",
       "../scafld",
+      "",
       "",
       "",
       "../scafld",
@@ -56,11 +60,13 @@ describe("scafld issue-to-PR skill contract", () => {
     expect(chain.steps.map((step) => step.tool ?? "")).toEqual([
       "",
       "",
+      "",
       "fs.write",
       "fs.read",
       "",
       "",
       "",
+      "spec.read_declared_files",
       "",
       "fs.write_bundle",
       "",
@@ -73,6 +79,7 @@ describe("scafld issue-to-PR skill contract", () => {
     expect(
       Object.fromEntries(chain.steps.filter((step) => step.inputs.command !== undefined).map((step) => [step.id, step.inputs.command])),
     ).toEqual({
+      "scafld-init": "init",
       "scafld-new": "spec",
       "scafld-validate": "validate",
       "scafld-approve": "approve",
@@ -96,7 +103,12 @@ describe("scafld issue-to-PR skill contract", () => {
         type: "agent-step",
         task: "issue-to-pr-apply-fix",
       },
+      context: {
+        declared_file_context: "read-declared-files.declared_file_context.data",
+      },
     });
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("declared_file_context");
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.status: blocked");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")).toMatchObject({
       run: {
         type: "agent-step",
@@ -114,5 +126,12 @@ describe("scafld issue-to-PR skill contract", () => {
         reviewer_result: "reviewer-boundary.review_decision.data",
       },
     });
+    expect(chain.policy?.transitions).toEqual([
+      {
+        to: "write-fix",
+        field: "author-fix.fix_bundle.data.files",
+        notEquals: [],
+      },
+    ]);
   });
 });
