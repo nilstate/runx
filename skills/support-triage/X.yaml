@@ -5,11 +5,15 @@ harness:
   cases:
     - name: bounded-docs-fix
       inputs:
-        title: README should point users to issue-to-pr
-        body: The public docs should present issue-to-pr as the canonical command.
-        source: github_issue
-        source_id: "101"
-        source_url: https://github.com/example/repo/issues/101
+        subject_title: README should point users to issue-to-pr
+        subject_body: The public docs should present issue-to-pr as the canonical command.
+        subject_locator: github://example/repo/issues/101
+        publication_target:
+          target_id: github_issue_101
+          target_kind: message
+          locator: https://github.com/example/repo/issues/101
+          status: published
+          subject_locator: github://example/repo/issues/101
         product_context: OSS runx documentation
         operator_context: Prefer the canonical issue-to-pr name in user-facing replies.
       caller:
@@ -27,27 +31,34 @@ harness:
               action_decision: proceed_to_build
               review_target: none
               operator_notes: []
-              issue_to_pr_request:
+              subject_change_request:
                 task_id: docs_issue_to_pr_command
-                issue_title: README should point users to issue-to-pr
-                issue_body: The public docs should present issue-to-pr as the canonical command.
-                source: github_issue
-                source_id: "101"
-                source_url: https://github.com/example/repo/issues/101
+                subject_title: README should point users to issue-to-pr
+                subject_body: The public docs should present issue-to-pr as the canonical command.
+                subject_locator: github://example/repo/issues/101
+                publication_target:
+                  target_id: github_issue_101
+                  target_kind: message
+                  locator: https://github.com/example/repo/issues/101
+                  status: published
+                  subject_locator: github://example/repo/issues/101
                 size: micro
                 risk: low
             change_set:
-              change_set_id: change_set_docs_issue_101
-              source:
-                type: github_issue
-                id: "101"
-                url: https://github.com/example/repo/issues/101
+              change_set_id: change_set_docs_work_101
+              subject_locator: github://example/repo/issues/101
               summary: Update the public docs to point at issue-to-pr as the canonical skill name.
               category: docs
               severity: low
               recommended_lane: issue-to-pr
               commence_decision: approve
               action_decision: proceed_to_build
+              publication_target:
+                target_id: github_issue_101
+                target_kind: message
+                locator: https://github.com/example/repo/issues/101
+                status: published
+                subject_locator: github://example/repo/issues/101
               target_surfaces:
                 - surface: oss-docs
                   kind: docs
@@ -68,10 +79,9 @@ harness:
             source_type: agent-step
     - name: feature-needs-decomposition
       inputs:
-        title: Add abandoned cart recovery across email and SMS
-        body: We need a generated workflow, copy, timing rules, and reporting for abandoned cart recovery.
-        source: support_request
-        source_id: "982"
+        subject_title: Add abandoned cart recovery across email and SMS
+        subject_body: We need a generated workflow, copy, timing rules, and reporting for abandoned cart recovery.
+        subject_locator: support://request/982
         product_context: Multi-channel marketing automation product
       caller:
         answers:
@@ -93,6 +103,7 @@ harness:
                 change_set_id: change_set_abandoned_cart_982
                 objective: Add abandoned cart recovery across email and SMS
                 project_context: Multi-channel marketing automation product
+                subject_locator: support://request/982
                 target_surfaces:
                   - surface: api
                     kind: repo
@@ -112,14 +123,9 @@ harness:
                 success_criteria:
                   - One shared plan exists before repo mutation starts.
                   - Repo-scoped workers receive explicit shared invariants.
-              objective_request:
-                objective: Add abandoned cart recovery across email and SMS
-                project_context: Multi-channel marketing automation product
             change_set:
               change_set_id: change_set_abandoned_cart_982
-              source:
-                type: support_request
-                id: "982"
+              subject_locator: support://request/982
               summary: Add abandoned cart recovery across email and SMS with coordinated backend, UI, and MCP work.
               category: feature_request
               severity: medium
@@ -155,10 +161,9 @@ harness:
             source_type: agent-step
     - name: reply-only-question
       inputs:
-        title: How do I rotate my API key?
-        body: I only need the operator instructions for rotating an API key safely.
-        source: support_request
-        source_id: "983"
+        subject_title: How do I rotate my API key?
+        subject_body: I only need the operator instructions for rotating an API key safely.
+        subject_locator: support://request/983
       caller:
         answers:
           agent_step.support-triage.output:
@@ -176,9 +181,7 @@ harness:
               operator_notes: []
             change_set:
               change_set_id: change_set_support_983
-              source:
-                type: support_request
-                id: "983"
+              subject_locator: support://request/983
               summary: Respond with operator guidance for rotating an API key safely.
               category: question
               severity: low
@@ -204,11 +207,15 @@ harness:
             source_type: agent-step
     - name: request-review-before-mutation
       inputs:
-        title: Clarify the affected repo before we start
-        body: The report mentions API failures and docs drift, but it is not yet clear whether this is one bounded fix or cross-repo work.
-        source: github_issue
-        source_id: "984"
-        source_url: https://github.com/example/repo/issues/984
+        subject_title: Clarify the affected repo before we start
+        subject_body: The report mentions API failures and docs drift, but it is not yet clear whether this is one bounded fix or cross-repo work.
+        subject_locator: github://example/repo/issues/984
+        publication_target:
+          target_id: github_issue_984
+          target_kind: message
+          locator: https://github.com/example/repo/issues/984
+          status: published
+          subject_locator: github://example/repo/issues/984
         product_context: Workspace repo with multiple bounded mutation surfaces
       caller:
         answers:
@@ -223,22 +230,25 @@ harness:
               needs_human: false
               commence_decision: approve
               action_decision: request_review
-              review_target: issue
+              review_target: subject
               review_comment: Please confirm whether the failing path belongs to the API repo, the docs repo, or both. runx is holding mutation until the target surface is explicit.
               operator_notes:
                 - Do not open issue-to-pr until the target repo is explicit.
             change_set:
               change_set_id: change_set_support_984
-              source:
-                type: github_issue
-                id: "984"
-                url: https://github.com/example/repo/issues/984
+              subject_locator: github://example/repo/issues/984
               summary: Clarify the affected repo before opening a governed worker or plan.
               category: other
               severity: medium
               recommended_lane: manual-triage
               commence_decision: approve
               action_decision: request_review
+              publication_target:
+                target_id: github_issue_984
+                target_kind: message
+                locator: https://github.com/example/repo/issues/984
+                status: published
+                subject_locator: github://example/repo/issues/984
               target_surfaces:
                 - surface: workspace
                   kind: other
@@ -269,34 +279,26 @@ runners:
     artifacts:
       wrap_as: support_triage_packet
     inputs:
-      title:
+      subject_title:
         type: string
         required: false
-        description: "Canonical report title."
-      issue_title:
+        description: "Canonical subject title."
+      subject_body:
         type: string
         required: false
-        description: "Compatibility alias for title."
-      body:
+        description: "Canonical subject body or request text."
+      subject_locator:
         type: string
         required: false
-        description: "Canonical report body."
-      issue_body:
-        type: string
+        description: "Canonical locator for the bounded subject."
+      subject_memory:
+        type: json
         required: false
-        description: "Compatibility alias for body."
-      source:
-        type: string
+        description: "Portable subject memory when the caller already has it."
+      publication_target:
+        type: json
         required: false
-        description: "Source system such as github_issue or support_request."
-      source_id:
-        type: string
-        required: false
-        description: "Source record identifier."
-      source_url:
-        type: string
-        required: false
-        description: "Source URL when available."
+        description: "Current publication surface for replies, status, or refreshes."
       product_context:
         type: string
         required: false

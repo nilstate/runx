@@ -82,6 +82,26 @@ describe("issue-to-PR composite skill", () => {
       type: "string",
       required: false,
     });
+    expect(runner.inputs.subject_title).toMatchObject({
+      type: "string",
+      required: false,
+    });
+    expect(runner.inputs.subject_body).toMatchObject({
+      type: "string",
+      required: false,
+    });
+    expect(runner.inputs.subject_locator).toMatchObject({
+      type: "string",
+      required: false,
+    });
+    expect(runner.inputs.subject_memory).toMatchObject({
+      type: "json",
+      required: false,
+    });
+    expect(runner.inputs.publication_target).toMatchObject({
+      type: "json",
+      required: false,
+    });
     expect(runner.inputs.name).toMatchObject({
       type: "string",
       required: false,
@@ -95,6 +115,8 @@ describe("issue-to-PR composite skill", () => {
       required: false,
     });
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo_snapshot_path");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("subject_title");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("subject_locator");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Never author acceptance criteria that depend on git history");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("HEAD~1");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Never write an exhaustive whole-tree assertion");
@@ -233,10 +255,9 @@ describe("issue-to-PR composite skill", () => {
         inputs: {
           fixture: tempDir,
           task_id: taskId,
-          issue_title: "Fixture issue to PR",
-          source: "github_issue",
-          source_id: "123",
-          source_url: "https://github.com/example/repo/issues/123",
+          subject_title: "Fixture subject-driven change",
+          subject_body: "Apply a bounded fixture docs update.",
+          subject_locator: "github://example/repo/issues/123",
           target_repo: "fixtures/repo",
           size: "micro",
           risk: "low",
@@ -266,7 +287,7 @@ describe("issue-to-PR composite skill", () => {
           status: "completed",
         },
         result: {
-          markdown: expect.stringContaining("# Fixture issue to PR"),
+          markdown: expect.stringContaining("# Fixture subject-driven change"),
         },
       });
       expect(result.receipt.steps.map((step) => [step.step_id, step.status])).toEqual([
@@ -342,10 +363,9 @@ describe("issue-to-PR composite skill", () => {
         inputs: {
           fixture: tempDir,
           task_id: taskId,
-          issue_title: "Blocked fixture issue to PR",
-          source: "github_issue",
-          source_id: "456",
-          source_url: "https://github.com/example/repo/issues/456",
+          subject_title: "Blocked fixture subject-driven change",
+          subject_body: "Apply a bounded fixture docs update.",
+          subject_locator: "github://example/repo/issues/456",
           target_repo: "fixtures/repo",
           size: "micro",
           risk: "low",
@@ -580,7 +600,7 @@ updated: "2026-04-10T00:00:00Z"
 status: "draft"
 
 task:
-  title: "Fixture issue to PR"
+  title: "Fixture subject-driven change"
   summary: "Apply one bounded fixture fix and archive the completed review."
   size: "micro"
   risk_level: "low"

@@ -6,7 +6,169 @@ import { describe, expect, it } from "vitest";
 
 import { writeLocalReceipt } from "../../receipts/src/index.js";
 
-import { createFileMemoryStore } from "./index.js";
+import {
+  createFileMemoryStore,
+  findPublicationTarget,
+  latestDecisionForGate,
+  subjectMemoryAllowsGate,
+  summarizeSubjectMemory,
+  validateSubjectMemory,
+} from "./index.js";
+
+describe("subject memory contract", () => {
+  it("accepts provider-native subject memory without leaking provider nouns into core fields", () => {
+    const memory = validateSubjectMemory({
+      kind: "runx.subject-memory.v1",
+      adapter: {
+        type: "github",
+        provider: "github",
+        surface: "issue_thread",
+        cursor: "comment:4286817434",
+      },
+      subject: {
+        subject_kind: "work_item",
+        subject_locator: "nilstate/aster#issue/110",
+        title: "[skill] Add a collaboration issue distillation skill",
+        canonical_uri: "https://github.com/nilstate/aster/issues/110",
+      },
+      entries: [
+        {
+          entry_id: "comment-1",
+          entry_kind: "message",
+          recorded_at: "2026-04-21T07:25:06Z",
+          actor: {
+            actor_id: "auscaster",
+            role: "maintainer",
+          },
+          body: "Opened draft PR for this run.",
+        },
+      ],
+      decisions: [
+        {
+          decision_id: "publish-1",
+          gate_id: "skill-lab.publish",
+          decision: "allow",
+          recorded_at: "2026-04-21T08:00:00Z",
+          reason: "same subject approved one rolling draft PR",
+        },
+      ],
+      publication_targets: [
+        {
+          target_id: "pr-111",
+          target_kind: "pull_request",
+          locator: "https://github.com/nilstate/aster/pull/111",
+          status: "draft",
+        },
+      ],
+      source_refs: [
+        {
+          type: "provider_thread",
+          uri: "https://github.com/nilstate/aster/issues/110",
+        },
+      ],
+      generated_at: "2026-04-21T08:05:00Z",
+    });
+
+    expect(memory.subject.subject_kind).toBe("work_item");
+    expect(memory.subject.subject_locator).toBe("nilstate/aster#issue/110");
+    expect(memory.adapter.type).toBe("github");
+    expect(subjectMemoryAllowsGate(memory, "skill-lab.publish")).toBe(true);
+    expect(findPublicationTarget(memory, "pull_request")?.status).toBe("draft");
+  });
+
+  it("returns the newest matching decision for a gate", () => {
+    const memory = validateSubjectMemory({
+      kind: "runx.subject-memory.v1",
+      adapter: {
+        type: "local-conversation",
+      },
+      subject: {
+        subject_kind: "work_item",
+        subject_locator: "local://conversation/42",
+      },
+      entries: [],
+      decisions: [
+        {
+          decision_id: "plan-1",
+          gate_id: "issue-triage.plan",
+          decision: "deny",
+          recorded_at: "2026-04-21T08:00:00Z",
+        },
+        {
+          decision_id: "plan-2",
+          gate_id: "issue-triage.plan",
+          decision: "allow",
+          recorded_at: "2026-04-21T08:05:00Z",
+        },
+      ],
+      publication_targets: [],
+      source_refs: [],
+    });
+
+    expect(latestDecisionForGate(memory, "issue-triage.plan")?.decision_id).toBe("plan-2");
+    expect(subjectMemoryAllowsGate(memory, "issue-triage.plan")).toBe(true);
+  });
+
+  it("renders a stable provider-agnostic summary", () => {
+    const memory = validateSubjectMemory({
+      kind: "runx.subject-memory.v1",
+      adapter: {
+        type: "ticketing",
+        provider: "linear",
+        surface: "ticket_thread",
+      },
+      subject: {
+        subject_kind: "work_item",
+        subject_locator: "linear://issue/ENG-42",
+      },
+      entries: [
+        {
+          entry_id: "entry-1",
+          entry_kind: "message",
+          recorded_at: "2026-04-21T09:00:00Z",
+        },
+        {
+          entry_id: "entry-2",
+          entry_kind: "status",
+          recorded_at: "2026-04-21T09:01:00Z",
+        },
+      ],
+      decisions: [],
+      publication_targets: [
+        {
+          target_id: "draft-1",
+          target_kind: "draft_change",
+          status: "proposed",
+        },
+      ],
+      source_refs: [],
+    });
+
+    expect(summarizeSubjectMemory(memory)).toBe(
+      "work_item:linear://issue/ENG-42 via ticketing | entries=2 decisions=0 publication_targets=draft_change",
+    );
+  });
+
+  it("rejects missing subject locator fields", () => {
+    expect(
+      () =>
+        validateSubjectMemory({
+          kind: "runx.subject-memory.v1",
+          adapter: {
+            type: "github",
+          },
+          subject: {
+            subject_kind: "work_item",
+            title: "missing locator",
+          },
+          entries: [],
+          decisions: [],
+          publication_targets: [],
+          source_refs: [],
+        }),
+    ).toThrow(/subject_locator/);
+  });
+});
 
 describe("file local memory store", () => {
   it("initializes an idempotent filesystem index and stores project-scoped facts", async () => {

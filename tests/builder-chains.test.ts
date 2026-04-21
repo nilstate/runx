@@ -32,6 +32,12 @@ describe("builder-chain skills", () => {
     expect(existsSync(path.resolve("skills/objective-to-skill/X.yaml"))).toBe(true);
     expect(existsSync(path.resolve("skills/improve-skill/X.yaml"))).toBe(true);
   });
+
+  it("teaches builder skills to use portable subject-memory nouns for subject-driven contracts", async () => {
+    await expect(readFile(path.resolve("skills/objective-to-skill/SKILL.md"), "utf8")).resolves.toContain("subject_memory");
+    await expect(readFile(path.resolve("skills/objective-decompose/SKILL.md"), "utf8")).resolves.toContain("subject_locator");
+    await expect(readFile(path.resolve("skills/harness-author/SKILL.md"), "utf8")).resolves.toContain("publication_target");
+  });
 });
 
 describe("builder skill objective-to-skill", () => {

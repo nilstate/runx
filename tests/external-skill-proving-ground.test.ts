@@ -219,7 +219,7 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     skillName: "support-triage",
     expectation: {
       requestId: "agent_step.support-triage.output",
-      inputKeys: ["title", "body", "source", "source_id", "source_url", "product_context", "operator_context"],
+      inputKeys: ["subject_title", "subject_body", "subject_locator", "publication_target", "product_context", "operator_context"],
       sourceType: "agent-step",
     },
   },
@@ -243,11 +243,9 @@ const customScenarios: readonly CustomProvingGroundScenario[] = [
         inputs: {
           fixture: lane.repoDir,
           task_id: "issue-to-pr-proving-ground",
-          issue_title: "Clarify the external proving-ground guide",
-          issue_body: "Operators should be able to run the lane with no hidden caller help.",
-          source: "github_issue",
-          source_id: "241",
-          source_url: "https://github.com/nilstate/runx/issues/241",
+          subject_title: "Clarify the external proving-ground guide",
+          subject_body: "Operators should be able to run the lane with no hidden caller help.",
+          subject_locator: "github://nilstate/runx/issues/241",
           target_repo: "nilstate/runx",
           size: "micro",
           risk: "low",
@@ -263,11 +261,9 @@ const customScenarios: readonly CustomProvingGroundScenario[] = [
       inputKeys: [
         "fixture",
         "task_id",
-        "issue_title",
-        "issue_body",
-        "source",
-        "source_id",
-        "source_url",
+        "subject_title",
+        "subject_body",
+        "subject_locator",
         "target_repo",
         "size",
         "risk",
@@ -390,7 +386,7 @@ async function prepareHarnessScenario(scenario: HarnessProvingGroundScenario): P
 }
 
 async function readManifest(skillName: string): Promise<SkillRunnerManifest> {
-  const raw = await readFile(path.resolve("bindings", "runx", skillName, "X.yaml"), "utf8");
+  const raw = await readFile(path.resolve("skills", skillName, "X.yaml"), "utf8");
   return validateRunnerManifest(parseRunnerManifestYaml(raw));
 }
 
@@ -433,8 +429,19 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const [, , command, taskId] = process.argv;
+if (command === "init") {
+  const aiDir = path.join(process.cwd(), ".ai");
+  fs.mkdirSync(path.join(aiDir, "specs", "drafts"), { recursive: true });
+  process.stdout.write(JSON.stringify({
+    command: "init",
+    state: { status: "ready" },
+    result: { initialized: true }
+  }));
+  process.exit(0);
+}
+
 if (command !== "new") {
-  process.stderr.write("fake scafld only supports new for proving-ground tests\\n");
+  process.stderr.write("fake scafld only supports init and new for proving-ground tests\\n");
   process.exit(1);
 }
 
@@ -451,7 +458,12 @@ fs.writeFileSync(
     '  summary: "Draft spec created by the fake scafld proving-ground stub"',
   ].join("\\n"),
 );
-process.stdout.write(JSON.stringify({ task_id: taskId, draft_spec: \`.ai/specs/drafts/\${taskId}.yaml\` }));
+process.stdout.write(JSON.stringify({
+  command: "new",
+  task_id: taskId,
+  state: { status: "draft", file: \`.ai/specs/drafts/\${taskId}.yaml\` },
+  result: { valid: true, file: \`.ai/specs/drafts/\${taskId}.yaml\`, errors: [] }
+}));
 `,
     { mode: 0o755 },
   );

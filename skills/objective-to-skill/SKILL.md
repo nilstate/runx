@@ -13,6 +13,12 @@ This is a composite skill that chains three reusable builder capabilities:
 high-level goal and produces everything needed to implement and test a
 new skill.
 
+When the proposed skill is subject-driven, the generated contract should model
+portable runx nouns, not provider nouns. Prefer `subject_title`,
+`subject_body`, `subject_locator`, `subject_memory`, and `publication_target` over
+adapter-shaped fields such as issue ids, thread URLs, or provider-specific
+review handles.
+
 ## What this skill does
 
 1. **Decompose the objective** (via `objective-decompose`). Breaks the
@@ -67,3 +73,6 @@ new skill.
 - `project_context` (optional): repo, product, or operator context
   that constrains the design. Include language, framework, existing
   tooling, governance requirements, and any constraints on scope.
+- `subject_memory` (optional): portable bounded subject memory when the
+  objective comes from an existing issue, chat, ticket, or other adapter
+  surface.

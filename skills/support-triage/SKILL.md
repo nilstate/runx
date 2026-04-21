@@ -5,9 +5,9 @@ description: Turn a noisy support report into a bounded triage artifact and an e
 
 # Support Triage
 
-Convert an inbound issue, support request, or operator report into one explicit
-triage decision plus the parent change artifact that downstream planning or
-mutation lanes must share.
+Convert an inbound subject, support report, or operator request into one
+explicit triage decision plus the parent change artifact that downstream
+planning or mutation lanes must share.
 
 This skill does not mutate code, open tickets, or publish replies directly. Its
 job is to classify the report, summarize it, draft the next helpful response,
@@ -31,7 +31,7 @@ Use `manual-triage` when the report is ambiguous, risky, or missing key context.
 - `category`: one of `bug`, `feature_request`, `docs`, `billing`, `account`,
   `question`, or `other`
 - `severity`: one of `low`, `medium`, `high`, or `critical`
-- `summary`: concise summary of the actual issue
+- `summary`: concise summary of the actual subject or report
 - `suggested_reply`: a user-facing reply draft or operator handoff note
 - `recommended_lane`: `issue-to-pr`, `objective-decompose`, `reply-only`, or
   `manual-triage`
@@ -44,7 +44,7 @@ Use `manual-triage` when the report is ambiguous, risky, or missing key context.
 - `commence_decision`: `approve`, `hold`, `reject`, or `needs_human`
 - `action_decision`: `proceed_to_build`, `proceed_to_plan`,
   `request_review`, or `stop`
-- `review_target`: `issue`, `draft_pr`, or `none`
+- `review_target`: `subject`, `publication_target`, or `none`
 - `review_comment`: markdown comment body for the supervisor to post before the
   next lane proceeds
 
@@ -57,9 +57,10 @@ When present, these fields mean:
 - `action_decision=request_review` means the supervisor should post
   `review_comment` to the chosen `review_target` and stop there until a later
   approval or rerun authorizes mutation
-- `review_target=draft_pr` only makes sense when a draft PR already exists.
-  If no draft PR exists yet, the supervisor should fall back to the source
-  issue and say that clearly in the posted comment
+- `review_target=publication_target` only makes sense when a current
+  publication target already exists. If no draft change, message surface, or
+  other publication target exists yet, the supervisor should fall back to the
+  source subject and say that clearly in the posted comment
 - `action_decision=proceed_to_plan` should usually still result in a public
   supervisor comment so the hold/plan decision is visible outside the raw
   receipt stream
@@ -67,10 +68,14 @@ When present, these fields mean:
 
 Always emit `change_set` alongside `triage_report`.
 
+The `change_set` is the parent artifact for any later planning or worker
+fanout. It is what keeps multiple repo-scoped lanes aligned to one shared
+objective.
+
 `change_set` must contain:
 
 - `change_set_id`
-- `source`: object with `type`, `id`, and optional `url`
+- `subject_locator`
 - `summary`
 - `category`
 - `severity`
@@ -86,18 +91,17 @@ Always emit `change_set` alongside `triage_report`.
   preserve
 - `success_criteria`: array of concrete outcomes that define success for the
   whole change
+- `publication_target` (optional): current publication surface for status
+  updates, replies, or draft-change refreshes when the caller already knows it
 
-The `change_set` is the parent artifact for any later planning or worker fanout.
-It is what keeps multiple repo-scoped lanes aligned to one shared objective.
-
-When `recommended_lane=issue-to-pr`, also include `issue_to_pr_request` with:
+When `recommended_lane=issue-to-pr`, also include `subject_change_request` with:
 
 - `task_id`
-- `issue_title`
-- `issue_body`
-- `source`
-- `source_id`
-- `source_url`
+- `subject_title`
+- `subject_body`
+- `subject_locator`
+- `subject_memory` (optional)
+- `publication_target` (optional)
 - `size`: one of `micro`, `small`, `medium`, or `large`
 - `risk`: one of `low`, `medium`, or `high`
 
@@ -107,14 +111,13 @@ When `recommended_lane=objective-decompose`, also include
 - `change_set_id`
 - `objective`
 - `project_context`
+- `subject_locator`
+- `subject_memory` (optional)
 - `target_surfaces`
 - `shared_invariants`
 - `success_criteria`
 
-`objective_request` may still be emitted as a compatibility alias, but
-`workspace_change_plan_request` is the canonical planning packet.
-
-Do not emit both `issue_to_pr_request` and `workspace_change_plan_request` for
+Do not emit both `subject_change_request` and `workspace_change_plan_request` for
 the same report.
 
 Prefer conservative routing:
@@ -131,10 +134,13 @@ Prefer conservative routing:
 
 ## Inputs
 
-- `title` or `issue_title`: report title
-- `body` or `issue_body`: report body
-- `source`: source system such as `github_issue` or `support_request`
-- `source_id`: source record id
-- `source_url`: source URL
+- `subject_title`: canonical subject title
+- `subject_body`: canonical subject body or request text
+- `subject_locator` (optional): canonical locator for the bounded subject,
+  such as an issue, chat thread, ticket, or local agent session
+- `subject_memory` (optional): provider-backed subject memory for the current
+  subject thread
+- `publication_target` (optional): current publication surface for replies,
+  draft changes, or refreshes
 - `product_context` (optional): product-specific constraints or routing hints
 - `operator_context` (optional): maintainer or support posture guidance

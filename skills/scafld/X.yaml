@@ -67,11 +67,11 @@ runners:
       title:
         type: string
         required: false
-        description: "Title passed to `scafld new`."
-      issue_title:
+        description: "Direct title passed to `scafld new`."
+      subject_title:
         type: string
         required: false
-        description: "Canonical issue title alias accepted by composite wrappers that call `scafld new`."
+        description: "Canonical subject title accepted by subject-driven composite wrappers that call `scafld new`."
       size:
         type: string
         required: false

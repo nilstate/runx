@@ -9,9 +9,7 @@ harness:
         project_context: OSS skill package catalog
         change_set:
           change_set_id: change_set_market_intelligence
-          source:
-            type: operator_objective
-            id: market-intelligence
+          subject_locator: objective://market-intelligence
           summary: Launch a governed market-intelligence briefing flow.
           category: other
           severity: medium
@@ -32,9 +30,7 @@ harness:
           agent_step.objective-decomposition.output:
             change_set:
               change_set_id: change_set_market_intelligence
-              source:
-                type: operator_objective
-                id: market-intelligence
+              subject_locator: objective://market-intelligence
               summary: Launch a governed market-intelligence briefing flow.
               category: other
               severity: medium
@@ -125,9 +121,7 @@ harness:
         project_context: Nitrosend workspace with repo-local worker lanes
         change_set:
           change_set_id: change_set_abandoned_cart_982
-          source:
-            type: support_request
-            id: "982"
+          subject_locator: support://request/982
           summary: Add abandoned cart recovery across api, app, and mcp.
           category: feature_request
           severity: medium
@@ -158,9 +152,7 @@ harness:
           agent_step.objective-decomposition.output:
             change_set:
               change_set_id: change_set_abandoned_cart_982
-              source:
-                type: support_request
-                id: "982"
+              subject_locator: support://request/982
               summary: Add abandoned cart recovery across api, app, and mcp.
               category: feature_request
               severity: medium
@@ -317,6 +309,14 @@ runners:
         type: string
         required: false
         description: "Optional repo, product, or user context for the objective."
+      subject_locator:
+        type: string
+        required: false
+        description: "Canonical locator for the bounded subject behind the objective."
+      subject_memory:
+        type: object
+        required: false
+        description: "Portable subject memory when the objective came from an existing subject thread."
       change_set:
         type: object
         required: false

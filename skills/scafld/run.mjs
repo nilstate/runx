@@ -49,8 +49,8 @@ switch (command) {
     break;
   case "new":
     args.push("new", taskId);
-    if (inputs.title || inputs.issue_title || inputs.issueTitle) {
-      args.push("-t", String(inputs.title || inputs.issue_title || inputs.issueTitle));
+    if (inputs.subject_title) {
+      args.push("-t", String(inputs.subject_title));
     }
     if (inputs.size) {
       args.push("-s", String(inputs.size));

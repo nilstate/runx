@@ -6,8 +6,9 @@ harness:
     - name: issue-to-pr-dispatches-first-step
       inputs:
         task_id: issue-to-pr-smoke
-        issue_title: Fixture smoke test
-        issue_body: Minimal smoke test body for the harness.
+        subject_title: Fixture smoke test
+        subject_body: Minimal subject body for the harness.
+        subject_locator: local://fixtures/issue-to-pr-smoke
         size: micro
       # Shallow smoke baseline. Harness now sandboxes cli-tool cwd
       # to the tempdir (runner.ts RUNX_CWD/INIT_CWD), so scafld-init
@@ -20,8 +21,9 @@ harness:
     - name: issue-to-pr-reaches-author-spec
       inputs:
         task_id: issue-to-pr-reach-author
-        issue_title: Author-spec harness reach
-        issue_body: Deeper harness case with canned author-spec answers so the chain can progress past the first agent hand-off.
+        subject_title: Author-spec harness reach
+        subject_body: Deeper harness case with canned author-spec answers so the chain can progress past the first agent hand-off.
+        subject_locator: local://fixtures/issue-to-pr-reach-author
         size: micro
       caller:
         answers:
@@ -81,8 +83,9 @@ harness:
     - name: issue-to-pr-reaches-reviewer-boundary
       inputs:
         task_id: issue-to-pr-review-boundary
-        issue_title: Reviewer-boundary harness
-        issue_body: Canned answers for authored spec and fix so the chain reaches the explicit reviewer hand-off.
+        subject_title: Reviewer-boundary harness
+        subject_body: Canned answers for authored spec and fix so the chain reaches the explicit reviewer hand-off.
+        subject_locator: local://fixtures/issue-to-pr-review-boundary
         size: micro
       caller:
         answers:
@@ -159,31 +162,27 @@ runners:
         required: false
         default: "issue-to-pr-fixture"
         description: "scafld task id for the governed issue-to-PR lane."
-      issue_title:
+      subject_title:
         type: string
         required: false
-        default: "Fixture issue to PR"
-        description: "Canonical issue title passed to the lane."
-      title:
+        default: "Fixture subject-driven change"
+        description: "Canonical subject title passed to the lane."
+      subject_body:
         type: string
         required: false
-        description: "Compatibility alias for issue_title."
-      issue_body:
+        description: "Subject body or request text describing the change request."
+      subject_locator:
         type: string
         required: false
-        description: "Issue or support body describing the change request."
-      source:
-        type: string
+        description: "Canonical locator for the bounded subject."
+      subject_memory:
+        type: json
         required: false
-        description: "Source system for the issue, such as github_issue or support_request."
-      source_id:
-        type: string
+        description: "Portable subject memory for the current subject thread."
+      publication_target:
+        type: json
         required: false
-        description: "Source record identifier."
-      source_url:
-        type: string
-        required: false
-        description: "Source URL for the issue or support request."
+        description: "Current publication surface when the lane is refreshing an adapter-owned target."
       target_repo:
         type: string
         required: false
@@ -279,13 +278,13 @@ runners:
               spec_contents: string
           instructions: >
             Replace the scafld draft TODOs with a valid bounded spec for this
-            issue-to-PR lane. Use the issue metadata in inputs, especially
-            issue_title/title, issue_body, source, source_id, source_url,
-            target_repo, repo_snapshot, repo_snapshot_path, repo_context, and
-            draft_spec_path to keep the spec grounded in the real codebase.
-            Prefer repo_context and the inline repo_snapshot first. If you need
-            more grounding and repo_snapshot_path is present, read that file via
-            fs.read rather than guessing.
+            issue-to-PR lane. Use the subject metadata in inputs, especially
+            subject_title, subject_body, subject_locator, subject_memory,
+            publication_target, target_repo, repo_snapshot, repo_snapshot_path,
+            repo_context, and draft_spec_path to keep the spec grounded in the
+            real codebase. Prefer repo_context and the inline repo_snapshot
+            first. If you need more grounding and repo_snapshot_path is
+            present, read that file via fs.read rather than guessing.
             draft_spec_path is the canonical draft path created by scafld new.
             Treat it as source-of-truth lifecycle state, not as something to
             re-emit in a parallel object. spec_contents must be the full YAML
@@ -318,7 +317,7 @@ runners:
             used by the passing issue-to-pr fixture tests: task.summary/size/
             risk_level and task.acceptance.validation are required semantics,
             not optional prose. If a required file path cannot be grounded from
-            the issue body or available evidence, keep the spec narrowly scoped
+            the subject body or available evidence, keep the spec narrowly scoped
             and state the missing path confirmation in assumptions or notes
             rather than inventing it. When repo_snapshot or
             repo_snapshot_path is present, prefer those real repo artifacts over
@@ -340,7 +339,7 @@ runners:
             context, not in phases[].changes[].file. When
             checking file contents, target the declared changed file directly
             and anchor on the exact expected text so the command cannot
-            accidentally match the issue title, spec prose, or unrelated
+            accidentally match the work title, spec prose, or unrelated
             strings elsewhere in the repo.
           allowed_tools:
             - fs.read
@@ -419,7 +418,7 @@ runners:
               fix_bundle: object
           instructions: >
             Produce the bounded fix bundle described by the approved spec,
-            grounded in the declared issue metadata, approved scope, and
+            grounded in the declared subject metadata, approved scope, and
             provided spec_contents. Use repo_snapshot, repo_snapshot_path, and
             repo_context when present to stay aligned with the real repo shape.
             branch_binding and sync_state come from native scafld branch/status

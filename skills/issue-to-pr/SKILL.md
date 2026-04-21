@@ -5,7 +5,7 @@ description: Govern a scafld-backed issue-to-PR lane with a visible reviewer bou
 
 # Issue to PR
 
-Drive a bounded issue remediation lane through the full scafld lifecycle under
+Drive a bounded subject-driven change lane through the full scafld lifecycle under
 runx governance, from spec creation through authored fix, explicit review, and
 projection-ready PR surfaces.
 
@@ -98,18 +98,19 @@ For file-scope assertions, prefer exact path filters or current-tree checks
 such as `git diff --name-only -- <path>` or `git status --short -- <path>`
 over history-dependent diffs. For content assertions, target the changed file
 directly and anchor on the exact expected text so the check cannot accidentally
-match issue titles, spec prose, or other unrelated strings elsewhere in the
+match work titles, spec prose, or other unrelated strings elsewhere in the
 repo.
 
 ## Inputs
 
 - `task_id`: scafld task id (default: `issue-to-pr-fixture`).
-- `issue_title`: canonical issue title passed into the lane.
-- `title`: compatibility alias for callers that still send `title`.
-- `issue_body`: full issue/support body when available.
-- `source`: source system, for example `github_issue` or `support_request`.
-- `source_id`: source record identifier.
-- `source_url`: source URL when available.
+- `subject_title`: canonical subject title passed into the lane.
+- `subject_body`: full subject body or request text when available.
+- `subject_locator` (optional): canonical locator for the bounded subject.
+- `subject_memory` (optional): portable subject memory for the current work
+  thread.
+- `publication_target` (optional): current publication surface when the lane is
+  refreshing a draft change, subject thread, or other adapter-owned target.
 - `target_repo`: intended repo slug for repo-local dispatchers.
 - `repo_snapshot`: bounded structured snapshot of the target repo, when the
   supervisor or worker can inspect the real workspace before yielding the
