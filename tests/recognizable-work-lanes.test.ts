@@ -125,26 +125,25 @@ describe("recognizable work lanes", () => {
     }
   });
 
-  it.skipIf(!existsSync(scafldBin))("runs issue-to-pr end to end through the local CLI and completes the governed lane", async () => {
+  it.skipIf(!existsSync(scafldBin))("runs issue-to-pr through the local CLI and pauses at the explicit reviewer boundary", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-cli-"));
-    const answersPath = path.join(tempDir, "answers.json");
-    const receiptDir = path.join(tempDir, "receipts");
+    const runtimeDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-cli-runtime-"));
+    const answersPath = path.join(runtimeDir, "answers.json");
+    const receiptDir = path.join(runtimeDir, "receipts");
+    const runxHome = path.join(runtimeDir, "home");
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const taskId = "recognizable-lane-fixture";
 
     try {
       await initScafldRepo(tempDir);
+      runChecked("git", ["checkout", "-b", taskId], tempDir);
       await writeFile(
         answersPath,
         `${JSON.stringify(
           {
             answers: {
               "agent_step.issue-to-pr-author-spec.output": {
-                spec_draft: {
-                  path: `.ai/specs/drafts/${taskId}.yaml`,
-                  changed_files: [`.ai/specs/in_progress/${taskId}.yaml`, "app.txt", "notes.md"],
-                },
                 spec_contents: buildIssueToPrSpec(taskId),
               },
               "agent_step.issue-to-pr-apply-fix.output": {
@@ -161,14 +160,6 @@ describe("recognizable work lanes", () => {
                     },
                   ],
                 },
-              },
-              "agent_step.issue-to-pr-review.output": {
-                review_decision: {
-                  review_file: `.ai/reviews/${taskId}.md`,
-                  verdict: "pass",
-                  blocking_count: 0,
-                },
-                review_contents: buildPassingReviewContents(taskId),
               },
             },
           },
@@ -215,28 +206,22 @@ describe("recognizable work lanes", () => {
           "--json",
         ],
         { stdin: process.stdin, stdout, stderr },
-        { ...process.env, RUNX_CWD: process.cwd() },
+        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: runxHome },
       );
 
-      expect(exitCode).toBe(0);
+      expect(exitCode).toBe(2);
       expect(stderr.contents()).toBe("");
       expect(JSON.parse(stdout.contents())).toMatchObject({
-        status: "success",
-        skill: {
-          name: "issue-to-pr",
-        },
-        execution: {
-          stdout: expect.stringContaining(`"task_id":"${taskId}"`),
-        },
-        receipt: {
-          kind: "chain_execution",
-          status: "success",
-        },
+        status: "needs_resolution",
+        skill: "issue-to-pr",
+        requests: [{ id: "agent_step.issue-to-pr-review.output" }],
       });
       await expect(readFile(path.join(tempDir, "app.txt"), "utf8")).resolves.toBe("fixed\n");
       await expect(readFile(path.join(tempDir, "notes.md"), "utf8")).resolves.toBe("governed\n");
+      await expect(readFile(path.join(tempDir, ".ai", "reviews", `${taskId}.md`), "utf8")).resolves.toContain("### Metadata");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
+      await rm(runtimeDir, { recursive: true, force: true });
     }
   }, 90_000);
 });
@@ -324,11 +309,6 @@ phases:
     name: "Apply fixture fix"
     objective: "Write the bounded file change and validate it"
     changes:
-      - file: ".ai/specs/in_progress/${taskId}.yaml"
-        action: "update"
-        content_spec: |
-          The in-progress scafld spec is tracked and must stay in sync with the
-          declared scope throughout execution.
       - file: "app.txt"
         action: "update"
         content_spec: |
@@ -353,73 +333,6 @@ phases:
 rollback:
   strategy: "per_phase"
   commands:
-    phase1: "git checkout HEAD -- .ai/specs/in_progress/${taskId}.yaml app.txt notes.md"
-`;
-}
-
-function buildPassingReviewContents(taskId: string): string {
-  const reviewPath = `.ai/reviews/${taskId}.md`;
-  return `# Review: ${taskId}
-
-## Spec
-Recognizable work lanes CLI fixture
-
-## Files Changed
-- app.txt
-- notes.md
-
----
-
-## Review 1 — 2026-04-10T00:00:00Z
-
-### Metadata
-\`\`\`json
-{
-  "schema_version": 3,
-  "round_status": "completed",
-  "reviewer_mode": "executor",
-  "reviewer_session": "",
-  "reviewed_at": "2026-04-10T00:00:00Z",
-  "override_reason": null,
-  "pass_results": {
-    "spec_compliance": "pass",
-    "scope_drift": "pass",
-    "regression_hunt": "pass",
-    "convention_check": "pass",
-    "dark_patterns": "pass"
-  }
-}
-\`\`\`
-
-### Pass Results
-- spec_compliance: PASS
-- scope_drift: PASS
-- regression_hunt: PASS
-- convention_check: PASS
-- dark_patterns: PASS
-
-### Regression Hunt
-
-No issues found. Checked [app.txt](${reviewPath}):1 fixture scope.
-
-### Convention Check
-
-No issues found. Checked [app.txt](${reviewPath}):1 fixture scope.
-
-### Dark Patterns
-
-No issues found. Checked [app.txt](${reviewPath}):1 fixture scope.
-
-### Blocking
-
-None.
-
-### Non-blocking
-
-None.
-
-### Verdict
-
-pass
+    phase1: "git checkout HEAD -- app.txt notes.md"
 `;
 }

@@ -26,9 +26,6 @@ harness:
       caller:
         answers:
           agent_step.issue-to-pr-author-spec.output:
-            spec_draft:
-              path: .ai/specs/drafts/issue-to-pr-reach-author.yaml
-              task_id: issue-to-pr-reach-author
             spec_contents: |
               spec_version: "1.1"
               task_id: "issue-to-pr-reach-author"
@@ -81,28 +78,25 @@ harness:
       expect:
         status: needs_resolution
 
-    - name: issue-to-pr-completes-chain
+    - name: issue-to-pr-reaches-reviewer-boundary
       inputs:
-        task_id: issue-to-pr-full-chain
-        issue_title: Full-chain harness
-        issue_body: Canned answers for every agent-step hand-off so the chain reaches scafld-complete.
+        task_id: issue-to-pr-review-boundary
+        issue_title: Reviewer-boundary harness
+        issue_body: Canned answers for authored spec and fix so the chain reaches the explicit reviewer hand-off.
         size: micro
       caller:
         answers:
           agent_step.issue-to-pr-author-spec.output:
-            spec_draft:
-              path: .ai/specs/drafts/issue-to-pr-full-chain.yaml
-              task_id: issue-to-pr-full-chain
             spec_contents: |
               spec_version: "1.1"
-              task_id: "issue-to-pr-full-chain"
+              task_id: "issue-to-pr-review-boundary"
               created: "2026-04-20T00:00:00Z"
               updated: "2026-04-20T00:00:00Z"
               status: "draft"
               task:
-                title: "Full-chain harness stub"
+                title: "Reviewer-boundary harness stub"
                 summary: >
-                  Minimal stub spec emitted by the cycle-9 harness case.
+                  Minimal stub spec emitted by the reviewer-boundary harness case.
                 size: "micro"
                 risk_level: "low"
                 context:
@@ -122,7 +116,7 @@ harness:
               planning_log:
                 - timestamp: "2026-04-20T00:00:00Z"
                   actor: "agent"
-                  summary: "Stub from cycle-9 full-chain fixture."
+                  summary: "Stub from reviewer-boundary fixture."
               phases:
                 - id: "phase1"
                   name: "Stub"
@@ -148,68 +142,12 @@ harness:
                 - path: "README.md"
                   contents: "stub fixture\n"
               summary: Stub fix bundle writing one declared fixture file.
-          agent_step.issue-to-pr-review.output:
-            review_decision:
-              review_file: .ai/reviews/issue-to-pr-full-chain.md
-              verdict: pass
-            review_contents: |
-              # Review: issue-to-pr-full-chain
-
-              ## Spec
-              Full-chain harness stub
-
-              ---
-
-              ## Review 1 — 2026-04-20T00:00:00Z
-
-              ### Metadata
-              ```json
-              {
-                "schema_version": 3,
-                "round_status": "completed",
-                "reviewer_mode": "executor",
-                "reviewer_session": "",
-                "reviewed_at": "2026-04-20T00:00:00Z",
-                "override_reason": null,
-                "pass_results": {
-                  "spec_compliance": "pass",
-                  "scope_drift": "pass",
-                  "regression_hunt": "pass",
-                  "convention_check": "pass",
-                  "dark_patterns": "pass"
-                }
-              }
-              ```
-
-              ### Pass Results
-              - spec_compliance: PASS
-              - scope_drift: PASS
-              - regression_hunt: PASS
-              - convention_check: PASS
-              - dark_patterns: PASS
-
-              ### Regression Hunt
-              Stub fixture; no code changes.
-
-              ### Convention Check
-              Stub fixture.
-
-              ### Dark Patterns
-              Stub fixture.
-
-              ### Blocking
-              None.
-
-              ### Non-blocking
-              None.
-
-              ### Verdict
-              pass
-      # With all three agent-step answers canned, the chain
-      # executes every step including scafld-complete and returns
-      # success. This fixture is the full-chain smoke test.
+      # With authored spec and fix answers canned, the lane advances all the
+      # way to the explicit reviewer boundary and then yields
+      # `needs_resolution`. That proves the engineering loop without faking a
+      # static review scaffold in inline harness JSON.
       expect:
-        status: success
+        status: needs_resolution
 
 runners:
   issue-to-pr:
@@ -277,10 +215,23 @@ runners:
         required: false
         default: "phase1"
         description: "Optional scafld execution phase."
+      name:
+        type: string
+        required: false
+        description: "Optional branch name passed to `scafld branch`."
+      base:
+        type: string
+        required: false
+        description: "Optional base ref passed to `scafld branch` or `scafld audit`."
+      bind_current:
+        type: boolean
+        required: false
+        default: true
+        description: "When true, bind the current branch instead of creating or switching."
       draft_spec_path:
         type: string
         required: false
-        description: "Canonical scafld draft spec path relative to fixture root."
+        description: "Optional expected draft spec path relative to fixture root; `scafld new` remains the canonical source."
       fixture:
         type: string
         required: false
@@ -298,7 +249,9 @@ runners:
           This execution graph keeps cognition and mutation separate. Agent
           phases author the spec, fix, and review contents. Deterministic
           fs.write phases make the on-disk mutations visible before the
-          scafld lifecycle advances.
+          scafld lifecycle advances, while native scafld branch, sync, status,
+          and projection surfaces keep the lane aligned with normal
+          issue-to-branch-to-PR work instead of a shadow workflow model.
       steps:
         - id: scafld-init
           label: ensure scafld workspace
@@ -323,7 +276,6 @@ runners:
             agent: builder
             task: issue-to-pr-author-spec
             outputs:
-              spec_draft: object
               spec_contents: string
           instructions: >
             Replace the scafld draft TODOs with a valid bounded spec for this
@@ -334,11 +286,10 @@ runners:
             Prefer repo_context and the inline repo_snapshot first. If you need
             more grounding and repo_snapshot_path is present, read that file via
             fs.read rather than guessing.
-            spec_draft.path must point at the canonical scafld draft spec file
-            relative to the fixture root. Prefer draft_spec_path when present;
-            otherwise derive the exact created path from scafld_new_stdout,
-            which comes from the preceding scafld new step. spec_contents must
-            be the full YAML text to write. spec_contents must be a complete
+            draft_spec_path is the canonical draft path created by scafld new.
+            Treat it as source-of-truth lifecycle state, not as something to
+            re-emit in a parallel object. spec_contents must be the full YAML
+            text to write to that path. spec_contents must be a complete
             scafld v1.1 document with this structure:
             - spec_version, task_id, created, updated, status
             - task.title, task.summary, task.size, task.risk_level
@@ -350,18 +301,17 @@ runners:
             - at least one phases[] entry with id, name, objective, changes[],
               acceptance_criteria[], and status
             - rollback.strategy and rollback.commands
-            spec_draft.path is a temporary draft lifecycle path used only for
-            write-spec/read-spec before approval. Do not list spec_draft.path
-            or any .ai/specs/drafts/<task_id>.yaml path in
-            task.context.files_impacted, phases[].changes[].file, acceptance
-            validation commands, or rollback commands. After scafld-start, the
-            durable lifecycle-managed spec lives at .ai/specs/active/<task_id>.yaml.
-            If the spec must declare a live governance artifact after start,
-            use the active path only. Never declare both draft and active copies
-            for the same task_id.
-            The spec must declare every tracked file that will be changed before
-            scafld audit runs, including the active spec path if that file
-            will appear in git diff. Use concrete repo-relative file paths only
+            The draft path is temporary lifecycle state used only before
+            approval. Do not declare any `.ai/specs/drafts/<task_id>.yaml`
+            path in task.context.files_impacted, phases[].changes[].file,
+            acceptance validation commands, or rollback commands. More
+            generally, do not declare scafld-managed control-plane artifacts
+            under `.ai/specs/`, `.ai/reviews/`, or `.ai/logs/` as repo-change
+            scope. scafld owns those lifecycle files and excludes them from
+            scope auditing. Never declare both draft and active copies for the
+            same task_id. The spec must declare every tracked repo file that
+            will be intentionally changed before scafld audit runs. Use
+            concrete repo-relative file paths only
             in task.context.files_impacted, phases[].changes[].file, and
             rollback commands. Never use prose placeholders such as "the relevant
             docs file" or "the minimal set of files". Mirror the scafld schema
@@ -385,8 +335,9 @@ runners:
             .ai/reviews/<task_id>.md, so that pattern makes the task impossible
             to complete even when the repo change itself is correct. If you
             need a scope check, validate the intended repo file directly and
-            let scafld audit/review enforce the broader boundary, or include
-            the known lifecycle-managed governance artifacts explicitly. When
+            let scafld audit/review enforce the broader boundary, or mention
+            the lifecycle-managed governance artifacts only in narrative
+            context, not in phases[].changes[].file. When
             checking file contents, target the declared changed file directly
             and anchor on the exact expected text so the command cannot
             accidentally match the issue title, spec prose, or unrelated
@@ -395,10 +346,8 @@ runners:
             - fs.read
             - git.status
           context:
+            draft_spec_path: scafld-new.state.file
             scafld_new_stdout: scafld-new.stdout
-          artifacts:
-            named_emits:
-              spec_draft: spec_draft
         - id: write-spec
           label: write spec
           tool: fs.write
@@ -406,15 +355,15 @@ runners:
             - fs.write
           mutation: true
           context:
-            path: author-spec.spec_draft.data.path
+            path: scafld-new.state.file
             contents: author-spec.spec_contents
-        - id: read-spec
-          label: read persisted spec
+        - id: read-draft-spec
+          label: read draft spec
           tool: fs.read
           scopes:
             - fs.read
           context:
-            path: author-spec.spec_draft.data.path
+            path: scafld-new.state.file
         - id: scafld-validate
           label: validate spec
           skill: ../scafld
@@ -438,21 +387,28 @@ runners:
           mutation: true
           inputs:
             command: start
-        - id: delete-draft-spec
-          label: remove temporary draft spec
-          tool: fs.delete
+        - id: scafld-branch
+          label: bind task branch
+          skill: ../scafld
           scopes:
-            - fs.write
+            - scafld:branch:write
           mutation: true
+          inputs:
+            command: branch
+        - id: read-active-spec
+          label: read active spec
+          tool: fs.read
+          scopes:
+            - fs.read
           context:
-            path: author-spec.spec_draft.data.path
+            path: scafld-start.result.transition.to
         - id: read-declared-files
           label: read declared files
           tool: spec.read_declared_files
           scopes:
             - spec.read_declared_files
           context:
-            spec_contents: read-spec.file_read.data.contents
+            spec_contents: read-active-spec.file_read.data.contents
         - id: author-fix
           label: draft fix
           run:
@@ -466,14 +422,16 @@ runners:
             grounded in the declared issue metadata, approved scope, and
             provided spec_contents. Use repo_snapshot, repo_snapshot_path, and
             repo_context when present to stay aligned with the real repo shape.
+            branch_binding and sync_state come from native scafld branch/status
+            surfaces; use them to stay aligned with the engineering branch the
+            task is actually bound to.
             declared_file_context is the deterministic preloaded current-file
             surface for every path the approved spec already declared. Review
             declared_file_context.files before deciding what to edit, and
             prefer those grounded contents over generic assumptions. If the
-            temporary draft spec path appears in the approved spec, treat it as
-            stale governance metadata only; the chain deletes that draft copy
-            immediately after scafld-start and you must not recreate it in the
-            fix bundle. If the inline snapshot is insufficient and
+            active spec path appears in the declared context, treat it as
+            scafld-owned workflow state only; do not recreate or hand-edit the
+            lifecycle-managed spec file in the fix bundle. If the inline snapshot is insufficient and
             repo_snapshot_path is present,
             read it via fs.read before choosing files. Use fs.read only when
             you need additional grounded repo files beyond the declared set.
@@ -491,9 +449,11 @@ runners:
             - fs.read
             - git.status
           context:
-            spec_draft: author-spec.spec_draft.data
-            spec_file: read-spec.file_read.data
-            spec_contents: read-spec.file_read.data.contents
+            spec_path: scafld-start.result.transition.to
+            spec_file: read-active-spec.file_read.data
+            spec_contents: read-active-spec.file_read.data.contents
+            branch_binding: scafld-branch.result.origin.git
+            sync_state: scafld-branch.result.sync
             declared_file_context: read-declared-files.declared_file_context.data
           artifacts:
             named_emits:
@@ -514,6 +474,13 @@ runners:
           mutation: true
           inputs:
             command: execute
+        - id: scafld-status
+          label: inspect live lane state
+          skill: ../scafld
+          scopes:
+            - scafld:status:read
+          inputs:
+            command: status
         - id: scafld-audit
           label: audit changes
           skill: ../scafld
@@ -535,7 +502,7 @@ runners:
           scopes:
             - fs.read
           context:
-            path: scafld-review-open.review_file
+            path: scafld-review-open.result.review_file
         - id: reviewer-boundary
           label: draft review
           run:
@@ -543,19 +510,20 @@ runners:
             agent: reviewer
             task: issue-to-pr-review
             outputs:
-              review_decision: object
               review_contents: string
           scopes:
             - scafld:review:fill
           allowed_tools:
             - fs.read
           context:
-            review_file: scafld-review-open.review_file
-            review_prompt: scafld-review-open.review_prompt
+            review_file: scafld-review-open.result.review_file
+            review_prompt: scafld-review-open.result.review_prompt
+            review_required_sections: scafld-review-open.result.required_sections
             review_file_contents: read-review-template.file_read.data.contents
             fix_bundle: author-fix.fix_bundle.data
             written_files: write-fix.file_bundle_write.data.files
-            spec_contents: read-spec.file_read.data.contents
+            spec_contents: read-active-spec.file_read.data.contents
+            status_snapshot: scafld-status.result
           instructions: >
             Fill the existing scafld review artifact requested by review_prompt.
             review_file_contents is the canonical scaffold that scafld created;
@@ -567,15 +535,17 @@ runners:
             `### Pass Results`, `### Regression Hunt`,
             `### Convention Check`, `### Dark Patterns`, `### Blocking`,
             `### Non-blocking`, and `### Verdict`. Do not rename
-            `### Metadata` to `### Metadata JSON`. Produce review_decision with
-            at least review_file and verdict, plus review_contents as the full
-            markdown review file to write. Keep the review grounded in the
+            `### Metadata` to `### Metadata JSON`.
+            Preserve the metadata values scafld already grounded, especially
+            reviewed_head, reviewed_dirty, and reviewed_diff; update
+            round_status, reviewer_mode, reviewer_session, reviewed_at, and
+            pass_results for the completed review round. Keep the review grounded in the
             declared change set, the full fix_bundle.files array, the
-            persisted write_bundle result, and the existing scaffold contents.
-            The latest review round Metadata JSON block must include
-            schema_version: 3, round_status: completed, reviewer_mode,
-            reviewer_session, reviewed_at, override_reason, and pass_results
-            for spec_compliance, scope_drift, regression_hunt,
+            persisted write_bundle result, the native scafld status snapshot,
+            and the existing scaffold contents. The latest review round Metadata
+            JSON block must include schema_version: 3, round_status: completed,
+            reviewer_mode, reviewer_session, reviewed_at, override_reason, and
+            pass_results for spec_compliance, scope_drift, regression_hunt,
             convention_check, and dark_patterns. Use verdict pass_with_issues
             when there are non-blocking findings, and use pass only when the
             blocking section is empty and the pass_results block reflects a
@@ -584,9 +554,6 @@ runners:
             marker and no extra prose. Do not write placeholder bullets such as
             `- No blocking findings.` or `- None.` because scafld counts
             bullet lines in those sections as real findings.
-          artifacts:
-            named_emits:
-              review_decision: review_decision
         - id: write-review
           label: write review
           tool: fs.write
@@ -594,7 +561,7 @@ runners:
             - fs.write
           mutation: true
           context:
-            path: scafld-review-open.review_file
+            path: scafld-review-open.result.review_file
             contents: reviewer-boundary.review_contents
         - id: scafld-complete
           label: complete task
@@ -602,10 +569,22 @@ runners:
           scopes:
             - scafld:archive:write
           mutation: true
-          context:
-            reviewer_result: reviewer-boundary.review_decision.data
           inputs:
             command: complete
+        - id: scafld-summary
+          label: render summary surface
+          skill: ../scafld
+          scopes:
+            - scafld:projection:read
+          inputs:
+            command: summary
+        - id: scafld-pr-body
+          label: render PR body surface
+          skill: ../scafld
+          scopes:
+            - scafld:projection:read
+          inputs:
+            command: pr-body
       policy:
         transitions:
           - to: write-fix

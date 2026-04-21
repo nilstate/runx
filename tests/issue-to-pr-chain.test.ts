@@ -15,8 +15,14 @@ const caller: Caller = {
   report: () => undefined,
 };
 
+interface TestRuntimePaths {
+  readonly root: string;
+  readonly receiptDir: string;
+  readonly runxHome: string;
+}
+
 describe("issue-to-PR composite skill", () => {
-  it("models authored spec, authored fix, and authored review as explicit boundaries around the scafld lifecycle", async () => {
+  it("models authored content around native scafld lifecycle, branch, sync, and projection surfaces", async () => {
     const manifest = validateRunnerManifest(
       parseRunnerManifestYaml(await readFile(path.resolve("skills/issue-to-pr/X.yaml"), "utf8")),
     );
@@ -33,42 +39,59 @@ describe("issue-to-PR composite skill", () => {
       "scafld-new",
       "author-spec",
       "write-spec",
-      "read-spec",
+      "read-draft-spec",
       "scafld-validate",
       "scafld-approve",
       "scafld-start",
-      "delete-draft-spec",
+      "scafld-branch",
+      "read-active-spec",
       "read-declared-files",
       "author-fix",
       "write-fix",
       "scafld-exec",
+      "scafld-status",
       "scafld-audit",
       "scafld-review-open",
       "read-review-template",
       "reviewer-boundary",
       "write-review",
       "scafld-complete",
+      "scafld-summary",
+      "scafld-pr-body",
     ]);
     expect(chain.steps.find((step) => step.id === "write-spec")).toMatchObject({
       tool: "fs.write",
       context: {
-        path: "author-spec.spec_draft.data.path",
+        path: "scafld-new.state.file",
         contents: "author-spec.spec_contents",
       },
     });
-    expect(chain.steps.find((step) => step.id === "read-spec")).toMatchObject({
+    expect(chain.steps.find((step) => step.id === "read-draft-spec")).toMatchObject({
       tool: "fs.read",
       context: {
-        path: "author-spec.spec_draft.data.path",
+        path: "scafld-new.state.file",
       },
     });
     expect(chain.steps.find((step) => step.id === "author-spec")).toMatchObject({
       context: {
+        draft_spec_path: "scafld-new.state.file",
         scafld_new_stdout: "scafld-new.stdout",
       },
     });
     expect(runner.inputs.repo_snapshot_path).toMatchObject({
       type: "string",
+      required: false,
+    });
+    expect(runner.inputs.name).toMatchObject({
+      type: "string",
+      required: false,
+    });
+    expect(runner.inputs.base).toMatchObject({
+      type: "string",
+      required: false,
+    });
+    expect(runner.inputs.bind_current).toMatchObject({
+      type: "boolean",
       required: false,
     });
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo_snapshot_path");
@@ -77,18 +100,24 @@ describe("issue-to-PR composite skill", () => {
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Never write an exhaustive whole-tree assertion");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain(".ai/reviews/<task_id>.md");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("anchor on the exact expected text");
-    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Do not list spec_draft.path");
-    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain(".ai/specs/active/<task_id>.yaml");
-    expect(chain.steps.find((step) => step.id === "delete-draft-spec")).toMatchObject({
-      tool: "fs.delete",
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Do not declare any `.ai/specs/drafts/<task_id>.yaml`");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("do not declare scafld-managed control-plane artifacts");
+    expect(chain.steps.find((step) => step.id === "scafld-branch")).toMatchObject({
+      skill: "../scafld",
+      inputs: {
+        command: "branch",
+      },
+    });
+    expect(chain.steps.find((step) => step.id === "read-active-spec")).toMatchObject({
+      tool: "fs.read",
       context: {
-        path: "author-spec.spec_draft.data.path",
+        path: "scafld-start.result.transition.to",
       },
     });
     expect(chain.steps.find((step) => step.id === "read-declared-files")).toMatchObject({
       tool: "spec.read_declared_files",
       context: {
-        spec_contents: "read-spec.file_read.data.contents",
+        spec_contents: "read-active-spec.file_read.data.contents",
       },
     });
     expect(chain.steps.find((step) => step.id === "write-fix")).toMatchObject({
@@ -99,21 +128,30 @@ describe("issue-to-PR composite skill", () => {
     });
     expect(chain.steps.find((step) => step.id === "author-fix")).toMatchObject({
       context: {
-        spec_draft: "author-spec.spec_draft.data",
-        spec_file: "read-spec.file_read.data",
-        spec_contents: "read-spec.file_read.data.contents",
+        spec_path: "scafld-start.result.transition.to",
+        spec_file: "read-active-spec.file_read.data",
+        spec_contents: "read-active-spec.file_read.data.contents",
+        branch_binding: "scafld-branch.result.origin.git",
+        sync_state: "scafld-branch.result.sync",
         declared_file_context: "read-declared-files.declared_file_context.data",
       },
     });
     expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.files");
     expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("repo_snapshot_path");
     expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("declared_file_context");
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("branch_binding and sync_state");
     expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.status: blocked");
-    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("must not recreate it");
+    expect(chain.steps.find((step) => step.id === "author-fix")?.instructions).toContain("do not recreate or hand-edit the");
+    expect(chain.steps.find((step) => step.id === "scafld-status")).toMatchObject({
+      skill: "../scafld",
+      inputs: {
+        command: "status",
+      },
+    });
     expect(chain.steps.find((step) => step.id === "read-review-template")).toMatchObject({
       tool: "fs.read",
       context: {
-        path: "scafld-review-open.review_file",
+        path: "scafld-review-open.result.review_file",
       },
     });
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")).toMatchObject({
@@ -122,19 +160,23 @@ describe("issue-to-PR composite skill", () => {
         task: "issue-to-pr-review",
       },
       context: {
-        review_file: "scafld-review-open.review_file",
-        review_prompt: "scafld-review-open.review_prompt",
+        review_file: "scafld-review-open.result.review_file",
+        review_prompt: "scafld-review-open.result.review_prompt",
+        review_required_sections: "scafld-review-open.result.required_sections",
         review_file_contents: "read-review-template.file_read.data.contents",
         fix_bundle: "author-fix.fix_bundle.data",
         written_files: "write-fix.file_bundle_write.data.files",
-        spec_contents: "read-spec.file_read.data.contents",
+        spec_contents: "read-active-spec.file_read.data.contents",
+        status_snapshot: "scafld-status.result",
       },
     });
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("fix_bundle.files");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("schema_version: 3");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("reviewed_at");
+    expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("reviewed_head");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("pass_with_issues");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("review_file_contents");
+    expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("status snapshot");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("## Review N — <timestamp>");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("Do not rename");
     expect(chain.steps.find((step) => step.id === "reviewer-boundary")?.instructions).toContain("write the literal `None.`");
@@ -142,13 +184,20 @@ describe("issue-to-PR composite skill", () => {
     expect(chain.steps.find((step) => step.id === "write-review")).toMatchObject({
       tool: "fs.write",
       context: {
-        path: "scafld-review-open.review_file",
+        path: "scafld-review-open.result.review_file",
         contents: "reviewer-boundary.review_contents",
       },
     });
-    expect(chain.steps.find((step) => step.id === "scafld-complete")).toMatchObject({
-      context: {
-        reviewer_result: "reviewer-boundary.review_decision.data",
+    expect(chain.steps.find((step) => step.id === "scafld-summary")).toMatchObject({
+      skill: "../scafld",
+      inputs: {
+        command: "summary",
+      },
+    });
+    expect(chain.steps.find((step) => step.id === "scafld-pr-body")).toMatchObject({
+      skill: "../scafld",
+      inputs: {
+        command: "pr-body",
       },
     });
     expect(chain.policy?.transitions).toEqual([
@@ -162,14 +211,14 @@ describe("issue-to-PR composite skill", () => {
 
   it.skipIf(!existsSync(scafldBin))("completes the canonical issue-to-pr lane through authored spec, fix, and review outputs", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-skill-"));
-    const receiptDir = path.join(tempDir, "receipts");
+    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-skill-fixture";
     const caller: Caller = {
       resolve: async (request) =>
         request.kind === "cognitive_work"
           ? {
               actor: "agent",
-              payload: await answerForIssueToPrStep(tempDir, taskId, request.id),
+              payload: await answerForIssueToPrStep(tempDir, taskId, request),
             }
           : undefined,
       report: () => undefined,
@@ -177,6 +226,7 @@ describe("issue-to-PR composite skill", () => {
 
     try {
       await initScafldRepo(tempDir);
+      runChecked("git", ["checkout", "-b", taskId], tempDir);
 
       const result = await runLocalSkill({
         skillPath: path.resolve("skills/issue-to-pr"),
@@ -196,8 +246,8 @@ describe("issue-to-PR composite skill", () => {
         },
         caller,
         env: process.env,
-        receiptDir,
-        runxHome: path.join(tempDir, ".runx-test-home"),
+        receiptDir: runtime.receiptDir,
+        runxHome: runtime.runxHome,
       });
 
       expect(result.status).toBe("success");
@@ -210,44 +260,54 @@ describe("issue-to-PR composite skill", () => {
       }
       expect(result.receipt.subject.chain_name).toBe("issue-to-pr");
       expect(JSON.parse(result.execution.stdout)).toMatchObject({
+        command: "pr-body",
         task_id: taskId,
-        completed_state: "completed",
-        verdict: "pass",
-        blocking_count: 0,
-        non_blocking_count: 0,
+        state: {
+          status: "completed",
+        },
+        result: {
+          markdown: expect.stringContaining("# Fixture issue to PR"),
+        },
       });
       expect(result.receipt.steps.map((step) => [step.step_id, step.status])).toEqual([
         ["scafld-init", "success"],
         ["scafld-new", "success"],
         ["author-spec", "success"],
         ["write-spec", "success"],
-        ["read-spec", "success"],
+        ["read-draft-spec", "success"],
         ["scafld-validate", "success"],
         ["scafld-approve", "success"],
         ["scafld-start", "success"],
-        ["delete-draft-spec", "success"],
+        ["scafld-branch", "success"],
+        ["read-active-spec", "success"],
         ["read-declared-files", "success"],
         ["author-fix", "success"],
         ["write-fix", "success"],
         ["scafld-exec", "success"],
+        ["scafld-status", "success"],
         ["scafld-audit", "success"],
         ["scafld-review-open", "success"],
         ["read-review-template", "success"],
         ["reviewer-boundary", "success"],
         ["write-review", "success"],
         ["scafld-complete", "success"],
+        ["scafld-summary", "success"],
+        ["scafld-pr-body", "success"],
       ]);
-      expect(existsSync(path.join(tempDir, ".ai", "specs", "drafts", `${taskId}.yaml`))).toBe(false);
+      expect(existsSync(path.join(tempDir, ".ai", "specs", "active", `${taskId}.yaml`))).toBe(false);
+      expect(existsSync(path.join(tempDir, ".ai", "specs", "archive", "2026-04", `${taskId}.yaml`))).toBe(true);
+      expect(runChecked("git", ["branch", "--show-current"], tempDir)).toBe(taskId);
       expect(await readFile(path.join(tempDir, "app.txt"), "utf8")).toBe("fixed\n");
       expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("governed\n");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
+      await rm(runtime.root, { recursive: true, force: true });
     }
   }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("halts before write-fix when author-fix explicitly reports blocked after declared-file preload", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-blocked-"));
-    const receiptDir = path.join(tempDir, "receipts");
+    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-blocked-fixture";
     const caller: Caller = {
       resolve: async (request) =>
@@ -257,10 +317,6 @@ describe("issue-to-PR composite skill", () => {
               payload:
                 request.id === "agent_step.issue-to-pr-author-spec.output"
                   ? {
-                      spec_draft: {
-                        path: `.ai/specs/drafts/${taskId}.yaml`,
-                        changed_files: [`.ai/specs/in_progress/${taskId}.yaml`, "app.txt", "notes.md"],
-                      },
                       spec_contents: buildIssueToPrSpec(taskId),
                     }
                   : request.id === "agent_step.issue-to-pr-apply-fix.output"
@@ -279,6 +335,7 @@ describe("issue-to-PR composite skill", () => {
 
     try {
       await initScafldRepo(tempDir);
+      runChecked("git", ["checkout", "-b", taskId], tempDir);
 
       const result = await runLocalSkill({
         skillPath: path.resolve("skills/issue-to-pr"),
@@ -298,8 +355,8 @@ describe("issue-to-PR composite skill", () => {
         },
         caller,
         env: process.env,
-        receiptDir,
-        runxHome: path.join(tempDir, ".runx-test-home"),
+        receiptDir: runtime.receiptDir,
+        runxHome: runtime.runxHome,
       });
 
       expect(result.status).toBe("policy_denied");
@@ -315,19 +372,20 @@ describe("issue-to-PR composite skill", () => {
       expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("draft\n");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
+      await rm(runtime.root, { recursive: true, force: true });
     }
   }, 90_000);
 
-  it.skipIf(!existsSync(scafldBin))("opens a structured scafld review, accepts a caller-filled review file, and completes from JSON verdict", async () => {
+  it.skipIf(!existsSync(scafldBin))("opens a native scafld review payload, accepts a caller-filled review file, and completes from native JSON", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-"));
-    const receiptDir = path.join(tempDir, "receipts");
+    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-json-fixture";
 
     try {
       await initScafldRepo(tempDir);
       await writeActiveSpec(tempDir, taskId);
 
-      const reviewResult = await runScafldSkill(tempDir, receiptDir, {
+      const reviewResult = await runScafldSkill(tempDir, runtime, {
         command: "review",
         task_id: taskId,
       });
@@ -337,19 +395,31 @@ describe("issue-to-PR composite skill", () => {
       }
 
       const reviewOpen = JSON.parse(reviewResult.execution.stdout) as {
-        status: string;
-        review_file: string;
-        review_prompt: string;
+        command: string;
+        state: {
+          status: string;
+          review_round: number;
+        };
+        result: {
+          review_file: string;
+          review_prompt: string;
+        };
       };
       expect(reviewOpen).toMatchObject({
-        status: "review_open",
-        review_file: `.ai/reviews/${taskId}.md`,
+        command: "review",
+        state: {
+          status: "in_progress",
+          review_round: 1,
+        },
+        result: {
+          review_file: `.ai/reviews/${taskId}.md`,
+        },
       });
-      expect(reviewOpen.review_prompt).toContain("ADVERSARIAL REVIEW");
+      expect(reviewOpen.result.review_prompt).toContain("ADVERSARIAL REVIEW");
 
-      await writePassingReviewFile(path.join(tempDir, reviewOpen.review_file), taskId);
+      await writePassingReviewFile(path.join(tempDir, reviewOpen.result.review_file), taskId);
 
-      const completeResult = await runScafldSkill(tempDir, receiptDir, {
+      const completeResult = await runScafldSkill(tempDir, runtime, {
         command: "complete",
         task_id: taskId,
       });
@@ -359,22 +429,29 @@ describe("issue-to-PR composite skill", () => {
       }
 
       expect(JSON.parse(completeResult.execution.stdout)).toMatchObject({
+        command: "complete",
         task_id: taskId,
-        completed_state: "completed",
-        verdict: "pass",
-        blocking_count: 0,
-        non_blocking_count: 0,
-        review_file: `.ai/reviews/${taskId}.md`,
+        state: {
+          status: "completed",
+          review_verdict: "pass",
+        },
+        result: {
+          archive_path: `.ai/specs/archive/2026-04/${taskId}.yaml`,
+          blocking_count: 0,
+          non_blocking_count: 0,
+          review_file: `.ai/reviews/${taskId}.md`,
+        },
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
+      await rm(runtime.root, { recursive: true, force: true });
     }
   }, 30_000);
 });
 
 async function runScafldSkill(
   fixture: string,
-  receiptDir: string,
+  runtime: TestRuntimePaths,
   inputs: Readonly<Record<string, unknown>>,
 ) {
   return await runLocalSkill({
@@ -386,8 +463,8 @@ async function runScafldSkill(
       scafld_bin: scafldBin,
     },
     caller,
-    receiptDir,
-    runxHome: path.join(fixture, ".runx-test-home"),
+    receiptDir: runtime.receiptDir,
+    runxHome: runtime.runxHome,
   });
 }
 
@@ -443,17 +520,26 @@ planning_log:
   );
 }
 
+async function createExternalRuntimePaths(prefix: string): Promise<TestRuntimePaths> {
+  const root = await mkdtemp(path.join(os.tmpdir(), prefix));
+  return {
+    root,
+    receiptDir: path.join(root, "receipts"),
+    runxHome: path.join(root, "home"),
+  };
+}
+
 async function answerForIssueToPrStep(
   repo: string,
   taskId: string,
-  requestId: string,
+  request: Parameters<Caller["resolve"]>[0],
 ): Promise<Readonly<Record<string, unknown>> | undefined> {
+  const requestId = request.id;
+  const requestInputs = request.kind === "cognitive_work"
+    ? (request.work.envelope.inputs as Readonly<Record<string, unknown>>)
+    : {};
   if (requestId === "agent_step.issue-to-pr-author-spec.output") {
     return {
-      spec_draft: {
-        path: `.ai/specs/drafts/${taskId}.yaml`,
-        changed_files: [`.ai/specs/in_progress/${taskId}.yaml`, "app.txt"],
-      },
       spec_contents: buildIssueToPrSpec(taskId),
     };
   }
@@ -475,14 +561,12 @@ async function answerForIssueToPrStep(
     };
   }
   if (requestId === "agent_step.issue-to-pr-review.output") {
-    const reviewFile = `.ai/reviews/${taskId}.md`;
+    const reviewFile = String(requestInputs.review_file ?? `.ai/reviews/${taskId}.md`);
+    const reviewFileContents = typeof requestInputs.review_file_contents === "string"
+      ? requestInputs.review_file_contents
+      : await readFile(path.join(repo, reviewFile), "utf8");
     return {
-      review_decision: {
-        review_file: reviewFile,
-        verdict: "pass",
-        blocking_count: 0,
-      },
-      review_contents: await buildPassingReviewContents(path.join(repo, reviewFile), taskId),
+      review_contents: buildPassingReviewContents(reviewFileContents, taskId),
     };
   }
   return undefined;
@@ -541,11 +625,6 @@ phases:
     name: "Apply fixture fix"
     objective: "Write the bounded file change and validate it"
     changes:
-      - file: ".ai/specs/active/${taskId}.yaml"
-        action: "update"
-        content_spec: |
-          The active scafld spec is tracked and must stay in sync with the
-          declared scope throughout execution.
       - file: "app.txt"
         action: "update"
         content_spec: |
@@ -570,46 +649,55 @@ phases:
 rollback:
   strategy: "per_phase"
   commands:
-    phase1: "git checkout HEAD -- .ai/specs/active/${taskId}.yaml app.txt notes.md"
+    phase1: "git checkout HEAD -- app.txt notes.md"
 `;
 }
 
 async function writePassingReviewFile(reviewPath: string, taskId: string): Promise<void> {
-  await writeFile(reviewPath, await buildPassingReviewContents(reviewPath, taskId));
+  const scaffold = await readFile(reviewPath, "utf8");
+  await writeFile(reviewPath, buildPassingReviewContents(scaffold, taskId));
 }
 
-async function buildPassingReviewContents(reviewPath: string, taskId: string): Promise<string> {
-  await mkdir(path.dirname(reviewPath), { recursive: true });
-  return `# Review: ${taskId}
+function buildPassingReviewContents(scaffold: string, taskId: string): string {
+  const metadataMatch = scaffold.match(/### Metadata\s+```json\s+([\s\S]*?)\s+```/);
+  if (!metadataMatch) {
+    throw new Error(`missing metadata scaffold for ${taskId}`);
+  }
+  const metadata = JSON.parse(metadataMatch[1]!) as {
+    round_status?: string;
+    reviewer_mode?: string;
+    reviewer_session?: string;
+    reviewed_at?: string;
+    override_reason?: string | null;
+    pass_results?: Record<string, string>;
+  };
+  metadata.round_status = "completed";
+  metadata.reviewer_mode = "executor";
+  metadata.reviewer_session = "";
+  metadata.reviewed_at = "2026-04-10T00:00:00Z";
+  metadata.override_reason = null;
+  metadata.pass_results = {
+    ...(metadata.pass_results ?? {}),
+    spec_compliance: "pass",
+    scope_drift: "pass",
+    regression_hunt: "pass",
+    convention_check: "pass",
+    dark_patterns: "pass",
+  };
 
-## Spec
-Issue to PR JSON Fixture
+  const roundHeadingMatch = scaffold.match(/(^## Review \d+ — [^\n]+$)/m);
+  if (!roundHeadingMatch) {
+    throw new Error(`missing review round heading for ${taskId}`);
+  }
+  const prefix = scaffold.slice(0, scaffold.indexOf(roundHeadingMatch[1]!)).trimEnd();
 
-## Files Changed
-- app.txt
-- notes.md
+  return `${prefix}
 
----
-
-## Review 1 — 2026-04-10T00:00:00Z
+${roundHeadingMatch[1]}
 
 ### Metadata
 \`\`\`json
-{
-  "schema_version": 3,
-  "round_status": "completed",
-  "reviewer_mode": "executor",
-  "reviewer_session": "",
-  "reviewed_at": "2026-04-10T00:00:00Z",
-  "override_reason": null,
-  "pass_results": {
-    "spec_compliance": "pass",
-    "scope_drift": "pass",
-    "regression_hunt": "pass",
-    "convention_check": "pass",
-    "dark_patterns": "pass"
-  }
-}
+${JSON.stringify(metadata, null, 2)}
 \`\`\`
 
 ### Pass Results
@@ -621,15 +709,15 @@ Issue to PR JSON Fixture
 
 ### Regression Hunt
 
-No issues found. Checked [app.txt](${reviewPath}):1 fixture scope.
+No issues found. Checked app.txt:1 and notes.md:1 for bounded fixture behavior.
 
 ### Convention Check
 
-No issues found. Checked [app.txt](${reviewPath}):1 fixture scope.
+No issues found. Reviewed the fixture lane against the declared scafld workflow contract.
 
 ### Dark Patterns
 
-No issues found. Checked [app.txt](${reviewPath}):1 fixture scope.
+No issues found. Checked the bounded fixture paths for hidden state or undeclared writes.
 
 ### Blocking
 
@@ -645,7 +733,7 @@ pass
 `;
 }
 
-function runChecked(command: string, args: readonly string[], cwd: string): void {
+function runChecked(command: string, args: readonly string[], cwd: string): string {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
@@ -654,4 +742,5 @@ function runChecked(command: string, args: readonly string[], cwd: string): void
   if (result.status !== 0) {
     throw new Error(`Command failed: ${command} ${args.join(" ")}\n${result.stdout}\n${result.stderr}`);
   }
+  return result.stdout.trim();
 }
