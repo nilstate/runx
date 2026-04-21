@@ -55,11 +55,11 @@ runners:
       command:
         type: string
         required: true
-        description: "Existing scafld command to run: init, new/spec, approve, start, exec/execute, audit, review, complete, validate, or status."
+        description: "Native scafld command to run: init, new/spec, approve, start, exec/execute, audit, review, complete, validate, status, fail, cancel, report, branch, sync, summary, checks, or pr-body."
       task_id:
         type: string
         required: false
-        description: "scafld task id for lifecycle commands."
+        description: "scafld task id for commands that target one spec."
       fixture:
         type: string
         required: false
@@ -84,10 +84,22 @@ runners:
         type: string
         required: false
         description: "Optional phase passed to `scafld exec --phase`."
+      base:
+        type: string
+        required: false
+        description: "Optional base ref for `scafld audit --base` or `scafld branch --base`."
+      name:
+        type: string
+        required: false
+        description: "Optional branch name passed to `scafld branch --name`."
+      bind_current:
+        type: boolean
+        required: false
+        description: "When true, pass `--bind-current` to `scafld branch`."
       scafld_bin:
         type: string
         required: false
         description: "Explicit scafld executable path; defaults to SCAFLD_BIN or scafld on PATH."
     runtime:
       requirements:
-        - "scafld CLI available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input"
+        - "scafld CLI with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input"

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -12,7 +12,7 @@ const caller: Caller = {
 };
 
 describe("scafld skill wrapper", () => {
-  it("sanitizes runx input env and normalizes validate without relying on --json", async () => {
+  it("sanitizes runx input env and forwards native validate JSON", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-skill-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
     const tracePath = path.join(tempDir, "validate-trace.json");
@@ -30,12 +30,16 @@ writeFileSync(process.env.FAKE_SCAFLD_TRACE, JSON.stringify({
     .filter((key) => key === "RUNX_INPUTS_JSON" || key.startsWith("RUNX_INPUT_"))
     .sort(),
 }));
-if (argv.includes("--json")) {
-  process.stderr.write("unexpected --json\\n");
-  process.exit(2);
-}
 if (argv[0] === "validate") {
-  process.stdout.write("spec valid\\n");
+  process.stdout.write(JSON.stringify({
+    ok: true,
+    command: "validate",
+    task_id: "fixture-task",
+    warnings: [],
+    state: { status: "draft" },
+    result: { valid: true, file: ".ai/specs/drafts/fixture-task.yaml", errors: [] },
+    error: null,
+  }) + "\\n");
   process.exit(0);
 }
 process.stderr.write(\`unsupported command: \${argv[0] || ""}\\n\`);
@@ -69,14 +73,16 @@ process.exit(1);
         return;
       }
       expect(JSON.parse(result.execution.stdout)).toEqual({
+        ok: true,
+        command: "validate",
         task_id: "fixture-task",
-        valid: true,
-        status: undefined,
-        file: null,
-        errors: [],
+        warnings: [],
+        state: { status: "draft" },
+        result: { valid: true, file: ".ai/specs/drafts/fixture-task.yaml", errors: [] },
+        error: null,
       });
       expect(JSON.parse(await readFile(tracePath, "utf8"))).toEqual({
-        argv: ["validate", "fixture-task"],
+        argv: ["validate", "fixture-task", "--json"],
         leakedEnv: [],
       });
     } finally {
@@ -84,37 +90,17 @@ process.exit(1);
     }
   });
 
-  it("normalizes review and complete outputs when the installed scafld lacks --json", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-complete-"));
+  it("forwards native review and complete payloads without local reconstruction", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-native-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
     const reviewTracePath = path.join(tempDir, "review-trace.json");
     const completeTracePath = path.join(tempDir, "complete-trace.json");
 
     try {
-      await mkdir(path.join(tempDir, ".ai", "reviews"), { recursive: true });
-      await writeFile(
-        path.join(tempDir, ".ai", "reviews", "fixture-task.md"),
-        `# Review: fixture-task
-
-### Blocking
-
-None.
-
-### Non-blocking
-
-None.
-
-### Verdict
-
-pass
-`,
-      );
-
       await writeFile(
         fakeScafld,
         `#!/usr/bin/env node
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { writeFileSync } from "node:fs";
 
 const argv = process.argv.slice(2);
 const command = argv[0] || "";
@@ -125,19 +111,43 @@ writeFileSync(tracePath, JSON.stringify({
     .filter((key) => key === "RUNX_INPUTS_JSON" || key.startsWith("RUNX_INPUT_"))
     .sort(),
 }));
-if (argv.includes("--json")) {
-  process.stderr.write("unexpected --json\\n");
-  process.exit(2);
-}
 if (command === "review") {
-  process.stdout.write("ADVERSARIAL REVIEW\\n\\nReview the bounded change set.\\n");
+  process.stdout.write(JSON.stringify({
+    ok: true,
+    command: "review",
+    task_id: "fixture-task",
+    warnings: [],
+    state: { status: "in_progress" },
+    result: {
+      review_file: ".ai/reviews/fixture-task.md",
+      review_round: 1,
+      automated_passes: [],
+      required_sections: ["Regression Hunt", "Convention Check", "Dark Patterns"],
+      review_prompt: "ADVERSARIAL REVIEW\\n\\nReview the bounded change set.",
+    },
+    error: null,
+  }) + "\\n");
   process.exit(0);
 }
 if (command === "complete") {
-  const archiveDir = join(process.cwd(), ".ai", "specs", "archive", "2026-04");
-  mkdirSync(archiveDir, { recursive: true });
-  writeFileSync(join(archiveDir, "fixture-task.yaml"), "status: completed\\n");
-  process.stdout.write("completed\\n");
+  process.stdout.write(JSON.stringify({
+    ok: true,
+    command: "complete",
+    task_id: "fixture-task",
+    warnings: [],
+    state: { status: "completed", review_verdict: "pass_with_issues" },
+    result: {
+      archive_path: ".ai/specs/archive/2026-04/fixture-task.yaml",
+      blocking_count: 0,
+      non_blocking_count: 1,
+      pass_results: { spec_compliance: "pass" },
+      override_applied: false,
+      review_round: 1,
+      review_file: ".ai/reviews/fixture-task.md",
+      transition: { status: "completed" },
+    },
+    error: null,
+  }) + "\\n");
   process.exit(0);
 }
 process.stderr.write(\`unsupported command: \${command}\\n\`);
@@ -169,15 +179,22 @@ process.exit(1);
         return;
       }
       expect(JSON.parse(reviewResult.execution.stdout)).toEqual({
+        ok: true,
+        command: "review",
         task_id: "fixture-task",
-        status: "review_open",
-        review_file: ".ai/reviews/fixture-task.md",
-        review_prompt: "ADVERSARIAL REVIEW\n\nReview the bounded change set.",
-        automated_passes: [],
-        required_sections: ["regression_hunt", "convention_check", "dark_patterns"],
+        warnings: [],
+        state: { status: "in_progress" },
+        result: {
+          review_file: ".ai/reviews/fixture-task.md",
+          review_round: 1,
+          automated_passes: [],
+          required_sections: ["Regression Hunt", "Convention Check", "Dark Patterns"],
+          review_prompt: "ADVERSARIAL REVIEW\n\nReview the bounded change set.",
+        },
+        error: null,
       });
       expect(JSON.parse(await readFile(reviewTracePath, "utf8"))).toEqual({
-        argv: ["review", "fixture-task"],
+        argv: ["review", "fixture-task", "--json"],
         leakedEnv: [],
       });
 
@@ -204,16 +221,25 @@ process.exit(1);
         return;
       }
       expect(JSON.parse(completeResult.execution.stdout)).toEqual({
+        ok: true,
+        command: "complete",
         task_id: "fixture-task",
-        completed_state: "completed",
-        archive_path: ".ai/specs/archive/2026-04/fixture-task.yaml",
-        review_file: ".ai/reviews/fixture-task.md",
-        verdict: "pass",
-        blocking_count: 0,
-        non_blocking_count: 0,
+        warnings: [],
+        state: { status: "completed", review_verdict: "pass_with_issues" },
+        result: {
+          archive_path: ".ai/specs/archive/2026-04/fixture-task.yaml",
+          blocking_count: 0,
+          non_blocking_count: 1,
+          pass_results: { spec_compliance: "pass" },
+          override_applied: false,
+          review_round: 1,
+          review_file: ".ai/reviews/fixture-task.md",
+          transition: { status: "completed" },
+        },
+        error: null,
       });
       expect(JSON.parse(await readFile(completeTracePath, "utf8"))).toEqual({
-        argv: ["complete", "fixture-task"],
+        argv: ["complete", "fixture-task", "--json"],
         leakedEnv: [],
       });
     } finally {
@@ -221,82 +247,86 @@ process.exit(1);
     }
   });
 
-  it("treats archived pass_with_issues completion as success even when the installed scafld exits non-zero", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-pass-with-issues-"));
+  it("preserves native non-zero failures instead of normalizing them away", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-failure-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
 
     try {
-      await mkdir(path.join(tempDir, ".ai", "reviews"), { recursive: true });
-      await writeFile(
-        path.join(tempDir, ".ai", "reviews", "fixture-task.md"),
-        `# Review: fixture-task
-
-### Blocking
-
-None.
-
-### Non-blocking
-
-- **low** docs wording can be clearer.
-
-### Verdict
-
-pass_with_issues
-`,
-      );
-
       await writeFile(
         fakeScafld,
         `#!/usr/bin/env node
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
 const argv = process.argv.slice(2);
-const command = argv[0] || "";
-if (command === "complete") {
-  const archiveDir = join(process.cwd(), ".ai", "specs", "archive", "2026-04");
-  mkdirSync(archiveDir, { recursive: true });
-  writeFileSync(join(archiveDir, "fixture-task.yaml"), "status: completed\\n");
-  process.stdout.write("completed with non-blocking findings\\n");
-  process.stderr.write("pass_with_issues reported\\n");
+if ((argv[0] || "") === "checks") {
+  process.stdout.write(JSON.stringify({
+    ok: false,
+    command: "checks",
+    task_id: "fixture-task",
+    warnings: [],
+    state: { status: "in_progress", check_status: "failure" },
+    result: {
+      check: {
+        status: "failure",
+        summary: "workspace has uncommitted changes",
+        details: ["sync: drift"],
+      },
+    },
+    error: {
+      code: "projection_check_failed",
+      message: "workspace has uncommitted changes",
+      details: ["sync: drift"],
+      next_action: null,
+      exit_code: 1,
+    },
+  }) + "\\n");
   process.exit(1);
 }
-process.stderr.write(\`unsupported command: \${command}\\n\`);
+process.stderr.write(\`unsupported command: \${argv[0] || ""}\\n\`);
 process.exit(1);
 `,
         { mode: 0o755 },
       );
 
-      const completeResult = await runLocalSkill({
+      const result = await runLocalSkill({
         skillPath: path.resolve("skills/scafld"),
         runner: "scafld-cli",
         inputs: {
-          command: "complete",
+          command: "checks",
           task_id: "fixture-task",
           fixture: tempDir,
           scafld_bin: fakeScafld,
         },
         caller,
-        receiptDir: path.join(tempDir, "receipts-complete"),
-        runxHome: path.join(tempDir, "home-complete"),
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
         env: process.env,
       });
 
-      expect(completeResult.status).toBe("success");
-      if (completeResult.status !== "success") {
+      expect(result.status).toBe("failure");
+      if (result.status !== "failure") {
         return;
       }
-      expect(JSON.parse(completeResult.execution.stdout)).toEqual({
+      expect(JSON.parse(result.execution.stdout)).toEqual({
+        ok: false,
+        command: "checks",
         task_id: "fixture-task",
-        completed_state: "completed",
-        archive_path: ".ai/specs/archive/2026-04/fixture-task.yaml",
-        review_file: ".ai/reviews/fixture-task.md",
-        verdict: "pass_with_issues",
-        blocking_count: 0,
-        non_blocking_count: 1,
+        warnings: [],
+        state: { status: "in_progress", check_status: "failure" },
+        result: {
+          check: {
+            status: "failure",
+            summary: "workspace has uncommitted changes",
+            details: ["sync: drift"],
+          },
+        },
+        error: {
+          code: "projection_check_failed",
+          message: "workspace has uncommitted changes",
+          details: ["sync: drift"],
+          next_action: null,
+          exit_code: 1,
+        },
       });
-      expect(completeResult.execution.stderr).toContain("pass_with_issues reported");
-      expect(completeResult.execution.exitCode).toBe(0);
+      expect(result.execution.exitCode).toBe(1);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

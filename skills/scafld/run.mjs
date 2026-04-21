@@ -1,12 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
 const scafld = String(inputs.scafld_bin || process.env.SCAFLD_BIN || "scafld");
-// Prefer explicit fixture/cwd inputs; otherwise honor RUNX_CWD so
-// harness-sandboxed and runx-agent-driven runs keep scafld state
-// inside the sandbox rather than leaking to the skill's own directory.
 const cwd = path.resolve(String(
   inputs.fixture
     || inputs.cwd
@@ -16,18 +12,40 @@ const cwd = path.resolve(String(
 const taskId = String(inputs.task_id || inputs.taskId || "");
 const requested = String(inputs.command || inputs.mode || "");
 const command = ({ spec: "new", execute: "exec" })[requested] || requested;
+const jsonCommands = new Set([
+  "init",
+  "new",
+  "approve",
+  "start",
+  "status",
+  "validate",
+  "exec",
+  "audit",
+  "review",
+  "complete",
+  "fail",
+  "cancel",
+  "report",
+  "branch",
+  "sync",
+  "summary",
+  "checks",
+  "pr-body",
+]);
+const commandsWithoutTaskId = new Set(["init", "report"]);
 
 if (!command) {
   throw new Error("command is required.");
 }
-if (command !== "init" && !taskId) {
+if (!commandsWithoutTaskId.has(command) && !taskId) {
   throw new Error("task_id is required.");
 }
 
 const args = [];
 switch (command) {
   case "init":
-    args.push("init");
+  case "report":
+    args.push(command);
     break;
   case "new":
     args.push("new", taskId);
@@ -44,11 +62,22 @@ switch (command) {
   case "approve":
   case "start":
   case "status":
-  case "audit":
   case "review":
   case "complete":
   case "validate":
+  case "sync":
+  case "summary":
+  case "checks":
+  case "pr-body":
+  case "fail":
+  case "cancel":
     args.push(command, taskId);
+    break;
+  case "audit":
+    args.push("audit", taskId);
+    if (inputs.base) {
+      args.push("--base", String(inputs.base));
+    }
     break;
   case "exec":
     args.push("exec", taskId);
@@ -56,8 +85,24 @@ switch (command) {
       args.push("--phase", String(inputs.phase));
     }
     break;
+  case "branch":
+    args.push("branch", taskId);
+    if (inputs.name) {
+      args.push("--name", String(inputs.name));
+    }
+    if (inputs.base) {
+      args.push("--base", String(inputs.base));
+    }
+    if (truthy(inputs.bind_current ?? inputs.bindCurrent)) {
+      args.push("--bind-current");
+    }
+    break;
   default:
     throw new Error(`Unsupported scafld command: ${command}`);
+}
+
+if (jsonCommands.has(command)) {
+  args.push("--json");
 }
 
 const env = { ...process.env };
@@ -86,21 +131,21 @@ if (result.error) {
 const stdout = result.stdout ?? "";
 const stderr = result.stderr ?? "";
 const exitCode = result.status ?? 1;
-const structured = normalizeStructuredOutput({
-  command,
-  cwd,
-  taskId,
-  stdout,
-  stderr,
-  exitCode,
-});
-const finalExitCode = normalizeExitCode({
-  command,
-  exitCode,
-  structured,
-});
 
-if (structured !== undefined) {
+let structured = null;
+if (jsonCommands.has(command)) {
+  try {
+    structured = parseJsonPayload(command, stdout);
+  } catch (error) {
+    if (stderr) {
+      process.stderr.write(stderr);
+    }
+    console.error(error.message);
+    process.exit(exitCode === 0 ? 1 : exitCode);
+  }
+}
+
+if (structured !== null) {
   process.stdout.write(`${JSON.stringify(structured)}\n`);
 } else if (stdout) {
   process.stdout.write(stdout);
@@ -110,175 +155,30 @@ if (stderr) {
   process.stderr.write(stderr);
 }
 
-process.exit(finalExitCode);
+process.exit(exitCode);
 
-function normalizeStructuredOutput(options) {
-  switch (options.command) {
-    case "validate":
-      return buildValidateReport(options);
-    case "status":
-      return buildStatusReport(options);
-    case "review":
-      return buildReviewReport(options);
-    case "complete":
-      return buildCompleteReport(options);
-    default:
-      return undefined;
+function truthy(value) {
+  if (typeof value === "boolean") {
+    return value;
   }
-}
-
-function normalizeExitCode({ command, exitCode, structured }) {
-  if (
-    command === "complete" &&
-    exitCode !== 0 &&
-    structured &&
-    structured.completed_state === "completed" &&
-    structured.archive_path &&
-    (structured.verdict === "pass" || structured.verdict === "pass_with_issues") &&
-    structured.blocking_count === 0
-  ) {
-    return 0;
+  if (value === undefined || value === null) {
+    return false;
   }
-  return exitCode;
+  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
 }
 
-function buildValidateReport({ cwd: repoRoot, taskId: id, stdout: out, stderr: err, exitCode }) {
-  const specPath = findSpecPath(repoRoot, id);
-  return {
-    task_id: id,
-    valid: exitCode === 0,
-    status: readSpecStatus(specPath),
-    file: toRepoRelative(repoRoot, specPath),
-    errors: exitCode === 0 ? [] : collectErrors(out, err),
-  };
-}
-
-function buildStatusReport({ cwd: repoRoot, taskId: id, stdout: out, stderr: err }) {
-  const specPath = findSpecPath(repoRoot, id);
-  return {
-    task_id: id,
-    status: readSpecStatus(specPath),
-    file: toRepoRelative(repoRoot, specPath),
-    output: [out.trim(), err.trim()].filter(Boolean).join("\n"),
-  };
-}
-
-function buildReviewReport({ cwd: repoRoot, taskId: id, stdout: out }) {
-  return {
-    task_id: id,
-    status: "review_open",
-    review_file: toPosixRelative(path.join(repoRoot, ".ai", "reviews", `${id}.md`), repoRoot),
-    review_prompt: out.trim(),
-    automated_passes: [],
-    required_sections: ["regression_hunt", "convention_check", "dark_patterns"],
-  };
-}
-
-function buildCompleteReport({ cwd: repoRoot, taskId: id }) {
-  const archivePath = findArchivePath(repoRoot, id);
-  const reviewPath = path.join(repoRoot, ".ai", "reviews", `${id}.md`);
-  const reviewText = existsSync(reviewPath) ? readFileSync(reviewPath, "utf8") : "";
-  const completedState = readSpecStatus(archivePath) ?? "completed";
-  return {
-    task_id: id,
-    completed_state: completedState,
-    archive_path: toRepoRelative(repoRoot, archivePath),
-    review_file: toRepoRelative(repoRoot, reviewPath),
-    verdict: extractReviewVerdict(reviewText),
-    blocking_count: countMarkdownSectionItems(reviewText, "Blocking"),
-    non_blocking_count: countMarkdownSectionItems(reviewText, "Non-blocking"),
-  };
-}
-
-function collectErrors(stdout, stderr) {
-  return [...stdout.split("\n"), ...stderr.split("\n")].map((line) => line.trim()).filter(Boolean);
-}
-
-function findSpecPath(repoRoot, id) {
-  const directPaths = [
-    path.join(repoRoot, ".ai", "specs", "drafts", `${id}.yaml`),
-    path.join(repoRoot, ".ai", "specs", "approved", `${id}.yaml`),
-    path.join(repoRoot, ".ai", "specs", "active", `${id}.yaml`),
-  ];
-  for (const candidate of directPaths) {
-    if (existsSync(candidate)) {
-      return candidate;
-    }
+function parseJsonPayload(commandName, rawStdout) {
+  const trimmed = rawStdout.trim();
+  if (!trimmed) {
+    throw new Error(`scafld ${commandName} produced no JSON output`);
   }
-  return findArchivePath(repoRoot, id);
-}
-
-function findArchivePath(repoRoot, id) {
-  const archiveRoot = path.join(repoRoot, ".ai", "specs", "archive");
-  if (!existsSync(archiveRoot)) {
-    return undefined;
+  try {
+    return JSON.parse(trimmed);
+  } catch (error) {
+    const preview = trimmed.length > 240 ? `${trimmed.slice(0, 240)}...` : trimmed;
+    throw new Error(
+      `scafld ${commandName} did not emit valid JSON. ` +
+      `This runx binding requires native scafld JSON contracts. Output preview: ${preview}`,
+    );
   }
-  for (const month of readdirSync(archiveRoot)) {
-    const candidate = path.join(archiveRoot, month, `${id}.yaml`);
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
-}
-
-function readSpecStatus(specPath) {
-  if (!specPath || !existsSync(specPath)) {
-    return undefined;
-  }
-  const match = readFileSync(specPath, "utf8").match(/^status:\s*"?([^"\n]+)"?\s*$/m);
-  return match?.[1]?.trim();
-}
-
-function extractReviewVerdict(contents) {
-  const section = extractMarkdownSection(contents, "Verdict");
-  if (!section) {
-    return undefined;
-  }
-  const verdict = section
-    .split("\n")
-    .map((line) => line.trim())
-    .find(Boolean);
-  return verdict || undefined;
-}
-
-function countMarkdownSectionItems(contents, heading) {
-  const section = extractMarkdownSection(contents, heading);
-  if (!section) {
-    return 0;
-  }
-  const items = section
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("- ") || /^\d+\.\s/.test(line));
-  if (items.length === 1 && /^-+\s*none\.?$/i.test(items[0])) {
-    return 0;
-  }
-  return items.length;
-}
-
-function extractMarkdownSection(contents, heading) {
-  const marker = `### ${heading}`;
-  const start = contents.indexOf(marker);
-  if (start < 0) {
-    return undefined;
-  }
-  const afterHeading = contents.slice(start + marker.length);
-  const normalized = afterHeading.startsWith("\r\n") ? afterHeading.slice(2) : afterHeading.replace(/^\n/, "");
-  const nextHeadingIndex = normalized.indexOf("\n### ");
-  if (nextHeadingIndex < 0) {
-    return normalized.trim();
-  }
-  return normalized.slice(0, nextHeadingIndex).trim();
-}
-
-function toRepoRelative(repoRoot, filePath) {
-  if (!filePath) {
-    return null;
-  }
-  return toPosixRelative(filePath, repoRoot);
-}
-
-function toPosixRelative(filePath, repoRoot) {
-  return path.relative(repoRoot, filePath).split(path.sep).join("/");
 }

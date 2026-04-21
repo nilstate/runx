@@ -5,11 +5,13 @@ description: Run existing scafld lifecycle commands under runx governance.
 
 # scafld
 
-Use this skill when runx needs to govern an existing scafld lifecycle command.
+Use this skill when runx needs to govern an existing scafld lifecycle or
+projection command.
 
-The skill does not replace scafld. It calls the scafld CLI (v1.4.0) with
-explicit argv, records the runx receipt for the hop, and lets the chain define
-which command is allowed at each step.
+The skill does not replace scafld. It calls the scafld CLI with explicit argv,
+requires native `--json` output for supported commands, records the runx
+receipt for the hop, and lets the chain define which command is allowed at each
+step.
 
 ## Lifecycle
 
@@ -38,9 +40,8 @@ The lifecycle commands, in typical order:
 
 3. **`validate <task-id>`** — validate the spec against the JSON schema.
    Checks required fields, valid enums, non-empty phases, and that TODO
-   placeholders have been replaced. `runx` normalizes the result into a
-   structured report even when the installed `scafld` CLI does not expose a
-   native `--json` flag for `validate`.
+   placeholders have been replaced. runx forwards the native JSON payload from
+   `scafld validate --json` directly.
 
 4. **`approve <task-id>`** — validate then move the spec from `drafts/`
    to `approved/`. Sets status to `approved`.
@@ -64,31 +65,38 @@ The lifecycle commands, in typical order:
    first (spec_compliance re-runs acceptance criteria, scope_drift runs
    audit). If automated passes fail, exits 1 with instructions to fix.
    On success, creates `.ai/reviews/<task-id>.md` with a Review Artifact
-   v3 template and prints the adversarial review prompt. `runx` normalizes the
-   result into structured fields including `review_file`, `review_prompt`,
-   `automated_passes`, and `required_sections` whether or not the installed
-   `scafld` build has native JSON output.
+   v3 template and returns a native JSON review handoff payload including
+   `review_file`, `review_prompt`, `automated_passes`, and
+   `required_sections`.
 
 9. **`complete <task-id>`** — finalize the review and archive the spec.
    Validates that the review artifact exists, all adversarial sections
    are filled, verdict is not fail/incomplete, and pass results are
    consistent. On success, writes a `review:` block into the spec and
    moves it to `archive/YYYY-MM/` with status `completed`. On failure,
-   exits 1 with the gate reason. `runx` emits a structured completion report
-   including `completed_state`, `archive_path`, and reviewer summary fields,
-   even when the installed CLI only prints plain text. Override path:
-   `--human-reviewed --reason "..."` allows completing with an override
-   (requires interactive terminal confirmation).
+   exits 1 with the gate reason. runx forwards the native completion JSON as-is.
+   Override path: `--human-reviewed --reason "..."` allows completing with an
+   override (requires interactive terminal confirmation).
 
 10. **`status <task-id>`** — show spec status, phase progress, review
-    state. `runx` wraps the command in a structured status report so callers do
-    not depend on the raw terminal format of the installed CLI.
+    state, origin binding, and sync facts. runx forwards the native
+    `scafld status --json` payload directly.
 
 11. **`fail <task-id>`** — move an in-progress spec to archive with
     status `failed`.
 
 12. **`cancel <task-id>`** — move a spec to archive with status
     `cancelled`.
+
+13. **`branch <task-id>`** — bind the task to a working branch and record the
+    native origin metadata.
+
+14. **`sync <task-id>`** — compare recorded origin metadata to the live git
+    workspace and emit native drift details.
+
+15. **`summary <task-id>`**, **`checks <task-id>`**, and
+    **`pr-body <task-id>`** — project the same spec/review/origin state onto
+    markdown and CI/check surfaces without wrapper-side reconstruction.
 
 ## Review handoff
 
@@ -123,19 +131,33 @@ The spec file (`.ai/specs/.../<task-id>.yaml`) contains:
 
 - `command` (required): scafld command to run. Accepts: `init`, `new`/`spec`,
   `approve`, `start`, `exec`/`execute`, `audit`, `review`, `complete`,
-  `validate`, `status`, `fail`, `cancel`. Aliases: `spec` maps to `new`,
-  `execute` maps to `exec`.
+  `validate`, `status`, `fail`, `cancel`, `report`, `branch`, `sync`,
+  `summary`, `checks`, `pr-body`. Aliases: `spec` maps to `new`, `execute`
+  maps to `exec`.
 - `task_id`: scafld task id (required for all commands except `init`).
 - `fixture`: workspace root containing `.ai/`; used as scafld working directory.
 - `title`: title for `new` command (`-t` flag).
 - `size`: size for `new` command (`-s` flag): micro, small, medium, large.
 - `risk`: risk for `new` command (`-r` flag): low, medium, high.
 - `phase`: phase for `exec` command (`--phase` flag).
+- `base`: base ref for `audit --base` or `branch --base`.
+- `name`: branch name for `branch --name`.
+- `bind_current`: boolean flag for `branch --bind-current`.
 - `scafld_bin`: explicit scafld executable path. Defaults to `SCAFLD_BIN`
   env var or `scafld` on PATH.
 
 ## Structured output
 
-Commands `review`, `complete`, `status`, and `validate` are normalized by
-`runx` into structured fields so chain policy and reviewer-facing steps
-consume stable data instead of depending on a drifting terminal format.
+runx does not rebuild scafld state locally anymore. For commands with native
+JSON contracts, the wrapper forwards the scafld payload directly after argv/env
+sanitization. That includes lifecycle commands plus the origin/sync/projection
+surfaces (`branch`, `sync`, `summary`, `checks`, `pr-body`).
+
+## Vendored manifest policy
+
+The workspace bundle under `.ai/scafld/` is vendored on purpose, but it is not
+the live runtime contract by itself. The installed scafld binary must satisfy
+the native contract recorded in `.ai/scafld/manifest.json`, including the
+required scafld version and required projection/origin surfaces. That keeps the
+vendored assets auditable while preserving a thin runtime boundary between runx
+and scafld.
