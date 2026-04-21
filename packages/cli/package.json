@@ -2,6 +2,7 @@
   "name": "@runxai/cli",
   "version": "0.4.1",
   "private": false,
+  "license": "MIT",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -13,6 +14,7 @@
     "runx": "./bin/runx.js"
   },
   "files": [
+    "LICENSE",
     "bin",
     "dist",
     "tools",
