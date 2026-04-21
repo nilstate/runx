@@ -378,10 +378,19 @@ runners:
             history or revision ranges such as HEAD~1, merge-base comparisons,
             or prior commits being available. Prefer current-tree checks or
             exact file-path checks such as git diff --name-only -- <path> or
-            git status --short -- <path>. When checking file contents, target
-            the declared changed file directly and anchor on the exact expected
-            text so the command cannot accidentally match the issue title, spec
-            prose, or unrelated strings elsewhere in the repo.
+            git status --short -- <path>. Never write an exhaustive whole-tree
+            assertion such as "the lane only changes X and Y" by comparing the
+            full git status output to an exact file list. Governed lanes create
+            additional lifecycle artifacts after review, especially
+            .ai/reviews/<task_id>.md, so that pattern makes the task impossible
+            to complete even when the repo change itself is correct. If you
+            need a scope check, validate the intended repo file directly and
+            let scafld audit/review enforce the broader boundary, or include
+            the known lifecycle-managed governance artifacts explicitly. When
+            checking file contents, target the declared changed file directly
+            and anchor on the exact expected text so the command cannot
+            accidentally match the issue title, spec prose, or unrelated
+            strings elsewhere in the repo.
           allowed_tools:
             - fs.read
             - git.status

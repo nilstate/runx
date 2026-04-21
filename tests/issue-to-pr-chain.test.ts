@@ -74,6 +74,8 @@ describe("issue-to-PR composite skill", () => {
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo_snapshot_path");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Never author acceptance criteria that depend on git history");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("HEAD~1");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Never write an exhaustive whole-tree assertion");
+    expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain(".ai/reviews/<task_id>.md");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("anchor on the exact expected text");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Do not list spec_draft.path");
     expect(chain.steps.find((step) => step.id === "author-spec")?.instructions).toContain(".ai/specs/active/<task_id>.yaml");
