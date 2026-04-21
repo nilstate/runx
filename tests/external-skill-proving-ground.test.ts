@@ -219,7 +219,7 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     skillName: "support-triage",
     expectation: {
       requestId: "agent_step.support-triage.output",
-      inputKeys: ["subject_title", "subject_body", "subject_locator", "subject_output", "product_context", "operator_context"],
+      inputKeys: ["subject_title", "subject_body", "subject_locator", "outbox_entry", "product_context", "operator_context"],
       sourceType: "agent-step",
     },
   },

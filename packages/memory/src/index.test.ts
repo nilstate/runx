@@ -8,7 +8,7 @@ import { writeLocalReceipt } from "../../receipts/src/index.js";
 
 import {
   createFileJournalStore,
-  findSubjectOutput,
+  findOutboxEntry,
   latestDecisionForGate,
   subjectMemoryAllowsGate,
   summarizeSubjectMemory,
@@ -52,10 +52,10 @@ describe("subject memory contract", () => {
           reason: "same subject approved one rolling draft PR",
         },
       ],
-      subject_outputs: [
+      subject_outbox: [
         {
-          target_id: "pr-111",
-          target_kind: "pull_request",
+          entry_id: "pr-111",
+          kind: "pull_request",
           locator: "https://github.com/nilstate/aster/pull/111",
           status: "draft",
         },
@@ -73,7 +73,7 @@ describe("subject memory contract", () => {
     expect(memory.subject.subject_locator).toBe("nilstate/aster#issue/110");
     expect(memory.adapter.type).toBe("github");
     expect(subjectMemoryAllowsGate(memory, "skill-lab.publish")).toBe(true);
-    expect(findSubjectOutput(memory, "pull_request")?.status).toBe("draft");
+    expect(findOutboxEntry(memory, "pull_request")?.status).toBe("draft");
   });
 
   it("returns the newest matching decision for a gate", () => {
@@ -101,7 +101,7 @@ describe("subject memory contract", () => {
           recorded_at: "2026-04-21T08:05:00Z",
         },
       ],
-      subject_outputs: [],
+      subject_outbox: [],
       source_refs: [],
     });
 
@@ -134,10 +134,10 @@ describe("subject memory contract", () => {
         },
       ],
       decisions: [],
-      subject_outputs: [
+      subject_outbox: [
         {
-          target_id: "draft-1",
-          target_kind: "draft_change",
+          entry_id: "draft-1",
+          kind: "draft_change",
           status: "proposed",
         },
       ],
@@ -145,7 +145,7 @@ describe("subject memory contract", () => {
     });
 
     expect(summarizeSubjectMemory(memory)).toBe(
-      "work_item:linear://issue/ENG-42 via ticketing | entries=2 decisions=0 subject_outputs=draft_change",
+      "work_item:linear://issue/ENG-42 via ticketing | entries=2 decisions=0 outbox=draft_change",
     );
   });
 
@@ -163,7 +163,7 @@ describe("subject memory contract", () => {
           },
           entries: [],
           decisions: [],
-          subject_outputs: [],
+          subject_outbox: [],
           source_refs: [],
         }),
     ).toThrow(/subject_locator/);

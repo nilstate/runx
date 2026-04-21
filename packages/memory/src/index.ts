@@ -8,15 +8,15 @@ import type { LocalReceipt } from "../../receipts/src/index.js";
 
 export const RUNX_SCHEMA_REFS = {
   subject_memory: "https://runx.ai/spec/subject-memory.schema.json",
-  subject_output: "https://runx.ai/spec/subject-output.schema.json",
+  outbox_entry: "https://runx.ai/spec/outbox-entry.schema.json",
   subject_memory_decision: "https://runx.ai/spec/subject-memory-decision.schema.json",
   journal_entry: "https://runx.ai/spec/journal-entry.schema.json",
 } as const;
 
 export type SubjectMemoryEntryKind = "message" | "decision" | "status" | "artifact_ref" | "note";
 export type SubjectMemoryDecisionValue = "allow" | "deny";
-export type SubjectOutputKind = "pull_request" | "draft_change" | "patch_bundle" | "message" | "artifact";
-export type SubjectOutputStatus = "proposed" | "draft" | "published" | "superseded" | "closed";
+export type OutboxEntryKind = "pull_request" | "draft_change" | "patch_bundle" | "message" | "artifact";
+export type OutboxEntryStatus = "proposed" | "draft" | "published" | "superseded" | "closed";
 
 export interface MemoryEvidenceRef {
   readonly type: string;
@@ -63,12 +63,12 @@ export interface SubjectMemoryDecision {
   readonly source_ref?: MemoryEvidenceRef;
 }
 
-export interface SubjectOutput {
-  readonly target_id: string;
-  readonly target_kind: SubjectOutputKind;
+export interface OutboxEntry {
+  readonly entry_id: string;
+  readonly kind: OutboxEntryKind;
   readonly locator?: string;
   readonly title?: string;
-  readonly status?: SubjectOutputStatus;
+  readonly status?: OutboxEntryStatus;
   readonly subject_locator?: string;
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
@@ -86,7 +86,7 @@ export interface SubjectMemory {
   readonly subject: SubjectDescriptor;
   readonly entries: readonly SubjectMemoryEntry[];
   readonly decisions: readonly SubjectMemoryDecision[];
-  readonly subject_outputs: readonly SubjectOutput[];
+  readonly subject_outbox: readonly OutboxEntry[];
   readonly source_refs: readonly MemoryEvidenceRef[];
   readonly generated_at?: string;
   readonly watermark?: string;
@@ -96,20 +96,20 @@ export interface SubjectMemoryFetchRequest {
   readonly subject_kind: string;
   readonly subject_locator: string;
   readonly cursor?: string;
-  readonly include_subject_outputs?: boolean;
+  readonly include_subject_outbox?: boolean;
 }
 
-export interface PushOutputRequest {
+export interface PushOutboxEntryRequest {
   readonly memory: SubjectMemory;
-  readonly output: SubjectOutput;
+  readonly entry: OutboxEntry;
   readonly artifacts?: readonly MemoryEvidenceRef[];
-  readonly next_status?: SubjectOutputStatus;
+  readonly next_status?: OutboxEntryStatus;
 }
 
 export interface SubjectMemoryAdapter {
   readonly type: string;
   readonly fetchSubjectMemory: (request: SubjectMemoryFetchRequest) => Promise<SubjectMemory>;
-  readonly pushOutput?: (request: PushOutputRequest) => Promise<SubjectOutput>;
+  readonly push?: (request: PushOutboxEntryRequest) => Promise<OutboxEntry>;
 }
 
 export function validateSubjectMemory(value: unknown, label = "subject_memory"): SubjectMemory {
@@ -127,8 +127,8 @@ export function validateSubjectMemory(value: unknown, label = "subject_memory"):
     decisions: requireArray(record.decisions, `${label}.decisions`).map((decision, index) =>
       validateSubjectMemoryDecision(decision, `${label}.decisions[${index}]`),
     ),
-    subject_outputs: requireArray(record.subject_outputs, `${label}.subject_outputs`).map((output, index) =>
-      validateSubjectOutput(output, `${label}.subject_outputs[${index}]`),
+    subject_outbox: requireArray(record.subject_outbox, `${label}.subject_outbox`).map((entry, index) =>
+      validateOutboxEntry(entry, `${label}.subject_outbox[${index}]`),
     ),
     source_refs: requireArray(record.source_refs, `${label}.source_refs`).map((ref, index) =>
       validateMemoryEvidenceRef(ref, `${label}.source_refs[${index}]`),
@@ -138,14 +138,14 @@ export function validateSubjectMemory(value: unknown, label = "subject_memory"):
   };
 }
 
-export function validateSubjectOutput(value: unknown, label = "subject_output"): SubjectOutput {
+export function validateOutboxEntry(value: unknown, label = "outbox_entry"): OutboxEntry {
   const record = requireRecord(value, label);
   return {
-    target_id: requireString(record.target_id, `${label}.target_id`),
-    target_kind: requireEnum(
-      record.target_kind,
+    entry_id: requireString(record.entry_id, `${label}.entry_id`),
+    kind: requireEnum(
+      record.kind,
       ["pull_request", "draft_change", "patch_bundle", "message", "artifact"],
-      `${label}.target_kind`,
+      `${label}.kind`,
     ),
     locator: optionalString(record.locator, `${label}.locator`),
     title: optionalString(record.title, `${label}.title`),
@@ -202,19 +202,19 @@ export function subjectMemoryAllowsGate(memory: SubjectMemory, gateId: string): 
   return latestDecisionForGate(memory, gateId)?.decision === "allow";
 }
 
-export function findSubjectOutput(
+export function findOutboxEntry(
   memory: SubjectMemory,
-  targetKind: SubjectOutputKind,
-): SubjectOutput | undefined {
-  return memory.subject_outputs.find((output) => output.target_kind === targetKind);
+  kind: OutboxEntryKind,
+): OutboxEntry | undefined {
+  return memory.subject_outbox.find((entry) => entry.kind === kind);
 }
 
 export function summarizeSubjectMemory(memory: SubjectMemory): string {
   const subject = `${memory.subject.subject_kind}:${memory.subject.subject_locator}`;
   const entryCount = memory.entries.length;
   const decisionCount = memory.decisions.length;
-  const outputKinds = memory.subject_outputs.map((output) => output.target_kind).join(", ") || "none";
-  return `${subject} via ${memory.adapter.type} | entries=${entryCount} decisions=${decisionCount} subject_outputs=${outputKinds}`;
+  const outboxKinds = memory.subject_outbox.map((entry) => entry.kind).join(", ") || "none";
+  return `${subject} via ${memory.adapter.type} | entries=${entryCount} decisions=${decisionCount} outbox=${outboxKinds}`;
 }
 
 export type LocalJournalEntryKind = "receipt" | "fact" | "answer" | "artifact";

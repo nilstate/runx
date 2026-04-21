@@ -36,7 +36,7 @@ describe("builder-chain skills", () => {
   it("teaches builder skills to use portable subject-memory nouns for subject-driven contracts", async () => {
     await expect(readFile(path.resolve("skills/objective-to-skill/SKILL.md"), "utf8")).resolves.toContain("subject_memory");
     await expect(readFile(path.resolve("skills/objective-decompose/SKILL.md"), "utf8")).resolves.toContain("subject_locator");
-    await expect(readFile(path.resolve("skills/harness-author/SKILL.md"), "utf8")).resolves.toContain("subject_output");
+    await expect(readFile(path.resolve("skills/harness-author/SKILL.md"), "utf8")).resolves.toContain("outbox_entry");
   });
 });
 

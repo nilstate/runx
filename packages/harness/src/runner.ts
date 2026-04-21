@@ -328,7 +328,12 @@ function assertHarnessResult(
   }
 
   if (fixture.expect.steps) {
-    const actualSteps = "steps" in result ? result.steps.map((step) => step.stepId) : [];
+    const actualSteps =
+      receipt?.kind === "chain_execution"
+        ? receipt.steps.map((step) => step.step_id)
+        : "steps" in result
+          ? result.steps.map((step) => step.stepId)
+          : [];
     if (JSON.stringify(actualSteps) !== JSON.stringify(fixture.expect.steps)) {
       errors.push(`Expected steps ${fixture.expect.steps.join(", ")}, got ${actualSteps.join(", ")}.`);
     }

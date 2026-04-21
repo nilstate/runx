@@ -98,7 +98,7 @@ describe("issue-to-PR composite skill", () => {
       type: "json",
       required: false,
     });
-    expect(runner.inputs.subject_output).toMatchObject({
+    expect(runner.inputs.outbox_entry).toMatchObject({
       type: "json",
       required: false,
     });

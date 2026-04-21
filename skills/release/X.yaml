@@ -1,0 +1,204 @@
+skill: release
+version: "0.1.0"
+
+harness:
+  cases:
+    - name: release-approved-publish-end-to-end
+      inputs:
+        project_root: /tmp/release-fixture
+        channel: npm
+        last_tag: v0.4.5
+        operator_context: Ship a bounded v0.4.6 patch release for the runx OSS CLI.
+      caller:
+        answers:
+          agent_step.release-prepare.output:
+            release_brief:
+              proposed_version: "0.4.6"
+              previous_tag: v0.4.5
+              commits:
+                - sha: a1b2c3d
+                  classification: fix
+                  summary: correct chain input resolution for release skill
+                - sha: e4f5g6h
+                  classification: chore
+                  summary: bump runtime dependency floor
+              changelog:
+                added: []
+                fixed:
+                  - correct chain input resolution for release skill
+                changed:
+                  - runtime dependency floor raised to node 24
+                breaking: []
+              checks:
+                tests: pass
+                types: pass
+                lint: pass
+                pack_smoke: pass
+              unresolved: []
+              publishable: true
+              publish_plan:
+                channel: npm
+                package: "@runxai/cli"
+                tag_name: v0.4.6
+          agent_step.release-publish.output:
+            publish_report:
+              registry_url: https://www.npmjs.com/package/@runxai/cli/v/0.4.6
+              release_tag: v0.4.6
+              commit_sha: a1b2c3d
+              announcement_packet:
+                channel: github-release
+                headline: "runx OSS CLI v0.4.6"
+                summary: Bounded patch fixing chain input resolution on the release skill.
+                body: |
+                  ## Fixed
+                  - correct chain input resolution for release skill
+
+                  ## Changed
+                  - runtime dependency floor raised to node 24
+              side_effects:
+                - kind: registry_publish
+                  target: npm
+                  locator: https://www.npmjs.com/package/@runxai/cli/v/0.4.6
+                - kind: github_release
+                  target: auscaster/runx
+                  locator: https://github.com/auscaster/runx/releases/tag/v0.4.6
+        approvals:
+          release.publish.approval: true
+      expect:
+        status: success
+        receipt:
+          kind: chain_execution
+          status: success
+        steps:
+          - prepare-release
+          - approve-publish
+          - publish-release
+
+    - name: release-prepare-needs-required-inputs
+      runner: prepare
+      inputs: {}
+      expect:
+        status: needs_resolution
+
+    - name: release-chain-needs-project-root
+      inputs: {}
+      expect:
+        status: needs_resolution
+
+
+runners:
+  prepare:
+    type: agent-step
+    agent: builder
+    task: release-prepare
+    outputs:
+      release_brief: object
+    artifacts:
+      wrap_as: release_brief_packet
+    inputs:
+      project_root:
+        type: string
+        required: true
+        description: "Absolute path to the project being released."
+      channel:
+        type: string
+        required: true
+        description: "Publishing target (npm, pypi, github-release)."
+      last_tag:
+        type: string
+        required: false
+        description: "Previous release anchor. Defaults to the latest semver tag reachable from the current branch."
+      operator_context:
+        type: string
+        required: false
+        description: "Constraints, cadence, or campaign context for this release."
+
+  release:
+    default: true
+    type: chain
+    inputs:
+      project_root:
+        type: string
+        required: true
+        description: "Absolute path to the project being released."
+      channel:
+        type: string
+        required: true
+        description: "Publishing target (npm, pypi, github-release)."
+      last_tag:
+        type: string
+        required: false
+        description: "Previous release anchor. Defaults to the latest semver tag reachable from the current branch."
+      operator_context:
+        type: string
+        required: false
+        description: "Constraints or campaign context for this release."
+    chain:
+      name: release
+      owner: runx
+      steps:
+        - id: prepare-release
+          label: prepare the release brief
+          run:
+            type: agent-step
+            agent: builder
+            task: release-prepare
+            outputs:
+              release_brief: object
+          instructions: >
+            Survey the commit range since the previous semver tag, classify
+            each commit, stage a changelog, and run the declared release
+            checks (tests, types, lint, pack smoke). Emit a release_brief
+            describing what would ship, what is blocked, and what remains
+            unresolved. Do not tag, push, or publish in this step.
+          allowed_tools:
+            - fs.read
+            - git.status
+            - shell.exec
+          scopes:
+            - runx:release:read
+          artifacts:
+            named_emits:
+              release_brief: release_brief
+        - id: approve-publish
+          label: approve the release for publication
+          run:
+            type: approval
+          inputs:
+            gate_id: release.publish.approval
+            reason: Approve the prepared release brief before any destructive publication step runs.
+          context:
+            release_brief: prepare-release.release_brief.data
+          artifacts:
+            wrap_as: approval_decision
+        - id: publish-release
+          label: publish the approved release
+          run:
+            type: agent-step
+            agent: builder
+            task: release-publish
+            outputs:
+              publish_report: object
+          instructions: >
+            Take the approved release_brief from context and carry out the
+            declared publication. Tag and push the commit, upload to the
+            named registry, open the release artifact, and emit an
+            announcement_packet. Refuse to act if the release_brief is
+            missing, unpublishable, or not marked as approved upstream.
+          allowed_tools:
+            - fs.read
+            - git.status
+            - shell.exec
+          scopes:
+            - runx:release:publish
+          context:
+            release_brief: prepare-release.release_brief.data
+            approval: approve-publish.approval_decision.data
+          artifacts:
+            named_emits:
+              publish_report: publish_report
+      policy:
+        transitions:
+          - to: publish-release
+            field: approve-publish.approval_decision.data.approved
+            equals: true

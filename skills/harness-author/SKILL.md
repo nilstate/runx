@@ -70,7 +70,7 @@ wall clock dependencies. They should run in seconds.
 
 For subject-driven skills, model the fixture inputs using portable runx nouns.
 Prefer `subject_title`, `subject_body`, `subject_locator`, `subject_memory`,
-and `subject_output`. Adapter-specific identifiers should live inside the
+and `outbox_entry`. Adapter-specific identifiers should live inside the
 locator or snapshot payload, not as top-level contract fields.
 
 ## Output

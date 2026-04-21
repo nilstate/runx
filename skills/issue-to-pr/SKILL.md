@@ -109,8 +109,8 @@ repo.
 - `subject_locator` (optional): canonical locator for the bounded subject.
 - `subject_memory` (optional): portable subject memory for the current work
   thread.
-- `subject_output` (optional): current publication surface when the lane is
-  refreshing a draft change, subject thread, or other adapter-owned target.
+- `outbox_entry` (optional): current outbox entry when the lane is refreshing
+  a draft change, subject thread, or other adapter-owned target.
 - `target_repo`: intended repo slug for repo-local dispatchers.
 - `repo_snapshot`: bounded structured snapshot of the target repo, when the
   supervisor or worker can inspect the real workspace before yielding the

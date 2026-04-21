@@ -15,7 +15,7 @@ new skill.
 
 When the proposed skill is subject-driven, the generated contract should model
 portable runx nouns, not provider nouns. Prefer `subject_title`,
-`subject_body`, `subject_locator`, `subject_memory`, and `subject_output` over
+`subject_body`, `subject_locator`, `subject_memory`, and `outbox_entry` over
 adapter-shaped fields such as issue ids, thread URLs, or provider-specific
 review handles.
 
