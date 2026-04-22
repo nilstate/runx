@@ -97,7 +97,6 @@ Sourcey build produces: HTML pages, `sourcey.css`, `sourcey.js`,
 ## Inputs
 
 - `project` (required): project root directory.
-- `repo_root`: optional alias for the project root when Sourcey is composed inside a parent chain that already uses `repo_root`.
 - `brand_name`: project name (discovered from package evidence if omitted).
 - `homepage_url`: project homepage (discovered from project evidence if omitted).
 - `docs_inputs`: structured docs inputs, e.g. `{"mode":"config","config":"docs/sourcey.config.ts"}` or `{"mode":"openapi","spec":"openapi.yaml"}`. Discovered if omitted and may point at authored config produced by the skill.

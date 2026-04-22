@@ -34,10 +34,6 @@ runners:
         type: string
         required: true
         description: "Project root containing Sourcey inputs."
-      repo_root:
-        type: string
-        required: false
-        description: "Optional alias for the project root when Sourcey is composed inside a parent chain."
       homepage_url:
         type: string
         required: false
@@ -246,18 +242,6 @@ runners:
           context:
             output_dir: rebuild.sourcey_build_report.data.output_dir
             index_path: rebuild.sourcey_build_report.data.index_path
-        - id: package
-          label: package sourcey run
-          tool: sourcey.package
-          scopes:
-            - sourcey.verify
-          context:
-            discovery_report: discover.discovery_report.data
-            doc_bundle: author.doc_bundle.data
-            sourcey_build_report: rebuild.sourcey_build_report.data
-            evaluation_report: critique.evaluation_report.data
-            revision_bundle: revise.revision_bundle.data
-            sourcey_verification_report: verify.sourcey_verification_report.data
       policy:
         transitions:
           - to: author
@@ -278,5 +262,3 @@ runners:
           - to: verify
             field: rebuild.sourcey_build_report.data.generated
             equals: true
-    artifacts:
-      wrap_as: sourcey_packet
