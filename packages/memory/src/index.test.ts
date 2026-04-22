@@ -7,9 +7,11 @@ import { describe, expect, it } from "vitest";
 import { writeLocalReceipt } from "../../receipts/src/index.js";
 
 import {
+  createSubjectMemoryAdapter,
   createFileJournalStore,
   findOutboxEntry,
   latestDecisionForGate,
+  pushOutboxEntryViaAdapter,
   subjectMemoryAllowsGate,
   summarizeSubjectMemory,
   validateSubjectMemory,
@@ -167,6 +169,116 @@ describe("subject memory contract", () => {
           source_refs: [],
         }),
     ).toThrow(/subject_locator/);
+  });
+
+  it("pushes and rehydrates through the file subject-memory adapter", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-subject-memory-file-"));
+    const memoryPath = path.join(tempDir, "subject-memory.json");
+    const initial = {
+      kind: "runx.subject-memory.v1",
+      adapter: {
+        type: "file",
+        adapter_ref: memoryPath,
+      },
+      subject: {
+        subject_kind: "work_item",
+        subject_locator: "local://provider/issues/123",
+        canonical_uri: "https://example.test/issues/123",
+      },
+      entries: [],
+      decisions: [],
+      subject_outbox: [],
+      source_refs: [],
+    };
+
+    try {
+      await writeFile(memoryPath, `${JSON.stringify(initial, null, 2)}\n`);
+      const memory = validateSubjectMemory(initial);
+      const result = await pushOutboxEntryViaAdapter({
+        memory,
+        entry: {
+          entry_id: "pull_request:fixture-task",
+          kind: "pull_request",
+          title: "Fixture PR",
+          status: "proposed",
+        },
+        next_status: "draft",
+      });
+
+      expect(result.status).toBe("pushed");
+      expect(result.outbox_entry).toMatchObject({
+        entry_id: "pull_request:fixture-task",
+        kind: "pull_request",
+        status: "draft",
+        locator: expect.stringContaining("#outbox/pull_request%3Afixture-task"),
+        subject_locator: "local://provider/issues/123",
+      });
+      expect(result.subject_memory.subject_outbox).toEqual([
+        expect.objectContaining({
+          entry_id: "pull_request:fixture-task",
+          status: "draft",
+        }),
+      ]);
+      expect(result.subject_memory.entries.at(-1)).toMatchObject({
+        entry_kind: "status",
+        structured_data: {
+          event: "push_outbox_entry",
+          outbox_entry_id: "pull_request:fixture-task",
+          status: "draft",
+        },
+      });
+
+      const adapter = createSubjectMemoryAdapter(result.subject_memory.adapter);
+      expect(adapter?.type).toBe("file");
+      const fetched = await adapter?.fetchSubjectMemory({
+        subject_kind: "work_item",
+        subject_locator: "local://provider/issues/123",
+        include_subject_outbox: true,
+      });
+      expect(fetched?.subject_outbox).toEqual([
+        expect.objectContaining({
+          entry_id: "pull_request:fixture-task",
+          status: "draft",
+        }),
+      ]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips push when no runtime adapter is registered", async () => {
+    const memory = validateSubjectMemory({
+      kind: "runx.subject-memory.v1",
+      adapter: {
+        type: "github",
+      },
+      subject: {
+        subject_kind: "work_item",
+        subject_locator: "github://example/repo/issues/123",
+      },
+      entries: [],
+      decisions: [],
+      subject_outbox: [],
+      source_refs: [],
+    });
+
+    const result = await pushOutboxEntryViaAdapter({
+      memory,
+      entry: {
+        entry_id: "pull_request:fixture-task",
+        kind: "pull_request",
+      },
+    });
+
+    expect(result).toEqual({
+      status: "skipped",
+      reason: "no subject memory adapter is registered for 'github'",
+      outbox_entry: {
+        entry_id: "pull_request:fixture-task",
+        kind: "pull_request",
+      },
+      subject_memory: memory,
+    });
   });
 });
 

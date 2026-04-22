@@ -1,0 +1,34 @@
+name: subject_memory.push_outbox
+description: Push an outbox entry through the current subject-memory adapter and return the refreshed subject memory.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - ./run.mjs
+inputs:
+  subject_memory:
+    type: json
+    required: false
+    description: Current hydrated subject memory for the bounded provider subject.
+  outbox_entry:
+    type: json
+    required: true
+    description: Outbox entry to push through the subject-memory adapter.
+  draft_pull_request:
+    type: json
+    required: false
+    description: Provider-agnostic draft pull-request packet paired with the outbox entry.
+  fixture:
+    type: string
+    required: false
+    description: Optional governed workspace root inherited from issue-to-pr style lanes.
+  workspace_path:
+    type: string
+    required: false
+    description: Optional workspace root used by adapters that need local git state to publish outputs upstream.
+  next_status:
+    type: string
+    required: false
+    description: Optional status to apply after a successful provider push, such as `draft`.
+scopes:
+  - subject_memory:push

@@ -3,6 +3,7 @@ export const memoryPackage = "@runx/memory";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import type { LocalReceipt } from "../../receipts/src/index.js";
 
@@ -78,6 +79,7 @@ export interface SubjectMemoryAdapterDescriptor {
   readonly provider?: string;
   readonly surface?: string;
   readonly cursor?: string;
+  readonly adapter_ref?: string;
 }
 
 export interface SubjectMemory {
@@ -110,6 +112,13 @@ export interface SubjectMemoryAdapter {
   readonly type: string;
   readonly fetchSubjectMemory: (request: SubjectMemoryFetchRequest) => Promise<SubjectMemory>;
   readonly push?: (request: PushOutboxEntryRequest) => Promise<OutboxEntry>;
+}
+
+export interface PushOutboxEntryResult {
+  readonly status: "pushed" | "skipped";
+  readonly reason?: string;
+  readonly outbox_entry: OutboxEntry;
+  readonly subject_memory: SubjectMemory;
 }
 
 export function validateSubjectMemory(value: unknown, label = "subject_memory"): SubjectMemory {
@@ -207,6 +216,53 @@ export function findOutboxEntry(
   kind: OutboxEntryKind,
 ): OutboxEntry | undefined {
   return memory.subject_outbox.find((entry) => entry.kind === kind);
+}
+
+export function createSubjectMemoryAdapter(
+  descriptor: SubjectMemoryAdapterDescriptor,
+): SubjectMemoryAdapter | undefined {
+  switch (descriptor.type) {
+    case "file":
+    case "file_subject_memory":
+      return createFileSubjectMemoryAdapter(descriptor);
+    default:
+      return undefined;
+  }
+}
+
+export async function pushOutboxEntryViaAdapter(
+  request: PushOutboxEntryRequest,
+): Promise<PushOutboxEntryResult> {
+  const adapter = createSubjectMemoryAdapter(request.memory.adapter);
+  if (!adapter) {
+    return {
+      status: "skipped",
+      reason: `no subject memory adapter is registered for '${request.memory.adapter.type}'`,
+      outbox_entry: request.entry,
+      subject_memory: request.memory,
+    };
+  }
+  if (!adapter.push) {
+    return {
+      status: "skipped",
+      reason: `subject memory adapter '${adapter.type}' does not support push`,
+      outbox_entry: request.entry,
+      subject_memory: request.memory,
+    };
+  }
+
+  const outboxEntry = await adapter.push(request);
+  const subjectMemory = await adapter.fetchSubjectMemory({
+    subject_kind: request.memory.subject.subject_kind,
+    subject_locator: request.memory.subject.subject_locator,
+    cursor: request.memory.adapter.cursor,
+    include_subject_outbox: true,
+  });
+  return {
+    status: "pushed",
+    outbox_entry: outboxEntry,
+    subject_memory: subjectMemory,
+  };
 }
 
 export function summarizeSubjectMemory(memory: SubjectMemory): string {
@@ -603,6 +659,7 @@ function validateSubjectMemoryAdapterDescriptor(value: unknown, label: string): 
     provider: optionalString(record.provider, `${label}.provider`),
     surface: optionalString(record.surface, `${label}.surface`),
     cursor: optionalString(record.cursor, `${label}.cursor`),
+    adapter_ref: optionalString(record.adapter_ref, `${label}.adapter_ref`),
   };
 }
 
@@ -728,4 +785,134 @@ function optionalPlainRecord(value: unknown, label: string): Readonly<Record<str
     return undefined;
   }
   return requireRecord(value, label);
+}
+
+function createFileSubjectMemoryAdapter(
+  descriptor: SubjectMemoryAdapterDescriptor,
+): SubjectMemoryAdapter {
+  const adapterRef = descriptor.adapter_ref;
+  if (!adapterRef) {
+    throw new Error(`subject memory adapter '${descriptor.type}' requires adapter_ref.`);
+  }
+  const memoryPath = resolveAdapterRefPath(adapterRef);
+  const adapterUri = pathToFileURL(memoryPath).href;
+
+  return {
+    type: descriptor.type,
+    fetchSubjectMemory: async (request) => {
+      const memory = validateSubjectMemory(JSON.parse(await readFile(memoryPath, "utf8")) as unknown);
+      if (
+        memory.subject.subject_kind !== request.subject_kind
+        || memory.subject.subject_locator !== request.subject_locator
+      ) {
+        throw new Error(
+          `subject memory at ${memoryPath} does not match ${request.subject_kind}:${request.subject_locator}.`,
+        );
+      }
+      return request.include_subject_outbox === false
+        ? { ...memory, subject_outbox: [] }
+        : memory;
+    },
+    push: async (request) => {
+      const current = validateSubjectMemory(JSON.parse(await readFile(memoryPath, "utf8")) as unknown);
+      const pushedAt = new Date().toISOString();
+      const outboxEntry = normalizePushedOutboxEntry({
+        entry: request.entry,
+        current,
+        nextStatus: request.next_status,
+        adapterUri,
+      });
+      const eventEntry: SubjectMemoryEntry = {
+        entry_id: `entry_${hashStable({
+          subject: current.subject.subject_locator,
+          outbox_entry: outboxEntry.entry_id,
+          pushed_at: pushedAt,
+        }).slice(0, 24)}`,
+        entry_kind: "status",
+        recorded_at: pushedAt,
+        body: `Pushed ${outboxEntry.kind} ${outboxEntry.entry_id}`,
+        structured_data: {
+          event: "push_outbox_entry",
+          outbox_entry_id: outboxEntry.entry_id,
+          kind: outboxEntry.kind,
+          locator: outboxEntry.locator,
+          status: outboxEntry.status,
+        },
+        source_ref: {
+          type: "subject_memory_adapter",
+          uri: adapterUri,
+          recorded_at: pushedAt,
+        },
+      };
+      const outboxEntries = upsertOutboxEntry(current.subject_outbox, outboxEntry);
+      const nextMemory = validateSubjectMemory({
+        ...current,
+        adapter: {
+          ...current.adapter,
+          adapter_ref: current.adapter.adapter_ref ?? adapterUri,
+          cursor: `push:${hashStable({ outbox_entry: outboxEntry.entry_id, pushed_at: pushedAt }).slice(0, 12)}`,
+        },
+        entries: [...current.entries, eventEntry],
+        subject_outbox: outboxEntries,
+        generated_at: pushedAt,
+        watermark: outboxEntry.entry_id,
+      });
+      await writeSubjectMemoryFile(memoryPath, nextMemory);
+      return outboxEntry;
+    },
+  };
+}
+
+function resolveAdapterRefPath(adapterRef: string): string {
+  if (adapterRef.startsWith("file://")) {
+    return path.resolve(fileURLToPath(adapterRef));
+  }
+  return path.resolve(adapterRef);
+}
+
+function normalizePushedOutboxEntry(options: {
+  readonly entry: OutboxEntry;
+  readonly current: SubjectMemory;
+  readonly nextStatus?: OutboxEntryStatus;
+  readonly adapterUri: string;
+}): OutboxEntry {
+  const { entry, current, nextStatus, adapterUri } = options;
+  const existing = current.subject_outbox.find((candidate) =>
+    candidate.entry_id === entry.entry_id
+    || (typeof entry.locator === "string" && entry.locator.length > 0 && candidate.locator === entry.locator)
+    || (
+      candidate.kind === entry.kind
+      && (candidate.subject_locator ?? current.subject.subject_locator)
+        === (entry.subject_locator ?? current.subject.subject_locator)
+    )
+  );
+  return validateOutboxEntry({
+    ...existing,
+    ...entry,
+    locator: entry.locator ?? existing?.locator ?? `${adapterUri}#outbox/${encodeURIComponent(entry.entry_id)}`,
+    status: nextStatus ?? entry.status ?? existing?.status ?? "draft",
+    subject_locator: entry.subject_locator ?? existing?.subject_locator ?? current.subject.subject_locator,
+  });
+}
+
+function upsertOutboxEntry(
+  subjectOutbox: readonly OutboxEntry[],
+  entry: OutboxEntry,
+): readonly OutboxEntry[] {
+  const filtered = subjectOutbox.filter((candidate) =>
+    candidate.entry_id !== entry.entry_id
+    && candidate.locator !== entry.locator
+    && !(
+      candidate.kind === entry.kind
+      && (candidate.subject_locator ?? "") === (entry.subject_locator ?? "")
+    ),
+  );
+  return [...filtered, entry];
+}
+
+async function writeSubjectMemoryFile(memoryPath: string, memory: SubjectMemory): Promise<void> {
+  await mkdir(path.dirname(memoryPath), { recursive: true });
+  const tempPath = `${memoryPath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
+  await writeFile(tempPath, `${JSON.stringify(memory, null, 2)}\n`, { mode: 0o600 });
+  await rename(tempPath, memoryPath);
 }

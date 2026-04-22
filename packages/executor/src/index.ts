@@ -35,6 +35,20 @@ export interface AgentContextProvenance {
   readonly receipt_id?: string;
 }
 
+export interface ProjectMemory {
+  readonly root_path: string;
+  readonly path: string;
+  readonly sha256: string;
+  readonly content: string;
+}
+
+export interface ProjectConventions {
+  readonly root_path: string;
+  readonly path: string;
+  readonly sha256: string;
+  readonly content: string;
+}
+
 export interface AgentContextEnvelope {
   readonly run_id: string;
   readonly step_id?: string;
@@ -45,6 +59,8 @@ export interface AgentContextEnvelope {
   readonly current_context: readonly ArtifactEnvelope[];
   readonly historical_context: readonly ArtifactEnvelope[];
   readonly provenance: readonly AgentContextProvenance[];
+  readonly project_memory?: ProjectMemory;
+  readonly project_conventions?: ProjectConventions;
   readonly expected_outputs?: OutputContract;
   readonly trust_boundary: string;
 }
@@ -116,6 +132,8 @@ export interface AdapterInvokeRequest {
   readonly currentContext?: readonly ArtifactEnvelope[];
   readonly historicalContext?: readonly ArtifactEnvelope[];
   readonly contextProvenance?: readonly AgentContextProvenance[];
+  readonly projectMemory?: ProjectMemory;
+  readonly projectConventions?: ProjectConventions;
 }
 
 export type AdapterInvokeResult =
@@ -177,6 +195,8 @@ export interface ExecuteSkillOptions {
   readonly currentContext?: readonly ArtifactEnvelope[];
   readonly historicalContext?: readonly ArtifactEnvelope[];
   readonly contextProvenance?: readonly AgentContextProvenance[];
+  readonly projectMemory?: ProjectMemory;
+  readonly projectConventions?: ProjectConventions;
 }
 
 export async function executeSkill(options: ExecuteSkillOptions): Promise<AdapterInvokeResult> {
@@ -210,6 +230,8 @@ export async function executeSkill(options: ExecuteSkillOptions): Promise<Adapte
     currentContext: options.currentContext,
     historicalContext: options.historicalContext,
     contextProvenance: options.contextProvenance,
+    projectMemory: options.projectMemory,
+    projectConventions: options.projectConventions,
   });
 }
 
@@ -277,8 +299,41 @@ export function validateAgentContextEnvelope(
     historical_context: requireArray(record.historical_context, `${label}.historical_context`) as readonly ArtifactEnvelope[],
     provenance: requireArray(record.provenance, `${label}.provenance`).map((entry, index) =>
       validateAgentContextProvenance(entry, `${label}.provenance[${index}]`)),
+    project_memory: record.project_memory === undefined
+      ? undefined
+      : validateProjectMemory(record.project_memory, `${label}.project_memory`),
+    project_conventions: record.project_conventions === undefined
+      ? undefined
+      : validateProjectConventions(record.project_conventions, `${label}.project_conventions`),
     expected_outputs: validateOutputContract(record.expected_outputs, `${label}.expected_outputs`),
     trust_boundary: requireString(record.trust_boundary, `${label}.trust_boundary`),
+  };
+}
+
+function validateProjectMemory(value: unknown, label: string): ProjectMemory {
+  return validateProjectDocument(value, label);
+}
+
+function validateProjectConventions(value: unknown, label: string): ProjectConventions {
+  return validateProjectDocument(value, label);
+}
+
+function validateProjectDocument(value: unknown, label: string): {
+  readonly root_path: string;
+  readonly path: string;
+  readonly sha256: string;
+  readonly content: string;
+} {
+  const record = asRecord(value);
+  if (!record) {
+    throw new Error(`${label} must match ${CONTROL_SCHEMA_REFS.agent_context_envelope}.`);
+  }
+
+  return {
+    root_path: requireString(record.root_path, `${label}.root_path`),
+    path: requireString(record.path, `${label}.path`),
+    sha256: requireString(record.sha256, `${label}.sha256`),
+    content: requireString(record.content, `${label}.content`, { allowEmpty: true }),
   };
 }
 

@@ -605,6 +605,16 @@ runners:
             completion_result: scafld-complete.result
             completion_state: scafld-complete.state
             status_snapshot: scafld-status.result
+        - id: push-pull-request
+          label: push the PR outbox entry through subject memory
+          tool: subject_memory.push_outbox
+          scopes:
+            - subject_memory:push
+          context:
+            outbox_entry: package-pull-request.outbox_entry
+            draft_pull_request: package-pull-request.draft_pull_request
+          inputs:
+            next_status: draft
       policy:
         transitions:
           - to: write-fix

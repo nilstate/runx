@@ -14,6 +14,7 @@
     "cli:link-global": "pnpm build && node scripts/link-global-cli.mjs",
     "cli:unlink-global": "node scripts/link-global-cli.mjs --unlink",
     "cli:check-global": "node scripts/link-global-cli.mjs --check",
+    "dogfood:github-issue-to-pr": "node scripts/dogfood-github-issue-to-pr.mjs",
     "release:smoke-live": "node scripts/smoke-released-cli-live.mjs",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test": "node scripts/test-workspace.mjs",

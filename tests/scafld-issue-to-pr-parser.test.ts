@@ -45,6 +45,7 @@ describe("scafld issue-to-PR skill contract", () => {
       "scafld-checks",
       "scafld-pr-body",
       "package-pull-request",
+      "push-pull-request",
     ]);
     expect(chain.steps.map((step) => step.skill ?? "")).toEqual([
       "../scafld",
@@ -71,6 +72,7 @@ describe("scafld issue-to-PR skill contract", () => {
       "../scafld",
       "",
       "../scafld",
+      "",
       "",
     ]);
     expect(chain.steps.map((step) => step.tool ?? "")).toEqual([
@@ -99,6 +101,7 @@ describe("scafld issue-to-PR skill contract", () => {
       "scafld.capture_checks",
       "",
       "outbox.build_pull_request",
+      "subject_memory.push_outbox",
     ]);
     expect(
       Object.fromEntries(chain.steps.filter((step) => step.inputs.command !== undefined).map((step) => [step.id, step.inputs.command])),
@@ -220,6 +223,16 @@ describe("scafld issue-to-PR skill contract", () => {
         completion_result: "scafld-complete.result",
         completion_state: "scafld-complete.state",
         status_snapshot: "scafld-status.result",
+      },
+    });
+    expect(chain.steps.find((step) => step.id === "push-pull-request")).toMatchObject({
+      tool: "subject_memory.push_outbox",
+      context: {
+        outbox_entry: "package-pull-request.outbox_entry",
+        draft_pull_request: "package-pull-request.draft_pull_request",
+      },
+      inputs: {
+        next_status: "draft",
       },
     });
     expect(chain.policy?.transitions).toEqual([

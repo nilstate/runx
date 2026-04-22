@@ -25,7 +25,7 @@ describe("local chain runner", () => {
         caller: nonInteractiveCaller,
         receiptDir,
         runxHome,
-        env: process.env,
+        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
       });
 
       expect(result.status).toBe("success");
@@ -72,7 +72,7 @@ describe("local chain runner", () => {
         caller: nonInteractiveCaller,
         receiptDir,
         runxHome,
-        env: process.env,
+        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
       });
 
       expect(result.status).toBe("success");
@@ -99,7 +99,7 @@ describe("local chain runner", () => {
         caller: nonInteractiveCaller,
         receiptDir,
         runxHome,
-        env: process.env,
+        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
       });
 
       expect(result.status).toBe("success");
@@ -110,7 +110,7 @@ describe("local chain runner", () => {
       const inspection = await inspectLocalChain({
         chainId: result.receipt.id,
         receiptDir,
-        env: process.env,
+        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
       });
 
       expect(inspection.summary).toMatchObject({
@@ -136,7 +136,7 @@ describe("local chain runner", () => {
         caller: nonInteractiveCaller,
         receiptDir,
         runxHome: path.join(tempDir, "home"),
-        env: process.env,
+        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
       });
       expect(result.status).toBe("success");
       if (result.status !== "success") {
@@ -146,7 +146,7 @@ describe("local chain runner", () => {
       const inspectExit = await runCli(
         ["skill", "inspect", result.receipt.id, "--receipt-dir", receiptDir],
         { stdin: process.stdin, stdout, stderr },
-        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
+        { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir, RUNX_HOME: path.join(tempDir, "home") },
       );
 
       expect(inspectExit).toBe(0);
@@ -183,7 +183,7 @@ steps:
         caller: nonInteractiveCaller,
         receiptDir,
         runxHome,
-        env: process.env,
+        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
       });
 
       expect(result.status).toBe("needs_resolution");

@@ -29,6 +29,8 @@ import {
   type AgentWorkRequest,
   type ApprovalGate,
   type CredentialEnvelope,
+  type ProjectConventions,
+  type ProjectMemory,
   type Question,
   type ResolutionRequest,
   type ResolutionResponse,
@@ -66,6 +68,7 @@ import {
   type LocalAdmissionGrant,
 } from "../../policy/src/index.js";
 import {
+  hashString,
   hashStable,
   listLocalReceipts,
   listVerifiedLocalReceipts,
@@ -153,6 +156,8 @@ export interface RunLocalSkillOptions {
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly projectMemory?: ProjectMemory;
+  readonly projectConventions?: ProjectConventions;
 }
 
 interface ResolvedRunnerSelection {
@@ -189,6 +194,8 @@ interface RunResolvedSkillOptions {
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly projectMemory?: ProjectMemory;
+  readonly projectConventions?: ProjectConventions;
 }
 
 export interface AuthResolver {
@@ -348,6 +355,9 @@ export interface RunLocalChainOptions {
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
+  readonly projectMemory?: ProjectMemory;
+  readonly projectConventions?: ProjectConventions;
 }
 
 export interface ChainStepRun {
@@ -885,6 +895,8 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
     executionSemantics: options.executionSemantics,
     registryStore: options.registryStore,
     skillCacheDir: options.skillCacheDir,
+    projectMemory: options.projectMemory,
+    projectConventions: options.projectConventions,
   });
 
   if (result.status === "needs_resolution") {
@@ -919,6 +931,25 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
   const { skill } = options;
   const runId = options.resumeFromRunId ?? uniqueReceiptId("rx");
   const contextEnvelopeRunId = options.orchestrationRunId ?? runId;
+  const projectMemory =
+    options.projectMemory
+    ?? (await loadProjectMemory({
+      inputs: options.inputs,
+      env: options.env,
+      fallbackStart: options.skillDirectory,
+    }));
+  const projectConventions =
+    options.projectConventions
+    ?? (await loadProjectConventions({
+      inputs: options.inputs,
+      env: options.env,
+      fallbackStart: options.skillDirectory,
+    }));
+  const inheritedReceiptMetadata = mergeMetadata(
+    projectMemoryReceiptMetadata(projectMemory),
+    projectConventionsReceiptMetadata(projectConventions),
+    options.receiptMetadata,
+  );
   const executionSemantics = normalizeExecutionSemantics(
     mergeExecutionSemantics(skill.execution, options.executionSemantics),
     options.inputs,
@@ -965,6 +996,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
             reasons: admission.reasons,
             approval: sandboxApproval,
             runOptions: options,
+            receiptMetadata: inheritedReceiptMetadata,
             executionSemantics,
           })
         : undefined;
@@ -1008,6 +1040,9 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
       executionSemantics: mergeExecutionSemantics(skill.execution, options.executionSemantics),
       registryStore: options.registryStore,
       skillCacheDir: options.skillCacheDir,
+      receiptMetadata: inheritedReceiptMetadata,
+      projectMemory,
+      projectConventions,
     });
 
     if (chainResult.status === "needs_resolution") {
@@ -1090,6 +1125,9 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     runId: contextEnvelopeRunId,
     stepId: options.orchestrationStepId,
     currentContext: options.currentContext,
+    skillDirectory: options.skillDirectory,
+    projectMemory,
+    projectConventions,
   });
 
   const credentialResolution = await options.authResolver?.resolveCredential({
@@ -1126,6 +1164,8 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     currentContext: preparedAgentContext.currentContext,
     historicalContext: preparedAgentContext.historicalContext,
     contextProvenance: preparedAgentContext.provenance,
+    projectMemory: preparedAgentContext.projectMemory,
+    projectConventions: preparedAgentContext.projectConventions,
   });
 
   if (execution.status === "needs_resolution") {
@@ -1186,7 +1226,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
         credentialResolution?.receiptMetadata,
         preparedAgentContext.receiptMetadata,
         sandboxApproval ? approvalReceiptMetadata(sandboxApproval) : undefined,
-        options.receiptMetadata,
+        inheritedReceiptMetadata,
       ),
     },
     startedAt,
@@ -1310,10 +1350,11 @@ async function writeApprovalDeniedReceipt(options: {
   readonly inputs: Readonly<Record<string, unknown>>;
   readonly reasons: readonly string[];
   readonly approval: ApprovalDecision;
+  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
   readonly executionSemantics: NormalizedExecutionSemantics;
   readonly runOptions: Pick<
     RunResolvedSkillOptions,
-    "receiptDir" | "runxHome" | "env" | "receiptMetadata" | "parentReceipt" | "contextFrom"
+    "receiptDir" | "runxHome" | "env" | "parentReceipt" | "contextFrom"
   >;
 }): Promise<LocalSkillReceipt> {
   const startedAt = new Date().toISOString();
@@ -1334,7 +1375,7 @@ async function writeApprovalDeniedReceipt(options: {
       metadata: mergeMetadata(
         runnerTrustMetadata(options.skill.source.type),
         approvalReceiptMetadata(options.approval),
-        options.runOptions.receiptMetadata,
+        options.receiptMetadata,
       ),
     },
     startedAt,
@@ -2062,6 +2103,25 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
   const executionSemantics = normalizeExecutionSemantics(options.executionSemantics, options.inputs ?? {});
   const chain = chainResolution.chain;
   const chainDirectory = chainResolution.chainDirectory;
+  const projectMemory =
+    options.projectMemory
+    ?? (await loadProjectMemory({
+      inputs: options.inputs ?? {},
+      env: options.env,
+      fallbackStart: chainDirectory,
+    }));
+  const projectConventions =
+    options.projectConventions
+    ?? (await loadProjectConventions({
+      inputs: options.inputs ?? {},
+      env: options.env,
+      fallbackStart: chainDirectory,
+    }));
+  const inheritedReceiptMetadata = mergeMetadata(
+    projectMemoryReceiptMetadata(projectMemory),
+    projectConventionsReceiptMetadata(projectConventions),
+    options.receiptMetadata,
+  );
   const chainId = options.runId ?? options.resumeFromRunId ?? uniqueReceiptId("cx");
   const chainStepCache = await loadChainStepExecutables(chain, chainDirectory, options.registryStore, options.skillCacheDir);
   const chainGrant = options.chainGrant ?? defaultLocalChainGrant();
@@ -2193,6 +2253,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
             stepRuns: [...stepRuns, deniedRun],
             errorMessage: governance.scopeAdmission.reasons?.join("; ") ?? "chain step scope denied",
             executionSemantics,
+            receiptMetadata: inheritedReceiptMetadata,
           });
           return {
             status: "policy_denied", chain, stepId: step.id,
@@ -2264,12 +2325,18 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
             adapters: options.adapters,
             allowedSourceTypes: options.allowedSourceTypes,
             authResolver: options.authResolver,
-            receiptMetadata: mergeMetadata(prep.retryContext.receiptMetadata, governanceReceiptMetadata(prep.step, prep.governance)),
+            receiptMetadata: mergeMetadata(
+              inheritedReceiptMetadata,
+              prep.retryContext.receiptMetadata,
+              governanceReceiptMetadata(prep.step, prep.governance),
+            ),
             orchestrationRunId: chainId,
             orchestrationStepId: prep.step.id,
             currentContext: prep.context,
             registryStore: options.registryStore,
             skillCacheDir: options.skillCacheDir,
+            projectMemory,
+            projectConventions,
           });
         },
       }));
@@ -2540,6 +2607,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         stepRuns: [...stepRuns, deniedRun],
         errorMessage: transitionGate.reason,
         executionSemantics,
+        receiptMetadata: inheritedReceiptMetadata,
       });
       return {
         status: "policy_denied",
@@ -2571,6 +2639,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
         stepRuns: [...stepRuns, deniedRun],
         errorMessage: governance.scopeAdmission.reasons?.join("; ") ?? "chain step scope denied",
         executionSemantics,
+        receiptMetadata: inheritedReceiptMetadata,
       });
       return {
         status: "policy_denied",
@@ -2630,12 +2699,18 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
       adapters: options.adapters,
       allowedSourceTypes: options.allowedSourceTypes,
       authResolver: options.authResolver,
-      receiptMetadata: mergeMetadata(retryContext.receiptMetadata, governanceReceiptMetadata(step, governance)),
+      receiptMetadata: mergeMetadata(
+        inheritedReceiptMetadata,
+        retryContext.receiptMetadata,
+        governanceReceiptMetadata(step, governance),
+      ),
       orchestrationRunId: chainId,
       orchestrationStepId: step.id,
       currentContext: context,
       registryStore: options.registryStore,
       skillCacheDir: options.skillCacheDir,
+      projectMemory,
+      projectConventions,
     });
 
     if (stepResult.status === "needs_resolution") {
@@ -2818,6 +2893,7 @@ export async function runLocalChain(options: RunLocalChainOptions): Promise<RunL
     outcome: executionSemantics.outcome,
     surfaceRefs: executionSemantics.surfaceRefs,
     evidenceRefs: executionSemantics.evidenceRefs,
+    metadata: inheritedReceiptMetadata,
   });
   await appendJournalEntries({
     receiptDir,
@@ -3106,7 +3182,15 @@ interface PreparedAgentContext {
   readonly currentContext: readonly ArtifactEnvelope[];
   readonly historicalContext: readonly ArtifactEnvelope[];
   readonly provenance: readonly AgentContextProvenance[];
+  readonly projectMemory?: ProjectMemory;
+  readonly projectConventions?: ProjectConventions;
   readonly receiptMetadata?: Readonly<Record<string, unknown>>;
+}
+
+interface ProjectDocumentReceiptRef {
+  readonly root_path: string;
+  readonly path: string;
+  readonly sha256: string;
 }
 
 function isArtifactEnvelopeValue(value: unknown): value is ArtifactEnvelope {
@@ -3136,6 +3220,120 @@ function dedupeArtifacts(artifacts: readonly ArtifactEnvelope[]): readonly Artif
     uniqueArtifacts.push(artifact);
   }
   return uniqueArtifacts;
+}
+
+async function loadProjectMemory(options: {
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly fallbackStart?: string;
+}): Promise<ProjectMemory | undefined> {
+  return await loadProjectDocument({
+    fileName: "MEMORY.md",
+    inputs: options.inputs,
+    env: options.env,
+    fallbackStart: options.fallbackStart,
+  });
+}
+
+async function loadProjectConventions(options: {
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly fallbackStart?: string;
+}): Promise<ProjectConventions | undefined> {
+  return await loadProjectDocument({
+    fileName: "CONVENTIONS.md",
+    inputs: options.inputs,
+    env: options.env,
+    fallbackStart: options.fallbackStart,
+  });
+}
+
+function projectMemoryReceiptMetadata(projectMemory: ProjectMemory | undefined): Readonly<Record<string, unknown>> | undefined {
+  return projectMemory
+    ? {
+        project_memory: toProjectDocumentReceiptRef(projectMemory),
+      }
+    : undefined;
+}
+
+function projectConventionsReceiptMetadata(
+  projectConventions: ProjectConventions | undefined,
+): Readonly<Record<string, unknown>> | undefined {
+  return projectConventions
+    ? {
+        project_conventions: toProjectDocumentReceiptRef(projectConventions),
+      }
+    : undefined;
+}
+
+function toProjectDocumentReceiptRef(document: {
+  readonly root_path: string;
+  readonly path: string;
+  readonly sha256: string;
+}): ProjectDocumentReceiptRef {
+  return {
+    root_path: document.root_path,
+    path: document.path,
+    sha256: document.sha256,
+  };
+}
+
+function resolveProjectDocumentSearchStart(
+  inputs: Readonly<Record<string, unknown>>,
+  env?: NodeJS.ProcessEnv,
+  fallbackStart?: string,
+): string {
+  const projectScope = resolveProjectScopePath(inputs, env);
+  if (projectScope) {
+    return projectScope;
+  }
+  return path.resolve(
+    env?.RUNX_PROJECT
+      ?? env?.RUNX_CWD
+      ?? env?.INIT_CWD
+      ?? fallbackStart
+      ?? process.cwd(),
+  );
+}
+
+async function loadProjectDocument(options: {
+  readonly fileName: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly fallbackStart?: string;
+}): Promise<{
+  readonly root_path: string;
+  readonly path: string;
+  readonly sha256: string;
+  readonly content: string;
+} | undefined> {
+  const searchStart = resolveProjectDocumentSearchStart(options.inputs, options.env, options.fallbackStart);
+  const documentPath = await findNearestProjectDocument(searchStart, options.fileName);
+  if (!documentPath) {
+    return undefined;
+  }
+  const content = await readFile(documentPath, "utf8");
+  return {
+    root_path: path.dirname(documentPath),
+    path: documentPath,
+    sha256: hashString(content),
+    content,
+  };
+}
+
+async function findNearestProjectDocument(start: string, fileName: string): Promise<string | undefined> {
+  let current = path.resolve(start);
+  while (true) {
+    const candidate = path.join(current, fileName);
+    if (await pathExists(candidate)) {
+      return candidate;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
+  }
 }
 
 function resolveProjectScopeKeyHash(
@@ -3222,6 +3420,9 @@ async function prepareAgentContext(options: {
   readonly runId: string;
   readonly stepId?: string;
   readonly currentContext?: readonly MaterializedContextEdge[];
+  readonly skillDirectory?: string;
+  readonly projectMemory?: ProjectMemory;
+  readonly projectConventions?: ProjectConventions;
 }): Promise<PreparedAgentContext> {
   const currentContext = dedupeArtifacts(
     (options.currentContext ?? [])
@@ -3238,6 +3439,20 @@ async function prepareAgentContext(options: {
       receipt_id: edge.receiptId,
     }));
   const projectKeyHash = resolveProjectScopeKeyHash(options.inputs, options.env);
+  const projectMemory =
+    options.projectMemory
+    ?? (await loadProjectMemory({
+      inputs: options.inputs,
+      env: options.env,
+      fallbackStart: options.skillDirectory,
+    }));
+  const projectConventions =
+    options.projectConventions
+    ?? (await loadProjectConventions({
+      inputs: options.inputs,
+      env: options.env,
+      fallbackStart: options.skillDirectory,
+    }));
   const historicalContext = await loadHistoricalAgentContext({
     receiptDir: options.receiptDir,
     skillName: options.skill.name,
@@ -3248,13 +3463,22 @@ async function prepareAgentContext(options: {
     currentContext,
     historicalContext,
     provenance,
+    projectMemory,
+    projectConventions,
     receiptMetadata: projectKeyHash
-      ? {
+      ? mergeMetadata(
+        {
           context_scope: {
             project_key_hash: projectKeyHash,
           },
-        }
-      : undefined,
+        },
+        projectMemoryReceiptMetadata(projectMemory),
+        projectConventionsReceiptMetadata(projectConventions),
+      )
+      : mergeMetadata(
+        projectMemoryReceiptMetadata(projectMemory),
+        projectConventionsReceiptMetadata(projectConventions),
+      ),
   };
 }
 
@@ -3346,6 +3570,7 @@ async function writePolicyDeniedChainReceipt(options: {
   readonly stepRuns: readonly ChainStepRun[];
   readonly errorMessage: string;
   readonly executionSemantics: NormalizedExecutionSemantics;
+  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
 }): Promise<LocalChainReceipt> {
   return await writeLocalChainReceipt({
     receiptDir: options.receiptDir,
@@ -3367,6 +3592,7 @@ async function writePolicyDeniedChainReceipt(options: {
     outcome: options.executionSemantics.outcome,
     surfaceRefs: options.executionSemantics.surfaceRefs,
     evidenceRefs: options.executionSemantics.evidenceRefs,
+    metadata: options.receiptMetadata,
   });
 }
 
@@ -3763,6 +3989,8 @@ function buildAgentStepRequest(request: Parameters<SkillAdapter["invoke"]>[0]): 
       current_context: request.currentContext ?? [],
       historical_context: request.historicalContext ?? [],
       provenance: request.contextProvenance ?? [],
+      project_memory: request.projectMemory,
+      project_conventions: request.projectConventions,
       expected_outputs: validateOutputContract(request.source.outputs, "source.outputs") ?? {},
       trust_boundary: "agent-mediated: runx yields skill context and receipts the supplied result on completion",
     },
@@ -3784,6 +4012,8 @@ function buildAgentRunnerRequest(request: Parameters<SkillAdapter["invoke"]>[0])
       current_context: request.currentContext ?? [],
       historical_context: request.historicalContext ?? [],
       provenance: request.contextProvenance ?? [],
+      project_memory: request.projectMemory,
+      project_conventions: request.projectConventions,
       trust_boundary: "agent-mediated: runx yields skill context and receipts the supplied result on completion",
     },
   };

@@ -215,6 +215,7 @@ export interface BuildLocalChainReceiptOptions {
   readonly outcome?: ReceiptOutcome;
   readonly surfaceRefs?: readonly ReceiptSurfaceRef[];
   readonly evidenceRefs?: readonly ReceiptSurfaceRef[];
+  readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 export interface WriteLocalChainReceiptOptions extends BuildLocalChainReceiptOptions {
@@ -303,6 +304,7 @@ export interface LocalChainReceipt {
   readonly outcome?: ReceiptOutcome;
   readonly surface_refs?: readonly ReceiptSurfaceRef[];
   readonly evidence_refs?: readonly ReceiptSurfaceRef[];
+  readonly metadata?: Readonly<Record<string, unknown>>;
   readonly steps: readonly ChainReceiptStep[];
   readonly sync_points?: readonly ChainReceiptSyncPoint[];
   readonly signature: {
@@ -467,6 +469,7 @@ export function buildLocalChainReceipt(
     outcome: options.outcome,
     surface_refs: options.surfaceRefs && options.surfaceRefs.length > 0 ? options.surfaceRefs : undefined,
     evidence_refs: options.evidenceRefs && options.evidenceRefs.length > 0 ? options.evidenceRefs : undefined,
+    metadata: options.metadata ? redactReceiptMetadata(options.metadata) : undefined,
     steps: normalizedSteps,
     sync_points: options.syncPoints && options.syncPoints.length > 0 ? options.syncPoints : undefined,
   };

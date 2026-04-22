@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/parser/src/index.js";
 import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { fetchGitHubIssueSubjectMemory } from "../tools/subject_memory/github_adapter.mjs";
 
 const scafldBin = process.env.SCAFLD_BIN ?? "/home/kam/dev/scafld/cli/scafld";
 const caller: Caller = {
@@ -60,6 +61,7 @@ describe("issue-to-PR composite skill", () => {
       "scafld-checks",
       "scafld-pr-body",
       "package-pull-request",
+      "push-pull-request",
     ]);
     expect(chain.steps.find((step) => step.id === "write-spec")).toMatchObject({
       tool: "fs.write",
@@ -238,6 +240,16 @@ describe("issue-to-PR composite skill", () => {
         status_snapshot: "scafld-status.result",
       },
     });
+    expect(chain.steps.find((step) => step.id === "push-pull-request")).toMatchObject({
+      tool: "subject_memory.push_outbox",
+      context: {
+        outbox_entry: "package-pull-request.outbox_entry",
+        draft_pull_request: "package-pull-request.draft_pull_request",
+      },
+      inputs: {
+        next_status: "draft",
+      },
+    });
     expect(chain.policy?.transitions).toEqual([
       {
         to: "write-fix",
@@ -287,10 +299,10 @@ describe("issue-to-PR composite skill", () => {
         runxHome: runtime.runxHome,
       });
 
-      expect(result.status).toBe("success");
       if (result.status !== "success") {
-        return;
+        throw new Error(JSON.stringify(result, null, 2));
       }
+      expect(result.status).toBe("success");
       expect(result.receipt.kind).toBe("chain_execution");
       if (result.receipt.kind !== "chain_execution") {
         return;
@@ -333,6 +345,10 @@ describe("issue-to-PR composite skill", () => {
             sync_status: "drift",
           },
         },
+        push: {
+          status: "skipped",
+          reason: "subject_memory not provided",
+        },
       });
       expect(result.receipt.steps.map((step) => [step.step_id, step.status])).toEqual([
         ["scafld-init", "success"],
@@ -360,12 +376,292 @@ describe("issue-to-PR composite skill", () => {
         ["scafld-checks", "success"],
         ["scafld-pr-body", "success"],
         ["package-pull-request", "success"],
+        ["push-pull-request", "success"],
       ]);
       expect(existsSync(path.join(tempDir, ".ai", "specs", "active", `${taskId}.yaml`))).toBe(false);
       expect(existsSync(path.join(tempDir, ".ai", "specs", "archive", "2026-04", `${taskId}.yaml`))).toBe(true);
       expect(runChecked("git", ["branch", "--show-current"], tempDir)).toBe(taskId);
       expect(await readFile(path.join(tempDir, "app.txt"), "utf8")).toBe("fixed\n");
       expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("governed\n");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+      await rm(runtime.root, { recursive: true, force: true });
+    }
+  }, 90_000);
+
+  it.skipIf(!existsSync(scafldBin))("pushes the packaged pull_request outbox entry through a file-backed subject-memory adapter and rehydrates provider state", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-provider-loop-"));
+    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const taskId = "issue-to-pr-provider-loop-fixture";
+    const memoryPath = path.join(runtime.root, "provider", "subject-memory.json");
+    const fileBackedSubjectMemory = {
+      kind: "runx.subject-memory.v1",
+      adapter: {
+        type: "file",
+        adapter_ref: memoryPath,
+      },
+      subject: {
+        subject_kind: "work_item",
+        subject_locator: "local://provider/issues/123",
+        canonical_uri: "https://example.test/issues/123",
+      },
+      entries: [],
+      decisions: [],
+      subject_outbox: [],
+      source_refs: [],
+    };
+    const caller: Caller = {
+      resolve: async (request) =>
+        request.kind === "cognitive_work"
+          ? {
+              actor: "agent",
+              payload: await answerForIssueToPrStep(tempDir, taskId, request),
+            }
+          : undefined,
+      report: () => undefined,
+    };
+
+    try {
+      await initScafldRepo(tempDir);
+      await mkdir(path.dirname(memoryPath), { recursive: true });
+      await writeFile(memoryPath, `${JSON.stringify(fileBackedSubjectMemory, null, 2)}\n`);
+      runChecked("git", ["checkout", "-b", taskId], tempDir);
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/issue-to-pr"),
+        inputs: {
+          fixture: tempDir,
+          task_id: taskId,
+          subject_title: "Fixture subject-driven change",
+          subject_body: "Apply a bounded fixture docs update.",
+          subject_locator: "local://provider/issues/123",
+          target_repo: "fixtures/repo",
+          size: "micro",
+          risk: "low",
+          phase: "phase1",
+          draft_spec_path: `.ai/specs/drafts/${taskId}.yaml`,
+          scafld_bin: scafldBin,
+          subject_memory: fileBackedSubjectMemory,
+        },
+        caller,
+        env: process.env,
+        receiptDir: runtime.receiptDir,
+        runxHome: runtime.runxHome,
+      });
+
+      expect(result.status).toBe("success");
+      if (result.status !== "success") {
+        return;
+      }
+
+      expect(JSON.parse(result.execution.stdout)).toMatchObject({
+        outbox_entry: {
+          kind: "pull_request",
+          entry_id: `pull_request:${taskId}`,
+          status: "draft",
+          subject_locator: "local://provider/issues/123",
+          locator: expect.stringContaining("#outbox/pull_request%3A"),
+        },
+        draft_pull_request: {
+          action: "create",
+          task_id: taskId,
+        },
+        subject_memory: {
+          adapter: {
+            type: "file",
+            adapter_ref: memoryPath,
+          },
+          subject: {
+            subject_locator: "local://provider/issues/123",
+          },
+          subject_outbox: [
+            {
+              entry_id: `pull_request:${taskId}`,
+              kind: "pull_request",
+              status: "draft",
+              subject_locator: "local://provider/issues/123",
+            },
+          ],
+        },
+        push: {
+          status: "pushed",
+          adapter: {
+            type: "file",
+            adapter_ref: memoryPath,
+          },
+        },
+      });
+      expect(JSON.parse(await readFile(memoryPath, "utf8"))).toMatchObject({
+        subject_outbox: [
+          {
+            entry_id: `pull_request:${taskId}`,
+            kind: "pull_request",
+            status: "draft",
+            subject_locator: "local://provider/issues/123",
+          },
+        ],
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+      await rm(runtime.root, { recursive: true, force: true });
+    }
+  }, 90_000);
+
+  it.skipIf(!existsSync(scafldBin))("pushes the governed lane upstream through a GitHub-backed subject-memory adapter and rehydrates the provider thread for the next run", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-github-loop-"));
+    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const taskId = "issue-to-pr-github-loop-fixture";
+    const remote = path.join(runtime.root, "remote.git");
+    const fakeGh = path.join(runtime.root, "fake-gh.mjs");
+    const fakeState = path.join(runtime.root, "fake-gh-state.json");
+    const caller: Caller = {
+      resolve: async (request) =>
+        request.kind === "cognitive_work"
+          ? {
+              actor: "agent",
+              payload: await answerForIssueToPrStep(tempDir, taskId, request),
+            }
+          : undefined,
+      report: () => undefined,
+    };
+
+    try {
+      await initScafldRepo(tempDir);
+      await initGitHubRemote(tempDir, remote);
+      await writeFakeGitHubState(fakeState, {
+        issue: {
+          number: 123,
+          title: "Fixture subject-driven change",
+          body: "Apply a bounded fixture docs update.",
+          url: "https://github.com/example/repo/issues/123",
+          state: "OPEN",
+          createdAt: "2026-04-22T00:00:00Z",
+          updatedAt: "2026-04-22T00:00:00Z",
+          author: {
+            login: "auscaster",
+          },
+          comments: [],
+          labels: [],
+          closedByPullRequestsReferences: [],
+        },
+        pulls: [],
+        nextPullNumber: 77,
+      });
+      await writeFakeGhScript(fakeGh);
+      runChecked("git", ["checkout", "-b", taskId], tempDir);
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/issue-to-pr"),
+        inputs: {
+          fixture: tempDir,
+          task_id: taskId,
+          subject_title: "Fixture subject-driven change",
+          subject_body: "Apply a bounded fixture docs update.",
+          subject_locator: "github://example/repo/issues/123",
+          target_repo: "example/repo",
+          size: "micro",
+          risk: "low",
+          phase: "phase1",
+          draft_spec_path: `.ai/specs/drafts/${taskId}.yaml`,
+          scafld_bin: scafldBin,
+          subject_memory: {
+            kind: "runx.subject-memory.v1",
+            adapter: {
+              type: "github",
+              adapter_ref: "example/repo#issue/123",
+            },
+            subject: {
+              subject_kind: "work_item",
+              subject_locator: "github://example/repo/issues/123",
+              canonical_uri: "https://github.com/example/repo/issues/123",
+            },
+            entries: [],
+            decisions: [],
+            subject_outbox: [],
+            source_refs: [],
+          },
+        },
+        caller,
+        env: {
+          ...process.env,
+          RUNX_GH_BIN: fakeGh,
+          RUNX_FAKE_GH_STATE: fakeState,
+        },
+        receiptDir: runtime.receiptDir,
+        runxHome: runtime.runxHome,
+      });
+
+      expect(result.status).toBe("success");
+      if (result.status !== "success") {
+        return;
+      }
+
+      expect(JSON.parse(result.execution.stdout)).toMatchObject({
+        outbox_entry: {
+          entry_id: "pr-77",
+          kind: "pull_request",
+          locator: "https://github.com/example/repo/pull/77",
+          status: "draft",
+          subject_locator: "github://example/repo/issues/123",
+        },
+        subject_memory: {
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          subject_outbox: [
+            {
+              entry_id: "pr-77",
+              locator: "https://github.com/example/repo/pull/77",
+              status: "draft",
+            },
+          ],
+        },
+        push: {
+          status: "pushed",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          pull_request: {
+            number: "77",
+            url: "https://github.com/example/repo/pull/77",
+          },
+        },
+      });
+      expect(runChecked("git", ["--git-dir", remote, "branch", "--list", taskId], runtime.root)).toContain(taskId);
+      expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        pulls: [
+          {
+            number: 77,
+            title: "Fixture subject-driven change",
+            url: "https://github.com/example/repo/pull/77",
+            body: expect.stringContaining("Source issue: https://github.com/example/repo/issues/123"),
+            headRefName: taskId,
+            baseRefName: "main",
+            isDraft: true,
+            state: "OPEN",
+          },
+        ],
+      });
+
+      const rehydratedMemory = fetchGitHubIssueSubjectMemory({
+        adapterRef: "example/repo#issue/123",
+        env: {
+          ...process.env,
+          RUNX_GH_BIN: fakeGh,
+          RUNX_FAKE_GH_STATE: fakeState,
+        },
+        cwd: tempDir,
+      });
+      expect(rehydratedMemory.subject_outbox).toEqual([
+        expect.objectContaining({
+          entry_id: "pr-77",
+          locator: "https://github.com/example/repo/pull/77",
+          status: "draft",
+          subject_locator: "github://example/repo/issues/123",
+        }),
+      ]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
       await rm(runtime.root, { recursive: true, force: true });
@@ -647,6 +943,100 @@ async function initScafldRepo(repo: string): Promise<void> {
   await writeFile(path.join(repo, "notes.md"), "draft\n");
   runChecked("git", ["add", "."], repo);
   runChecked("git", ["commit", "-m", "init"], repo);
+}
+
+async function initGitHubRemote(repo: string, remotePath: string): Promise<void> {
+  runChecked("git", ["init", "--bare", remotePath], path.dirname(remotePath));
+  runChecked("git", ["remote", "add", "origin", remotePath], repo);
+}
+
+async function writeFakeGitHubState(statePath: string, state: Readonly<Record<string, unknown>>): Promise<void> {
+  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`);
+}
+
+async function writeFakeGhScript(scriptPath: string): Promise<void> {
+  await writeFile(
+    scriptPath,
+    `#!/usr/bin/env node
+import { readFileSync, writeFileSync } from "node:fs";
+
+const args = process.argv.slice(2);
+const statePath = process.env.RUNX_FAKE_GH_STATE;
+if (!statePath) {
+  throw new Error("RUNX_FAKE_GH_STATE is required.");
+}
+
+const state = JSON.parse(readFileSync(statePath, "utf8"));
+
+if (args[0] === "issue" && args[1] === "view") {
+  process.stdout.write(JSON.stringify(state.issue));
+  process.exit(0);
+}
+
+if (args[0] === "pr" && args[1] === "list") {
+  process.stdout.write(JSON.stringify(state.pulls));
+  process.exit(0);
+}
+
+if (args[0] === "pr" && args[1] === "create") {
+  const repo = readFlag(args, "--repo");
+  const head = readFlag(args, "--head");
+  const base = readFlag(args, "--base");
+  const title = readFlag(args, "--title");
+  const body = readFlag(args, "--body");
+  const number = state.nextPullNumber++;
+  const pull = {
+    number,
+    repo,
+    title,
+    body,
+    url: \`https://github.com/\${repo}/pull/\${number}\`,
+    state: "OPEN",
+    isDraft: true,
+    headRefName: head,
+    baseRefName: base,
+    updatedAt: "2026-04-22T01:00:00Z",
+  };
+  state.pulls.push(pull);
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.stdout.write(\`\${pull.url}\\n\`);
+  process.exit(0);
+}
+
+if (args[0] === "pr" && args[1] === "edit") {
+  const pull = findPull(state.pulls, args[2]);
+  pull.title = readFlag(args, "--title");
+  pull.body = readFlag(args, "--body");
+  pull.baseRefName = readFlag(args, "--base") || pull.baseRefName;
+  pull.updatedAt = "2026-04-22T01:00:00Z";
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.exit(0);
+}
+
+if (args[0] === "pr" && args[1] === "view") {
+  const pull = findPull(state.pulls, args[2]);
+  process.stdout.write(JSON.stringify(pull));
+  process.exit(0);
+}
+
+throw new Error(\`unsupported fake gh command: \${args.join(" ")}\`);
+
+function findPull(pulls, ref) {
+  const number = String(ref).match(/(\\d+)/)?.[1];
+  const pull = pulls.find((candidate) => String(candidate.number) === number || candidate.url === ref);
+  if (!pull) {
+    throw new Error(\`unknown pull request: \${ref}\`);
+  }
+  return pull;
+}
+
+function readFlag(argv, flag) {
+  const index = argv.indexOf(flag);
+  return index >= 0 ? argv[index + 1] : "";
+}
+`,
+    { mode: 0o755 },
+  );
 }
 
 async function writeActiveSpec(repo: string, taskId: string): Promise<void> {
