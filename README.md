@@ -91,6 +91,11 @@ but default to private visibility. That internal set currently includes
 `review-receipt`, `review-skill`, `improve-skill`, `reflect-digest`, and
 `evolve`.
 
+For first-party skill proposal work, the core builder bar is explicit:
+proposal packets should name the real pain being solved, explain fit against
+the current runx catalog, surface maintainer decisions cleanly, and avoid
+builder residue or placeholder targets.
+
 Each ships as a portable `SKILL.md` plus a colocated execution profile at
 `skills/<skill>/X.yaml` when it exposes deterministic runners or inline harness
 coverage. Upstream skills that runx does not own keep their execution profiles

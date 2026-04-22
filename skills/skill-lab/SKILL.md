@@ -22,6 +22,14 @@ The chain is intentionally honest about the boundary:
 - it drafts the proposal in maintainer-facing language
 - it requires explicit approval before the proposal is packaged for handoff
 
+Proposal quality is part of the contract, not a later editorial pass. The
+proposal should:
+
+- read like a first-party runx skill or chain proposal, not a builder trace
+- identify the concrete pain point being addressed
+- explain fit against the current runx catalog
+- surface the remaining maintainer decisions cleanly
+
 It does not silently open PRs, mutate external repos, or imply that a proposed
 skill is already accepted. Those outward moves belong to provider-bound lanes
 such as `aster`'s live issue-ledger flow.

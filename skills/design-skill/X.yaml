@@ -47,6 +47,11 @@ harness:
                 source: plans/runx.md
                 relevance: Protects evidence integrity.
                 confidence: verified
+            catalog_fit:
+              adjacent_skills:
+                - research
+                - draft-content
+              why_new: The missing capability is the governed chain that turns those adjacent primitives into one reusable first-party ecosystem brief flow.
             recommended_flow:
               - step: research
               - step: draft
@@ -61,6 +66,19 @@ harness:
             skill_spec:
               name: ecosystem-brief
               description: Research and draft a daily ecosystem brief.
+            pain_points:
+              - Maintainers need one bounded ecosystem brief flow instead of stitching research and drafting together by hand every time.
+            catalog_fit:
+              adjacent_skills:
+                - research
+                - draft-content
+              why_new: The current catalog exposes research and drafting separately, but not one first-party skill that turns them into a reusable ecosystem brief flow.
+            maintainer_decisions:
+              - question: Should the first-party chain stop at a reviewable brief draft?
+                options:
+                  - yes
+                  - no, add publish now
+                why: Keeps the first cut bounded around evidence and review.
             execution_plan:
               runner: chain
               phases:

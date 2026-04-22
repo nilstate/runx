@@ -72,11 +72,31 @@ Prefer `thread_title`, `thread_body`, `thread_locator`, `thread`,
 and `outbox_entry`. Adapter-specific identifiers should live inside the
 locator or snapshot payload, not as top-level contract fields.
 
+The resulting packet should read like a first-party runx proposal, not an
+internal builder transcript. That means:
+
+- name the real operator or maintainer pain the skill resolves
+- explain catalog fit against adjacent current runx skills or chains
+- convert unresolved ambiguity into explicit maintainer decisions
+- avoid placeholders such as `UNRESOLVED_*`, "supplied decomposition", or
+  issue-number-specific contract wording in the skill contract itself
+
+When the deliverable is a first-party runx skill proposal, prefer the implied
+relative target `../<skill-name>` in harness fixtures instead of unresolved
+placeholder targets. If artifact placement truly needs maintainer input, put
+that in `maintainer_decisions` rather than leaking it into the fixture target.
+
 ## Output
 
 - `skill_spec`: proposed SKILL.md content or update.
 - `execution_plan`: proposed execution profile chain definition when the skill is
   composite. Step ids, skill references, scopes, context edges, policy.
+- `pain_points`: one to three concrete operator or maintainer pain points the
+  proposal addresses.
+- `catalog_fit`: adjacent current runx skills or chains considered, plus why
+  the proposal is a new first-party capability rather than a duplicate.
+- `maintainer_decisions`: explicit review choices the maintainer still needs
+  to make, if any.
 - `harness_fixture`: array of fixture definitions in the format above.
   Minimum: one happy-path, one error-boundary. Return the full array even
   when only two fixtures are needed.

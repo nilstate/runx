@@ -30,6 +30,11 @@ Priority order:
    path in `recommended_flow` and `findings`, and scope any new design work
    to the composition glue around it rather than duplicating its internals.
 
+   Be concrete about catalog fit. Name the adjacent current skill or chain,
+   explain the boundary it already owns, and say exactly what remains unsolved.
+   "Not quite right" is not enough. The proposal should either clearly reuse
+   the current catalog or clearly explain the gap.
+
 4. **Governance patterns.** What scopes does this skill need? Where are the
    mutation boundaries? What approval or review checkpoints does the domain
    imply?
@@ -47,6 +52,9 @@ something, say so.
 
 - `findings`: array of claims with `claim`, `source`, `relevance`, `confidence`.
 - `recommended_flow`: suggested skill/execution flow based on findings.
+- `catalog_fit`: concise explanation of which current runx skills or chains
+  were considered, where they stop, and why the proposed skill is new work
+  rather than duplication.
 - `sources`: references consulted (file paths, URLs, spec names, versions).
 - `risks`: adoption, safety, or implementation risks with likelihood,
   impact, and mitigation.

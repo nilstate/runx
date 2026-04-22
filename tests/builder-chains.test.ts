@@ -38,6 +38,12 @@ describe("builder-chain skills", () => {
     await expect(readFile(path.resolve("skills/work-plan/SKILL.md"), "utf8")).resolves.toContain("thread_locator");
     await expect(readFile(path.resolve("skills/write-harness/SKILL.md"), "utf8")).resolves.toContain("outbox_entry");
   });
+
+  it("teaches builder skills to produce first-party proposals with explicit catalog fit", async () => {
+    await expect(readFile(path.resolve("skills/design-skill/SKILL.md"), "utf8")).resolves.toContain("first-party");
+    await expect(readFile(path.resolve("skills/prior-art/SKILL.md"), "utf8")).resolves.toContain("catalog fit");
+    await expect(readFile(path.resolve("skills/write-harness/SKILL.md"), "utf8")).resolves.toContain("maintainer decisions");
+  });
 });
 
 describe("builder skill design-skill", () => {
@@ -67,8 +73,24 @@ describe("builder skill design-skill", () => {
       }
       expect(result.receipt.steps.map((step) => step.step_id)).toEqual(["decompose", "research", "author-harness"]);
       const output = JSON.parse(result.execution.stdout) as {
+        pain_points: string[];
+        catalog_fit: { why_new?: string };
+        maintainer_decisions: Array<{ question?: string }>;
         harness_fixture: Array<{ kind: string }>;
       };
+      expect(output.pain_points).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/maintainers|operators/i),
+        ]),
+      );
+      expect(output.catalog_fit?.why_new).toMatch(/current catalog|existing/i);
+      expect(output.maintainer_decisions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            question: expect.any(String),
+          }),
+        ]),
+      );
       expect(output.harness_fixture).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -148,6 +170,10 @@ function answerForAgentStep(questionId: string): unknown {
   if (questionId.includes("prior-art")) {
     return {
       findings: ["Use portable skills and explicit agent-step boundaries."],
+      catalog_fit: {
+        adjacent_skills: ["research", "draft-content"],
+        why_new: "The existing catalog has primitives, but the governed first-party proposal still needs a bounded composed surface.",
+      },
       recommended_flow: ["decompose", "research", "author-harness"],
       sources: [],
       risks: ["Do not hide agent work in helper scripts."],
@@ -168,6 +194,18 @@ function answerForAgentStep(questionId: string): unknown {
       skill_spec: {
         name: "sourcey",
       },
+      pain_points: [
+        "Maintainers need one crisp first-party proposal instead of a loose builder transcript.",
+      ],
+      catalog_fit: {
+        adjacent_skills: ["sourcey", "design-skill"],
+        why_new: "This output sharpens an existing first-party skill proposal rather than duplicating another current catalog entry.",
+      },
+      maintainer_decisions: [
+        {
+          question: "Should the first cut stop at review?",
+        },
+      ],
       execution_plan: {
         runner: "chain",
       },

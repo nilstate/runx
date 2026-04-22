@@ -27,6 +27,19 @@ harness:
             skill_spec:
               name: content-pipeline
               description: Govern research and drafting before packaging a publishable bundle.
+            pain_points:
+              - Operators need a reviewable content workflow that preserves evidence between research and drafting.
+            catalog_fit:
+              adjacent_skills:
+                - research
+                - draft-content
+              why_new: The current catalog has primitives for research and drafting, but not one governed content pipeline that binds them into a first-party skill chain.
+            maintainer_decisions:
+              - question: Should the first release stop at a packaged draft rather than publish?
+                options:
+                  - yes
+                  - no
+                why: Keeps the first-party chain bounded around review before any outward publish path.
             execution_plan:
               runner: chain
               phases:
@@ -69,6 +82,18 @@ harness:
           agent_step.write-harness.output:
             skill_spec:
               name: design-skill
+            pain_points:
+              - Builder flows need stronger regression coverage when structured context moves between steps.
+            catalog_fit:
+              adjacent_skills:
+                - design-skill
+                - review-receipt
+              why_new: This is not a new public skill. The proposal is a bounded builder update to an existing first-party builder surface.
+            maintainer_decisions:
+              - question: Should the regression lock only the structured-context happy path?
+                options:
+                  - yes
+                  - no, add negative cases now
             execution_plan:
               runner: chain
             harness_fixture:
@@ -132,6 +157,9 @@ runners:
     task: write-harness
     outputs:
       skill_spec: object
+      pain_points: array
+      catalog_fit: object
+      maintainer_decisions: array
       execution_plan: object
       harness_fixture: array
       acceptance_checks: array

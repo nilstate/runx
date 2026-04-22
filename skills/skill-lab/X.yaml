@@ -101,6 +101,11 @@ harness:
                 source: skills/release/X.yaml
                 relevance: Keeps the proposal grounded in an existing governed pattern.
                 confidence: verified
+            catalog_fit:
+              adjacent_skills:
+                - release
+                - draft-content
+              why_new: The current catalog lacks a dedicated release-notes skill that turns a bounded release diff into a governed review packet.
             recommended_flow:
               - step: plan
                 rationale: Bound the release-notes scope before authoring.
@@ -118,6 +123,19 @@ harness:
             skill_spec:
               name: release-notes
               description: Turn a bounded release diff into reviewable release notes.
+            pain_points:
+              - Release owners need reviewable notes from a bounded diff without jumping straight to publish authority.
+            catalog_fit:
+              adjacent_skills:
+                - release
+                - draft-content
+              why_new: The release chain owns governed publishing, while this proposal adds a narrower first-party release-notes capability focused on reviewable notes generation.
+            maintainer_decisions:
+              - question: Should the first version stop at notes generation and review?
+                options:
+                  - yes
+                  - no, include publish
+                why: Keeps the proposal aligned with the existing release chain boundary.
             execution_plan:
               runner: chain
               phases:

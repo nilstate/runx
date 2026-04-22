@@ -13,6 +13,19 @@ This is a composite chain that composes three reusable builder capabilities:
 high-level goal and produces everything needed to implement and test a
 new skill.
 
+The quality bar is not just structural completeness. The result should read
+like a crisp first-party runx skill proposal that a maintainer could plausibly
+review for the catalog:
+
+- name the concrete operator, maintainer, or workflow pain being solved
+- explain why the current runx catalog does not already cover the job through
+  an existing skill or chain
+- translate ambiguity into explicit maintainer decisions, not loose planning
+  residue
+- avoid builder-internal language such as "supplied decomposition",
+  `UNRESOLVED_*` placeholders, issue-number-specific contract fields, or
+  repo-local path hedging that would look wrong in a first-party proposal
+
 When the proposed skill is thread-driven, the generated contract should model
 portable runx nouns, not provider nouns. Prefer `thread_title`,
 `thread_body`, `thread_locator`, `thread`, and `outbox_entry` over
@@ -43,6 +56,14 @@ review handles.
 - **Execution plan**: a execution profile chain definition when the skill needs
   multiple governed steps. Includes step ids, skill references, scopes,
   context edges, and policy transitions.
+- **Pain-point summary**: one to three concrete problems this skill resolves
+  for a real operator or maintainer, grounded in the request rather than
+  generic automation language.
+- **Catalog fit**: adjacent runx skills or chains considered, why reuse alone
+  is insufficient, and why the proposed skill earns its place without
+  duplicating the current catalog.
+- **Maintainer decisions**: explicit review questions or accept/reject/change
+  choices when the design still needs human direction.
 - **Harness fixtures**: replayable test cases covering the happy path
   and error boundaries. Ready to run against the implementation.
 - **Acceptance checks**: concrete assertions the implementation must
