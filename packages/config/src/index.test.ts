@@ -4,7 +4,12 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadLocalAgentApiKey, updateRunxConfigValue } from "./index.js";
+import {
+  loadLocalAgentApiKey,
+  resolveRunxGlobalHomeDir,
+  resolveRunxJournalDir,
+  updateRunxConfigValue,
+} from "./index.js";
 
 describe("config package", () => {
   it("round-trips encrypted local agent API keys", async () => {
@@ -33,6 +38,60 @@ describe("config package", () => {
       await expect(loadLocalAgentApiKey(tempDir, ref)).rejects.toThrow(
         new RegExp(`runx local agent key corrupted or unreadable at .*${ref}\\.json`),
       );
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("anchors configured journal paths to the selected workspace base instead of an unrelated existing directory", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-config-journal-path-"));
+    const workspaceDir = path.join(tempDir, "workspace");
+    const runDir = path.join(tempDir, "run");
+    const cwd = path.join(workspaceDir, "packages", "demo");
+
+    try {
+      await mkdir(path.join(workspaceDir, "journal"), { recursive: true });
+      await mkdir(cwd, { recursive: true });
+      await writeFile(path.join(workspaceDir, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n");
+
+      expect(
+        resolveRunxJournalDir(
+          {
+            ...process.env,
+            RUNX_CWD: runDir,
+            INIT_CWD: runDir,
+            RUNX_JOURNAL_DIR: "journal",
+          },
+          { cwd },
+        ),
+      ).toBe(path.join(runDir, "journal"));
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("anchors configured home paths to the selected workspace base instead of an unrelated existing directory", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-config-home-path-"));
+    const workspaceDir = path.join(tempDir, "workspace");
+    const runDir = path.join(tempDir, "run");
+    const cwd = path.join(workspaceDir, "packages", "demo");
+
+    try {
+      await mkdir(path.join(workspaceDir, "home"), { recursive: true });
+      await mkdir(cwd, { recursive: true });
+      await writeFile(path.join(workspaceDir, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n");
+
+      expect(
+        resolveRunxGlobalHomeDir(
+          {
+            ...process.env,
+            RUNX_CWD: runDir,
+            INIT_CWD: runDir,
+            RUNX_HOME: "home",
+          },
+          { cwd },
+        ),
+      ).toBe(path.join(runDir, "home"));
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

@@ -80,6 +80,46 @@ harness:
           - approve-publish
           - publish-release
 
+    - name: release-prepare-fresh-boundary
+      runner: prepare
+      inputs:
+        project_root: /tmp/release-fixture
+        channel: npm
+        last_tag: v0.4.5
+        operator_context: Prepare a bounded patch release for review.
+      caller:
+        answers:
+          agent_step.release-prepare.output:
+            release_brief:
+              proposed_version: "0.4.6"
+              previous_tag: v0.4.5
+              commits:
+                - sha: a1b2c3d
+                  classification: fix
+                  summary: correct release skill proving-ground inputs
+              changelog:
+                added: []
+                fixed:
+                  - correct release skill proving-ground inputs
+                changed: []
+                breaking: []
+              checks:
+                tests: pass
+                types: pass
+                lint: pass
+                pack_smoke: pass
+              unresolved: []
+              publishable: true
+              publish_plan:
+                channel: npm
+                package: "@runxai/cli"
+                tag_name: v0.4.6
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+
     - name: release-prepare-needs-required-inputs
       runner: prepare
       inputs: {}

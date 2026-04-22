@@ -1,0 +1,102 @@
+---
+name: write-harness
+description: Draft replayable runx harness fixtures for a proposed skill package or composite execution plan.
+---
+
+# Write Harness
+
+Draft replayable harness fixtures and acceptance checks that define what
+correct behavior looks like for a skill, before or after implementation.
+
+A runx harness fixture is a self-contained test case in YAML. It specifies
+exact inputs, the target skill or chain, and assertions against the receipt
+and step outputs. Fixtures are run by the harness runner in
+`packages/harness/`.
+
+## Fixture format
+
+```yaml
+name: descriptive-name
+kind: skill                    # or "chain"
+target: ../path/to/SKILL.md   # relative path to skill or chain YAML
+inputs:
+  input_name: value
+expect:
+  status: success              # or failure, needs_resolution, etc.
+  receipt:
+    kind: skill_execution      # or graph_execution
+    status: success
+    subject:
+      skill_name: expected-name
+      source_type: cli-tool    # or agent, agent-step, chain, etc.
+```
+
+For chain fixtures, assert step completion:
+
+```yaml
+name: chain-completes
+kind: graph
+target: ../chains/my-chain.yaml
+expect:
+  status: success
+  receipt:
+    kind: graph_execution
+    status: success
+    subject:
+      graph_name: my-chain
+  steps:
+    - step-one
+    - step-two
+```
+
+## Coverage strategy
+
+Start from the skill contract (SKILL.md + execution profile). Design fixtures for:
+
+- **Happy path**: one fixture with valid inputs exercising the primary
+  flow. Assert the receipt kind, status, and subject fields.
+- **Missing required input**: one fixture omitting a required input.
+  Expect `needs_resolution` status.
+- **Tool not found**: if the skill wraps a CLI tool, one fixture with an
+  invalid tool path. Expect failure with meaningful error.
+- **Governance gates** (composite skills only): one fixture per approval
+  or policy transition that matters.
+
+Each fixture tests one thing. Do not combine happy-path and error checks.
+Test the contract, not the internal wiring.
+
+Fixtures must be reproducible — no network calls, no external state, no
+wall clock dependencies. They should run in seconds.
+
+For subject-driven skills, model the fixture inputs using portable runx nouns.
+Prefer `subject_title`, `subject_body`, `subject_locator`, `subject_memory`,
+and `outbox_entry`. Adapter-specific identifiers should live inside the
+locator or snapshot payload, not as top-level contract fields.
+
+## Output
+
+- `skill_spec`: proposed SKILL.md content or update.
+- `execution_plan`: proposed execution profile chain definition when the skill is
+  composite. Step ids, skill references, scopes, context edges, policy.
+- `harness_fixture`: array of fixture definitions in the format above.
+  Minimum: one happy-path, one error-boundary. Return the full array even
+  when only two fixtures are needed.
+- `acceptance_checks`: concrete assertions the implementation must pass.
+
+## Inputs
+
+- `objective` (required): the skill objective to harness.
+- `decomposition` (optional): output from `work-plan`.
+- `research` (optional): output from `prior-art`.
+- `review` (optional): output from `review-receipt` — write fixtures
+  that specifically cover the diagnosed failure.
+
+## When review is pass
+
+If `review.verdict` is `pass` and `review.improvement_proposals` is
+empty, the upstream diagnosis found nothing to fix. Do not invent
+changes. Emit a minimal output: no `skill_spec` or `execution_plan`
+update, and a single happy-path regression fixture that locks in
+the current behaviour under the inputs that produced the pass
+verdict. Treat `acceptance_checks` as confirmation statements, not
+improvement assertions.

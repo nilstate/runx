@@ -7,7 +7,7 @@ describe("harness-hook adapter", () => {
   it("invokes a deterministic hook through the adapter seam", async () => {
     const skill = validateSkill(
       parseSkillMarkdown(`---
-name: receipt-review
+name: review-receipt
 source:
   type: harness-hook
   hook: review-receipt

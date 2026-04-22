@@ -1,12 +1,13 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { readJournalEntries } from "../packages/artifacts/src/index.js";
+import { createFileJournalStore } from "../packages/memory/src/index.js";
 import { runCli } from "../packages/cli/src/index.js";
-import { inspectLocalGraph, runLocalGraph, type Caller } from "../packages/runner-local/src/index.js";
+import { inspectLocalGraph, runLocalGraph, runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,
@@ -200,7 +201,191 @@ steps:
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("projects reflect facts only for opted-in post-run policies", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-post-run-reflect-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+    const skillDir = path.join(tempDir, "reflectable");
+    const journalDir = path.join(tempDir, "journal");
+    const project = path.join(tempDir, "project");
+    const caller: Caller = {
+      resolve: async (request) => {
+        if (request.kind !== "cognitive_work") {
+          return undefined;
+        }
+        if (request.id === "agent_step.reflectable-auto.output") {
+          return {
+            actor: "reviewer",
+            payload: {
+              verdict: "auto",
+            },
+          };
+        }
+        if (request.id === "agent_step.reflectable-never.output") {
+          return {
+            actor: "reviewer",
+            payload: {
+              verdict: "never",
+            },
+          };
+        }
+        return undefined;
+      },
+      report: () => undefined,
+    };
+
+    try {
+      await writeReflectableSkill(skillDir);
+      const env = {
+        ...process.env,
+        RUNX_CWD: tempDir,
+        INIT_CWD: tempDir,
+        RUNX_PROJECT: project,
+        RUNX_JOURNAL_DIR: "journal",
+      };
+
+      const autoResult = await runLocalSkill({
+        skillPath: skillDir,
+        runner: "auto-review",
+        caller,
+        env,
+        receiptDir,
+        runxHome,
+      });
+      expect(autoResult.status).toBe("success");
+      if (autoResult.status !== "success") {
+        return;
+      }
+
+      await expect(createFileJournalStore(journalDir).listFacts({ project })).resolves.toEqual([
+        expect.objectContaining({
+          scope: "reflect",
+          key: `receipt:${autoResult.receipt.id}`,
+          source: "post_run.reflect",
+          receipt_id: autoResult.receipt.id,
+          value: expect.objectContaining({
+            skill_ref: "reflectable",
+            policy: "auto",
+            mediation: "agentic",
+            selected_runner: "auto-review",
+          }),
+        }),
+      ]);
+      expect(
+        (await readJournalEntries(receiptDir, autoResult.receipt.id)).some(
+          (entry) => entry.type === "run_event" && entry.data.kind === "reflect_projected",
+        ),
+      ).toBe(true);
+
+      const alwaysResult = await runLocalSkill({
+        skillPath: skillDir,
+        runner: "always-deterministic",
+        caller,
+        env,
+        receiptDir,
+        runxHome,
+      });
+      expect(alwaysResult.status).toBe("success");
+      if (alwaysResult.status !== "success") {
+        return;
+      }
+
+      await expect(createFileJournalStore(journalDir).listFacts({ project })).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: `receipt:${autoResult.receipt.id}`,
+            value: expect.objectContaining({ policy: "auto" }),
+          }),
+          expect.objectContaining({
+            key: `receipt:${alwaysResult.receipt.id}`,
+            value: expect.objectContaining({
+              policy: "always",
+              mediation: "deterministic",
+              selected_runner: "always-deterministic",
+            }),
+          }),
+        ]),
+      );
+      expect(
+        (await readJournalEntries(receiptDir, alwaysResult.receipt.id)).some(
+          (entry) => entry.type === "run_event" && entry.data.kind === "reflect_projected",
+        ),
+      ).toBe(true);
+
+      const neverResult = await runLocalSkill({
+        skillPath: skillDir,
+        runner: "never-review",
+        caller,
+        env,
+        receiptDir,
+        runxHome,
+      });
+      expect(neverResult.status).toBe("success");
+      if (neverResult.status !== "success") {
+        return;
+      }
+
+      const facts = await createFileJournalStore(journalDir).listFacts({ project });
+      expect(facts).toHaveLength(2);
+      expect(facts.some((fact) => fact.key === `receipt:${neverResult.receipt.id}`)).toBe(false);
+      expect(
+        (await readJournalEntries(receiptDir, neverResult.receipt.id)).some(
+          (entry) => entry.type === "run_event" && entry.data.kind === "reflect_projected",
+        ),
+      ).toBe(false);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
+
+async function writeReflectableSkill(skillDir: string): Promise<void> {
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(
+    path.join(skillDir, "SKILL.md"),
+    `---
+name: reflectable
+description: Temporary fixture for post-run reflect policy tests.
+---
+Reflectable test fixture.
+`,
+  );
+  await writeFile(
+    path.join(skillDir, "X.yaml"),
+    `skill: reflectable
+runners:
+  auto-review:
+    type: agent-step
+    agent: reviewer
+    task: reflectable-auto
+    outputs:
+      verdict: string
+    runx:
+      post_run:
+        reflect: auto
+  always-deterministic:
+    type: cli-tool
+    command: node
+    args:
+      - -e
+      - |
+          process.stdout.write(JSON.stringify({ verdict: "deterministic" }));
+    runx:
+      post_run:
+        reflect: always
+  never-review:
+    type: agent-step
+    agent: reviewer
+    task: reflectable-never
+    outputs:
+      verdict: string
+    runx:
+      post_run:
+        reflect: never
+`,
+  );
+}
 
 function createMemoryStream(): NodeJS.WriteStream & { contents: () => string; clear: () => void } {
   let buffer = "";

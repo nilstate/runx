@@ -1,0 +1,93 @@
+skill: review-skill
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
+harness:
+  cases:
+    - name: review-skill-produces-trust-audit
+      inputs:
+        skill_ref: sourcey/sourcey
+        objective: Decide whether Sourcey is ready for evaluator-facing demos
+        evidence_pack:
+          receipts:
+            - kind: harness
+              status: success
+              note: Sourcey inline harness passes in OSS CI.
+          docs:
+            - path: docs/skill-profile-model.md
+              reason: Confirms the enforced package-only SKILL standard.
+        test_constraints: Keep the evaluation bounded to repo-visible evidence and local harness signals.
+      caller:
+        answers:
+          agent_step.review-skill.output:
+            capability_profile:
+              skill_ref: sourcey/sourcey
+              summary: Generates a bounded docs site with approval and verification steps.
+            trust_assessment:
+              tier: runx-derived
+              caveats:
+                - Needs better path-contract documentation.
+            test_matrix:
+              - check: inline harness passes
+                status: required
+              - check: output directory contract documented
+                status: required
+            recommendation_report:
+              recommendation: adopt_with_caveats
+              rationale: Strong structure, but docs and public examples need tightening.
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: review-skill
+            source_type: agent-step
+
+    - name: review-skill-needs-skill-ref
+      inputs: {}
+      expect:
+        status: needs_resolution
+
+
+runners:
+  agent:
+    type: agent
+
+  evaluate:
+    default: true
+    type: agent-step
+    runx:
+      post_run:
+        reflect: never
+    agent: reviewer
+    task: review-skill
+    outputs:
+      capability_profile: object
+      trust_assessment: object
+      test_matrix: array
+      recommendation_report: object
+    artifacts:
+      wrap_as: skill_evaluation_packet
+    inputs:
+      skill_ref:
+        type: string
+        required: true
+        description: "Skill package path, registry id, or marketplace id."
+      objective:
+        type: string
+        required: false
+        description: "Specific decision the evaluation should support."
+      evidence_pack:
+        type: json
+        required: false
+        description: "Receipts, docs, harness outputs, or source notes."
+      test_constraints:
+        type: string
+        required: false
+        description: "Time, environment, or safety constraints on evaluation."

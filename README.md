@@ -32,7 +32,7 @@ Then invoke `runx` from anywhere:
 ```bash
 runx --help
 runx ./oss/fixtures/skills/echo --message hello --json
-runx objective-to-skill --objective "build sourcey docs skill" --json
+runx design-skill --objective "build sourcey docs skill" --json
 ```
 
 Recommended flows:
@@ -48,7 +48,7 @@ runx resume <run-id>
 runx inspect <receipt-id>
 runx history
 runx add sourcey/sourcey@1.0.0 --to ./skills
-runx objective-to-skill --objective "build github review skill"
+runx design-skill --objective "build github review skill"
 runx harness ./fixtures/harness/echo-skill.yaml
 runx config set agent.provider openai
 runx config set agent.model gpt-5.4
@@ -76,17 +76,20 @@ See `../docs/skill-profile-model.md` for resolution rules, runner trust levels, 
 See `../docs/evolution-model.md` for the evolve lane, the skill/tool boundary,
 and the canonical composite execution geometry.
 
-## Flagship Skills
+## Official Packages
 
-The official catalog is skill-first. Public entrypoints are capabilities such as:
+The official catalog has two public kinds:
 
-- `sourcey`
-- `evolve`
-- `issue-to-pr`
-- `objective-to-skill`
-- `improve-skill`
-- `harness-author`
-- `receipt-review`
+- skills: `request-triage`, `issue-triage`, `research`, `draft-content`,
+  `vuln-scan`, `scafld`, `sourcey`, `moltbook`
+- skill chains: `issue-to-pr`, `release`, `content-pipeline`,
+  `ecosystem-vuln-scan`, `ecosystem-brief`, `skill-lab`, `skill-testing`
+
+Builder and operator packages stay in the same `SKILL.md` + `X.yaml` shape,
+but default to private visibility. That internal set currently includes
+`work-plan`, `design-skill`, `prior-art`, `write-harness`,
+`review-receipt`, `review-skill`, `improve-skill`, `reflect-digest`, and
+`evolve`.
 
 Each ships as a portable `SKILL.md` plus a colocated execution profile at
 `skills/<skill>/X.yaml` when it exposes deterministic runners or inline harness

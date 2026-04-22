@@ -1,0 +1,135 @@
+skill: issue-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+
+
+harness:
+  cases:
+    - name: issue-triage-discover-queue
+      runner: discover
+      inputs:
+        repository: nilstate/runx
+        query: find unanswered issues where a maintainer response would unblock progress
+        operator_context: Respond as a maintainer who prefers concise, factual clarifications over speculative promises.
+      caller:
+        answers:
+          agent_step.issue-triage-discover.output:
+            issue_candidates:
+              - id: issue-241
+                title: Sourcey output path is unclear
+                reason: Repeated confusion and no maintainer reply yet
+            selection_rationale:
+              chosen_issue: issue-241
+              rationale: Small answer cost with high unblock potential.
+            operator_notes:
+              escalation: none
+              caveats:
+                - Confirm the current output directory contract before replying.
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: issue-triage
+            source_type: agent-step
+    - name: issue-triage-draft-response
+      runner: respond
+      inputs:
+        issue_url: https://github.com/nilstate/runx/issues/241
+        objective: Draft the next helpful maintainer response
+        maintainer_context: Respond as a maintainer who prefers concise, factual clarifications over speculative promises.
+      caller:
+        answers:
+          agent_step.issue-triage-respond.output:
+            issue_profile:
+              title: Sourcey output path is unclear
+              state: open
+              summary: The docs mention two different output directories.
+            response_strategy:
+              stance: acknowledge and clarify
+              next_action: point to the canonical directory and note the doc fix in progress
+            response_draft:
+              channel: github_issue_comment
+              body: The canonical output directory is `.sourcey/runx-docs`; the conflicting doc text is being corrected.
+            follow_up_actions:
+              - update docs
+              - add a regression test for the path contract
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: issue-triage
+            source_type: agent-step
+
+runners:
+  agent:
+    type: agent
+
+  discover:
+    type: agent-step
+    agent: researcher
+    task: issue-triage-discover
+    outputs:
+      issue_candidates: array
+      selection_rationale: object
+      operator_notes: object
+    artifacts:
+      wrap_as: issue_triage_queue
+    inputs:
+      repository:
+        type: string
+        required: false
+        description: "Repository slug or local repo reference to inspect."
+      query:
+        type: string
+        required: true
+        description: "Discovery objective for the issue queue."
+      maintainer_context:
+        type: string
+        required: false
+        description: "Maintainer norms or project-specific constraints."
+      operator_context:
+        type: string
+        required: false
+        description: "Compatibility alias for maintainer or operator context."
+
+  respond:
+    default: true
+    type: agent-step
+    agent: builder
+    task: issue-triage-respond
+    outputs:
+      issue_profile: object
+      response_strategy: object
+      response_draft: object
+      follow_up_actions: array
+    artifacts:
+      wrap_as: issue_triage_packet
+    inputs:
+      issue_url:
+        type: string
+        required: false
+        description: "Canonical issue URL when available."
+      issue_snapshot:
+        type: json
+        required: false
+        description: "Structured issue snapshot or prior discovery output."
+      objective:
+        type: string
+        required: false
+        description: "What the operator wants from the drafted response."
+      maintainer_context:
+        type: string
+        required: false
+        description: "Repository norms, tone guidance, or release posture."
+      operator_context:
+        type: string
+        required: false
+        description: "Compatibility alias for maintainer or operator context."

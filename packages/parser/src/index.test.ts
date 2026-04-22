@@ -212,11 +212,11 @@ Echo through MCP.
   it("validates explicit agent-step source metadata", () => {
     const skill = validateSkill(
       parseSkillMarkdown(`---
-name: objective-decompose
+name: work-plan
 source:
   type: agent-step
   agent: codex
-  task: objective-decomposition
+  task: work-plan
   outputs:
     draft_spec: string
 inputs:
@@ -231,7 +231,7 @@ Decompose the objective.
     expect(skill.source).toMatchObject({
       type: "agent-step",
       agent: "codex",
-      task: "objective-decomposition",
+      task: "work-plan",
       outputs: { draft_spec: "string" },
     });
   });
@@ -337,7 +337,7 @@ Bad.
 name: harness-review
 source:
   type: harness-hook
-  hook: receipt-review
+  hook: review-receipt
   outputs:
     verdict: string
 inputs:
@@ -351,7 +351,7 @@ Review a receipt in a deterministic harness.
 
     expect(skill.source).toMatchObject({
       type: "harness-hook",
-      hook: "receipt-review",
+      hook: "review-receipt",
       outputs: { verdict: "string" },
     });
   });
@@ -363,7 +363,7 @@ Review a receipt in a deterministic harness.
 name: hidden-helper
 source:
   type: harness-hook
-  hook: receipt-review
+  hook: review-receipt
   command: node
   args:
     - ./repo-local-helper.mjs
@@ -606,6 +606,44 @@ runners:
       outcome: undefined,
       surface_refs: undefined,
     });
+  });
+
+  it("validates post-run reflect policy metadata on runners", () => {
+    const manifest = validateRunnerManifest(
+      parseRunnerManifestYaml(`skill: reflectable
+runners:
+  default:
+    type: agent-step
+    agent: reviewer
+    task: reflectable
+    runx:
+      post_run:
+        reflect: auto
+`),
+    );
+
+    expect(manifest.runners.default?.runx).toEqual({
+      post_run: {
+        reflect: "auto",
+      },
+    });
+  });
+
+  it("rejects invalid post-run reflect policy metadata on runners", () => {
+    expect(() =>
+      validateRunnerManifest(
+        parseRunnerManifestYaml(`skill: reflectable
+runners:
+  default:
+    type: agent-step
+    agent: reviewer
+    task: reflectable
+    runx:
+      post_run:
+        reflect: sometimes
+`),
+      ),
+    ).toThrow("runners.default.runx.post_run.reflect must be auto, always, or never.");
   });
 
   it("rejects invalid inline harness approval values", () => {

@@ -70,9 +70,9 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     },
   },
   {
-    skillName: "evaluate-skill",
+    skillName: "review-skill",
     expectation: {
-      requestId: "agent_step.evaluate-skill.output",
+      requestId: "agent_step.review-skill.output",
       inputKeys: ["skill_ref", "objective", "evidence_pack", "test_constraints"],
       sourceType: "agent-step",
     },
@@ -89,18 +89,18 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     },
   },
   {
-    skillName: "github-triage",
+    skillName: "issue-triage",
     runner: "respond",
     expectation: {
-      requestId: "agent_step.github-triage-respond.output",
+      requestId: "agent_step.issue-triage-respond.output",
       inputKeys: ["issue_url", "objective", "maintainer_context"],
       sourceType: "agent-step",
     },
   },
   {
-    skillName: "harness-author",
+    skillName: "write-harness",
     expectation: {
-      requestId: "agent_step.harness-author.output",
+      requestId: "agent_step.write-harness.output",
       inputKeys: ["objective", "decomposition", "research"],
       sourceType: "agent-step",
     },
@@ -108,13 +108,13 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
   {
     skillName: "improve-skill",
     expectation: {
-      requestId: "agent_step.receipt-review.output",
+      requestId: "agent_step.review-receipt.output",
       inputKeys: ["receipt_id", "receipt_summary", "harness_output", "skill_path", "objective"],
       sourceType: "agent-step",
     },
   },
   {
-    skillName: "market-intelligence",
+    skillName: "ecosystem-brief",
     extraInputKeys: ["channel", "deliverable"],
     expectation: {
       requestId: "agent_step.research.output",
@@ -132,42 +132,42 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     },
   },
   {
-    skillName: "moltbook-presence",
+    skillName: "moltbook",
+    runner: "post",
     expectation: {
-      requestId: "agent_step.moltbook-scan.output",
-      inputKeys: ["objective", "community_context", "feed_snapshot"],
+      requestId: "agent_step.moltbook-post.output",
+      inputKeys: ["outline", "community_context", "approval_note"],
       sourceType: "agent-step",
     },
   },
   {
-    skillName: "objective-decompose",
+    skillName: "work-plan",
     expectation: {
-      requestId: "agent_step.objective-decomposition.output",
+      requestId: "agent_step.work-plan.output",
       inputKeys: ["objective", "project_context", "change_set"],
       sourceType: "agent-step",
     },
   },
   {
-    skillName: "objective-to-skill",
+    skillName: "design-skill",
     expectation: {
-      requestId: "agent_step.objective-decomposition.output",
+      requestId: "agent_step.work-plan.output",
       inputKeys: ["objective", "project_context"],
       sourceType: "agent-step",
     },
   },
   {
-    skillName: "open-source-triage",
-    extraInputKeys: ["channel"],
+    skillName: "skill-lab",
     expectation: {
-      requestId: "agent_step.github-triage-discover.output",
-      inputKeys: ["repository", "query", "objective", "operator_context", "channel"],
+      requestId: "agent_step.work-plan.output",
+      inputKeys: ["objective", "project_context", "subject_locator", "subject_memory"],
       sourceType: "agent-step",
     },
   },
   {
-    skillName: "receipt-review",
+    skillName: "review-receipt",
     expectation: {
-      requestId: "agent_step.receipt-review.output",
+      requestId: "agent_step.review-receipt.output",
       inputKeys: ["receipt_summary", "harness_output", "skill_path"],
       sourceType: "agent-step",
     },
@@ -190,9 +190,9 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     },
   },
   {
-    skillName: "skill-recon",
+    skillName: "prior-art",
     expectation: {
-      requestId: "agent_step.skill-recon.output",
+      requestId: "agent_step.prior-art.output",
       inputKeys: ["objective", "decomposition"],
       sourceType: "agent-step",
     },
@@ -201,8 +201,25 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     skillName: "skill-testing",
     extraInputKeys: ["channel"],
     expectation: {
-      requestId: "agent_step.evaluate-skill.output",
+      requestId: "agent_step.review-skill.output",
       inputKeys: ["skill_ref", "objective", "evidence_pack", "test_constraints", "channel"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "release",
+    runner: "prepare",
+    expectation: {
+      requestId: "agent_step.release-prepare.output",
+      inputKeys: ["project_root", "channel", "last_tag", "operator_context"],
+      sourceType: "agent-step",
+    },
+  },
+  {
+    skillName: "reflect-digest",
+    expectation: {
+      requestId: "agent_step.reflect-digest.output",
+      inputKeys: ["reflect_facts", "min_support"],
       sourceType: "agent-step",
     },
   },
@@ -216,9 +233,9 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     },
   },
   {
-    skillName: "support-triage",
+    skillName: "request-triage",
     expectation: {
-      requestId: "agent_step.support-triage.output",
+      requestId: "agent_step.request-triage.output",
       inputKeys: ["subject_title", "subject_body", "subject_locator", "outbox_entry", "product_context", "operator_context"],
       sourceType: "agent-step",
     },

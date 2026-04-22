@@ -14,21 +14,21 @@ harness:
         receipt_id: rx_failed
         receipt_summary: harness failed because required context was flattened
         harness_output: needs_resolution
-        skill_path: skills/objective-to-skill
+        skill_path: skills/design-skill
         objective: Preserve structured review data in builder chains
       caller:
         answers:
-          agent_step.receipt-review.output:
+          agent_step.review-receipt.output:
             verdict: needs_update
             failure_summary: The review payload was consumed from stdout instead of an artifact envelope.
             improvement_proposals:
               - target: skills/improve-skill/X.yaml
-                change: read review-receipt.receipt_review.data in the harness-author step
+                change: read review-receipt.review_receipt.data in the write-harness step
                 rationale: Keep the review object structured for downstream planning.
                 risk: Low; only dependent tests need updating.
             next_harness_checks:
               - improve-skill passes structured review data
-          agent_step.harness-author.output:
+          agent_step.write-harness.output:
             skill_spec:
               name: improve-skill
             execution_plan:
@@ -58,13 +58,13 @@ harness:
         objective: Distinguish paused-but-healthy chains from broken skills in diagnosis
       caller:
         answers:
-          agent_step.receipt-review.output:
+          agent_step.review-receipt.output:
             verdict: pass
             failure_summary: No failure. The chain paused as designed awaiting caller cognitive work; needs_resolution is a healthy agent-mediated suspension, not a defect.
             improvement_proposals: []
             next_harness_checks:
               - target skill harness still passes on the happy path where the agent step receives valid outputs
-          agent_step.harness-author.output:
+          agent_step.write-harness.output:
             skill_spec:
               name: content-pipeline
               note: No SKILL.md change proposed; receipt review verdict was pass.
@@ -115,12 +115,12 @@ runners:
       owner: runx
       steps:
         - id: review-receipt
-          skill: ../receipt-review
+          skill: ../review-receipt
           scopes:
             - runx:builder:review
         - id: author-update-harness
-          skill: ../harness-author
+          skill: ../write-harness
           scopes:
             - runx:builder:write-proposal
           context:
-            review: review-receipt.receipt_review.data
+            review: review-receipt.review_receipt.data

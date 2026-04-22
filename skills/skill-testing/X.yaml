@@ -24,7 +24,7 @@ harness:
         test_constraints: Keep the report grounded in repo-visible evidence and local harness receipts.
       caller:
         answers:
-          agent_step.evaluate-skill.output:
+          agent_step.review-skill.output:
             capability_profile:
               summary: Bounded docs generation with approval and verification steps.
             trust_assessment:
@@ -98,8 +98,8 @@ runners:
       name: skill-testing
       owner: runx
       steps:
-        - id: evaluate-skill
-          skill: ../evaluate-skill
+        - id: review-skill
+          skill: ../review-skill
           runner: evaluate
           scopes:
             - runx:skill-eval:read
@@ -112,7 +112,7 @@ runners:
             channel: trust-audit
             audience: operators
           context:
-            evidence_pack: evaluate-skill.skill_evaluation_packet.data
+            evidence_pack: review-skill.skill_evaluation_packet.data
         - id: approve-report
           run:
             type: approval

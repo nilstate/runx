@@ -11,6 +11,8 @@ harness:
   cases:
     - name: evolve-introspect
       runner: introspect
+      env:
+        RUNX_JOURNAL_DIR: journal
       inputs:
         repo_root: .
       caller:
@@ -46,6 +48,8 @@ harness:
           status: success
     - name: evolve-plan-spec
       runner: evolve
+      env:
+        RUNX_JOURNAL_DIR: journal
       inputs:
         objective: add release notes
         repo_root: .
@@ -84,6 +88,9 @@ harness:
 runners:
   introspect:
     type: chain
+    runx:
+      post_run:
+        reflect: never
     inputs:
       repo_root:
         type: string
@@ -158,6 +165,9 @@ runners:
   evolve:
     default: true
     type: chain
+    runx:
+      post_run:
+        reflect: auto
     inputs:
       objective:
         type: string

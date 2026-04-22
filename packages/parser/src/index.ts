@@ -116,6 +116,8 @@ export interface SkillRunnerDefinition {
   readonly raw: Record<string, unknown>;
 }
 
+export type PostRunReflectPolicy = "auto" | "always" | "never";
+
 export type CatalogKind = "skill" | "chain";
 export type CatalogAudience = "public" | "builder" | "operator";
 export type CatalogVisibility = "public" | "private";
@@ -301,6 +303,7 @@ export function validateRunnerManifest(raw: RawRunnerManifestIR): SkillRunnerMan
   for (const [name, value] of Object.entries(runnersRecord)) {
     const runner = requiredRecord(value, `runners.${name}`);
     const runx = optionalRecord(runner.runx, `runners.${name}.runx`);
+    validatePostRunReflectPolicy(runx, `runners.${name}.runx`);
     const sourceRecord = optionalRecord(runner.source, `runners.${name}.source`) ?? runner;
     const risk = runner.risk;
     runners[name] = {
@@ -408,6 +411,18 @@ export function validateSkillArtifactContract(
   field = "artifacts",
 ): SkillArtifactContract | undefined {
   return validateArtifactContract(value, field);
+}
+
+export function resolvePostRunReflectPolicy(
+  runx: Record<string, unknown> | undefined,
+  field = "runx",
+): PostRunReflectPolicy {
+  const postRun = optionalRecord(recordField(runx, "post_run"), `${field}.post_run`);
+  const reflect = optionalString(recordField(postRun, "reflect"), `${field}.post_run.reflect`) ?? "never";
+  if (reflect !== "auto" && reflect !== "always" && reflect !== "never") {
+    throw new SkillValidationError(`${field}.post_run.reflect must be auto, always, or never.`);
+  }
+  return reflect;
 }
 
 function validateSource(source: Record<string, unknown>, runx: Record<string, unknown> | undefined): SkillSource {
@@ -680,6 +695,13 @@ function validateAllowedTools(value: unknown, field: string): readonly string[] 
     }
     return entry;
   });
+}
+
+function validatePostRunReflectPolicy(
+  runx: Record<string, unknown> | undefined,
+  field: string,
+): void {
+  void resolvePostRunReflectPolicy(runx, field);
 }
 
 function validateNamedEmits(value: unknown, field: string): Readonly<Record<string, string>> | undefined {

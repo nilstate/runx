@@ -12,7 +12,7 @@ harness:
     - name: draft-content-produces-brief
       runner: draft
       inputs:
-        objective: Publish a concise market-intelligence brief
+        objective: Publish a concise ecosystem-brief brief
         audience: evaluator
         channel: blog
         evidence_pack:

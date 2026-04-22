@@ -11,8 +11,8 @@ import { runCli } from "../packages/cli/src/index.js";
 const scafldBin = process.env.SCAFLD_BIN ?? "/home/kam/dev/scafld/cli/scafld";
 
 describe("recognizable work lanes", () => {
-  it("runs support-triage through the local CLI with a bounded next-lane packet", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-support-triage-cli-"));
+  it("runs request-triage through the local CLI with a bounded next-lane packet", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-request-triage-cli-"));
     const answersPath = path.join(tempDir, "answers.json");
     const receiptDir = path.join(tempDir, "receipts");
     const stdout = createMemoryStream();
@@ -24,7 +24,7 @@ describe("recognizable work lanes", () => {
         `${JSON.stringify(
           {
             answers: {
-              "agent_step.support-triage.output": {
+              "agent_step.request-triage.output": {
                 triage_report: {
                   category: "docs",
                   severity: "low",
@@ -75,7 +75,7 @@ describe("recognizable work lanes", () => {
 
       const exitCode = await runCli(
         [
-          "support-triage",
+          "request-triage",
           "--subject-title",
           "README should point users to issue-to-pr",
           "--subject-body",
@@ -100,7 +100,7 @@ describe("recognizable work lanes", () => {
       expect(JSON.parse(stdout.contents())).toMatchObject({
         status: "success",
         skill: {
-          name: "support-triage",
+          name: "request-triage",
         },
         execution: {
           stdout: expect.stringContaining("\"recommended_lane\":\"issue-to-pr\""),

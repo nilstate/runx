@@ -30,7 +30,7 @@ describe("trainable receipts export", () => {
       const completeReceipt = await writeLocalReceipt({
         receiptDir,
         runxHome,
-        skillName: "github-triage",
+        skillName: "issue-triage",
         sourceType: "cli-tool",
         inputs: { issue: 123 },
         stdout: "triaged",
@@ -76,7 +76,7 @@ describe("trainable receipts export", () => {
             type: "run_event",
             data: { kind: "triage", status: "success" },
             runId: completeReceipt.id,
-            producer: { skill: "github-triage", runner: "agent" },
+            producer: { skill: "issue-triage", runner: "agent" },
           }),
         ],
       });
@@ -133,7 +133,7 @@ describe("trainable receipts export", () => {
         kind: "runx.trainable-receipt-row.v1",
         receipt_id: completeReceipt.id,
         receipt_kind: "skill_execution",
-        skill_name: "github-triage",
+        skill_name: "issue-triage",
         graph_name: null,
         owner: null,
         source_type: "cli-tool",
@@ -143,7 +143,7 @@ describe("trainable receipts export", () => {
           id: completeReceipt.id,
           kind: "skill_execution",
           subject: {
-            skill_name: "github-triage",
+            skill_name: "issue-triage",
             source_type: "cli-tool",
           },
         },

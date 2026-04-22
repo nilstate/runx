@@ -28,10 +28,12 @@ runIfSeeded("chain registry refs — real seeded registry", () => {
     expect(skillIds).toEqual(expect.arrayContaining([
       "runx/evolve",
       "runx/issue-to-pr",
-      "runx/objective-decompose",
-      "runx/objective-to-skill",
+      "runx/release",
+      "runx/skill-lab",
+      "runx/work-plan",
+      "runx/design-skill",
       "runx/scafld",
-      "runx/skill-recon",
+      "runx/prior-art",
       "runx/skill-testing",
     ]));
   });

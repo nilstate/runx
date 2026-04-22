@@ -54,6 +54,8 @@ harness:
           headline: runx now enforces package-style skills
           beats:
             - why the standard changed
+        community_context: OSS builders evaluating whether runx is visibly governed and useful.
+        approval_note: Keep the final post factual and avoid launch-theater language.
       caller:
         answers:
           agent_step.moltbook-post.output:

@@ -31,6 +31,7 @@ type RunxConfigKey = "agent.provider" | "agent.model" | "agent.api_key";
 
 interface PathResolutionOptions {
   readonly cwd?: string;
+  readonly preferExisting?: boolean;
 }
 
 interface RegistryPathOptions extends PathResolutionOptions {
@@ -78,13 +79,15 @@ export function resolvePathFromUserInput(
   }
 
   const cwd = options.cwd ?? process.cwd();
-  for (const base of [env.RUNX_CWD, env.INIT_CWD, findRunxWorkspaceRoot(cwd), cwd]) {
-    if (!base) {
-      continue;
-    }
-    const candidate = path.resolve(base, userPath);
-    if (existsSync(candidate)) {
-      return candidate;
+  if (options.preferExisting ?? true) {
+    for (const base of [env.RUNX_CWD, env.INIT_CWD, findRunxWorkspaceRoot(cwd), cwd]) {
+      if (!base) {
+        continue;
+      }
+      const candidate = path.resolve(base, userPath);
+      if (existsSync(candidate)) {
+        return candidate;
+      }
     }
   }
 
@@ -108,7 +111,7 @@ export function findNearestProjectRunxDir(start: string): string | undefined {
 
 export function resolveRunxProjectDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
   if (env.RUNX_PROJECT_DIR) {
-    return resolvePathFromUserInput(env.RUNX_PROJECT_DIR, env, options);
+    return resolvePathFromUserInput(env.RUNX_PROJECT_DIR, env, { ...options, preferExisting: false });
   }
   const cwd = options.cwd ?? process.cwd();
   return findNearestProjectRunxDir(cwd) ?? path.resolve(resolveRunxWorkspaceBase(env, options), ".runx");
@@ -116,7 +119,7 @@ export function resolveRunxProjectDir(env: NodeJS.ProcessEnv, options: PathResol
 
 export function resolveRunxGlobalHomeDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
   return env.RUNX_HOME
-    ? resolvePathFromUserInput(env.RUNX_HOME, env, options)
+    ? resolvePathFromUserInput(env.RUNX_HOME, env, { ...options, preferExisting: false })
     : path.join(os.homedir(), ".runx");
 }
 
@@ -126,12 +129,14 @@ export function resolveRunxHomeDir(env: NodeJS.ProcessEnv, options: PathResoluti
 
 export function resolveRunxJournalDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
   return env.RUNX_JOURNAL_DIR
-    ? resolvePathFromUserInput(env.RUNX_JOURNAL_DIR, env, options)
+    ? resolvePathFromUserInput(env.RUNX_JOURNAL_DIR, env, { ...options, preferExisting: false })
     : path.join(resolveRunxProjectDir(env, options), "journal");
 }
 
 export function resolveSkillInstallRoot(env: NodeJS.ProcessEnv, to?: string, options: PathResolutionOptions = {}): string {
-  return to ? resolvePathFromUserInput(to, env, options) : path.join(resolveRunxWorkspaceBase(env, options), "skills");
+  return to
+    ? resolvePathFromUserInput(to, env, { ...options, preferExisting: false })
+    : path.join(resolveRunxWorkspaceBase(env, options), "skills");
 }
 
 export function resolveRunxRegistryPath(env: NodeJS.ProcessEnv, options: RegistryPathOptions = {}): string {
@@ -156,21 +161,21 @@ export function resolveRunxRegistryTarget(env: NodeJS.ProcessEnv, options: Regis
       mode: "local",
       registryPath: localRegistry.startsWith("file://")
         ? fileURLToPath(localRegistry)
-        : resolvePathFromUserInput(localRegistry, env, options),
+        : resolvePathFromUserInput(localRegistry, env, { ...options, preferExisting: false }),
       registryUrl: isRemoteRegistryUrl(env.RUNX_REGISTRY_URL) ? env.RUNX_REGISTRY_URL : undefined,
     };
   }
   if (registryDir) {
     return {
       mode: "local",
-      registryPath: resolvePathFromUserInput(registryDir, env, options),
+      registryPath: resolvePathFromUserInput(registryDir, env, { ...options, preferExisting: false }),
       registryUrl: isRemoteRegistryUrl(configuredRegistry) ? configuredRegistry : undefined,
     };
   }
   if (env.RUNX_REGISTRY_DIR) {
     return {
       mode: "local",
-      registryPath: resolvePathFromUserInput(env.RUNX_REGISTRY_DIR, env, options),
+      registryPath: resolvePathFromUserInput(env.RUNX_REGISTRY_DIR, env, { ...options, preferExisting: false }),
       registryUrl: isRemoteRegistryUrl(configuredRegistry) ? configuredRegistry : undefined,
     };
   }
@@ -189,7 +194,7 @@ export function resolveRunxRegistryTarget(env: NodeJS.ProcessEnv, options: Regis
 
 export function resolveRunxOfficialSkillsDir(env: NodeJS.ProcessEnv, options: PathResolutionOptions = {}): string {
   return env.RUNX_OFFICIAL_SKILLS_DIR
-    ? resolvePathFromUserInput(env.RUNX_OFFICIAL_SKILLS_DIR, env, options)
+    ? resolvePathFromUserInput(env.RUNX_OFFICIAL_SKILLS_DIR, env, { ...options, preferExisting: false })
     : path.join(resolveRunxGlobalHomeDir(env, options), "official-skills");
 }
 

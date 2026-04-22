@@ -30,7 +30,9 @@ Complex runx skills share one internal phase language:
 
 The current `evolve` runner uses a bounded subset and compresses some phases
 into fewer concrete steps. That is allowed. What stays fixed is the meaning of
-the phases, not the number of steps.
+the phases, not the number of steps. When a runner opts in, runx may also
+append a runner-owned post-run reflect projection after the receipt is written.
+That projection is journal-only metadata, not another canonical phase.
 
 ## Current runner mapping
 
@@ -46,6 +48,8 @@ It uses `scope + ingest + model` to analyze the current repo and produce:
 
 No approval gate and no mutation happen in this runner. It is introspection
 only.
+It also opts out of post-run reflect because it is already an introspective
+lane.
 
 ### Preflight
 
@@ -66,6 +70,10 @@ artifacts in one pass:
 - `diagnosis_report` — current repo state relative to the objective.
 - `change_plan` — ordered phases, acceptance checks, touchpoints, risk.
 - `spec_document` — draft scafld spec when governance applies.
+
+Directed `evolve` runs opt into runner-owned post-run reflect. That projection
+is derived from the completed receipt and run journal after the bounded plan
+lane finishes; it does not add another visible chain step or mutation path.
 
 ### Termination guard
 

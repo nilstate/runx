@@ -5,11 +5,13 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
+import { createFileJournalStore } from "../packages/memory/src/index.js";
 
 describe("evolve skill", () => {
   it("introspects by default with no objective and resumes to a bounded recommendation", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-evolve-introspect-"));
     const receiptDir = path.join(tempDir, "receipts");
+    const journalDir = path.join(tempDir, "journal");
     const answersPath = path.join(tempDir, "answers.json");
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
@@ -18,7 +20,12 @@ describe("evolve skill", () => {
       const firstExitCode = await runCli(
         ["evolve", "--receipt-dir", receiptDir, "--non-interactive", "--json"],
         { stdin: process.stdin, stdout, stderr },
-        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
+        {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          RUNX_HOME: path.join(tempDir, "home"),
+          RUNX_JOURNAL_DIR: journalDir,
+        },
       );
 
       expect(firstExitCode).toBe(2);
@@ -99,7 +106,12 @@ describe("evolve skill", () => {
           "--json",
         ],
         { stdin: process.stdin, stdout, stderr },
-        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
+        {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          RUNX_HOME: path.join(tempDir, "home"),
+          RUNX_JOURNAL_DIR: journalDir,
+        },
       );
 
       expect(exitCode).toBe(0);
@@ -118,6 +130,8 @@ describe("evolve skill", () => {
       expect(journal).toContain("\"type\":\"run_event\"");
       expect(journal).toContain("\"step_id\":\"introspect\"");
       expect(journal).toContain("\"selected_runner\":\"introspect\"");
+      expect(journal).not.toContain("\"kind\":\"reflect_projected\"");
+      await expect(createFileJournalStore(journalDir).listFacts({ project: process.cwd() })).resolves.toEqual([]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -126,6 +140,7 @@ describe("evolve skill", () => {
   it("yields the plan request and resumes to completion on the same run id", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-evolve-"));
     const receiptDir = path.join(tempDir, "receipts");
+    const journalDir = path.join(tempDir, "journal");
     const answersPath = path.join(tempDir, "answers.json");
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
@@ -134,7 +149,12 @@ describe("evolve skill", () => {
       const firstExitCode = await runCli(
         ["evolve", "add release notes", "--receipt-dir", receiptDir, "--non-interactive", "--json"],
         { stdin: process.stdin, stdout, stderr },
-        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
+        {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          RUNX_HOME: path.join(tempDir, "home"),
+          RUNX_JOURNAL_DIR: journalDir,
+        },
       );
 
       expect(firstExitCode).toBe(2);
@@ -196,7 +216,12 @@ describe("evolve skill", () => {
           "--json",
         ],
         { stdin: process.stdin, stdout, stderr },
-        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
+        {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          RUNX_HOME: path.join(tempDir, "home"),
+          RUNX_JOURNAL_DIR: journalDir,
+        },
       );
 
       expect(exitCode).toBe(0);
@@ -215,6 +240,20 @@ describe("evolve skill", () => {
       expect(journal).toContain("\"type\":\"run_event\"");
       expect(journal).toContain("\"step_id\":\"plan\"");
       expect(journal).toContain("\"type\":\"receipt_link\"");
+      expect(journal).toContain("\"kind\":\"reflect_projected\"");
+      await expect(createFileJournalStore(journalDir).listFacts({ project: process.cwd() })).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            scope: "reflect",
+            key: `receipt:${report.receipt.id}`,
+            value: expect.objectContaining({
+              skill_ref: "evolve",
+              selected_runner: "evolve",
+              mediation: "agentic",
+            }),
+          }),
+        ]),
+      );
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

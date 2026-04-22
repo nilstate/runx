@@ -1,0 +1,117 @@
+skill: prior-art
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
+harness:
+  cases:
+    - name: prior-art-validates-proposed-flow
+      inputs:
+        objective: Build a moltbook presence automation lane
+        decomposition:
+          objective_summary: Build a governed Moltbook presence automation lane.
+          orchestration_steps:
+            - id: scan
+              skill: ../moltbook
+              runner: scan
+              scopes:
+                - runx:moltbook:read
+          required_skills:
+            - name: moltbook
+              exists: true
+          open_questions: []
+      caller:
+        answers:
+          agent_step.prior-art.output:
+            findings:
+              - claim: Use separate read and post runners for Moltbook.
+                source: plans/runx.md
+                relevance: Preserves governance boundaries between scanning and posting.
+                confidence: verified
+            recommended_flow:
+              - step: scan
+                rationale: Gather bounded opportunities before drafting.
+              - step: approve
+                rationale: Human approval is required before public posting.
+              - step: post
+                rationale: Use a separate write runner with only publish scopes.
+            sources:
+              - path: plans/runx.md
+                kind: repo-document
+            risks:
+              - risk: Community posting can drift off-brand without explicit moderation.
+                likelihood: medium
+                impact: high
+                mitigation: Require an approval gate and moderation notes.
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: prior-art
+            source_type: agent-step
+
+    - name: prior-art-recommends-reuse
+      inputs:
+        objective: Add a moltbook content scan to the governed pipeline
+        decomposition:
+          objective_summary: Add a moltbook content scan step.
+          orchestration_steps:
+            - id: scan
+              skill: ../moltbook
+              runner: scan
+          required_skills:
+            - name: moltbook
+              exists: true
+          open_questions: []
+      caller:
+        answers:
+          agent_step.prior-art.output:
+            findings:
+              - claim: moltbook already exposes a scan runner with the required scopes.
+                source: skills/moltbook/X.yaml
+                relevance: Reusing the existing skill is cheaper and better-governed than drafting a new primitive.
+                confidence: verified
+            recommended_flow:
+              - step: scan
+                rationale: Reuse ../moltbook scan runner rather than drafting a new scanner.
+            sources:
+              - path: skills/moltbook/X.yaml
+                kind: repo-document
+            risks: []
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: prior-art
+            source_type: agent-step
+
+runners:
+  prior-art-agent:
+    default: true
+    type: agent-step
+    agent: researcher
+    task: prior-art
+    outputs:
+      findings: array
+      recommended_flow: array
+      sources: array
+      risks: array
+    artifacts:
+      wrap_as: prior_art_report
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "The build or skill objective being researched."
+      decomposition:
+        type: json
+        required: false
+        description: "Structured decomposition output from work-plan."

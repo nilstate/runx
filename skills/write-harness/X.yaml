@@ -1,0 +1,159 @@
+skill: write-harness
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
+harness:
+  cases:
+    - name: write-harness-new-skill-fixtures
+      inputs:
+        objective: Create a governed content pipeline skill
+        decomposition:
+          objective_summary: Create a governed content pipeline skill.
+          orchestration_steps:
+            - id: research
+              skill: ../research
+        research:
+          findings:
+            - claim: Separate research and drafting phases keep evidence auditable.
+              confidence: verified
+      caller:
+        answers:
+          agent_step.write-harness.output:
+            skill_spec:
+              name: content-pipeline
+              description: Govern research and drafting before packaging a publishable bundle.
+            execution_plan:
+              runner: chain
+              phases:
+                - research
+                - draft
+                - approve
+            harness_fixture:
+              - name: content-pipeline-happy-path
+                kind: skill
+                target: ../content-pipeline
+                inputs:
+                  objective: publish a daily brief
+                expect:
+                  status: success
+              - name: content-pipeline-missing-objective
+                kind: skill
+                target: ../content-pipeline
+                expect:
+                  status: needs_resolution
+            acceptance_checks:
+              - happy-path fixture passes
+              - missing-objective fixture fails with needs_resolution
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: write-harness
+            source_type: agent-step
+    - name: write-harness-turns-review-into-regression-fixtures
+      inputs:
+        objective: Improve design-skill structured context handling
+        review:
+          verdict: needs_update
+          improvement_proposals:
+            - target: skills/design-skill/X.yaml
+              change: swap stdout edges for artifact data edges
+      caller:
+        answers:
+          agent_step.write-harness.output:
+            skill_spec:
+              name: design-skill
+            execution_plan:
+              runner: chain
+            harness_fixture:
+              - name: design-skill-structured-context
+                kind: skill
+                target: ../design-skill
+                inputs:
+                  objective: build a new skill
+                expect:
+                  status: success
+            acceptance_checks:
+              - downstream steps receive structured review and research data
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: write-harness
+            source_type: agent-step
+
+    - name: write-harness-honors-pass-verdict
+      inputs:
+        objective: Confirm write-harness emits minimal regression output when review verdict is pass
+        review:
+          verdict: pass
+          failure_summary: No failure. Chain paused as designed; needs_resolution is a healthy agent-mediated suspension.
+          improvement_proposals: []
+      caller:
+        answers:
+          agent_step.write-harness.output:
+            skill_spec:
+              name: write-harness
+              note: No change. Upstream review.verdict was pass.
+            execution_plan:
+              runner: agent-step
+              note: No change.
+            harness_fixture:
+              - name: write-harness-pass-verdict-regression
+                kind: skill
+                target: ../write-harness
+                inputs:
+                  objective: regression fixture locked in by cycle 3
+                expect:
+                  status: success
+            acceptance_checks:
+              - write-harness returns minimal output on pass-verdict input
+              - write-harness does not fabricate skill_spec changes on empty improvement_proposals
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: write-harness
+            source_type: agent-step
+
+runners:
+  write-harness-agent:
+    default: true
+    type: agent-step
+    agent: builder
+    task: write-harness
+    outputs:
+      skill_spec: object
+      execution_plan: object
+      harness_fixture: array
+      acceptance_checks: array
+    artifacts:
+      wrap_as: skill_design_packet
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "The skill objective to harness."
+      decomposition:
+        type: json
+        required: false
+        description: "Output from work-plan."
+      research:
+        type: json
+        required: false
+        description: "Output from prior-art."
+      review:
+        type: json
+        required: false
+        description: "Output from review-receipt when improving an existing skill."

@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createFileJournalStore } from "../packages/memory/src/index.js";
-import { runLocalSkill, type Caller, type ExecutionEvent } from "../packages/runner-local/src/index.js";
+import { runLocalGraph, runLocalSkill, type Caller, type ExecutionEvent } from "../packages/runner-local/src/index.js";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,
@@ -96,6 +96,46 @@ describe("local journal index integration", () => {
             receiptId: result.receipt.id,
           }),
         }),
+      );
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("indexes graph receipts when local journal indexing is enabled", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-local-journal-graph-index-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const journalDir = path.join(tempDir, "journal");
+    const project = path.join(tempDir, "project");
+
+    try {
+      const result = await runLocalGraph({
+        graphPath: path.resolve("fixtures/chains/sequential/chain.yaml"),
+        caller: nonInteractiveCaller,
+        receiptDir,
+        runxHome: path.join(tempDir, "home"),
+        env: {
+          ...process.env,
+          RUNX_JOURNAL_DIR: journalDir,
+          RUNX_PROJECT: project,
+          RUNX_CWD: tempDir,
+          INIT_CWD: tempDir,
+        },
+      });
+
+      expect(result.status).toBe("success");
+      if (result.status !== "success") {
+        return;
+      }
+
+      await expect(createFileJournalStore(journalDir).listReceipts({ project })).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            receipt_id: result.receipt.id,
+            kind: "graph_execution",
+            subject: "sequential-echo",
+          }),
+        ]),
       );
     } finally {
       await rm(tempDir, { recursive: true, force: true });

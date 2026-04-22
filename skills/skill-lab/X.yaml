@@ -1,0 +1,280 @@
+skill: skill-lab
+version: "0.1.0"
+
+catalog:
+  kind: chain
+  audience: public
+  visibility: public
+
+harness:
+  cases:
+    - name: skill-lab-packages-approved-proposal
+      inputs:
+        objective: Add a governed release-notes skill
+        project_context: runx OSS registry launch surface
+        subject_locator: github://nilstate/runx/issues/118
+        subject_memory:
+          kind: runx.subject-memory.v1
+          adapter:
+            type: github
+            provider: github
+            surface: issue_thread
+          subject:
+            subject_kind: work_item
+            subject_locator: github://nilstate/runx/issues/118
+          entries: []
+          decisions: []
+          subject_outbox: []
+          source_refs: []
+      caller:
+        answers:
+          agent_step.work-plan.output:
+            change_set:
+              change_set_id: change_set_release_notes_skill
+              subject_locator: github://nilstate/runx/issues/118
+              summary: Add a governed release-notes skill.
+              category: other
+              severity: medium
+              recommended_lane: skill-lab
+              commence_decision: approve
+              action_decision: proceed_to_plan
+              target_surfaces:
+                - surface: runx
+                  kind: repo
+                  mutating: false
+                  rationale: The proposal should land as a reviewed skill package before any runtime mutation.
+              shared_invariants:
+                - Keep the proposal portable and package-shaped.
+              success_criteria:
+                - One bounded skill proposal is produced.
+            objective_summary: Add a governed release-notes skill.
+            workspace_change_plan:
+              plan_id: workspace_plan_release_notes_skill
+              change_set_id: change_set_release_notes_skill
+              objective_summary: Add a governed release-notes skill.
+              shared_invariants:
+                - Keep the proposal portable and package-shaped.
+              success_criteria:
+                - One bounded skill proposal is produced.
+              phases:
+                - id: phase-design
+                  name: Design the candidate skill
+                  depends_on: []
+                  parallelizable: false
+                  repo_change_requests:
+                    - id: release-notes-skill
+                      repo: runx
+                      task_id: release-notes-skill
+                      objective: Design and package a release-notes skill proposal.
+                      depends_on: []
+                      shared_context_refs:
+                        - change_set.shared_invariants
+                      validation_commands:
+                        - pnpm --dir oss test tests/official-skill-catalog.test.ts
+                      mutating: false
+            orchestration_steps:
+              - id: research
+                skill: ../research
+                scopes:
+                  - runx:research:read
+                mutating: false
+                inputs: {}
+                context_from: []
+                description: Gather the release-notes evidence pack.
+              - id: draft
+                skill: ../draft-content
+                scopes:
+                  - runx:content:draft
+                mutating: false
+                inputs: {}
+                context_from:
+                  - research.research_packet
+                description: Turn the findings into a proposal draft.
+            required_skills:
+              - name: research
+                exists: true
+              - name: draft-content
+                exists: true
+            open_questions: []
+          agent_step.prior-art.output:
+            findings:
+              - claim: Release skills should separate read-only preparation from publish authority.
+                source: skills/release/X.yaml
+                relevance: Keeps the proposal grounded in an existing governed pattern.
+                confidence: verified
+            recommended_flow:
+              - step: plan
+                rationale: Bound the release-notes scope before authoring.
+              - step: draft
+                rationale: Keep the proposal reviewable before any implementation.
+            sources:
+              - path: skills/release/X.yaml
+                kind: repo-document
+            risks:
+              - risk: Proposal language can drift into release marketing instead of operator workflow.
+                likelihood: medium
+                impact: medium
+                mitigation: Keep the proposal scoped to maintainer workflow and receipts.
+          agent_step.write-harness.output:
+            skill_spec:
+              name: release-notes
+              description: Turn a bounded release diff into reviewable release notes.
+            execution_plan:
+              runner: chain
+              phases:
+                - prepare
+                - draft
+                - approve
+            harness_fixture:
+              - name: release-notes-happy-path
+                kind: skill
+                target: ../release-notes
+                expect:
+                  status: success
+              - name: release-notes-missing-objective
+                kind: skill
+                target: ../release-notes
+                expect:
+                  status: needs_resolution
+            acceptance_checks:
+              - release-notes produces a reviewable draft from a bounded release diff
+              - release-notes requires approval before packaging
+          agent_step.draft-content-draft.output:
+            content_brief:
+              angle: maintainer skill proposal
+              audience: maintainers
+              channel: skill-proposal
+            draft:
+              title: release-notes skill proposal
+              sections:
+                - Objective
+                - Proposed skill contract
+                - Execution plan
+                - Harness fixtures
+            review_checklist:
+              - confirm the proposal stays portable and repo-grounded
+            distribution_notes:
+              primary_channel: skill-proposal
+          agent_step.draft-content-package.output:
+            publish_packet:
+              channel: skill-proposal
+              headline: release-notes skill proposal
+              body: Bounded release-notes proposal packet ready for maintainer review.
+            qa_checklist:
+              - proposal copy checked against design packet
+            handoff_notes:
+              next_action: review or publish through the provider adapter
+        approvals:
+          skill-lab.publish.approval: true
+      expect:
+        status: success
+        receipt:
+          kind: graph_execution
+          status: success
+        steps:
+          - decompose
+          - research
+          - author-harness
+          - draft-proposal
+          - approve-proposal
+          - package-proposal
+
+    - name: skill-lab-needs-objective
+      inputs: {}
+      expect:
+        status: needs_resolution
+
+runners:
+  skill-lab:
+    default: true
+    type: chain
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "The capability to propose."
+      project_context:
+        type: string
+        required: false
+        description: "Repo, product, or operator context that constrains the proposal."
+      subject_title:
+        type: string
+        required: false
+        description: "Original subject title when the proposal comes from a work thread."
+      subject_body:
+        type: string
+        required: false
+        description: "Original subject body or request text."
+      subject_locator:
+        type: string
+        required: false
+        description: "Canonical locator for the bounded subject."
+      subject_memory:
+        type: json
+        required: false
+        description: "Provider-backed subject memory for the source thread."
+      channel:
+        type: string
+        required: false
+        default: "skill-proposal"
+        description: "Proposal delivery channel."
+      operator_context:
+        type: string
+        required: false
+        description: "Maintainer posture, constraints, or teaching notes."
+    chain:
+      name: skill-lab
+      owner: runx
+      steps:
+        - id: decompose
+          skill: ../work-plan
+          scopes:
+            - runx:builder:read
+        - id: research
+          skill: ../prior-art
+          scopes:
+            - runx:builder:research
+          context:
+            decomposition: decompose.work_plan.data
+        - id: author-harness
+          skill: ../write-harness
+          scopes:
+            - runx:builder:write-proposal
+          context:
+            decomposition: decompose.work_plan.data
+            research: research.prior_art_report.data
+        - id: draft-proposal
+          skill: ../draft-content
+          runner: draft
+          scopes:
+            - runx:content:draft
+          inputs:
+            audience: maintainers
+          context:
+            evidence_pack: author-harness.skill_design_packet.data
+        - id: approve-proposal
+          run:
+            type: approval
+          inputs:
+            gate_id: skill-lab.publish.approval
+            reason: Approve the packaged skill proposal before it is handed off upstream.
+          context:
+            draft: draft-proposal.content_draft_packet.data.draft
+            review_checklist: draft-proposal.content_draft_packet.data.review_checklist
+          artifacts:
+            wrap_as: approval_decision
+        - id: package-proposal
+          skill: ../draft-content
+          runner: package
+          scopes:
+            - runx:content:package
+          inputs:
+            channel: skill-proposal
+          context:
+            draft: draft-proposal.content_draft_packet.data.draft
+            distribution_notes: draft-proposal.content_draft_packet.data.distribution_notes
+      policy:
+        transitions:
+          - to: package-proposal
+            field: approve-proposal.approval_decision.data.approved
+            equals: true

@@ -1,0 +1,373 @@
+skill: reflect-digest
+version: "0.1.0"
+
+catalog:
+  kind: chain
+  audience: builder
+  visibility: private
+
+
+harness:
+  cases:
+    - name: reflect-digest-empty-journal
+      inputs:
+        reflect_facts: []
+        min_support: 1
+      caller:
+        answers:
+          agent_step.reflect-digest.output:
+            proposals: []
+      expect:
+        status: success
+        receipt:
+          kind: graph_execution
+          status: success
+    - name: reflect-digest-below-floor
+      inputs:
+        min_support: 1
+        min_confidence: 0.8
+        reflect_facts:
+          - entry_id: fact_low_signal
+            entry_kind: fact
+            project: /tmp/project
+            scope: reflect
+            key: receipt:rx_low
+            source: post_run.reflect
+            confidence: 0.3
+            freshness: derived
+            receipt_id: rx_low
+            created_at: "2026-04-22T00:00:00Z"
+            value:
+              skill_ref: sourcey
+              summary: sourcey completed with a low-confidence signal
+      caller:
+        answers:
+          agent_step.reflect-digest.output:
+            proposals: []
+      expect:
+        status: success
+        receipt:
+          kind: graph_execution
+          status: success
+    - name: reflect-digest-single-skill
+      inputs:
+        min_support: 2
+        reflect_facts:
+          - entry_id: fact_sourcey_1
+            entry_kind: fact
+            project: /tmp/project
+            scope: reflect
+            key: receipt:rx_sourcey_1
+            source: post_run.reflect
+            confidence: 1
+            freshness: derived
+            receipt_id: rx_sourcey_1
+            created_at: "2026-04-22T00:00:00Z"
+            value:
+              skill_ref: sourcey
+              summary: sourcey planned successfully
+          - entry_id: fact_sourcey_2
+            entry_kind: fact
+            project: /tmp/project
+            scope: reflect
+            key: receipt:rx_sourcey_2
+            source: post_run.reflect
+            confidence: 1
+            freshness: derived
+            receipt_id: rx_sourcey_2
+            created_at: "2026-04-22T01:00:00Z"
+            value:
+              skill_ref: sourcey
+              summary: sourcey repeated the same bounded plan shape
+      caller:
+        answers:
+          agent_step.reflect-digest.output:
+            proposals:
+              - skill_ref: sourcey
+                supporting_receipt_ids:
+                  - rx_sourcey_1
+                  - rx_sourcey_2
+                draft_pull_request:
+                  target:
+                    repo: runx/registry
+                    branch: reflect/sourcey
+                  pull_request:
+                    title: "Reflect digest: sourcey"
+                    body: "Group the repeated sourcey reflect signals into one bounded registry follow-up."
+                outbox_entry:
+                  entry_id: pull_request:sourcey-reflect
+                  kind: pull_request
+                  title: "Reflect digest: sourcey"
+                  status: draft
+                  subject_locator: registry://skills/sourcey
+      expect:
+        status: success
+        receipt:
+          kind: graph_execution
+          status: success
+    - name: reflect-digest-multi-skill
+      inputs:
+        min_support: 2
+        reflect_facts:
+          - entry_id: fact_sourcey_1
+            entry_kind: fact
+            project: /tmp/project
+            scope: reflect
+            key: receipt:rx_sourcey_1
+            source: post_run.reflect
+            confidence: 1
+            freshness: derived
+            receipt_id: rx_sourcey_1
+            created_at: "2026-04-22T00:00:00Z"
+            value:
+              skill_ref: sourcey
+              summary: sourcey planned successfully
+          - entry_id: fact_sourcey_2
+            entry_kind: fact
+            project: /tmp/project
+            scope: reflect
+            key: receipt:rx_sourcey_2
+            source: post_run.reflect
+            confidence: 1
+            freshness: derived
+            receipt_id: rx_sourcey_2
+            created_at: "2026-04-22T01:00:00Z"
+            value:
+              skill_ref: sourcey
+              summary: sourcey repeated the same bounded plan shape
+          - entry_id: fact_release_1
+            entry_kind: fact
+            project: /tmp/project
+            scope: reflect
+            key: receipt:rx_release_1
+            source: post_run.reflect
+            confidence: 1
+            freshness: derived
+            receipt_id: rx_release_1
+            created_at: "2026-04-22T00:30:00Z"
+            value:
+              skill_ref: release
+              summary: release surfaced the same missing-note signal
+          - entry_id: fact_release_2
+            entry_kind: fact
+            project: /tmp/project
+            scope: reflect
+            key: receipt:rx_release_2
+            source: post_run.reflect
+            confidence: 1
+            freshness: derived
+            receipt_id: rx_release_2
+            created_at: "2026-04-22T01:30:00Z"
+            value:
+              skill_ref: release
+              summary: release repeated the same registry drift signal
+      caller:
+        answers:
+          agent_step.reflect-digest.output:
+            proposals:
+              - skill_ref: release
+                supporting_receipt_ids:
+                  - rx_release_1
+                  - rx_release_2
+                draft_pull_request:
+                  target:
+                    repo: runx/registry
+                    branch: reflect/release
+                  pull_request:
+                    title: "Reflect digest: release"
+                    body: "Group the repeated release reflect signals into one bounded registry follow-up."
+                outbox_entry:
+                  entry_id: pull_request:release-reflect
+                  kind: pull_request
+                  title: "Reflect digest: release"
+                  status: draft
+                  subject_locator: registry://skills/release
+              - skill_ref: sourcey
+                supporting_receipt_ids:
+                  - rx_sourcey_1
+                  - rx_sourcey_2
+                draft_pull_request:
+                  target:
+                    repo: runx/registry
+                    branch: reflect/sourcey
+                  pull_request:
+                    title: "Reflect digest: sourcey"
+                    body: "Group the repeated sourcey reflect signals into one bounded registry follow-up."
+                outbox_entry:
+                  entry_id: pull_request:sourcey-reflect
+                  kind: pull_request
+                  title: "Reflect digest: sourcey"
+                  status: draft
+                  subject_locator: registry://skills/sourcey
+      expect:
+        status: success
+        receipt:
+          kind: graph_execution
+          status: success
+
+runners:
+  reflect-digest:
+    default: true
+    type: chain
+    runx:
+      post_run:
+        reflect: never
+    inputs:
+      reflect_facts:
+        type: json
+        required: false
+        description: "Optional explicit reflect fact entries for replay or controlled evaluation."
+      skill_filter:
+        type: string
+        required: false
+        description: "Optional skill ref filter."
+      since:
+        type: string
+        required: false
+        description: "Only include reflect facts recorded at or after this ISO timestamp."
+      min_support:
+        type: number
+        required: false
+        default: 2
+        description: "Minimum grouped support required to draft a proposal."
+      min_confidence:
+        type: number
+        required: false
+        default: 0.5
+        description: "Minimum per-fact confidence required before grouping."
+    chain:
+      name: reflect-digest
+      owner: runx
+      steps:
+        - id: load-reflect-facts
+          label: load reflect facts
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - -e
+              - |
+                const fs = require("node:fs");
+                const path = require("node:path");
+                const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+                const explicitFacts = Array.isArray(inputs.reflect_facts) ? inputs.reflect_facts : undefined;
+                const skillFilter = typeof inputs.skill_filter === "string" && inputs.skill_filter.trim()
+                  ? inputs.skill_filter.trim()
+                  : undefined;
+                const sinceMs = typeof inputs.since === "string" && inputs.since.trim()
+                  ? Date.parse(inputs.since)
+                  : undefined;
+
+                let facts = explicitFacts;
+                if (!facts) {
+                  const journalDir = process.env.RUNX_JOURNAL_DIR;
+                  const indexPath = journalDir ? path.join(journalDir, "index.json") : "";
+                  if (!journalDir || !fs.existsSync(indexPath)) {
+                    facts = [];
+                  } else {
+                    const journal = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+                    const entries = Array.isArray(journal.entries) ? journal.entries : [];
+                    facts = entries.filter((entry) =>
+                      entry
+                      && entry.entry_kind === "fact"
+                      && entry.scope === "reflect",
+                    );
+                  }
+                }
+
+                const filteredFacts = facts
+                  .filter((entry) => entry && entry.entry_kind === "fact" && entry.scope === "reflect")
+                  .filter((entry) => !skillFilter || entry?.value?.skill_ref === skillFilter)
+                  .filter((entry) => {
+                    if (sinceMs === undefined) return true;
+                    const createdAt = typeof entry.created_at === "string" ? Date.parse(entry.created_at) : NaN;
+                    return Number.isFinite(createdAt) && createdAt >= sinceMs;
+                  });
+
+                process.stdout.write(JSON.stringify({
+                  reflect_facts_packet: {
+                    items: filteredFacts,
+                  },
+                }));
+          artifacts:
+            named_emits:
+              reflect_facts_packet: reflect_facts
+        - id: group-reflect-facts
+          label: group reflect facts
+          context:
+            reflect_facts_packet: load-reflect-facts.reflect_facts_packet.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - -e
+              - |
+                const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+                const reflectFacts = Array.isArray(inputs.reflect_facts_packet?.items) ? inputs.reflect_facts_packet.items : [];
+                const parsedSupport = Number(inputs.min_support);
+                const parsedConfidence = Number(inputs.min_confidence);
+                const minSupport = Number.isFinite(parsedSupport) ? parsedSupport : 2;
+                const minConfidence = Number.isFinite(parsedConfidence) ? parsedConfidence : 0.5;
+                const grouped = new Map();
+
+                for (const fact of reflectFacts) {
+                  if (!fact || fact.entry_kind !== "fact" || fact.scope !== "reflect") {
+                    continue;
+                  }
+                  if (typeof fact.confidence !== "number" || fact.confidence < minConfidence) {
+                    continue;
+                  }
+                  const projection = fact.value;
+                  if (!projection || typeof projection !== "object") {
+                    continue;
+                  }
+                  const skillRef = typeof projection.skill_ref === "string" ? projection.skill_ref : undefined;
+                  if (!skillRef) {
+                    continue;
+                  }
+                  const current = grouped.get(skillRef) ?? {
+                    skill_ref: skillRef,
+                    support: 0,
+                    supporting_receipt_ids: [],
+                    facts: [],
+                  };
+                  current.support += 1;
+                  if (typeof fact.receipt_id === "string") {
+                    current.supporting_receipt_ids.push(fact.receipt_id);
+                  }
+                  current.facts.push(fact);
+                  grouped.set(skillRef, current);
+                }
+
+                const groupedReflections = Array.from(grouped.values())
+                  .filter((group) => group.support >= minSupport)
+                  .map((group) => ({
+                    ...group,
+                    supporting_receipt_ids: Array.from(new Set(group.supporting_receipt_ids)),
+                  }))
+                  .sort((left, right) => right.support - left.support || left.skill_ref.localeCompare(right.skill_ref));
+
+                process.stdout.write(JSON.stringify({
+                  grouped_reflections_packet: {
+                    items: groupedReflections,
+                  },
+                }));
+          artifacts:
+            named_emits:
+              grouped_reflections_packet: grouped_reflections
+        - id: draft-digest
+          label: draft grouped proposals
+          context:
+            grouped_reflections: group-reflect-facts.grouped_reflections_packet.data.items
+          run:
+            type: agent-step
+            agent: builder
+            task: reflect-digest
+            outputs:
+              proposals: array
+          instructions: >
+            Review the grouped_reflections input and draft at most one bounded
+            proposal packet per skill_ref. Emit only proposal packets that have
+            enough evidence to justify a later governed pull-request lane.
+            Every proposal must include skill_ref, supporting_receipt_ids,
+            draft_pull_request, and outbox_entry. Do not publish or push.

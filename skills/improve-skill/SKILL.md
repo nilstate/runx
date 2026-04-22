@@ -7,19 +7,19 @@ description: Turn a failed receipt or harness outcome into a bounded skill impro
 
 Review a failed or suspicious run and draft the next bounded improvement.
 
-This is a composite skill that chains `receipt-review` into `harness-author`.
+This is a composite skill that chains `review-receipt` into `write-harness`.
 It takes failure evidence — a receipt, harness output, or manual summary —
 diagnoses the root cause, and produces an updated skill proposal with
 replayable fixtures that cover the failure.
 
 ## What this skill does
 
-1. **Review the failure** (via `receipt-review`). Analyzes the receipt or
+1. **Review the failure** (via `review-receipt`). Analyzes the receipt or
    harness output to identify the root cause. Classifies the failure,
    distinguishes symptoms from root cause, and produces a verdict with
    bounded improvement proposals.
 
-2. **Author updated fixtures** (via `harness-author`). Takes the review
+2. **Author updated fixtures** (via `write-harness`). Takes the review
    output and drafts an updated skill spec, execution plan if needed,
    and harness fixtures that specifically cover the diagnosed failure.
    The new fixtures serve as acceptance checks for the fix.
@@ -33,8 +33,8 @@ replayable fixtures that cover the failure.
 
 ## When not to use this skill
 
-- For designing a new skill from scratch — use `objective-to-skill`.
-- For general research — use `skill-recon`.
+- For designing a new skill from scratch — use `design-skill`.
+- For general research — use `prior-art`.
 - When you already know the fix — just make the change directly.
 
 ## Improvement philosophy

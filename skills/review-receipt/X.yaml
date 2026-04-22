@@ -1,0 +1,93 @@
+skill: review-receipt
+version: "0.1.1"
+
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
+harness:
+  cases:
+    - name: review-receipt-diagnoses-context-flattening
+      inputs:
+        receipt_summary: Downstream step received JSON text instead of a structured object.
+        harness_output: Context edge pointed at stdout and flattened the payload.
+        skill_path: skills/design-skill
+      caller:
+        answers:
+          agent_step.review-receipt.output:
+            verdict: needs_update
+            failure_summary: Context edges are reading stdout instead of an artifact envelope, so structured data is flattened before the next step.
+            improvement_proposals:
+              - target: skills/design-skill/X.yaml
+                change: Emit a wrapped artifact from the upstream step and consume <step>.<artifact>.data in downstream context.
+                rationale: Preserves structured objects across governed graph steps.
+                risk: Existing tests that parse stdout-shaped context will need updates.
+            next_harness_checks:
+              - design-skill passes structured decomposition to prior-art
+              - improve-skill passes structured review data to write-harness
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: review-receipt
+            source_type: agent-step
+
+    - name: review-receipt-passes-on-paused-chain
+      inputs:
+        receipt_summary: Chain paused at step 1 awaiting caller cognitive work; status needs_resolution with one outstanding agent-step request.
+        harness_output: needs_resolution
+        skill_path: skills/research
+      caller:
+        answers:
+          agent_step.review-receipt.output:
+            verdict: pass
+            failure_summary: No failure. The chain paused at step 1 as designed, awaiting caller cognitive work; needs_resolution is a healthy agent-mediated suspension in runx, not a failure class.
+            improvement_proposals: []
+            next_harness_checks:
+              - target skill completes successfully on the happy path when valid agent outputs are supplied
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          subject:
+            skill_name: review-receipt
+            source_type: agent-step
+
+runners:
+  review-receipt-agent:
+    default: true
+    type: agent-step
+    runx:
+      post_run:
+        reflect: never
+    agent: reviewer
+    task: review-receipt
+    outputs:
+      verdict: string
+      failure_summary: string
+      improvement_proposals: array
+      next_harness_checks: array
+    artifacts:
+      wrap_as: review_receipt
+    inputs:
+      receipt_id:
+        type: string
+        required: false
+        description: "Receipt id to review when available."
+      receipt_summary:
+        type: string
+        required: false
+        description: "Sanitized receipt or harness summary."
+      harness_output:
+        type: string
+        required: false
+        description: "Sanitized failed harness output."
+      skill_path:
+        type: string
+        required: false
+        description: "Skill path being improved."
