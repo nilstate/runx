@@ -3,6 +3,7 @@ import {
   parseRunnerManifestYaml,
   parseSkillMarkdown,
   validateRunnerManifest,
+  type CatalogMetadata,
   validateSkill,
   type SkillRunnerManifest,
   type ValidatedSkill,
@@ -69,6 +70,7 @@ export function buildRegistrySkillVersion(markdown: string, options: IngestSkill
   const skill = validateSkill(raw, { mode: "strict" });
   const digest = hashString(markdown);
   const bindingArtifact = buildBindingArtifact(skill, options.profileDocument);
+  const catalog = resolveCatalogMetadata(bindingArtifact.manifest);
   const owner = options.owner ?? "local";
   const version = options.version ?? `sha-${defaultRegistryVersionSeed(digest, bindingArtifact.digest).slice(0, 12)}`;
   return {
@@ -83,6 +85,9 @@ export function buildRegistrySkillVersion(markdown: string, options: IngestSkill
     profile_digest: bindingArtifact.digest,
     runner_names: bindingArtifact.runnerNames,
     source_type: skill.source.type,
+    catalog_kind: catalog.kind,
+    catalog_audience: catalog.audience,
+    catalog_visibility: catalog.visibility,
     source_metadata: options.sourceMetadata,
     required_scopes: unique([...extractScopes(skill), ...extractRunnerScopes(bindingArtifact.manifest)]),
     runtime: skill.runtime ?? recordField(skill.runx, "runtime") ?? extractRunnerRuntime(bindingArtifact.manifest),
@@ -130,6 +135,14 @@ function defaultRegistryVersionSeed(markdownDigest: string, profileDigest: strin
     markdown_digest: markdownDigest,
     profile_digest: profileDigest,
   }));
+}
+
+function resolveCatalogMetadata(manifest: SkillRunnerManifest | undefined): CatalogMetadata {
+  return manifest?.catalog ?? {
+    kind: "skill",
+    audience: "public",
+    visibility: "public",
+  };
 }
 
 function extractScopes(skill: ValidatedSkill): readonly string[] {

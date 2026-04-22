@@ -1,6 +1,12 @@
 skill: improve-skill
 version: "0.1.0"
 
+catalog:
+  kind: chain
+  audience: builder
+  visibility: private
+
+
 harness:
   cases:
     - name: improve-skill-produces-regression-fixtures

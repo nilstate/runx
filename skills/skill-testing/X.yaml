@@ -1,6 +1,12 @@
 skill: skill-testing
 version: "0.1.0"
 
+catalog:
+  kind: chain
+  audience: public
+  visibility: public
+
+
 harness:
   cases:
     - name: skill-testing-publishes-trust-audit

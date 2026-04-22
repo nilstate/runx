@@ -1,6 +1,12 @@
 skill: content-pipeline
 version: "0.1.0"
 
+catalog:
+  kind: chain
+  audience: public
+  visibility: public
+
+
 harness:
   cases:
     - name: content-pipeline-approved-publish-packet

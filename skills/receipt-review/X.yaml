@@ -1,6 +1,12 @@
 skill: receipt-review
 version: "0.1.1"
 
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
 harness:
   cases:
     - name: receipt-review-diagnoses-context-flattening

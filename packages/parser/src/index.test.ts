@@ -481,6 +481,9 @@ describe("validateRunnerManifest", () => {
   it("validates A2A runner metadata outside the standard skill file", () => {
     const manifest = validateRunnerManifest(
       parseRunnerManifestYaml(`skill: a2a-echo
+catalog:
+  kind: skill
+  audience: public
 runners:
   fixture-a2a:
     type: a2a
@@ -496,6 +499,11 @@ runners:
     );
 
     expect(manifest.skill).toBe("a2a-echo");
+    expect(manifest.catalog).toEqual({
+      kind: "skill",
+      audience: "public",
+      visibility: "public",
+    });
     expect(manifest.runners["fixture-a2a"]).toMatchObject({
       name: "fixture-a2a",
       source: {
@@ -515,6 +523,10 @@ runners:
   it("validates optional inline harness cases", () => {
     const manifest = validateRunnerManifest(
       parseRunnerManifestYaml(`skill: evolve
+catalog:
+  kind: chain
+  audience: operator
+  visibility: private
 runners:
   evolve:
     type: agent
@@ -553,6 +565,21 @@ harness:
         },
       },
     ]);
+  });
+
+  it("rejects invalid catalog metadata", () => {
+    expect(() =>
+      validateRunnerManifest(
+        parseRunnerManifestYaml(`skill: bad-catalog
+catalog:
+  kind: workflow
+  audience: public
+runners:
+  default:
+    type: agent
+`),
+      ),
+    ).toThrow("catalog.kind must be skill or chain.");
   });
 
   it("projects optional execution semantics from runner manifests", () => {

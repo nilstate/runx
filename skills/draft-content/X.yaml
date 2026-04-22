@@ -1,6 +1,12 @@
 skill: draft-content
 version: "0.1.0"
 
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+
+
 harness:
   cases:
     - name: draft-content-produces-brief

@@ -1,6 +1,12 @@
 skill: objective-to-skill
 version: "0.1.0"
 
+catalog:
+  kind: chain
+  audience: builder
+  visibility: private
+
+
 harness:
   cases:
     - name: objective-to-skill-produces-structured-skill-packet

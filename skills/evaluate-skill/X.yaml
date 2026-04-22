@@ -1,6 +1,12 @@
 skill: evaluate-skill
 version: "0.1.0"
 
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
 harness:
   cases:
     - name: evaluate-skill-produces-trust-audit

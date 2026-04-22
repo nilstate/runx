@@ -1,6 +1,12 @@
 skill: moltbook-presence
 version: "0.1.0"
 
+catalog:
+  kind: chain
+  audience: operator
+  visibility: private
+
+
 harness:
   cases:
     - name: moltbook-presence-governed-post

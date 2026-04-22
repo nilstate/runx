@@ -1,6 +1,12 @@
 skill: skill-recon
 version: "0.1.0"
 
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
 harness:
   cases:
     - name: skill-recon-validates-proposed-flow

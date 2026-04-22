@@ -24,6 +24,7 @@ const officialSkillPackages = [
   "objective-to-skill",
   "open-source-triage",
   "receipt-review",
+  "release",
   "research",
   "scafld",
   "skill-recon",
@@ -49,6 +50,7 @@ const harnessedShowcasePackages = [
   "objective-to-skill",
   "open-source-triage",
   "receipt-review",
+  "release",
   "research",
   "scafld",
   "skill-recon",
@@ -63,7 +65,7 @@ describe("official skill catalog", () => {
     for (const skillName of officialSkillPackages) {
       const skillDir = path.resolve("skills", skillName);
       const skillMarkdownPath = path.join(skillDir, "SKILL.md");
-      const manifestPath = path.resolve("bindings", "runx", skillName, "X.yaml");
+      const manifestPath = path.join(skillDir, "X.yaml");
 
       expect(existsSync(skillDir)).toBe(true);
       expect(existsSync(skillMarkdownPath)).toBe(true);
@@ -73,6 +75,7 @@ describe("official skill catalog", () => {
       const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(manifestPath, "utf8")));
 
       expect(skill.name).toBe(skillName);
+      expect(manifest.catalog).toBeDefined();
       expect(Object.keys(manifest.runners).length).toBeGreaterThan(0);
     }
   });

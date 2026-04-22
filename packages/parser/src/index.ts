@@ -116,6 +116,16 @@ export interface SkillRunnerDefinition {
   readonly raw: Record<string, unknown>;
 }
 
+export type CatalogKind = "skill" | "chain";
+export type CatalogAudience = "public" | "builder" | "operator";
+export type CatalogVisibility = "public" | "private";
+
+export interface CatalogMetadata {
+  readonly kind: CatalogKind;
+  readonly audience: CatalogAudience;
+  readonly visibility: CatalogVisibility;
+}
+
 export interface HarnessCallerFixture {
   readonly answers?: Readonly<Record<string, unknown>>;
   readonly approvals?: Readonly<Record<string, boolean>>;
@@ -148,6 +158,7 @@ export interface RunnerHarnessManifest {
 
 export interface SkillRunnerManifest {
   readonly skill?: string;
+  readonly catalog?: CatalogMetadata;
   readonly runners: Readonly<Record<string, SkillRunnerDefinition>>;
   readonly harness?: RunnerHarnessManifest;
   readonly raw: RawRunnerManifestIR;
@@ -326,9 +337,35 @@ export function validateRunnerManifest(raw: RawRunnerManifestIR): SkillRunnerMan
 
   return {
     skill: optionalString(raw.document.skill, "skill"),
+    catalog: validateCatalogMetadata(optionalRecord(raw.document.catalog, "catalog"), "catalog"),
     runners,
     harness,
     raw,
+  };
+}
+
+function validateCatalogMetadata(value: Record<string, unknown> | undefined, label: string): CatalogMetadata | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const kind = requiredString(value.kind, `${label}.kind`);
+  const audience = requiredString(value.audience, `${label}.audience`);
+  const visibility = optionalString(value.visibility, `${label}.visibility`) ?? "public";
+
+  if (kind !== "skill" && kind !== "chain") {
+    throw new SkillValidationError(`${label}.kind must be skill or chain.`);
+  }
+  if (audience !== "public" && audience !== "builder" && audience !== "operator") {
+    throw new SkillValidationError(`${label}.audience must be public, builder, or operator.`);
+  }
+  if (visibility !== "public" && visibility !== "private") {
+    throw new SkillValidationError(`${label}.visibility must be public or private.`);
+  }
+
+  return {
+    kind,
+    audience,
+    visibility,
   };
 }
 

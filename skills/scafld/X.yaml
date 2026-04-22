@@ -1,6 +1,12 @@
 skill: scafld
 version: "0.1.0"
 
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+
+
 harness:
   cases:
     - name: scafld-review-boundary-yields-fresh-caller-request

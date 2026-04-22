@@ -35,6 +35,9 @@ export interface RegistrySkillVersion {
   readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly source_type: string;
+  readonly catalog_kind?: "skill" | "chain";
+  readonly catalog_audience?: "public" | "builder" | "operator";
+  readonly catalog_visibility?: "public" | "private";
   readonly source_metadata?: RegistrySourceMetadata;
   readonly required_scopes: readonly string[];
   readonly runtime?: unknown;
@@ -176,6 +179,9 @@ function normalizeRegistrySkillVersion(value: RegistrySkillVersion): RegistrySki
   return {
     ...value,
     runner_names: value.runner_names ?? [],
+    catalog_kind: value.catalog_kind ?? "skill",
+    catalog_audience: value.catalog_audience ?? "public",
+    catalog_visibility: value.catalog_visibility ?? "public",
     updated_at: value.updated_at ?? value.created_at,
   };
 }

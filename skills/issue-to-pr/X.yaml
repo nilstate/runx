@@ -1,6 +1,12 @@
 skill: issue-to-pr
 version: "0.1.5"
 
+catalog:
+  kind: chain
+  audience: public
+  visibility: public
+
+
 harness:
   cases:
     - name: issue-to-pr-dispatches-first-step

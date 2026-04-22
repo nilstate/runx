@@ -1,6 +1,12 @@
 skill: research
 version: "0.1.0"
 
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+
+
 harness:
   cases:
     - name: research-brief-packet

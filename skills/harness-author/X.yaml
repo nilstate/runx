@@ -1,6 +1,12 @@
 skill: harness-author
 version: "0.1.0"
 
+catalog:
+  kind: skill
+  audience: builder
+  visibility: private
+
+
 harness:
   cases:
     - name: harness-author-new-skill-fixtures
