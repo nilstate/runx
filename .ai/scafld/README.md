@@ -9,7 +9,7 @@ scafld is a spec-driven framework for AI agent task planning and execution. Ever
 ## How It Works
 
 1. **Plan:** AI generates a task spec in `.ai/specs/drafts/` via conversational ReAct loop
-2. **Harden (optional):** `scafld harden <task-id>` interrogates the draft one grounded question at a time. Every question and recommended answer cites a spec gap, a verified code location, or an archived precedent. Run on high-risk or ambiguous specs; skip on trivial ones.
+2. **Harden (optional):** `scafld harden <task-id>` interrogates the draft one question at a time. If the answer is already in the codebase, inspect the code instead of asking. Each recorded question carries a `grounded_in` value for the spec gap, verified code location, or archived precedent that made it worth asking. Run on high-risk or ambiguous specs; skip on trivial ones.
 3. **Approve:** Developer reviews and moves spec to `.ai/specs/approved/`. Approve does NOT consult harden status.
 4. **Execute:** AI picks up the approved spec, executes phases, validates at each checkpoint
 5. **Review:** Adversarial review finds what execution missed — `scafld review` runs the configured `spec_compliance` and `scope_drift` checks, scaffolds Review Artifact v3, and prepares the adversarial `regression_hunt`, `convention_check`, and `dark_patterns` passes in the latest round

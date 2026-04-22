@@ -72,8 +72,7 @@ modes:
 # Optional pre-approval interrogation phase. Operator-driven: `scafld approve`
 # does NOT gate on harden status. Only non-gating knobs live here.
 harden:
-  max_questions_per_round: 8   # cap per `scafld harden` invocation
-  grounding_required: true     # forbid ungrounded questions in the prompt
+  max_questions_per_round: 8   # cap per `scafld harden` invocation; not a target
 
 # =============================================================================
 # VALIDATION PIPELINES
@@ -199,7 +198,7 @@ review:
     scope_drift:
       order: 20
       title: "Scope Drift"
-      description: "Compare spec scope vs actual git diff and flag undeclared changes"
+      description: "Compare spec scope vs current workspace changes and flag undeclared changes"
 
   adversarial_passes:
     regression_hunt:

@@ -8,6 +8,7 @@ import {
   firstNonEmptyString,
   isRecord,
   optionalRecord,
+  pushGitHubMessage,
   pushGitHubPullRequest,
 } from "../github_adapter.mjs";
 
@@ -35,6 +36,7 @@ if (!thread) {
 const adapter = isRecord(thread.adapter) ? thread.adapter : {};
 const adapterType = firstNonEmptyString(adapter.type);
 const adapterRef = firstNonEmptyString(adapter.adapter_ref);
+const outboxKind = firstNonEmptyString(outboxEntry.kind);
 
 if (!adapterType) {
   throw new Error("thread.adapter.type is required.");
@@ -56,6 +58,46 @@ if (adapterType === "github") {
     }));
     process.exit(0);
   }
+  if (outboxKind === "message") {
+    const pushed = pushGitHubMessage({
+      thread,
+      outboxEntry,
+      workspacePath,
+      nextStatus,
+      env: process.env,
+    });
+    const refreshedState = fetchGitHubIssueThread({
+      adapterRef,
+      env: process.env,
+      cwd: workspacePath,
+    });
+    const refreshedOutboxEntry = selectMatchingOutboxEntry(
+      refreshedState,
+      pushed.outbox_entry,
+    ) ?? pushed.outbox_entry;
+
+    process.stdout.write(JSON.stringify({
+      draft_pull_request: draftPullRequest,
+      outbox_entry: refreshedOutboxEntry,
+      thread: refreshedState,
+      push: {
+        status: "pushed",
+        adapter: {
+          type: adapterType,
+          adapter_ref: adapterRef,
+        },
+        pushed_at: firstNonEmptyString(optionalRecord(refreshedOutboxEntry.metadata)?.pushed_at),
+        message: {
+          locator: firstNonEmptyString(
+            refreshedOutboxEntry.locator,
+            optionalRecord(refreshedOutboxEntry.metadata)?.locator,
+          ),
+          comment_id: firstNonEmptyString(optionalRecord(refreshedOutboxEntry.metadata)?.comment_id),
+        },
+      },
+    }));
+    process.exit(0);
+  }
   if (!workspacePath) {
     process.stdout.write(JSON.stringify({
       draft_pull_request: draftPullRequest,
@@ -64,6 +106,22 @@ if (adapterType === "github") {
       push: {
         status: "skipped",
         reason: "workspace_path is required for the GitHub thread adapter.",
+        adapter: {
+          type: adapterType,
+          adapter_ref: adapterRef,
+        },
+      },
+    }));
+    process.exit(0);
+  }
+  if (outboxKind !== "pull_request") {
+    process.stdout.write(JSON.stringify({
+      draft_pull_request: draftPullRequest,
+      outbox_entry: outboxEntry,
+      thread: thread,
+      push: {
+        status: "skipped",
+        reason: `GitHub thread adapter does not support outbox kind '${outboxKind}'.`,
         adapter: {
           type: adapterType,
           adapter_ref: adapterRef,

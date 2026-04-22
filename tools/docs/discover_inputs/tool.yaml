@@ -1,0 +1,17 @@
+name: docs.discover_inputs
+description: Discover bounded Sourcey-compatible docs inputs for one explicit repository target.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - ./run.mjs
+inputs:
+  repo_root:
+    type: string
+    required: false
+    description: Repository root to inspect; defaults to project, fixture, RUNX_CWD, or the current working directory.
+scopes:
+  - docs.read
+runx:
+  artifacts:
+    wrap_as: docs_input_candidates

@@ -1,15 +1,15 @@
 {
   "managed_assets": {
     ".ai/scafld/OPERATORS.md": {
-      "sha256": "adcfc7d3c6855592e77df1f5fa9575e51c951f27c45ea905e39edceba73a244c",
+      "sha256": "d0d7e149cf4bfbd827aafb560f4a9aedb35d2462e96f735f30d25030dbd44d6d",
       "source": ".ai/OPERATORS.md"
     },
     ".ai/scafld/README.md": {
-      "sha256": "a2fc41a54f1a862fc197800503b0176771f7d384087c66215098d11da283f311",
+      "sha256": "994de441a03e213303514abe6c27b85e6791f5ab05c38d92b0fc5ea2c7e59e4d",
       "source": ".ai/README.md"
     },
     ".ai/scafld/config.yaml": {
-      "sha256": "9242459b820acdb35cf84d080a793e916003f32211c18fb7bd3fac219567d6b6",
+      "sha256": "e4c22e5bec6097a507847df522be5d837664292201b08e8077c53919520bc1ab",
       "source": ".ai/config.yaml"
     },
     ".ai/scafld/prompts/exec.md": {
@@ -17,7 +17,7 @@
       "source": ".ai/prompts/exec.md"
     },
     ".ai/scafld/prompts/harden.md": {
-      "sha256": "57c1c3f1bac5eba042c91c8284064bc3f89c1f296b1aedfcce5485a4ac1e26cb",
+      "sha256": "91119bab1bff4a6166253219ce7be7eb6f3afce3c7a1b87a8f6c18ba59e7dc02",
       "source": ".ai/prompts/harden.md"
     },
     ".ai/scafld/prompts/plan.md": {
@@ -29,7 +29,7 @@
       "source": ".ai/prompts/review.md"
     },
     ".ai/scafld/schemas/spec.json": {
-      "sha256": "fc3d3bd91614ff24942a1d7b9be4cfb556cecd86fc3751f295f2db1eefbc7b5e",
+      "sha256": "c3ff2dc423d4538c58cec1ef1f7095b4d6070aa35c4b31f761436deb8d6e4e49",
       "source": ".ai/schemas/spec.json"
     },
     ".ai/scafld/specs/README.md": {
@@ -41,9 +41,9 @@
       "source": ".ai/specs/examples/add-error-codes.yaml"
     }
   },
-  "scafld_version": "1.4.6",
+  "scafld_version": "1.5.1",
   "schema_version": 1,
-  "source_commit": "e6b4483af95390aaa42d023715ab1af7c2215d4c",
+  "source_commit": "2397a68631b2b3befe2c1c30bb9760e3b84bc4ad",
   "source_dirty": false,
   "workspace_config_mode": "legacy_overlay"
 }

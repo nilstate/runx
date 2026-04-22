@@ -1,0 +1,25 @@
+name: docs.detect_stack
+description: Detect the incumbent documentation stack for one explicit repository target.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - ./run.mjs
+inputs:
+  repo_root:
+    type: string
+    required: false
+    description: Repository root to inspect; defaults to project, fixture, RUNX_CWD, or the current working directory.
+  repo_url:
+    type: string
+    required: false
+    description: Canonical repository URL to echo into the bounded scan result when known.
+  docs_url:
+    type: string
+    required: false
+    description: Existing docs URL to echo into the bounded scan result when known.
+scopes:
+  - docs.read
+runx:
+  artifacts:
+    wrap_as: stack_detection

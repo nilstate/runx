@@ -122,6 +122,58 @@ describe("GitHub thread helper", () => {
     });
   });
 
+  it("maps runx-marked GitHub issue comments back into message outbox entries", () => {
+    const state = hydrateGitHubIssueThread({
+      adapterRef: "example/repo#issue/123",
+      issue: {
+        number: 123,
+        title: "Sourcey adoption thread",
+        body: "Issue body.",
+        url: "https://github.com/example/repo/issues/123",
+        state: "OPEN",
+        createdAt: "2026-04-22T00:00:00Z",
+        updatedAt: "2026-04-22T01:00:00Z",
+        comments: [
+          {
+            id: "1002",
+            body: [
+              "I built a private Sourcey preview for this repo.",
+              "",
+              "<!-- runx-outbox-entry: sourcey-preview-123 -->",
+              "",
+            ].join("\n"),
+            createdAt: "2026-04-22T00:30:00Z",
+            updatedAt: "2026-04-22T00:30:00Z",
+            url: "https://github.com/example/repo/issues/123#issuecomment-1002",
+            author: {
+              login: "runx-bot",
+            },
+          },
+        ],
+      },
+      pullRequests: [],
+    });
+
+    expect(state.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entry_id: "comment-1002",
+        body: "I built a private Sourcey preview for this repo.",
+      }),
+    ]));
+    expect(state.outbox).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entry_id: "sourcey-preview-123",
+        kind: "message",
+        locator: "https://github.com/example/repo/issues/123#issuecomment-1002",
+        status: "published",
+        metadata: expect.objectContaining({
+          comment_id: "1002",
+          channel: "github_issue_comment",
+        }),
+      }),
+    ]));
+  });
+
   it("prefers the live branch-matching pull request when several candidates exist", () => {
     const selected = selectPreferredGitHubPullRequest([
       {

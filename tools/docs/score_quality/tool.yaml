@@ -1,0 +1,45 @@
+name: docs.score_quality
+description: Score a repository's docs surface and emit a bounded docs scan packet for Sourcey preview decisions.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - ./run.mjs
+inputs:
+  repo_root:
+    type: string
+    required: false
+    description: Repository root to inspect; defaults to project, fixture, RUNX_CWD, or the current working directory.
+  repo_url:
+    type: string
+    required: false
+    description: Canonical repository URL when known.
+  docs_url:
+    type: string
+    required: false
+    description: Existing docs URL when known.
+  default_branch:
+    type: string
+    required: false
+    description: Optional default branch for the target repo.
+  objective:
+    type: string
+    required: false
+    description: Optional scan objective to echo into the packet metadata.
+  scan_context:
+    type: string
+    required: false
+    description: Optional operator-authored scan context to echo into the packet metadata.
+  stack_detection:
+    type: json
+    required: true
+    description: Stack detection artifact emitted by docs.detect_stack.
+  docs_input_candidates:
+    type: json
+    required: true
+    description: Docs input candidates emitted by docs.discover_inputs.
+scopes:
+  - docs.read
+runx:
+  artifacts:
+    wrap_as: docs_scan_packet

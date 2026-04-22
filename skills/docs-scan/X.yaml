@@ -1,0 +1,77 @@
+skill: docs-scan
+version: "0.1.0"
+
+catalog:
+  kind: chain
+  audience: public
+  visibility: public
+
+
+harness:
+  cases:
+    - name: docs-scan-existing-sourcey-surface
+      inputs:
+        repo_root: fixtures/sourcey/basic
+        repo_url: https://github.com/sourcey/sourcey-basic-fixture
+      expect:
+        status: success
+
+    - name: docs-scan-openapi-adoption-target
+      inputs:
+        repo_root: fixtures/docs/scan/openapi-adoption
+        repo_url: https://github.com/example/openapi-adoption
+      expect:
+        status: success
+
+
+runners:
+  docs-scan:
+    default: true
+    type: chain
+    inputs:
+      repo_root:
+        type: string
+        required: false
+        description: "Repository root to inspect; defaults to project, fixture, RUNX_CWD, or the current working directory."
+      repo_url:
+        type: string
+        required: false
+        description: "Canonical repository URL when known."
+      docs_url:
+        type: string
+        required: false
+        description: "Existing docs URL when known."
+      default_branch:
+        type: string
+        required: false
+        description: "Default branch for the target repo."
+      objective:
+        type: string
+        required: false
+        description: "Optional operator objective for the bounded scan."
+      scan_context:
+        type: string
+        required: false
+        description: "Optional operator-authored bounded scan context."
+    chain:
+      name: docs-scan
+      owner: runx
+      steps:
+        - id: detect-stack
+          label: detect incumbent docs stack
+          tool: docs.detect_stack
+          scopes:
+            - docs.read
+        - id: discover-inputs
+          label: discover bounded docs inputs
+          tool: docs.discover_inputs
+          scopes:
+            - docs.read
+        - id: score-quality
+          label: score docs quality and preview fit
+          tool: docs.score_quality
+          scopes:
+            - docs.read
+          context:
+            stack_detection: detect-stack.stack_detection.data
+            docs_input_candidates: discover-inputs.docs_input_candidates.data.candidates

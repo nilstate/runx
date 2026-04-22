@@ -1,0 +1,33 @@
+{
+  "schema_version": "runx.knowledge.v1",
+  "entries": [
+    {
+      "entry_id": "receipt_rx_afebf2a0347d436da538d8cd41019259",
+      "entry_kind": "receipt",
+      "receipt_id": "rx_afebf2a0347d436da538d8cd41019259",
+      "kind": "skill_execution",
+      "status": "success",
+      "execution_ref": "evolve.validate-mode",
+      "source_type": "cli-tool",
+      "receipt_path": "/tmp/proving-ground-evolve-fg3SNv/receipts/rx_afebf2a0347d436da538d8cd41019259.json",
+      "project": "/home/kam/dev/runx/oss",
+      "started_at": "2026-04-22T13:14:56.713Z",
+      "completed_at": "2026-04-22T13:14:57.117Z",
+      "indexed_at": "2026-04-22T13:14:57.187Z"
+    },
+    {
+      "entry_id": "receipt_rx_9c1f4ac3ecf24fe485bcd95fe054756b",
+      "entry_kind": "receipt",
+      "receipt_id": "rx_9c1f4ac3ecf24fe485bcd95fe054756b",
+      "kind": "skill_execution",
+      "status": "success",
+      "execution_ref": "evolve.preflight",
+      "source_type": "cli-tool",
+      "receipt_path": "/tmp/proving-ground-evolve-fg3SNv/receipts/rx_9c1f4ac3ecf24fe485bcd95fe054756b.json",
+      "project": "/home/kam/dev/runx/oss",
+      "started_at": "2026-04-22T13:14:57.209Z",
+      "completed_at": "2026-04-22T13:14:57.701Z",
+      "indexed_at": "2026-04-22T13:14:57.756Z"
+    }
+  ]
+}

@@ -63,7 +63,7 @@ scafld list                      # show all specs
 scafld list active               # filter by status
 scafld status my-task            # show details + phase progress
 scafld validate my-task          # check against schema
-scafld harden my-task            # optional: interrogate draft one grounded question at a time
+scafld harden my-task            # optional: interrogate draft upstream-first; inspect code before asking
 scafld harden my-task --mark-passed   # close the latest hardening round
 scafld approve my-task           # drafts/ -> approved/ (does not require harden)
 scafld start my-task             # approved/ -> active/

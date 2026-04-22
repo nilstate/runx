@@ -102,6 +102,45 @@ export function gitHubIssueSearchQuery(issueRef) {
   return `"${gitHubIssueReferenceMarker(issueRef)}" in:body`;
 }
 
+export function gitHubOutboxEntryMarker(entryId) {
+  const normalized = firstNonEmptyString(entryId);
+  if (!normalized) {
+    throw new Error("outbox entry id is required.");
+  }
+  return `<!-- runx-outbox-entry: ${normalized} -->`;
+}
+
+export function parseGitHubOutboxEntryMarker(value) {
+  const text = firstNonEmptyText(value);
+  if (!text) {
+    return undefined;
+  }
+  const match = text.match(/<!--\s*runx-outbox-entry:\s*([^>\n]+?)\s*-->/i);
+  return firstNonEmptyString(match?.[1]);
+}
+
+export function ensureGitHubOutboxEntryMarker(bodyMarkdown, entryId) {
+  const body = firstNonEmptyText(bodyMarkdown) ?? "";
+  const marker = gitHubOutboxEntryMarker(entryId);
+  if (body.includes(marker)) {
+    return body;
+  }
+  const trimmed = body.trimEnd();
+  return trimmed.length > 0 ? `${trimmed}\n\n${marker}\n` : `${marker}\n`;
+}
+
+export function stripGitHubOutboxEntryMarker(value) {
+  const text = firstNonEmptyText(value);
+  if (!text) {
+    return undefined;
+  }
+  const stripped = text
+    .replace(/<!--\s*runx-outbox-entry:\s*([^>\n]+?)\s*-->\s*/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return stripped.length > 0 ? stripped : undefined;
+}
+
 export function parseGitHubPullRequestNumber(value) {
   const text = firstNonEmptyString(value);
   if (!text) {
@@ -190,9 +229,10 @@ export function hydrateGitHubIssueThread({ adapterRef, issue, pullRequests }) {
     repo: issueRef.repo_slug,
   }));
   const entries = [];
+  const messageOutbox = [];
   const createdAt = firstNonEmptyString(issueRecord.createdAt) ?? new Date().toISOString();
   const updatedAt = firstNonEmptyString(issueRecord.updatedAt, createdAt);
-  const issueBody = firstNonEmptyText(issueRecord.body);
+  const issueBody = stripGitHubOutboxEntryMarker(firstNonEmptyText(issueRecord.body));
 
   if (issueBody) {
     entries.push(prune({
@@ -213,18 +253,27 @@ export function hydrateGitHubIssueThread({ adapterRef, issue, pullRequests }) {
   for (const comment of comments) {
     const commentId = firstNonEmptyString(comment.id, comment.databaseId, comment.url, `${entries.length + 1}`);
     const recordedAt = firstNonEmptyString(comment.createdAt, comment.updatedAt, updatedAt) ?? updatedAt;
+    const outboxEntryId = parseGitHubOutboxEntryMarker(comment.body);
+    const commentBody = stripGitHubOutboxEntryMarker(firstNonEmptyText(comment.body));
     entries.push(prune({
       entry_id: `comment-${commentId}`,
       entry_kind: "message",
       recorded_at: recordedAt,
       actor: normalizeGitHubActor(comment.author),
-      body: firstNonEmptyText(comment.body),
+      body: commentBody,
       source_ref: prune({
         type: "github_issue_comment",
         uri: firstNonEmptyString(comment.url, issueRef.issue_url),
         recorded_at: recordedAt,
       }),
     }));
+    if (outboxEntryId) {
+      messageOutbox.push(mapGitHubCommentToOutboxEntry(
+        comment,
+        issueRef.thread_locator,
+        outboxEntryId,
+      ));
+    }
   }
 
   const sourceRefs = [
@@ -261,8 +310,11 @@ export function hydrateGitHubIssueThread({ adapterRef, issue, pullRequests }) {
     }),
     entries,
     decisions: [],
-    outbox: normalizedPullRequests.map((pullRequest) =>
-      mapGitHubPullRequestToOutboxEntry(pullRequest, issueRef.thread_locator)),
+    outbox: [
+      ...messageOutbox,
+      ...normalizedPullRequests.map((pullRequest) =>
+        mapGitHubPullRequestToOutboxEntry(pullRequest, issueRef.thread_locator)),
+    ],
     source_refs: sourceRefs,
     generated_at: new Date().toISOString(),
     watermark: firstNonEmptyString(
@@ -447,6 +499,69 @@ export function pushGitHubPullRequest({
   };
 }
 
+export function pushGitHubMessage({
+  thread,
+  outboxEntry,
+  workspacePath,
+  nextStatus,
+  env,
+}) {
+  const state = asRecord(thread, "thread");
+  const outbox = asRecord(outboxEntry, "outbox_entry");
+  const metadata = optionalRecord(outbox.metadata) ?? {};
+  const issueRef = parseGitHubIssueRef(
+    optionalRecord(state.adapter)?.adapter_ref,
+    state.canonical_uri,
+    state.thread_locator,
+  );
+  const repoSlug = firstNonEmptyString(optionalRecord(state.metadata)?.repo, issueRef.repo_slug);
+  const bodyMarkdown = firstNonEmptyText(metadata.body_markdown, metadata.body);
+  const commentId = firstNonEmptyString(metadata.comment_id);
+  const locator = firstNonEmptyString(outbox.locator);
+  const shouldPublish = !commentId && !locator;
+
+  if (!repoSlug) {
+    throw new Error("GitHub issue repo slug is required to push a message outbox entry.");
+  }
+  if (!bodyMarkdown) {
+    throw new Error("outbox_entry.metadata.body_markdown is required for GitHub message push.");
+  }
+
+  if (shouldPublish) {
+    runCommand(resolveGhBinary(env), [
+      "issue",
+      "comment",
+      issueRef.issue_number,
+      "--repo",
+      repoSlug,
+      "--body",
+      ensureGitHubOutboxEntryMarker(bodyMarkdown, outbox.entry_id),
+    ], {
+      cwd: workspacePath ?? process.cwd(),
+      env,
+    });
+  }
+
+  return {
+    outbox_entry: prune({
+      ...outbox,
+      status: firstNonEmptyString(nextStatus, outbox.status, "published"),
+      thread_locator: firstNonEmptyString(outbox.thread_locator, state.thread_locator, issueRef.thread_locator),
+      metadata: prune({
+        ...metadata,
+        schema_version: firstNonEmptyString(metadata.schema_version, "runx.outbox-entry.message.v1"),
+        channel: firstNonEmptyString(metadata.channel, "github_issue_comment"),
+        body_markdown: bodyMarkdown,
+        pushed_at: shouldPublish ? new Date().toISOString() : firstNonEmptyString(metadata.pushed_at),
+      }),
+    }),
+    message: prune({
+      locator,
+      comment_id: commentId,
+    }),
+  };
+}
+
 export function resolveGhBinary(env) {
   return firstNonEmptyString(env?.RUNX_GH_BIN, process.env.RUNX_GH_BIN, "gh");
 }
@@ -495,6 +610,29 @@ function buildGitHubIssueCursor(issue, comments, pullRequests) {
 
 function normalizeGitHubPullRequestArray(value) {
   return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function mapGitHubCommentToOutboxEntry(comment, threadLocator, entryId) {
+  const commentRecord = asRecord(comment, "comment");
+  const commentId = firstNonEmptyString(commentRecord.id, commentRecord.databaseId);
+  const recordedAt = firstNonEmptyString(commentRecord.updatedAt, commentRecord.createdAt);
+  const body = stripGitHubOutboxEntryMarker(firstNonEmptyText(commentRecord.body));
+
+  return prune({
+    entry_id: entryId,
+    kind: "message",
+    locator: firstNonEmptyString(commentRecord.url),
+    status: "published",
+    thread_locator: threadLocator,
+    metadata: prune({
+      schema_version: "runx.outbox-entry.message.v1",
+      channel: "github_issue_comment",
+      comment_id: commentId,
+      author: firstNonEmptyString(optionalRecord(commentRecord.author)?.login),
+      body_markdown: body,
+      updated_at: recordedAt,
+    }),
+  });
 }
 
 function dedupeGitHubPullRequests(pullRequests) {

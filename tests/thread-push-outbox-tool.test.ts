@@ -156,6 +156,7 @@ describe("thread.push_outbox tool", () => {
           },
           pulls: [],
           nextPullNumber: 77,
+          nextCommentId: 1000,
         }, null, 2)}\n`,
       );
       await writeFakeGhScript(fakeGh);
@@ -263,7 +264,132 @@ describe("thread.push_outbox tool", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
+
+  it("pushes a GitHub issue comment for a message outbox entry and returns the refreshed thread", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-message-tool-"));
+    const fakeGh = path.join(tempDir, "fake-gh.mjs");
+    const fakeState = path.join(tempDir, "fake-gh-state.json");
+
+    try {
+      await writeFile(
+        fakeState,
+        `${JSON.stringify({
+          issue: {
+            number: 123,
+            title: "Sourcey adoption thread",
+            body: "Initial issue body.",
+            url: "https://github.com/example/repo/issues/123",
+            state: "OPEN",
+            createdAt: "2026-04-22T00:00:00Z",
+            updatedAt: "2026-04-22T00:00:00Z",
+            author: {
+              login: "maintainer",
+            },
+            comments: [],
+            labels: [],
+            closedByPullRequestsReferences: [],
+          },
+          pulls: [],
+          nextPullNumber: 77,
+          nextCommentId: 1000,
+        }, null, 2)}\n`,
+      );
+      await writeFakeGhScript(fakeGh);
+
+      const result = runTool({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "sourcey-preview-123",
+          kind: "message",
+          title: "Sourcey preview ready",
+          status: "proposed",
+          thread_locator: "github://example/repo/issues/123",
+          metadata: {
+            schema_version: "runx.outbox-entry.message.v1",
+            channel: "github_issue_comment",
+            body_markdown: "I built a private Sourcey preview for this repo.",
+          },
+        },
+        next_status: "published",
+      }, {
+        RUNX_GH_BIN: fakeGh,
+        RUNX_FAKE_GH_STATE: fakeState,
+      });
+
+      expect(result).toMatchObject({
+        outbox_entry: {
+          entry_id: "sourcey-preview-123",
+          kind: "message",
+          locator: "https://github.com/example/repo/issues/123#issuecomment-1000",
+          status: "published",
+          thread_locator: "github://example/repo/issues/123",
+          metadata: {
+            comment_id: "1000",
+            channel: "github_issue_comment",
+          },
+        },
+        thread: {
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          outbox: [
+            {
+              entry_id: "sourcey-preview-123",
+              kind: "message",
+              locator: "https://github.com/example/repo/issues/123#issuecomment-1000",
+              status: "published",
+            },
+          ],
+        },
+        push: {
+          status: "pushed",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          message: {
+            locator: "https://github.com/example/repo/issues/123#issuecomment-1000",
+            comment_id: "1000",
+          },
+        },
+      });
+      expect(result.thread.entries).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          entry_id: "comment-1000",
+          body: "I built a private Sourcey preview for this repo.",
+        }),
+      ]));
+
+      expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        issue: {
+          comments: [
+            {
+              id: "1000",
+              body: expect.stringContaining("I built a private Sourcey preview for this repo."),
+              url: "https://github.com/example/repo/issues/123#issuecomment-1000",
+            },
+          ],
+        },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
 });
 
 function runTool(inputs: Readonly<Record<string, unknown>>, envOverrides: NodeJS.ProcessEnv = {}) {
@@ -314,6 +440,29 @@ const state = JSON.parse(readFileSync(statePath, "utf8"));
 
 if (args[0] === "issue" && args[1] === "view") {
   process.stdout.write(JSON.stringify(state.issue));
+  process.exit(0);
+}
+
+if (args[0] === "issue" && args[1] === "comment") {
+  const issueNumber = args[2];
+  const repo = readFlag(args, "--repo");
+  const body = readFlag(args, "--body");
+  const id = String(state.nextCommentId ?? 1000);
+  state.nextCommentId = Number(id) + 1;
+  const comment = {
+    id,
+    body,
+    createdAt: "2026-04-22T01:00:00Z",
+    updatedAt: "2026-04-22T01:00:00Z",
+    url: \`https://github.com/\${repo}/issues/\${issueNumber}#issuecomment-\${id}\`,
+    author: {
+      login: "runx-bot",
+    },
+  };
+  state.issue.comments.push(comment);
+  state.issue.updatedAt = "2026-04-22T01:00:00Z";
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.stdout.write(\`\${comment.url}\\n\`);
   process.exit(0);
 }
 
