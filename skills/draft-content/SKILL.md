@@ -5,7 +5,7 @@ description: Turn evidence and operator intent into publication-ready drafts and
 
 # Draft Content
 
-Write one bounded piece of content from supplied evidence and a clear objective.
+Write one bounded piece of content from available evidence and a clear objective.
 
 This skill is for drafting useful public artifacts: ecosystem briefs, trust
 reports, release notes, maintainer updates, or social posts. It should never
@@ -24,6 +24,8 @@ The draft should look like a human maintainer or operator did the work:
   receipts, issue threads, amendments, or machine packets into the public body
 - match the target project's vocabulary and voice instead of defaulting to
   generic AI, launch, preview, migration, or adoption language
+- never describe the work as machine output, agent output, or AI-generated
+  content; the surfaced draft should read like a maintainer-owned artifact
 - prefer one sharp page, brief, or update over several thin sections
 - if the evidence is not strong enough to publish, return a narrow handoff or
   `needs_more_evidence` state instead of filling the gap with plausible prose

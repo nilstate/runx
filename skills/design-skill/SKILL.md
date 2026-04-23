@@ -30,8 +30,11 @@ review for the catalog:
   turn them into the reader-facing proposal body
 - avoid builder-internal language such as "supplied decomposition",
   "supplied work-plan", "supplied catalog", `UNRESOLVED_*` placeholders,
-  issue-number-specific contract fields, or repo-local path hedging that would
-  look wrong in a first-party proposal
+  "machine output", "agent output", "model output", issue-number-specific
+  contract fields, or repo-local path hedging that would look wrong in a
+  first-party proposal
+- never write "the machine should" or similar instruction-framing in proposal
+  prose; name what the skill gives the maintainer or operator
 - write from the maintainer's viewpoint: "Compared with issue-triage, this
   skill owns..." not "Based on the supplied catalog..."
 - never use `supplied` or `envelope` in reader-facing proposal fields; replace

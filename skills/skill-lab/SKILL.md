@@ -35,7 +35,10 @@ proposal should:
   prose
 - surface the remaining maintainer decisions cleanly
 - avoid builder-source framing such as "supplied work-plan", "supplied
-  catalog", "supplied decomposition", "agent output", or "model output"
+  catalog", "supplied decomposition", "machine output", "agent output", or
+  "model output"
+- never write "the machine should" or similar instruction-framing in proposal
+  prose; name the maintainer artifact, decision, or workflow improvement
 - write catalog fit from the maintainer's point of view: name the adjacent
   skill or chain and the boundary directly
 - never use `supplied` or `envelope` in proposal prose; if provenance is thin,
