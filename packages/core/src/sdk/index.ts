@@ -73,6 +73,7 @@ export interface RunxSdkOptions {
   readonly authResolver?: AuthResolver;
   readonly allowedSourceTypes?: readonly string[];
   readonly adapters?: readonly SkillAdapter[];
+  readonly voiceProfilePath?: string;
 }
 
 export interface RunSkillOptions {
@@ -88,6 +89,7 @@ export interface RunSkillOptions {
   readonly allowedSourceTypes?: readonly string[];
   readonly resumeFromRunId?: string;
   readonly adapters?: readonly SkillAdapter[];
+  readonly voiceProfilePath?: string;
 }
 
 export interface SearchSkillsOptions {
@@ -154,6 +156,7 @@ export class RunxSdk {
       authResolver: options.authResolver ?? this.options.authResolver,
       resumeFromRunId: options.resumeFromRunId,
       adapters: options.adapters ?? this.options.adapters,
+      voiceProfilePath: options.voiceProfilePath ?? this.options.voiceProfilePath,
     });
   }
 

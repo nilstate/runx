@@ -31,6 +31,13 @@ export interface ToolFailure {
   readonly [failureMarker]: true;
 }
 
+export interface ToolOutputDefinition extends Readonly<Record<string, unknown>> {
+  readonly packet?: string;
+  readonly wrap_as?: string;
+  readonly named_emits?: Readonly<Record<string, string>>;
+  readonly outputs?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+}
+
 export interface ToolDefinition<
   Inputs extends Record<string, InputParser<unknown>> = Record<string, InputParser<unknown>>,
   Output = unknown,
@@ -40,10 +47,7 @@ export interface ToolDefinition<
   readonly description?: string;
   readonly schema?: string;
   readonly inputs?: Inputs;
-  readonly output?: {
-    readonly packet?: string;
-    readonly wrap_as?: string;
-  };
+  readonly output?: ToolOutputDefinition;
   readonly scopes?: readonly string[];
   readonly source?: Readonly<Record<string, unknown>>;
   run(args: {
@@ -122,10 +126,46 @@ export function failure(output: unknown, options: { readonly exitCode?: number; 
   };
 }
 
-export function artifact<T = unknown>(options: { readonly optional?: boolean } = {}): InputParser<T | undefined> {
+interface InputDescriptionOption {
+  readonly description?: string;
+}
+
+interface OptionalInputOption extends InputDescriptionOption {
+  readonly optional?: boolean;
+}
+
+interface StringInputOptions extends OptionalInputOption {
+  readonly default?: string;
+}
+
+interface NumberInputOptions extends OptionalInputOption {
+  readonly default?: number;
+}
+
+interface BooleanInputOptions extends OptionalInputOption {
+  readonly default?: boolean;
+}
+
+interface JsonInputOptions<T> extends OptionalInputOption {
+  readonly default?: T;
+}
+
+function addManifestDescription(
+  manifest: Readonly<Record<string, unknown>>,
+  description: string | undefined,
+): Readonly<Record<string, unknown>> {
+  return typeof description === "string" && description.trim().length > 0
+    ? { ...manifest, description }
+    : manifest;
+}
+
+export function artifact<T = unknown>(options: OptionalInputOption = {}): InputParser<T | undefined> {
   return {
     optional: options.optional === true,
-    manifest: { type: "json", required: options.optional !== true, artifact: true },
+    manifest: addManifestDescription(
+      { type: "json", required: options.optional !== true, artifact: true },
+      options.description,
+    ),
     parse(value, label) {
       if (value === undefined || value === null) {
         if (options.optional === true) {
@@ -138,18 +178,18 @@ export function artifact<T = unknown>(options: { readonly optional?: boolean } =
   };
 }
 
-export function optionalArtifact<T = unknown>(): InputParser<T | undefined> {
-  return artifact<T>({ optional: true });
+export function optionalArtifact<T = unknown>(options: InputDescriptionOption = {}): InputParser<T | undefined> {
+  return artifact<T>({ ...options, optional: true });
 }
 
-export function stringInput(options: { readonly optional?: boolean; readonly default?: string } = {}): InputParser<string | undefined> {
+export function stringInput(options: StringInputOptions = {}): InputParser<string | undefined> {
   return {
     optional: options.optional === true || options.default !== undefined,
-    manifest: {
+    manifest: addManifestDescription({
       type: "string",
       required: options.optional !== true && options.default === undefined,
       ...(options.default !== undefined ? { default: options.default } : {}),
-    },
+    }, options.description),
     parse(value, label) {
       const resolved = value ?? options.default;
       if (resolved === undefined || resolved === null || resolved === "") {
@@ -163,14 +203,14 @@ export function stringInput(options: { readonly optional?: boolean; readonly def
   };
 }
 
-export function numberInput(options: { readonly optional?: boolean; readonly default?: number } = {}): InputParser<number | undefined> {
+export function numberInput(options: NumberInputOptions = {}): InputParser<number | undefined> {
   return {
     optional: options.optional === true || options.default !== undefined,
-    manifest: {
+    manifest: addManifestDescription({
       type: "number",
       required: options.optional !== true && options.default === undefined,
       ...(options.default !== undefined ? { default: options.default } : {}),
-    },
+    }, options.description),
     parse(value, label) {
       const resolved = value ?? options.default;
       if (resolved === undefined || resolved === null || resolved === "") {
@@ -188,14 +228,14 @@ export function numberInput(options: { readonly optional?: boolean; readonly def
   };
 }
 
-export function booleanInput(options: { readonly optional?: boolean; readonly default?: boolean } = {}): InputParser<boolean | undefined> {
+export function booleanInput(options: BooleanInputOptions = {}): InputParser<boolean | undefined> {
   return {
     optional: options.optional === true || options.default !== undefined,
-    manifest: {
+    manifest: addManifestDescription({
       type: "boolean",
       required: options.optional !== true && options.default === undefined,
       ...(options.default !== undefined ? { default: options.default } : {}),
-    },
+    }, options.description),
     parse(value, label) {
       const resolved = value ?? options.default;
       if (resolved === undefined || resolved === null || resolved === "") {
@@ -221,14 +261,14 @@ export function booleanInput(options: { readonly optional?: boolean; readonly de
   };
 }
 
-export function jsonInput<T = unknown>(options: { readonly optional?: boolean; readonly default?: T } = {}): InputParser<T | undefined> {
+export function jsonInput<T = unknown>(options: JsonInputOptions<T> = {}): InputParser<T | undefined> {
   return {
     optional: options.optional === true || options.default !== undefined,
-    manifest: {
+    manifest: addManifestDescription({
       type: "json",
       required: options.optional !== true && options.default === undefined,
       ...(options.default !== undefined ? { default: options.default } : {}),
-    },
+    }, options.description),
     parse(value, label) {
       const resolved = value ?? options.default;
       if (resolved === undefined || resolved === null || resolved === "") {
@@ -250,10 +290,15 @@ export function jsonInput<T = unknown>(options: { readonly optional?: boolean; r
 }
 
 export function recordInput(
-  options: { readonly optional?: boolean; readonly default?: Readonly<Record<string, unknown>> } = {},
+  options: JsonInputOptions<Readonly<Record<string, unknown>>> = {},
 ): InputParser<Readonly<Record<string, unknown>> | undefined> {
   return {
     optional: options.optional === true || options.default !== undefined,
+    manifest: addManifestDescription({
+      type: "json",
+      required: options.optional !== true && options.default === undefined,
+      ...(options.default !== undefined ? { default: options.default } : {}),
+    }, options.description),
     parse(value, label) {
       const parsed = jsonInput<Readonly<Record<string, unknown>>>(options).parse(value, label);
       if (parsed === undefined) {
@@ -267,9 +312,14 @@ export function recordInput(
   };
 }
 
-export function arrayInput<T = unknown>(options: { readonly optional?: boolean; readonly default?: readonly T[] } = {}): InputParser<readonly T[] | undefined> {
+export function arrayInput<T = unknown>(options: JsonInputOptions<readonly T[]> = {}): InputParser<readonly T[] | undefined> {
   return {
     optional: options.optional === true || options.default !== undefined,
+    manifest: addManifestDescription({
+      type: "json",
+      required: options.optional !== true && options.default === undefined,
+      ...(options.default !== undefined ? { default: options.default } : {}),
+    }, options.description),
     parse(value, label) {
       const parsed = jsonInput<readonly T[]>(options).parse(value, label);
       if (parsed === undefined) {
@@ -283,10 +333,10 @@ export function arrayInput<T = unknown>(options: { readonly optional?: boolean; 
   };
 }
 
-export function rawInput<T = unknown>(options: { readonly optional?: boolean } = {}): InputParser<T | undefined> {
+export function rawInput<T = unknown>(options: OptionalInputOption = {}): InputParser<T | undefined> {
   return {
     optional: options.optional === true,
-    manifest: { type: "json", required: options.optional !== true },
+    manifest: addManifestDescription({ type: "json", required: options.optional !== true }, options.description),
     parse(value, label) {
       if (value === undefined && options.optional !== true) {
         throw new Error(`${label} is required.`);

@@ -1,5 +1,8 @@
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
+import { stat } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -14,8 +17,13 @@ import {
   toProjectPath,
   writeJsonFile,
 } from "../authoring-utils.js";
+import { readCliDependencyVersion } from "../metadata.js";
 import { statusIcon, theme } from "../ui.js";
 import { parse as parseYaml } from "yaml";
+
+const require = createRequire(import.meta.url);
+const tscPath = require.resolve("typescript/bin/tsc");
+const toolkitVersion = readCliDependencyVersion("@runxhq/authoring");
 
 export interface ToolCommandArgs {
   readonly toolAction?: "build" | "migrate";
@@ -47,6 +55,7 @@ export interface ToolMigrateReport {
 
 export async function handleToolBuildCommand(parsed: ToolCommandArgs, env: NodeJS.ProcessEnv): Promise<ToolBuildReport> {
   const root = resolveRunxWorkspaceBase(env);
+  await ensureAuthoringRuntimeFresh(root);
   const toolDirs = parsed.toolAll
     ? await discoverToolDirectories(root)
     : [resolvePathFromUserInput(parsed.toolPath ?? "", env)];
@@ -75,6 +84,7 @@ export async function handleToolBuildCommand(parsed: ToolCommandArgs, env: NodeJ
 
 export async function handleToolMigrateCommand(parsed: ToolCommandArgs, env: NodeJS.ProcessEnv): Promise<ToolMigrateReport> {
   const root = resolveRunxWorkspaceBase(env);
+  await ensureAuthoringRuntimeFresh(root);
   const toolDirs = parsed.toolAll
     ? await discoverLegacyToolDirectories(root)
     : [resolvePathFromUserInput(parsed.toolPath ?? "", env)];
@@ -126,7 +136,7 @@ export function renderToolCommandResult(result: ToolBuildReport | ToolMigrateRep
 
 async function buildToolManifest(root: string, toolDir: string): Promise<ToolBuildReport["built"][number]> {
   const manifestPath = path.join(toolDir, "manifest.json");
-  const authored = await loadAuthoredToolDefinition(toolDir);
+  const authored = await loadAuthoredToolDefinition(root, toolDir);
   if (!existsSync(manifestPath) && !authored) {
     throw new Error("missing manifest.json");
   }
@@ -158,7 +168,7 @@ async function buildToolManifest(root: string, toolDir: string): Promise<ToolBui
     output,
     source_hash: sourceHash,
     schema_hash: schemaHash,
-    toolkit_version: "0.0.0",
+    toolkit_version: toolkitVersion,
   };
   validateToolManifest(parseToolManifestJson(JSON.stringify(normalized)));
   await writeJsonFile(manifestPath, normalized);
@@ -170,19 +180,59 @@ async function buildToolManifest(root: string, toolDir: string): Promise<ToolBui
   };
 }
 
-async function loadAuthoredToolDefinition(toolDir: string): Promise<Readonly<Record<string, unknown>> | undefined> {
+async function ensureAuthoringRuntimeFresh(root: string): Promise<void> {
+  const authoringSource = path.join(root, "packages", "authoring", "src", "index.ts");
+  const authoringDist = path.join(root, "packages", "authoring", "dist", "index.js");
+  if (!existsSync(authoringSource)) {
+    return;
+  }
+  const sourceStat = await stat(authoringSource);
+  const distStat = existsSync(authoringDist) ? await stat(authoringDist) : undefined;
+  if (distStat && distStat.mtimeMs >= sourceStat.mtimeMs) {
+    return;
+  }
+  const result = spawnSync(process.execPath, [
+    tscPath,
+    "--module", "NodeNext",
+    "--moduleResolution", "NodeNext",
+    "--target", "ES2022",
+    "--declaration",
+    "--outDir", "packages/authoring/dist",
+    "--rootDir", "packages/authoring/src",
+    "packages/authoring/src/index.ts",
+  ], {
+    cwd: root,
+    encoding: "utf8",
+    env: process.env,
+    shell: false,
+  });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || "tsc failed while refreshing @runxhq/authoring.");
+  }
+}
+
+async function loadAuthoredToolDefinition(root: string, toolDir: string): Promise<Readonly<Record<string, unknown>> | undefined> {
   const sourcePath = path.join(toolDir, "src", "index.ts");
   if (!existsSync(sourcePath)) {
     return undefined;
   }
+  let importPath = sourcePath;
+  let cleanupPath: string | undefined;
   try {
-    const imported = await import(`${pathToFileURL(sourcePath).href}?runx_build=${Date.now()}`);
+    const rewritten = await rewriteAuthoredSourceImport(root, sourcePath);
+    importPath = rewritten.path;
+    cleanupPath = rewritten.cleanupPath;
+    const imported = await import(`${pathToFileURL(importPath).href}?runx_build=${Date.now()}`);
     const tool = imported.default;
     if (!isPlainRecord(tool) || typeof tool.name !== "string") {
       return undefined;
     }
     const output = isPlainRecord(tool.output) ? tool.output : undefined;
     const wrapAs = typeof output?.wrap_as === "string" ? output.wrap_as : undefined;
+    const namedEmits = isPlainRecord(output?.named_emits) ? output.named_emits : undefined;
     return {
       name: tool.name,
       version: typeof tool.version === "string" ? tool.version : undefined,
@@ -195,18 +245,51 @@ async function loadAuthoredToolDefinition(toolDir: string): Promise<Readonly<Rec
             args: ["./run.mjs"],
           },
       inputs: serializeAuthoringInputs(isPlainRecord(tool.inputs) ? tool.inputs : {}),
-      output: output
+      output: output ? output : undefined,
+      scopes: Array.isArray(tool.scopes) ? tool.scopes.filter((scope): scope is string => typeof scope === "string") : [],
+      runx: wrapAs || namedEmits
         ? {
-            ...(typeof output.packet === "string" ? { packet: output.packet } : {}),
-            ...(wrapAs ? { wrap_as: wrapAs } : {}),
+            artifacts: {
+              ...(wrapAs ? { wrap_as: wrapAs } : {}),
+              ...(namedEmits ? { named_emits: namedEmits } : {}),
+            },
           }
         : undefined,
-      scopes: Array.isArray(tool.scopes) ? tool.scopes.filter((scope): scope is string => typeof scope === "string") : [],
-      runx: wrapAs ? { artifacts: { wrap_as: wrapAs } } : undefined,
     };
   } catch {
     return undefined;
+  } finally {
+    if (cleanupPath) {
+      await rm(cleanupPath, { force: true });
+    }
   }
+}
+
+async function rewriteAuthoredSourceImport(
+  root: string,
+  sourcePath: string,
+): Promise<{ readonly path: string; readonly cleanupPath?: string }> {
+  const authoringSourcePath = path.join(root, "packages", "authoring", "src", "index.ts");
+  if (!existsSync(authoringSourcePath)) {
+    return { path: sourcePath };
+  }
+  const source = await readFile(sourcePath, "utf8");
+  if (!source.includes("@runxhq/authoring")) {
+    return { path: sourcePath };
+  }
+  const relativeAuthoringPath = path.relative(path.dirname(sourcePath), authoringSourcePath).split(path.sep).join("/");
+  const authoringSpecifier = relativeAuthoringPath.startsWith(".") ? relativeAuthoringPath : `./${relativeAuthoringPath}`;
+  const rewritten = source.replaceAll(`"@runxhq/authoring"`, `"${authoringSpecifier}"`)
+    .replaceAll(`'@runxhq/authoring'`, `'${authoringSpecifier}'`);
+  const tempPath = path.join(
+    path.dirname(sourcePath),
+    `.runx-build-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`,
+  );
+  await writeFile(tempPath, rewritten);
+  return {
+    path: tempPath,
+    cleanupPath: tempPath,
+  };
 }
 
 function serializeAuthoringInputs(inputs: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
@@ -225,9 +308,6 @@ async function writeAuthoredToolShim(toolDir: string): Promise<void> {
     path.join(toolDir, "run.mjs"),
     [
       "#!/usr/bin/env node",
-      "import { register } from \"node:module\";",
-      "import { pathToFileURL } from \"node:url\";",
-      "register(\"tsx/esm\", pathToFileURL(\"./\"));",
       "const tool = (await import(\"./src/index.ts\")).default;",
       "await tool.main();",
       "",

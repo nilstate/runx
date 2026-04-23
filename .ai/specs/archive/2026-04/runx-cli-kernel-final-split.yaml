@@ -1,0 +1,225 @@
+spec_version: "1.1"
+task_id: "runx-cli-kernel-final-split"
+created: "2026-04-24T00:25:00Z"
+updated: "2026-04-23T15:27:08Z"
+status: "completed"
+
+task:
+  title: "Finish the CLI kernel split into library command handlers"
+  summary: >
+    packages/cli/src/index.ts is materially smaller than before, but it still
+    owns too much command-specific behavior. Finish the split so the root file
+    is parse-and-dispatch only, while command modules own execution and
+    rendering in reusable library form.
+  size: "medium"
+  risk_level: "medium"
+  context:
+    packages:
+      - "packages/cli"
+      - "packages/contracts"
+      - "../cloud/packages/api"
+    files_impacted:
+      - path: "packages/cli/src/index.ts"
+        lines: "all"
+        reason: "Reduce the root entrypoint to parsing, dispatch, and top-level errors."
+      - path: "packages/cli/src/commands"
+        lines: "all"
+        reason: "Command modules should own heavy execution and rendering logic."
+      - path: "packages/cli/src/ui.ts"
+        lines: "all"
+        reason: "Shared formatting should live outside the root file."
+      - path: "packages/cli/src/index.test.ts"
+        lines: "all"
+        reason: "CLI behavior should stay stable while command ownership moves."
+      - path: "../cloud/packages/api/src"
+        lines: "all"
+        reason: "Where cloud currently duplicates CLI-adjacent behavior, it should consume handler libraries."
+    invariants:
+      - "CLI output contracts remain stable."
+      - "Argument parsing stays centralized."
+      - "Command handlers remain callable as library code."
+  objectives:
+    - "Move the remaining heavy commands out of packages/cli/src/index.ts."
+    - "Extract shared formatter and command-context helpers."
+    - "Make the root file small enough that future growth is obviously wrong."
+  scope:
+    in_scope:
+      - "CLI command/module extraction and shared formatting cleanup."
+      - "Replacing cloud-side duplicated command logic with library calls where already practical."
+    out_of_scope:
+      - "Changing command UX or output schemas for users."
+      - "New product features unrelated to the split."
+  dependencies:
+    - "runx-verification-foundation-and-fast-lanes"
+  touchpoints:
+    - area: "packages/cli/src/index.ts"
+      description: "The remaining OSS command monolith."
+    - area: "packages/cli/src/commands"
+      description: "Target home for reusable command execution and rendering."
+    - area: "../cloud/packages/api"
+      description: "Consumer surface that should reuse extracted command logic instead of duplicating it."
+  risks:
+    - description: "Command extraction can accidentally drift CLI formatting or exit-code behavior."
+      impact: "medium"
+      mitigation: "Keep behavior covered by the existing CLI test surface."
+  acceptance:
+    validation_profile: "standard"
+    definition_of_done:
+      - id: "dod1"
+        description: "Add/search/publish/evolve/config/init/help command logic lives outside packages/cli/src/index.ts."
+      - id: "dod2"
+        description: "Shared formatting helpers live outside packages/cli/src/index.ts."
+      - id: "dod3"
+        description: "packages/cli/src/index.ts stays at or below 1000 lines."
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS typecheck stays green after command extraction."
+        command: "pnpm typecheck"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "CLI behavior stays green."
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v3"
+        type: "boundary"
+        description: "CLI root stays under the final budget."
+        command: "test $(wc -l < packages/cli/src/index.ts) -le 1000"
+        cwd: "."
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-24T00:25:00Z"
+    actor: "user"
+    summary: "Requested concrete execution specs for the remaining path to ideal shape."
+  - timestamp: "2026-04-24T00:25:00Z"
+    actor: "agent"
+    summary: "Scoped the remaining CLI work to the final root-file collapse and library-command reuse."
+
+phases:
+  - id: "phase1"
+    name: "Extract remaining registry and mutation commands"
+    objective: "Move the heaviest remaining command families out of the root file."
+    changes:
+      - file: "packages/cli/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace in-file add, search, publish, and evolve command bodies with
+          imports and thin dispatch wiring.
+      - file: "packages/cli/src/commands/add.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own skill install/add command execution, validation, and rendering.
+      - file: "packages/cli/src/commands/search.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own registry search execution and result formatting.
+      - file: "packages/cli/src/commands/publish.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own publish-related command execution and result shaping.
+      - file: "packages/cli/src/commands/evolve.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own evolve command execution and any evolve-specific rendering helpers.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "CLI tests stay green after registry and mutation command extraction."
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase2"
+    name: "Extract config and bootstrap command plumbing"
+    objective: "Move lower-volume but still root-owned commands into focused modules."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "packages/cli/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Remove config, init, and help-specific execution and formatting logic
+          from the root file.
+      - file: "packages/cli/src/commands/config.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own config read/write/display behavior and config-specific formatting.
+      - file: "packages/cli/src/commands/init.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own workspace/bootstrap initialization behavior and output.
+      - file: "packages/cli/src/commands/help.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own help text generation so root dispatch is not burdened with static
+          command narration.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "boundary"
+        description: "CLI root shrinks below 1400 lines after the second extraction wave."
+        command: "test $(wc -l < packages/cli/src/index.ts) -le 1400"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase3"
+    name: "Collapse root to dispatcher-only"
+    objective: "Leave packages/cli/src/index.ts as parse, dispatch, and top-level error mapping."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "packages/cli/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep only argv parsing, command selection, and top-level error/exit
+          behavior in the root file.
+      - file: "packages/cli/src/ui.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Centralize any remaining shared formatting helpers that commands still
+          use.
+      - file: "../cloud/packages/api/src"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Where cloud duplicates extracted CLI behavior, switch it to call the
+          reusable handler surface rather than re-implementing logic.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "boundary"
+        description: "CLI root stays under the final 1000-line target."
+        command: "test $(wc -l < packages/cli/src/index.ts) -le 1000"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- packages/cli/src/index.ts packages/cli/src/commands/add.ts packages/cli/src/commands/search.ts packages/cli/src/commands/publish.ts packages/cli/src/commands/evolve.ts"
+    phase2: "git checkout HEAD -- packages/cli/src/index.ts packages/cli/src/commands/config.ts packages/cli/src/commands/init.ts packages/cli/src/commands/help.ts"
+    phase3: "git checkout HEAD -- packages/cli/src/index.ts packages/cli/src/ui.ts ../cloud/packages/api/src"
+
+metadata:
+  estimated_effort_hours: 6
+  ai_model: "gpt-5"
+  tags:
+    - "cli"
+    - "modularization"
+    - "library-reuse"

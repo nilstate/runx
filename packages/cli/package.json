@@ -28,6 +28,7 @@
     "bin",
     "dist",
     "tools",
+    "skills/VOICE.md",
     "skills/run.mjs",
     "skills/scafld/run.mjs"
   ],

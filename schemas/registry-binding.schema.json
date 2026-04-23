@@ -18,12 +18,23 @@
       "type": "string"
     },
     "state": {
-      "type": "string",
-      "enum": [
-        "registry_binding_drafted",
-        "registry_bound",
-        "harness_verified",
-        "published"
+      "anyOf": [
+        {
+          "const": "registry_binding_drafted",
+          "type": "string"
+        },
+        {
+          "const": "registry_bound",
+          "type": "string"
+        },
+        {
+          "const": "harness_verified",
+          "type": "string"
+        },
+        {
+          "const": "published",
+          "type": "string"
+        }
       ]
     },
     "skill": {
@@ -113,11 +124,19 @@
           "type": "string"
         },
         "trust_tier": {
-          "type": "string",
-          "enum": [
-            "upstream-owned",
-            "community",
-            "unverified"
+          "anyOf": [
+            {
+              "const": "upstream-owned",
+              "type": "string"
+            },
+            {
+              "const": "community",
+              "type": "string"
+            },
+            {
+              "const": "unverified",
+              "type": "string"
+            }
           ]
         },
         "version": {
@@ -147,11 +166,19 @@
       ],
       "properties": {
         "status": {
-          "type": "string",
-          "enum": [
-            "pending",
-            "failed",
-            "harness_verified"
+          "anyOf": [
+            {
+              "const": "pending",
+              "type": "string"
+            },
+            {
+              "const": "failed",
+              "type": "string"
+            },
+            {
+              "const": "harness_verified",
+              "type": "string"
+            }
           ]
         },
         "case_count": {

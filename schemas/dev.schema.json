@@ -16,12 +16,23 @@
       "type": "string"
     },
     "status": {
-      "type": "string",
-      "enum": [
-        "success",
-        "failure",
-        "skipped",
-        "needs_approval"
+      "anyOf": [
+        {
+          "const": "success",
+          "type": "string"
+        },
+        {
+          "const": "failure",
+          "type": "string"
+        },
+        {
+          "const": "skipped",
+          "type": "string"
+        },
+        {
+          "const": "needs_approval",
+          "type": "string"
+        }
       ]
     },
     "doctor": {
@@ -49,14 +60,24 @@
           },
           "target": {
             "type": "object",
-            "additionalProperties": true
+            "patternProperties": {
+              "^(.*)$": {}
+            }
           },
           "status": {
-            "type": "string",
-            "enum": [
-              "success",
-              "failure",
-              "skipped"
+            "anyOf": [
+              {
+                "const": "success",
+                "type": "string"
+              },
+              {
+                "const": "failure",
+                "type": "string"
+              },
+              {
+                "const": "skipped",
+                "type": "string"
+              }
             ]
           },
           "duration_ms": {
@@ -80,13 +101,27 @@
                 "expected": {},
                 "actual": {},
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "subset_miss",
-                    "exact_mismatch",
-                    "packet_invalid",
-                    "status_mismatch",
-                    "type_mismatch"
+                  "anyOf": [
+                    {
+                      "const": "subset_miss",
+                      "type": "string"
+                    },
+                    {
+                      "const": "exact_mismatch",
+                      "type": "string"
+                    },
+                    {
+                      "const": "packet_invalid",
+                      "type": "string"
+                    },
+                    {
+                      "const": "status_mismatch",
+                      "type": "string"
+                    },
+                    {
+                      "const": "type_mismatch",
+                      "type": "string"
+                    }
                   ]
                 },
                 "message": {

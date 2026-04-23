@@ -12,6 +12,7 @@ import {
 import { runCli, parseArgs, resolveSkillReference } from "./index.js";
 import { hashString } from "@runxhq/core/receipts";
 import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
+import { readCliDependencyVersion } from "./metadata.js";
 
 const tempDirs: string[] = [];
 const originalFetch = globalThis.fetch;
@@ -939,6 +940,65 @@ harness:
   });
 });
 
+describe("runx tool", () => {
+  it("builds manifests with the current authoring toolkit version", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-tool-build-"));
+    tempDirs.push(tempDir);
+    const toolDir = path.join(tempDir, "tools", "demo", "echo");
+    await mkdir(toolDir, { recursive: true });
+    await writeFile(
+      path.join(toolDir, "run.mjs"),
+      `process.stdout.write(JSON.stringify({ ok: true }));\n`,
+    );
+    await writeFile(
+      path.join(toolDir, "manifest.json"),
+      `${JSON.stringify({
+        name: "demo.echo",
+        version: "0.1.0",
+        description: "Echo fixture.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        runtime: {
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        inputs: {},
+        output: {},
+        scopes: [],
+      }, null, 2)}\n`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["tool", "build", "--all", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      schema: "runx.tool.build.v1",
+      status: "success",
+      built: [
+        expect.objectContaining({
+          path: "tools/demo/echo",
+          manifest: "tools/demo/echo/manifest.json",
+        }),
+      ],
+    });
+
+    const manifest = JSON.parse(await readFile(path.join(toolDir, "manifest.json"), "utf8")) as {
+      readonly toolkit_version?: string;
+    };
+    expect(manifest.toolkit_version).toBe(readCliDependencyVersion("@runxhq/authoring"));
+  });
+});
+
 describe("runx doctor", () => {
   it("emits machine-actionable diagnostics for legacy tool.yaml files", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-"));
@@ -1391,6 +1451,193 @@ expect:
         expect.objectContaining({
           name: "read-sandbox",
           status: "success",
+        }),
+      ],
+      receipt_id: expect.stringMatching(/^rx_/),
+    });
+  });
+
+  it("runs repo-integration fixtures against a prepared fixture repository", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-dev-repo-integration-"));
+    tempDirs.push(tempDir);
+    const toolDir = path.join(tempDir, "tools", "demo", "repo_probe");
+    await mkdir(path.join(toolDir, "fixtures"), { recursive: true });
+    await writeFile(
+      path.join(toolDir, "run.mjs"),
+      `import fs from "node:fs";
+import path from "node:path";
+process.stdout.write(JSON.stringify({
+  repo_root: process.env.RUNX_REPO_ROOT,
+  fixture_root: process.env.RUNX_FIXTURE_ROOT,
+  same_root: process.env.RUNX_REPO_ROOT === process.env.RUNX_FIXTURE_ROOT,
+  git_dir_exists: fs.existsSync(path.join(process.env.RUNX_REPO_ROOT || "", ".git")),
+}));
+`,
+    );
+    await writeFile(
+      path.join(toolDir, "manifest.json"),
+      `${JSON.stringify({
+        name: "demo.repo_probe",
+        description: "Probe repo-integration fixture roots.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        runtime: {
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        inputs: {},
+        output: {},
+        scopes: ["demo.read"],
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(toolDir, "fixtures", "repo.yaml"),
+      `name: repo-probe
+lane: repo-integration
+target:
+  kind: tool
+  ref: demo.repo_probe
+repo:
+  files:
+    README.md: |
+      # Fixture repo
+  git:
+    dirty_files:
+      README.md: |
+        # Fixture repo
+        dirty
+expect:
+  status: success
+  output:
+    subset:
+      same_root: true
+      git_dir_exists: true
+`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["dev", "--lane", "repo-integration", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      status: "success",
+      fixtures: [
+        expect.objectContaining({
+          name: "repo-probe",
+          status: "success",
+          output: expect.objectContaining({
+            same_root: true,
+            git_dir_exists: true,
+          }),
+        }),
+      ],
+      receipt_id: expect.stringMatching(/^rx_/),
+    });
+  });
+
+  it("unwraps packet data for subset expectations when matches_packet is declared", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-dev-packet-subset-"));
+    tempDirs.push(tempDir);
+    const toolDir = path.join(tempDir, "tools", "demo", "emit_packet");
+    await mkdir(path.join(toolDir, "fixtures"), { recursive: true });
+    await mkdir(path.join(tempDir, "dist", "packets"), { recursive: true });
+    await writeFile(
+      path.join(tempDir, "package.json"),
+      `${JSON.stringify({
+        name: "packet-demo",
+        version: "0.1.0",
+        type: "module",
+        runx: {
+          packets: ["./dist/packets/*.schema.json"],
+        },
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(tempDir, "dist", "packets", "echo.v1.schema.json"),
+      `${JSON.stringify({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://schemas.runx.dev/packet-demo/echo/v1.json",
+        "x-runx-packet-id": "packet-demo.echo.v1",
+        type: "object",
+        required: ["message"],
+        properties: {
+          message: { type: "string" },
+        },
+        additionalProperties: false,
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(toolDir, "run.mjs"),
+      `process.stdout.write(JSON.stringify({
+  schema: "packet-demo.echo.v1",
+  data: { message: "hello" },
+}));
+`,
+    );
+    await writeFile(
+      path.join(toolDir, "manifest.json"),
+      `${JSON.stringify({
+        name: "demo.emit_packet",
+        description: "Emit a packet-wrapped result.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        inputs: {},
+        output: {
+          packet: "packet-demo.echo.v1",
+        },
+        scopes: ["demo.read"],
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(toolDir, "fixtures", "emit.yaml"),
+      `name: emit-packet
+lane: deterministic
+target:
+  kind: tool
+  ref: demo.emit_packet
+expect:
+  status: success
+  output:
+    matches_packet: packet-demo.echo.v1
+    subset:
+      message: hello
+`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["dev", "--lane", "deterministic", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      status: "success",
+      fixtures: [
+        expect.objectContaining({
+          name: "emit-packet",
+          status: "success",
+          output: {
+            schema: "packet-demo.echo.v1",
+            data: {
+              message: "hello",
+            },
+          },
         }),
       ],
       receipt_id: expect.stringMatching(/^rx_/),

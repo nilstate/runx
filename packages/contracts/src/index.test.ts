@@ -35,7 +35,11 @@ describe("@runxhq/contracts", () => {
 
   it("keeps fixture lanes aligned with authoring plan", () => {
     const lane = runxContractSchemas.fixture.properties?.lane;
-    expect(lane?.enum).toEqual(["deterministic", "agent", "repo-integration"]);
+    expect((lane?.anyOf as readonly { readonly const?: string }[] | undefined)?.map((entry) => entry.const)).toEqual([
+      "deterministic",
+      "agent",
+      "repo-integration",
+    ]);
   });
 
   it("owns credential envelope schema and runtime validation", () => {

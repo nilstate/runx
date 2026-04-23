@@ -35,15 +35,21 @@
     },
     "runtime": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "inputs": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "output": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "scopes": {
       "type": "array",

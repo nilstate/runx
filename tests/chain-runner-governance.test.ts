@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultLocalSkillRuntime } from "@runxhq/adapters/runtime";
 import type { SkillAdapter } from "@runxhq/core/executor";
 import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
 
@@ -20,6 +21,12 @@ describe("governed graph runner governance", () => {
       const skillDir = path.join(tempDir, "skills", "package-echo");
       await writePackageEchoSkill(skillDir);
       const graphPath = path.join(tempDir, "chain.yaml");
+      const runtime = await createDefaultLocalSkillRuntime({
+        root: tempDir,
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
+        env: process.env,
+      });
       await writeFile(
         graphPath,
         `name: chain-runner-cli
@@ -35,9 +42,10 @@ steps:
       const result = await runLocalGraph({
         graphPath,
         caller,
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");
@@ -69,6 +77,12 @@ steps:
     const graphPath = path.join(tempDir, "chain.yaml");
 
     try {
+      const runtime = await createDefaultLocalSkillRuntime({
+        root: tempDir,
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
+        env: process.env,
+      });
       await writeFile(
         graphPath,
         `name: chain-runner-a2a
@@ -84,9 +98,10 @@ steps:
       const result = await runLocalGraph({
         graphPath,
         caller,
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");

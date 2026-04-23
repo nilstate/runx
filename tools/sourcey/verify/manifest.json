@@ -7,26 +7,29 @@
     "command": "node",
     "args": [
       "./run.mjs"
-    ],
-    "timeout_seconds": 30,
-    "input_mode": "none"
+    ]
   },
   "inputs": {
     "output_dir": {
       "type": "string",
       "required": true,
-      "description": "Output directory produced by Sourcey."
+      "description": "Output directory produced by the Sourcey build."
     },
     "index_path": {
       "type": "string",
       "required": false,
-      "description": "Explicit index file path; defaults to <output_dir>/index.html."
+      "description": "Optional index path relative to output_dir. Defaults to index.html."
     },
     "sourcey_build_report": {
       "type": "json",
       "required": false,
-      "description": "Optional Sourcey build report; invalid card icon validation blocks verification."
+      "artifact": true,
+      "description": "Optional Sourcey build report used to carry icon validation results forward."
     }
+  },
+  "output": {
+    "packet": "runx.sourcey.verification.v1",
+    "wrap_as": "sourcey_verification_report"
   },
   "scopes": [
     "sourcey.verify"
@@ -42,11 +45,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.sourcey.verification.v1",
-    "wrap_as": "sourcey_verification_report"
-  },
-  "source_hash": "sha256:aeb7661e600731fd1b3cab5195375f0cc5c4b6e620f21d498aad525eac3c969f",
-  "schema_hash": "sha256:988547124ced9b1f8d9c43f4a354e418ee673cae6ec04056460951119e89ae4d",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:36667e0692166d12c83ed2bf3d4859be5abd3b43c8b1fadeace8907b1f580a23",
+  "schema_hash": "sha256:5379c6e1509ab9c6c8a6340564b142d808ecc360e66842a004d93468a45805da",
+  "toolkit_version": "0.1.0"
 }

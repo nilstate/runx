@@ -48,10 +48,13 @@ for (const required of [
   "dist/index.d.ts",
   "dist/src/index.js",
   "dist/src/official-skills.lock.json",
+  "skills/VOICE.md",
   "skills/scafld/run.mjs",
   "tools/sourcey/build/manifest.json",
   "tools/sourcey/build/run.mjs",
+  "tools/sourcey/build/src/index.ts",
   "tools/sourcey/verify/manifest.json",
+  "tools/sourcey/verify/src/index.ts",
 ]) {
   if (!files.has(required)) {
     throw new Error(`CLI package is missing ${required}`);

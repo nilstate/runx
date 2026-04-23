@@ -13,28 +13,41 @@
     "path": {
       "type": "string",
       "required": true,
-      "description": "Path to the file relative to repo_root or fixture."
+      "description": "Path to the output file relative to repo_root."
     },
     "data": {
       "type": "json",
       "required": true,
-      "description": "JSON value to write."
+      "description": "JSON-compatible value to serialize."
     },
     "indent": {
-      "type": "string",
+      "type": "json",
       "required": false,
-      "description": "Number of spaces to indent; defaults to 2."
+      "description": "Optional indentation width. Defaults to 2."
     },
     "repo_root": {
       "type": "string",
       "required": false,
-      "description": "Repository or workspace root; defaults to fixture, RUNX_CWD, or the current working directory."
+      "description": "Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory."
+    },
+    "project": {
+      "type": "string",
+      "required": false,
+      "description": "Optional alias for repo_root used by local harnesses."
+    },
+    "fixture": {
+      "type": "string",
+      "required": false,
+      "description": "Optional fixture workspace root used during dev and harness execution."
     }
+  },
+  "output": {
+    "packet": "runx.fs.file_write.v1",
+    "wrap_as": "file_write"
   },
   "scopes": [
     "fs.write"
   ],
-  "mutating": true,
   "runx": {
     "artifacts": {
       "wrap_as": "file_write"
@@ -46,11 +59,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.fs.file_write.v1",
-    "wrap_as": "file_write"
-  },
-  "source_hash": "sha256:d74b8dd9671c43b540f5e9c40034c4c454626318dd48add3b03198926e52221f",
-  "schema_hash": "sha256:90e2c28779c5b896ee22bb2ef93a25db22a09498f4aa8240bb73ea01dbf9b389",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:a6c201456ffb6e5562c12580f63a68c3c3319046326a23b443eac484b7ec0bc2",
+  "schema_hash": "sha256:d97922705fe73e4916ac2d7b1e83d22333f1b5c438d781b124f12fa694e375c7",
+  "toolkit_version": "0.1.0"
 }

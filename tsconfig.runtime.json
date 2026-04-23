@@ -7,5 +7,5 @@
     "tsBuildInfoFile": "node_modules/.cache/tsc/runtime.tsbuildinfo"
   },
   "include": ["packages/**/*.ts", "apps/**/*.ts", "plugins/**/*.ts"],
-  "exclude": ["**/*.test.ts", "dist", "**/dist", ".build", "coverage", "node_modules"]
+  "exclude": ["**/*.test.ts", "dist", "**/dist", ".build", "coverage", "node_modules", "packages/**/tools"]
 }

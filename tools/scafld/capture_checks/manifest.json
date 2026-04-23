@@ -12,25 +12,31 @@
   "inputs": {
     "task_id": {
       "type": "string",
-      "required": true,
-      "description": "scafld task id whose projection check surface should be captured."
+      "required": false,
+      "description": "Primary scafld task id to inspect."
+    },
+    "taskId": {
+      "type": "string",
+      "required": false,
+      "description": "Camel-case alias for task_id."
     },
     "fixture": {
       "type": "string",
       "required": false,
-      "description": "Workspace root containing the governed `.ai/` state."
+      "description": "Optional fixture workspace root used during dev and harness execution."
     },
     "cwd": {
       "type": "string",
       "required": false,
-      "description": "Optional explicit working directory used when fixture is absent."
+      "description": "Optional working directory override for the scafld invocation."
     },
     "scafld_bin": {
       "type": "string",
       "required": false,
-      "description": "Explicit scafld executable path."
+      "description": "Optional explicit scafld executable or path."
     }
   },
+  "output": {},
   "scopes": [
     "scafld:projection:read"
   ],
@@ -40,8 +46,7 @@
       "./run.mjs"
     ]
   },
-  "output": {},
-  "source_hash": "sha256:a320fc07a490d06c6021dc89a16bfce9ea55ae2cbced92118dd4219fbba472d4",
-  "schema_hash": "sha256:259e28a3094330c3acfe39a94f6f1b595169d311eff14ca24cb27fd34b80224f",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:303505f5e987634636793b72162a84db97e37b9c288af81208f9a975cb8ce8b6",
+  "schema_hash": "sha256:a7c5bc666c759955f2cd7445670db261fb3264817a68898a43005f4f7a1bf112",
+  "toolkit_version": "0.1.0"
 }

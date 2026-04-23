@@ -69,6 +69,7 @@ export interface AgentContextEnvelope {
   readonly historical_context: readonly ArtifactEnvelope[];
   readonly provenance: readonly AgentContextProvenance[];
   readonly context?: Context;
+  readonly voice_profile?: ContextDocument;
   readonly quality_profile?: QualityProfileContext;
   readonly expected_outputs?: OutputContract;
   readonly trust_boundary: string;
@@ -142,6 +143,7 @@ export interface AdapterInvokeRequest {
   readonly historicalContext?: readonly ArtifactEnvelope[];
   readonly contextProvenance?: readonly AgentContextProvenance[];
   readonly context?: Context;
+  readonly voiceProfile?: ContextDocument;
   readonly qualityProfile?: QualityProfileContext;
 }
 
@@ -191,6 +193,7 @@ export interface ExecuteSkillOptions {
   readonly historicalContext?: readonly ArtifactEnvelope[];
   readonly contextProvenance?: readonly AgentContextProvenance[];
   readonly context?: Context;
+  readonly voiceProfile?: ContextDocument;
   readonly qualityProfile?: QualityProfileContext;
 }
 
@@ -226,6 +229,7 @@ export async function executeSkill(options: ExecuteSkillOptions): Promise<Adapte
     historicalContext: options.historicalContext,
     contextProvenance: options.contextProvenance,
     context: options.context,
+    voiceProfile: options.voiceProfile,
     qualityProfile: options.qualityProfile,
   });
 }
@@ -283,6 +287,10 @@ export function validateAgentContextEnvelope(
     throw new Error(`${label} must match ${CONTROL_SCHEMA_REFS.agent_context_envelope}.`);
   }
 
+  const context = record.context === undefined
+    ? undefined
+    : validateContext(record.context, `${label}.context`);
+
   return {
     run_id: requireString(record.run_id, `${label}.run_id`),
     step_id: optionalString(record.step_id, `${label}.step_id`),
@@ -294,9 +302,10 @@ export function validateAgentContextEnvelope(
     historical_context: requireArray(record.historical_context, `${label}.historical_context`) as readonly ArtifactEnvelope[],
     provenance: requireArray(record.provenance, `${label}.provenance`).map((entry, index) =>
       validateAgentContextProvenance(entry, `${label}.provenance[${index}]`)),
-    context: record.context === undefined
+    context,
+    voice_profile: record.voice_profile === undefined
       ? undefined
-      : validateContext(record.context, `${label}.context`),
+      : validateContextDocument(record.voice_profile, `${label}.voice_profile`),
     quality_profile: record.quality_profile === undefined
       ? undefined
       : validateQualityProfileContext(record.quality_profile, `${label}.quality_profile`),
@@ -309,6 +318,9 @@ function validateContext(value: unknown, label: string): Context {
   const record = asRecord(value);
   if (!record) {
     throw new Error(`${label} must match ${CONTROL_SCHEMA_REFS.agent_context_envelope}.`);
+  }
+  if (record.voice_grammar !== undefined) {
+    throw new Error(`${label}.voice_grammar is no longer supported; use voice_profile (${CONTROL_SCHEMA_REFS.agent_context_envelope}).`);
   }
   return {
     memory: record.memory === undefined ? undefined : validateContextDocument(record.memory, `${label}.memory`),

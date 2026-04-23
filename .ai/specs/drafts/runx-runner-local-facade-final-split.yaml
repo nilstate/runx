@@ -1,0 +1,229 @@
+spec_version: "1.1"
+task_id: "runx-runner-local-facade-final-split"
+created: "2026-04-24T00:30:00Z"
+updated: "2026-04-24T00:30:00Z"
+status: "draft"
+
+task:
+  title: "Finish splitting runner-local into orchestration and runtime services"
+  summary: >
+    packages/core/src/runner-local/index.ts has improved substantially, but it
+    still owns too many real seams: orchestration, resume, receipt assembly,
+    adapter/auth bootstrap, and context handling. Finish the split so the root
+    file reads like a façade over focused runtime services.
+  size: "large"
+  risk_level: "high"
+  context:
+    packages:
+      - "packages/core"
+      - "packages/adapters"
+      - "packages/cli"
+      - "../cloud/packages/worker"
+    files_impacted:
+      - path: "packages/core/src/runner-local/index.ts"
+        lines: "all"
+        reason: "Reduce the root façade to orchestration entrypoints and exports."
+      - path: "packages/core/src/runner-local/*.ts"
+        lines: "all"
+        reason: "Extract orchestration, resume, receipt, and context services."
+      - path: "packages/adapters/src/runtime.ts"
+        lines: "all"
+        reason: "Shared runtime/bootstrap should be the default path for callers."
+      - path: "packages/cli/src"
+        lines: "all"
+        reason: "CLI should consume the shared runtime/bootstrap path rather than bespoke wiring."
+      - path: "../cloud/packages/worker/src/index.ts"
+        lines: "all"
+        reason: "Hosted worker should keep using the shared bootstrap path and avoid bespoke defaults."
+    invariants:
+      - "Runtime behavior and receipt semantics stay stable."
+      - "Resume behavior stays durable and replay-safe."
+      - "Callers should not need to know runner-local internals to bootstrap adapters and temp paths."
+  objectives:
+    - "Move remaining orchestration and resume logic out of runner-local/index.ts."
+    - "Split receipt/context assembly into focused modules."
+    - "Adopt one shared runtime/bootstrap path across CLI, hosted worker, and scripts."
+  scope:
+    in_scope:
+      - "runner-local modularization and bootstrap unification."
+      - "Caller cleanup that removes ad hoc adapter/env defaults."
+    out_of_scope:
+      - "Changing receipt schema semantics."
+      - "New execution features unrelated to the split."
+  dependencies:
+    - "runx-verification-foundation-and-fast-lanes"
+  touchpoints:
+    - area: "packages/core/src/runner-local/index.ts"
+      description: "Remaining OSS runtime monolith."
+    - area: "packages/adapters/src/runtime.ts"
+      description: "Shared runtime bootstrap surface."
+    - area: "../cloud/packages/worker/src/index.ts"
+      description: "Hosted execution caller that should consume the same bootstrap assumptions as CLI."
+  risks:
+    - description: "Execution orchestration changes can subtly break resume or receipt behavior."
+      impact: "high"
+      mitigation: "Keep focused runner, harness, and hosted-worker coverage green while moving seams."
+    - description: "Bootstrap unification may accidentally change default adapter coverage."
+      impact: "medium"
+      mitigation: "Treat adapters/runtime as the canonical default path and test hosted worker plus CLI callers."
+  acceptance:
+    validation_profile: "strict"
+    definition_of_done:
+      - id: "dod1"
+        description: "Graph orchestration, resume reconstruction, and receipt assembly live outside runner-local/index.ts."
+      - id: "dod2"
+        description: "CLI and hosted worker use the shared runtime/bootstrap path by default."
+      - id: "dod3"
+        description: "packages/core/src/runner-local/index.ts stays at or below 2000 lines."
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS typecheck stays green."
+        command: "pnpm typecheck"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "Core SDK and harness coverage stay green."
+        command: "pnpm exec vitest run packages/core/src/sdk/index.test.ts packages/core/src/harness/runner.test.ts"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v3"
+        type: "test"
+        description: "Hosted worker coverage stays green against the shared bootstrap path."
+        command: "pnpm exec vitest run packages/worker/src/index.test.ts"
+        cwd: "../cloud"
+        expected: "exit code 0"
+      - id: "v4"
+        type: "boundary"
+        description: "runner-local root stays under the final budget."
+        command: "test $(wc -l < packages/core/src/runner-local/index.ts) -le 2000"
+        cwd: "."
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-24T00:30:00Z"
+    actor: "user"
+    summary: "Asked for concrete execution specs covering the remaining path to ideal shape."
+  - timestamp: "2026-04-24T00:30:00Z"
+    actor: "agent"
+    summary: "Scoped the remaining runtime work to orchestration, resume, receipts, and bootstrap unification."
+
+phases:
+  - id: "phase1"
+    name: "Extract orchestration and resume services"
+    objective: "Move graph progression and resume reconstruction into dedicated modules."
+    changes:
+      - file: "packages/core/src/runner-local/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace in-file orchestration and resume logic with imports from
+          focused services while keeping the public entrypoints stable.
+      - file: "packages/core/src/runner-local/orchestrator.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own single-step and graph-step orchestration, transition planning, and
+          control flow wiring.
+      - file: "packages/core/src/runner-local/resume.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own run resumption, ledger replay hydration, and selected-runner/input
+          carry-forward behavior.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "Core SDK and harness tests stay green after orchestration extraction."
+        command: "pnpm exec vitest run packages/core/src/sdk/index.test.ts packages/core/src/harness/runner.test.ts"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase2"
+    name: "Extract receipt and context composition"
+    objective: "Move output shaping, receipt assembly, and context materialization into focused modules."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "packages/core/src/runner-local/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Remove remaining receipt-building and context-shaping internals from
+          the root file.
+      - file: "packages/core/src/runner-local/receipt-composer.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own execution receipt assembly, graph-step receipt projection, and
+          terminal result shaping.
+      - file: "packages/core/src/runner-local/context-materializer.ts"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Own context-edge resolution, output-path lookup, and artifact
+          projection for graph execution.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "boundary"
+        description: "runner-local shrinks below 2400 lines after the second extraction wave."
+        command: "test $(wc -l < packages/core/src/runner-local/index.ts) -le 2400"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase3"
+    name: "Unify runtime bootstrap across callers"
+    objective: "Make adapters/runtime the default path for CLI, hosted worker, and scripts."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "packages/adapters/src/runtime.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Expose the canonical default bootstrap API for adapters, env defaults,
+          and runtime paths.
+      - file: "packages/cli/src"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace remaining bespoke adapter/env/bootstrap wiring with the shared
+          runtime bootstrap surface.
+      - file: "../cloud/packages/worker/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep hosted worker aligned with the same shared bootstrap behavior as
+          local callers.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "test"
+        description: "Hosted worker and local runtime callers still execute through the shared bootstrap path."
+        command: "pnpm exec vitest run packages/worker/src/index.test.ts"
+        cwd: "../cloud"
+        expected: "exit code 0"
+      - id: "ac3_2"
+        type: "boundary"
+        description: "runner-local root meets the final 2000-line target."
+        command: "test $(wc -l < packages/core/src/runner-local/index.ts) -le 2000"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- packages/core/src/runner-local/index.ts packages/core/src/runner-local/orchestrator.ts packages/core/src/runner-local/resume.ts"
+    phase2: "git checkout HEAD -- packages/core/src/runner-local/index.ts packages/core/src/runner-local/receipt-composer.ts packages/core/src/runner-local/context-materializer.ts"
+    phase3: "git checkout HEAD -- packages/adapters/src/runtime.ts packages/cli/src ../cloud/packages/worker/src/index.ts"
+
+metadata:
+  estimated_effort_hours: 8
+  ai_model: "gpt-5"
+  tags:
+    - "runner-local"
+    - "runtime"
+    - "bootstrap"

@@ -17,19 +17,17 @@ function stringEnum<const TValue extends readonly string[]>(
   values: TValue,
   options: Record<string, unknown> = {},
 ) {
-  return Type.Unsafe<TValue[number]>({
-    type: "string",
-    enum: [...values],
-    ...options,
-  });
+  const properties = Object.fromEntries(
+    values.map((value) => [value, Type.Null()]),
+  ) as Record<TValue[number], ReturnType<typeof Type.Null>>;
+  return Type.KeyOf(
+    Type.Object(properties, { additionalProperties: false }),
+    options,
+  );
 }
 
 function unknownRecordSchema(options: Record<string, unknown> = {}) {
-  return Type.Unsafe<UnknownRecord>({
-    type: "object",
-    additionalProperties: true,
-    ...options,
-  });
+  return Type.Record(Type.String(), Type.Unknown(), options);
 }
 
 export const RUNX_SCHEMA_BASE_URL = "https://schemas.runx.dev" as const;

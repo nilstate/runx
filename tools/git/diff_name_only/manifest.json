@@ -13,13 +13,18 @@
     "repo_root": {
       "type": "string",
       "required": false,
-      "description": "Repository root; defaults to RUNX_CWD or the current working directory."
+      "description": "Repository root to inspect. Defaults to RUNX_CWD or the current working directory."
     },
     "base": {
       "type": "string",
       "required": false,
-      "description": "Base revision or tree-ish to diff against; defaults to HEAD."
+      "default": "HEAD",
+      "description": "Base git ref to diff against."
     }
+  },
+  "output": {
+    "packet": "runx.git.diff.v1",
+    "wrap_as": "git_diff"
   },
   "scopes": [
     "git.read"
@@ -35,11 +40,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.git.diff.v1",
-    "wrap_as": "git_diff"
-  },
-  "source_hash": "sha256:c10a2dea1c3b2f8169f26f45b75f2bf1e7895cc5b49df4bfe487b68d8d4eff01",
-  "schema_hash": "sha256:fc2268ac171afdd8a6f1a326e1c79cceaaaa6da1c8b4d713edfa1818842c8ed3",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:a00c28fdc39001e9a3531237ec88dbeb06e3ffce7258c4b2509cc1dda7627a16",
+  "schema_hash": "sha256:1b2e3834b0dcdee7bfb9196ea3fc55f084a04e4f44177c3942a1551b179f7731",
+  "toolkit_version": "0.1.0"
 }

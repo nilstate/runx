@@ -21,7 +21,10 @@ Each serious skill should make these parts explicit in its own terms:
 - `audience`: who reads, reviews, publishes, or acts on the artifact.
 - `artifact_contract`: the concrete output and required fields.
 - `evidence_bar`: what must be grounded, cited, or named as missing.
-- `voice_bar`: how the artifact should read.
+- `voice_bar`: how the artifact should read. See VOICE.md for the canonical
+  voice grammar; runx injects it into every agent context as
+  `voice_profile` and pins its hash in the receipt under
+  `metadata.voice_profile`.
 - `strategic_bar`: why the artifact matters for the chain's purpose.
 - `stop_conditions`: when the skill should return `needs_more_evidence`,
   `needs_review`, `needs_resolution`, or a comparable stop state instead of
@@ -90,3 +93,6 @@ strategic fit. Prefer a precise stop state over polished filler:
   profile.
 - `not_worth_publishing`: the work is true but not useful enough for the
   declared audience or chain purpose.
+- `voice_mismatch`: the artifact would require generic AI framing, filler
+  structure, or register drop to satisfy the declared voice contract. See
+  VOICE.md for the voice grammar that every reader-facing artifact must meet.

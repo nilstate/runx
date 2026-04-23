@@ -13,38 +13,49 @@
     "discovery_report": {
       "type": "json",
       "required": true,
+      "artifact": true,
       "description": "Discovery report emitted by the Sourcey discover step."
     },
     "doc_bundle": {
       "type": "json",
       "required": true,
+      "artifact": true,
       "description": "Doc bundle emitted by the Sourcey author step."
     },
     "project_brief": {
       "type": "json",
       "required": false,
+      "artifact": true,
       "description": "Optional grounded brief supplied to the Sourcey run."
     },
     "sourcey_build_report": {
       "type": "json",
       "required": true,
+      "artifact": true,
       "description": "Sourcey build report emitted by sourcey.build."
     },
     "evaluation_report": {
       "type": "json",
       "required": true,
+      "artifact": true,
       "description": "Evaluation report emitted by the critique step."
     },
     "revision_bundle": {
       "type": "json",
       "required": true,
+      "artifact": true,
       "description": "Revision bundle emitted by the revise step."
     },
     "sourcey_verification_report": {
       "type": "json",
       "required": true,
+      "artifact": true,
       "description": "Verification report emitted by sourcey.verify."
     }
+  },
+  "output": {
+    "packet": "runx.sourcey.packet.v1",
+    "wrap_as": "sourcey_packet"
   },
   "scopes": [
     "sourcey.verify"
@@ -60,11 +71,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.sourcey.packet.v1",
-    "wrap_as": "sourcey_packet"
-  },
-  "source_hash": "sha256:4737f4763cb9b205bd67a8440ee47aa68d35d560f5c690e0f549b8e8e9650991",
-  "schema_hash": "sha256:f4f4612ea88b1405b0287f67827cc1adfd4dc1e17f8fbdf3838e2c6589f5c601",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:ce562824f88df2ae51836d900c69f3cc7f910fbe7f8bf53133f6d4923b2f907b",
+  "schema_hash": "sha256:513c043cce178e985c7af86690bb058301057ddbd4f3dbc3af06463ec922e8f1",
+  "toolkit_version": "0.1.0"
 }

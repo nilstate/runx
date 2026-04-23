@@ -17,6 +17,7 @@ pnpm install
 pnpm build
 pnpm test
 pnpm typecheck
+pnpm verify:fast
 ```
 
 ## Local CLI
@@ -80,6 +81,31 @@ See `../docs/skill-profile-model.md` for resolution rules, runner trust levels, 
 
 See `../docs/evolution-model.md` for the evolve lane, the skill/tool boundary,
 and the canonical composite execution geometry.
+
+## Tool Authoring
+
+First-party tools are authored from source in:
+
+```text
+tools/<namespace>/<tool>/
+  src/index.ts
+  fixtures/*.yaml
+  manifest.json
+  run.mjs
+```
+
+`src/index.ts` is the source of truth and uses `defineTool()` from
+`@runxhq/authoring`. `manifest.json` and `run.mjs` are generated runtime
+artifacts:
+
+```bash
+pnpm exec tsx packages/cli/src/index.ts tool build --all --json
+pnpm exec tsx packages/cli/src/index.ts dev --lane deterministic --json
+pnpm exec tsx packages/cli/src/index.ts dev --lane repo-integration --json
+```
+
+`run.mjs` is intentionally checked in as the thin runtime shim that imports the
+authored source. Do not hand-edit generated `manifest.json` or `run.mjs`.
 
 ## Official Packages
 
@@ -172,6 +198,16 @@ pnpm dogfood:core-skills
 This rebuilds the workspace packages, runs `runx doctor --json`, and proves the
 official skills reach a clean fresh-caller boundary with the current adapter
 bundle.
+
+For the default structural verification lane during refactors, run:
+
+```bash
+pnpm verify:fast
+```
+
+That lane keeps the cheap workspace checks together: OSS typecheck plus the
+fast package test surface with the current structural budget and boundary
+coverage.
 
 ## Build And Pack
 

@@ -11,6 +11,7 @@
     "paths": {
       "@runxhq/adapters": ["packages/adapters/src/index.ts"],
       "@runxhq/adapters/*": ["packages/adapters/src/*/index.ts"],
+      "@runxhq/authoring": ["packages/authoring/src/index.ts"],
       "@runxhq/contracts": ["packages/contracts/src/index.ts"],
       "@runxhq/core": ["packages/core/src/index.ts"],
       "@runxhq/core/*": ["packages/core/src/*/index.ts"]

@@ -15,6 +15,7 @@ import { writeLocalReceipt } from "@runxhq/core/receipts";
 import { type RegistryStore } from "@runxhq/core/registry";
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 import type { CliAgentRuntime } from "../agent-runtime.js";
+import { resolveBundledCliVoiceProfilePath } from "../runtime-assets.js";
 
 import {
   buildLocalPacketIndex,
@@ -37,6 +38,11 @@ interface PreparedFixtureWorkspace {
   readonly root?: string;
   readonly tokens: Readonly<Record<string, string>>;
   readonly cleanup: () => Promise<void>;
+}
+
+interface FixtureExecutionRoots {
+  readonly cwd: string;
+  readonly repoRoot: string;
 }
 
 export type DevReport = DevReportContract;
@@ -223,7 +229,7 @@ async function runDevFixture(
       ? recordReplayFixture(root, fixturePath, fixture, name, lane, target, startedAt, parsed, env, deps)
       : validateReplayFixture(root, fixturePath, fixture, startedAt);
   }
-  if (lane !== "deterministic") {
+  if (lane !== "deterministic" && lane !== "repo-integration") {
     return {
       name,
       lane,
@@ -239,7 +245,7 @@ async function runDevFixture(
     return runToolFixture(root, fixturePath, fixture, name, lane, target, startedAt, env);
   }
   if (kind === "skill" || kind === "chain") {
-    return runSkillFixture(root, fixture, name, lane, target, startedAt, env, deps);
+    return runSkillFixture(root, fixturePath, fixture, name, lane, target, startedAt, env, deps);
   }
   return failedFixture(name, lane, target, startedAt, [{
     path: "target.kind",
@@ -276,6 +282,16 @@ async function runToolFixture(
   const args = manifest.source.args ?? ["./run.mjs"];
   const workspace = await prepareFixtureWorkspace(root, fixturePath, fixture, env);
   try {
+    const executionRoots = resolveFixtureExecutionRoots(root, lane, workspace.root);
+    if (!executionRoots) {
+      return failedFixture(name, lane, target, startedAt, [{
+        path: "repo",
+        expected: "repo or workspace fixture",
+        actual: "missing",
+        kind: "exact_mismatch",
+        message: "repo-integration fixtures must declare repo or workspace contents.",
+      }]);
+    }
     const fixtureEnv = materializeFixtureEnv(fixture.env, workspace.tokens);
     const inputs = materializeFixtureValue(isPlainRecord(fixture.inputs) ? fixture.inputs : {}, workspace.tokens);
     const execution = await runProcess(command, args, {
@@ -284,8 +300,8 @@ async function runToolFixture(
         ...env,
         ...fixtureEnv,
         RUNX_INPUTS_JSON: JSON.stringify(inputs),
-        RUNX_CWD: workspace.root ?? root,
-        RUNX_REPO_ROOT: root,
+        RUNX_CWD: executionRoots.cwd,
+        RUNX_REPO_ROOT: executionRoots.repoRoot,
         ...(workspace.root ? { RUNX_FIXTURE_ROOT: workspace.root } : {}),
       },
     });
@@ -311,7 +327,11 @@ async function prepareFixtureWorkspace(
   fixture: Readonly<Record<string, unknown>>,
   env: NodeJS.ProcessEnv,
 ): Promise<PreparedFixtureWorkspace> {
-  const workspace = isPlainRecord(fixture.workspace) ? fixture.workspace : undefined;
+  const workspace = isPlainRecord(fixture.workspace)
+    ? fixture.workspace
+    : isPlainRecord(fixture.repo)
+      ? fixture.repo
+      : undefined;
   const fixtureDir = path.dirname(fixturePath);
   if (!workspace) {
     return {
@@ -449,6 +469,7 @@ function resolveInsideFixtureRoot(root: string, relativePath: string): string {
 
 async function runSkillFixture(
   root: string,
+  fixturePath: string,
   fixture: Readonly<Record<string, unknown>>,
   name: string,
   lane: string,
@@ -468,27 +489,71 @@ async function runSkillFixture(
       message: `Skill or chain ${ref} was not found.`,
     }]);
   }
-  const result = await runLocalSkill({
-    skillPath,
-    inputs: isPlainRecord(fixture.inputs) ? fixture.inputs : {},
-    caller: createFixtureCaller(fixture, env, deps),
-    env: { ...env, RUNX_CWD: root },
-    receiptDir: deps.resolveDefaultReceiptDir(env),
-    runxHome: resolveRunxHomeDir(env),
-    registryStore: await deps.resolveRegistryStoreForChains(env),
-    adapters: createDefaultSkillAdapters(),
-  });
-  const success = result.status === "success";
-  const output = success ? parseJsonMaybe(result.execution.stdout) : result;
-  const assertions = await assertFixtureExpectation(root, fixture.expect, success ? 0 : 1, output);
+  const workspace = await prepareFixtureWorkspace(root, fixturePath, fixture, env);
+  try {
+    const executionRoots = resolveFixtureExecutionRoots(root, lane, workspace.root);
+    if (!executionRoots) {
+      return failedFixture(name, lane, target, startedAt, [{
+        path: "repo",
+        expected: "repo or workspace fixture",
+        actual: "missing",
+        kind: "exact_mismatch",
+        message: "repo-integration fixtures must declare repo or workspace contents.",
+      }]);
+    }
+    const fixtureEnv = materializeFixtureEnv(fixture.env, workspace.tokens);
+    const inputs = materializeFixtureValue(isPlainRecord(fixture.inputs) ? fixture.inputs : {}, workspace.tokens);
+    const result = await runLocalSkill({
+      skillPath,
+      inputs: isPlainRecord(inputs) ? inputs : {},
+      caller: createFixtureCaller(fixture, env, deps),
+      env: {
+        ...env,
+        ...fixtureEnv,
+        RUNX_CWD: executionRoots.cwd,
+        RUNX_REPO_ROOT: executionRoots.repoRoot,
+        ...(workspace.root ? { RUNX_FIXTURE_ROOT: workspace.root } : {}),
+      },
+      receiptDir: deps.resolveDefaultReceiptDir(env),
+      runxHome: resolveRunxHomeDir(env),
+      registryStore: await deps.resolveRegistryStoreForChains(env),
+      adapters: createDefaultSkillAdapters(),
+      voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
+    });
+    const success = result.status === "success";
+    const output = success ? parseJsonMaybe(result.execution.stdout) : result;
+    const assertions = await assertFixtureExpectation(root, fixture.expect, success ? 0 : 1, output);
+    return {
+      name,
+      lane,
+      target,
+      status: assertions.length === 0 ? "success" : "failure",
+      duration_ms: Date.now() - startedAt,
+      assertions,
+      output,
+    };
+  } finally {
+    await workspace.cleanup();
+  }
+}
+
+function resolveFixtureExecutionRoots(
+  root: string,
+  lane: string,
+  workspaceRoot: string | undefined,
+): FixtureExecutionRoots | undefined {
+  if (lane === "repo-integration") {
+    if (!workspaceRoot) {
+      return undefined;
+    }
+    return {
+      cwd: workspaceRoot,
+      repoRoot: workspaceRoot,
+    };
+  }
   return {
-    name,
-    lane,
-    target,
-    status: assertions.length === 0 ? "success" : "failure",
-    duration_ms: Date.now() - startedAt,
-    assertions,
-    output,
+    cwd: workspaceRoot ?? root,
+    repoRoot: root,
   };
 }
 
@@ -530,7 +595,7 @@ async function recordReplayFixture(
   }
   const kind = typeof target.kind === "string" ? target.kind : undefined;
   const result = kind === "skill" || kind === "chain"
-    ? await runSkillFixture(root, fixture, name, lane, target, startedAt, env, deps)
+    ? await runSkillFixture(root, fixturePath, fixture, name, lane, target, startedAt, env, deps)
     : failedFixture(name, lane, target, startedAt, [{
         path: "target.kind",
         expected: "skill | chain",
@@ -673,22 +738,45 @@ async function assertOutputExpectation(
 ): Promise<readonly FixtureAssertion[]> {
   const assertions: FixtureAssertion[] = [];
   const outputExpectation = isPlainRecord(expectation) ? expectation : {};
-  if ("exact" in outputExpectation && !deepEqual(output, outputExpectation.exact)) {
+  const normalizedOutput = normalizeOutputForExpectation(outputExpectation, output);
+  if ("exact" in outputExpectation && !deepEqual(normalizedOutput, outputExpectation.exact)) {
     assertions.push({
       path: `${basePath}.exact`,
       expected: outputExpectation.exact,
-      actual: output,
+      actual: normalizedOutput,
       kind: "exact_mismatch",
       message: "Output did not exactly match.",
     });
   }
   if ("subset" in outputExpectation) {
-    assertions.push(...assertSubset(outputExpectation.subset, output, ""));
+    assertions.push(...assertSubset(outputExpectation.subset, normalizedOutput, ""));
   }
   if (typeof outputExpectation.matches_packet === "string") {
     assertions.push(...await assertMatchesPacket(root, outputExpectation.matches_packet, output, `${basePath}.matches_packet`));
   }
   return assertions;
+}
+
+function normalizeOutputForExpectation(
+  expectation: Readonly<Record<string, unknown>>,
+  output: unknown,
+): unknown {
+  if (typeof expectation.matches_packet !== "string") {
+    return output;
+  }
+  if (!isPlainRecord(output) || !("data" in output)) {
+    return output;
+  }
+  const subsetTargetsWrapper = "subset" in expectation && expectationTargetsPacketWrapper(expectation.subset);
+  const exactTargetsWrapper = "exact" in expectation && expectationTargetsPacketWrapper(expectation.exact);
+  if (subsetTargetsWrapper || exactTargetsWrapper) {
+    return output;
+  }
+  return output.data;
+}
+
+function expectationTargetsPacketWrapper(value: unknown): boolean {
+  return isPlainRecord(value) && ("schema" in value || "data" in value);
 }
 
 function selectNamedOutput(output: unknown, name: string): unknown {

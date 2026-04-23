@@ -13,18 +13,22 @@
     "spec_contents": {
       "type": "string",
       "required": true,
-      "description": "Full scafld spec YAML contents to inspect for declared file paths."
+      "description": "Raw scafld spec contents to inspect for declared file paths."
     },
     "repo_root": {
       "type": "string",
       "required": false,
-      "description": "Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory."
+      "description": "Repository root used to resolve declared file paths."
     },
     "fixture": {
       "type": "string",
       "required": false,
-      "description": "Workspace root forwarded from chain inputs when repo_root is omitted."
+      "description": "Optional fixture workspace root used during dev and harness execution."
     }
+  },
+  "output": {
+    "packet": "runx.spec.declared_file_context.v1",
+    "wrap_as": "declared_file_context"
   },
   "scopes": [
     "spec.read_declared_files"
@@ -40,11 +44,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.spec.declared_file_context.v1",
-    "wrap_as": "declared_file_context"
-  },
-  "source_hash": "sha256:95cb0eb56a3078a47304808be0dd9996e6dfeea32a7a6158c32b8a0573aafa62",
-  "schema_hash": "sha256:0d5333faf7f26097f6f3044eec48f1742458b07a118c8ab2a206d83842a26d59",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:732a30fcbe5539d0c888e4a94d01ade5e7cf426cf63cec522f6e236adfa38fb6",
+  "schema_hash": "sha256:fdc484586979e2d461117eb1b4355f7ece6a13baa6dabf4f7af8bf2b5764d342",
+  "toolkit_version": "0.1.0"
 }

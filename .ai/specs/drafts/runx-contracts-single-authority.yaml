@@ -1,0 +1,237 @@
+spec_version: "1.1"
+task_id: "runx-contracts-single-authority"
+created: "2026-04-24T00:40:00Z"
+updated: "2026-04-24T00:40:00Z"
+status: "draft"
+
+task:
+  title: "Make contracts the single authority for machine-readable runx schemas"
+  summary: >
+    Runx still carries contract drift risk because machine-readable shapes exist
+    as parallel TypeScript types, generated schemas, loose schema files, and
+    imperative validators. Collapse those surfaces into packages/contracts so
+    TypeBox-backed definitions generate TypeScript, runtime validators, and
+    checked-in schema artifacts from one source of truth.
+  size: "large"
+  risk_level: "high"
+  context:
+    packages:
+      - "packages/contracts"
+      - "packages/cli"
+      - "packages/core"
+      - "packages/adapters"
+      - "../cloud/packages/api"
+    files_impacted:
+      - path: "packages/contracts/src/index.ts"
+        lines: "all"
+        reason: "Target home for canonical machine-readable contract definitions."
+      - path: "schemas"
+        lines: "all"
+        reason: "Generated schema artifacts should come from contracts."
+      - path: "scripts/generate-contract-schemas.ts"
+        lines: "all"
+        reason: "Generation should stay deterministic and complete."
+      - path: "packages/cli/src"
+        lines: "all"
+        reason: "CLI report envelopes should consume generated validators and types."
+      - path: "packages/core/src"
+        lines: "all"
+        reason: "Runtime and executor contracts should stop using hand-maintained parallel validators."
+      - path: "../cloud/packages/api/src"
+        lines: "all"
+        reason: "Hosted envelopes should consume contracts rather than local duplicate shapes."
+    invariants:
+      - "Every machine-readable contract has one canonical definition."
+      - "Generated artifacts are deterministic and checked in."
+      - "Runtime validation remains available where behavior depends on external input."
+  objectives:
+    - "Move remaining envelopes and payloads into packages/contracts."
+    - "Generate runtime validators, TypeScript types, and schema artifacts from the same definitions."
+    - "Retire imperative validators where contracts can supply the runtime guard."
+  scope:
+    in_scope:
+      - "Doctor/dev/list outputs, hosted/public envelopes, manifests, packet/receipt adjuncts, and executor-facing machine contracts."
+      - "Schema generation and drift detection."
+    out_of_scope:
+      - "Purely internal in-memory helper types with no machine boundary."
+      - "Unrelated domain refactors outside contract ownership."
+  dependencies:
+    - "runx-verification-foundation-and-fast-lanes"
+  touchpoints:
+    - area: "packages/contracts"
+      description: "Canonical home for contract authority."
+    - area: "packages/core/src/executor"
+      description: "Largest remaining imperative validation surface."
+    - area: "packages/cli and ../cloud/packages/api"
+      description: "Consumers that should use generated validators instead of local duplicates."
+  risks:
+    - description: "Large contract migrations can cause broad call-site churn."
+      impact: "high"
+      mitigation: "Migrate by envelope family and keep generation deterministic at every step."
+    - description: "Generated artifacts can drift from checked-in files if the generation path is incomplete."
+      impact: "medium"
+      mitigation: "Make regeneration part of validation and fail on drift."
+  acceptance:
+    validation_profile: "strict"
+    definition_of_done:
+      - id: "dod1"
+        description: "CLI and hosted machine-readable report envelopes are defined in packages/contracts."
+      - id: "dod2"
+        description: "Receipt, manifest, and packet-oriented schemas are generated from packages/contracts."
+      - id: "dod3"
+        description: "Imperative validators in executor/runtime are removed or reduced to glue around contract-generated validators."
+      - id: "dod4"
+        description: "Schema generation produces no unchecked drift."
+    validation:
+      - id: "v1"
+        type: "integration"
+        description: "Schema generation completes successfully."
+        command: "pnpm schemas:generate"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v2"
+        type: "boundary"
+        description: "Generated contract artifacts are fully checked in."
+        command: "pnpm schemas:generate && git diff --exit-code packages/contracts/src schemas"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v3"
+        type: "compile"
+        description: "OSS typecheck stays green."
+        command: "pnpm typecheck"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v4"
+        type: "compile"
+        description: "Cloud typecheck stays green against the migrated contracts."
+        command: "pnpm typecheck"
+        cwd: "../cloud"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-24T00:40:00Z"
+    actor: "user"
+    summary: "Requested concrete execution specs for the remaining path to ideal shape."
+  - timestamp: "2026-04-24T00:40:00Z"
+    actor: "agent"
+    summary: "Scoped contract debt to a packages/contracts authority migration with deterministic generation and drift enforcement."
+
+phases:
+  - id: "phase1"
+    name: "Migrate control-plane report envelopes"
+    objective: "Move the most user-visible machine envelopes into packages/contracts first."
+    changes:
+      - file: "packages/contracts/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Add canonical TypeBox definitions for CLI and hosted report envelopes
+          such as doctor, dev, list, and public status outputs.
+      - file: "packages/cli/src"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace local report types and validators with imports from
+          packages/contracts.
+      - file: "../cloud/packages/api/src"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace locally shaped hosted/public envelopes with contract imports
+          where the response is machine-consumed.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "compile"
+        description: "OSS typechecks after control-plane envelope migration."
+        command: "pnpm typecheck"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "ac1_2"
+        type: "compile"
+        description: "Cloud typechecks against the migrated control-plane envelopes."
+        command: "pnpm typecheck"
+        cwd: "../cloud"
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase2"
+    name: "Migrate receipt, manifest, and packet schemas"
+    objective: "Move the remaining checked-in machine contract families under one authority."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "packages/contracts/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Add canonical definitions for receipt adjuncts, manifest-like payloads,
+          packet schemas, and skill metadata that still live in parallel forms.
+      - file: "schemas"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Regenerate checked-in schema artifacts so they are entirely derived
+          from packages/contracts.
+      - file: "scripts/generate-contract-schemas.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Ensure the generation script covers the full machine-readable contract
+          surface deterministically.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "integration"
+        description: "Schema generation covers the expanded contract surface."
+        command: "pnpm schemas:generate"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "ac2_2"
+        type: "boundary"
+        description: "Generation produces no unchecked drift."
+        command: "pnpm schemas:generate && git diff --exit-code packages/contracts/src schemas"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase3"
+    name: "Retire imperative validator duplication"
+    objective: "Replace hand-maintained validator code with contract-driven runtime validation where possible."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "packages/core/src/executor"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace large imperative validators with imports from
+          packages/contracts or shrink them to glue around contract-generated
+          validation results.
+      - file: "packages/core/src"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Use the generated validators consistently wherever external machine
+          input enters the runtime.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "compile"
+        description: "OSS still typechecks after validator consolidation."
+        command: "pnpm typecheck"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- packages/contracts/src/index.ts packages/cli/src ../cloud/packages/api/src"
+    phase2: "git checkout HEAD -- packages/contracts/src/index.ts schemas scripts/generate-contract-schemas.ts"
+    phase3: "git checkout HEAD -- packages/core/src/executor packages/core/src"
+
+metadata:
+  estimated_effort_hours: 10
+  ai_model: "gpt-5"
+  tags:
+    - "contracts"
+    - "typebox"
+    - "schema-generation"

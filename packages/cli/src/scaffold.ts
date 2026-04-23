@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const authoringPackageVersion = "^0.1.0";
-const cliPackageVersion = "^0.4.2";
-const toolkitVersion = "0.1.0";
+import { readCliDependencyVersion, readCliPackageMetadata } from "./metadata.js";
+
+const toolkitVersion = readCliDependencyVersion("@runxhq/authoring");
+const authoringPackageVersion = `^${toolkitVersion}`;
+const cliPackageVersion = `^${readCliPackageMetadata().version}`;
 
 export interface ScaffoldRunxPackageOptions {
   readonly name: string;

@@ -13,28 +13,31 @@
     "command": {
       "type": "string",
       "required": true,
-      "description": "Command to execute."
+      "description": "Executable to invoke."
     },
     "args": {
       "type": "json",
       "required": false,
-      "description": "Array of string arguments."
+      "description": "Optional argument array for the command."
     },
     "cwd": {
       "type": "string",
       "required": false,
-      "description": "Working directory override."
+      "description": "Optional working directory override for the command."
     },
     "repo_root": {
       "type": "string",
       "required": false,
-      "description": "Repository root fallback for cwd."
+      "description": "Optional repository root used when cwd is not supplied."
     }
+  },
+  "output": {
+    "packet": "runx.shell.execution.v1",
+    "wrap_as": "shell_execution"
   },
   "scopes": [
     "shell.exec"
   ],
-  "mutating": true,
   "runx": {
     "artifacts": {
       "wrap_as": "shell_execution"
@@ -46,11 +49,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.shell.execution.v1",
-    "wrap_as": "shell_execution"
-  },
-  "source_hash": "sha256:e4df15c63c44215c2c5c869fcb7059f183d9a9a3111f9825a7cab9ed87c718c9",
-  "schema_hash": "sha256:621e14b618426994a4ba598176c812d1b456f097057ba46f09f3a6cbc8e340da",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:08a3b66bb513b5d85874780c141c55a5360b02bacdc4dd91cd6803b78b420bdf",
+  "schema_hash": "sha256:6b798dd3ccd5d80d23c70ee8278f165ddc974eed45b3a056431310890f634371",
+  "toolkit_version": "0.1.0"
 }

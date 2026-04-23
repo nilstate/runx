@@ -1,0 +1,222 @@
+spec_version: "1.1"
+task_id: "runx-hosted-api-domain-service-split"
+created: "2026-04-24T00:35:00Z"
+updated: "2026-04-24T00:35:00Z"
+status: "draft"
+
+task:
+  title: "Finish splitting hosted API, OpenAPI, and public-site by domain"
+  summary: >
+    The hosted hot files are smaller now, but they still centralize too much:
+    route registration, business logic, OpenAPI construction, and public-site
+    rendering all remain too close together. Split the hosted surface by domain
+    so route files become registrars over focused services and builders.
+  size: "large"
+  risk_level: "high"
+  context:
+    packages:
+      - "../cloud/packages/api"
+      - "../cloud/apps/api"
+      - "packages/cli"
+      - "packages/core"
+    files_impacted:
+      - path: "../cloud/packages/api/src/index.ts"
+        lines: "all"
+        reason: "Reduce the main hosted entrypoint to route wiring."
+      - path: "../cloud/packages/api/src/openapi.ts"
+        lines: "all"
+        reason: "Separate document assembly from route/schema ownership."
+      - path: "../cloud/packages/api/src/public-site.ts"
+        lines: "all"
+        reason: "Separate data loading, view-model shaping, and HTML rendering."
+      - path: "../cloud/packages/api/src/routes"
+        lines: "all"
+        reason: "Domain route registrars should own HTTP registration."
+      - path: "../cloud/packages/api/src/services"
+        lines: "all"
+        reason: "Business logic should live outside route registration."
+    invariants:
+      - "Hosted API behavior stays stable."
+      - "OpenAPI output shape stays stable."
+      - "Public-site rendering stays deterministic and server-side."
+  objectives:
+    - "Split route registration by domain."
+    - "Split OpenAPI generation into reusable path/schema builders."
+    - "Split public-site data shaping from rendering."
+    - "Reuse library behavior from oss where cloud still duplicates it."
+  scope:
+    in_scope:
+      - "Hosted route, service, OpenAPI, and public-site modularization."
+      - "Swapping duplicate hosted behavior over to library code where available."
+    out_of_scope:
+      - "Changing public API contracts."
+      - "Provider-integration rewrites beyond what modularization requires."
+  dependencies:
+    - "runx-verification-foundation-and-fast-lanes"
+    - "runx-cli-kernel-final-split"
+    - "runx-runner-local-facade-final-split"
+  touchpoints:
+    - area: "../cloud/packages/api/src/index.ts"
+      description: "Hosted API registrar and remaining logic sink."
+    - area: "../cloud/packages/api/src/openapi.ts"
+      description: "Large schema and operation assembly surface."
+    - area: "../cloud/packages/api/src/public-site.ts"
+      description: "Large public-site data plus rendering surface."
+  risks:
+    - description: "Route splits can accidentally change auth or handler wiring."
+      impact: "high"
+      mitigation: "Keep fast hosted tests and OpenAPI expectations green after each domain split."
+    - description: "OpenAPI splits can drift document ordering or schema names."
+      impact: "medium"
+      mitigation: "Preserve the current document surface and keep existing API tests as the oracle."
+  acceptance:
+    validation_profile: "strict"
+    definition_of_done:
+      - id: "dod1"
+        description: "packages/api/src/index.ts is route registration only and stays at or below 900 lines."
+      - id: "dod2"
+        description: "packages/api/src/openapi.ts delegates to path/schema builders and stays at or below 900 lines."
+      - id: "dod3"
+        description: "packages/api/src/public-site.ts delegates to service/render modules and stays at or below 900 lines."
+      - id: "dod4"
+        description: "Hosted route domains are grouped into focused modules such as runs, connect, registry, knowledge, admin, and public."
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "Cloud typecheck stays green."
+        command: "pnpm typecheck"
+        cwd: "../cloud"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "Hosted fast lane stays green."
+        command: "pnpm test:fast"
+        cwd: "../cloud"
+        expected: "exit code 0"
+      - id: "v3"
+        type: "boundary"
+        description: "Hosted hot files meet their final budgets."
+        command: "test $(wc -l < packages/api/src/index.ts) -le 900 && test $(wc -l < packages/api/src/openapi.ts) -le 900 && test $(wc -l < packages/api/src/public-site.ts) -le 900"
+        cwd: "../cloud"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-24T00:35:00Z"
+    actor: "user"
+    summary: "Asked for concrete execution specs for the remaining architectural work."
+  - timestamp: "2026-04-24T00:35:00Z"
+    actor: "agent"
+    summary: "Scoped the hosted-side work to route-domain registrars, OpenAPI builders, and public-site service/render separation."
+
+phases:
+  - id: "phase1"
+    name: "Split hosted routes by domain"
+    objective: "Move runs, connect, registry, knowledge, admin, and public route registration out of the root entrypoint."
+    changes:
+      - file: "../cloud/packages/api/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace inline route registration and domain-specific handler wiring
+          with imports from focused route modules.
+      - file: "../cloud/packages/api/src/routes"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Add route registrars grouped by domain, each consuming service
+          functions rather than embedding business logic directly.
+      - file: "../cloud/packages/api/src/services"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Add service modules for domain logic that routes should call.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "boundary"
+        description: "Hosted API root drops below 1100 lines after route-domain extraction."
+        command: "test $(wc -l < packages/api/src/index.ts) -le 1100"
+        cwd: "../cloud"
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase2"
+    name: "Split OpenAPI generation into builders"
+    objective: "Move schema assembly and path catalog generation out of the single document file."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "../cloud/packages/api/src/openapi.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep only top-level document assembly in the root file and delegate
+          path/schema details to builder modules.
+      - file: "../cloud/packages/api/src/openapi"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Add builder modules for schema fragments, security schemes, and route
+          path catalogs.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "test"
+        description: "Hosted API tests that assert OpenAPI shape stay green."
+        command: "pnpm exec vitest run packages/api/src/index.test.ts"
+        cwd: "../cloud"
+        expected: "exit code 0"
+      - id: "ac2_2"
+        type: "boundary"
+        description: "OpenAPI root drops below 1100 lines after builder extraction."
+        command: "test $(wc -l < packages/api/src/openapi.ts) -le 1100"
+        cwd: "../cloud"
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase3"
+    name: "Split public-site data and rendering"
+    objective: "Separate public-site data shaping, page composition, and HTML rendering."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "../cloud/packages/api/src/public-site.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep only top-level page orchestration in the root file and delegate
+          data shaping and rendering to focused modules.
+      - file: "../cloud/packages/api/src/public-site"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Add modules for page-model building, feed shaping, and HTML rendering
+          so the public site can evolve without returning to a giant file.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "test"
+        description: "Public-site and hosted boundary tests stay green."
+        command: "pnpm exec vitest run tests/public-site-install-count.test.ts tests/workspace-boundary.test.ts"
+        cwd: "../cloud"
+        expected: "exit code 0"
+      - id: "ac3_2"
+        type: "boundary"
+        description: "Hosted hot files meet their final budgets."
+        command: "test $(wc -l < packages/api/src/index.ts) -le 900 && test $(wc -l < packages/api/src/openapi.ts) -le 900 && test $(wc -l < packages/api/src/public-site.ts) -le 900"
+        cwd: "../cloud"
+        expected: "exit code 0"
+    status: "pending"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- ../cloud/packages/api/src/index.ts ../cloud/packages/api/src/routes ../cloud/packages/api/src/services"
+    phase2: "git checkout HEAD -- ../cloud/packages/api/src/openapi.ts ../cloud/packages/api/src/openapi"
+    phase3: "git checkout HEAD -- ../cloud/packages/api/src/public-site.ts ../cloud/packages/api/src/public-site"
+
+metadata:
+  estimated_effort_hours: 8
+  ai_model: "gpt-5"
+  tags:
+    - "cloud"
+    - "api"
+    - "openapi"
+    - "public-site"

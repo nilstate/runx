@@ -15,44 +15,68 @@
       "type": "string"
     },
     "lane": {
-      "type": "string",
-      "enum": [
-        "deterministic",
-        "agent",
-        "repo-integration"
+      "anyOf": [
+        {
+          "const": "deterministic",
+          "type": "string"
+        },
+        {
+          "const": "agent",
+          "type": "string"
+        },
+        {
+          "const": "repo-integration",
+          "type": "string"
+        }
       ]
     },
     "target": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "inputs": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "env": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "agent": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "repo": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "execution": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "permissions": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "expect": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     }
   }
 }

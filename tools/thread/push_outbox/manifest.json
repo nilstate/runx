@@ -18,11 +18,13 @@
     "outbox_entry": {
       "type": "json",
       "required": true,
+      "artifact": true,
       "description": "Outbox entry to push through the thread adapter."
     },
     "draft_pull_request": {
       "type": "json",
       "required": false,
+      "artifact": true,
       "description": "Provider-agnostic draft pull-request packet paired with the outbox entry."
     },
     "fixture": {
@@ -41,6 +43,7 @@
       "description": "Optional status to apply after a successful provider push, such as `draft`."
     }
   },
+  "output": {},
   "scopes": [
     "thread:push"
   ],
@@ -50,8 +53,7 @@
       "./run.mjs"
     ]
   },
-  "output": {},
-  "source_hash": "sha256:5b2118ec0c010adc6f7c0acc455b91991160c5b277ef2463fa9f520bee185dea",
-  "schema_hash": "sha256:ac1dce09c604f940313e3a40234bdde653e667e3f2b1ef054728a07981086e16",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:4c12f8fc04d09fad2d5d723e5a8b94482205aa3ab3206b03c7db40971115e2f3",
+  "schema_hash": "sha256:5c9657a19edc8d729e5bd37d6ef4f7912f0f060b1fc719bd822b85cc2fddf5dc",
+  "toolkit_version": "0.1.0"
 }

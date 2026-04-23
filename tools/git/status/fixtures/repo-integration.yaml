@@ -1,0 +1,23 @@
+name: git-status-repo-integration
+lane: repo-integration
+target:
+  kind: tool
+  ref: git.status
+repo:
+  files:
+    README.md: |
+      # Fixture repo
+  git:
+    dirty_files:
+      README.md: |
+        # Fixture repo
+        changed
+expect:
+  status: success
+  output:
+    matches_packet: runx.git.status.v1
+    subset:
+      branch: main
+      clean: false
+      entries:
+        - " M README.md"

@@ -19,14 +19,31 @@
       "type": "string"
     },
     "requested_kind": {
-      "type": "string",
-      "enum": [
-        "all",
-        "tools",
-        "skills",
-        "chains",
-        "packets",
-        "overlays"
+      "anyOf": [
+        {
+          "const": "all",
+          "type": "string"
+        },
+        {
+          "const": "tools",
+          "type": "string"
+        },
+        {
+          "const": "skills",
+          "type": "string"
+        },
+        {
+          "const": "chains",
+          "type": "string"
+        },
+        {
+          "const": "packets",
+          "type": "string"
+        },
+        {
+          "const": "overlays",
+          "type": "string"
+        }
       ]
     },
     "items": {
@@ -43,35 +60,65 @@
         ],
         "properties": {
           "kind": {
-            "type": "string",
-            "enum": [
-              "tool",
-              "skill",
-              "chain",
-              "packet",
-              "overlay"
+            "anyOf": [
+              {
+                "const": "tool",
+                "type": "string"
+              },
+              {
+                "const": "skill",
+                "type": "string"
+              },
+              {
+                "const": "chain",
+                "type": "string"
+              },
+              {
+                "const": "packet",
+                "type": "string"
+              },
+              {
+                "const": "overlay",
+                "type": "string"
+              }
             ]
           },
           "name": {
             "type": "string"
           },
           "source": {
-            "type": "string",
-            "enum": [
-              "local",
-              "workspace",
-              "dependencies",
-              "built-in"
+            "anyOf": [
+              {
+                "const": "local",
+                "type": "string"
+              },
+              {
+                "const": "workspace",
+                "type": "string"
+              },
+              {
+                "const": "dependencies",
+                "type": "string"
+              },
+              {
+                "const": "built-in",
+                "type": "string"
+              }
             ]
           },
           "path": {
             "type": "string"
           },
           "status": {
-            "type": "string",
-            "enum": [
-              "ok",
-              "invalid"
+            "anyOf": [
+              {
+                "const": "ok",
+                "type": "string"
+              },
+              {
+                "const": "invalid",
+                "type": "string"
+              }
             ]
           },
           "diagnostics": {

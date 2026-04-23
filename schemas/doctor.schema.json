@@ -16,10 +16,15 @@
       "type": "string"
     },
     "status": {
-      "type": "string",
-      "enum": [
-        "success",
-        "failure"
+      "anyOf": [
+        {
+          "const": "success",
+          "type": "string"
+        },
+        {
+          "const": "failure",
+          "type": "string"
+        }
       ]
     },
     "summary": {
@@ -68,11 +73,19 @@
             "type": "string"
           },
           "severity": {
-            "type": "string",
-            "enum": [
-              "error",
-              "warning",
-              "info"
+            "anyOf": [
+              {
+                "const": "error",
+                "type": "string"
+              },
+              {
+                "const": "warning",
+                "type": "string"
+              },
+              {
+                "const": "info",
+                "type": "string"
+              }
             ]
           },
           "title": {
@@ -83,7 +96,9 @@
           },
           "target": {
             "type": "object",
-            "additionalProperties": true
+            "patternProperties": {
+              "^(.*)$": {}
+            }
           },
           "location": {
             "additionalProperties": false,
@@ -102,7 +117,9 @@
           },
           "evidence": {
             "type": "object",
-            "additionalProperties": true
+            "patternProperties": {
+              "^(.*)$": {}
+            }
           },
           "repairs": {
             "type": "array",
@@ -121,32 +138,71 @@
                   "type": "string"
                 },
                 "kind": {
-                  "type": "string",
-                  "enum": [
-                    "create_file",
-                    "replace_file",
-                    "edit_yaml",
-                    "edit_json",
-                    "add_fixture",
-                    "run_command",
-                    "manual"
+                  "anyOf": [
+                    {
+                      "const": "create_file",
+                      "type": "string"
+                    },
+                    {
+                      "const": "replace_file",
+                      "type": "string"
+                    },
+                    {
+                      "const": "edit_yaml",
+                      "type": "string"
+                    },
+                    {
+                      "const": "edit_json",
+                      "type": "string"
+                    },
+                    {
+                      "const": "add_fixture",
+                      "type": "string"
+                    },
+                    {
+                      "const": "run_command",
+                      "type": "string"
+                    },
+                    {
+                      "const": "manual",
+                      "type": "string"
+                    }
                   ]
                 },
                 "confidence": {
-                  "type": "string",
-                  "enum": [
-                    "low",
-                    "medium",
-                    "high"
+                  "anyOf": [
+                    {
+                      "const": "low",
+                      "type": "string"
+                    },
+                    {
+                      "const": "medium",
+                      "type": "string"
+                    },
+                    {
+                      "const": "high",
+                      "type": "string"
+                    }
                   ]
                 },
                 "risk": {
-                  "type": "string",
-                  "enum": [
-                    "low",
-                    "medium",
-                    "high",
-                    "sensitive"
+                  "anyOf": [
+                    {
+                      "const": "low",
+                      "type": "string"
+                    },
+                    {
+                      "const": "medium",
+                      "type": "string"
+                    },
+                    {
+                      "const": "high",
+                      "type": "string"
+                    },
+                    {
+                      "const": "sensitive",
+                      "type": "string"
+                    }
                   ]
                 },
                 "path": {

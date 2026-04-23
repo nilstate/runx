@@ -19,7 +19,21 @@
       "type": "string",
       "required": false,
       "description": "Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory."
+    },
+    "project": {
+      "type": "string",
+      "required": false,
+      "description": "Optional alias for repo_root used by local harnesses."
+    },
+    "fixture": {
+      "type": "string",
+      "required": false,
+      "description": "Optional fixture workspace root used during dev and harness execution."
     }
+  },
+  "output": {
+    "packet": "runx.fs.file_read.v1",
+    "wrap_as": "file_read"
   },
   "scopes": [
     "fs.read"
@@ -35,11 +49,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.fs.file_read.v1",
-    "wrap_as": "file_read"
-  },
-  "source_hash": "sha256:de92cd79151e417e34a0a8a95d61f3f121988e7ef594098668b2e0aee4a8ede4",
-  "schema_hash": "sha256:4542573d19bad61226015faeb60c6a21a56f66b7cac662013f95620a96f4faac",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:df2f581f1de08c878059f25029b0cf4dc0b2b4d331d28e941f43ff4001c2809b",
+  "schema_hash": "sha256:fbf0cda792f49615ff4ab24c918c525d88d15c34c8a298208cec5033b1f552d4",
+  "toolkit_version": "0.1.0"
 }

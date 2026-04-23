@@ -29,19 +29,23 @@
     },
     "docs_inputs": {
       "type": "json",
-      "required": true,
-      "description": "Structured docs inputs, for example {\"mode\":\"config\",\"config\":\"sourcey.config.ts\"} or {\"mode\":\"openapi\",\"spec\":\"openapi.yaml\"}."
-    },
-    "output_dir": {
-      "type": "string",
       "required": false,
-      "description": "Output directory for Sourcey docs; defaults to <project>/.sourcey/runx-docs."
+      "description": "Structured docs inputs, for example {\"mode\":\"config\",\"config\":\"sourcey.config.ts\"} or {\"mode\":\"openapi\",\"spec\":\"openapi.yaml\"}."
     },
     "sourcey_bin": {
       "type": "string",
       "required": false,
       "description": "Explicit Sourcey executable or JS entrypoint; defaults to SOURCEY_BIN or sourcey on PATH."
+    },
+    "output_dir": {
+      "type": "string",
+      "required": false,
+      "description": "Output directory for Sourcey docs; defaults to <project>/.sourcey/runx-docs."
     }
+  },
+  "output": {
+    "packet": "runx.sourcey.build_report.v1",
+    "wrap_as": "sourcey_build_report"
   },
   "scopes": [
     "sourcey.build"
@@ -57,11 +61,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.sourcey.build_report.v1",
-    "wrap_as": "sourcey_build_report"
-  },
-  "source_hash": "sha256:98b49293de2dee606f544179c86886d9c67dd7c39d6e50658671314b80cd1ece",
-  "schema_hash": "sha256:696c39993e017860cac41699b0808e14ef8f4b4b11ed075833f593e683aa34f4",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:879b0121b01c273f46281a22c342b7c8e740573078f49f6cb9c5a20187e718fb",
+  "schema_hash": "sha256:b180ca4d2407c64c45f64988b70d9a3d143706eb7fb52fc12382f56963363869",
+  "toolkit_version": "0.1.0"
 }

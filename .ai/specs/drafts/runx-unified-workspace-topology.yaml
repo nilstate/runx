@@ -1,0 +1,246 @@
+spec_version: "1.1"
+task_id: "runx-unified-workspace-topology"
+created: "2026-04-24T00:45:00Z"
+updated: "2026-04-24T00:45:00Z"
+status: "draft"
+
+task:
+  title: "Converge runx onto one real workspace and remove nested-repo hybrid debt"
+  summary: >
+    The current parent repo plus nested oss/cloud repos plus local link edges is
+    still a hybrid. The ideal shape from here is a single authoritative
+    workspace rooted at /home/kam/dev/runx, with workspace package edges instead
+    of link:../oss references and no gitlink-style nested repos. Converge the
+    topology so the package graph, tooling, and versioning all describe the same
+    reality.
+  size: "large"
+  risk_level: "high"
+  context:
+    packages:
+      - ".."
+      - "../oss/packages/*"
+      - "../cloud/apps/*"
+      - "../cloud/packages/*"
+    files_impacted:
+      - path: "../package.json"
+        lines: "all"
+        reason: "Parent repo should become the one authoritative workspace root."
+      - path: "../pnpm-workspace.yaml"
+        lines: "all"
+        reason: "Workspace membership should be declared at the real root."
+      - path: "../cloud/package.json"
+        lines: "all"
+        reason: "Cloud should consume @runxhq/* through workspace refs, not local links."
+      - path: "../oss/package.json"
+        lines: "all"
+        reason: "Top-level oss workspace behavior should move to the root or become a package-local concern."
+      - path: "../.github/workflows"
+        lines: "all"
+        reason: "CI should run from the real workspace root, not through nested-repo assumptions."
+      - path: "../oss"
+        lines: "all"
+        reason: "Nested git-repo packaging assumptions should be removed."
+      - path: "../cloud"
+        lines: "all"
+        reason: "Nested git-repo packaging assumptions should be removed."
+    invariants:
+      - "Package edges must be real workspace edges, not hidden source or link hacks."
+      - "There is exactly one authoritative git/workspace root."
+      - "Cloud and oss remain separately buildable within the unified workspace."
+  objectives:
+    - "Promote /home/kam/dev/runx to the only real workspace root."
+    - "Replace cloud link dependencies with workspace package edges."
+    - "Remove nested gitlink-style repos and normalize tooling and CI around the root."
+  scope:
+    in_scope:
+      - "Workspace manifests, dependency edges, repo topology, and root-level tooling."
+    out_of_scope:
+      - "Physically moving every directory if the unified root can be achieved without it."
+      - "Publishing external package versions to a remote registry."
+  dependencies:
+    - "runx-verification-foundation-and-fast-lanes"
+    - "runx-cli-kernel-final-split"
+    - "runx-runner-local-facade-final-split"
+    - "runx-hosted-api-domain-service-split"
+    - "runx-contracts-single-authority"
+  assumptions:
+    - "The preferred end state is one real monorepo workspace, not separate published package release trains."
+  touchpoints:
+    - area: "/home/kam/dev/runx"
+      description: "Future authoritative git and package-manager root."
+    - area: "../cloud/package.json"
+      description: "Current local-link consumer that should use workspace refs."
+    - area: "../oss and ../cloud git topology"
+      description: "Current nested-repo debt that should disappear."
+  risks:
+    - description: "Repo-topology changes can disrupt daily workflows if done before structural code work settles."
+      impact: "high"
+      mitigation: "Execute this after the major code-shape refactors and only with a stable fast verification lane."
+    - description: "Workspace convergence can accidentally break scripts that assume the old cwd layout."
+      impact: "medium"
+      mitigation: "Move tooling and scripts in phases and keep root-level entrypoints explicit."
+  acceptance:
+    validation_profile: "strict"
+    definition_of_done:
+      - id: "dod1"
+        description: "The parent repo is the only authoritative workspace root."
+      - id: "dod2"
+        description: "Cloud consumes @runxhq/* through workspace refs instead of link:../oss/package paths."
+      - id: "dod3"
+        description: "oss and cloud are no longer tracked as nested gitlink-style repos."
+      - id: "dod4"
+        description: "Root-level install and verification commands operate over the unified workspace."
+    validation:
+      - id: "v1"
+        type: "integration"
+        description: "Root workspace install succeeds."
+        command: "pnpm install"
+        cwd: ".."
+        expected: "exit code 0"
+      - id: "v2"
+        type: "compile"
+        description: "Root-driven oss and cloud verification succeeds."
+        command: "pnpm --dir oss typecheck && pnpm --dir cloud typecheck"
+        cwd: ".."
+        expected: "exit code 0"
+      - id: "v3"
+        type: "boundary"
+        description: "No cloud package manifest still uses link:../oss package edges."
+        command: "! rg -n 'link:\\.\\./oss/packages' cloud -g 'package.json'"
+        cwd: ".."
+        expected: "exit code 0"
+      - id: "v4"
+        type: "boundary"
+        description: "oss and cloud are no longer tracked as gitlink-style nested repos."
+        command: "test -z \"$(git ls-files -s oss cloud | awk '$1 == 160000 { print }')\""
+        cwd: ".."
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-24T00:45:00Z"
+    actor: "user"
+    summary: "Asked for concrete execution specs covering the full path to ideal shape."
+  - timestamp: "2026-04-24T00:45:00Z"
+    actor: "agent"
+    summary: "Chose one real workspace as the target end state instead of keeping the current parent-plus-nested-repo hybrid."
+
+phases:
+  - id: "phase1"
+    name: "Promote the parent repo to the workspace root"
+    objective: "Make /home/kam/dev/runx the one package-manager root with explicit workspace membership."
+    changes:
+      - file: "../package.json"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Add or expand a root package manifest that exposes the authoritative
+          workspace-level scripts and package manager settings.
+      - file: "../pnpm-workspace.yaml"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Declare oss and cloud workspace members from the real root.
+      - file: "../oss/package.json"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Remove assumptions that oss itself is the only workspace root when
+          they should now live at the parent level.
+      - file: "../cloud/package.json"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Align cloud package-manager behavior with the new root workspace.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "integration"
+        description: "Root workspace install succeeds."
+        command: "pnpm install"
+        cwd: ".."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase2"
+    name: "Replace link edges with workspace edges"
+    objective: "Make the package graph honest at the manifest level."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "../cloud/package.json"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Replace link:../oss package edges with workspace: references to the
+          unified root workspace packages.
+      - file: "../cloud/pnpm-lock.yaml"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Refresh the lockfile against workspace-based package edges.
+      - file: "../cloud/tsconfig.base.json"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep compile-time path resolution aligned with the workspace package
+          graph after the manifest change.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "boundary"
+        description: "No cloud package manifest still uses link:../oss package refs."
+        command: "! rg -n 'link:\\.\\./oss/packages' cloud -g 'package.json'"
+        cwd: ".."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase3"
+    name: "Remove nested gitlink topology and normalize tooling"
+    objective: "Finish the topology migration so git, CI, and developer commands all operate from the root."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "../.github/workflows"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Move workspace verification and release automation to the parent root.
+      - file: "../oss"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Remove nested git-repo assumptions and keep only package-level
+          concerns inside the directory tree.
+      - file: "../cloud"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Remove nested git-repo assumptions and keep only package-level
+          concerns inside the directory tree.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "boundary"
+        description: "oss and cloud are no longer tracked as nested gitlinks."
+        command: "test -z \"$(git ls-files -s oss cloud | awk '$1 == 160000 { print }')\""
+        cwd: ".."
+        expected: "exit code 0"
+      - id: "ac3_2"
+        type: "compile"
+        description: "Root-driven oss and cloud verification succeeds."
+        command: "pnpm --dir oss typecheck && pnpm --dir cloud typecheck"
+        cwd: ".."
+        expected: "exit code 0"
+    status: "pending"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- ../package.json ../pnpm-workspace.yaml ../oss/package.json ../cloud/package.json"
+    phase2: "git checkout HEAD -- ../cloud/package.json ../cloud/pnpm-lock.yaml ../cloud/tsconfig.base.json"
+    phase3: "git checkout HEAD -- ../.github/workflows ../oss ../cloud"
+
+metadata:
+  estimated_effort_hours: 12
+  ai_model: "gpt-5"
+  tags:
+    - "workspace"
+    - "repo-topology"
+    - "package-boundaries"

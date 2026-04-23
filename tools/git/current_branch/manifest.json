@@ -13,8 +13,12 @@
     "repo_root": {
       "type": "string",
       "required": false,
-      "description": "Repository root; defaults to RUNX_CWD or the current working directory."
+      "description": "Repository root to inspect. Defaults to RUNX_CWD or the current working directory."
     }
+  },
+  "output": {
+    "packet": "runx.git.branch.v1",
+    "wrap_as": "git_branch"
   },
   "scopes": [
     "git.read"
@@ -30,11 +34,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.git.branch.v1",
-    "wrap_as": "git_branch"
-  },
-  "source_hash": "sha256:c40fa0e2ef5714f6f10583e59ea0647cf50ce105759ec1be7263d486b8b08a06",
-  "schema_hash": "sha256:41b1092e5cf3d09a6274fd742ef045684c67a964939de4214519e5d1414cb9fd",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:6f4464dfe8ddeb182be5c11b0510fe88f60e64310521d585f483d5089a394095",
+  "schema_hash": "sha256:d2e6728b47f6270607ae6baaffca20e8ae7947043dfdc8158d70363dc1b75df4",
+  "toolkit_version": "0.1.0"
 }

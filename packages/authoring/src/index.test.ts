@@ -88,6 +88,50 @@ describe("@runxhq/authoring", () => {
     });
   });
 
+  it("preserves input descriptions and richer output metadata for manifest generation", () => {
+    const tool = defineTool({
+      name: "demo.meta",
+      inputs: {
+        message: stringInput({ description: "Message to echo.", default: "hello" }),
+        packet: artifact({ optional: true, description: "Optional packet input." }),
+      },
+      output: {
+        named_emits: {
+          draft_pull_request: "draft_pull_request_packet",
+        },
+        outputs: {
+          draft_pull_request: {
+            packet: "runx.outbox.draft_pull_request.v1",
+          },
+        },
+      },
+      run() {
+        return {};
+      },
+    });
+
+    expect(tool.inputs?.message.manifest).toMatchObject({
+      type: "string",
+      description: "Message to echo.",
+      default: "hello",
+    });
+    expect(tool.inputs?.packet.manifest).toMatchObject({
+      type: "json",
+      artifact: true,
+      description: "Optional packet input.",
+    });
+    expect(tool.output).toMatchObject({
+      named_emits: {
+        draft_pull_request: "draft_pull_request_packet",
+      },
+      outputs: {
+        draft_pull_request: {
+          packet: "runx.outbox.draft_pull_request.v1",
+        },
+      },
+    });
+  });
+
   it("exports shared authoring helpers for built-in and project-local tools", () => {
     expect(firstNonEmptyString("", undefined, " docs ")).toBe("docs");
     expect(prune({ keep: "yes", drop: undefined, empty: [], nested: { value: undefined } })).toEqual({ keep: "yes" });

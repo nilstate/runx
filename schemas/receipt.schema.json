@@ -25,12 +25,23 @@
       "type": "string"
     },
     "status": {
-      "type": "string",
-      "enum": [
-        "success",
-        "failure",
-        "skipped",
-        "needs_approval"
+      "anyOf": [
+        {
+          "const": "success",
+          "type": "string"
+        },
+        {
+          "const": "failure",
+          "type": "string"
+        },
+        {
+          "const": "skipped",
+          "type": "string"
+        },
+        {
+          "const": "needs_approval",
+          "type": "string"
+        }
       ]
     },
     "started_at": {
@@ -44,13 +55,17 @@
     },
     "unit": {
       "type": "object",
-      "additionalProperties": true
+      "patternProperties": {
+        "^(.*)$": {}
+      }
     },
     "steps": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "patternProperties": {
+          "^(.*)$": {}
+        }
       }
     }
   }

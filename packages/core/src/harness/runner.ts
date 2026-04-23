@@ -44,6 +44,7 @@ export interface HarnessRunOptions {
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
   readonly adapters?: readonly SkillAdapter[];
+  readonly voiceProfilePath?: string;
 }
 
 export interface CallerTrace {
@@ -222,6 +223,7 @@ async function executeHarnessFixture(args: {
             registryStore: args.options.registryStore,
             skillCacheDir: args.options.skillCacheDir,
             adapters: args.options.adapters,
+            voiceProfilePath: args.options.voiceProfilePath,
           })
         : await runLocalGraph({
             graphPath: args.targetPath,
@@ -233,6 +235,7 @@ async function executeHarnessFixture(args: {
             registryStore: args.options.registryStore,
             skillCacheDir: args.options.skillCacheDir,
             adapters: args.options.adapters,
+            voiceProfilePath: args.options.voiceProfilePath,
           });
 
     const assertionErrors = assertHarnessResult(args.fixture, result);

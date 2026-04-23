@@ -24,6 +24,7 @@ export interface PreparedAgentContext {
   readonly historicalContext: readonly ArtifactEnvelope[];
   readonly provenance: readonly AgentContextProvenance[];
   readonly context?: Context;
+  readonly voiceProfile?: ContextDocument;
   readonly receiptMetadata?: Readonly<Record<string, unknown>>;
 }
 
@@ -73,6 +74,34 @@ export function contextReceiptMetadata(context: Context | undefined): Readonly<R
   };
 }
 
+export async function loadVoiceProfile(options: {
+  readonly env?: NodeJS.ProcessEnv;
+  readonly voiceProfilePath?: string;
+}): Promise<ContextDocument | undefined> {
+  const voicePath = resolveVoiceProfilePath(options);
+  if (!voicePath) {
+    return undefined;
+  }
+  const content = await readFile(voicePath, "utf8");
+  return {
+    root_path: path.dirname(voicePath),
+    path: voicePath,
+    sha256: hashString(content),
+    content,
+  };
+}
+
+export function voiceProfileReceiptMetadata(
+  voiceProfile: ContextDocument | undefined,
+): Readonly<Record<string, unknown>> | undefined {
+  if (!voiceProfile) {
+    return undefined;
+  }
+  return {
+    voice_profile: toContextDocumentReceiptRef(voiceProfile),
+  };
+}
+
 export function qualityProfileContext(skill: ValidatedSkill): QualityProfileContext | undefined {
   if (!skill.qualityProfile) {
     return undefined;
@@ -110,6 +139,8 @@ export async function prepareAgentContext(options: {
   readonly currentContext?: readonly MaterializedContextEdge[];
   readonly skillDirectory?: string;
   readonly context?: Context;
+  readonly voiceProfile?: ContextDocument;
+  readonly voiceProfilePath?: string;
 }): Promise<PreparedAgentContext> {
   const currentContext = dedupeArtifacts(
     (options.currentContext ?? [])
@@ -133,6 +164,12 @@ export async function prepareAgentContext(options: {
       env: options.env,
       fallbackStart: options.skillDirectory,
     }));
+  const voiceProfile =
+    options.voiceProfile
+    ?? (await loadVoiceProfile({
+      env: options.env,
+      voiceProfilePath: options.voiceProfilePath,
+    }));
   const historicalContext = await loadHistoricalAgentContext({
     receiptDir: options.receiptDir,
     skillName: options.skill.name,
@@ -144,6 +181,7 @@ export async function prepareAgentContext(options: {
     historicalContext,
     provenance,
     context,
+    voiceProfile,
     receiptMetadata: projectKeyHash
       ? mergeMetadata(
         {
@@ -152,8 +190,12 @@ export async function prepareAgentContext(options: {
           },
         },
         contextReceiptMetadata(context),
+        voiceProfileReceiptMetadata(voiceProfile),
       )
-      : contextReceiptMetadata(context),
+      : mergeMetadata(
+        contextReceiptMetadata(context),
+        voiceProfileReceiptMetadata(voiceProfile),
+      ),
   };
 }
 
@@ -245,6 +287,20 @@ async function findNearestProjectDocument(start: string, fileName: string): Prom
     }
     current = parent;
   }
+}
+
+function resolveVoiceProfilePath(options: {
+  readonly env?: NodeJS.ProcessEnv;
+  readonly voiceProfilePath?: string;
+}): string | undefined {
+  const override = options.env?.RUNX_VOICE_FILE?.trim();
+  if (override) {
+    return path.resolve(override);
+  }
+  if (options.voiceProfilePath?.trim()) {
+    return path.resolve(options.voiceProfilePath);
+  }
+  return undefined;
 }
 
 function resolveProjectScopeKeyHash(

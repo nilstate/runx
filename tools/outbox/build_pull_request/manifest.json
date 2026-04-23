@@ -71,6 +71,20 @@
       "description": "Native scafld status result payload for sync and origin facts."
     }
   },
+  "output": {
+    "named_emits": {
+      "draft_pull_request": "draft_pull_request_packet",
+      "outbox_entry": "outbox_entry"
+    },
+    "outputs": {
+      "draft_pull_request": {
+        "packet": "runx.outbox.draft_pull_request.v1"
+      },
+      "outbox_entry": {
+        "packet": "runx.outbox.entry.v1"
+      }
+    }
+  },
   "scopes": [
     "runx:repo:package"
   ],
@@ -88,21 +102,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "named_emits": {
-      "draft_pull_request": "draft_pull_request_packet",
-      "outbox_entry": "outbox_entry"
-    },
-    "outputs": {
-      "draft_pull_request": {
-        "packet": "runx.outbox.draft_pull_request.v1"
-      },
-      "outbox_entry": {
-        "packet": "runx.outbox.entry.v1"
-      }
-    }
-  },
-  "source_hash": "sha256:8b17c3981d4bd1c93d1a4034ee3029f4020247ee3f5f924da705e37184404cd8",
+  "source_hash": "sha256:d35089bca74c3bcb933bd2c721f2b2dbb894a8c407dcc23e1bd597cee969ee57",
   "schema_hash": "sha256:6898a9225f0d7c3287134a7ddc9e12faa89d6406995d979a4ffb2c7f6e0b302b",
-  "toolkit_version": "0.0.0"
+  "toolkit_version": "0.1.0"
 }

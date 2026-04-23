@@ -13,23 +13,36 @@
     "path": {
       "type": "string",
       "required": true,
-      "description": "Path to the file relative to repo_root or fixture."
+      "description": "Path to the output file relative to repo_root."
     },
     "contents": {
-      "type": "string",
+      "type": "json",
       "required": true,
-      "description": "UTF-8 contents to write to the target file."
+      "description": "UTF-8 string contents to write."
     },
     "repo_root": {
       "type": "string",
       "required": false,
-      "description": "Repository or workspace root; defaults to fixture, RUNX_CWD, or the current working directory."
+      "description": "Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory."
+    },
+    "project": {
+      "type": "string",
+      "required": false,
+      "description": "Optional alias for repo_root used by local harnesses."
+    },
+    "fixture": {
+      "type": "string",
+      "required": false,
+      "description": "Optional fixture workspace root used during dev and harness execution."
     }
+  },
+  "output": {
+    "packet": "runx.fs.file_write.v1",
+    "wrap_as": "file_write"
   },
   "scopes": [
     "fs.write"
   ],
-  "mutating": true,
   "runx": {
     "artifacts": {
       "wrap_as": "file_write"
@@ -41,11 +54,7 @@
       "./run.mjs"
     ]
   },
-  "output": {
-    "packet": "runx.fs.file_write.v1",
-    "wrap_as": "file_write"
-  },
-  "source_hash": "sha256:d57493b5a240e1dc92473fe9be567511eed8052da9d746cda6ae9e1c26c4d361",
-  "schema_hash": "sha256:b321619eea1c63353117a05d7ded403523e66619d8dd8944de0c00a98b2ab0ad",
-  "toolkit_version": "0.0.0"
+  "source_hash": "sha256:cea1c66b7e29a1a86ddd238b0f14668c343d0a8da4a7002d2fc1c7f6cc38b049",
+  "schema_hash": "sha256:3e0be71d53813bf8f9a38af14b0fd74874712f639ccda3b3842e442631198504",
+  "toolkit_version": "0.1.0"
 }

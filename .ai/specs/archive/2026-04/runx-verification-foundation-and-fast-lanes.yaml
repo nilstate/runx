@@ -1,0 +1,228 @@
+spec_version: "1.1"
+task_id: "runx-verification-foundation-and-fast-lanes"
+created: "2026-04-24T00:20:00Z"
+updated: "2026-04-23T15:27:08Z"
+status: "completed"
+
+task:
+  title: "Restore trustworthy fast verification and structural lanes"
+  summary: >
+    The refactor pace is ahead of reliable verification. OSS typecheck is green,
+    but direct Vitest invocation still misses workspace alias resolution, and
+    there is no single cheap lane that proves the refactor-safe subset across
+    oss and cloud. Make fast verification explicit, deterministic, and cheap
+    enough to run before every structural change.
+  size: "medium"
+  risk_level: "high"
+  context:
+    packages:
+      - "packages/cli"
+      - "packages/core"
+      - "tests"
+      - "vitest.config.ts"
+      - "vitest.fast.config.ts"
+      - "../cloud/tests"
+      - "../cloud/package.json"
+    files_impacted:
+      - path: "vitest.config.ts"
+        lines: "all"
+        reason: "Direct Vitest runs need to resolve @runxhq/* workspace aliases."
+      - path: "vitest.fast.config.ts"
+        lines: "all"
+        reason: "The fast lane should target the structural safety subset intentionally."
+      - path: "package.json"
+        lines: "all"
+        reason: "Expose a stable fast verification entrypoint in oss."
+      - path: "scripts/verify-fast.mjs"
+        lines: "all"
+        reason: "One command should orchestrate the expected fast checks."
+      - path: "../cloud/package.json"
+        lines: "all"
+        reason: "Cloud should expose an equally explicit fast lane."
+      - path: "../cloud/tests/workspace-boundary.test.ts"
+        lines: "all"
+        reason: "Structural checks belong in the fast lane, not as tribal knowledge."
+    invariants:
+      - "Fast verification must run from a clean checkout without manual path patching."
+      - "Structural checks must stay cheap and deterministic."
+      - "No budget or boundary rule may be loosened only to make the lane pass."
+  objectives:
+    - "Fix OSS test runner path resolution so direct Vitest invocation is trustworthy."
+    - "Define explicit fast verification entrypoints for oss and cloud."
+    - "Bundle structural budgets and boundary checks into the fast lane."
+  scope:
+    in_scope:
+      - "Vitest path resolution and fast-lane scripts for oss and cloud."
+      - "Structural checks that should always run before refactors land."
+    out_of_scope:
+      - "Broad end-to-end or slow integration coverage."
+      - "Major product refactors outside verification and guardrails."
+  assumptions:
+    - "The intended fast lane is smaller than the full test suite but must cover architecture regressions."
+  touchpoints:
+    - area: "oss Vitest configs"
+      description: "Direct test execution must honor workspace aliases."
+    - area: "workspace scripts"
+      description: "Refactor-safe commands should be explicit and reusable by CI."
+    - area: "cloud structural tests"
+      description: "Boundary and hot-file budgets should be part of the default fast pass."
+  risks:
+    - description: "Alias fixes may hide real packaging problems if they diverge from runtime resolution."
+      impact: "medium"
+      mitigation: "Keep Vitest aliases aligned with tsconfig paths and package exports."
+    - description: "A too-broad fast lane will be skipped in practice."
+      impact: "high"
+      mitigation: "Keep the lane intentionally small and structural."
+  acceptance:
+    validation_profile: "strict"
+    definition_of_done:
+      - id: "dod1"
+        description: "Direct OSS Vitest invocation resolves @runxhq/* imports without manual setup."
+      - id: "dod2"
+        description: "oss and cloud each expose a stable fast verification entrypoint."
+      - id: "dod3"
+        description: "Structural budgets and boundary checks are included in the fast lane."
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS still typechecks after test-runner and script changes."
+        command: "pnpm typecheck"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "Direct CLI Vitest invocation resolves workspace aliases."
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v3"
+        type: "test"
+        description: "OSS fast lane passes."
+        command: "pnpm test:fast"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "v4"
+        type: "test"
+        description: "Cloud fast lane passes."
+        command: "pnpm test:fast"
+        cwd: "../cloud"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-24T00:20:00Z"
+    actor: "user"
+    summary: "Requested a concrete execution-spec set for the remaining path to ideal shape."
+  - timestamp: "2026-04-24T00:20:00Z"
+    actor: "agent"
+    summary: "Identified verification credibility as the first unblocker because direct OSS Vitest invocation still fails on workspace alias resolution."
+
+phases:
+  - id: "phase1"
+    name: "Fix OSS workspace-aware test resolution"
+    objective: "Make direct Vitest execution resolve @runxhq/* aliases the same way typecheck does."
+    changes:
+      - file: "vitest.config.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Add workspace alias resolution through tsconfig-aware or explicit alias
+          wiring so tests can import @runxhq/* packages directly.
+      - file: "vitest.fast.config.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Apply the same alias handling to the fast config so the short lane and
+          direct Vitest invocation behave consistently.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "CLI index test file resolves contracts imports directly."
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        cwd: "."
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase2"
+    name: "Define explicit fast verification entrypoints"
+    objective: "Expose one stable command per workspace that developers and CI can run without guessing."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "package.json"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Add or tighten fast verification scripts so oss has one intentional
+          refactor-safe entrypoint.
+      - file: "../cloud/package.json"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Ensure cloud exposes a similarly narrow fast verification script.
+      - file: "scripts/verify-fast.mjs"
+        action: "create"
+        lines: "all"
+        content_spec: >
+          Orchestrate the required fast checks and present a small, predictable
+          failure surface for local use and CI reuse.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "test"
+        description: "OSS fast lane passes."
+        command: "pnpm test:fast"
+        cwd: "."
+        expected: "exit code 0"
+      - id: "ac2_2"
+        type: "test"
+        description: "Cloud fast lane passes."
+        command: "pnpm test:fast"
+        cwd: "../cloud"
+        expected: "exit code 0"
+    status: "pending"
+
+  - id: "phase3"
+    name: "Bundle structural checks into the fast lane"
+    objective: "Make budgets and boundary checks part of the default fast verification path."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "../cloud/tests/workspace-boundary.test.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep structural boundaries and file budgets covered by a cheap,
+          always-on fast test surface.
+      - file: "packages/cli/src/commands/doctor.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Align doctor output and fast-lane expectations so the same budgets are
+          enforced consistently.
+      - file: "README.md"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Document the required fast verification path for structural work.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "test"
+        description: "Fast lane includes structural checks rather than relying on ad hoc commands."
+        command: "pnpm test:fast"
+        cwd: "."
+        expected: "exit code 0 with structural checks exercised"
+    status: "pending"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- vitest.config.ts vitest.fast.config.ts"
+    phase2: "git checkout HEAD -- package.json ../cloud/package.json scripts/verify-fast.mjs"
+    phase3: "git checkout HEAD -- README.md packages/cli/src/commands/doctor.ts ../cloud/tests/workspace-boundary.test.ts"
+
+metadata:
+  estimated_effort_hours: 4
+  ai_model: "gpt-5"
+  tags:
+    - "verification"
+    - "vitest"
+    - "guardrails"
