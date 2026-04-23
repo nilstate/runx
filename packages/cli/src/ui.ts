@@ -40,6 +40,24 @@ export function statusIcon(status: string, t: UiTheme): string {
   return `${t.dim}·${t.reset}`;
 }
 
+export function relativeTime(iso: string | undefined, now: number = Date.now()): string {
+  if (!iso) return "";
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return "";
+  const diffSec = Math.max(0, Math.round((now - then) / 1000));
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.round(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  const diffDay = Math.round(diffHour / 24);
+  return `${diffDay}d ago`;
+}
+
+export function shortId(id: string): string {
+  return id.length > 12 ? `${id.slice(0, 12)}…` : id;
+}
+
 export function renderRows(rows: readonly (readonly [string, string | undefined])[], t: UiTheme): string[] {
   const visible = rows.filter(([, value]) => value !== undefined && value !== "");
   if (visible.length === 0) return [];

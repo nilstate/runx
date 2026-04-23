@@ -41,12 +41,9 @@ import {
 } from "@runxhq/core/registry";
 import {
   installLocalSkill,
-  inspectLocalReceipt,
-  listLocalHistory,
   runLocalSkill,
   type Caller,
   type ExecutionEvent,
-  type LocalReceiptSummary,
   type RunLocalSkillResult,
 } from "@runxhq/core/runner-local";
 import type { ApprovalGate, Question, ResolutionRequest, ResolutionResponse } from "@runxhq/core/executor";
@@ -62,6 +59,15 @@ import {
   renderDevResult,
 } from "./commands/dev.js";
 import {
+  handleConnectCommand,
+  normalizeConnectAuthorityKind,
+  parseConnectAction,
+  renderConnectResult,
+  resolveConfiguredConnectService,
+  type ConnectAuthorityKind,
+  type ConnectService,
+} from "./commands/connect.js";
+import {
   explainDoctorDiagnostic,
   handleDoctorCommand,
   listDoctorDiagnostics,
@@ -69,6 +75,12 @@ import {
   renderDoctorDiagnosticList,
   renderDoctorResult,
 } from "./commands/doctor.js";
+import {
+  handleHistoryCommand,
+  handleInspectCommand,
+  renderHistory,
+  renderReceiptInspection,
+} from "./commands/history.js";
 import { handleInitCommand, type InitResult } from "./commands/init.js";
 import {
   handleListCommand,
@@ -83,7 +95,6 @@ import {
   handleToolMigrateCommand,
   renderToolCommandResult,
 } from "./commands/tool.js";
-import { createHttpConnectService } from "./connect-http.js";
 import { ensureRunxInstallState } from "./runx-state.js";
 import {
   preferredRunCommand,
@@ -92,21 +103,12 @@ import {
 } from "./skill-refs.js";
 export { resolveSkillReference, resolveRunnableSkillReference } from "./skill-refs.js";
 import { streamTrainableReceipts } from "./trainable-receipts.js";
-import { renderKeyValue, statusIcon, theme, type UiTheme } from "./ui.js";
+import { renderKeyValue, relativeTime, shortId, statusIcon, theme, type UiTheme } from "./ui.js";
 
 export interface CliIo {
   readonly stdout: NodeJS.WriteStream;
   readonly stderr: NodeJS.WriteStream;
   readonly stdin: NodeJS.ReadStream;
-}
-
-function parseDateFilter(value: string | undefined, flag: string): number | undefined {
-  if (value === undefined) return undefined;
-  const ms = Date.parse(value);
-  if (!Number.isFinite(ms)) {
-    throw new Error(`invalid date for ${flag}: ${value}`);
-  }
-  return ms;
 }
 
 function humanizeLabel(value: string): string {
@@ -213,24 +215,6 @@ function cognitiveNeedPhrase(requests: readonly ResolutionRequest[], skillName: 
   return tasks[0] ?? "drafted output";
 }
 
-function relativeTime(iso: string | undefined, now: number = Date.now()): string {
-  if (!iso) return "";
-  const then = Date.parse(iso);
-  if (Number.isNaN(then)) return "";
-  const diffSec = Math.max(0, Math.round((now - then) / 1000));
-  if (diffSec < 60) return `${diffSec}s ago`;
-  const diffMin = Math.round(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHour = Math.round(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
-  const diffDay = Math.round(diffHour / 24);
-  return `${diffDay}d ago`;
-}
-
-function shortId(id: string): string {
-  return id.length > 12 ? `${id.slice(0, 12)}…` : id;
-}
-
 interface LocalAgentInstall {
   readonly command: string;
   readonly label: string;
@@ -259,19 +243,6 @@ function commandExistsOnPath(command: string, env: NodeJS.ProcessEnv = process.e
 
 export interface CliServices {
   readonly connect?: ConnectService;
-}
-
-export interface ConnectService {
-  readonly list: () => Promise<unknown>;
-  readonly preprovision: (request: {
-    readonly provider: string;
-    readonly scopes: readonly string[];
-    readonly scope_family?: string;
-    readonly authority_kind?: "read_only" | "constructive" | "destructive";
-    readonly target_repo?: string;
-    readonly target_locator?: string;
-  }) => Promise<unknown>;
-  readonly revoke: (grantId: string) => Promise<unknown>;
 }
 
 interface CallerInputFile {
@@ -333,7 +304,7 @@ export interface ParsedArgs {
   readonly connectGrantId?: string;
   readonly connectScopes: readonly string[];
   readonly connectScopeFamily?: string;
-  readonly connectAuthorityKind?: "read_only" | "constructive" | "destructive";
+  readonly connectAuthorityKind?: ConnectAuthorityKind;
   readonly connectTargetRepo?: string;
   readonly connectTargetLocator?: string;
   readonly configAction?: "set" | "get" | "list";
@@ -485,25 +456,16 @@ export async function runCli(
           "runx connect requires the hosted Connect service. Set RUNX_CONNECT_BASE_URL=https://connect.runx.ai and RUNX_CONNECT_ACCESS_TOKEN, or configure an equivalent hosted connect base URL.",
         );
       }
-      const result =
-        parsed.connectAction === "list"
-          ? await connectService.list()
-          : parsed.connectAction === "revoke" && parsed.connectGrantId
-            ? await connectService.revoke(parsed.connectGrantId)
-            : parsed.connectAction === "preprovision" && parsed.connectProvider
-              ? await connectService.preprovision({
-                provider: parsed.connectProvider,
-                scopes: parsed.connectScopes,
-                scope_family: parsed.connectScopeFamily,
-                authority_kind: parsed.connectAuthorityKind,
-                target_repo: parsed.connectTargetRepo,
-                target_locator: parsed.connectTargetLocator,
-              })
-              : undefined;
-
-      if (!result) {
-        throw new Error("Invalid runx connect invocation.");
-      }
+      const result = await handleConnectCommand({
+        connectAction: parsed.connectAction,
+        connectProvider: parsed.connectProvider,
+        connectGrantId: parsed.connectGrantId,
+        connectScopes: parsed.connectScopes,
+        connectScopeFamily: parsed.connectScopeFamily,
+        connectAuthorityKind: parsed.connectAuthorityKind,
+        connectTargetRepo: parsed.connectTargetRepo,
+        connectTargetLocator: parsed.connectTargetLocator,
+      }, connectService);
       if (parsed.json) {
         io.stdout.write(`${JSON.stringify({ status: "success", connect: result }, null, 2)}\n`);
       } else {
@@ -621,11 +583,10 @@ export async function runCli(
     }
 
     if ((parsed.command === "skill" || parsed.command === "inspect") && parsed.skillAction === "inspect" && parsed.receiptId) {
-      const inspection = await inspectLocalReceipt({
+      const inspection = await handleInspectCommand({
         receiptId: parsed.receiptId,
-        receiptDir: parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : undefined,
-        env,
-      });
+        receiptDir: parsed.receiptDir,
+      }, env);
       if (parsed.json) {
         io.stdout.write(`${JSON.stringify(inspection, null, 2)}\n`);
       } else {
@@ -635,18 +596,7 @@ export async function runCli(
     }
 
     if (parsed.command === "history") {
-      const sinceMs = parseDateFilter(parsed.historySince, "--since");
-      const untilMs = parseDateFilter(parsed.historyUntil, "--until");
-      const history = await listLocalHistory({
-        receiptDir: parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : undefined,
-        env,
-        query: parsed.historyQuery,
-        skill: parsed.historySkill,
-        status: parsed.historyStatus,
-        sourceType: parsed.historySource,
-        sinceMs,
-        untilMs,
-      });
+      const history = await handleHistoryCommand(parsed, env);
       if (parsed.json) {
         io.stdout.write(`${JSON.stringify({ status: "success", query: parsed.historyQuery, ...history }, null, 2)}\n`);
       } else {
@@ -1078,7 +1028,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
         ? inputs["target-locator"]
       : undefined;
   const connectAuthoritySource = inputs.authorityKind ?? inputs.authority_kind ?? inputs["authority-kind"];
-  const connectAuthorityKind = isConnect ? normalizeAuthorityKind(connectAuthoritySource) : undefined;
+  const connectAuthorityKind = isConnect ? normalizeConnectAuthorityKind(connectAuthoritySource) : undefined;
   const newDirectory = isNew && typeof inputs.directory === "string"
     ? inputs.directory
     : isNew && typeof inputs.dir === "string"
@@ -1187,7 +1137,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     publishVersion,
     registryUrl,
     expectedDigest,
-    connectAction: isConnect ? connectAction(positionals) : undefined,
+    connectAction: isConnect ? parseConnectAction(positionals) : undefined,
     connectProvider: isConnect && positionals[0] !== "list" && positionals[0] !== "revoke" ? positionals[0] : undefined,
     connectGrantId: isConnect && positionals[0] === "revoke" ? positionals[1] : undefined,
     connectScopes,
@@ -1816,24 +1766,6 @@ async function resolveResumeSkillPath(
   throw new Error(`Run '${runId}' cannot be resumed because no pending skill path was recorded.`);
 }
 
-function resolveConfiguredConnectService(env: NodeJS.ProcessEnv): ConnectService | undefined {
-  const baseUrl = env.RUNX_CONNECT_BASE_URL;
-  const accessToken = env.RUNX_CONNECT_ACCESS_TOKEN;
-
-  if (!baseUrl || !accessToken) {
-    return undefined;
-  }
-
-  return createHttpConnectService({
-    baseUrl,
-    accessToken,
-    openCommand: env.RUNX_CONNECT_OPEN_COMMAND,
-    pollIntervalMs: parseOptionalInt(env.RUNX_CONNECT_POLL_INTERVAL_MS),
-    timeoutMs: parseOptionalInt(env.RUNX_CONNECT_TIMEOUT_MS),
-    env,
-  });
-}
-
 function normalizeDigest(value: string): string {
   return value.startsWith("sha256:") ? value.slice("sha256:".length) : value;
 }
@@ -1848,25 +1780,11 @@ function normalizeScopes(value: unknown): readonly string[] {
   return [];
 }
 
-function normalizeAuthorityKind(value: unknown): ParsedArgs["connectAuthorityKind"] {
-  return value === "read_only" || value === "constructive" || value === "destructive" ? value : undefined;
-}
-
 function splitScopes(value: string): readonly string[] {
   return value
     .split(",")
     .map((scope) => scope.trim())
     .filter((scope) => scope.length > 0);
-}
-
-function connectAction(positionals: readonly string[]): ParsedArgs["connectAction"] {
-  if (positionals[0] === "list") {
-    return "list";
-  }
-  if (positionals[0] === "revoke") {
-    return "revoke";
-  }
-  return positionals[0] ? "preprovision" : undefined;
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
@@ -1917,14 +1835,6 @@ function renderInitResult(result: InitResult, env: NodeJS.ProcessEnv = process.e
   );
 }
 
-function parseOptionalInt(value: string | undefined): number | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
 function renderSearchResults(results: readonly SkillSearchResult[], env: NodeJS.ProcessEnv = process.env): string {
   const t = theme(undefined, env);
   if (results.length === 0) {
@@ -1945,62 +1855,6 @@ function renderSearchResults(results: readonly SkillSearchResult[], env: NodeJS.
     lines.push("");
   }
   return lines.join("\n");
-}
-
-function renderReceiptInspection(summary: LocalReceiptSummary, env: NodeJS.ProcessEnv = process.env): string {
-  const t = theme(undefined, env);
-  const rows: Array<[string, string]> = [
-    ["id", summary.id],
-    ["kind", summary.kind],
-    ["status", summary.status],
-  ];
-  if (summary.sourceType) rows.push(["source", summary.sourceType]);
-  if (summary.startedAt) rows.push(["started", relativeTime(summary.startedAt)]);
-  if (summary.completedAt) rows.push(["completed", relativeTime(summary.completedAt)]);
-  if (summary.verification) rows.push(["verify", `${summary.verification.status}${summary.verification.reason ? ` (${summary.verification.reason})` : ""}`]);
-  rows.push(["history", "runx history"]);
-  rows.push(["json", `runx inspect ${summary.id} --json`]);
-  return renderKeyValue(summary.name, summary.status, rows, t);
-}
-
-function renderHistory(
-  receipts: readonly LocalReceiptSummary[],
-  env: NodeJS.ProcessEnv = process.env,
-  query?: string,
-): string {
-  const t = theme(undefined, env);
-  if (receipts.length === 0) {
-    return query
-      ? `\n  ${t.dim}No receipts matched ${t.cyan}${query}${t.reset}${t.dim}.${t.reset}\n  ${t.dim}Try ${t.cyan}runx history${t.reset}${t.dim} to see every local run.${t.reset}\n\n`
-      : `\n  ${t.dim}No receipts yet. Try a run first:${t.reset}\n  ${t.cyan}runx evolve${t.reset}\n  ${t.cyan}runx search docs${t.reset}\n\n`;
-  }
-  const now = Date.now();
-  const nameWidth = Math.min(32, Math.max(...receipts.map((r) => r.name.length)));
-  const lines: string[] = [""];
-  lines.push(`  ${t.bold}history${t.reset}${query ? `  ${t.dim}· ${query}${t.reset}` : ""}  ${t.dim}${receipts.length} receipt(s)${t.reset}`);
-  lines.push("");
-  for (const summary of receipts) {
-    const icon = statusIcon(summary.status, t);
-    const name = summary.name.padEnd(nameWidth);
-    const when = summary.startedAt ? relativeTime(summary.startedAt, now) : "";
-    const source = summary.sourceType ?? summary.kind;
-    const id = shortId(summary.id);
-    const verification = summary.verification?.status ?? "unknown";
-    lines.push(
-      `  ${icon}  ${t.bold}${name}${t.reset}  ${t.dim}${source.padEnd(16)}${t.reset}  ${t.dim}${verification.padEnd(10)}${t.reset}  ${t.dim}${when.padEnd(10)}${t.reset}  ${t.dim}${id}${t.reset}`,
-    );
-  }
-  lines.push("");
-  lines.push(`  ${t.dim}next${t.reset}  runx inspect <receipt-id>`);
-  lines.push("");
-  return lines.join("\n");
-}
-
-function renderVerificationBadge(verification: LocalReceiptSummary["verification"] | undefined, t: UiTheme): string {
-  if (!verification) return "";
-  const color = verification.status === "verified" ? t.green : verification.status === "invalid" ? t.red : t.dim;
-  const reason = verification.reason ? ` ${t.dim}(${verification.reason})${t.reset}` : "";
-  return `  ${color}${verification.status}${t.reset}${reason}`;
 }
 
 function renderKnowledgeProjections(
@@ -2087,63 +1941,6 @@ function renderPublishResult(
       ["harness", result.harness ? `${result.harness.status} · ${result.harness.case_count} case${result.harness.case_count === 1 ? "" : "s"}` : "not checked"],
       ["install", result.link.install_command],
       ["run", result.link.run_command],
-    ],
-    t,
-  );
-}
-
-function renderConnectResult(
-  action: "list" | "revoke" | "preprovision",
-  result: unknown,
-  env: NodeJS.ProcessEnv = process.env,
-): string {
-  const t = theme(undefined, env);
-  if (action === "list") {
-    const grants = isRecord(result) && Array.isArray(result.grants) ? result.grants.filter(isRecord) : [];
-    if (grants.length === 0) {
-      return `\n  ${t.dim}No connections yet.${t.reset}\n  ${t.dim}start${t.reset}  runx connect github\n\n`;
-    }
-    const lines = ["", `  ${t.bold}connections${t.reset}  ${t.dim}${grants.length} grant(s)${t.reset}`, ""];
-    for (const grant of grants) {
-      const grantId = typeof grant.grant_id === "string" ? grant.grant_id : "unknown";
-      const provider = typeof grant.provider === "string" ? grant.provider : "unknown";
-      const scopes = Array.isArray(grant.scopes) ? grant.scopes.join(", ") : "";
-      const scopeFamily = typeof grant.scope_family === "string" ? grant.scope_family : "";
-      const authorityKind = typeof grant.authority_kind === "string" ? grant.authority_kind : "";
-      const targetRepo = typeof grant.target_repo === "string" ? grant.target_repo : "";
-      const targetLocator = typeof grant.target_locator === "string" ? grant.target_locator : "";
-      const status = typeof grant.status === "string" ? grant.status : "active";
-      lines.push(`  ${statusIcon(status === "revoked" ? "failure" : "success", t)}  ${t.bold}${provider}${t.reset}  ${t.dim}${grantId}${t.reset}`);
-      if (scopes) lines.push(`  ${t.dim}scopes${t.reset}  ${scopes}`);
-      if (scopeFamily) lines.push(`  ${t.dim}family${t.reset}  ${scopeFamily}`);
-      if (authorityKind) lines.push(`  ${t.dim}authority${t.reset}  ${authorityKind}`);
-      if (targetRepo) lines.push(`  ${t.dim}repo${t.reset}  ${targetRepo}`);
-      if (targetLocator) lines.push(`  ${t.dim}locator${t.reset}  ${targetLocator}`);
-      lines.push("");
-    }
-    return lines.join("\n");
-  }
-  const grant = isRecord(result) && isRecord(result.grant) ? result.grant : undefined;
-  const provider = typeof grant?.provider === "string" ? grant.provider : undefined;
-  const grantId = typeof grant?.grant_id === "string" ? grant.grant_id : undefined;
-  const scopes = Array.isArray(grant?.scopes) ? grant.scopes.join(", ") : undefined;
-  const scopeFamily = typeof grant?.scope_family === "string" ? grant.scope_family : undefined;
-  const authorityKind = typeof grant?.authority_kind === "string" ? grant.authority_kind : undefined;
-  const targetRepo = typeof grant?.target_repo === "string" ? grant.target_repo : undefined;
-  const targetLocator = typeof grant?.target_locator === "string" ? grant.target_locator : undefined;
-  const status = isRecord(result) && typeof result.status === "string" ? result.status : "success";
-  return renderKeyValue(
-    action === "revoke" ? "connection revoked" : "connection ready",
-    status === "revoked" || status === "created" || status === "unchanged" ? "success" : status,
-    [
-      ["provider", provider],
-      ["grant", grantId],
-      ["scopes", scopes],
-      ["family", scopeFamily],
-      ["authority", authorityKind],
-      ["repo", targetRepo],
-      ["locator", targetLocator],
-      ["next", action === "revoke" ? "runx connect github" : "runx connect list"],
     ],
     t,
   );

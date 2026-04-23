@@ -1241,7 +1241,7 @@ harness:
     await mkdir(path.dirname(oversizedPath), { recursive: true });
     await writeFile(
       oversizedPath,
-      `${Array.from({ length: 4701 }, (_, index) => `line_${index}`).join("\n")}\n`,
+      `${Array.from({ length: 3001 }, (_, index) => `line_${index}`).join("\n")}\n`,
     );
 
     const stdout = createMemoryStream();
@@ -1261,8 +1261,8 @@ harness:
           id: "runx.structure.file_budget.exceeded",
           severity: "error",
           evidence: {
-            line_count: 4701,
-            max_lines: 4700,
+            line_count: 3001,
+            max_lines: 3000,
           },
           location: {
             path: "packages/cli/src/index.ts",

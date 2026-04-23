@@ -50,11 +50,11 @@ interface DoctorFileBudget {
 const DOCTOR_FILE_BUDGETS: readonly DoctorFileBudget[] = [
   {
     path: "packages/cli/src/index.ts",
-    maxLines: 4700,
+    maxLines: 3000,
   },
   {
     path: "packages/core/src/runner-local/index.ts",
-    maxLines: 4300,
+    maxLines: 3800,
   },
 ];
 
