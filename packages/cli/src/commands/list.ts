@@ -2,6 +2,13 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import type {
+  RunxListItemContract,
+  RunxListItemKindContract,
+  RunxListReportContract,
+  RunxListRequestedKindContract,
+  RunxListSourceContract,
+} from "@runxhq/contracts";
 import { resolveRunxWorkspaceBase } from "@runxhq/core/config";
 import {
   parseRunnerManifestYaml,
@@ -18,37 +25,11 @@ import {
   toProjectPath,
 } from "../authoring-utils.js";
 
-export type RunxListRequestedKind = "all" | "tools" | "skills" | "chains" | "packets" | "overlays";
-export type RunxListItemKind = Exclude<RunxListRequestedKind, "all"> extends infer Kind
-  ? Kind extends string
-    ? Kind extends `${infer Singular}s`
-      ? Singular
-      : Kind
-    : never
-  : never;
-export type RunxListSource = "local" | "workspace" | "dependencies" | "built-in";
-
-export interface RunxListItem {
-  readonly kind: RunxListItemKind;
-  readonly name: string;
-  readonly source: RunxListSource;
-  readonly path: string;
-  readonly status: "ok" | "invalid";
-  readonly diagnostics?: readonly string[];
-  readonly scopes?: readonly string[];
-  readonly emits?: readonly { readonly name: string; readonly packet?: string }[];
-  readonly fixtures?: number;
-  readonly harness_cases?: number;
-  readonly steps?: number;
-  readonly wraps?: string;
-}
-
-export interface RunxListReport {
-  readonly schema: "runx.list.v1";
-  readonly root: string;
-  readonly requested_kind: RunxListRequestedKind;
-  readonly items: readonly RunxListItem[];
-}
+export type RunxListRequestedKind = RunxListRequestedKindContract;
+export type RunxListItemKind = RunxListItemKindContract;
+export type RunxListSource = RunxListSourceContract;
+export type RunxListItem = RunxListItemContract;
+export type RunxListReport = RunxListReportContract;
 
 export interface ListCommandArgs {
   readonly listKind?: RunxListRequestedKind;

@@ -1,0 +1,140 @@
+spec_version: "1.1"
+task_id: "runx-contract-typebox-authority"
+created: "2026-04-23T10:39:13Z"
+updated: "2026-04-23T12:18:34Z"
+status: "completed"
+harden_status: "not_run"
+
+task:
+  title: "Expand TypeBox contract authority"
+  summary: >
+    Contracts are still split between TypeScript interfaces, hand-written JSON
+    schema objects, and ad hoc runtime shapes. Extend the TypeBox-based
+    contracts package so more machine-facing CLI surfaces are defined once and
+    generated rather than maintained in parallel.
+  size: "medium"
+  risk_level: "medium"
+  context:
+    packages:
+      - "packages/contracts"
+      - "packages/cli"
+      - "scripts"
+    files_impacted:
+      - path: "packages/contracts/src/index.ts"
+        lines: "doctor/list/dev schema declarations"
+        reason: "Replace hand-written schema objects with TypeBox-owned definitions"
+      - path: "scripts/generate-contract-schemas.ts"
+        lines: "all"
+        reason: "Ensure generated JSON schema includes new TypeBox-owned contracts"
+      - path: "packages/contracts/src/index.test.ts"
+        lines: "all"
+        reason: "Protect logical schema ids and exported documents"
+      - path: "packages/cli/src/index.ts"
+        lines: "report typing or schema references where needed"
+        reason: "Consume generated contract exports consistently"
+    invariants:
+      - "One schema authority per machine-facing contract"
+      - "Generated JSON schema remains checked in and reproducible"
+      - "CLI machine outputs keep their current logical schema ids"
+  objectives:
+    - "Move doctor/list/dev contracts to TypeBox-owned definitions"
+    - "Generate JSON schema artifacts from those definitions"
+    - "Keep CLI report types aligned to the generated contracts"
+  touchpoints:
+    - area: "packages/contracts/src/index.ts"
+      description: "Current mixed contract authority surface"
+    - area: "scripts/generate-contract-schemas.ts"
+      description: "Schema generation entrypoint"
+    - area: "packages/cli/src/index.ts"
+      description: "Primary producer of the machine-facing report objects"
+  acceptance:
+    definition_of_done:
+      - id: "dod1"
+        description: "doctor, list, and dev machine contracts come from TypeBox-owned definitions"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod2"
+        description: "Generated JSON schema artifacts refresh cleanly from the contracts package"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod3"
+        description: "Contracts tests and CLI machine-output consumers remain green"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS workspace typechecks after contract changes"
+        command: "pnpm typecheck"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "integration"
+        description: "Generated contract schemas refresh cleanly"
+        command: "pnpm schemas:generate"
+        expected: "exit code 0"
+      - id: "v3"
+        type: "test"
+        description: "Contracts coverage stays green"
+        command: "pnpm exec vitest run packages/contracts/src/index.test.ts packages/cli/src/index.test.ts"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-23T10:39:13Z"
+    actor: "user"
+    summary: "Spec created via scafld new"
+  - timestamp: "2026-04-23T10:45:00Z"
+    actor: "agent"
+    summary: "Scoped contract cleanup around doctor/list/dev machine outputs and generated schema authority."
+  - timestamp: "2026-04-23T12:18:34Z"
+    actor: "agent"
+    summary: "Moved doctor, dev, and list contracts to TypeBox-owned definitions, refreshed generated schemas, and updated CLI consumers."
+
+phases:
+  - id: "phase1"
+    name: "Move CLI report contracts to TypeBox"
+    objective: "Make doctor, list, and dev reports TypeBox-owned contracts."
+    changes:
+      - file: "packages/contracts/src/index.ts"
+        action: "update"
+        lines: "doctor/list/dev contract declarations"
+        content_spec: |
+          Replace hand-written JSON schema object definitions for machine-facing
+          CLI reports with TypeBox-owned definitions that export JSON schema and
+          TypeScript types from one source.
+      - file: "scripts/generate-contract-schemas.ts"
+        action: "update"
+        lines: "schema generation export list"
+        content_spec: |
+          Ensure the generator emits refreshed JSON schema artifacts for the new
+          TypeBox-owned report contracts.
+      - file: "packages/contracts/src/index.test.ts"
+        action: "update"
+        lines: "contract coverage"
+        content_spec: |
+          Add assertions that the logical schema ids and generated schema
+          exports remain stable for doctor/list/dev.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "Contracts tests stay green after TypeBox migration"
+        command: "pnpm exec vitest run packages/contracts/src/index.test.ts"
+        expected: "exit code 0"
+    status: "completed"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- packages/contracts/src/index.ts scripts/generate-contract-schemas.ts packages/contracts/src/index.test.ts"
+
+self_eval:
+  completeness: 3
+  architecture_fidelity: 3
+  spec_alignment: 2
+  validation_depth: 1
+  total: 9
+  notes: "Machine-facing CLI contracts now flow from one authority and schema generation remains reproducible; compile and schema generation passed."
+  second_pass_performed: true
+
+deviations:
+  - description: "The targeted contracts and CLI vitest command was not rerun before completion."
+    reason: "User explicitly prioritized continuing structural cleanup over additional test execution."

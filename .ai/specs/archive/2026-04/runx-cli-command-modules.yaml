@@ -1,0 +1,171 @@
+spec_version: "1.1"
+task_id: "runx-cli-command-modules"
+created: "2026-04-23T10:39:12Z"
+updated: "2026-04-23T12:18:34Z"
+status: "completed"
+harden_status: "not_run"
+
+task:
+  title: "Split CLI command kernel into library handlers"
+  summary: >
+    oss/packages/cli/src/index.ts is still the biggest OSS entrypoint and mixes
+    parsing, dispatch, command execution, and rendering. Move the remaining
+    heavy command paths into library modules so the root index stays focused on
+    argv parsing and top-level dispatch while cloud or other entrypoints can
+    reuse command logic without re-implementing it.
+  size: "medium"
+  risk_level: "medium"
+  context:
+    packages:
+      - "packages/cli"
+      - "packages/contracts"
+    files_impacted:
+      - path: "packages/cli/src/index.ts"
+        lines: "dispatch, doctor/dev/list/history/inspect rendering, command execution"
+        reason: "Reduce index.ts to parse, dispatch, and thin wiring"
+      - path: "packages/cli/src/commands"
+        lines: "all"
+        reason: "New command modules for remaining heavy commands"
+      - path: "packages/cli/src/command-*.ts"
+        lines: "all"
+        reason: "Shared command context and rendering helpers if needed"
+      - path: "packages/cli/src/index.test.ts"
+        lines: "doctor/dev/list command coverage"
+        reason: "Keep behavior stable while moving handlers"
+    invariants:
+      - "CLI output contracts stay unchanged"
+      - "Argument parsing remains centralized"
+      - "Command handlers remain callable as library code"
+  objectives:
+    - "Extract heavy command handlers out of index.ts into command modules"
+    - "Extract matching renderers so command behavior and presentation stay colocated"
+    - "Leave index.ts as argv parsing, command selection, and thin dispatch"
+  touchpoints:
+    - area: "packages/cli/src/index.ts"
+      description: "Current monolithic parse, dispatch, and render entrypoint"
+    - area: "packages/cli/src/commands"
+      description: "Target library boundary for reusable command handlers"
+    - area: "cloud/packages/api"
+      description: "Longer-term consumer of extracted command logic"
+  acceptance:
+    definition_of_done:
+      - id: "dod1"
+        description: "doctor and dev command execution live outside packages/cli/src/index.ts"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod2"
+        description: "Major CLI renderers for extracted commands live outside packages/cli/src/index.ts"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod3"
+        description: "packages/cli/src/index.ts stays below 4000 lines"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS workspace typechecks after command extraction"
+        command: "pnpm typecheck"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "CLI command coverage remains green"
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        expected: "exit code 0"
+      - id: "v3"
+        type: "boundary"
+        description: "CLI root file budget drops under the target threshold"
+        command: "test $(wc -l < packages/cli/src/index.ts) -lt 4000"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-23T10:39:12Z"
+    actor: "user"
+    summary: "Spec created via scafld new"
+  - timestamp: "2026-04-23T10:45:00Z"
+    actor: "agent"
+    summary: "Scoped the remaining CLI monolith to command extraction and renderer colocation."
+  - timestamp: "2026-04-23T12:18:34Z"
+    actor: "agent"
+    summary: "Extracted doctor, dev, tool, and UI command surfaces; CLI root now stays focused on dispatch and budgeted below 4000 lines."
+
+phases:
+  - id: "phase1"
+    name: "Extract doctor and dev command modules"
+    objective: "Move the heaviest command logic out of index.ts first."
+    changes:
+      - file: "packages/cli/src/index.ts"
+        action: "update"
+        lines: "command dispatch and extracted render/handler functions"
+        content_spec: |
+          Replace in-file doctor/dev handler bodies with imports from command
+          modules and keep only thin dispatch wiring.
+      - file: "packages/cli/src/commands/doctor.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Own doctor command execution, diagnostics, and doctor-specific
+          rendering helpers.
+      - file: "packages/cli/src/commands/dev.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Own dev command execution, fixture helpers, and dev-specific rendering
+          helpers.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "CLI doctor and dev coverage stays green"
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        expected: "exit code 0"
+    status: "completed"
+
+  - id: "phase2"
+    name: "Extract remaining command rendering surfaces"
+    objective: "Move list/history/inspect and related renderer weight out of index.ts."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "packages/cli/src/index.ts"
+        action: "update"
+        lines: "renderListResult, renderHistory, renderReceiptInspection, related helpers"
+        content_spec: |
+          Remove remaining extracted renderers from the root file and keep only
+          imports plus top-level command selection.
+      - file: "packages/cli/src/commands/list.ts"
+        action: "update"
+        lines: "all"
+        content_spec: |
+          Expand the existing list module to own list rendering and detail
+          formatting.
+      - file: "packages/cli/src/commands/history.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Own history and receipt inspection rendering helpers.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "boundary"
+        description: "CLI root file shrinks under 4000 lines"
+        command: "test $(wc -l < packages/cli/src/index.ts) -lt 4000"
+        expected: "exit code 0"
+    status: "completed"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- packages/cli/src/index.ts packages/cli/src/commands/doctor.ts packages/cli/src/commands/dev.ts"
+    phase2: "git checkout HEAD -- packages/cli/src/index.ts packages/cli/src/commands/list.ts packages/cli/src/commands/history.ts"
+
+self_eval:
+  completeness: 3
+  architecture_fidelity: 3
+  spec_alignment: 2
+  validation_depth: 1
+  total: 9
+  notes: "The CLI command kernel is materially split and the root file budget is met; compile verification passed."
+  second_pass_performed: true
+
+deviations:
+  - description: "The targeted CLI vitest acceptance command was not rerun before completion."
+    reason: "User explicitly prioritized continuing the refactor over additional test execution."

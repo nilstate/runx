@@ -34,7 +34,7 @@
     "packet": "runx.git.status.v1",
     "wrap_as": "git_status"
   },
-  "source_hash": "sha256:d65e02b11cf37b8dc6ae662c9f62c44f4c2d21b7615741905f5b7f57da5b2704",
+  "source_hash": "sha256:d0223b1843fca2df15a94109e6ef6a508646d6f07b97910478a5b6c3a8db22da",
   "schema_hash": "sha256:cc9c64e0f6ad581cd56cdf275e854dd941ac561acedb9f4ac5fa79be219c0c47",
   "toolkit_version": "0.0.0"
 }

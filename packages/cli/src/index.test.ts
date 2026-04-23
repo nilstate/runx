@@ -4,6 +4,11 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import {
+  validateDevReportContract,
+  validateDoctorReportContract,
+  validateRunxListReportContract,
+} from "@runxhq/contracts";
 import { runCli, parseArgs, resolveSkillReference } from "./index.js";
 import { hashString } from "@runxhq/core/receipts";
 import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
@@ -925,15 +930,7 @@ harness:
 
     expect(exitCode).toBe(0);
     expect(stderr.contents()).toBe("");
-    const report = JSON.parse(stdout.contents()) as {
-      readonly schema: string;
-      readonly items: readonly {
-        readonly kind: string;
-        readonly name: string;
-        readonly path: string;
-        readonly harness_cases?: number;
-      }[];
-    };
+    const report = validateRunxListReportContract(JSON.parse(stdout.contents()));
     expect(report.schema).toBe("runx.list.v1");
     expect(report.items).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: "tool", name: "demo.echo", path: "tools/demo/echo/manifest.json" }),
@@ -970,15 +967,7 @@ source:
 
     expect(exitCode).toBe(1);
     expect(stderr.contents()).toBe("");
-    const report = JSON.parse(stdout.contents()) as {
-      readonly schema: string;
-      readonly status: string;
-      readonly diagnostics: readonly {
-        readonly id: string;
-        readonly instance_id: string;
-        readonly repairs: readonly { readonly id: string; readonly risk: string }[];
-      }[];
-    };
+    const report = validateDoctorReportContract(JSON.parse(stdout.contents()));
     expect(report.schema).toBe("runx.doctor.v1");
     expect(report.status).toBe("failure");
     expect(report.diagnostics).toEqual([
@@ -1180,6 +1169,154 @@ runners:
       ],
     });
   });
+
+  it("fails when the official skills lock is stale", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-lock-"));
+    tempDirs.push(tempDir);
+    const skillDir = path.join(tempDir, "skills", "demo-skill");
+    const lockPath = path.join(tempDir, "packages", "cli", "src", "official-skills.lock.json");
+    await mkdir(skillDir, { recursive: true });
+    await mkdir(path.dirname(lockPath), { recursive: true });
+    await writeFile(
+      path.join(skillDir, "SKILL.md"),
+      `---
+name: demo-skill
+description: Demo skill fixture.
+---
+Return success.
+`,
+    );
+    await writeFile(
+      path.join(skillDir, "X.yaml"),
+      `skill: demo-skill
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - -e
+      - "process.stdout.write('{}')"
+harness:
+  cases:
+    - name: demo-smoke
+      inputs: {}
+      expect:
+        status: success
+`,
+    );
+    await writeFile(lockPath, "[]\n");
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["doctor", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      status: "failure",
+      diagnostics: [
+        expect.objectContaining({
+          id: "runx.skill.lock.stale",
+          severity: "error",
+          repairs: [
+            expect.objectContaining({
+              id: "refresh_official_skills_lock",
+              kind: "replace_file",
+            }),
+          ],
+        }),
+      ],
+    });
+  });
+
+  it("fails when a designated monolith file exceeds its budget", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-budget-"));
+    tempDirs.push(tempDir);
+    const oversizedPath = path.join(tempDir, "packages", "cli", "src", "index.ts");
+    await mkdir(path.dirname(oversizedPath), { recursive: true });
+    await writeFile(
+      oversizedPath,
+      `${Array.from({ length: 4701 }, (_, index) => `line_${index}`).join("\n")}\n`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["doctor", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      status: "failure",
+      diagnostics: [
+        expect.objectContaining({
+          id: "runx.structure.file_budget.exceeded",
+          severity: "error",
+          evidence: {
+            line_count: 4701,
+            max_lines: 4700,
+          },
+          location: {
+            path: "packages/cli/src/index.ts",
+          },
+        }),
+      ],
+    });
+  });
+
+  it("fails on forbidden cross-package src reach-ins", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-reach-in-"));
+    tempDirs.push(tempDir);
+    const cliSourcePath = path.join(tempDir, "packages", "cli", "src", "index.ts");
+    const coreSourcePath = path.join(tempDir, "packages", "core", "src", "index.ts");
+    await mkdir(path.dirname(cliSourcePath), { recursive: true });
+    await mkdir(path.dirname(coreSourcePath), { recursive: true });
+    await writeFile(cliSourcePath, `import "../../core/src/index.js";\n`);
+    await writeFile(coreSourcePath, "export const core = true;\n");
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["doctor", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.contents()).toBe("");
+    const report = JSON.parse(stdout.contents()) as {
+      readonly status: string;
+      readonly diagnostics: readonly {
+        readonly id: string;
+        readonly severity: string;
+        readonly evidence?: Readonly<Record<string, unknown>>;
+        readonly location: { readonly path: string };
+      }[];
+    };
+    expect(report.status).toBe("failure");
+    expect(report.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "runx.structure.cross_package_reach_in",
+        severity: "error",
+        evidence: expect.objectContaining({
+          specifier: "../../core/src/index.js",
+          source_package: "cli",
+          target_package: "core",
+        }),
+        location: expect.objectContaining({
+          path: "packages/cli/src/index.ts",
+        }),
+      }),
+    ]));
+  });
 });
 
 describe("runx dev", () => {
@@ -1336,9 +1473,7 @@ expect:
 
     expect(exitCode).toBe(0);
     expect(stderr.contents()).toBe("");
-    const report = JSON.parse(stdout.contents()) as {
-      readonly receipt_id?: string;
-    };
+    const report = validateDevReportContract(JSON.parse(stdout.contents()));
     expect(report).toMatchObject({
       schema: "runx.dev.v1",
       status: "success",

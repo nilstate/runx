@@ -8,11 +8,21 @@ import { readLedgerEntries } from "@runxhq/core/artifacts";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
 import { runCli } from "../packages/cli/src/index.js";
 import { inspectLocalGraph, runLocalGraph, runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,
   report: () => undefined,
 };
+
+async function createTestRuntime(root: string) {
+  return await createDefaultLocalSkillRuntime({
+    root,
+    receiptDir: path.join(root, "receipts"),
+    runxHome: path.join(root, "home"),
+    env: { ...process.env, RUNX_CWD: root, INIT_CWD: root },
+  });
+}
 
 describe("local governed graph runner", () => {
   it("runs a sequential chain and writes linked receipts", async () => {
@@ -21,12 +31,14 @@ describe("local governed graph runner", () => {
     const runxHome = path.join(tempDir, "home");
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalGraph({
         graphPath: path.resolve("fixtures/chains/sequential/chain.yaml"),
         caller: nonInteractiveCaller,
-        receiptDir,
-        runxHome,
-        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");
@@ -67,13 +79,15 @@ describe("local governed graph runner", () => {
     const runxHome = path.join(tempDir, "home");
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalGraph({
         graphPath: path.resolve("fixtures/chains/sequential/input.yaml"),
         inputs: { message: "explicit chain input" },
         caller: nonInteractiveCaller,
-        receiptDir,
-        runxHome,
-        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");
@@ -95,12 +109,14 @@ describe("local governed graph runner", () => {
     const runxHome = path.join(tempDir, "home");
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalGraph({
         graphPath: path.resolve("fixtures/chains/sequential/chain.yaml"),
         caller: nonInteractiveCaller,
-        receiptDir,
-        runxHome,
-        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");
@@ -132,12 +148,14 @@ describe("local governed graph runner", () => {
     const stderr = createMemoryStream();
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalGraph({
         graphPath: path.resolve("fixtures/chains/sequential/chain.yaml"),
         caller: nonInteractiveCaller,
-        receiptDir,
-        runxHome: path.join(tempDir, "home"),
-        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
       expect(result.status).toBe("success");
       if (result.status !== "success") {
@@ -167,6 +185,7 @@ describe("local governed graph runner", () => {
     const graphPath = path.join(tempDir, "waiting-chain.yaml");
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       await writeFile(
         graphPath,
         `name: waiting-chain
@@ -182,9 +201,10 @@ steps:
       const result = await runLocalGraph({
         graphPath,
         caller: nonInteractiveCaller,
-        receiptDir,
-        runxHome,
-        env: { ...process.env, RUNX_CWD: tempDir, INIT_CWD: tempDir },
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("needs_resolution");
@@ -244,14 +264,21 @@ steps:
         RUNX_PROJECT: project,
         RUNX_KNOWLEDGE_DIR: "knowledge",
       };
+      const runtime = await createDefaultLocalSkillRuntime({
+        root: tempDir,
+        receiptDir,
+        runxHome,
+        env,
+      });
 
       const autoResult = await runLocalSkill({
         skillPath: skillDir,
         runner: "auto-review",
         caller,
-        env,
-        receiptDir,
-        runxHome,
+        adapters: runtime.adapters,
+        env: runtime.env,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
       expect(autoResult.status).toBe("success");
       if (autoResult.status !== "success") {
@@ -282,9 +309,10 @@ steps:
         skillPath: skillDir,
         runner: "always-deterministic",
         caller,
-        env,
-        receiptDir,
-        runxHome,
+        adapters: runtime.adapters,
+        env: runtime.env,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
       expect(alwaysResult.status).toBe("success");
       if (alwaysResult.status !== "success") {
@@ -317,9 +345,10 @@ steps:
         skillPath: skillDir,
         runner: "never-review",
         caller,
-        env,
-        receiptDir,
-        runxHome,
+        adapters: runtime.adapters,
+        env: runtime.env,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
       expect(neverResult.status).toBe("success");
       if (neverResult.status !== "success") {

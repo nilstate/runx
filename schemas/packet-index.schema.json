@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/packet/index/v1.json",
+  "x-runx-schema": "runx.packet.index.v1",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "packets"
+  ],
+  "properties": {
+    "schema": {
+      "const": "runx.packet.index.v1",
+      "type": "string"
+    },
+    "packets": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "package",
+          "version",
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "package": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

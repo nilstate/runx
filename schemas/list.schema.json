@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/list/v1.json",
+  "x-runx-schema": "runx.list.v1",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "root",
+    "requested_kind",
+    "items"
+  ],
+  "properties": {
+    "schema": {
+      "const": "runx.list.v1",
+      "type": "string"
+    },
+    "root": {
+      "type": "string"
+    },
+    "requested_kind": {
+      "type": "string",
+      "enum": [
+        "all",
+        "tools",
+        "skills",
+        "chains",
+        "packets",
+        "overlays"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "source",
+          "path",
+          "status"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "tool",
+              "skill",
+              "chain",
+              "packet",
+              "overlay"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "workspace",
+              "dependencies",
+              "built-in"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "invalid"
+            ]
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emits": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "packet": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "fixtures": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "harness_cases": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "steps": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "wraps": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

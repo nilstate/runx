@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 import { fetchGitHubIssueThread } from "../tools/thread/github_adapter.mjs";
@@ -15,12 +16,6 @@ const caller: Caller = {
   resolve: async () => undefined,
   report: () => undefined,
 };
-
-interface TestRuntimePaths {
-  readonly root: string;
-  readonly receiptDir: string;
-  readonly runxHome: string;
-}
 
 describe("issue-to-PR composite skill", () => {
   it("models authored content around native scafld lifecycle, branch, sync, and projection surfaces", async () => {
@@ -261,7 +256,7 @@ describe("issue-to-PR composite skill", () => {
 
   it.skipIf(!existsSync(scafldBin))("completes the canonical issue-to-pr lane through authored spec, fix, and review outputs", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-skill-"));
-    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const runtime = await createExternalRuntime("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-skill-fixture";
     const caller: Caller = {
       resolve: async (request) =>
@@ -294,9 +289,10 @@ describe("issue-to-PR composite skill", () => {
           scafld_bin: scafldBin,
         },
         caller,
-        env: process.env,
-        receiptDir: runtime.receiptDir,
-        runxHome: runtime.runxHome,
+        adapters: runtime.adapters,
+        env: runtime.env,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
 
       if (result.status !== "success") {
@@ -385,15 +381,15 @@ describe("issue-to-PR composite skill", () => {
       expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("governed\n");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
-      await rm(runtime.root, { recursive: true, force: true });
+      await rm(runtime.paths.root, { recursive: true, force: true });
     }
   }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("pushes the packaged pull_request outbox entry through a file-backed thread adapter and rehydrates provider state", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-provider-loop-"));
-    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const runtime = await createExternalRuntime("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-provider-loop-fixture";
-    const statePath = path.join(runtime.root, "provider", "thread.json");
+    const statePath = path.join(runtime.paths.root, "provider", "thread.json");
     const fileBackedThread = {
       kind: "runx.thread.v1",
       adapter: {
@@ -442,9 +438,10 @@ describe("issue-to-PR composite skill", () => {
           thread: fileBackedThread,
         },
         caller,
-        env: process.env,
-        receiptDir: runtime.receiptDir,
-        runxHome: runtime.runxHome,
+        adapters: runtime.adapters,
+        env: runtime.env,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
 
       expect(result.status).toBe("success");
@@ -499,17 +496,17 @@ describe("issue-to-PR composite skill", () => {
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
-      await rm(runtime.root, { recursive: true, force: true });
+      await rm(runtime.paths.root, { recursive: true, force: true });
     }
   }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("pushes the governed lane upstream through a GitHub-backed thread adapter and rehydrates the provider thread for the next run", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-github-loop-"));
-    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const runtime = await createExternalRuntime("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-github-loop-fixture";
-    const remote = path.join(runtime.root, "remote.git");
-    const fakeGh = path.join(runtime.root, "fake-gh.mjs");
-    const fakeState = path.join(runtime.root, "fake-gh-state.json");
+    const remote = path.join(runtime.paths.root, "remote.git");
+    const fakeGh = path.join(runtime.paths.root, "fake-gh.mjs");
+    const fakeState = path.join(runtime.paths.root, "fake-gh-state.json");
     const caller: Caller = {
       resolve: async (request) =>
         request.kind === "cognitive_work"
@@ -576,13 +573,14 @@ describe("issue-to-PR composite skill", () => {
           },
         },
         caller,
+        adapters: runtime.adapters,
         env: {
-          ...process.env,
+          ...runtime.env,
           RUNX_GH_BIN: fakeGh,
           RUNX_FAKE_GH_STATE: fakeState,
         },
-        receiptDir: runtime.receiptDir,
-        runxHome: runtime.runxHome,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
 
       expect(result.status).toBe("success");
@@ -623,7 +621,7 @@ describe("issue-to-PR composite skill", () => {
           },
         },
       });
-      expect(runChecked("git", ["--git-dir", remote, "branch", "--list", taskId], runtime.root)).toContain(taskId);
+      expect(runChecked("git", ["--git-dir", remote, "branch", "--list", taskId], runtime.paths.root)).toContain(taskId);
       expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
         pulls: [
           {
@@ -658,13 +656,13 @@ describe("issue-to-PR composite skill", () => {
       ]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
-      await rm(runtime.root, { recursive: true, force: true });
+      await rm(runtime.paths.root, { recursive: true, force: true });
     }
   }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("refreshes an existing pull_request outbox entry from thread through the full issue-to-pr lane", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-refresh-"));
-    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const runtime = await createExternalRuntime("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-refresh-fixture";
     const caller: Caller = {
       resolve: async (request) =>
@@ -718,9 +716,10 @@ describe("issue-to-PR composite skill", () => {
           },
         },
         caller,
-        env: process.env,
-        receiptDir: runtime.receiptDir,
-        runxHome: runtime.runxHome,
+        adapters: runtime.adapters,
+        env: runtime.env,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
 
       expect(result.status).toBe("success");
@@ -760,13 +759,13 @@ describe("issue-to-PR composite skill", () => {
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
-      await rm(runtime.root, { recursive: true, force: true });
+      await rm(runtime.paths.root, { recursive: true, force: true });
     }
   }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("halts before write-fix when author-fix explicitly reports blocked after declared-file preload", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-blocked-"));
-    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const runtime = await createExternalRuntime("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-blocked-fixture";
     const caller: Caller = {
       resolve: async (request) =>
@@ -812,9 +811,10 @@ describe("issue-to-PR composite skill", () => {
           scafld_bin: scafldBin,
         },
         caller,
-        env: process.env,
-        receiptDir: runtime.receiptDir,
-        runxHome: runtime.runxHome,
+        adapters: runtime.adapters,
+        env: runtime.env,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
       });
 
       expect(result.status).toBe("policy_denied");
@@ -830,13 +830,13 @@ describe("issue-to-PR composite skill", () => {
       expect(await readFile(path.join(tempDir, "notes.md"), "utf8")).toBe("draft\n");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
-      await rm(runtime.root, { recursive: true, force: true });
+      await rm(runtime.paths.root, { recursive: true, force: true });
     }
   }, 90_000);
 
   it.skipIf(!existsSync(scafldBin))("opens a native scafld review payload, accepts a caller-filled review file, and completes from native JSON", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-"));
-    const runtime = await createExternalRuntimePaths("runx-issue-to-pr-runtime-");
+    const runtime = await createExternalRuntime("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-json-fixture";
 
     try {
@@ -902,14 +902,14 @@ describe("issue-to-PR composite skill", () => {
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
-      await rm(runtime.root, { recursive: true, force: true });
+      await rm(runtime.paths.root, { recursive: true, force: true });
     }
   }, 30_000);
 });
 
 async function runScafldSkill(
   fixture: string,
-  runtime: TestRuntimePaths,
+  runtime: Awaited<ReturnType<typeof createExternalRuntime>>,
   inputs: Readonly<Record<string, unknown>>,
 ) {
   return await runLocalSkill({
@@ -921,8 +921,10 @@ async function runScafldSkill(
       scafld_bin: scafldBin,
     },
     caller,
-    receiptDir: runtime.receiptDir,
-    runxHome: runtime.runxHome,
+    adapters: runtime.adapters,
+    env: runtime.env,
+    receiptDir: runtime.paths.receiptDir,
+    runxHome: runtime.paths.runxHome,
   });
 }
 
@@ -1072,13 +1074,11 @@ planning_log:
   );
 }
 
-async function createExternalRuntimePaths(prefix: string): Promise<TestRuntimePaths> {
-  const root = await mkdtemp(path.join(os.tmpdir(), prefix));
-  return {
-    root,
-    receiptDir: path.join(root, "receipts"),
-    runxHome: path.join(root, "home"),
-  };
+async function createExternalRuntime(prefix: string) {
+  return await createDefaultLocalSkillRuntime({
+    prefix,
+    env: process.env,
+  });
 }
 
 async function answerForIssueToPrStep(

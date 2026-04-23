@@ -1,0 +1,175 @@
+spec_version: "1.1"
+task_id: "runx-runner-local-kernel-split"
+created: "2026-04-23T10:39:12Z"
+updated: "2026-04-23T12:18:34Z"
+status: "completed"
+harden_status: "not_run"
+
+task:
+  title: "Split runner-local into execution modules"
+  summary: >
+    packages/core/src/runner-local/index.ts still centralizes graph execution,
+    ledger/reporting, context loading, resume reconstruction, and reflect
+    projection. Split along the real runtime seams so the entrypoint keeps
+    orchestration responsibilities while the support domains become focused
+    modules.
+  size: "medium"
+  risk_level: "medium"
+  context:
+    packages:
+      - "packages/core"
+      - "tests"
+    files_impacted:
+      - path: "packages/core/src/runner-local/index.ts"
+        lines: "graph execution orchestration, ledger helpers, context, reflect"
+        reason: "Shrink the main runtime entrypoint"
+      - path: "packages/core/src/runner-local/*.ts"
+        lines: "all"
+        reason: "New focused runtime modules"
+      - path: "tests/local-skill-runner.test.ts"
+        lines: "all"
+        reason: "Protect direct local-skill execution behavior"
+      - path: "tests/chain-runner.test.ts"
+        lines: "all"
+        reason: "Protect graph execution behavior"
+      - path: "tests/reflect-digest-skill.test.ts"
+        lines: "all"
+        reason: "Protect reflect projection path after extraction"
+    invariants:
+      - "runLocalSkill and runLocalGraph behavior stays stable"
+      - "Receipt and ledger semantics stay unchanged"
+      - "Reflect projection remains post-run and bounded"
+  objectives:
+    - "Extract graph ledger/reporting helpers into dedicated modules"
+    - "Extract context and historical context loading into dedicated modules"
+    - "Extract reflect projection helpers into a dedicated module"
+    - "Leave index.ts as orchestration and adapter assembly"
+  touchpoints:
+    - area: "packages/core/src/runner-local/index.ts"
+      description: "Current runtime monolith"
+    - area: "packages/core/src/runner-local"
+      description: "Target home for execution-support modules"
+    - area: "tests/*runner*"
+      description: "Behavioral protection for direct skill and graph execution"
+  acceptance:
+    definition_of_done:
+      - id: "dod1"
+        description: "Graph ledger/reporting helpers no longer live in runner-local/index.ts"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod2"
+        description: "Context and reflect helpers no longer live in runner-local/index.ts"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod3"
+        description: "packages/core/src/runner-local/index.ts stays below 3800 lines"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS workspace typechecks after runtime extraction"
+        command: "pnpm typecheck"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "Core runtime regression tests stay green"
+        command: "pnpm exec vitest run tests/local-skill-runner.test.ts tests/chain-runner.test.ts tests/reflect-digest-skill.test.ts"
+        expected: "exit code 0"
+      - id: "v3"
+        type: "boundary"
+        description: "runner-local root file budget drops under the target threshold"
+        command: "test $(wc -l < packages/core/src/runner-local/index.ts) -lt 3800"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-23T10:39:12Z"
+    actor: "user"
+    summary: "Spec created via scafld new"
+  - timestamp: "2026-04-23T10:45:00Z"
+    actor: "agent"
+    summary: "Scoped runtime extraction around graph support, context loading, and reflect projection seams."
+  - timestamp: "2026-04-23T12:18:34Z"
+    actor: "agent"
+    summary: "Split runner-local support domains into context, graph-ledger, graph-reporting, and reflect modules, bringing the root runtime file under budget."
+
+phases:
+  - id: "phase1"
+    name: "Extract graph ledger and reporting helpers"
+    objective: "Remove graph ledger/reporting weight from the main runtime file."
+    changes:
+      - file: "packages/core/src/runner-local/index.ts"
+        action: "update"
+        lines: "appendGraph* helpers, step reporting, graph receipt helper glue"
+        content_spec: |
+          Replace in-file graph ledger/reporting helpers with imports from
+          focused modules.
+      - file: "packages/core/src/runner-local/graph-ledger.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Own graph ledger append helpers and related receipt-link material.
+      - file: "packages/core/src/runner-local/graph-reporting.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Own graph step start/wait/complete reporting and receipt projection
+          helpers.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "Graph runner behavior remains stable after ledger/report extraction"
+        command: "pnpm exec vitest run tests/chain-runner.test.ts"
+        expected: "exit code 0"
+    status: "completed"
+
+  - id: "phase2"
+    name: "Extract context and reflect helpers"
+    objective: "Move context loading and post-run reflect logic into dedicated modules."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "packages/core/src/runner-local/index.ts"
+        action: "update"
+        lines: "context loading, historical context, reflect projection helpers"
+        content_spec: |
+          Replace in-file context and reflect helpers with imports from focused
+          modules and keep orchestration flow intact.
+      - file: "packages/core/src/runner-local/context.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Own loadContext, loadHistoricalAgentContext, prepareAgentContext, and
+          related project document helpers.
+      - file: "packages/core/src/runner-local/reflect.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Own post-run reflect policy checks, reflect projection construction,
+          and knowledge indexing glue.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "test"
+        description: "Local skill and reflect behavior stays green"
+        command: "pnpm exec vitest run tests/local-skill-runner.test.ts tests/reflect-digest-skill.test.ts"
+        expected: "exit code 0"
+    status: "completed"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- packages/core/src/runner-local/index.ts packages/core/src/runner-local/graph-ledger.ts packages/core/src/runner-local/graph-reporting.ts"
+    phase2: "git checkout HEAD -- packages/core/src/runner-local/index.ts packages/core/src/runner-local/context.ts packages/core/src/runner-local/reflect.ts"
+
+self_eval:
+  completeness: 3
+  architecture_fidelity: 3
+  spec_alignment: 2
+  validation_depth: 1
+  total: 9
+  notes: "The runtime seams are now explicit modules and the root file budget is met; compile verification passed."
+  second_pass_performed: true
+
+deviations:
+  - description: "The targeted runner vitest commands in the spec were not rerun before completion."
+    reason: "User explicitly directed the work away from spending more time on tests."

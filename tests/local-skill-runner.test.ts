@@ -5,11 +5,21 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,
   report: () => undefined,
 };
+
+async function createTestRuntime(root: string) {
+  return await createDefaultLocalSkillRuntime({
+    root,
+    receiptDir: path.join(root, "receipts"),
+    runxHome: path.join(root, "home"),
+    env: process.env,
+  });
+}
 
 describe("local skill runner", () => {
   it("runs a local cli-tool skill and writes a hashed receipt", async () => {
@@ -18,13 +28,15 @@ describe("local skill runner", () => {
     const runxHome = path.join(tempDir, "home");
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalSkill({
         skillPath: path.resolve("fixtures/skills/echo"),
         inputs: { message: "super-secret-value" },
         caller: nonInteractiveCaller,
-        receiptDir,
-        runxHome,
-        env: process.env,
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");
@@ -63,13 +75,15 @@ describe("local skill runner", () => {
     };
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalSkill({
         skillPath: path.resolve("fixtures/skills/portable"),
         inputs: { message: "hi" },
         caller,
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");
@@ -105,13 +119,15 @@ describe("local skill runner", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-deterministic-skill-"));
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalSkill({
         skillPath: path.resolve("fixtures/skills/echo"),
         inputs: { message: "hi" },
         caller: nonInteractiveCaller,
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
       });
 
       expect(result.status).toBe("success");
@@ -157,13 +173,15 @@ describe("local skill runner", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-runtime-semantics-"));
 
     try {
+      const runtime = await createTestRuntime(tempDir);
       const result = await runLocalSkill({
         skillPath: path.resolve("fixtures/skills/echo"),
         inputs: { message: "capture this" },
         caller: nonInteractiveCaller,
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
         executionSemantics: {
           disposition: "observing",
           outcome_state: "pending",

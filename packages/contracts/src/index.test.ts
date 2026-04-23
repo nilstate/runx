@@ -10,8 +10,12 @@ import {
   reviewReceiptOutputSchema,
   runxContractSchemas,
   runxAuxiliarySchemas,
+  runxGeneratedSchemaArtifacts,
   validateCredentialEnvelopeContract,
+  validateDevReportContract,
+  validateDoctorReportContract,
   validateRegistryBindingContract,
+  validateRunxListReportContract,
   validateReviewReceiptOutputContract,
   validateScopeAdmissionContract,
 } from "./index.js";
@@ -25,6 +29,8 @@ describe("@runxhq/contracts", () => {
   it("uses durable schema URI ids", () => {
     expect(RUNX_CONTRACT_IDS.toolManifest).toBe("https://schemas.runx.dev/runx/tool/manifest/v1.json");
     expect(runxContractSchemas.toolManifest.$id).toBe(RUNX_CONTRACT_IDS.toolManifest);
+    expect((runxContractSchemas.dev.properties?.doctor as { readonly $ref?: string } | undefined)?.$ref)
+      .toBe(RUNX_CONTRACT_IDS.doctor);
   });
 
   it("keeps fixture lanes aligned with authoring plan", () => {
@@ -71,6 +77,8 @@ describe("@runxhq/contracts", () => {
     expect(registryBindingSchema.$id).toBe(RUNX_AUXILIARY_SCHEMA_IDS.registryBinding);
     expect(reviewReceiptOutputSchema.$id).toBe(RUNX_AUXILIARY_SCHEMA_IDS.reviewReceiptOutput);
     expect(runxAuxiliarySchemas.reviewReceiptOutput).toBe(reviewReceiptOutputSchema);
+    expect(runxGeneratedSchemaArtifacts["doctor.schema.json"]).toBe(runxContractSchemas.doctor);
+    expect(runxGeneratedSchemaArtifacts["review-receipt-output.schema.json"]).toBe(reviewReceiptOutputSchema);
   });
 
   it("validates auxiliary schema payloads", () => {
@@ -110,5 +118,83 @@ describe("@runxhq/contracts", () => {
         case_count: 1,
       },
     })).toMatchObject({ schema: "runx.registry_binding.v1" });
+  });
+
+  it("validates machine report payloads from TypeBox-owned contracts", () => {
+    expect(validateDoctorReportContract({
+      schema: RUNX_LOGICAL_SCHEMAS.doctor,
+      status: "success",
+      summary: {
+        errors: 0,
+        warnings: 1,
+        infos: 0,
+      },
+      diagnostics: [{
+        id: "runx.tool.fixture.missing",
+        instance_id: "sha256:fixture",
+        severity: "warning",
+        title: "Missing fixture",
+        message: "Tool has no deterministic fixture.",
+        target: {
+          kind: "tool",
+          ref: "demo.echo",
+        },
+        location: {
+          path: "tools/demo/echo/manifest.json",
+        },
+        repairs: [],
+      }],
+    })).toMatchObject({
+      status: "success",
+      diagnostics: [expect.objectContaining({ id: "runx.tool.fixture.missing" })],
+    });
+
+    expect(validateRunxListReportContract({
+      schema: RUNX_LOGICAL_SCHEMAS.list,
+      root: "/tmp/runx",
+      requested_kind: "all",
+      items: [{
+        kind: "tool",
+        name: "demo.echo",
+        source: "local",
+        path: "tools/demo/echo/manifest.json",
+        status: "ok",
+        scopes: ["repo:status"],
+        emits: [{ name: "result", packet: "demo.result" }],
+        fixtures: 1,
+      }],
+    })).toMatchObject({
+      requested_kind: "all",
+      items: [expect.objectContaining({ kind: "tool", fixtures: 1 })],
+    });
+
+    expect(validateDevReportContract({
+      schema: RUNX_LOGICAL_SCHEMAS.dev,
+      status: "success",
+      doctor: {
+        schema: RUNX_LOGICAL_SCHEMAS.doctor,
+        status: "success",
+        summary: {
+          errors: 0,
+          warnings: 0,
+          infos: 0,
+        },
+        diagnostics: [],
+      },
+      fixtures: [{
+        name: "demo-fixture",
+        lane: "deterministic",
+        target: {
+          kind: "tool",
+        },
+        status: "success",
+        duration_ms: 12,
+        assertions: [],
+      }],
+      receipt_id: "rx_123",
+    })).toMatchObject({
+      status: "success",
+      receipt_id: "rx_123",
+    });
   });
 });

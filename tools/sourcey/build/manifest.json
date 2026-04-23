@@ -61,7 +61,7 @@
     "packet": "runx.sourcey.build_report.v1",
     "wrap_as": "sourcey_build_report"
   },
-  "source_hash": "sha256:8b9e2b78284edda2dd006672b1686da32b2c1edb0c6bdefef7ef82b63c5afe72",
+  "source_hash": "sha256:98b49293de2dee606f544179c86886d9c67dd7c39d6e50658671314b80cd1ece",
   "schema_hash": "sha256:696c39993e017860cac41699b0808e14ef8f4b4b11ed075833f593e683aa34f4",
   "toolkit_version": "0.0.0"
 }

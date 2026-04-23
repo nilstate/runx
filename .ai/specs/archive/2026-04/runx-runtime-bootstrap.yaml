@@ -1,0 +1,151 @@
+spec_version: "1.1"
+task_id: "runx-runtime-bootstrap"
+created: "2026-04-23T10:39:13Z"
+updated: "2026-04-23T12:18:34Z"
+status: "completed"
+harden_status: "not_run"
+
+task:
+  title: "Add shared local-skill runtime bootstrap"
+  summary: >
+    Dogfood uncovered that raw runLocalSkill call sites are now easy to get
+    wrong after the core/adapters split. Introduce one shared helper for tests
+    and scripts so local execution consistently carries default adapters,
+    runtime directories, and env defaults.
+  size: "small"
+  risk_level: "low"
+  context:
+    packages:
+      - "tests"
+      - "scripts"
+      - "packages/adapters"
+      - "packages/core"
+    files_impacted:
+      - path: "tests/helpers"
+        lines: "all"
+        reason: "New shared runtime bootstrap helper"
+      - path: "scripts/dogfood-github-issue-to-pr.mjs"
+        lines: "all"
+        reason: "Use the shared runtime helper instead of open-coded adapter wiring"
+      - path: "tests/external-skill-proving-ground.test.ts"
+        lines: "all"
+        reason: "Use shared bootstrap for fresh-caller proving ground"
+      - path: "tests/reflect-digest-skill.test.ts"
+        lines: "all"
+        reason: "Use shared bootstrap for direct skill execution"
+      - path: "tests/issue-to-pr-chain.test.ts"
+        lines: "direct runLocalSkill call sites"
+        reason: "Use shared bootstrap for composite-skill execution"
+    invariants:
+      - "Default adapter assembly stays outside @runxhq/core"
+      - "Scripts and tests use the same bootstrap semantics"
+      - "Callers can still override env, receipt dirs, and adapters when needed"
+  objectives:
+    - "Create one helper that injects default adapters and sane local-runtime defaults"
+    - "Use that helper in dogfood and proving-ground paths"
+    - "Reduce repeated raw runLocalSkill setup in direct tests"
+  touchpoints:
+    - area: "tests/helpers"
+      description: "Shared local execution helper"
+    - area: "scripts/dogfood-github-issue-to-pr.mjs"
+      description: "Dogfood script that previously hand-wired adapters"
+    - area: "tests/*"
+      description: "Direct runLocalSkill tests that should use one runtime path"
+  acceptance:
+    definition_of_done:
+      - id: "dod1"
+        description: "Dogfood and proving-ground paths use one shared bootstrap"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod2"
+        description: "At least the direct skill tests that previously failed use the shared helper"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS workspace typechecks after bootstrap extraction"
+        command: "pnpm typecheck"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "Direct skill regression tests stay green with the helper"
+        command: "pnpm exec vitest run tests/external-skill-proving-ground.test.ts tests/reflect-digest-skill.test.ts tests/issue-to-pr-chain.test.ts"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-23T10:39:13Z"
+    actor: "user"
+    summary: "Spec created via scafld new"
+  - timestamp: "2026-04-23T10:45:00Z"
+    actor: "agent"
+    summary: "Scoped bootstrap work around shared adapter/env setup for tests and dogfood scripts."
+
+  - timestamp: "2026-04-23T10:43:11Z"
+    actor: "cli"
+    summary: "Spec approved"
+  - timestamp: "2026-04-23T10:43:11Z"
+    actor: "cli"
+    summary: "Execution started"
+  - timestamp: "2026-04-23T12:18:34Z"
+    actor: "agent"
+    summary: "Completed shared runtime bootstrap extraction, adopted it in dogfood and direct skill tests, and verified OSS typecheck."
+phases:
+  - id: "phase1"
+    name: "Create and adopt runtime bootstrap helper"
+    objective: "Introduce one shared local runtime helper and migrate the highest-value call sites."
+    changes:
+      - file: "tests/helpers/run-local-skill.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Export helper utilities that wrap runLocalSkill with createDefaultSkillAdapters,
+          temp receipt/home dirs, and predictable env defaults.
+      - file: "scripts/dogfood-github-issue-to-pr.mjs"
+        action: "update"
+        lines: "runtime assembly"
+        content_spec: |
+          Replace open-coded adapter wiring with the shared helper or shared
+          runtime assembly utility.
+      - file: "tests/external-skill-proving-ground.test.ts"
+        action: "update"
+        lines: "runLocalSkill setup"
+        content_spec: |
+          Use the shared runtime helper instead of hand-assembling adapters and
+          directories inline.
+      - file: "tests/reflect-digest-skill.test.ts"
+        action: "update"
+        lines: "runLocalSkill setup"
+        content_spec: |
+          Use the shared runtime helper for direct skill execution.
+      - file: "tests/issue-to-pr-chain.test.ts"
+        action: "update"
+        lines: "direct runLocalSkill setup"
+        content_spec: |
+          Use the shared runtime helper at direct issue-to-pr call sites where
+          default adapter assembly is required.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "Shared-bootstrap call sites stay green"
+        command: "pnpm exec vitest run tests/external-skill-proving-ground.test.ts tests/reflect-digest-skill.test.ts tests/issue-to-pr-chain.test.ts"
+        expected: "exit code 0"
+    status: "completed"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- tests/helpers/run-local-skill.ts scripts/dogfood-github-issue-to-pr.mjs tests/external-skill-proving-ground.test.ts tests/reflect-digest-skill.test.ts tests/issue-to-pr-chain.test.ts"
+
+self_eval:
+  completeness: 3
+  architecture_fidelity: 3
+  spec_alignment: 2
+  validation_depth: 1
+  total: 9
+  notes: "Shared runtime bootstrap landed and the main OSS compile gate passed; targeted test reruns were skipped by direction."
+  second_pass_performed: true
+
+deviations:
+  - description: "Targeted vitest acceptance commands in the spec were not rerun before completion."
+    reason: "User explicitly prioritized structural work over spending more time on tests."

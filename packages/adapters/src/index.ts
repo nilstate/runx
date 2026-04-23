@@ -9,6 +9,7 @@ export const adaptersPackage = "@runxhq/adapters";
 export * from "./a2a/index.js";
 export * from "./cli-tool/index.js";
 export * from "./mcp/index.js";
+export * from "./runtime.js";
 
 export function createDefaultSkillAdapters(): readonly SkillAdapter[] {
   return [

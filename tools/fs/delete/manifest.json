@@ -40,7 +40,7 @@
     "packet": "runx.fs.delete.v1",
     "wrap_as": "file_delete"
   },
-  "source_hash": "sha256:8058f5157bf0d7f2b0c195403343c57ed594b89577c3ee15dca60dbb70912868",
+  "source_hash": "sha256:5813c4a4ed42f27ff9b39df33935e64fb0bcb511e519d265ceabfa22ce1452e2",
   "schema_hash": "sha256:784baac76a77a6ca4edc8d4e78ec2f9f8edbe03e03ecd0e4af0d2fd9bb376387",
   "toolkit_version": "0.0.0"
 }

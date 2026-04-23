@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/dev/v1.json",
+  "x-runx-schema": "runx.dev.v1",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "status",
+    "doctor",
+    "fixtures"
+  ],
+  "properties": {
+    "schema": {
+      "const": "runx.dev.v1",
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failure",
+        "skipped",
+        "needs_approval"
+      ]
+    },
+    "doctor": {
+      "$ref": "https://schemas.runx.dev/runx/doctor/v1.json"
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "lane",
+          "target",
+          "status",
+          "duration_ms",
+          "assertions"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "lane": {
+            "type": "string"
+          },
+          "target": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure",
+              "skipped"
+            ]
+          },
+          "duration_ms": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "path",
+                "kind",
+                "message"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "expected": {},
+                "actual": {},
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "subset_miss",
+                    "exact_mismatch",
+                    "packet_invalid",
+                    "status_mismatch",
+                    "type_mismatch"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "skip_reason": {
+            "type": "string"
+          },
+          "output": {},
+          "replay_path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "receipt_id": {
+      "type": "string"
+    }
+  }
+}

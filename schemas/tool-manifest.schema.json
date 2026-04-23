@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/tool/manifest/v1.json",
+  "x-runx-schema": "runx.tool.manifest.v1",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "name",
+    "version",
+    "source_hash",
+    "schema_hash",
+    "runtime",
+    "output"
+  ],
+  "properties": {
+    "schema": {
+      "const": "runx.tool.manifest.v1",
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "source_hash": {
+      "type": "string"
+    },
+    "schema_hash": {
+      "type": "string"
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "toolkit_version": {
+      "type": "string"
+    }
+  }
+}

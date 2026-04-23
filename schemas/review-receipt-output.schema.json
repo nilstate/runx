@@ -13,21 +13,13 @@
   ],
   "properties": {
     "verdict": {
-      "description": "Overall diagnosis. `pass` means no change needed; `needs_update` means one or more bounded improvements apply; `blocked` means the evidence is insufficient to decide.",
-      "anyOf": [
-        {
-          "const": "pass",
-          "type": "string"
-        },
-        {
-          "const": "needs_update",
-          "type": "string"
-        },
-        {
-          "const": "blocked",
-          "type": "string"
-        }
-      ]
+      "type": "string",
+      "enum": [
+        "pass",
+        "needs_update",
+        "blocked"
+      ],
+      "description": "Overall diagnosis. `pass` means no change needed; `needs_update` means one or more bounded improvements apply; `blocked` means the evidence is insufficient to decide."
     },
     "failure_summary": {
       "description": "One to three sentences naming the failing step, the failure class, and the root cause. For `pass`, restates why no change is needed.",

@@ -1,0 +1,158 @@
+spec_version: "1.1"
+task_id: "runx-cloud-api-service-split"
+created: "2026-04-23T10:39:12Z"
+updated: "2026-04-23T12:18:34Z"
+status: "completed"
+harden_status: "not_run"
+
+task:
+  title: "Split hosted API route and page services"
+  summary: >
+    cloud/packages/api/src/openapi.ts and public-site.ts are now the biggest
+    hosted files and mix data loading, domain shaping, HTML rendering, and API
+    schema assembly. Break them into route-level and service-level modules so
+    the hosted surface stops accreting logic in single files.
+  size: "medium"
+  risk_level: "medium"
+  context:
+    packages:
+      - "../cloud/packages/api"
+    files_impacted:
+      - path: "../cloud/packages/api/src/index.ts"
+        lines: "route wiring and inline handler logic"
+        reason: "Thin the HTTP entrypoint further"
+      - path: "../cloud/packages/api/src/openapi.ts"
+        lines: "operations, schema assembly, helper builders"
+        reason: "Split schema and path assembly"
+      - path: "../cloud/packages/api/src/public-site.ts"
+        lines: "data loading, feed shaping, HTML rendering"
+        reason: "Split data services from rendering"
+      - path: "../cloud/packages/api/src/*.ts"
+        lines: "all"
+        reason: "New focused route, service, and rendering modules"
+    invariants:
+      - "Hosted API behavior stays stable"
+      - "OpenAPI document shape stays stable"
+      - "Public site rendering remains server-side and deterministic"
+  objectives:
+    - "Split OpenAPI schema/path assembly out of the giant document file"
+    - "Split public-site data loading and rendering helpers into focused modules"
+    - "Thin the hosted API entrypoint so route registration is readable"
+  touchpoints:
+    - area: "../cloud/packages/api/src/openapi.ts"
+      description: "Largest hosted schema assembly surface"
+    - area: "../cloud/packages/api/src/public-site.ts"
+      description: "Largest hosted page/data surface"
+    - area: "../cloud/packages/api/src/index.ts"
+      description: "HTTP route registration entrypoint"
+  acceptance:
+    definition_of_done:
+      - id: "dod1"
+        description: "openapi.ts stays below 1600 lines"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod2"
+        description: "public-site.ts stays below 1500 lines"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod3"
+        description: "API route registration no longer embeds large helper bodies"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "Cloud workspace typechecks after modularization"
+        command: "pnpm typecheck"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "boundary"
+        description: "OpenAPI file budget meets target"
+        command: "test $(wc -l < packages/api/src/openapi.ts) -lt 1600"
+        expected: "exit code 0"
+      - id: "v3"
+        type: "boundary"
+        description: "Public-site file budget meets target"
+        command: "test $(wc -l < packages/api/src/public-site.ts) -lt 1500"
+        expected: "exit code 0"
+
+planning_log:
+  - timestamp: "2026-04-23T10:39:12Z"
+    actor: "user"
+    summary: "Spec created via scafld new"
+  - timestamp: "2026-04-23T10:45:00Z"
+    actor: "agent"
+    summary: "Scoped hosted API work around OpenAPI schema assembly, public-site data/rendering, and route wiring."
+  - timestamp: "2026-04-23T12:18:34Z"
+    actor: "agent"
+    summary: "Split hosted OpenAPI and public-site helpers into focused modules and thinned API route registration to a dedicated public-page route module."
+
+phases:
+  - id: "phase1"
+    name: "Extract OpenAPI schema and path builders"
+    objective: "Break openapi.ts into schema/path helper modules."
+    changes:
+      - file: "../cloud/packages/api/src/openapi.ts"
+        action: "update"
+        lines: "path definitions, schema helpers, utility builders"
+        content_spec: |
+          Keep top-level OpenAPI assembly in openapi.ts and move path and schema
+          helper weight into dedicated modules.
+      - file: "../cloud/packages/api/src/openapi-*.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Introduce focused modules for OpenAPI operations, schema components,
+          and common helper builders.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "compile"
+        description: "Cloud typecheck passes after OpenAPI extraction"
+        command: "pnpm typecheck"
+        expected: "exit code 0"
+    status: "completed"
+
+  - id: "phase2"
+    name: "Extract public-site data and rendering modules"
+    objective: "Separate registry/feed data shaping from HTML rendering."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "../cloud/packages/api/src/public-site.ts"
+        action: "update"
+        lines: "list/read/build/render helpers"
+        content_spec: |
+          Keep top-level page entrypoints in public-site.ts and move data loading,
+          feed shaping, and HTML fragment renderers into dedicated modules.
+      - file: "../cloud/packages/api/src/public-site-*.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Introduce focused modules for public registry data, feed shaping, page
+          rendering, and shared HTML helpers.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "boundary"
+        description: "public-site.ts drops under the target budget"
+        command: "test $(wc -l < packages/api/src/public-site.ts) -lt 1500"
+        expected: "exit code 0"
+    status: "completed"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- ../cloud/packages/api/src/openapi.ts ../cloud/packages/api/src/openapi-*.ts"
+    phase2: "git checkout HEAD -- ../cloud/packages/api/src/public-site.ts ../cloud/packages/api/src/public-site-*.ts"
+
+self_eval:
+  completeness: 3
+  architecture_fidelity: 3
+  spec_alignment: 2
+  validation_depth: 1
+  total: 9
+  notes: "The hosted API hot files are materially thinner and the cloud compile gate passed."
+  second_pass_performed: true
+
+deviations:
+  - description: "The cloud spec was executed without rerunning a broader behavioral test suite."
+    reason: "User explicitly directed focus toward structural work rather than spending more time on tests."

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { mkdtemp, readFile } from "node:fs/promises";
 
-import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { createDefaultLocalSkillRuntime } from "@runxhq/adapters";
 import { runLocalSkill } from "@runxhq/core/runner-local";
 import {
   fetchGitHubIssueThread,
@@ -24,12 +24,16 @@ const scafldBin = firstNonEmptyString(
   "/home/kam/dev/scafld/cli/scafld",
 );
 const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), `runx-github-issue-to-pr-${taskId}-`));
-const receiptDir = path.resolve(args.receipt_dir ?? path.join(runtimeRoot, "receipts"));
-const runxHome = path.resolve(args.runx_home ?? path.join(runtimeRoot, "home"));
+const runtime = await createDefaultLocalSkillRuntime({
+  root: runtimeRoot,
+  receiptDir: args.receipt_dir ? path.resolve(args.receipt_dir) : undefined,
+  runxHome: args.runx_home ? path.resolve(args.runx_home) : undefined,
+  env: process.env,
+});
 
 const before = fetchGitHubIssueThread({
   adapterRef: issueRef.adapter_ref,
-  env: process.env,
+  env: runtime.env,
   cwd: workspace,
 });
 const caller = await createAnswersCaller(args.answers);
@@ -48,14 +52,14 @@ const result = await runLocalSkill({
     scafld_bin: scafldBin,
   },
   caller,
-  adapters: createDefaultSkillAdapters(),
-  env: process.env,
-  receiptDir,
-  runxHome,
+  adapters: runtime.adapters,
+  env: runtime.env,
+  receiptDir: runtime.paths.receiptDir,
+  runxHome: runtime.paths.runxHome,
 });
 const after = fetchGitHubIssueThread({
   adapterRef: issueRef.adapter_ref,
-  env: process.env,
+  env: runtime.env,
   cwd: workspace,
 });
 
@@ -94,8 +98,8 @@ const output = {
     url: issueRef.issue_url,
   },
   workspace,
-  receipt_dir: receiptDir,
-  runx_home: runxHome,
+  receipt_dir: runtime.paths.receiptDir,
+  runx_home: runtime.paths.runxHome,
   before: summarizeThread(before, preferredBeforePull),
   after: summarizeThread(after, preferredAfterPull),
   execution: executionPayload,

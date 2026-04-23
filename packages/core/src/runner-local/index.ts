@@ -12,22 +12,33 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  appendLedgerEntries,
-  createReceiptLinkEntry,
-  createRunEventEntry,
   materializeArtifacts,
   readLedgerEntries,
-  SYSTEM_ARTIFACT_TYPES,
   type ArtifactContract,
   type ArtifactEnvelope,
 } from "../artifacts/index.js";
+import {
+  appendGraphCompletedLedgerEntry,
+  appendGraphLedgerEntries,
+  appendGraphStepStartedLedgerEntry,
+  appendGraphStepFailureLedgerEntry,
+  appendPendingGraphLedgerEntry,
+  appendPendingSkillLedgerEntries,
+  appendSkillLedgerEntries,
+} from "./graph-ledger.js";
+import {
+  graphProducerSkillName,
+  graphStepExecutionDirectory,
+  graphStepReference,
+  graphStepRunner,
+  reportGraphStepCompleted,
+  reportGraphStepStarted,
+  reportGraphStepWaitingResolution,
+} from "./graph-reporting.js";
 import { runFanout } from "./fanout.js";
 import {
   type Context,
-  type ContextDocument,
-  type QualityProfileContext,
   executeSkill,
-  type AgentContextProvenance,
   type AdapterInvokeResult,
   type AgentWorkRequest,
   type ApprovalGate,
@@ -49,6 +60,14 @@ import {
   resolveRunxKnowledgeDir,
   type RunxWorkspacePolicy,
 } from "../config/index.js";
+import {
+  contextReceiptMetadata,
+  loadContext,
+  prepareAgentContext,
+  qualityProfileContext,
+  skillQualityProfileReceiptMetadata,
+  type PreparedAgentContext,
+} from "./context.js";
 import {
   parseGraphYaml,
   parseRunnerManifestYaml,
@@ -123,6 +142,7 @@ import {
   type NormalizedExecutionSemantics,
 } from "./execution-semantics.js";
 import { defaultReceiptDir } from "./receipt-paths.js";
+import { projectReflectIfEnabled } from "./reflect.js";
 
 export interface ApprovalDecision {
   readonly gate: ApprovalGate;
@@ -250,78 +270,6 @@ interface ResolvedToolReference {
   readonly toolName: string;
   readonly manifestPath: string;
   readonly toolDirectory: string;
-}
-
-function graphStepExecutionDirectory(step: GraphStep, stepExecutablePath: string, graphDirectory: string): string {
-  return step.skill || step.tool ? path.dirname(stepExecutablePath) : graphDirectory;
-}
-
-async function reportGraphStepStarted(caller: Caller, step: GraphStep, reference: string): Promise<void> {
-  await caller.report({
-    type: "step_started",
-    message: `Starting step ${step.id}.`,
-    data: {
-      stepId: step.id,
-      stepLabel: step.label,
-      skill: reference,
-      runner: graphStepRunner(step) ?? "default",
-    },
-  });
-}
-
-async function reportGraphStepWaitingResolution(
-  caller: Caller,
-  step: GraphStep,
-  reference: string,
-  requests: readonly ResolutionRequest[],
-): Promise<void> {
-  await caller.report({
-    type: "step_waiting_resolution",
-    message: `Step ${step.id} needs resolution.`,
-    data: {
-      stepId: step.id,
-      stepLabel: step.label,
-      skill: reference,
-      runner: graphStepRunner(step) ?? "default",
-      kinds: Array.from(new Set(requests.map((request) => request.kind))),
-      requestIds: requests.map((request) => request.id),
-      resolutionSkills: Array.from(
-        new Set(
-          requests
-            .filter((request): request is Extract<ResolutionRequest, { kind: "cognitive_work" }> => request.kind === "cognitive_work")
-            .map((request) => request.work.envelope.skill),
-        ),
-      ),
-      expectedOutputs: Array.from(
-        new Set(
-          requests
-            .filter((request): request is Extract<ResolutionRequest, { kind: "cognitive_work" }> => request.kind === "cognitive_work")
-            .flatMap((request) => Object.keys(request.work.envelope.expected_outputs ?? {})),
-        ),
-      ),
-    },
-  });
-}
-
-async function reportGraphStepCompleted(
-  caller: Caller,
-  step: GraphStep,
-  reference: string,
-  status: "success" | "failure",
-  detail?: Readonly<Record<string, unknown>>,
-): Promise<void> {
-  await caller.report({
-    type: "step_completed",
-    message: `Step ${step.id} ${status}.`,
-    data: {
-      stepId: step.id,
-      stepLabel: step.label,
-      skill: reference,
-      runner: graphStepRunner(step) ?? "default",
-      status,
-      ...detail,
-    },
-  });
 }
 
 export type RunLocalSkillResult =
@@ -1480,208 +1428,6 @@ async function resolveGraphExecution(options: RunLocalGraphOptions): Promise<{
   };
 }
 
-async function appendSkillLedgerEntries(options: {
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly skill: ValidatedSkill;
-  readonly startedAt: string;
-  readonly completedAt: string;
-  readonly status: "success" | "failure";
-  readonly artifactEnvelopes: readonly ArtifactEnvelope[];
-  readonly receiptId: string;
-  readonly includeRunStarted?: boolean;
-}): Promise<void> {
-  const producer = {
-    skill: options.skill.name,
-    runner: options.skill.source.type,
-  };
-  await appendLedgerEntries({
-    receiptDir: options.receiptDir,
-    runId: options.runId,
-    entries: [
-      ...(options.includeRunStarted === false
-        ? []
-        : [
-            createRunEventEntry({
-              runId: options.runId,
-              producer,
-              kind: "run_started",
-              status: "started",
-              createdAt: options.startedAt,
-            }),
-          ]),
-      ...options.artifactEnvelopes,
-      ...options.artifactEnvelopes.map((envelope) =>
-        createReceiptLinkEntry({
-          runId: options.runId,
-          producer,
-          artifactId: envelope.meta.artifact_id,
-          receiptId: options.receiptId,
-          createdAt: options.completedAt,
-        }),
-      ),
-      createRunEventEntry({
-        runId: options.runId,
-        producer,
-        kind: "run_completed",
-        status: options.status,
-        createdAt: options.completedAt,
-        detail: {
-          receipt_id: options.receiptId,
-        },
-      }),
-    ],
-  });
-}
-
-async function appendPendingSkillLedgerEntries(options: {
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly skill: ValidatedSkill;
-  readonly startedAt: string;
-  readonly kind: "resolution_requested";
-  readonly detail: Readonly<Record<string, unknown>>;
-  readonly includeRunStarted?: boolean;
-}): Promise<void> {
-  const producer = {
-    skill: options.skill.name,
-    runner: options.skill.source.type,
-  };
-  await appendLedgerEntries({
-    receiptDir: options.receiptDir,
-    runId: options.runId,
-    entries: [
-      ...(options.includeRunStarted === false
-        ? []
-        : [
-            createRunEventEntry({
-              runId: options.runId,
-              producer,
-              kind: "run_started",
-              status: "started",
-              createdAt: options.startedAt,
-            }),
-          ]),
-      createRunEventEntry({
-        runId: options.runId,
-        producer,
-        kind: options.kind,
-        status: "waiting",
-        detail: options.detail,
-        createdAt: options.startedAt,
-      }),
-    ],
-  });
-}
-
-async function appendGraphLedgerEntries(options: {
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly topLevelSkillName: string;
-  readonly stepId: string;
-  readonly skill: ValidatedSkill;
-  readonly artifactEnvelopes: readonly ArtifactEnvelope[];
-  readonly receiptId: string;
-  readonly status: "success" | "failure";
-  readonly detail?: Readonly<Record<string, unknown>>;
-  readonly createdAt: string;
-}): Promise<void> {
-  const producer = {
-    skill: options.topLevelSkillName,
-    runner: "graph",
-  };
-  await appendLedgerEntries({
-    receiptDir: options.receiptDir,
-    runId: options.runId,
-    entries: [
-      ...options.artifactEnvelopes,
-      ...options.artifactEnvelopes.map((envelope) =>
-        createReceiptLinkEntry({
-          runId: options.runId,
-          stepId: options.stepId,
-          producer,
-          artifactId: envelope.meta.artifact_id,
-          receiptId: options.receiptId,
-          createdAt: options.createdAt,
-        }),
-      ),
-      createRunEventEntry({
-        runId: options.runId,
-        stepId: options.stepId,
-        producer,
-        kind: options.status === "success" ? "step_succeeded" : "step_failed",
-        status: options.status,
-        detail: {
-          skill: options.skill.name,
-          receipt_id: options.receiptId,
-          ...options.detail,
-        },
-        createdAt: options.createdAt,
-      }),
-    ],
-  });
-}
-
-async function appendPendingGraphLedgerEntry(options: {
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly topLevelSkillName: string;
-  readonly stepId: string;
-  readonly kind: "step_waiting_resolution";
-  readonly detail: Readonly<Record<string, unknown>>;
-  readonly createdAt: string;
-}): Promise<void> {
-  await appendLedgerEntries({
-    receiptDir: options.receiptDir,
-    runId: options.runId,
-    entries: [
-      createRunEventEntry({
-        runId: options.runId,
-        stepId: options.stepId,
-        producer: {
-          skill: options.topLevelSkillName,
-          runner: "graph",
-        },
-        kind: options.kind,
-        status: "waiting",
-        detail: options.detail,
-        createdAt: options.createdAt,
-      }),
-    ],
-  });
-}
-
-async function appendGraphStepStartedLedgerEntry(options: {
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly topLevelSkillName: string;
-  readonly step: GraphStep;
-  readonly reference: string;
-  readonly createdAt: string;
-}): Promise<void> {
-  await appendLedgerEntries({
-    receiptDir: options.receiptDir,
-    runId: options.runId,
-    entries: [
-      createRunEventEntry({
-        runId: options.runId,
-        stepId: options.step.id,
-        producer: {
-          skill: options.topLevelSkillName,
-          runner: "graph",
-        },
-        kind: "step_started",
-        status: "started",
-        detail: {
-          skill: options.reference,
-          runner: graphStepRunner(options.step) ?? "default",
-        },
-        createdAt: options.createdAt,
-      }),
-    ],
-  });
-}
-
 function admitGraphTransition(
   policy: GraphPolicy | undefined,
   stepId: string,
@@ -2151,7 +1897,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
         await appendGraphStepStartedLedgerEntry({
           receiptDir,
           runId: graphId,
-          topLevelSkillName: graphProducerSkillName(options, graph),
+          topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
           step: prep.step,
           reference: prep.stepReference,
           createdAt: stepStartedAt,
@@ -2226,7 +1972,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
           await appendPendingGraphLedgerEntry({
             receiptDir,
             runId: graphId,
-            topLevelSkillName: graphProducerSkillName(options, graph),
+            topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
             stepId: prep.step.id,
             kind: "step_waiting_resolution",
             detail: {
@@ -2251,24 +1997,12 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
               reason: `policy denied: ${stepResult.reasons.join("; ")}`,
             },
           );
-          await appendLedgerEntries({
+          await appendGraphStepFailureLedgerEntry({
             receiptDir,
             runId: graphId,
-            entries: [
-              createRunEventEntry({
-                runId: graphId,
-                stepId: prep.step.id,
-                producer: {
-                  skill: graphProducerSkillName(options, graph),
-                  runner: "graph",
-                },
-                kind: "step_failed",
-                status: "failure",
-                detail: {
-                  reason: `policy denied: ${stepResult.reasons.join("; ")}`,
-                },
-              }),
-            ],
+            topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
+            stepId: prep.step.id,
+            reason: `policy denied: ${stepResult.reasons.join("; ")}`,
           });
           state = transitionSequentialGraph(state, {
             type: "step_failed", stepId: prep.step.id,
@@ -2330,7 +2064,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
         await appendGraphLedgerEntries({
           receiptDir,
           runId: graphId,
-          topLevelSkillName: graphProducerSkillName(options, graph),
+          topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
           stepId: prep.step.id,
           skill: stepResult.skill,
           artifactEnvelopes: artifactResult.envelopes,
@@ -2532,7 +2266,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     await appendGraphStepStartedLedgerEntry({
       receiptDir,
       runId: graphId,
-      topLevelSkillName: graphProducerSkillName(options, graph),
+      topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
       step,
       reference: resolvedStep.reference,
       createdAt: stepStartedAt,
@@ -2576,7 +2310,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       await appendPendingGraphLedgerEntry({
         receiptDir,
         runId: graphId,
-        topLevelSkillName: graphProducerSkillName(options, graph),
+        topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
         stepId: step.id,
         kind: "step_waiting_resolution",
         detail: {
@@ -2604,24 +2338,12 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       await reportGraphStepCompleted(options.caller, step, resolvedStep.reference, "failure", {
         reason: `policy denied: ${stepResult.reasons.join("; ")}`,
       });
-      await appendLedgerEntries({
+      await appendGraphStepFailureLedgerEntry({
         receiptDir,
         runId: graphId,
-        entries: [
-          createRunEventEntry({
-            runId: graphId,
-            stepId: step.id,
-            producer: {
-              skill: graphProducerSkillName(options, graph),
-              runner: "graph",
-            },
-            kind: "step_failed",
-            status: "failure",
-            detail: {
-              reason: `policy denied: ${stepResult.reasons.join("; ")}`,
-            },
-          }),
-        ],
+        topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
+        stepId: step.id,
+        reason: `policy denied: ${stepResult.reasons.join("; ")}`,
       });
       return {
         status: "policy_denied",
@@ -2692,7 +2414,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     await appendGraphLedgerEntries({
       receiptDir,
       runId: graphId,
-      topLevelSkillName: graphProducerSkillName(options, graph),
+      topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
       stepId: step.id,
       skill: stepResult.skill,
       artifactEnvelopes: artifactResult.envelopes,
@@ -2748,25 +2470,14 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     evidenceRefs: executionSemantics.evidenceRefs,
     metadata: inheritedReceiptMetadata,
   });
-  await appendLedgerEntries({
+  await appendGraphCompletedLedgerEntry({
     receiptDir,
     runId: graphId,
-    entries: [
-      createRunEventEntry({
-        runId: graphId,
-        producer: {
-          skill: graphProducerSkillName(options, graph),
-          runner: "graph",
-        },
-        kind: "chain_completed",
-        status: receipt.status,
-        detail: {
-          receipt_id: receipt.id,
-          step_count: stepRuns.length,
-        },
-        createdAt: completedAt,
-      }),
-    ],
+    topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
+    receiptId: receipt.id,
+    stepCount: stepRuns.length,
+    status: receipt.status,
+    createdAt: completedAt,
   });
   try {
     await indexReceiptIfEnabled(receipt, receiptDir, options);
@@ -2785,7 +2496,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     receipt,
     receiptDir,
     runId: graphId,
-    skillName: graphProducerSkillName(options, graph),
+    skillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
     knowledgeDir: options.knowledgeDir,
     env: options.env,
     selectedRunnerName: options.selectedRunnerName,
@@ -2845,216 +2556,6 @@ async function indexReceiptIfEnabled(
   });
 }
 
-interface ReflectProjectionOptions {
-  readonly caller: Caller;
-  readonly receipt: LocalReceipt;
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly skillName: string;
-  readonly knowledgeDir?: string;
-  readonly env?: NodeJS.ProcessEnv;
-  readonly selectedRunnerName?: string;
-  readonly postRunReflectPolicy?: PostRunReflectPolicy;
-  readonly involvedAgentMediatedWork: boolean;
-}
-
-interface LocalReflectProjection {
-  readonly schema_version: "runx.reflect.v1";
-  readonly skill_ref: string;
-  readonly receipt_id: string;
-  readonly run_id: string;
-  readonly receipt_kind: LocalReceipt["kind"];
-  readonly status: LocalReceipt["status"];
-  readonly selected_runner?: string;
-  readonly policy: PostRunReflectPolicy;
-  readonly mediation: "agentic" | "deterministic";
-  readonly summary: string;
-  readonly signals: readonly string[];
-  readonly ledger: {
-    readonly event_kinds: readonly string[];
-    readonly artifact_count: number;
-    readonly artifact_types: readonly string[];
-  };
-  readonly step_summary?: {
-    readonly total_steps: number;
-    readonly successful_steps: number;
-    readonly failed_steps: number;
-    readonly runner_types: readonly string[];
-  };
-  readonly projected_at: string;
-}
-
-async function projectReflectIfEnabled(options: ReflectProjectionOptions): Promise<void> {
-  const policy = options.postRunReflectPolicy ?? "never";
-  if (!shouldProjectReflect(policy, options.involvedAgentMediatedWork)) {
-    return;
-  }
-
-  const knowledgeDir = resolveOptionalKnowledgeDir(options);
-  if (!knowledgeDir) {
-    return;
-  }
-
-  const projectedAt = options.receipt.completed_at ?? new Date().toISOString();
-
-  try {
-    const ledgerEntries = await readLedgerEntries(options.receiptDir, options.runId);
-    const reflectProjection = buildReflectProjection({
-      receipt: options.receipt,
-      runId: options.runId,
-      skillName: options.skillName,
-      selectedRunnerName: options.selectedRunnerName,
-      policy,
-      involvedAgentMediatedWork: options.involvedAgentMediatedWork,
-      ledgerEntries,
-      projectedAt,
-    });
-    const projectionEntry = await createFileKnowledgeStore(knowledgeDir).addProjection({
-      project: resolveKnowledgeProject(options.env),
-      scope: "reflect",
-      key: `receipt:${options.receipt.id}`,
-      value: reflectProjection,
-      source: "post_run.reflect",
-      confidence: 1,
-      freshness: "derived",
-      receiptId: options.receipt.id,
-      createdAt: projectedAt,
-    });
-    await appendLedgerEntries({
-      receiptDir: options.receiptDir,
-      runId: options.runId,
-      entries: [
-        createRunEventEntry({
-          runId: options.runId,
-          producer: {
-            skill: options.skillName,
-            runner: options.receipt.kind === "graph_execution" ? "graph" : options.receipt.source_type,
-          },
-          kind: "reflect_projected",
-          status: "success",
-          detail: {
-            projection_entry_id: projectionEntry.entry_id,
-            receipt_id: options.receipt.id,
-            policy,
-            mediation: reflectProjection.mediation,
-          },
-          createdAt: projectedAt,
-        }),
-      ],
-    });
-  } catch (error) {
-    await options.caller.report({
-      type: "warning",
-      message: "Post-run reflect projection failed; continuing with the persisted receipt.",
-      data: {
-        receiptId: options.receipt.id,
-        error: error instanceof Error ? error.message : String(error),
-      },
-    });
-  }
-}
-
-function buildReflectProjection(options: {
-  readonly receipt: LocalReceipt;
-  readonly runId: string;
-  readonly skillName: string;
-  readonly selectedRunnerName?: string;
-  readonly policy: PostRunReflectPolicy;
-  readonly involvedAgentMediatedWork: boolean;
-  readonly ledgerEntries: readonly ArtifactEnvelope[];
-  readonly projectedAt: string;
-}): LocalReflectProjection {
-  const eventKinds = uniqueStrings(
-    options.ledgerEntries
-      .filter((entry) => entry.type === "run_event")
-      .map((entry) => String(entry.data.kind)),
-  );
-  const artifactEntries = options.ledgerEntries.filter((entry) => entry.type === null || !SYSTEM_ARTIFACT_TYPES.has(entry.type));
-  const artifactTypes = uniqueStrings(
-    artifactEntries
-      .map((entry) => entry.type)
-      .filter((type): type is string => typeof type === "string"),
-  );
-  const signals = [
-    options.involvedAgentMediatedWork ? "agent-mediated" : "deterministic",
-    options.receipt.kind === "graph_execution" ? "graph-execution" : "skill-execution",
-    options.receipt.status === "failure" ? "run-failed" : "run-succeeded",
-    ...(artifactEntries.length > 0 ? ["artifacts-emitted"] : []),
-    ...(eventKinds.includes("step_waiting_resolution") ? ["paused-before-completion"] : []),
-  ];
-
-  const stepSummary =
-    options.receipt.kind === "graph_execution"
-      ? {
-          total_steps: options.receipt.steps.length,
-          successful_steps: options.receipt.steps.filter((step) => step.status === "success").length,
-          failed_steps: options.receipt.steps.filter((step) => step.status === "failure").length,
-          runner_types: uniqueStrings(options.receipt.steps.map((step) => step.runner ?? "default")),
-        }
-      : undefined;
-
-  return {
-    schema_version: "runx.reflect.v1",
-    skill_ref: options.skillName,
-    receipt_id: options.receipt.id,
-    run_id: options.runId,
-    receipt_kind: options.receipt.kind,
-    status: options.receipt.status,
-    selected_runner: options.selectedRunnerName,
-    policy: options.policy,
-    mediation: options.involvedAgentMediatedWork ? "agentic" : "deterministic",
-    summary:
-      options.receipt.kind === "graph_execution"
-        ? `${options.skillName} ${options.receipt.status} with ${options.receipt.steps.length} step(s)`
-        : `${options.skillName} ${options.receipt.status} via ${options.receipt.source_type}`,
-    signals,
-    ledger: {
-      event_kinds: eventKinds,
-      artifact_count: artifactEntries.length,
-      artifact_types: artifactTypes,
-    },
-    step_summary: stepSummary,
-    projected_at: options.projectedAt,
-  };
-}
-
-function shouldProjectReflect(policy: PostRunReflectPolicy, involvedAgentMediatedWork: boolean): boolean {
-  if (policy === "always") {
-    return true;
-  }
-  if (policy === "auto") {
-    return involvedAgentMediatedWork;
-  }
-  return false;
-}
-
-function resolveOptionalKnowledgeDir(options: {
-  readonly knowledgeDir?: string;
-  readonly env?: NodeJS.ProcessEnv;
-}): string | undefined {
-  if (options.knowledgeDir) {
-    return options.knowledgeDir;
-  }
-  if (!options.env?.RUNX_KNOWLEDGE_DIR) {
-    return undefined;
-  }
-  return resolveRunxKnowledgeDir(options.env);
-}
-
-function resolveKnowledgeProject(env?: NodeJS.ProcessEnv): string {
-  return path.resolve(env?.RUNX_PROJECT ?? env?.RUNX_CWD ?? env?.INIT_CWD ?? process.cwd());
-}
-
-function uniqueStrings(values: readonly (string | null | undefined)[]): readonly string[] {
-  return Array.from(
-    new Set(values.filter((value): value is string => typeof value === "string" && value.trim().length > 0)),
-  );
-}
-
-function isAgentMediatedSource(sourceType: string | undefined): boolean {
-  return sourceType === "agent" || sourceType === "agent-step";
-}
-
 interface GraphStepOutput {
   readonly status: "success" | "failure";
   readonly stdout: string;
@@ -3065,7 +2566,7 @@ interface GraphStepOutput {
   readonly artifacts: readonly ArtifactEnvelope[];
 }
 
-interface MaterializedContextEdge {
+export interface MaterializedContextEdge {
   readonly input: string;
   readonly fromStep: string;
   readonly output: string;
@@ -3080,21 +2581,6 @@ function findGraphStep(graph: ExecutionGraph, stepId: string): GraphStep {
     throw new Error(`Chain step '${stepId}' is missing.`);
   }
   return step;
-}
-
-function graphStepReference(step: GraphStep): string {
-  return step.skill ?? step.tool ?? `run:${String(step.run?.type ?? "unknown")}`;
-}
-
-function graphStepRunner(step: GraphStep): string | undefined {
-  if (step.tool) {
-    return "tool";
-  }
-  return typeof step.run?.type === "string" ? step.run.type : step.runner;
-}
-
-function graphProducerSkillName(options: RunLocalGraphOptions, graph: ExecutionGraph): string {
-  return options.skillEnvironment?.name ?? graph.name;
 }
 
 function materializeContext(
@@ -3145,317 +2631,39 @@ function resolveOutputPath(output: GraphStepOutput, outputPath: string): unknown
   }, record);
 }
 
-const MAX_HISTORICAL_AGENT_ARTIFACTS = 12;
-
-interface PreparedAgentContext {
-  readonly currentContext: readonly ArtifactEnvelope[];
-  readonly historicalContext: readonly ArtifactEnvelope[];
-  readonly provenance: readonly AgentContextProvenance[];
-  readonly context?: Context;
-  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
-}
-
-interface ContextDocumentReceiptRef {
-  readonly root_path: string;
-  readonly path: string;
-  readonly sha256: string;
-}
-
 function isArtifactEnvelopeValue(value: unknown): value is ArtifactEnvelope {
-  if (!isPlainRecord(value) || !isPlainRecord(value.meta)) {
-    return false;
-  }
-  return (
-    typeof value.version === "string"
-    && "data" in value
-    && typeof value.meta.artifact_id === "string"
-    && typeof value.meta.run_id === "string"
-  );
+  return typeof value === "object"
+    && value !== null
+    && !Array.isArray(value)
+    && typeof (value as { version?: unknown }).version === "string"
+    && typeof (value as { meta?: { artifact_id?: unknown; run_id?: unknown } }).meta?.artifact_id === "string"
+    && typeof (value as { meta?: { artifact_id?: unknown; run_id?: unknown } }).meta?.run_id === "string"
+    && "data" in value;
 }
 
 function isDomainArtifactEnvelope(entry: ArtifactEnvelope): boolean {
-  return entry.type !== null && !SYSTEM_ARTIFACT_TYPES.has(entry.type);
+  return entry.type !== null && !new Set(["run_event", "receipt_link", "credential_resolution", "retry", "skill_state", "auth_resolution"]).has(entry.type);
 }
 
-function dedupeArtifacts(artifacts: readonly ArtifactEnvelope[]): readonly ArtifactEnvelope[] {
-  const seen = new Set<string>();
-  const uniqueArtifacts: ArtifactEnvelope[] = [];
-  for (const artifact of artifacts) {
-    if (seen.has(artifact.meta.artifact_id)) {
-      continue;
-    }
-    seen.add(artifact.meta.artifact_id);
-    uniqueArtifacts.push(artifact);
-  }
-  return uniqueArtifacts;
+function isAgentMediatedSource(sourceType: string | undefined): boolean {
+  return sourceType === "agent" || sourceType === "agent-step";
 }
 
-async function loadContext(options: {
-  readonly inputs: Readonly<Record<string, unknown>>;
+function resolveOptionalKnowledgeDir(options: {
+  readonly knowledgeDir?: string;
   readonly env?: NodeJS.ProcessEnv;
-  readonly fallbackStart?: string;
-}): Promise<Context | undefined> {
-  const [memory, conventions] = await Promise.all([
-    loadContextDocument({
-      fileName: "MEMORY.md",
-      inputs: options.inputs,
-      env: options.env,
-      fallbackStart: options.fallbackStart,
-    }),
-    loadContextDocument({
-      fileName: "CONVENTIONS.md",
-      inputs: options.inputs,
-      env: options.env,
-      fallbackStart: options.fallbackStart,
-    }),
-  ]);
-  if (!memory && !conventions) {
+}): string | undefined {
+  if (options.knowledgeDir) {
+    return options.knowledgeDir;
+  }
+  if (!options.env?.RUNX_KNOWLEDGE_DIR) {
     return undefined;
   }
-  return {
-    memory,
-    conventions,
-  };
+  return resolveRunxKnowledgeDir(options.env);
 }
 
-function contextReceiptMetadata(context: Context | undefined): Readonly<Record<string, unknown>> | undefined {
-  if (!context?.memory && !context?.conventions) {
-    return undefined;
-  }
-  return {
-    context: {
-      memory: context.memory ? toContextDocumentReceiptRef(context.memory) : undefined,
-      conventions: context.conventions ? toContextDocumentReceiptRef(context.conventions) : undefined,
-    },
-  };
-}
-
-function qualityProfileContext(skill: ValidatedSkill): QualityProfileContext | undefined {
-  if (!skill.qualityProfile) {
-    return undefined;
-  }
-  return {
-    source: "SKILL.md#quality-profile",
-    sha256: hashString(skill.qualityProfile.content),
-    content: skill.qualityProfile.content,
-  };
-}
-
-function skillQualityProfileReceiptMetadata(skill: ValidatedSkill): Readonly<Record<string, unknown>> | undefined {
-  const profile = qualityProfileContext(skill);
-  if (!profile) {
-    return undefined;
-  }
-  return {
-    quality_profiles: {
-      [skill.name]: {
-        source: profile.source,
-        heading: skill.qualityProfile?.heading,
-        sha256: profile.sha256,
-      },
-    },
-  };
-}
-
-function toContextDocumentReceiptRef(document: ContextDocument): ContextDocumentReceiptRef {
-  return {
-    root_path: document.root_path,
-    path: document.path,
-    sha256: document.sha256,
-  };
-}
-
-function resolveProjectDocumentSearchStart(
-  inputs: Readonly<Record<string, unknown>>,
-  env?: NodeJS.ProcessEnv,
-  fallbackStart?: string,
-): string {
-  const projectScope = resolveProjectScopePath(inputs, env);
-  if (projectScope) {
-    return projectScope;
-  }
-  return path.resolve(
-    env?.RUNX_PROJECT
-      ?? env?.RUNX_CWD
-      ?? env?.INIT_CWD
-      ?? fallbackStart
-      ?? process.cwd(),
-  );
-}
-
-async function loadContextDocument(options: {
-  readonly fileName: string;
-  readonly inputs: Readonly<Record<string, unknown>>;
-  readonly env?: NodeJS.ProcessEnv;
-  readonly fallbackStart?: string;
-}): Promise<ContextDocument | undefined> {
-  const searchStart = resolveProjectDocumentSearchStart(options.inputs, options.env, options.fallbackStart);
-  const documentPath = await findNearestProjectDocument(searchStart, options.fileName);
-  if (!documentPath) {
-    return undefined;
-  }
-  const content = await readFile(documentPath, "utf8");
-  return {
-    root_path: path.dirname(documentPath),
-    path: documentPath,
-    sha256: hashString(content),
-    content,
-  };
-}
-
-async function findNearestProjectDocument(start: string, fileName: string): Promise<string | undefined> {
-  let current = path.resolve(start);
-  while (true) {
-    const candidate = path.join(current, fileName);
-    if (await pathExists(candidate)) {
-      return candidate;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) {
-      return undefined;
-    }
-    current = parent;
-  }
-}
-
-function resolveProjectScopeKeyHash(
-  inputs: Readonly<Record<string, unknown>>,
-  env?: NodeJS.ProcessEnv,
-): string | undefined {
-  const projectScope = resolveProjectScopePath(inputs, env);
-  if (!projectScope) {
-    return undefined;
-  }
-  return hashStable({ project_scope: projectScope });
-}
-
-function resolveProjectScopePath(
-  inputs: Readonly<Record<string, unknown>>,
-  env?: NodeJS.ProcessEnv,
-): string | undefined {
-  const candidate =
-    firstString(inputs.project)
-    ?? firstString(inputs.repo_root)
-    ?? firstString(inputs.repoRoot)
-    ?? env?.RUNX_PROJECT
-    ?? env?.RUNX_CWD
-    ?? env?.INIT_CWD;
-  if (!candidate) {
-    return undefined;
-  }
-  return path.resolve(env?.RUNX_CWD ?? env?.INIT_CWD ?? process.cwd(), candidate);
-}
-
-function firstString(value: unknown): string | undefined {
-  if (typeof value === "string" && value.length > 0) {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.find((entry): entry is string => typeof entry === "string" && entry.length > 0);
-  }
-  return undefined;
-}
-
-function receiptProjectScopeKeyHash(receipt: LocalReceipt): string | undefined {
-  if (receipt.kind !== "skill_execution" || !isPlainRecord(receipt.metadata)) {
-    return undefined;
-  }
-  const contextScope = receipt.metadata.context_scope;
-  if (!isPlainRecord(contextScope)) {
-    return undefined;
-  }
-  const keyHash = contextScope.project_key_hash;
-  return typeof keyHash === "string" ? keyHash : undefined;
-}
-
-async function loadHistoricalAgentContext(options: {
-  readonly receiptDir: string;
-  readonly skillName: string;
-  readonly projectKeyHash?: string;
-  readonly excludeRunId: string;
-}): Promise<readonly ArtifactEnvelope[]> {
-  if (!options.projectKeyHash) {
-    return [];
-  }
-  const receipts = await listLocalReceipts(options.receiptDir);
-  const candidate = receipts.find((receipt) =>
-    receipt.kind === "skill_execution"
-    && receipt.id !== options.excludeRunId
-    && receipt.status === "success"
-    && receiptSkillName(receipt) === options.skillName
-    && receiptProjectScopeKeyHash(receipt) === options.projectKeyHash
-    && Array.isArray(receipt.artifact_ids)
-    && receipt.artifact_ids.length > 0,
-  );
-  if (!candidate || candidate.kind !== "skill_execution") {
-    return [];
-  }
-  const entries = await readLedgerEntries(options.receiptDir, candidate.id);
-  return entries.filter(isDomainArtifactEnvelope).slice(-MAX_HISTORICAL_AGENT_ARTIFACTS);
-}
-
-function receiptSkillName(receipt: LocalReceipt): string | undefined {
-  if (receipt.kind !== "skill_execution") {
-    return undefined;
-  }
-  return receipt.skill_name;
-}
-
-async function prepareAgentContext(options: {
-  readonly skill: ValidatedSkill;
-  readonly inputs: Readonly<Record<string, unknown>>;
-  readonly env?: NodeJS.ProcessEnv;
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly stepId?: string;
-  readonly currentContext?: readonly MaterializedContextEdge[];
-  readonly skillDirectory?: string;
-  readonly context?: Context;
-}): Promise<PreparedAgentContext> {
-  const currentContext = dedupeArtifacts(
-    (options.currentContext ?? [])
-      .map((edge) => edge.artifact)
-      .filter((artifact): artifact is ArtifactEnvelope => artifact !== undefined && isDomainArtifactEnvelope(artifact)),
-  );
-  const provenance = (options.currentContext ?? [])
-    .filter((edge) => edge.artifact !== undefined)
-    .map((edge) => ({
-      input: edge.input,
-      output: edge.output,
-      from_step: edge.fromStep,
-      artifact_id: edge.artifact?.meta.artifact_id,
-      receipt_id: edge.receiptId,
-    }));
-  const projectKeyHash = resolveProjectScopeKeyHash(options.inputs, options.env);
-  const context =
-    options.context
-    ?? (await loadContext({
-      inputs: options.inputs,
-      env: options.env,
-      fallbackStart: options.skillDirectory,
-    }));
-  const historicalContext = await loadHistoricalAgentContext({
-    receiptDir: options.receiptDir,
-    skillName: options.skill.name,
-    projectKeyHash,
-    excludeRunId: options.runId,
-  });
-  return {
-    currentContext,
-    historicalContext,
-    provenance,
-    context,
-    receiptMetadata: projectKeyHash
-      ? mergeMetadata(
-        {
-          context_scope: {
-            project_key_hash: projectKeyHash,
-          },
-        },
-        contextReceiptMetadata(context),
-      )
-      : contextReceiptMetadata(context),
-  };
+function resolveKnowledgeProject(env?: NodeJS.ProcessEnv): string {
+  return path.resolve(env?.RUNX_PROJECT ?? env?.RUNX_CWD ?? env?.INIT_CWD ?? process.cwd());
 }
 
 function defaultLocalGraphGrant(): GraphScopeGrant {

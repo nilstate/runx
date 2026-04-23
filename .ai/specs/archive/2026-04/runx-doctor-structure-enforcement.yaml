@@ -1,0 +1,140 @@
+spec_version: "1.1"
+task_id: "runx-doctor-structure-enforcement"
+created: "2026-04-23T10:39:13Z"
+updated: "2026-04-23T12:18:34Z"
+status: "completed"
+harden_status: "not_run"
+
+task:
+  title: "Teach doctor to fail structural drift"
+  summary: >
+    The current doctor path is green but still misses structural drift that
+    directly undermines the cleanup: stale official skill lockfiles, giant
+    monolith files, and forbidden package reach-ins. Extend doctor so those
+    regressions fail quickly instead of waiting for manual review.
+  size: "small"
+  risk_level: "medium"
+  context:
+    packages:
+      - "packages/cli"
+      - "scripts"
+      - "tests"
+    files_impacted:
+      - path: "packages/cli/src/index.ts"
+        lines: "doctor diagnostics and scanning logic"
+        reason: "Add structural diagnostics and explanations"
+      - path: "packages/cli/src/official-skills.lock.json"
+        lines: "all"
+        reason: "Doctor should verify this generated file is current"
+      - path: "scripts/generate-official-lock.mjs"
+        lines: "all"
+        reason: "Canonical generation path for lock verification"
+      - path: "packages/cli/src/index.test.ts"
+        lines: "doctor coverage"
+        reason: "Add failing and passing structural-drift cases"
+    invariants:
+      - "doctor stays machine-actionable"
+      - "Diagnostics carry explicit ids and repair guidance"
+      - "No structural check depends on hidden state"
+  objectives:
+    - "Fail doctor when official-skills.lock.json is stale"
+    - "Fail or warn when designated monolith files exceed declared budgets"
+    - "Fail on forbidden cross-package relative src reach-ins"
+  touchpoints:
+    - area: "packages/cli/src/index.ts"
+      description: "Doctor implementation and diagnostic explanation table"
+    - area: "packages/cli/src/official-skills.lock.json"
+      description: "Generated official skill lock that should stay current"
+    - area: "scripts/generate-official-lock.mjs"
+      description: "Ground truth for the official lock content"
+  acceptance:
+    definition_of_done:
+      - id: "dod1"
+        description: "doctor emits a stable diagnostic when official-skills.lock.json is stale"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod2"
+        description: "doctor emits a stable diagnostic for overbudget monolith files"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+      - id: "dod3"
+        description: "doctor emits a stable diagnostic for forbidden cross-package src reach-ins"
+        status: "done"
+        checked_at: "2026-04-23T12:18:34Z"
+    validation:
+      - id: "v1"
+        type: "compile"
+        description: "OSS workspace typechecks after doctor changes"
+        command: "pnpm typecheck"
+        expected: "exit code 0"
+      - id: "v2"
+        type: "test"
+        description: "Doctor coverage includes the new diagnostics"
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        expected: "exit code 0"
+      - id: "v3"
+        type: "integration"
+        description: "Workspace doctor still passes after required generated files are refreshed"
+        command: "pnpm exec tsx packages/cli/src/index.ts doctor --json"
+        expected: "status success"
+
+planning_log:
+  - timestamp: "2026-04-23T10:39:13Z"
+    actor: "user"
+    summary: "Spec created via scafld new"
+  - timestamp: "2026-04-23T10:45:00Z"
+    actor: "agent"
+    summary: "Scoped doctor enforcement around stale generated metadata, monolith budgets, and forbidden import reach-ins."
+
+  - timestamp: "2026-04-23T10:49:46Z"
+    actor: "cli"
+    summary: "Spec approved"
+  - timestamp: "2026-04-23T10:49:47Z"
+    actor: "cli"
+    summary: "Execution started"
+  - timestamp: "2026-04-23T12:18:34Z"
+    actor: "agent"
+    summary: "Completed doctor structural diagnostics for stale lockfiles, file budgets, and cross-package source reach-ins, and verified OSS typecheck."
+phases:
+  - id: "phase1"
+    name: "Add structural drift diagnostics"
+    objective: "Teach doctor to detect stale locks, file budgets, and package reach-ins."
+    changes:
+      - file: "packages/cli/src/index.ts"
+        action: "update"
+        lines: "doctor scanning logic and explainDoctorDiagnostic table"
+        content_spec: |
+          Add deterministic checks for stale official skill locks, monolith file
+          budgets, and forbidden relative cross-package src imports. Emit stable
+          diagnostic ids with repair guidance.
+      - file: "packages/cli/src/index.test.ts"
+        action: "update"
+        lines: "doctor tests"
+        content_spec: |
+          Add fixtures that prove each new diagnostic triggers and that the clean
+          workspace still passes once regenerated.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "Doctor tests pass with the new structural diagnostics"
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        expected: "exit code 0"
+    status: "completed"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git checkout HEAD -- packages/cli/src/index.ts packages/cli/src/index.test.ts"
+
+self_eval:
+  completeness: 3
+  architecture_fidelity: 3
+  spec_alignment: 2
+  validation_depth: 1
+  total: 9
+  notes: "Doctor now enforces the main structural drift checks; compile verification passed and broader test reruns were intentionally deferred."
+  second_pass_performed: true
+
+deviations:
+  - description: "The targeted CLI vitest acceptance command was not rerun as part of completion."
+    reason: "User explicitly directed the work away from spending additional time on tests."

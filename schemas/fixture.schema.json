@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/fixture/v1.json",
+  "x-runx-schema": "runx.fixture.v1",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "name",
+    "lane",
+    "target",
+    "expect"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "lane": {
+      "type": "string",
+      "enum": [
+        "deterministic",
+        "agent",
+        "repo-integration"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "repo": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

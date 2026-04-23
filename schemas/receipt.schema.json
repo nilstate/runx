@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/receipt/v1.json",
+  "x-runx-schema": "runx.receipt.v1",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema",
+    "run_id",
+    "command",
+    "status",
+    "started_at",
+    "root",
+    "steps"
+  ],
+  "properties": {
+    "schema": {
+      "const": "runx.receipt.v1",
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failure",
+        "skipped",
+        "needs_approval"
+      ]
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "finished_at": {
+      "type": "string"
+    },
+    "root": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  }
+}

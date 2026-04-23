@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 import {
   parseRunnerManifestYaml,
   validateRunnerManifest,
@@ -338,15 +338,19 @@ async function assertFreshBoundary(options: {
   readonly tempDir: string;
 }): Promise<void> {
   const caller = createStructuredCaller();
+  const runtime = await createDefaultLocalSkillRuntime({
+    root: options.tempDir,
+    env: options.prepared.env,
+  });
   const result = await runLocalSkill({
     skillPath: path.resolve("skills", options.skillName),
     runner: options.prepared.runner,
     inputs: options.prepared.inputs,
     caller,
-    adapters: createDefaultSkillAdapters(),
-    env: options.prepared.env ?? { ...process.env, RUNX_CWD: process.cwd() },
-    receiptDir: path.join(options.tempDir, "receipts"),
-    runxHome: path.join(options.tempDir, "home"),
+    adapters: runtime.adapters,
+    env: runtime.env,
+    receiptDir: runtime.paths.receiptDir,
+    runxHome: runtime.paths.runxHome,
   });
 
   expect(result.status).toBe("needs_resolution");

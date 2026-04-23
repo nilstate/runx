@@ -3,26 +3,33 @@ export const contractsPackage = "@runxhq/contracts";
 import { Type, type Static, type TSchema } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
-export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | JsonValue[] | { readonly [key: string]: JsonValue };
+const JSON_SCHEMA_DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema" as const;
 
-export interface JsonSchema {
-  readonly $schema?: string;
-  readonly $id?: string;
-  readonly title?: string;
-  readonly description?: string;
-  readonly type?: string | readonly string[];
-  readonly properties?: Readonly<Record<string, JsonSchema>>;
-  readonly required?: readonly string[];
-  readonly items?: JsonSchema;
-  readonly additionalProperties?: boolean | JsonSchema;
-  readonly enum?: readonly JsonValue[];
-  readonly const?: JsonValue;
-  readonly oneOf?: readonly JsonSchema[];
-  readonly anyOf?: readonly JsonSchema[];
-  readonly allOf?: readonly JsonSchema[];
-  readonly $ref?: string;
-  readonly [key: string]: unknown;
+type UnknownRecord = Readonly<Record<string, unknown>>;
+type DeepReadonly<T> =
+  T extends (...args: never[]) => unknown ? T
+    : T extends readonly (infer TValue)[] ? readonly DeepReadonly<TValue>[]
+      : T extends (infer TValue)[] ? readonly DeepReadonly<TValue>[]
+        : T extends object ? { readonly [TKey in keyof T]: DeepReadonly<T[TKey]> }
+          : T;
+
+function stringEnum<const TValue extends readonly string[]>(
+  values: TValue,
+  options: Record<string, unknown> = {},
+) {
+  return Type.Unsafe<TValue[number]>({
+    type: "string",
+    enum: [...values],
+    ...options,
+  });
+}
+
+function unknownRecordSchema(options: Record<string, unknown> = {}) {
+  return Type.Unsafe<UnknownRecord>({
+    type: "object",
+    additionalProperties: true,
+    ...options,
+  });
 }
 
 export const RUNX_SCHEMA_BASE_URL = "https://schemas.runx.dev" as const;
@@ -65,20 +72,56 @@ export const RUNX_AUXILIARY_SCHEMA_IDS = {
   reviewReceiptOutput: "https://runx.ai/schemas/review-receipt-output.schema.json",
 } as const;
 
+const authorityKinds = ["read_only", "constructive", "destructive"] as const;
+const scopeAdmissionStatuses = ["allow", "deny"] as const;
+const registryBindingStates = [
+  "registry_binding_drafted",
+  "registry_bound",
+  "harness_verified",
+  "published",
+] as const;
+const registryTrustTiers = ["upstream-owned", "community", "unverified"] as const;
+const harnessStatuses = ["pending", "failed", "harness_verified"] as const;
+const reviewReceiptVerdicts = ["pass", "needs_update", "blocked"] as const;
+const doctorDiagnosticSeverities = ["error", "warning", "info"] as const;
+const doctorRepairKinds = [
+  "create_file",
+  "replace_file",
+  "edit_yaml",
+  "edit_json",
+  "add_fixture",
+  "run_command",
+  "manual",
+] as const;
+const doctorRepairConfidences = ["low", "medium", "high"] as const;
+const doctorRepairRisks = ["low", "medium", "high", "sensitive"] as const;
+const doctorStatuses = ["success", "failure"] as const;
+const devStatuses = ["success", "failure", "skipped", "needs_approval"] as const;
+const fixtureAssertionKinds = [
+  "subset_miss",
+  "exact_mismatch",
+  "packet_invalid",
+  "status_mismatch",
+  "type_mismatch",
+] as const;
+const fixtureLanes = ["deterministic", "agent", "repo-integration"] as const;
+const runxListRequestedKinds = ["all", "tools", "skills", "chains", "packets", "overlays"] as const;
+const runxListItemKinds = ["tool", "skill", "chain", "packet", "overlay"] as const;
+const runxListSources = ["local", "workspace", "dependencies", "built-in"] as const;
+const runxListStatuses = ["ok", "invalid"] as const;
+
 export const credentialGrantReferenceSchema = Type.Object(
   {
     grant_id: Type.String({ minLength: 1 }),
     scope_family: Type.String({ minLength: 1 }),
-    authority_kind: Type.Union([
-      Type.Literal("read_only"),
-      Type.Literal("constructive"),
-      Type.Literal("destructive"),
-    ]),
+    authority_kind: stringEnum(authorityKinds),
     target_repo: Type.Optional(Type.String({ minLength: 1 })),
     target_locator: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );
+
+export type CredentialGrantReferenceContract = DeepReadonly<Static<typeof credentialGrantReferenceSchema>>;
 
 export const credentialEnvelopeSchema = Type.Object(
   {
@@ -96,27 +139,11 @@ export const credentialEnvelopeSchema = Type.Object(
   },
 );
 
-export interface CredentialGrantReferenceContract {
-  readonly grant_id: string;
-  readonly scope_family: string;
-  readonly authority_kind: "read_only" | "constructive" | "destructive";
-  readonly target_repo?: string;
-  readonly target_locator?: string;
-}
-
-export interface CredentialEnvelopeContract {
-  readonly kind: "runx.credential-envelope.v1";
-  readonly grant_id: string;
-  readonly provider: string;
-  readonly connection_id: string;
-  readonly scopes: readonly string[];
-  readonly grant_reference?: CredentialGrantReferenceContract;
-  readonly material_ref: string;
-}
+export type CredentialEnvelopeContract = DeepReadonly<Static<typeof credentialEnvelopeSchema>>;
 
 export const scopeAdmissionSchema = Type.Object(
   {
-    status: Type.Union([Type.Literal("allow"), Type.Literal("deny")]),
+    status: stringEnum(scopeAdmissionStatuses),
     requested_scopes: Type.Array(Type.String({ minLength: 1 })),
     granted_scopes: Type.Array(Type.String({ minLength: 1 })),
     grant_id: Type.Optional(Type.String({ minLength: 1 })),
@@ -129,14 +156,7 @@ export const scopeAdmissionSchema = Type.Object(
   },
 );
 
-export interface ScopeAdmissionContract {
-  readonly status: "allow" | "deny";
-  readonly requested_scopes: readonly string[];
-  readonly granted_scopes: readonly string[];
-  readonly grant_id?: string;
-  readonly reasons?: readonly string[];
-  readonly decision_summary?: string;
-}
+export type ScopeAdmissionContract = DeepReadonly<Static<typeof scopeAdmissionSchema>>;
 
 export function validateCredentialEnvelopeContract(
   value: unknown,
@@ -152,12 +172,7 @@ export function validateScopeAdmissionContract(value: unknown, label = "scope_ad
 export const registryBindingSchema = Type.Object(
   {
     schema: Type.Literal("runx.registry_binding.v1"),
-    state: Type.Union([
-      Type.Literal("registry_binding_drafted"),
-      Type.Literal("registry_bound"),
-      Type.Literal("harness_verified"),
-      Type.Literal("published"),
-    ]),
+    state: stringEnum(registryBindingStates),
     skill: Type.Object(
       {
         id: Type.String(),
@@ -186,11 +201,7 @@ export const registryBindingSchema = Type.Object(
     registry: Type.Object(
       {
         owner: Type.String(),
-        trust_tier: Type.Union([
-          Type.Literal("upstream-owned"),
-          Type.Literal("community"),
-          Type.Literal("unverified"),
-        ]),
+        trust_tier: stringEnum(registryTrustTiers),
         version: Type.String(),
         install_command: Type.Optional(Type.String()),
         run_command: Type.Optional(Type.String()),
@@ -201,11 +212,7 @@ export const registryBindingSchema = Type.Object(
     ),
     harness: Type.Object(
       {
-        status: Type.Union([
-          Type.Literal("pending"),
-          Type.Literal("failed"),
-          Type.Literal("harness_verified"),
-        ]),
+        status: stringEnum(harnessStatuses),
         case_count: Type.Number(),
         assertion_count: Type.Optional(Type.Number()),
         case_names: Type.Optional(Type.Array(Type.String())),
@@ -214,59 +221,18 @@ export const registryBindingSchema = Type.Object(
     ),
   },
   {
-    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
     $id: RUNX_AUXILIARY_SCHEMA_IDS.registryBinding,
     title: "runx upstream registry binding",
     additionalProperties: true,
   },
 );
 
-export interface RegistryBindingContract {
-  readonly schema: "runx.registry_binding.v1";
-  readonly state: "registry_binding_drafted" | "registry_bound" | "harness_verified" | "published";
-  readonly skill: Readonly<Record<string, unknown>> & {
-    readonly id: string;
-    readonly name: string;
-    readonly description: string;
-  };
-  readonly upstream: Readonly<Record<string, unknown>> & {
-    readonly host: string;
-    readonly owner: string;
-    readonly repo: string;
-    readonly path: string;
-    readonly branch?: string;
-    readonly commit: string;
-    readonly blob_sha: string;
-    readonly pr_url?: string;
-    readonly merged_at?: string;
-    readonly html_url?: string;
-    readonly raw_url?: string;
-    readonly source_of_truth: true;
-  };
-  readonly registry: Readonly<Record<string, unknown>> & {
-    readonly owner: string;
-    readonly trust_tier: "upstream-owned" | "community" | "unverified";
-    readonly version: string;
-    readonly install_command?: string;
-    readonly run_command?: string;
-    readonly profile_path: string;
-    readonly materialized_package_is_registry_artifact: true;
-  };
-  readonly harness: Readonly<Record<string, unknown>> & {
-    readonly status: "pending" | "failed" | "harness_verified";
-    readonly case_count: number;
-    readonly assertion_count?: number;
-    readonly case_names?: readonly string[];
-  };
-}
+export type RegistryBindingContract = DeepReadonly<Static<typeof registryBindingSchema>>;
 
 export const reviewReceiptOutputSchema = Type.Object(
   {
-    verdict: Type.Union([
-      Type.Literal("pass"),
-      Type.Literal("needs_update"),
-      Type.Literal("blocked"),
-    ], {
+    verdict: stringEnum(reviewReceiptVerdicts, {
       description: "Overall diagnosis. `pass` means no change needed; `needs_update` means one or more bounded improvements apply; `blocked` means the evidence is insufficient to decide.",
     }),
     failure_summary: Type.String({
@@ -299,7 +265,7 @@ export const reviewReceiptOutputSchema = Type.Object(
     }),
   },
   {
-    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
     $id: RUNX_AUXILIARY_SCHEMA_IDS.reviewReceiptOutput,
     title: "runx review-receipt output",
     description: "Output contract for the review-receipt skill. Produced by the agent-step reviewer and consumed by write-harness downstream of improve-skill.",
@@ -307,17 +273,7 @@ export const reviewReceiptOutputSchema = Type.Object(
   },
 );
 
-export interface ReviewReceiptOutputContract {
-  readonly verdict: "pass" | "needs_update" | "blocked";
-  readonly failure_summary: string;
-  readonly improvement_proposals: readonly (Readonly<Record<string, unknown>> & {
-    readonly target: string;
-    readonly change: string;
-    readonly rationale?: string;
-    readonly risk?: string;
-  })[];
-  readonly next_harness_checks: readonly string[];
-}
+export type ReviewReceiptOutputContract = DeepReadonly<Static<typeof reviewReceiptOutputSchema>>;
 
 export function validateRegistryBindingContract(value: unknown, label = "registry_binding"): RegistryBindingContract {
   return validateContractSchema(registryBindingSchema, value, label);
@@ -334,217 +290,306 @@ function validateContractSchema<TSchemaValue extends TSchema>(
   schema: TSchemaValue,
   value: unknown,
   label: string,
+  references: readonly TSchema[] = [],
 ): Static<TSchemaValue> {
-  if (Value.Check(schema, value)) {
+  const normalizedReferences = [...references];
+  const matches = normalizedReferences.length > 0
+    ? Value.Check(schema, normalizedReferences, value)
+    : Value.Check(schema, value);
+  if (matches) {
     return value as Static<TSchemaValue>;
   }
-  const firstError = [...Value.Errors(schema, value)][0];
+  const firstError = normalizedReferences.length > 0
+    ? [...Value.Errors(schema, normalizedReferences, value)][0]
+    : [...Value.Errors(schema, value)][0];
   const schemaRef = typeof schema.$id === "string" ? schema.$id : "contract schema";
   const path = firstError?.path ? `${label}${firstError.path}` : label;
   throw new Error(`${path} must match ${schemaRef}.`);
 }
 
-const stringSchema = { type: "string" } as const;
-const booleanSchema = { type: "boolean" } as const;
-const objectSchema = { type: "object", additionalProperties: true } as const;
-
-export const doctorDiagnosticSchema: JsonSchema = {
-  type: "object",
-  required: ["id", "instance_id", "severity", "title", "message", "target", "location", "repairs"],
-  properties: {
-    id: stringSchema,
-    instance_id: stringSchema,
-    severity: { enum: ["error", "warning", "info"] },
-    title: stringSchema,
-    message: stringSchema,
-    target: objectSchema,
-    location: objectSchema,
-    evidence: objectSchema,
-    repairs: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["id", "kind", "confidence", "risk", "requires_human_review"],
-        properties: {
-          id: stringSchema,
-          kind: {
-            enum: ["create_file", "replace_file", "edit_yaml", "edit_json", "add_fixture", "run_command", "manual"],
-          },
-          confidence: { enum: ["low", "medium", "high"] },
-          risk: { enum: ["low", "medium", "high", "sensitive"] },
-          path: stringSchema,
-          json_pointer: stringSchema,
-          contents: stringSchema,
-          patch: stringSchema,
-          command: stringSchema,
-          requires_human_review: booleanSchema,
-        },
-        additionalProperties: false,
-      },
-    },
+const doctorTargetSchema = unknownRecordSchema();
+const doctorEvidenceSchema = unknownRecordSchema();
+const doctorRepairSchema = Type.Object(
+  {
+    id: Type.String(),
+    kind: stringEnum(doctorRepairKinds),
+    confidence: stringEnum(doctorRepairConfidences),
+    risk: stringEnum(doctorRepairRisks),
+    path: Type.Optional(Type.String()),
+    json_pointer: Type.Optional(Type.String()),
+    contents: Type.Optional(Type.String()),
+    patch: Type.Optional(Type.String()),
+    command: Type.Optional(Type.String()),
+    requires_human_review: Type.Boolean(),
   },
-  additionalProperties: false,
-};
-
-export const doctorV1Schema: JsonSchema = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: RUNX_CONTRACT_IDS.doctor,
-  "x-runx-schema": RUNX_LOGICAL_SCHEMAS.doctor,
-  type: "object",
-  required: ["schema", "status", "summary", "diagnostics"],
-  properties: {
-    schema: { const: RUNX_LOGICAL_SCHEMAS.doctor },
-    status: { enum: ["success", "failure"] },
-    summary: {
-      type: "object",
-      required: ["errors", "warnings", "infos"],
-      properties: {
-        errors: { type: "integer", minimum: 0 },
-        warnings: { type: "integer", minimum: 0 },
-        infos: { type: "integer", minimum: 0 },
-      },
-      additionalProperties: false,
-    },
-    diagnostics: { type: "array", items: doctorDiagnosticSchema },
+  { additionalProperties: false },
+);
+const doctorLocationSchema = Type.Object(
+  {
+    path: Type.String(),
+    json_pointer: Type.Optional(Type.String()),
   },
-  additionalProperties: false,
-};
-
-export const devV1Schema: JsonSchema = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: RUNX_CONTRACT_IDS.dev,
-  "x-runx-schema": RUNX_LOGICAL_SCHEMAS.dev,
-  type: "object",
-  required: ["schema", "status", "doctor", "fixtures"],
-  properties: {
-    schema: { const: RUNX_LOGICAL_SCHEMAS.dev },
-    status: { enum: ["success", "failure", "skipped", "needs_approval"] },
-    doctor: { $ref: RUNX_CONTRACT_IDS.doctor },
-    fixtures: { type: "array", items: objectSchema },
-    receipt_id: stringSchema,
+  { additionalProperties: false },
+);
+const doctorDiagnosticSchema = Type.Object(
+  {
+    id: Type.String(),
+    instance_id: Type.String(),
+    severity: stringEnum(doctorDiagnosticSeverities),
+    title: Type.String(),
+    message: Type.String(),
+    target: doctorTargetSchema,
+    location: doctorLocationSchema,
+    evidence: Type.Optional(doctorEvidenceSchema),
+    repairs: Type.Array(doctorRepairSchema),
   },
-  additionalProperties: false,
-};
-
-export const listV1Schema: JsonSchema = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: RUNX_CONTRACT_IDS.list,
-  "x-runx-schema": RUNX_LOGICAL_SCHEMAS.list,
-  type: "object",
-  required: ["schema", "root", "requested_kind", "items"],
-  properties: {
-    schema: { const: RUNX_LOGICAL_SCHEMAS.list },
-    root: stringSchema,
-    requested_kind: { enum: ["all", "tools", "skills", "chains", "packets", "overlays"] },
-    items: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["kind", "name", "source", "path", "status"],
-        properties: {
-          kind: { enum: ["tool", "skill", "chain", "packet", "overlay"] },
-          name: stringSchema,
-          source: { enum: ["local", "workspace", "dependencies", "built-in"] },
-          path: stringSchema,
-          status: { enum: ["ok", "invalid"] },
-          diagnostics: { type: "array", items: stringSchema },
-        },
-        additionalProperties: true,
-      },
-    },
+  { additionalProperties: false },
+);
+const doctorSummarySchema = Type.Object(
+  {
+    errors: Type.Integer({ minimum: 0 }),
+    warnings: Type.Integer({ minimum: 0 }),
+    infos: Type.Integer({ minimum: 0 }),
   },
-  additionalProperties: false,
-};
+  { additionalProperties: false },
+);
 
-export const receiptV1Schema: JsonSchema = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: RUNX_CONTRACT_IDS.receipt,
-  "x-runx-schema": RUNX_LOGICAL_SCHEMAS.receipt,
-  type: "object",
-  required: ["schema", "run_id", "command", "status", "started_at", "root", "steps"],
-  properties: {
-    schema: { const: RUNX_LOGICAL_SCHEMAS.receipt },
-    run_id: stringSchema,
-    command: stringSchema,
-    status: { enum: ["success", "failure", "skipped", "needs_approval"] },
-    started_at: stringSchema,
-    finished_at: stringSchema,
-    root: stringSchema,
-    unit: objectSchema,
-    steps: { type: "array", items: objectSchema },
-  },
-  additionalProperties: false,
-};
+export type DoctorRepairContract = DeepReadonly<Static<typeof doctorRepairSchema>>;
+export type DoctorLocationContract = DeepReadonly<Static<typeof doctorLocationSchema>>;
+export type DoctorDiagnosticContract = DeepReadonly<Static<typeof doctorDiagnosticSchema>>;
+export type DoctorSummaryContract = DeepReadonly<Static<typeof doctorSummarySchema>>;
 
-export const fixtureV1Schema: JsonSchema = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: RUNX_CONTRACT_IDS.fixture,
-  "x-runx-schema": RUNX_LOGICAL_SCHEMAS.fixture,
-  type: "object",
-  required: ["name", "lane", "target", "expect"],
-  properties: {
-    name: stringSchema,
-    lane: { enum: ["deterministic", "agent", "repo-integration"] },
-    target: objectSchema,
-    inputs: objectSchema,
-    env: objectSchema,
-    agent: objectSchema,
-    repo: objectSchema,
-    execution: objectSchema,
-    permissions: objectSchema,
-    expect: objectSchema,
+export const doctorV1Schema = Type.Object(
+  {
+    schema: Type.Literal(RUNX_LOGICAL_SCHEMAS.doctor),
+    status: stringEnum(doctorStatuses),
+    summary: doctorSummarySchema,
+    diagnostics: Type.Array(doctorDiagnosticSchema),
   },
-  additionalProperties: false,
-};
+  {
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
+    $id: RUNX_CONTRACT_IDS.doctor,
+    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.doctor,
+    additionalProperties: false,
+  },
+);
 
-export const toolManifestV1Schema: JsonSchema = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: RUNX_CONTRACT_IDS.toolManifest,
-  "x-runx-schema": RUNX_LOGICAL_SCHEMAS.toolManifest,
-  type: "object",
-  required: ["schema", "name", "version", "source_hash", "schema_hash", "runtime", "output"],
-  properties: {
-    schema: { const: RUNX_LOGICAL_SCHEMAS.toolManifest },
-    name: stringSchema,
-    version: stringSchema,
-    description: stringSchema,
-    source_hash: stringSchema,
-    schema_hash: stringSchema,
-    runtime: objectSchema,
-    inputs: objectSchema,
-    output: objectSchema,
-    scopes: { type: "array", items: stringSchema },
-    toolkit_version: stringSchema,
-  },
-  additionalProperties: false,
-};
+export type DoctorReportContract = DeepReadonly<Static<typeof doctorV1Schema>>;
 
-export const packetIndexV1Schema: JsonSchema = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: RUNX_CONTRACT_IDS.packetIndex,
-  "x-runx-schema": RUNX_LOGICAL_SCHEMAS.packetIndex,
-  type: "object",
-  required: ["schema", "packets"],
-  properties: {
-    schema: { const: RUNX_LOGICAL_SCHEMAS.packetIndex },
-    packets: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["id", "package", "version", "path", "sha256"],
-        properties: {
-          id: stringSchema,
-          package: stringSchema,
-          version: stringSchema,
-          path: stringSchema,
-          sha256: stringSchema,
-        },
-        additionalProperties: false,
-      },
-    },
+export function validateDoctorReportContract(value: unknown, label = "doctor_report"): DoctorReportContract {
+  return validateContractSchema(doctorV1Schema, value, label);
+}
+
+const devFixtureAssertionSchema = Type.Object(
+  {
+    path: Type.String(),
+    expected: Type.Optional(Type.Unknown()),
+    actual: Type.Optional(Type.Unknown()),
+    kind: stringEnum(fixtureAssertionKinds),
+    message: Type.String(),
   },
-  additionalProperties: false,
-};
+  { additionalProperties: false },
+);
+const devFixtureResultSchema = Type.Object(
+  {
+    name: Type.String(),
+    lane: Type.String(),
+    target: unknownRecordSchema(),
+    status: stringEnum(["success", "failure", "skipped"] as const),
+    duration_ms: Type.Integer({ minimum: 0 }),
+    assertions: Type.Array(devFixtureAssertionSchema),
+    skip_reason: Type.Optional(Type.String()),
+    output: Type.Optional(Type.Unknown()),
+    replay_path: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+
+export type DevFixtureAssertionContract = DeepReadonly<Static<typeof devFixtureAssertionSchema>>;
+export type DevFixtureResultContract = DeepReadonly<Static<typeof devFixtureResultSchema>>;
+
+export const devV1Schema = Type.Object(
+  {
+    schema: Type.Literal(RUNX_LOGICAL_SCHEMAS.dev),
+    status: stringEnum(devStatuses),
+    doctor: Type.Ref(doctorV1Schema),
+    fixtures: Type.Array(devFixtureResultSchema),
+    receipt_id: Type.Optional(Type.String()),
+  },
+  {
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
+    $id: RUNX_CONTRACT_IDS.dev,
+    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.dev,
+    additionalProperties: false,
+  },
+);
+
+const devContractReferences = [doctorV1Schema] as const;
+
+export type DevReportContract = DeepReadonly<Static<typeof devV1Schema>>;
+
+export function validateDevReportContract(value: unknown, label = "dev_report"): DevReportContract {
+  return validateContractSchema(devV1Schema, value, label, devContractReferences);
+}
+
+const runxListEmitSchema = Type.Object(
+  {
+    name: Type.String(),
+    packet: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+
+export const runxListRequestedKindSchema = stringEnum(runxListRequestedKinds);
+export const runxListItemKindSchema = stringEnum(runxListItemKinds);
+export const runxListSourceSchema = stringEnum(runxListSources);
+
+export type RunxListRequestedKindContract = DeepReadonly<Static<typeof runxListRequestedKindSchema>>;
+export type RunxListItemKindContract = DeepReadonly<Static<typeof runxListItemKindSchema>>;
+export type RunxListSourceContract = DeepReadonly<Static<typeof runxListSourceSchema>>;
+export type RunxListEmitContract = DeepReadonly<Static<typeof runxListEmitSchema>>;
+
+export const runxListItemSchema = Type.Object(
+  {
+    kind: runxListItemKindSchema,
+    name: Type.String(),
+    source: runxListSourceSchema,
+    path: Type.String(),
+    status: stringEnum(runxListStatuses),
+    diagnostics: Type.Optional(Type.Array(Type.String())),
+    scopes: Type.Optional(Type.Array(Type.String())),
+    emits: Type.Optional(Type.Array(runxListEmitSchema)),
+    fixtures: Type.Optional(Type.Integer({ minimum: 0 })),
+    harness_cases: Type.Optional(Type.Integer({ minimum: 0 })),
+    steps: Type.Optional(Type.Integer({ minimum: 0 })),
+    wraps: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+
+export type RunxListItemContract = DeepReadonly<Static<typeof runxListItemSchema>>;
+
+export const listV1Schema = Type.Object(
+  {
+    schema: Type.Literal(RUNX_LOGICAL_SCHEMAS.list),
+    root: Type.String(),
+    requested_kind: runxListRequestedKindSchema,
+    items: Type.Array(runxListItemSchema),
+  },
+  {
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
+    $id: RUNX_CONTRACT_IDS.list,
+    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.list,
+    additionalProperties: false,
+  },
+);
+
+export type RunxListReportContract = DeepReadonly<Static<typeof listV1Schema>>;
+
+export function validateRunxListReportContract(value: unknown, label = "list_report"): RunxListReportContract {
+  return validateContractSchema(listV1Schema, value, label);
+}
+
+const receiptStepSchema = unknownRecordSchema();
+
+export const receiptV1Schema = Type.Object(
+  {
+    schema: Type.Literal(RUNX_LOGICAL_SCHEMAS.receipt),
+    run_id: Type.String(),
+    command: Type.String(),
+    status: stringEnum(devStatuses),
+    started_at: Type.String(),
+    finished_at: Type.Optional(Type.String()),
+    root: Type.String(),
+    unit: Type.Optional(unknownRecordSchema()),
+    steps: Type.Array(receiptStepSchema),
+  },
+  {
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
+    $id: RUNX_CONTRACT_IDS.receipt,
+    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.receipt,
+    additionalProperties: false,
+  },
+);
+
+export type ReceiptContract = DeepReadonly<Static<typeof receiptV1Schema>>;
+
+const fixtureEnvelopeSchema = unknownRecordSchema();
+
+export const fixtureV1Schema = Type.Object(
+  {
+    name: Type.String(),
+    lane: stringEnum(fixtureLanes),
+    target: unknownRecordSchema(),
+    inputs: Type.Optional(fixtureEnvelopeSchema),
+    env: Type.Optional(fixtureEnvelopeSchema),
+    agent: Type.Optional(fixtureEnvelopeSchema),
+    repo: Type.Optional(fixtureEnvelopeSchema),
+    execution: Type.Optional(fixtureEnvelopeSchema),
+    permissions: Type.Optional(fixtureEnvelopeSchema),
+    expect: fixtureEnvelopeSchema,
+  },
+  {
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
+    $id: RUNX_CONTRACT_IDS.fixture,
+    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.fixture,
+    additionalProperties: false,
+  },
+);
+
+export type FixtureContract = DeepReadonly<Static<typeof fixtureV1Schema>>;
+
+export const toolManifestV1Schema = Type.Object(
+  {
+    schema: Type.Literal(RUNX_LOGICAL_SCHEMAS.toolManifest),
+    name: Type.String(),
+    version: Type.String(),
+    description: Type.Optional(Type.String()),
+    source_hash: Type.String(),
+    schema_hash: Type.String(),
+    runtime: unknownRecordSchema(),
+    inputs: Type.Optional(unknownRecordSchema()),
+    output: unknownRecordSchema(),
+    scopes: Type.Optional(Type.Array(Type.String())),
+    toolkit_version: Type.Optional(Type.String()),
+  },
+  {
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
+    $id: RUNX_CONTRACT_IDS.toolManifest,
+    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.toolManifest,
+    additionalProperties: false,
+  },
+);
+
+export type ToolManifestContract = DeepReadonly<Static<typeof toolManifestV1Schema>>;
+
+const packetIndexEntrySchema = Type.Object(
+  {
+    id: Type.String(),
+    package: Type.String(),
+    version: Type.String(),
+    path: Type.String(),
+    sha256: Type.String(),
+  },
+  { additionalProperties: false },
+);
+
+export type PacketIndexEntryContract = DeepReadonly<Static<typeof packetIndexEntrySchema>>;
+
+export const packetIndexV1Schema = Type.Object(
+  {
+    schema: Type.Literal(RUNX_LOGICAL_SCHEMAS.packetIndex),
+    packets: Type.Array(packetIndexEntrySchema),
+  },
+  {
+    $schema: JSON_SCHEMA_DRAFT_2020_12,
+    $id: RUNX_CONTRACT_IDS.packetIndex,
+    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.packetIndex,
+    additionalProperties: false,
+  },
+);
+
+export type PacketIndexContract = DeepReadonly<Static<typeof packetIndexV1Schema>>;
 
 export const runxContractSchemas = {
   doctor: doctorV1Schema,
@@ -559,4 +604,16 @@ export const runxContractSchemas = {
 export const runxAuxiliarySchemas = {
   registryBinding: registryBindingSchema,
   reviewReceiptOutput: reviewReceiptOutputSchema,
+} as const;
+
+export const runxGeneratedSchemaArtifacts = {
+  "doctor.schema.json": doctorV1Schema,
+  "dev.schema.json": devV1Schema,
+  "list.schema.json": listV1Schema,
+  "receipt.schema.json": receiptV1Schema,
+  "fixture.schema.json": fixtureV1Schema,
+  "tool-manifest.schema.json": toolManifestV1Schema,
+  "packet-index.schema.json": packetIndexV1Schema,
+  "registry-binding.schema.json": registryBindingSchema,
+  "review-receipt-output.schema.json": reviewReceiptOutputSchema,
 } as const;

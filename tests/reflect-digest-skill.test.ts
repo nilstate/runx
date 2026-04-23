@@ -1,15 +1,18 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import os from "node:os";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultSkillAdapters } from "../packages/adapters/src/index.js";
+import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 import { runHarnessTarget } from "@runxhq/core/harness";
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 describe("reflect-digest skill", () => {
   it("passes the inline harness suite", async () => {
-    const result = await runHarnessTarget(path.resolve("skills/reflect-digest"));
+    const result = await runHarnessTarget(path.resolve("skills/reflect-digest"), {
+      adapters: createDefaultSkillAdapters(),
+    });
 
     expect(result.source).toBe("inline");
     if (!("cases" in result)) {
@@ -26,7 +29,9 @@ describe("reflect-digest skill", () => {
   }, 15_000);
 
   it("groups reflect projections deterministically before drafting proposals", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-reflect-digest-"));
+    const runtime = await createDefaultLocalSkillRuntime({
+      prefix: "runx-reflect-digest-",
+    });
     const caller: Caller = {
       resolve: async (request) => {
         if (request.kind !== "cognitive_work" || request.id !== "agent_step.reflect-digest.output") {
@@ -69,13 +74,10 @@ describe("reflect-digest skill", () => {
       const result = await runLocalSkill({
         skillPath: path.resolve("skills/reflect-digest"),
         caller,
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: {
-          ...process.env,
-          RUNX_CWD: process.cwd(),
-          INIT_CWD: process.cwd(),
-        },
+        adapters: runtime.adapters,
+        receiptDir: runtime.paths.receiptDir,
+        runxHome: runtime.paths.runxHome,
+        env: runtime.env,
         inputs: {
           min_support: 2,
           min_confidence: 0.5,
@@ -175,7 +177,7 @@ describe("reflect-digest skill", () => {
         },
       });
     } finally {
-      await rm(tempDir, { recursive: true, force: true });
+      await rm(runtime.paths.root, { recursive: true, force: true });
     }
   });
 });
