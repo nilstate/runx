@@ -28,6 +28,11 @@ proposal should:
 - read like a first-party runx skill or chain proposal, not a builder trace
 - identify the concrete pain point being addressed
 - explain fit against the current runx catalog
+- say when the right answer is an amendment to Sourcey, `draft-content`, an
+  existing skill, or an existing chain instead of a new skill
+- describe the concrete artifact a maintainer would ship or use
+- keep issue-thread evidence and approval mechanics as provenance, not proposal
+  prose
 - surface the remaining maintainer decisions cleanly
 
 It does not silently open PRs, mutate external repos, or imply that a proposed

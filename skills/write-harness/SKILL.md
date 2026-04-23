@@ -75,9 +75,15 @@ locator or snapshot payload, not as top-level contract fields.
 The resulting packet should read like a first-party runx proposal, not an
 internal builder transcript. That means:
 
+- treat "do not create a new skill" as a valid result when an existing skill,
+  chain, or Sourcey/content path already solves the job
 - name the real operator or maintainer pain the skill resolves
 - explain catalog fit against adjacent current runx skills or chains
+- describe the concrete user-visible artifact, not only the internal execution
+  sequence
 - convert unresolved ambiguity into explicit maintainer decisions
+- keep issue comments, amendments, and approval records as provenance instead
+  of copying them into the public proposal
 - avoid placeholders such as `UNRESOLVED_*`, "supplied decomposition", or
   issue-number-specific contract wording in the skill contract itself
 

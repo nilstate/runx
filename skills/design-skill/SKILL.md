@@ -17,11 +17,17 @@ The quality bar is not just structural completeness. The result should read
 like a crisp first-party runx skill proposal that a maintainer could plausibly
 review for the catalog:
 
+- treat "no new skill" as a valid high-quality outcome when the job belongs in
+  Sourcey, `draft-content`, an existing skill, or an existing chain
 - name the concrete operator, maintainer, or workflow pain being solved
 - explain why the current runx catalog does not already cover the job through
   an existing skill or chain
+- show the bounded artifact a real user would receive, not just the automation
+  steps that would run
 - translate ambiguity into explicit maintainer decisions, not loose planning
   residue
+- keep evidence, issue discussion, and approval mechanics as provenance; do not
+  turn them into the reader-facing proposal body
 - avoid builder-internal language such as "supplied decomposition",
   `UNRESOLVED_*` placeholders, issue-number-specific contract fields, or
   repo-local path hedging that would look wrong in a first-party proposal

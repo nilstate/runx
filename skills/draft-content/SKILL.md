@@ -14,6 +14,20 @@ hallucinate evidence. If the evidence is thin, say so and narrow the claims.
 Keep the content grounded in a specific audience, channel, and objective. The
 job is not to sound expansive. The job is to be useful and publishable.
 
+## Quality Bar
+
+The draft should look like a human maintainer or operator did the work:
+
+- lead with the reader's problem, decision, or next action, not the evidence
+  collection process
+- turn evidence into claims, examples, and concrete wording; do not dump raw
+  receipts, issue threads, amendments, or machine packets into the public body
+- match the target project's vocabulary and voice instead of defaulting to
+  generic AI, launch, preview, migration, or adoption language
+- prefer one sharp page, brief, or update over several thin sections
+- if the evidence is not strong enough to publish, return a narrow handoff or
+  `needs_more_evidence` state instead of filling the gap with plausible prose
+
 ## Output
 
 Draft runner:
