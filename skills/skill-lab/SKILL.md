@@ -38,6 +38,8 @@ proposal should:
   catalog", "supplied decomposition", "agent output", or "model output"
 - write catalog fit from the maintainer's point of view: name the adjacent
   skill or chain and the boundary directly
+- never use `supplied` or `envelope` in proposal prose; if provenance is thin,
+  say what source was unavailable in plain maintainer language
 
 It does not silently open PRs, mutate external repos, or imply that a proposed
 skill is already accepted. Those outward moves belong to provider-bound lanes

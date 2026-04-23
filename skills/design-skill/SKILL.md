@@ -34,6 +34,9 @@ review for the catalog:
   look wrong in a first-party proposal
 - write from the maintainer's viewpoint: "Compared with issue-triage, this
   skill owns..." not "Based on the supplied catalog..."
+- never use `supplied` or `envelope` in reader-facing proposal fields; replace
+  them with named sources, `current runx catalog`, `available evidence`, or
+  concrete provenance
 
 When the proposed skill is thread-driven, the generated contract should model
 portable runx nouns, not provider nouns. Prefer `thread_title`,
