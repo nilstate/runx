@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runHarnessTarget } from "../packages/harness/src/index.js";
-import { parseSkillMarkdown, parseRunnerManifestYaml, validateRunnerManifest, validateSkill } from "../packages/parser/src/index.js";
+import { runHarnessTarget } from "@runxhq/core/harness";
+import { parseSkillMarkdown, parseRunnerManifestYaml, validateRunnerManifest, validateSkill } from "@runxhq/core/parser";
 
 const officialSkillPackages = [
   "content-pipeline",

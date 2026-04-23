@@ -2,13 +2,13 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { loadLocalAgentApiKey, loadRunxConfigFile, resolveRunxHomeDir } from "../../config/src/index.js";
+import { loadLocalAgentApiKey, loadRunxConfigFile, resolveRunxHomeDir } from "@runxhq/core/config";
 import type {
   OutputContract,
   OutputContractEntry,
   ResolutionRequest,
   ResolutionResponse,
-} from "../../executor/src/index.js";
+} from "@runxhq/core/executor";
 
 type CognitiveResolutionRequest = Extract<ResolutionRequest, { readonly kind: "cognitive_work" }>;
 

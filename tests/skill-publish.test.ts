@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
-import { createFileRegistryStore } from "../packages/registry/src/index.js";
+import { createFileRegistryStore } from "@runxhq/core/registry";
 
 describe("skill-publish CLI", () => {
   it("publishes valid skill markdown to a local registry path", async () => {

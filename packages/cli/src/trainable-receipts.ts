@@ -1,4 +1,4 @@
-import { readLedgerEntries, type ArtifactEnvelope } from "../../artifacts/src/index.js";
+import { readLedgerEntries, type ArtifactEnvelope } from "@runxhq/core/artifacts";
 import {
   defaultRunxHome,
   listVerifiedLocalReceipts,
@@ -8,8 +8,8 @@ import {
   type ReceiptVerification,
   type ReceiptSurfaceRef,
   type VerifiedReceiptOutcomeResolution,
-} from "../../receipts/src/index.js";
-import type { OutcomeState } from "../../receipts/src/outcome-resolution.js";
+} from "@runxhq/core/receipts";
+import type { OutcomeState } from "@runxhq/core/receipts";
 
 export const TRAINING_SCHEMA_REFS = {
   trainable_receipt_row: "https://runx.ai/spec/training/trainable-receipt-row.schema.json",

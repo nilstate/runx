@@ -6,8 +6,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runHarnessTarget } from "../packages/harness/src/index.js";
-import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/parser/src/index.js";
+import { runHarnessTarget } from "@runxhq/core/harness";
+import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
 describe("upstream bindings", () => {
   it("declares the nilstate icey-cli binding as upstream-owned and harnessed", async () => {

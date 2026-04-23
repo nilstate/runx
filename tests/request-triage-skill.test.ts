@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
 
-import { runHarnessTarget } from "../packages/harness/src/index.js";
-import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/parser/src/index.js";
+import { runHarnessTarget } from "@runxhq/core/harness";
+import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
 describe("request-triage official skill", () => {
   it("ships as an explicit agent-step boundary with a generic triage report contract", async () => {

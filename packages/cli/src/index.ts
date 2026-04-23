@@ -6,53 +6,43 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { stdin as processStdin, stdout as processStdout } from "node:process";
-import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 
-import { readLedgerEntries } from "../../artifacts/src/index.js";
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { readLedgerEntries } from "@runxhq/core/artifacts";
 import {
   isRemoteRegistryUrl,
   loadLocalSkillPackage,
-  loadRunxConfigFile,
-  lookupRunxConfigValue,
-  maskRunxConfigFile,
   resolvePathFromUserInput,
   resolveRunxGlobalHomeDir,
   resolveRunxHomeDir,
   resolveRunxKnowledgeDir,
-  resolveRunxOfficialSkillsDir,
-  resolveRunxProjectDir,
   resolveRunxRegistryPath,
   resolveRunxRegistryTarget,
   resolveRunxWorkspaceBase,
   resolveSkillInstallRoot,
-  updateRunxConfigValue,
-  writeRunxConfigFile,
-  type RunxConfigFile,
-} from "../../config/src/index.js";
-import { runHarness, runHarnessTarget, validatePublishHarness } from "../../harness/src/index.js";
+} from "@runxhq/core/config";
+import { runHarness, runHarnessTarget, validatePublishHarness } from "@runxhq/core/harness";
 import {
   parseRunnerManifestYaml,
   parseToolManifestJson,
   validateRunnerManifest,
   validateToolManifest,
-} from "../../parser/src/index.js";
-import { createFixtureMarketplaceAdapter, searchMarketplaceAdapters, type SkillSearchResult } from "../../marketplaces/src/index.js";
-import { createFileKnowledgeStore } from "../../knowledge/src/index.js";
-import { writeLocalReceipt } from "../../receipts/src/index.js";
+} from "@runxhq/core/parser";
+import { createFixtureMarketplaceAdapter, type SkillSearchResult } from "@runxhq/core/marketplaces";
+import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
+import { writeLocalReceipt } from "@runxhq/core/receipts";
 import {
   createDefaultHttpCachedRegistryStore,
   createFileRegistryStore,
   createLocalRegistryClient,
   publishSkillMarkdown,
-  searchRemoteRegistry,
-  searchRegistry,
   type RegistryStore,
-} from "../../registry/src/index.js";
+} from "@runxhq/core/registry";
 import {
   installLocalSkill,
   inspectLocalReceipt,
@@ -62,13 +52,39 @@ import {
   type ExecutionEvent,
   type LocalReceiptSummary,
   type RunLocalSkillResult,
-} from "../../runner-local/src/index.js";
-import { ensureOfficialSkillCached, type OfficialSkillLockEntry } from "../../runner-local/src/official-cache.js";
-import type { ApprovalGate, Question, ResolutionRequest, ResolutionResponse } from "../../executor/src/index.js";
+} from "@runxhq/core/runner-local";
+import type { ApprovalGate, Question, ResolutionRequest, ResolutionResponse } from "@runxhq/core/executor";
 import { loadCliAgentRuntime, type CliAgentRuntime } from "./agent-runtime.js";
+import {
+  buildLocalPacketIndex,
+  countYamlFiles,
+  deepEqual,
+  discoverSkillProfilePaths,
+  isPlainRecord,
+  safeReadDir,
+  sha256Stable,
+  stableStringify,
+  toProjectPath,
+  writeJsonFile,
+} from "./authoring-utils.js";
+import { configAction, flattenConfig, handleConfigCommand, type ConfigResult } from "./commands/config.js";
+import { handleInitCommand, type InitResult } from "./commands/init.js";
+import {
+  handleListCommand,
+  normalizeListKind,
+  type RunxListItem,
+  type RunxListReport,
+  type RunxListRequestedKind,
+} from "./commands/list.js";
+import { handleNewCommand, type NewResult } from "./commands/new.js";
 import { createHttpConnectService } from "./connect-http.js";
-import { ensureRunxInstallState, ensureRunxProjectState } from "./runx-state.js";
-import { scaffoldRunxPackage, sanitizeRunxPackageName } from "./scaffold.js";
+import { ensureRunxInstallState } from "./runx-state.js";
+import {
+  preferredRunCommand,
+  resolveRunnableSkillReference,
+  runSkillSearch,
+} from "./skill-refs.js";
+export { resolveSkillReference, resolveRunnableSkillReference } from "./skill-refs.js";
 import { streamTrainableReceipts } from "./trainable-receipts.js";
 import { parse as parseYaml } from "yaml";
 
@@ -265,10 +281,6 @@ function shortId(id: string): string {
   return id.length > 12 ? `${id.slice(0, 12)}…` : id;
 }
 
-function preferredRunCommand(skillName: string): string {
-  return /^[A-Za-z0-9_.-]+$/.test(skillName) ? `runx ${skillName}` : `runx skill ${skillName}`;
-}
-
 interface LocalAgentInstall {
   readonly command: string;
   readonly label: string;
@@ -315,38 +327,6 @@ export interface ConnectService {
 interface CallerInputFile {
   readonly answers: Readonly<Record<string, unknown>>;
   readonly approvals?: boolean | Readonly<Record<string, boolean>>;
-}
-
-type RunxListRequestedKind = "all" | "tools" | "skills" | "chains" | "packets" | "overlays";
-type RunxListItemKind = Exclude<RunxListRequestedKind, "all"> extends infer Kind
-  ? Kind extends string
-    ? Kind extends `${infer Singular}s`
-      ? Singular
-      : Kind
-    : never
-  : never;
-type RunxListSource = "local" | "workspace" | "dependencies" | "built-in";
-
-interface RunxListItem {
-  readonly kind: RunxListItemKind;
-  readonly name: string;
-  readonly source: RunxListSource;
-  readonly path: string;
-  readonly status: "ok" | "invalid";
-  readonly diagnostics?: readonly string[];
-  readonly scopes?: readonly string[];
-  readonly emits?: readonly { readonly name: string; readonly packet?: string }[];
-  readonly fixtures?: number;
-  readonly harness_cases?: number;
-  readonly steps?: number;
-  readonly wraps?: string;
-}
-
-interface RunxListReport {
-  readonly schema: "runx.list.v1";
-  readonly root: string;
-  readonly requested_kind: RunxListRequestedKind;
-  readonly items: readonly RunxListItem[];
 }
 
 interface DoctorRepair {
@@ -566,6 +546,7 @@ export async function runCli(
       const result = await runHarnessTarget(resolvePathFromUserInput(parsed.harnessPath, env), {
         env,
         registryStore: await resolveRegistryStoreForChains(env),
+        adapters: createDefaultSkillAdapters(),
       });
       if (parsed.json) {
         io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -755,6 +736,7 @@ export async function runCli(
       const harness = await validatePublishHarness(resolvedPublishPath, {
         env,
         registryStore: await resolveRegistryStoreForChains(env),
+        adapters: createDefaultSkillAdapters(),
       });
       if (harness.status === "failed") {
         throw new Error(`Harness failed for ${resolvedPublishPath}: ${harness.assertion_errors.join("; ")}`);
@@ -925,6 +907,7 @@ async function executeLocalSkillCommand(options: {
     runner: options.parsed.runner,
     resumeFromRunId: options.parsed.resumeReceiptId,
     registryStore: await resolveRegistryStoreForChains(options.env),
+    adapters: createDefaultSkillAdapters(),
   });
 }
 
@@ -1437,16 +1420,6 @@ function isSupportedCommand(parsed: ParsedArgs): boolean {
     return true;
   }
   return false;
-}
-
-function normalizeListKind(value: string | undefined): RunxListRequestedKind | undefined {
-  if (value === undefined || value === "") {
-    return "all";
-  }
-  if (["tools", "skills", "chains", "packets", "overlays"].includes(value)) {
-    return value as RunxListRequestedKind;
-  }
-  return undefined;
 }
 
 function nextValue(args: readonly string[], index: number): string {
@@ -2521,6 +2494,7 @@ async function runSkillFixture(
     receiptDir: resolveDefaultReceiptDir(env),
     runxHome: resolveRunxHomeDir(env),
     registryStore: await resolveRegistryStoreForChains(env),
+    adapters: createDefaultSkillAdapters(),
   });
   const success = result.status === "success";
   const output = success ? parseJsonMaybe(result.execution.stdout) : result;
@@ -3270,25 +3244,6 @@ async function discoverSkillDoctorDiagnostics(root: string): Promise<readonly Do
   return diagnostics;
 }
 
-async function discoverSkillProfilePaths(root: string): Promise<readonly string[]> {
-  const paths: string[] = [];
-  const rootProfile = path.join(root, "X.yaml");
-  if (existsSync(rootProfile)) {
-    paths.push(rootProfile);
-  }
-  const skillsRoot = path.join(root, "skills");
-  for (const skillEntry of await safeReadDir(skillsRoot)) {
-    if (!skillEntry.isDirectory()) {
-      continue;
-    }
-    const profilePath = path.join(skillsRoot, skillEntry.name, "X.yaml");
-    if (existsSync(profilePath)) {
-      paths.push(profilePath);
-    }
-  }
-  return paths.sort();
-}
-
 async function discoverPacketDoctorDiagnostics(root: string): Promise<readonly DoctorDiagnostic[]> {
   const diagnostics: DoctorDiagnostic[] = [];
   const index = await buildLocalPacketIndex(root, { writeCache: true });
@@ -3755,203 +3710,6 @@ function renderDoctorDiagnosticExplanation(result: Readonly<Record<string, unkno
   );
 }
 
-async function handleListCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<RunxListReport> {
-  const root = resolveRunxWorkspaceBase(env);
-  const requestedKind = parsed.listKind ?? "all";
-  const items = await discoverListItems(root, requestedKind);
-  const filtered = items.filter((item) => {
-    if (parsed.listOkOnly) {
-      return item.status === "ok";
-    }
-    if (parsed.listInvalidOnly) {
-      return item.status === "invalid";
-    }
-    return true;
-  });
-  return {
-    schema: "runx.list.v1",
-    root,
-    requested_kind: requestedKind,
-    items: sortListItems(filtered),
-  };
-}
-
-async function discoverListItems(root: string, requestedKind: RunxListRequestedKind): Promise<readonly RunxListItem[]> {
-  const items: RunxListItem[] = [];
-  if (requestedKind === "all" || requestedKind === "tools") {
-    items.push(...await discoverToolListItems(root));
-  }
-  if (requestedKind === "all" || requestedKind === "skills" || requestedKind === "chains") {
-    items.push(...(await discoverSkillAndChainListItems(root)).filter((item) => requestedKind === "all" || `${item.kind}s` === requestedKind));
-  }
-  if (requestedKind === "all" || requestedKind === "packets") {
-    items.push(...await discoverPacketListItems(root));
-  }
-  if (requestedKind === "all" || requestedKind === "overlays") {
-    items.push(...await discoverOverlayListItems(root));
-  }
-  return items;
-}
-
-async function discoverToolListItems(root: string): Promise<readonly RunxListItem[]> {
-  const toolsRoot = path.join(root, "tools");
-  const items: RunxListItem[] = [];
-  for (const namespaceEntry of await safeReadDir(toolsRoot)) {
-    if (!namespaceEntry.isDirectory()) {
-      continue;
-    }
-    const namespaceDir = path.join(toolsRoot, namespaceEntry.name);
-    for (const toolEntry of await safeReadDir(namespaceDir)) {
-      if (!toolEntry.isDirectory()) {
-        continue;
-      }
-      const manifestPath = path.join(namespaceDir, toolEntry.name, "manifest.json");
-      if (!existsSync(manifestPath)) {
-        continue;
-      }
-      const relativePath = toProjectPath(root, manifestPath);
-      try {
-        const tool = validateToolManifest(parseToolManifestJson(await readFile(manifestPath, "utf8")));
-        const emits = tool.artifacts?.namedEmits
-          ? Object.entries(tool.artifacts.namedEmits).map(([name, packet]) => ({ name, packet }))
-          : tool.artifacts?.wrapAs
-            ? [{ name: tool.artifacts.wrapAs }]
-            : [];
-        items.push({
-          kind: "tool",
-          name: tool.name,
-          source: "local",
-          path: relativePath,
-          status: "ok",
-          scopes: tool.scopes,
-          emits,
-          fixtures: await countYamlFiles(path.join(namespaceDir, toolEntry.name, "fixtures")),
-        });
-      } catch {
-        items.push({
-          kind: "tool",
-          name: `${namespaceEntry.name}.${toolEntry.name}`,
-          source: "local",
-          path: relativePath,
-          status: "invalid",
-          diagnostics: ["runx.tool.manifest.invalid"],
-        });
-      }
-    }
-  }
-  return items;
-}
-
-async function discoverSkillAndChainListItems(root: string): Promise<readonly RunxListItem[]> {
-  const items: RunxListItem[] = [];
-  for (const profilePath of await discoverSkillProfilePaths(root)) {
-    const skillDir = path.dirname(profilePath);
-    const fallbackName = skillDir === root ? path.basename(root) : path.basename(skillDir);
-    const relativePath = toProjectPath(root, profilePath);
-    try {
-      const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(profilePath, "utf8")));
-      const runners = Object.values(manifest.runners);
-      const chainSteps = runners
-        .map((runner) => runner.source.chain?.steps.length)
-        .filter((value): value is number => typeof value === "number");
-      const isChain = chainSteps.length > 0;
-      items.push({
-        kind: isChain ? "chain" : "skill",
-        name: manifest.skill ?? fallbackName,
-        source: "local",
-        path: relativePath,
-        status: "ok",
-        fixtures: await countYamlFiles(path.join(skillDir, "fixtures")),
-        harness_cases: manifest.harness?.cases.length ?? 0,
-        steps: isChain ? chainSteps.reduce((sum, value) => sum + value, 0) : undefined,
-      });
-    } catch {
-      items.push({
-        kind: "skill",
-        name: fallbackName,
-        source: "local",
-        path: relativePath,
-        status: "invalid",
-        diagnostics: ["runx.skill.profile.invalid"],
-      });
-    }
-  }
-  return items;
-}
-
-async function discoverPacketListItems(root: string): Promise<readonly RunxListItem[]> {
-  const index = await buildLocalPacketIndex(root, { writeCache: false });
-  return [
-    ...index.packets.map((packet) => ({
-      kind: "packet" as const,
-      name: packet.id,
-      source: "local" as const,
-      path: packet.path,
-      status: "ok" as const,
-    })),
-    ...index.errors.map((error) => ({
-      kind: "packet" as const,
-      name: error.ref,
-      source: "local" as const,
-      path: error.path,
-      status: "invalid" as const,
-      diagnostics: [error.id],
-    })),
-  ];
-}
-
-async function discoverOverlayListItems(root: string): Promise<readonly RunxListItem[]> {
-  const overlaysRoot = path.join(root, "skills-overlays");
-  const items: RunxListItem[] = [];
-  for (const vendorEntry of await safeReadDir(overlaysRoot)) {
-    if (!vendorEntry.isDirectory()) {
-      continue;
-    }
-    const vendorDir = path.join(overlaysRoot, vendorEntry.name);
-    for (const skillEntry of await safeReadDir(vendorDir)) {
-      if (!skillEntry.isDirectory()) {
-        continue;
-      }
-      const profilePath = path.join(vendorDir, skillEntry.name, "X.yaml");
-      if (!existsSync(profilePath)) {
-        continue;
-      }
-      const contents = await readFile(profilePath, "utf8");
-      const wraps = /^\s*wraps:\s*(.+?)\s*$/m.exec(contents)?.[1];
-      items.push({
-        kind: "overlay",
-        name: `${vendorEntry.name}/${skillEntry.name}`,
-        source: "local",
-        path: toProjectPath(root, profilePath),
-        status: "ok",
-        wraps,
-      });
-    }
-  }
-  return items;
-}
-
-function sortListItems(items: readonly RunxListItem[]): readonly RunxListItem[] {
-  const tierOrder: Record<RunxListSource, number> = {
-    local: 0,
-    workspace: 1,
-    dependencies: 2,
-    "built-in": 3,
-  };
-  const kindOrder: Record<RunxListItemKind, number> = {
-    tool: 0,
-    skill: 1,
-    chain: 2,
-    packet: 3,
-    overlay: 4,
-  };
-  return [...items].sort((left, right) =>
-    tierOrder[left.source] - tierOrder[right.source]
-    || kindOrder[left.kind] - kindOrder[right.kind]
-    || left.name.localeCompare(right.name)
-  );
-}
-
 function renderListResult(result: RunxListReport, env: NodeJS.ProcessEnv = process.env): string {
   const t = theme(process.stdout, env);
   const lines = [""];
@@ -4006,199 +3764,6 @@ function renderCoverageDetail(item: RunxListItem): string {
   return parts.length > 0 ? `, ${parts.join(", ")}` : "";
 }
 
-interface LocalPacketIndexResult {
-  readonly packets: readonly {
-    readonly id: string;
-    readonly package: string;
-    readonly version: string;
-    readonly path: string;
-    readonly sha256: string;
-  }[];
-  readonly errors: readonly {
-    readonly id: string;
-    readonly title: string;
-    readonly message: string;
-    readonly ref: string;
-    readonly path: string;
-    readonly evidence?: Readonly<Record<string, unknown>>;
-  }[];
-}
-
-async function buildLocalPacketIndex(
-  root: string,
-  options: { readonly writeCache: boolean },
-): Promise<LocalPacketIndexResult> {
-  const packageJsonPath = path.join(root, "package.json");
-  if (!existsSync(packageJsonPath)) {
-    return { packets: [], errors: [] };
-  }
-  const errors: LocalPacketIndexResult["errors"][number][] = [];
-  let packageJson: {
-    readonly name?: string;
-    readonly version?: string;
-    readonly runx?: { readonly packets?: readonly string[] };
-  };
-  try {
-    packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
-  } catch (error) {
-    return {
-      packets: [],
-      errors: [{
-        id: "runx.packet.package.invalid",
-        title: "Package metadata is invalid",
-        message: error instanceof Error ? error.message : String(error),
-        ref: "package.json",
-        path: "package.json",
-      }],
-    };
-  }
-  const globs = packageJson.runx?.packets ?? [];
-  const packets: LocalPacketIndexResult["packets"][number][] = [];
-  const seen = new Map<string, LocalPacketIndexResult["packets"][number]>();
-  for (const glob of globs) {
-    const files = await expandLocalGlob(root, glob);
-    if (files.length === 0) {
-      errors.push({
-        id: "runx.packet.ref.missing",
-        title: "Packet glob matched no files",
-        message: `${glob} did not resolve to any packet schema artifacts.`,
-        ref: glob,
-        path: "package.json",
-      });
-      continue;
-    }
-    for (const filePath of files) {
-      const relativePath = toProjectPath(root, filePath);
-      try {
-        const schema = JSON.parse(await readFile(filePath, "utf8")) as unknown;
-        if (!isPlainRecord(schema)) {
-          throw new Error("packet schema must be a JSON object");
-        }
-        const id = typeof schema["x-runx-packet-id"] === "string"
-          ? schema["x-runx-packet-id"]
-          : typeof schema.$id === "string"
-            ? schema.$id
-            : undefined;
-        if (!id) {
-          errors.push({
-            id: "runx.packet.id.mismatch",
-            title: "Packet schema is missing a runx packet ID",
-            message: `${relativePath} must declare x-runx-packet-id or $id.`,
-            ref: relativePath,
-            path: relativePath,
-          });
-          continue;
-        }
-        const packet = {
-          id,
-          package: packageJson.name ?? "(local)",
-          version: packageJson.version ?? "0.0.0",
-          path: relativePath,
-          sha256: sha256Stable(schema),
-        };
-        const existing = seen.get(id);
-        if (existing && existing.sha256 !== packet.sha256) {
-          errors.push({
-            id: "runx.packet.id.collision",
-            title: "Packet ID collision",
-            message: `${id} is declared by multiple schemas with different hashes.`,
-            ref: id,
-            path: relativePath,
-            evidence: {
-              first_path: existing.path,
-              first_sha256: existing.sha256,
-              second_sha256: packet.sha256,
-            },
-          });
-          continue;
-        }
-        seen.set(id, packet);
-        packets.push(packet);
-      } catch (error) {
-        errors.push({
-          id: "runx.packet.schema.invalid",
-          title: "Packet schema is invalid",
-          message: error instanceof Error ? error.message : String(error),
-          ref: relativePath,
-          path: relativePath,
-        });
-      }
-    }
-  }
-  const result = { packets, errors };
-  if (options.writeCache && (packets.length > 0 || globs.length > 0)) {
-    await writeJsonFile(path.join(root, ".runx", "cache", "packet-index.json"), {
-      schema: "runx.packet.index.v1",
-      packets,
-    });
-  }
-  return result;
-}
-
-async function expandLocalGlob(root: string, glob: string): Promise<readonly string[]> {
-  if (!glob.includes("*")) {
-    const direct = path.resolve(root, glob);
-    return existsSync(direct) ? [direct] : [];
-  }
-  const normalized = glob.split(path.sep).join("/");
-  const star = normalized.indexOf("*");
-  const base = normalized.slice(0, star);
-  const baseDir = path.resolve(root, base.slice(0, base.lastIndexOf("/") + 1));
-  const suffix = normalized.slice(star + 1);
-  const files: string[] = [];
-  for (const entry of await safeReadDir(baseDir)) {
-    const candidate = path.join(baseDir, entry.name);
-    if (entry.isFile() && candidate.split(path.sep).join("/").endsWith(suffix)) {
-      files.push(candidate);
-    }
-  }
-  return files.sort();
-}
-
-async function safeReadDir(directory: string) {
-  try {
-    return await readdir(directory, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-}
-
-async function countYamlFiles(directory: string): Promise<number> {
-  return (await safeReadDir(directory)).filter((entry) => entry.isFile() && /\.ya?ml$/i.test(entry.name)).length;
-}
-
-function toProjectPath(root: string, filePath: string): string {
-  return path.relative(root, filePath).split(path.sep).join("/");
-}
-
-async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function sha256Stable(value: unknown): string {
-  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().filter((key) => record[key] !== undefined).map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function deepEqual(left: unknown, right: unknown): boolean {
-  return stableStringify(left) === stableStringify(right);
-}
-
 function parseJsonMaybe(value: string): unknown {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -4213,211 +3778,6 @@ function parseJsonMaybe(value: string): unknown {
 
 function normalizeKnownFlag(rawKey: string): string {
   return rawKey.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
-}
-
-interface LocalSkillPackage {
-  readonly markdown: string;
-  readonly profileDocument?: string;
-}
-
-async function runSkillSearch(
-  query: string,
-  sourceFilter: string | undefined,
-  env: NodeJS.ProcessEnv,
-  registryOverride?: string,
-): Promise<readonly SkillSearchResult[]> {
-  const results: SkillSearchResult[] = [];
-  const normalizedSource = sourceFilter?.trim().toLowerCase();
-
-  if (!normalizedSource || normalizedSource === "registry" || normalizedSource === "runx-registry") {
-    const registryTarget = resolveRunxRegistryTarget(env, { registry: registryOverride });
-    if (registryTarget.mode === "remote") {
-      results.push(...(await searchRemoteRegistry(query, {
-        baseUrl: registryTarget.registryUrl,
-      })));
-    } else {
-      results.push(
-          ...(await searchRegistry(createFileRegistryStore(registryTarget.registryPath), query, {
-          registryUrl: registryTarget.registryUrl,
-        })),
-      );
-    }
-  }
-
-  const marketplaceAdapters =
-    env.RUNX_ENABLE_FIXTURE_MARKETPLACE === "1" &&
-    (!normalizedSource || normalizedSource === "marketplace" || normalizedSource === "fixture-marketplace")
-      ? [createFixtureMarketplaceAdapter()]
-      : [];
-  results.push(...(await searchMarketplaceAdapters(marketplaceAdapters, query)));
-
-  if (!normalizedSource || normalizedSource === "bundled" || normalizedSource === "builtin") {
-    results.push(...(await searchBundledSkills(query)));
-  }
-
-  return results;
-}
-
-async function searchBundledSkills(query: string): Promise<readonly SkillSearchResult[]> {
-  const bundledDir = resolveBundledSkillsDir();
-  if (!bundledDir || !existsSync(bundledDir)) return [];
-  const { readdir } = await import("node:fs/promises");
-  const entries = await readdir(bundledDir, { withFileTypes: true });
-  const needle = query.trim().toLowerCase();
-  const out: SkillSearchResult[] = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const skillMdPath = path.join(bundledDir, entry.name, "SKILL.md");
-    if (!existsSync(skillMdPath)) continue;
-    const raw = await readFile(skillMdPath, "utf8");
-    const { name, description } = parseSkillFrontmatter(raw, entry.name);
-    const hay = `${name}\n${description}`.toLowerCase();
-    if (needle && !hay.includes(needle)) continue;
-    const hasProfile = existsSync(path.join(path.dirname(bundledDir), "bindings", "runx", entry.name, "X.yaml"));
-    out.push({
-      skill_id: `runx/${name}`,
-      name,
-      summary: description,
-      owner: "runx",
-      source: "runx-registry",
-      source_label: "runx (bundled)",
-      source_type: "bundled",
-      trust_tier: "runx-derived",
-      required_scopes: [],
-      tags: [],
-      profile_mode: hasProfile ? "profiled" : "portable",
-      runner_names: [],
-      add_command: `runx add runx/${name}`,
-      run_command: preferredRunCommand(name),
-    });
-  }
-  return out;
-}
-
-let cachedBundledSkillsDir: string | undefined | null = null;
-let cachedOfficialSkillLock: readonly OfficialSkillLockEntry[] | undefined;
-
-function resolveBundledSkillsDir(): string | undefined {
-  if (cachedBundledSkillsDir !== null) return cachedBundledSkillsDir ?? undefined;
-  try {
-    // Walk up from the compiled entry looking for the @runxhq/cli package root,
-    // which owns a `skills/` sibling. Works across dev (src/), dist wrapper,
-    // and nested-dist layouts without sentinel files.
-    let dir = path.dirname(fileURLToPath(import.meta.url));
-    for (let i = 0; i < 8; i += 1) {
-      const pkgJsonPath = path.join(dir, "package.json");
-      if (existsSync(pkgJsonPath)) {
-        try {
-          const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-          if (pkg && pkg.name === "@runxhq/cli") {
-            const skills = path.join(dir, "skills");
-            cachedBundledSkillsDir = existsSync(skills) ? skills : undefined;
-            return cachedBundledSkillsDir ?? undefined;
-          }
-        } catch {
-          // ignore and keep walking
-        }
-      }
-      const parent = path.dirname(dir);
-      if (parent === dir) break;
-      dir = parent;
-    }
-    cachedBundledSkillsDir = undefined;
-    return undefined;
-  } catch {
-    cachedBundledSkillsDir = undefined;
-    return undefined;
-  }
-}
-
-function officialSkillEntry(ref: string): OfficialSkillLockEntry | undefined {
-  if (!/^[A-Za-z0-9_.-]+$/.test(ref)) {
-    return undefined;
-  }
-  return loadOfficialSkillLock().find((entry) => entry.skill_id === `runx/${ref}`);
-}
-
-function loadOfficialSkillLock(): readonly OfficialSkillLockEntry[] {
-  if (cachedOfficialSkillLock) {
-    return cachedOfficialSkillLock;
-  }
-  try {
-    const raw = readFileSync(new URL("./official-skills.lock.json", import.meta.url), "utf8");
-    const parsed = JSON.parse(raw) as readonly OfficialSkillLockEntry[];
-    cachedOfficialSkillLock = Array.isArray(parsed) ? parsed : [];
-    return cachedOfficialSkillLock;
-  } catch {
-    cachedOfficialSkillLock = [];
-    return cachedOfficialSkillLock;
-  }
-}
-
-export function resolveSkillReference(ref: string, env: NodeJS.ProcessEnv): string {
-  const resolved = resolveLocalSkillReference(ref, env);
-  if (resolved) {
-    return resolved;
-  }
-  throw new Error(`Skill not found: ${ref}. Try \`runx search ${ref}\` to discover available skills.`);
-}
-
-function resolveLocalSkillReference(ref: string, env: NodeJS.ProcessEnv): string | undefined {
-  if (!ref) {
-    throw new Error("Missing skill reference.");
-  }
-  // Treat anything that looks like a path (contains a separator, leading dot, or
-  // tilde) or that actually exists on disk as a direct filesystem reference.
-  const looksLikePath = ref.includes("/") || ref.includes(path.sep) || ref.startsWith(".") || ref.startsWith("~");
-  if (looksLikePath) {
-    const resolved = resolvePathFromUserInput(ref, env);
-    if (path.extname(resolved).toLowerCase() === ".md" && path.basename(resolved).toLowerCase() !== "skill.md") {
-      throw new Error(
-        `Skill references must point to a skill package directory or SKILL.md. Flat markdown files are not supported: ${resolved}`,
-      );
-    }
-    return resolved;
-  }
-  const directCandidate = resolvePathFromUserInput(ref, env);
-  if (existsSync(directCandidate)) {
-    if (path.extname(directCandidate).toLowerCase() === ".md" && path.basename(directCandidate).toLowerCase() !== "skill.md") {
-      throw new Error(
-        `Skill references must point to a skill package directory or SKILL.md. Flat markdown files are not supported: ${directCandidate}`,
-      );
-    }
-    return directCandidate;
-  }
-
-  const projectSkillDir = path.join(resolveRunxProjectDir(env), "skills", ref);
-  if (existsSync(path.join(projectSkillDir, "SKILL.md"))) {
-    return projectSkillDir;
-  }
-
-  const installedSkillDir = path.join(resolveSkillInstallRoot(env), ref);
-  if (existsSync(path.join(installedSkillDir, "SKILL.md"))) {
-    return installedSkillDir;
-  }
-
-  return undefined;
-}
-
-export async function resolveRunnableSkillReference(ref: string, env: NodeJS.ProcessEnv): Promise<string> {
-  const local = resolveLocalSkillReference(ref, env);
-  if (local) {
-    return local;
-  }
-  const official = officialSkillEntry(ref);
-  if (!official) {
-    throw new Error(`Skill not found: ${ref}. Try \`runx search ${ref}\` to discover available skills.`);
-  }
-  const globalHomeDir = resolveRunxGlobalHomeDir(env);
-  const install = await ensureRunxInstallState(globalHomeDir);
-  const registryBaseUrl = env.RUNX_REGISTRY_URL ?? "https://runx.ai";
-  const cache = await ensureOfficialSkillCached({
-    cacheRoot: resolveRunxOfficialSkillsDir(env),
-    registryBaseUrl,
-    installationId: install.state.installation_id,
-    entry: official,
-  });
-  return cache.skillPath;
 }
 
 async function resolveResumeSkillPath(
@@ -4440,22 +3800,6 @@ async function resolveResumeSkillPath(
     return detail.skill_path;
   }
   throw new Error(`Run '${runId}' cannot be resumed because no pending skill path was recorded.`);
-}
-
-function parseSkillFrontmatter(raw: string, fallbackName: string): { name: string; description: string } {
-  const match = raw.match(/^---\n([\s\S]*?)\n---/);
-  let name = fallbackName;
-  let description = "";
-  if (match) {
-    for (const line of match[1].split("\n")) {
-      const kv = line.match(/^(name|description):\s*(.*)$/);
-      if (!kv) continue;
-      const value = kv[2].trim().replace(/^["']|["']$/g, "");
-      if (kv[1] === "name") name = value || fallbackName;
-      else if (kv[1] === "description") description = value;
-    }
-  }
-  return { name, description };
 }
 
 function resolveConfiguredConnectService(env: NodeJS.ProcessEnv): ConnectService | undefined {
@@ -4511,90 +3855,6 @@ function connectAction(positionals: readonly string[]): ParsedArgs["connectActio
   return positionals[0] ? "preprovision" : undefined;
 }
 
-function configAction(positionals: readonly string[]): ParsedArgs["configAction"] {
-  if (positionals[0] === "set" || positionals[0] === "get" || positionals[0] === "list") {
-    return positionals[0];
-  }
-  return undefined;
-}
-
-type ConfigResult =
-  | { readonly action: "set"; readonly key: string; readonly value: unknown }
-  | { readonly action: "get"; readonly key: string; readonly value: unknown }
-  | { readonly action: "list"; readonly values: RunxConfigFile };
-
-interface NewResult {
-  readonly action: "package";
-  readonly name: string;
-  readonly packet_namespace: string;
-  readonly directory: string;
-  readonly files: readonly string[];
-  readonly next_steps: readonly string[];
-}
-
-interface InitResult {
-  readonly action: "project" | "global";
-  readonly created: boolean;
-  readonly project_dir?: string;
-  readonly project_id?: string;
-  readonly global_home_dir?: string;
-  readonly installation_id?: string;
-  readonly official_cache_dir?: string;
-}
-
-async function handleConfigCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<ConfigResult> {
-  const configDir = resolveRunxHomeDir(env);
-  const configPath = path.join(configDir, "config.json");
-  const config = await loadRunxConfigFile(configPath);
-
-  if (parsed.configAction === "list") {
-    return { action: "list", values: maskRunxConfigFile(config) };
-  }
-  if (!parsed.configKey) {
-    throw new Error("config key is required.");
-  }
-  if (parsed.configAction === "get") {
-    return {
-      action: "get",
-      key: parsed.configKey,
-      value: lookupRunxConfigValue(config, parsed.configKey as "agent.provider" | "agent.model" | "agent.api_key"),
-    };
-  }
-  if (parsed.configAction === "set") {
-    if (parsed.configValue === undefined) {
-      throw new Error("config value is required.");
-    }
-    const next = await updateRunxConfigValue(
-      config,
-      parsed.configKey as "agent.provider" | "agent.model" | "agent.api_key",
-      parsed.configValue,
-      configDir,
-    );
-    await writeRunxConfigFile(configPath, next);
-    return {
-      action: "set",
-      key: parsed.configKey,
-      value: lookupRunxConfigValue(maskRunxConfigFile(next), parsed.configKey as "agent.provider" | "agent.model" | "agent.api_key"),
-    };
-  }
-  throw new Error("Invalid config invocation.");
-}
-
-async function handleNewCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<NewResult> {
-  if (!parsed.newName) {
-    throw new Error("runx new requires a package name.");
-  }
-  const directory = resolveNewPackageDirectory(parsed.newName, parsed.newDirectory, env);
-  const result = await scaffoldRunxPackage({
-    name: parsed.newName,
-    directory,
-  });
-  return {
-    action: "package",
-    ...result,
-  };
-}
-
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
 }
@@ -4624,47 +3884,6 @@ function renderNewResult(result: NewResult, env: NodeJS.ProcessEnv = process.env
     ],
     t,
   );
-}
-
-function resolveNewPackageDirectory(name: string, directory: string | undefined, env: NodeJS.ProcessEnv): string {
-  if (directory) {
-    return path.isAbsolute(directory)
-      ? directory
-      : path.resolve(env.RUNX_CWD ?? env.INIT_CWD ?? process.cwd(), directory);
-  }
-  return path.resolve(env.RUNX_CWD ?? env.INIT_CWD ?? process.cwd(), sanitizeRunxPackageName(name));
-}
-
-async function handleInitCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<InitResult> {
-  if (!parsed.initAction) {
-    throw new Error("Invalid init invocation.");
-  }
-  if (parsed.initAction === "global") {
-    const globalHomeDir = resolveRunxGlobalHomeDir(env);
-    const install = await ensureRunxInstallState(globalHomeDir);
-    const officialCacheDir = resolveRunxOfficialSkillsDir(env);
-    if (parsed.prefetchOfficial) {
-      await mkdir(officialCacheDir, { recursive: true });
-    }
-    return {
-      action: "global",
-      created: install.created,
-      global_home_dir: globalHomeDir,
-      installation_id: install.state.installation_id,
-      official_cache_dir: parsed.prefetchOfficial ? officialCacheDir : undefined,
-    };
-  }
-
-  const projectDir = resolveRunxProjectDir(env);
-  const project = await ensureRunxProjectState(projectDir);
-  await mkdir(path.join(projectDir, "skills"), { recursive: true });
-  await mkdir(path.join(projectDir, "tools"), { recursive: true });
-  return {
-    action: "project",
-    created: project.created,
-    project_dir: projectDir,
-    project_id: project.state.project_id,
-  };
 }
 
 function renderInitResult(result: InitResult, env: NodeJS.ProcessEnv = process.env): string {
@@ -4799,23 +4018,6 @@ function renderKnowledgeProjections(
   }
   lines.push("");
   return lines.join("\n");
-}
-
-function flattenConfig(config: RunxConfigFile): Array<[string, string]> {
-  const rows: Array<[string, string]> = [];
-  const walk = (prefix: string, value: unknown) => {
-    if (value === undefined) return;
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      for (const [key, entry] of Object.entries(value)) {
-        walk(prefix ? `${prefix}.${key}` : key, entry);
-      }
-      return;
-    }
-    const publicKey = prefix === "agent.api_key_ref" ? "agent.api_key" : prefix;
-    rows.push([publicKey, String(value)]);
-  };
-  walk("", config);
-  return rows;
 }
 
 function renderInstallResult(

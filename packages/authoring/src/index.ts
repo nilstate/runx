@@ -436,7 +436,7 @@ function finalizeOutput<Output>(
   const pruned = prune(output);
   const schema = definition.schema ?? definition.output?.packet;
   if (!schema || !isRecord(pruned) || "schema" in pruned) {
-    return pruned;
+    return pruned as Output;
   }
   return {
     schema,

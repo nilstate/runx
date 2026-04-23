@@ -4,7 +4,7 @@ import { access, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { buildRegistrySkillVersion } from "../packages/registry/src/index.ts";
+import { buildRegistrySkillVersion } from "@runxhq/core/registry";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "..");

@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
-import { createFileKnowledgeStore } from "../packages/knowledge/src/index.js";
+import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
 
 describe("evolve skill", () => {
   it("introspects by default with no objective and resumes to a bounded recommendation", async () => {

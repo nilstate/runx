@@ -11,7 +11,7 @@ import {
   ingestSkillMarkdown,
   resolveRunxLink,
   searchRegistry,
-} from "../packages/registry/src/index.js";
+} from "@runxhq/core/registry";
 
 describe("registry CE", () => {
   it("ingests skill markdown, derives trust signals, searches, and resolves runx links", async () => {

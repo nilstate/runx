@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createVercelAiAdapter } from "../packages/sdk-js/src/index.js";
+import { createVercelAiAdapter } from "@runxhq/core/sdk";
 import { createFrameworkHarness } from "./framework-adapter-test-utils.js";
 
 const cleanups: Array<() => Promise<void>> = [];

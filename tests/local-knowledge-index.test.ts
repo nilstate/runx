@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createFileKnowledgeStore } from "../packages/knowledge/src/index.js";
-import { runLocalGraph, runLocalSkill, type Caller, type ExecutionEvent } from "../packages/runner-local/src/index.js";
+import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
+import { runLocalGraph, runLocalSkill, type Caller, type ExecutionEvent } from "@runxhq/core/runner-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,

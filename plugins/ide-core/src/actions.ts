@@ -1,4 +1,5 @@
-import { runHarness, type HarnessRunResult } from "../../../packages/harness/src/index.js";
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { runHarness, type HarnessRunResult } from "@runxhq/core/harness";
 import {
   createRunxSdk,
   createStructuredCaller,
@@ -10,7 +11,7 @@ import {
   type RunxSdkOptions,
   type SearchSkillsOptions,
   type StructuredCaller,
-} from "../../../packages/sdk-js/src/index.js";
+} from "@runxhq/core/sdk";
 
 export interface IdeActionCoreOptions extends RunxSdkOptions {
   readonly sdk?: RunxSdk;
@@ -45,7 +46,8 @@ export interface IdeActionCore {
 }
 
 export function createIdeActionCore(options: IdeActionCoreOptions = {}): IdeActionCore {
-  const sdk = options.sdk ?? createRunxSdk(options);
+  const adapters = options.adapters ?? createDefaultSkillAdapters();
+  const sdk = options.sdk ?? createRunxSdk({ ...options, adapters });
   return {
     runSkill: async (runOptions) => withStructuredCaller("runx.skill.run", async (caller) => await sdk.runSkill({ ...runOptions, caller })),
     inspectReceipt: async (receiptId, inspectOptions = {}) =>
@@ -57,7 +59,7 @@ export function createIdeActionCore(options: IdeActionCoreOptions = {}): IdeActi
     connectPreprovision: async (request) =>
       wrapAction("runx.connect.preprovision", async () => await sdk.connectPreprovision(request)),
     connectRevoke: async (grantId) => wrapAction("runx.connect.revoke", async () => await sdk.connectRevoke(grantId)),
-    harnessRun: async (fixturePath) => wrapAction("runx.harness.run", async () => await runHarness(fixturePath, { env: options.env })),
+    harnessRun: async (fixturePath) => wrapAction("runx.harness.run", async () => await runHarness(fixturePath, { env: options.env, adapters })),
   };
 }
 

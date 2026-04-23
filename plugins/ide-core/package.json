@@ -10,6 +10,8 @@
     }
   },
   "dependencies": {
+    "@runxhq/adapters": "workspace:^0.1.0",
+    "@runxhq/core": "workspace:^0.1.0",
     "yaml": "^2.8.3"
   }
 }

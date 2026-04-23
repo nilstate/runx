@@ -22,5 +22,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.41"
   }
 }

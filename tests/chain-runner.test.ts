@@ -4,10 +4,10 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { readLedgerEntries } from "../packages/artifacts/src/index.js";
-import { createFileKnowledgeStore } from "../packages/knowledge/src/index.js";
+import { readLedgerEntries } from "@runxhq/core/artifacts";
+import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
 import { runCli } from "../packages/cli/src/index.js";
-import { inspectLocalGraph, runLocalGraph, runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { inspectLocalGraph, runLocalGraph, runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,

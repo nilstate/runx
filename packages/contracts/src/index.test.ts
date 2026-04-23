@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { RUNX_CONTRACT_IDS, RUNX_LOGICAL_SCHEMAS, runxContractSchemas } from "./index.js";
+import {
+  RUNX_CONTRACT_IDS,
+  RUNX_AUXILIARY_SCHEMA_IDS,
+  RUNX_CONTROL_SCHEMA_REFS,
+  RUNX_LOGICAL_SCHEMAS,
+  credentialEnvelopeSchema,
+  registryBindingSchema,
+  reviewReceiptOutputSchema,
+  runxContractSchemas,
+  runxAuxiliarySchemas,
+  validateCredentialEnvelopeContract,
+  validateRegistryBindingContract,
+  validateReviewReceiptOutputContract,
+  validateScopeAdmissionContract,
+} from "./index.js";
 
 describe("@runxhq/contracts", () => {
   it("exports stable runx logical schema identifiers", () => {
@@ -16,5 +30,85 @@ describe("@runxhq/contracts", () => {
   it("keeps fixture lanes aligned with authoring plan", () => {
     const lane = runxContractSchemas.fixture.properties?.lane;
     expect(lane?.enum).toEqual(["deterministic", "agent", "repo-integration"]);
+  });
+
+  it("owns credential envelope schema and runtime validation", () => {
+    expect(credentialEnvelopeSchema.$id).toBe(RUNX_CONTROL_SCHEMA_REFS.credential_envelope);
+    expect(validateCredentialEnvelopeContract({
+      kind: "runx.credential-envelope.v1",
+      grant_id: "grant_1",
+      provider: "github",
+      connection_id: "conn_1",
+      scopes: ["repo:read"],
+      material_ref: "nango:github:conn_1",
+    })).toMatchObject({
+      provider: "github",
+      scopes: ["repo:read"],
+    });
+  });
+
+  it("owns scope admission schema and runtime validation", () => {
+    expect(RUNX_CONTROL_SCHEMA_REFS.scope_admission).toBe("https://runx.ai/spec/scope-admission.schema.json");
+    expect(validateScopeAdmissionContract({
+      status: "allow",
+      requested_scopes: ["repo:status"],
+      granted_scopes: ["repo:*"],
+      decision_summary: "",
+    })).toEqual({
+      status: "allow",
+      requested_scopes: ["repo:status"],
+      granted_scopes: ["repo:*"],
+      decision_summary: "",
+    });
+    expect(() => validateScopeAdmissionContract({
+      status: "pending",
+      requested_scopes: ["repo:status"],
+      granted_scopes: ["repo:*"],
+    })).toThrow(/scope-admission\.schema\.json/);
+  });
+
+  it("owns generated auxiliary schemas", () => {
+    expect(registryBindingSchema.$id).toBe(RUNX_AUXILIARY_SCHEMA_IDS.registryBinding);
+    expect(reviewReceiptOutputSchema.$id).toBe(RUNX_AUXILIARY_SCHEMA_IDS.reviewReceiptOutput);
+    expect(runxAuxiliarySchemas.reviewReceiptOutput).toBe(reviewReceiptOutputSchema);
+  });
+
+  it("validates auxiliary schema payloads", () => {
+    expect(validateReviewReceiptOutputContract({
+      verdict: "pass",
+      failure_summary: "No harness failure.",
+      improvement_proposals: [],
+      next_harness_checks: ["runx harness"],
+    })).toMatchObject({ verdict: "pass" });
+
+    expect(validateRegistryBindingContract({
+      schema: "runx.registry_binding.v1",
+      state: "registry_bound",
+      skill: {
+        id: "runx/sourcey",
+        name: "sourcey",
+        description: "Docs skill.",
+      },
+      upstream: {
+        host: "github.com",
+        owner: "runxhq",
+        repo: "runx",
+        path: "skills/sourcey",
+        commit: "abc123",
+        blob_sha: "def456",
+        source_of_truth: true,
+      },
+      registry: {
+        owner: "runx",
+        trust_tier: "upstream-owned",
+        version: "1.0.0",
+        profile_path: "X.yaml",
+        materialized_package_is_registry_artifact: true,
+      },
+      harness: {
+        status: "harness_verified",
+        case_count: 1,
+      },
+    })).toMatchObject({ schema: "runx.registry_binding.v1" });
   });
 });

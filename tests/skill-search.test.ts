@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
-import { createFileRegistryStore, ingestSkillMarkdown } from "../packages/registry/src/index.js";
+import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
 
 describe("skill-search CLI", () => {
   it("returns normalized runx registry results as JSON", async () => {

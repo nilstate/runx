@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { createFrameworkBridge, createRunxSdk, type FrameworkBridge } from "../packages/sdk-js/src/index.js";
+import { createFrameworkBridge, createRunxSdk, type FrameworkBridge } from "@runxhq/core/sdk";
 
 export interface FrameworkHarness {
   readonly bridge: FrameworkBridge;

@@ -5,8 +5,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { runCli, parseArgs, resolveSkillReference } from "./index.js";
-import { hashString } from "../../receipts/src/index.js";
-import { createFileRegistryStore, ingestSkillMarkdown } from "../../registry/src/index.js";
+import { hashString } from "@runxhq/core/receipts";
+import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
 
 const tempDirs: string[] = [];
 const originalFetch = globalThis.fetch;

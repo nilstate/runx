@@ -8,9 +8,15 @@ importers:
 
   .:
     devDependencies:
+      '@runxhq/adapters':
+        specifier: workspace:^0.1.0
+        version: link:packages/adapters
       '@runxhq/authoring':
         specifier: workspace:*
         version: link:packages/authoring
+      '@runxhq/core':
+        specifier: workspace:^0.1.0
+        version: link:packages/core
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.49
@@ -27,15 +33,17 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@24.12.2)(tsx@4.21.0)(yaml@2.8.3)
 
-  apps/registry: {}
+  apps/registry:
+    dependencies:
+      '@runxhq/core':
+        specifier: workspace:^0.1.0
+        version: link:../../packages/core
 
-  packages/adapters/a2a: {}
-
-  packages/adapters/cli-tool: {}
-
-  packages/adapters/mcp: {}
-
-  packages/artifacts: {}
+  packages/adapters:
+    dependencies:
+      '@runxhq/core':
+        specifier: workspace:^0.1.0
+        version: link:../core
 
   packages/authoring:
     dependencies:
@@ -45,46 +53,33 @@ importers:
 
   packages/cli:
     dependencies:
+      '@runxhq/adapters':
+        specifier: workspace:^0.1.0
+        version: link:../adapters
       '@runxhq/authoring':
         specifier: workspace:^0.1.0
         version: link:../authoring
+      '@runxhq/core':
+        specifier: workspace:^0.1.0
+        version: link:../core
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
 
-  packages/config: {}
-
-  packages/contracts: {}
-
-  packages/executor: {}
-
-  packages/harness:
+  packages/contracts:
     dependencies:
-      yaml:
-        specifier: ^2.8.3
-        version: 2.8.3
+      '@sinclair/typebox':
+        specifier: ^0.34.41
+        version: 0.34.49
 
-  packages/knowledge: {}
-
-  packages/marketplaces: {}
-
-  packages/parser:
+  packages/core:
     dependencies:
+      '@runxhq/contracts':
+        specifier: workspace:^0.1.0
+        version: link:../contracts
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
-
-  packages/policy: {}
-
-  packages/receipts: {}
-
-  packages/registry: {}
-
-  packages/runner-local: {}
-
-  packages/sdk-js: {}
-
-  packages/state-machine: {}
 
   plugins/antigravity:
     dependencies:
@@ -94,6 +89,12 @@ importers:
 
   plugins/ide-core:
     dependencies:
+      '@runxhq/adapters':
+        specifier: workspace:^0.1.0
+        version: link:../../packages/adapters
+      '@runxhq/core':
+        specifier: workspace:^0.1.0
+        version: link:../../packages/core
       yaml:
         specifier: ^2.8.3
         version: 2.8.3

@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
-import type { SkillAdapter } from "../packages/executor/src/index.js";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import type { SkillAdapter } from "@runxhq/core/executor";
 
 const caller: Caller = {
   resolve: async () => undefined,

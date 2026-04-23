@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parseGraphYaml, validateGraph } from "../packages/parser/src/index.js";
-import { runLocalGraph, runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { parseGraphYaml, validateGraph } from "@runxhq/core/parser";
+import { runLocalGraph, runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 const passiveCaller: Caller = {
   resolve: async () => undefined,

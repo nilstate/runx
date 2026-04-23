@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/parser/src/index.js";
+import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
 describe("scafld issue-to-PR skill contract", () => {
   it("parses as a composite skill with native scafld branch, sync, status, and projection phases", async () => {

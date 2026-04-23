@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   createFileRegistryStore,
   HttpCachedRegistryStore,
-} from "../packages/registry/src/index.js";
+} from "@runxhq/core/registry";
 
 const ECHO_MARKDOWN = `---
 name: echo
@@ -70,7 +70,7 @@ describe("HttpCachedRegistryStore", () => {
         return jsonResponse(buildAcquirePayload());
       };
       const store = new HttpCachedRegistryStore({
-        remoteBaseUrl: "https://registry.example",
+        remoteBaseUrl: "https:/@runxhq/core/registry.example",
         installationId: "inst_test",
         cache,
         fetchImpl,
@@ -96,7 +96,7 @@ describe("HttpCachedRegistryStore", () => {
       const cache = createFileRegistryStore(path.join(tempDir, "cache"));
       const fetchImpl: typeof fetch = async () => new Response("not found", { status: 404 });
       const store = new HttpCachedRegistryStore({
-        remoteBaseUrl: "https://registry.example",
+        remoteBaseUrl: "https:/@runxhq/core/registry.example",
         installationId: "inst_test",
         cache,
         fetchImpl,
@@ -120,7 +120,7 @@ describe("HttpCachedRegistryStore", () => {
         return jsonResponse(buildAcquirePayload({ version: "1.2.3" }));
       };
       const store = new HttpCachedRegistryStore({
-        remoteBaseUrl: "https://registry.example",
+        remoteBaseUrl: "https:/@runxhq/core/registry.example",
         installationId: "inst_test",
         cache,
         fetchImpl,
@@ -145,7 +145,7 @@ describe("HttpCachedRegistryStore", () => {
         return jsonResponse(buildAcquirePayload());
       };
       const store = new HttpCachedRegistryStore({
-        remoteBaseUrl: "https://registry.example",
+        remoteBaseUrl: "https:/@runxhq/core/registry.example",
         installationId: "inst_test",
         cache,
         fetchImpl,

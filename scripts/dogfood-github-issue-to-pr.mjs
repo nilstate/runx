@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { mkdtemp, readFile } from "node:fs/promises";
 
-import { runLocalSkill } from "../packages/runner-local/src/index.js";
+import { runLocalSkill } from "@runxhq/core/runner-local";
 import {
   fetchGitHubIssueThread,
   firstNonEmptyString,

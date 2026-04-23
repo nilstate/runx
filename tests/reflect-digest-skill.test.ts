@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runHarnessTarget } from "../packages/harness/src/index.js";
-import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { runHarnessTarget } from "@runxhq/core/harness";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 describe("reflect-digest skill", () => {
   it("passes the inline harness suite", async () => {
@@ -43,7 +43,7 @@ describe("reflect-digest skill", () => {
               supporting_receipt_ids: group.supporting_receipt_ids,
               draft_pull_request: {
                 target: {
-                  repo: "runx/registry",
+                  repo: "runx@runxhq/core/registry",
                   branch: `reflect/${group.skill_ref}`,
                 },
                 pull_request: {

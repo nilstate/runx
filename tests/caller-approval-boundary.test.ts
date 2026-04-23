@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runHarness } from "../packages/harness/src/index.js";
-import { createStructuredCaller } from "../packages/sdk-js/src/index.js";
-import { runLocalSkill } from "../packages/runner-local/src/index.js";
+import { runHarness } from "@runxhq/core/harness";
+import { createStructuredCaller } from "@runxhq/core/sdk";
+import { runLocalSkill } from "@runxhq/core/runner-local";
 
 describe("caller approval boundary", () => {
   it("lets SDK callers supply approval decisions programmatically", async () => {

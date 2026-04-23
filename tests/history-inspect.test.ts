@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
-import { createFileKnowledgeStore } from "../packages/knowledge/src/index.js";
+import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
 
 describe("history, inspect, and knowledge CLI", () => {
   it("uses receipt files for history/inspect and knowledge for project projections", async () => {

@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,
@@ -47,7 +47,7 @@ describe("MCP skill runner", () => {
       expect(receiptContents).toContain('"tool": "echo"');
       expect(receiptContents).toContain("server_command_hash");
       expect(receiptContents).not.toContain("super-secret-value");
-      expect(receiptContents).not.toContain("packages/harness/src/mcp-fixture.ts");
+      expect(receiptContents).not.toContain("packages/core/src/harness/mcp-fixture.ts");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

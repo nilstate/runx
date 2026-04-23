@@ -5,9 +5,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
-import type { MarketplaceAdapter, SkillSearchResult } from "../packages/marketplaces/src/index.js";
-import { createFileRegistryStore, ingestSkillMarkdown } from "../packages/registry/src/index.js";
-import { installLocalSkill } from "../packages/runner-local/src/index.js";
+import type { MarketplaceAdapter, SkillSearchResult } from "@runxhq/core/marketplaces";
+import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
+import { installLocalSkill } from "@runxhq/core/runner-local";
 
 describe("skill-add", () => {
   it("installs a registry skill as pinned markdown with provenance", async () => {
@@ -79,7 +79,7 @@ describe("skill-add", () => {
 
     try {
       const exitCode = await runCli(
-        ["skill", "add", "fixture:sourcey-docs", "--to", path.join(tempDir, "skills"), "--json"],
+        ["skill", "add", "fixture-marketplace:sourcey-docs", "--to", path.join(tempDir, "skills"), "--json"],
         { stdin: process.stdin, stdout, stderr },
         {
           ...process.env,

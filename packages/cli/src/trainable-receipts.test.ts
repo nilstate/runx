@@ -4,11 +4,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createArtifactEnvelope, appendLedgerEntries } from "../../artifacts/src/index.js";
+import { createArtifactEnvelope, appendLedgerEntries } from "@runxhq/core/artifacts";
 import { runCli } from "./index.js";
-import { writeLocalReceipt, writeReceiptOutcomeResolution } from "../../receipts/src/index.js";
-import { runLocalSkill, type Caller } from "../../runner-local/src/index.js";
-import type { SkillAdapter } from "../../executor/src/index.js";
+import { writeLocalReceipt, writeReceiptOutcomeResolution } from "@runxhq/core/receipts";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import type { SkillAdapter } from "@runxhq/core/executor";
 import { TRAINING_SCHEMA_REFS } from "./trainable-receipts.js";
 
 const caller: Caller = {

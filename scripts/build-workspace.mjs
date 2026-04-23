@@ -59,6 +59,7 @@ async function finalizePackage(directory) {
   const packageJson = JSON.parse(await readFile(path.join(directory, "package.json"), "utf8"));
   const workspaceRelativePath = toPosix(path.relative(workspaceRoot, directory));
   const runtimeEntry = path.join(runtimeOutDir, workspaceRelativePath, "src", "index.js");
+  const runtimePackageRoot = path.join(runtimeOutDir, workspaceRelativePath);
 
   if (!(await exists(runtimeEntry))) {
     if (!forcedRuntimeRebuild) {
@@ -75,8 +76,15 @@ async function finalizePackage(directory) {
   const isCli = packageJson.name === "@runxhq/cli";
   const isExecutable = Boolean(packageJson.bin?.runx);
 
-  if (isCli && mode === "pack") {
-    await writeCliPackDist({ directory, dist });
+  if (mode === "pack") {
+    await writePackDist({
+      directory,
+      dist,
+      compiledPackageRoot: runtimePackageRoot,
+      compiledEntry: path.join(dist, "src", "index.js"),
+      executable: isExecutable,
+      syncCliAssets: isCli,
+    });
     return;
   }
 
@@ -96,19 +104,24 @@ async function finalizePackage(directory) {
   }
 }
 
-async function writeCliPackDist({ directory, dist }) {
-  // Publish mode: produce a self-contained CLI dist that can be packed
-  // and installed without .build/runtime on disk.
+async function writePackDist({ directory, dist, compiledPackageRoot, compiledEntry, executable, syncCliAssets: shouldSyncCliAssets }) {
+  // Publish mode: produce package-local dist trees that can be packed
+  // without .build/runtime and without bundling sibling packages.
   await rm(dist, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   await mkdir(dist, { recursive: true });
-  await copyIntoDist(path.join(runtimeOutDir, "packages"), path.join(dist, "packages"));
+  await copyIntoDist(compiledPackageRoot, dist);
+  await stripSourceMaps(dist);
   await writeEntryWrapper({
     dist,
-    compiledEntry: path.join(dist, "packages", "cli", "src", "index.js"),
-    executable: true,
+    compiledEntry,
+    executable,
   });
-  await chmod(path.join(dist, "index.js"), 0o755);
-  await syncCliAssets(directory);
+  if (executable) {
+    await chmod(path.join(dist, "index.js"), 0o755);
+  }
+  if (shouldSyncCliAssets) {
+    await syncCliAssets(directory);
+  }
 }
 
 async function syncCliAssets(directory) {
@@ -190,7 +203,7 @@ async function syncOfficialSkillLock(directory) {
   if (!(await exists(source))) {
     return;
   }
-  const distTarget = path.join(directory, "dist", "packages", "cli", "src", "official-skills.lock.json");
+  const distTarget = path.join(directory, "dist", "src", "official-skills.lock.json");
   if (await exists(path.dirname(distTarget))) {
     await copyFileToTarget(source, distTarget);
   }
@@ -222,6 +235,27 @@ async function copyFilteredTree(sourceRoot, targetRoot, includeFile) {
 async function copyFileToTarget(source, target) {
   await mkdir(path.dirname(target), { recursive: true });
   await cp(source, target);
+}
+
+async function stripSourceMaps(directory) {
+  if (!(await exists(directory))) {
+    return;
+  }
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await stripSourceMaps(entryPath);
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith(".js.map")) {
+      await rm(entryPath, { force: true });
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith(".js")) {
+      const source = await readFile(entryPath, "utf8");
+      await writeFile(entryPath, source.replace(/\n\/\/# sourceMappingURL=.*\.js\.map\s*$/u, "\n"));
+    }
+  }
 }
 
 async function exists(filePath) {

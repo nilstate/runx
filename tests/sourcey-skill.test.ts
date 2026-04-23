@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 describe("sourcey skill", () => {
   const sourceyBin = resolveSourceyBin();
@@ -107,16 +107,19 @@ describe("sourcey skill", () => {
         throw new Error(result.status === "failure" ? result.execution.stderr || result.execution.errorMessage : result.status);
       }
 
-      const output = JSON.parse(result.execution.stdout) as {
+      const packet = JSON.parse(result.execution.stdout) as {
         schema: string;
-        verified: boolean;
-        output_dir: string;
-        contains_doctype: boolean;
-        discovery_report: { discovered: { brand_name: string; docs_inputs: { mode: string; config: string } } };
-        verification_report: { verified: boolean };
+        data: {
+          verified: boolean;
+          output_dir: string;
+          contains_doctype: boolean;
+          discovery_report: { discovered: { brand_name: string; docs_inputs: { mode: string; config: string } } };
+          verification_report: { verified: boolean };
+        };
       };
+      const output = packet.data;
+      expect(packet).toMatchObject({ schema: "runx.sourcey.packet.v1" });
       expect(output).toMatchObject({
-        schema: "runx.sourcey.packet.v1",
         verified: true,
         output_dir: outputDir,
         contains_doctype: true,
@@ -362,16 +365,19 @@ describe("sourcey skill", () => {
         throw new Error(result.status === "failure" ? result.execution.stderr || result.execution.errorMessage : result.status);
       }
 
-      const output = JSON.parse(result.execution.stdout) as {
+      const packet = JSON.parse(result.execution.stdout) as {
         schema: string;
-        verified: boolean;
-        output_dir: string;
-        contains_doctype: boolean;
-        project_brief: { writing_directives: { avoid: string[] } };
-        revision_bundle: { files: Array<{ path: string }> };
+        data: {
+          verified: boolean;
+          output_dir: string;
+          contains_doctype: boolean;
+          project_brief: { writing_directives: { avoid: string[] } };
+          revision_bundle: { files: Array<{ path: string }> };
+        };
       };
+      const output = packet.data;
+      expect(packet).toMatchObject({ schema: "runx.sourcey.packet.v1" });
       expect(output).toMatchObject({
-        schema: "runx.sourcey.packet.v1",
         verified: true,
         output_dir: outputDir,
         contains_doctype: true,

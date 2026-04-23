@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createFixtureMarketplaceAdapter, type MarketplaceAdapter, type SkillSearchResult } from "../packages/marketplaces/src/index.js";
-import { createFileRegistryStore, ingestSkillMarkdown } from "../packages/registry/src/index.js";
-import { installLocalSkill, runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { createFixtureMarketplaceAdapter, type MarketplaceAdapter, type SkillSearchResult } from "@runxhq/core/marketplaces";
+import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
+import { installLocalSkill, runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 const caller: Caller = {
   resolve: async (request) =>
@@ -99,7 +99,7 @@ runners:
 
     try {
       const install = await installLocalSkill({
-        ref: "fixture:sourcey-docs",
+        ref: "fixture-marketplace:sourcey-docs",
         registryStore: createFileRegistryStore(path.join(tempDir, "registry")),
         marketplaceAdapters: [createFixtureMarketplaceAdapter()],
         destinationRoot: path.join(tempDir, "skills"),
@@ -124,7 +124,7 @@ runners:
 
     try {
       const install = await installLocalSkill({
-        ref: "fixture:marketplace-portable",
+        ref: "fixture-marketplace:marketplace-portable",
         registryStore: createFileRegistryStore(path.join(tempDir, "registry")),
         marketplaceAdapters: [createFixtureMarketplaceAdapter()],
         destinationRoot: path.join(tempDir, "skills"),

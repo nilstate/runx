@@ -3,52 +3,72 @@
   "$id": "https://runx.ai/schemas/review-receipt-output.schema.json",
   "title": "runx review-receipt output",
   "description": "Output contract for the review-receipt skill. Produced by the agent-step reviewer and consumed by write-harness downstream of improve-skill.",
+  "additionalProperties": true,
   "type": "object",
-  "required": ["verdict", "failure_summary", "improvement_proposals", "next_harness_checks"],
+  "required": [
+    "verdict",
+    "failure_summary",
+    "improvement_proposals",
+    "next_harness_checks"
+  ],
   "properties": {
     "verdict": {
-      "type": "string",
-      "enum": ["pass", "needs_update", "blocked"],
-      "description": "Overall diagnosis. `pass` means no change needed; `needs_update` means one or more bounded improvements apply; `blocked` means the evidence is insufficient to decide."
+      "description": "Overall diagnosis. `pass` means no change needed; `needs_update` means one or more bounded improvements apply; `blocked` means the evidence is insufficient to decide.",
+      "anyOf": [
+        {
+          "const": "pass",
+          "type": "string"
+        },
+        {
+          "const": "needs_update",
+          "type": "string"
+        },
+        {
+          "const": "blocked",
+          "type": "string"
+        }
+      ]
     },
     "failure_summary": {
-      "type": "string",
-      "description": "One to three sentences naming the failing step, the failure class, and the root cause. For `pass`, restates why no change is needed."
+      "description": "One to three sentences naming the failing step, the failure class, and the root cause. For `pass`, restates why no change is needed.",
+      "type": "string"
     },
     "improvement_proposals": {
-      "type": "array",
       "description": "Bounded changes that would resolve the diagnosed failure. Empty when verdict is `pass`.",
+      "type": "array",
       "items": {
+        "additionalProperties": true,
         "type": "object",
-        "required": ["target", "change"],
+        "required": [
+          "target",
+          "change"
+        ],
         "properties": {
           "target": {
-            "type": "string",
-            "description": "What to change (e.g., SKILL.md, execution profile, graph step, input, fixture path)."
+            "description": "What to change (e.g., SKILL.md, execution profile, graph step, input, fixture path).",
+            "type": "string"
           },
           "change": {
-            "type": "string",
-            "description": "What specifically to change."
+            "description": "What specifically to change.",
+            "type": "string"
           },
           "rationale": {
-            "type": "string",
-            "description": "Why this fixes the root cause."
+            "description": "Why this fixes the root cause.",
+            "type": "string"
           },
           "risk": {
-            "type": "string",
-            "description": "What could go wrong with the change."
+            "description": "What could go wrong with the change.",
+            "type": "string"
           }
-        },
-        "additionalProperties": true
+        }
       }
     },
     "next_harness_checks": {
-      "type": "array",
       "description": "Replayable checks that should pass after the improvement lands.",
+      "type": "array",
       "items": {
         "type": "string"
       }
     }
-  },
-  "additionalProperties": true
+  }
 }

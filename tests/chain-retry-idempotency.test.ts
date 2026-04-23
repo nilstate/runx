@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import type { SkillAdapter } from "../packages/executor/src/index.js";
-import { runLocalGraph, type Caller } from "../packages/runner-local/src/index.js";
+import type { SkillAdapter } from "@runxhq/core/executor";
+import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,

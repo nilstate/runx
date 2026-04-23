@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { createIdeActionCore, createFixtureConnectService } from "../plugins/ide-core/src/index.js";
 import { registerRunxCommands } from "../plugins/antigravity/src/extension.js";
-import { createFileRegistryStore, ingestSkillMarkdown } from "../packages/registry/src/index.js";
+import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
 
 describe("ide plugin actions", () => {
   it("runs skills and surfaces input-resolution requests as structured output", async () => {

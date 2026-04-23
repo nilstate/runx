@@ -1,0 +1,40 @@
+{
+  "name": "@runxhq/adapters",
+  "version": "0.1.0",
+  "description": "Runx concrete runtime adapters.",
+  "private": false,
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./a2a": {
+      "types": "./dist/src/a2a/index.d.ts",
+      "import": "./dist/src/a2a/index.js"
+    },
+    "./cli-tool": {
+      "types": "./dist/src/cli-tool/index.d.ts",
+      "import": "./dist/src/cli-tool/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/src/mcp/index.d.ts",
+      "import": "./dist/src/mcp/index.js"
+    }
+  },
+  "peerDependencies": {
+    "@runxhq/core": "workspace:^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@runxhq/core": {
+      "optional": true
+    }
+  }
+}

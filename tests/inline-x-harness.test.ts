@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { runHarnessTarget } from "../packages/harness/src/index.js";
+import { runHarnessTarget } from "@runxhq/core/harness";
 
 describe("inline x harness", () => {
   it("runs the evolve inline harness suite successfully", async () => {

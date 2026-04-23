@@ -2,18 +2,49 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://runx.ai/schemas/registry-binding.schema.json",
   "title": "runx upstream registry binding",
+  "additionalProperties": true,
   "type": "object",
-  "required": ["schema", "state", "skill", "upstream", "registry", "harness"],
+  "required": [
+    "schema",
+    "state",
+    "skill",
+    "upstream",
+    "registry",
+    "harness"
+  ],
   "properties": {
     "schema": {
-      "const": "runx.registry_binding.v1"
+      "const": "runx.registry_binding.v1",
+      "type": "string"
     },
     "state": {
-      "enum": ["registry_binding_drafted", "registry_bound", "harness_verified", "published"]
+      "anyOf": [
+        {
+          "const": "registry_binding_drafted",
+          "type": "string"
+        },
+        {
+          "const": "registry_bound",
+          "type": "string"
+        },
+        {
+          "const": "harness_verified",
+          "type": "string"
+        },
+        {
+          "const": "published",
+          "type": "string"
+        }
+      ]
     },
     "skill": {
+      "additionalProperties": true,
       "type": "object",
-      "required": ["id", "name", "description"],
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
       "properties": {
         "id": {
           "type": "string"
@@ -24,12 +55,20 @@
         "description": {
           "type": "string"
         }
-      },
-      "additionalProperties": true
+      }
     },
     "upstream": {
+      "additionalProperties": true,
       "type": "object",
-      "required": ["host", "owner", "repo", "path", "commit", "blob_sha", "source_of_truth"],
+      "required": [
+        "host",
+        "owner",
+        "repo",
+        "path",
+        "commit",
+        "blob_sha",
+        "source_of_truth"
+      ],
       "properties": {
         "host": {
           "type": "string"
@@ -65,20 +104,40 @@
           "type": "string"
         },
         "source_of_truth": {
-          "const": true
+          "const": true,
+          "type": "boolean"
         }
-      },
-      "additionalProperties": true
+      }
     },
     "registry": {
+      "additionalProperties": true,
       "type": "object",
-      "required": ["owner", "trust_tier", "version", "profile_path", "materialized_package_is_registry_artifact"],
+      "required": [
+        "owner",
+        "trust_tier",
+        "version",
+        "profile_path",
+        "materialized_package_is_registry_artifact"
+      ],
       "properties": {
         "owner": {
           "type": "string"
         },
         "trust_tier": {
-          "enum": ["upstream-owned", "community", "unverified"]
+          "anyOf": [
+            {
+              "const": "upstream-owned",
+              "type": "string"
+            },
+            {
+              "const": "community",
+              "type": "string"
+            },
+            {
+              "const": "unverified",
+              "type": "string"
+            }
+          ]
         },
         "version": {
           "type": "string"
@@ -93,17 +152,34 @@
           "type": "string"
         },
         "materialized_package_is_registry_artifact": {
-          "const": true
+          "const": true,
+          "type": "boolean"
         }
-      },
-      "additionalProperties": true
+      }
     },
     "harness": {
+      "additionalProperties": true,
       "type": "object",
-      "required": ["status", "case_count"],
+      "required": [
+        "status",
+        "case_count"
+      ],
       "properties": {
         "status": {
-          "enum": ["pending", "failed", "harness_verified"]
+          "anyOf": [
+            {
+              "const": "pending",
+              "type": "string"
+            },
+            {
+              "const": "failed",
+              "type": "string"
+            },
+            {
+              "const": "harness_verified",
+              "type": "string"
+            }
+          ]
         },
         "case_count": {
           "type": "number"
@@ -117,9 +193,7 @@
             "type": "string"
           }
         }
-      },
-      "additionalProperties": true
+      }
     }
-  },
-  "additionalProperties": true
+  }
 }

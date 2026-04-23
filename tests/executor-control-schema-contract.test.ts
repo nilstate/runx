@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CONTROL_SCHEMA_REFS, validateCredentialEnvelope } from "../packages/executor/src/index.js";
+import { CONTROL_SCHEMA_REFS, validateCredentialEnvelope } from "@runxhq/core/executor";
 
 describe("executor control schema contracts", () => {
   it("exposes the published credential envelope schema ref", () => {

@@ -5,8 +5,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
-import { parseRunnerManifestYaml, parseSkillMarkdown, validateRunnerManifest, validateSkill } from "../packages/parser/src/index.js";
-import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { parseRunnerManifestYaml, parseSkillMarkdown, validateRunnerManifest, validateSkill } from "@runxhq/core/parser";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 describe("sourcey parser", () => {
   it("keeps the portable skill standard while X owns the mixed-runner contract", async () => {

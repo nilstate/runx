@@ -8,12 +8,12 @@ import {
   createFileRegistryStore,
   HttpCachedRegistryStore,
   ingestSkillMarkdown,
-} from "../packages/registry/src/index.js";
-import { runLocalGraph, type Caller } from "../packages/runner-local/src/index.js";
+} from "@runxhq/core/registry";
+import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
 import {
   isRegistryRef,
   parseRegistryRef,
-} from "../packages/runner-local/src/registry-resolver.js";
+} from "@runxhq/core/runner-local";
 
 const caller: Caller = {
   resolve: async () => undefined,
@@ -326,7 +326,7 @@ steps:
 
       const cache = createFileRegistryStore(path.join(tempDir, "cache"));
       const store = new HttpCachedRegistryStore({
-        remoteBaseUrl: "https://registry.example",
+        remoteBaseUrl: "https:/@runxhq/core/registry.example",
         installationId: "inst_test",
         cache,
         fetchImpl,

@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
-import { inspectLocalGraph, runLocalGraph, type Caller } from "../packages/runner-local/src/index.js";
+import { inspectLocalGraph, runLocalGraph, type Caller } from "@runxhq/core/runner-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,

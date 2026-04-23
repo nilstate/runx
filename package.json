@@ -14,8 +14,9 @@
     ]
   },
   "scripts": {
-    "build": "node scripts/build-workspace.mjs --pack",
-    "build:pack": "node scripts/build-workspace.mjs --pack",
+    "build": "pnpm schemas:generate && node scripts/build-workspace.mjs --pack",
+    "build:pack": "pnpm schemas:generate && node scripts/build-workspace.mjs --pack",
+    "schemas:generate": "tsx scripts/generate-contract-schemas.ts",
     "cli:link-global": "pnpm build && node scripts/link-global-cli.mjs",
     "cli:unlink-global": "node scripts/link-global-cli.mjs --unlink",
     "cli:check-global": "node scripts/link-global-cli.mjs --check",
@@ -27,7 +28,9 @@
     "lint": "pnpm typecheck"
   },
   "devDependencies": {
+    "@runxhq/adapters": "workspace:^0.1.0",
     "@runxhq/authoring": "workspace:*",
+    "@runxhq/core": "workspace:^0.1.0",
     "@sinclair/typebox": "^0.34.41",
     "@types/node": "^24.0.0",
     "tsx": "^4.20.6",

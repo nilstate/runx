@@ -10,9 +10,9 @@ import {
   validateRunnerManifest,
   type RunnerHarnessCase,
   type SkillRunnerManifest,
-} from "../packages/parser/src/index.js";
-import { runLocalSkill } from "../packages/runner-local/src/index.js";
-import { createStructuredCaller } from "../packages/sdk-js/src/index.js";
+} from "@runxhq/core/parser";
+import { runLocalSkill } from "@runxhq/core/runner-local";
+import { createStructuredCaller } from "@runxhq/core/sdk";
 
 interface ProvingGroundExpectation {
   readonly requestId: string;

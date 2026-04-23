@@ -83,9 +83,10 @@ describe("Node CLI package", () => {
     expect(files).toContain("bin/runx.js");
     expect(files).toContain("dist/index.js");
     expect(files).toContain("dist/index.d.ts");
-    expect(files).toContain("dist/packages/cli/src/index.js");
-    expect(files).toContain("dist/packages/cli/src/official-skills.lock.json");
-    expect(files).toContain("dist/packages/runner-local/src/index.js");
+    expect(files).toContain("dist/src/index.js");
+    expect(files).toContain("dist/src/official-skills.lock.json");
+    expect(files).not.toContain("dist/packages/core/src/runner-local/index.js");
+    expect(files).not.toContain("dist/packages/runner-local/src/index.js");
     expect(files).toContain("skills/scafld/run.mjs");
     expect(files).toContain("tools/outbox/build_pull_request/manifest.json");
     expect(files).toContain("tools/outbox/build_pull_request/run.mjs");

@@ -6,6 +6,14 @@
     "strict": true,
     "declaration": true,
     "sourceMap": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@runxhq/adapters": ["packages/adapters/src/index.ts"],
+      "@runxhq/adapters/*": ["packages/adapters/src/*/index.ts"],
+      "@runxhq/contracts": ["packages/contracts/src/index.ts"],
+      "@runxhq/core": ["packages/core/src/index.ts"],
+      "@runxhq/core/*": ["packages/core/src/*/index.ts"]
+    }
   }
 }

@@ -4,7 +4,7 @@ import {
   type RegistrySkillVersion,
   type RegistryStore,
   type TrustSignal,
-} from "../../../packages/registry/src/index.js";
+} from "@runxhq/core/registry";
 
 export interface SkillPageVersion {
   readonly version: string;

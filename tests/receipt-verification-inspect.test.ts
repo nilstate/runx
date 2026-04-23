@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { writeLocalReceipt } from "../packages/receipts/src/index.js";
-import { inspectLocalReceipt, listLocalHistory } from "../packages/runner-local/src/index.js";
+import { writeLocalReceipt } from "@runxhq/core/receipts";
+import { inspectLocalReceipt, listLocalHistory } from "@runxhq/core/runner-local";
 
 describe("receipt verification for inspect/history", () => {
   it("marks locally signed receipts as verified", async () => {

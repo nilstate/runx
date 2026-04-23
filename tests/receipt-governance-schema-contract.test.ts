@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CONTROL_SCHEMA_REFS, validateGraphReceiptGovernance, validateScopeAdmission } from "../packages/receipts/src/index.js";
+import { CONTROL_SCHEMA_REFS, validateGraphReceiptGovernance, validateScopeAdmission } from "@runxhq/core/receipts";
 
 describe("receipt governance schema contracts", () => {
   it("exposes the published scope admission schema ref", () => {

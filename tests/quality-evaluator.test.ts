@@ -3,8 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { evaluateArtifactQuality } from "../packages/harness/src/index.js";
-import { parseSkillMarkdown, validateSkill } from "../packages/parser/src/index.js";
+import { evaluateArtifactQuality } from "@runxhq/core/harness";
+import { parseSkillMarkdown, validateSkill } from "@runxhq/core/parser";
 
 interface BadArtifactFixture {
   readonly skill: string;

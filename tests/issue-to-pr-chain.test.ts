@@ -6,8 +6,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parseRunnerManifestYaml, validateRunnerManifest } from "../packages/parser/src/index.js";
-import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 import { fetchGitHubIssueThread } from "../tools/thread/github_adapter.mjs";
 
 const scafldBin = process.env.SCAFLD_BIN ?? "/home/kam/dev/scafld/cli/scafld";

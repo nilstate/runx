@@ -1,0 +1,76 @@
+{
+  "name": "@runxhq/core",
+  "version": "0.1.0",
+  "description": "Runx core runtime domains: parser, runner, policy, receipts, registry, harness, knowledge, config, executor, and SDK.",
+  "private": false,
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./artifacts": {
+      "types": "./dist/src/artifacts/index.d.ts",
+      "import": "./dist/src/artifacts/index.js"
+    },
+    "./config": {
+      "types": "./dist/src/config/index.d.ts",
+      "import": "./dist/src/config/index.js"
+    },
+    "./executor": {
+      "types": "./dist/src/executor/index.d.ts",
+      "import": "./dist/src/executor/index.js"
+    },
+    "./harness": {
+      "types": "./dist/src/harness/index.d.ts",
+      "import": "./dist/src/harness/index.js"
+    },
+    "./knowledge": {
+      "types": "./dist/src/knowledge/index.d.ts",
+      "import": "./dist/src/knowledge/index.js"
+    },
+    "./marketplaces": {
+      "types": "./dist/src/marketplaces/index.d.ts",
+      "import": "./dist/src/marketplaces/index.js"
+    },
+    "./parser": {
+      "types": "./dist/src/parser/index.d.ts",
+      "import": "./dist/src/parser/index.js"
+    },
+    "./policy": {
+      "types": "./dist/src/policy/index.d.ts",
+      "import": "./dist/src/policy/index.js"
+    },
+    "./receipts": {
+      "types": "./dist/src/receipts/index.d.ts",
+      "import": "./dist/src/receipts/index.js"
+    },
+    "./registry": {
+      "types": "./dist/src/registry/index.d.ts",
+      "import": "./dist/src/registry/index.js"
+    },
+    "./runner-local": {
+      "types": "./dist/src/runner-local/index.d.ts",
+      "import": "./dist/src/runner-local/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/src/sdk/index.d.ts",
+      "import": "./dist/src/sdk/index.js"
+    },
+    "./state-machine": {
+      "types": "./dist/src/state-machine/index.d.ts",
+      "import": "./dist/src/state-machine/index.js"
+    }
+  },
+  "dependencies": {
+    "@runxhq/contracts": "workspace:^0.1.0",
+    "yaml": "^2.8.3"
+  }
+}

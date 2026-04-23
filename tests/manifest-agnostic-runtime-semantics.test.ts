@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { latestVerifiedReceiptOutcomeResolution, writeReceiptOutcomeResolution } from "../packages/receipts/src/index.js";
-import { runLocalSkill, type Caller } from "../packages/runner-local/src/index.js";
+import { latestVerifiedReceiptOutcomeResolution, writeReceiptOutcomeResolution } from "@runxhq/core/receipts";
+import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 const caller: Caller = {
   resolve: async () => undefined,
