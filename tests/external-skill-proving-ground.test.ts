@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import {
   parseRunnerManifestYaml,
   validateRunnerManifest,
@@ -342,6 +343,7 @@ async function assertFreshBoundary(options: {
     runner: options.prepared.runner,
     inputs: options.prepared.inputs,
     caller,
+    adapters: createDefaultSkillAdapters(),
     env: options.prepared.env ?? { ...process.env, RUNX_CWD: process.cwd() },
     receiptDir: path.join(options.tempDir, "receipts"),
     runxHome: path.join(options.tempDir, "home"),

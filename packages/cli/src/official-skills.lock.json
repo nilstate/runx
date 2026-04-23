@@ -11,7 +11,7 @@
   },
   {
     "skill_id": "runx/draft-content",
-    "version": "sha-227547e9be26",
+    "version": "sha-6e6bdb50ef12",
     "digest": "f4cc92b95c71d5d3f553ea115e7f8520f0613c24de8a4aad378e32700c7274b2"
   },
   {
@@ -26,7 +26,7 @@
   },
   {
     "skill_id": "runx/evolve",
-    "version": "sha-50b035062a20",
+    "version": "sha-c35e627e513b",
     "digest": "3326d928553c7f5f91e9339cbf5b681bacccaf67b87c72874858221c54a3dec1"
   },
   {
@@ -41,7 +41,7 @@
   },
   {
     "skill_id": "runx/issue-triage",
-    "version": "sha-280c779785c9",
+    "version": "sha-d9c83fc43fb1",
     "digest": "df99a13a989e8a81c34af5ff5aa5f708c978a91082dfb8ca1f966764be028ef4"
   },
   {
@@ -56,7 +56,7 @@
   },
   {
     "skill_id": "runx/reflect-digest",
-    "version": "sha-fd21d69f9a88",
+    "version": "sha-4c0fc08ce78f",
     "digest": "b4c3cff90454e143b454c5ae804bbb94879b8d2d8d2315ce269a3ddb5e0cf275"
   },
   {
@@ -91,7 +91,7 @@
   },
   {
     "skill_id": "runx/skill-lab",
-    "version": "sha-1cd834f7c054",
+    "version": "sha-0315b7372277",
     "digest": "c91f9aec71270384a8dec39c4c919005c75c3e4467363e8f7bbcc6a7e3d1fdcd"
   },
   {
@@ -116,7 +116,7 @@
   },
   {
     "skill_id": "runx/write-harness",
-    "version": "sha-17b0d2de5e24",
-    "digest": "e0cdeeaa61c79093d3704e5c53aef538eb1864badd46b3489c5a75836f1d0387"
+    "version": "sha-87bc04e6c4e6",
+    "digest": "584dd977b6b6454d5dad8987b88065a0864aadabc56ba1d522a419303bc58979"
   }
 ]

@@ -1,5 +1,5 @@
 skill: evolve
-version: "0.1.1"
+version: "0.1.2"
 
 catalog:
   kind: chain
@@ -125,11 +125,15 @@ runners:
               spec_document: object
           instructions: >
             Deeply analyze the current repository and recommend one bounded,
-            high-leverage improvement. Produce an opportunity_report,
-            recommended_objective, change_plan, and spec_document grounded in
-            real repo evidence. This is introspection and recommendation only:
-            do not propose hidden execution loops, mutations, or approval
-            gating in this runner.
+            high-leverage improvement grounded in repo_profile and other visible
+            repo evidence. Produce an opportunity_report,
+            recommended_objective, change_plan, and spec_document that a
+            maintainer could review without reverse-engineering hidden context.
+            If the repo evidence is thin or the highest-leverage move is still
+            ambiguous, keep the recommendation narrow and say what evidence is
+            missing instead of inventing a broad rewrite. This is introspection
+            and recommendation only: do not propose hidden execution loops,
+            mutations, or approval gating in this runner.
           allowed_tools:
             - fs.read
             - git.status
@@ -197,12 +201,19 @@ runners:
               change_plan: object
               spec_document: object
           instructions: >
-            Using the evolve skill environment, produce a bounded objective_brief,
-            diagnosis_report, change_plan, and spec_document. Keep them practical
-            and directly actionable for the current repository. This runner ends
-            at plan/spec artifacts. Do not imply hidden mutation, publish, or
-            autonomous execution. If later execution is needed, name the real
-            downstream skill or substrate explicitly and keep the lane bounded.
+            Using objective, terminate, repo_root, and repo_profile, produce a
+            bounded objective_brief, diagnosis_report, change_plan, and
+            spec_document for the current repository. Keep every field grounded
+            in visible repo evidence; do not generalize beyond what the repo
+            profile and cited surfaces support. This runner ends at plan/spec
+            artifacts only. Do not imply hidden mutation, publish, or
+            autonomous execution. If the evidence is too thin for a responsible
+            patch or PR lane, keep the plan narrow and explicit about the
+            missing evidence instead of inventing scope. spec_document must
+            remain a planning artifact for terminate=spec and must not assume a
+            patch or PR lane already exists. If later execution is needed, name
+            the real downstream skill or substrate explicitly and keep the lane
+            bounded.
           allowed_tools:
             - fs.read
             - git.status

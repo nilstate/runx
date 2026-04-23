@@ -1,5 +1,5 @@
 skill: reflect-digest
-version: "0.1.1"
+version: "0.1.2"
 
 catalog:
   kind: chain
@@ -276,8 +276,17 @@ runners:
             outputs:
               proposals: array
           instructions: >
-            Review the grouped_reflections input and draft at most one bounded
-            proposal packet per skill_ref. Emit only proposal packets that have
+            Review grouped_reflections and draft at most one bounded proposal
+            packet per skill_ref. If no group clears the support and confidence
+            floors, or the grouped evidence does not support a bounded fix,
+            return {"proposals": []}. Emit only proposal packets that have
             enough evidence to justify a later governed pull-request lane.
             Every proposal must include skill_ref, supporting_receipt_ids,
-            draft_pull_request, and outbox_entry. Do not publish or push.
+            draft_pull_request, and outbox_entry, and each field must stay
+            grounded in the grouped reflection entry for that same skill_ref.
+            draft_pull_request should describe the repeated signal and the
+            bounded follow-up; it must not pretend code has already changed.
+            outbox_entry must stay in draft status and align to the same
+            skill_ref. Do not merge multiple skills into one proposal, do not
+            invent missing receipt ids or target repos, and do not publish or
+            push.

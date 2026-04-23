@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { mkdtemp, readFile } from "node:fs/promises";
 
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import { runLocalSkill } from "@runxhq/core/runner-local";
 import {
   fetchGitHubIssueThread,
@@ -47,6 +48,7 @@ const result = await runLocalSkill({
     scafld_bin: scafldBin,
   },
   caller,
+  adapters: createDefaultSkillAdapters(),
   env: process.env,
   receiptDir,
   runxHome,

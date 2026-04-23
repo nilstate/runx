@@ -161,6 +161,18 @@ runx harness ./skills/evolve --json
 Inline harness keeps representative cases beside the skill package. Standalone
 fixture YAML remains supported for larger shared or cross-package scenarios.
 
+## Doctor And Dogfood
+
+For the core first-party skill lane, run:
+
+```bash
+pnpm dogfood:core-skills
+```
+
+This rebuilds the workspace packages, runs `runx doctor --json`, and proves the
+official skills reach a clean fresh-caller boundary with the current adapter
+bundle.
+
 ## Build And Pack
 
 ```bash
