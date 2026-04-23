@@ -12,7 +12,7 @@ harness:
     - name: issue-triage-discover-queue
       runner: discover
       inputs:
-        repository: nilstate/runx
+        repository: runxhq/runx
         query: find unanswered issues where a maintainer response would unblock progress
         operator_context: Respond as a maintainer who prefers concise, factual clarifications over speculative promises.
       caller:
@@ -39,7 +39,7 @@ harness:
     - name: issue-triage-draft-response
       runner: respond
       inputs:
-        issue_url: https://github.com/nilstate/runx/issues/241
+        issue_url: https://github.com/runxhq/runx/issues/241
         objective: Draft the next helpful maintainer response
         maintainer_context: Respond as a maintainer who prefers concise, factual clarifications over speculative promises.
       caller:

@@ -18,7 +18,7 @@ describe("executor control schema contracts", () => {
         grant_id: "grant_1",
         scope_family: "github_repo",
         authority_kind: "read_only",
-        target_repo: "nilstate/aster",
+        target_repo: "runxhq/aster",
       },
       material_ref: "nango:github:conn_1",
     })).toEqual({
@@ -31,7 +31,7 @@ describe("executor control schema contracts", () => {
         grant_id: "grant_1",
         scope_family: "github_repo",
         authority_kind: "read_only",
-        target_repo: "nilstate/aster",
+        target_repo: "runxhq/aster",
         target_locator: undefined,
       },
       material_ref: "nango:github:conn_1",

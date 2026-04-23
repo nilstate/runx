@@ -77,8 +77,8 @@ harness:
           channel: github_issue_comment
           body: The canonical output directory is `.sourcey/runx-docs`.
         target:
-          thread_locator: github.com/nilstate/runx/issues/241
-          repo: nilstate/runx
+          thread_locator: github.com/runxhq/runx/issues/241
+          repo: runxhq/runx
       caller:
         answers:
           agent_step.draft-content-handoff.output:

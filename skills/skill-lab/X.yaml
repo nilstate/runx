@@ -12,7 +12,7 @@ harness:
       inputs:
         objective: Add a governed release-notes skill
         project_context: runx OSS registry launch surface
-        thread_locator: github://nilstate/runx/issues/118
+        thread_locator: github://runxhq/runx/issues/118
         thread:
           kind: runx.thread.v1
           adapter:
@@ -20,7 +20,7 @@ harness:
             provider: github
             surface: issue_thread
           thread_kind: work_item
-          thread_locator: github://nilstate/runx/issues/118
+          thread_locator: github://runxhq/runx/issues/118
           entries: []
           decisions: []
           outbox: []
@@ -30,7 +30,7 @@ harness:
           agent_step.work-plan.output:
             change_set:
               change_set_id: change_set_release_notes_skill
-              thread_locator: github://nilstate/runx/issues/118
+              thread_locator: github://runxhq/runx/issues/118
               summary: Add a governed release-notes skill.
               category: other
               severity: medium
