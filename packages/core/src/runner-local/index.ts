@@ -7,14 +7,11 @@ export * from "./history.js";
 export { createCallerAgentAdapter, createCallerAgentStepAdapter, createCallerApprovalAdapter } from "./caller-adapters.js";
 export type { MaterializedContextEdge } from "./graph-context.js";
 
-import { readFile, stat } from "node:fs/promises";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 
 import {
   materializeArtifacts,
   readLedgerEntries,
-  type ArtifactContract,
-  type ArtifactEnvelope,
 } from "../artifacts/index.js";
 import {
   appendGraphCompletedLedgerEntry,
@@ -45,26 +42,20 @@ import {
   type ContextDocument,
   executeSkill,
   type AdapterInvokeResult,
-  type AgentWorkRequest,
   type ApprovalGate,
   type CredentialEnvelope,
   type ResolutionRequest,
   type ResolutionResponse,
   type SkillAdapter,
-  validateOutputContract,
 } from "../executor/index.js";
 import {
   findGraphStep,
   materializeContext,
-  resolveOutputPath,
   type GraphStepOutput,
   type MaterializedContextEdge,
 } from "./graph-context.js";
-import { createFileKnowledgeStore } from "../knowledge/index.js";
 import {
   loadRunxWorkspacePolicy,
-  resolveLocalSkillProfile,
-  resolveRunxKnowledgeDir,
   type RunxWorkspacePolicy,
 } from "../config/index.js";
 import {
@@ -75,41 +66,25 @@ import {
   qualityProfileContext,
   skillQualityProfileReceiptMetadata,
   voiceProfileReceiptMetadata,
-  type PreparedAgentContext,
 } from "./context.js";
 import {
   parseGraphYaml,
-  parseRunnerManifestYaml,
   parseSkillMarkdown,
-  extractSkillQualityProfile,
-  parseToolManifestJson,
   resolvePostRunReflectPolicy,
   validateGraph,
-  validateSkillArtifactContract,
-  validateRunnerManifest,
-  validateSkillSource,
   validateSkill,
-  validateToolManifest,
   type ExecutionGraph,
-  type GraphPolicy,
   type GraphStep,
   type PostRunReflectPolicy,
-  type SkillRunnerDefinition,
-  type SkillSandbox,
-  type ValidatedTool,
   type ValidatedSkill,
 } from "../parser/index.js";
 import {
   admitLocalSkill,
   admitRetryPolicy,
-  sandboxRequiresApproval,
   type GraphScopeGrant,
   type LocalAdmissionGrant,
 } from "../policy/index.js";
 import {
-  hashString,
-  hashStable,
-  listLocalReceipts,
   uniqueReceiptId,
   writeLocalGraphReceipt,
   writeLocalReceipt,
@@ -131,21 +106,13 @@ import {
   planSequentialGraphTransition,
   transitionSequentialGraph,
   transitionSingleStep,
-  type FanoutSyncDecision,
-  type SequentialGraphPlan,
   type SequentialGraphState,
   type SingleStepState,
 } from "../state-machine/index.js";
 import type { RegistryStore } from "../registry/index.js";
 import {
-  defaultRegistrySkillCacheDir,
-  isRegistryRef,
-  materializeRegistrySkill,
-} from "./registry-resolver.js";
-import {
   mergeExecutionSemantics,
   normalizeExecutionSemantics,
-  type NormalizedExecutionSemantics,
 } from "./execution-semantics.js";
 import {
   buildDeniedGraphStepRun,
@@ -160,6 +127,12 @@ import {
 import { materializeDeclaredInputs, readResumedSelectedRunner, resolveInputs } from "./inputs.js";
 import { defaultReceiptDir } from "./receipt-paths.js";
 import {
+  approvalReceiptMetadata,
+  approveSandboxEscalationIfNeeded,
+  withSandboxApproval,
+  writeApprovalDeniedReceipt,
+} from "./approval.js";
+import {
   buildInlineGraphStepSkill,
   loadGraphStepExecutables,
   materializeInlineGraph,
@@ -168,7 +141,22 @@ import {
   resolveSkillReference,
   resolveSkillRunner,
 } from "./execution-targets.js";
+import {
+  admitGraphTransition,
+  hydrateGraphFromLedger,
+  resolveSequentialGraphFailureReason,
+} from "./graph-hydration.js";
 import { projectReflectIfEnabled } from "./reflect.js";
+import {
+  buildRetryReceiptContext,
+  defaultLocalGraphGrant,
+  indexReceiptIfEnabled,
+  isAgentMediatedSource,
+  mergeMetadata,
+  runnerTrustMetadata,
+  unique,
+  type RetryReceiptContext,
+} from "./runner-helpers.js";
 
 export interface ApprovalDecision {
   readonly gate: ApprovalGate;
@@ -222,13 +210,6 @@ export interface RunLocalSkillOptions {
   readonly voiceProfile?: ContextDocument;
   readonly voiceProfilePath?: string;
   readonly workspacePolicy?: RunxWorkspacePolicy;
-}
-
-async function resolveCallerRequest(
-  caller: Caller,
-  request: ResolutionRequest,
-): Promise<ResolutionResponse | undefined> {
-  return await caller.resolve(request);
 }
 
 interface RunResolvedSkillOptions {
@@ -370,13 +351,6 @@ export interface GraphStepRun {
   readonly outcome?: ReceiptOutcome;
   readonly surfaceRefs?: readonly ReceiptSurfaceRef[];
   readonly evidenceRefs?: readonly ReceiptSurfaceRef[];
-}
-
-interface RetryReceiptContext {
-  readonly attempt: number;
-  readonly maxAttempts: number;
-  readonly ruleFired: string;
-  readonly idempotencyKeyHash?: string;
 }
 
 export type RunLocalGraphResult =
@@ -893,389 +867,6 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     state,
     receipt,
   };
-}
-
-async function approveSandboxEscalationIfNeeded(skill: ValidatedSkill, caller: Caller): Promise<ApprovalDecision | undefined> {
-  if (!sandboxRequiresApproval(skill.source.sandbox)) {
-    return undefined;
-  }
-
-  const gate: ApprovalGate = {
-    id: `sandbox.${skill.name}.unrestricted-local-dev`,
-    type: "sandbox",
-    reason: `Skill '${skill.name}' requests unrestricted-local-dev sandbox authority.`,
-    summary: {
-      skill_name: skill.name,
-      source_type: skill.source.type,
-      sandbox_profile: "unrestricted-local-dev",
-    },
-  };
-  await caller.report({
-    type: "resolution_requested",
-    message: gate.reason,
-    data: {
-      kind: "approval",
-      requestId: gate.id,
-      gate,
-    },
-  });
-  const resolution = await resolveCallerRequest(caller, {
-    id: gate.id,
-    kind: "approval",
-    gate,
-  });
-  const approved = typeof resolution?.payload === "boolean" ? resolution.payload : false;
-  await caller.report({
-    type: "resolution_resolved",
-    message: approved ? `Approval ${gate.id} approved.` : `Approval ${gate.id} denied.`,
-    data: {
-      kind: "approval",
-      requestId: gate.id,
-      gate,
-      approved,
-      actor: resolution?.actor ?? "human",
-    },
-  });
-  return {
-    gate,
-    approved,
-  };
-}
-
-function withSandboxApproval(skill: ValidatedSkill, approvedSandboxEscalation: boolean): ValidatedSkill {
-  if (!approvedSandboxEscalation || !skill.source.sandbox) {
-    return skill;
-  }
-
-  const sandbox: SkillSandbox = {
-    ...skill.source.sandbox,
-    approvedEscalation: true,
-  };
-  return {
-    ...skill,
-    source: {
-      ...skill.source,
-      sandbox,
-    },
-  };
-}
-
-async function writeApprovalDeniedReceipt(options: {
-  readonly skill: ValidatedSkill;
-  readonly inputs: Readonly<Record<string, unknown>>;
-  readonly reasons: readonly string[];
-  readonly approval: ApprovalDecision;
-  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
-  readonly executionSemantics: NormalizedExecutionSemantics;
-  readonly runOptions: Pick<
-    RunResolvedSkillOptions,
-    "receiptDir" | "runxHome" | "env" | "parentReceipt" | "contextFrom"
-  >;
-}): Promise<LocalSkillReceipt> {
-  const startedAt = new Date().toISOString();
-  return await writeLocalReceipt({
-    receiptDir: options.runOptions.receiptDir ?? defaultReceiptDir(options.runOptions.env),
-    runxHome: options.runOptions.runxHome ?? options.runOptions.env?.RUNX_HOME,
-    skillName: options.skill.name,
-    sourceType: options.skill.source.type,
-    inputs: options.inputs,
-    stdout: "",
-    stderr: options.reasons.join("; "),
-    execution: {
-      status: "failure",
-      exitCode: null,
-      signal: null,
-      durationMs: 0,
-      errorMessage: options.reasons.join("; "),
-      metadata: mergeMetadata(
-        runnerTrustMetadata(options.skill.source.type),
-        approvalReceiptMetadata(options.approval),
-        options.receiptMetadata,
-      ),
-    },
-    startedAt,
-    completedAt: startedAt,
-    parentReceipt: options.runOptions.parentReceipt,
-    contextFrom: options.runOptions.contextFrom,
-    disposition: "policy_denied",
-    inputContext: options.executionSemantics.inputContext,
-    outcomeState: options.executionSemantics.outcomeState,
-    outcome: options.executionSemantics.outcome,
-    surfaceRefs: options.executionSemantics.surfaceRefs,
-    evidenceRefs: options.executionSemantics.evidenceRefs,
-  });
-}
-
-function approvalReceiptMetadata(approval: ApprovalDecision): Readonly<Record<string, unknown>> {
-  return {
-    approval: {
-      gate_id: approval.gate.id,
-      gate_type: approval.gate.type ?? "unspecified",
-      decision: approval.approved ? "approved" : "denied",
-      reason: approval.gate.reason,
-      summary: approval.gate.summary,
-    },
-  };
-}
-
-function admitGraphTransition(
-  policy: GraphPolicy | undefined,
-  stepId: string,
-  outputs: ReadonlyMap<string, GraphStepOutput>,
-): { readonly status: "allow" } | { readonly status: "deny"; readonly reason: string } {
-  const gates = policy?.transitions.filter((gate) => gate.to === stepId) ?? [];
-  for (const gate of gates) {
-    let value: unknown;
-    try {
-      value = resolveTransitionGateValue(outputs, gate.field);
-    } catch (error) {
-      return {
-        status: "deny",
-        reason: error instanceof Error ? error.message : `unable to resolve policy field '${gate.field}'`,
-      };
-    }
-    if (gate.equals !== undefined && !isDeepEqual(value, gate.equals)) {
-      return {
-        status: "deny",
-        reason: `transition policy blocked step '${stepId}': expected ${gate.field} == ${JSON.stringify(gate.equals)}`,
-      };
-    }
-    if (gate.notEquals !== undefined && isDeepEqual(value, gate.notEquals)) {
-      return {
-        status: "deny",
-        reason: `transition policy blocked step '${stepId}': expected ${gate.field} != ${JSON.stringify(gate.notEquals)}`,
-      };
-    }
-  }
-  return { status: "allow" };
-}
-
-function resolveTransitionGateValue(
-  outputs: ReadonlyMap<string, GraphStepOutput>,
-  field: string,
-): unknown {
-  const dotIndex = field.indexOf(".");
-  if (dotIndex <= 0) {
-    throw new Error(`invalid transition policy field '${field}'`);
-  }
-  const stepId = field.slice(0, dotIndex);
-  const outputPath = field.slice(dotIndex + 1);
-  const output = outputs.get(stepId);
-  if (!output) {
-    throw new Error(`transition policy references missing step '${stepId}'`);
-  }
-  return resolveOutputPath(output, outputPath);
-}
-
-function hydrateGraphFromLedger(options: {
-  readonly entries: readonly ArtifactEnvelope[];
-  readonly graph: ExecutionGraph;
-  readonly graphStepCache: ReadonlyMap<string, ValidatedSkill>;
-  readonly skillEnvironment?: {
-    readonly name: string;
-    readonly body: string;
-  };
-  readonly graphSteps: readonly {
-    readonly id: string;
-    readonly contextFrom: readonly string[];
-    readonly retry?: GraphStep["retry"];
-    readonly fanoutGroup?: string;
-  }[];
-  readonly stepRuns: GraphStepRun[];
-  readonly outputs: Map<string, GraphStepOutput>;
-  readonly syncPoints: GraphReceiptSyncPoint[];
-  readonly stateRef: {
-    get value(): SequentialGraphState;
-    set value(next: SequentialGraphState);
-  };
-  readonly lastReceiptRef: {
-    get value(): string | undefined;
-    set value(next: string | undefined);
-  };
-}): void {
-  if (options.entries.length === 0) {
-    return;
-  }
-  if (options.graph.steps.some((step) => step.fanoutGroup)) {
-    throw new Error("resumeFromRunId currently supports sequential chains only.");
-  }
-
-  const stepsById = new Map(options.graph.steps.map((step) => [step.id, step]));
-  const latestEvents = new Map<string, ArtifactEnvelope>();
-  const artifactsByStep = new Map<string, ArtifactEnvelope[]>();
-  const receiptLinks = new Map<string, string>();
-
-  for (const entry of options.entries) {
-    if (entry.type === "run_event") {
-      const stepId = entry.data.step_id;
-      if (typeof stepId === "string" && stepId.length > 0) {
-        latestEvents.set(stepId, entry);
-      }
-      continue;
-    }
-    if (entry.type === "receipt_link") {
-      const artifactId = typeof entry.data.artifact_id === "string" ? entry.data.artifact_id : undefined;
-      const receiptId = typeof entry.data.receipt_id === "string" ? entry.data.receipt_id : undefined;
-      if (artifactId && receiptId) {
-        receiptLinks.set(artifactId, receiptId);
-      }
-      continue;
-    }
-    if (entry.meta.step_id) {
-      artifactsByStep.set(entry.meta.step_id, [...(artifactsByStep.get(entry.meta.step_id) ?? []), entry]);
-    }
-  }
-
-  let state = options.stateRef.value;
-  for (const chainStep of options.graphSteps) {
-    const step = stepsById.get(chainStep.id);
-    const stepSkill =
-      options.graphStepCache.get(chainStep.id)
-      ?? (step?.run ? buildInlineGraphStepSkill(step, options.skillEnvironment) : undefined);
-    const event = latestEvents.get(chainStep.id);
-    if (!step || !stepSkill || !event) {
-      break;
-    }
-    const stepArtifacts = artifactsByStep.get(chainStep.id) ?? [];
-    const stepFields = reconstructStepFields(stepArtifacts, stepSkill.artifacts);
-    const receiptId = receiptLinksForStep(stepArtifacts, receiptLinks)[0];
-    if (event.data.kind === "step_started") {
-      state = transitionSequentialGraph(state, {
-        type: "start_step",
-        stepId: chainStep.id,
-        at: entryTimestamp(event),
-      });
-      break;
-    }
-    if (event.data.kind === "step_succeeded") {
-      state = transitionSequentialGraph(state, {
-        type: "start_step",
-        stepId: chainStep.id,
-        at: entryTimestamp(event),
-      });
-      state = transitionSequentialGraph(state, {
-        type: "step_succeeded",
-        stepId: chainStep.id,
-        at: entryTimestamp(event),
-        receiptId,
-        outputs: stepFields,
-      });
-      options.outputs.set(chainStep.id, {
-        status: "success",
-        stdout: reconstructStdout(stepArtifacts, stepFields),
-        stderr: "",
-        receiptId: receiptId ?? "",
-        fields: stepFields,
-        artifactIds: stepArtifacts.map((artifact) => artifact.meta.artifact_id),
-        artifacts: stepArtifacts.filter(isDomainArtifactEnvelope),
-      });
-      options.stepRuns.push({
-        stepId: chainStep.id,
-        skill: graphStepReference(step),
-        skillPath: step.skill ? step.skill : `inline:${chainStep.id}`,
-        runner: step.runner,
-        attempt: 1,
-        status: "success",
-        receiptId,
-        stdout: reconstructStdout(stepArtifacts, stepFields),
-        stderr: "",
-        artifactIds: stepArtifacts.map((artifact) => artifact.meta.artifact_id),
-        contextFrom: [],
-      });
-      options.lastReceiptRef.value = receiptId ?? options.lastReceiptRef.value;
-      continue;
-    }
-    if (event.data.kind === "step_failed") {
-      state = transitionSequentialGraph(state, {
-        type: "start_step",
-        stepId: chainStep.id,
-        at: entryTimestamp(event),
-      });
-      state = transitionSequentialGraph(state, {
-        type: "step_failed",
-        stepId: chainStep.id,
-        at: entryTimestamp(event),
-        error: typeof event.data.detail === "object" && event.data.detail && "reason" in event.data.detail
-          ? String((event.data.detail as Record<string, unknown>).reason)
-          : "previous attempt failed",
-      });
-      break;
-    }
-    if (event.data.kind === "step_waiting_resolution") {
-      break;
-    }
-    break;
-  }
-  options.stateRef.value = state;
-}
-
-function reconstructStepFields(
-  artifacts: readonly ArtifactEnvelope[],
-  contract: ArtifactContract | undefined,
-): Readonly<Record<string, unknown>> {
-  const fields: Record<string, unknown> = {};
-  const skillArtifacts = artifacts.filter((artifact) => artifact.type !== "run_event" && artifact.type !== "receipt_link");
-  if (skillArtifacts.length === 1 && skillArtifacts[0]?.type === null) {
-    const untypedData = skillArtifacts[0].data;
-    if ("raw" in untypedData && typeof untypedData.raw === "string") {
-      fields.raw = untypedData.raw;
-      return fields;
-    }
-    Object.assign(fields, untypedData);
-    fields.raw = JSON.stringify(untypedData);
-    return fields;
-  }
-  for (const artifact of skillArtifacts) {
-    const key = declaredArtifactField(contract, artifact.type) ?? artifact.type ?? "raw";
-    fields[key] = artifact;
-  }
-  return fields;
-}
-
-function declaredArtifactField(contract: ArtifactContract | undefined, artifactType: string | null): string | undefined {
-  if (!artifactType) {
-    return undefined;
-  }
-  for (const [fieldName, declaredType] of Object.entries(contract?.namedEmits ?? {})) {
-    if (declaredType === artifactType) {
-      return fieldName;
-    }
-  }
-  if (contract?.wrapAs === artifactType) {
-    return artifactType;
-  }
-  return undefined;
-}
-
-function receiptLinksForStep(
-  artifacts: readonly ArtifactEnvelope[],
-  receiptLinks: ReadonlyMap<string, string>,
-): readonly string[] {
-  return artifacts
-    .map((artifact) => receiptLinks.get(artifact.meta.artifact_id))
-    .filter((receiptId): receiptId is string => typeof receiptId === "string");
-}
-
-function reconstructStdout(
-  artifacts: readonly ArtifactEnvelope[],
-  fields: Readonly<Record<string, unknown>>,
-): string {
-  const raw = artifacts.find((artifact) => artifact.type === null)?.data.raw;
-  if (typeof raw === "string") {
-    return raw;
-  }
-  if ("raw" in fields && typeof fields.raw === "string") {
-    return fields.raw;
-  }
-  return JSON.stringify(fields);
-}
-
-function entryTimestamp(entry: ArtifactEnvelope): string {
-  return entry.meta.created_at;
-}
-
-function isDeepEqual(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunLocalGraphResult> {
@@ -2113,198 +1704,5 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     receipt,
     output: finalOutput,
     errorMessage: finalError,
-  };
-}
-
-function resolveSequentialGraphFailureReason(
-  plan: Extract<SequentialGraphPlan, { type: "failed" }>,
-  state: SequentialGraphState,
-  stepRuns: readonly GraphStepRun[],
-): string {
-  const stepState = state.steps.find((candidate) => candidate.stepId === plan.stepId);
-  const stateError = stepState?.error?.trim();
-  if (stateError && stateError !== plan.reason) {
-    return stateError;
-  }
-
-  const stepRun = [...stepRuns]
-    .reverse()
-    .find((candidate) => candidate.stepId === plan.stepId && candidate.status === "failure");
-  const runError = stepRun?.stderr.trim();
-  if (runError && runError !== plan.reason) {
-    return runError;
-  }
-
-  return plan.reason;
-}
-
-async function indexReceiptIfEnabled(
-  receipt: LocalReceipt,
-  receiptDir: string,
-  options: {
-    readonly knowledgeDir?: string;
-    readonly env?: NodeJS.ProcessEnv;
-  },
-): Promise<void> {
-  const knowledgeDir = resolveOptionalKnowledgeDir(options);
-  if (!knowledgeDir) {
-    return;
-  }
-  await createFileKnowledgeStore(knowledgeDir).indexReceipt({
-    receipt,
-    receiptPath: path.join(receiptDir, `${receipt.id}.json`),
-    project: resolveKnowledgeProject(options.env),
-  });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isDomainArtifactEnvelope(entry: ArtifactEnvelope): boolean {
-  return entry.type !== null && !new Set(["run_event", "receipt_link", "credential_resolution", "retry", "skill_state", "auth_resolution"]).has(entry.type);
-}
-
-function isAgentMediatedSource(sourceType: string | undefined): boolean {
-  return sourceType === "agent" || sourceType === "agent-step";
-}
-
-function resolveOptionalKnowledgeDir(options: {
-  readonly knowledgeDir?: string;
-  readonly env?: NodeJS.ProcessEnv;
-}): string | undefined {
-  if (options.knowledgeDir) {
-    return options.knowledgeDir;
-  }
-  if (!options.env?.RUNX_KNOWLEDGE_DIR) {
-    return undefined;
-  }
-  return resolveRunxKnowledgeDir(options.env);
-}
-
-function resolveKnowledgeProject(env?: NodeJS.ProcessEnv): string {
-  return path.resolve(env?.RUNX_PROJECT ?? env?.RUNX_CWD ?? env?.INIT_CWD ?? process.cwd());
-}
-
-function defaultLocalGraphGrant(): GraphScopeGrant {
-  return {
-    grant_id: "local-default",
-    scopes: ["*"],
-  };
-}
-
-function parseStructuredOutput(stdout: string): Readonly<Record<string, unknown>> {
-  try {
-    const parsed = JSON.parse(stdout) as unknown;
-    return isRecord(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function buildRetryReceiptContext(
-  step: GraphStep,
-  inputs: Readonly<Record<string, unknown>>,
-  attempt: number,
-  skill: ValidatedSkill,
-  retry: { readonly maxAttempts: number } | undefined,
-): {
-  readonly idempotencyKey?: string;
-  readonly receipt?: RetryReceiptContext;
-  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
-} {
-  const maxAttempts = retry?.maxAttempts ?? 1;
-  const idempotencyKey = resolveIdempotencyKey(step.idempotencyKey ?? skill.idempotency?.key, inputs);
-  const idempotencyKeyHash = idempotencyKey ? hashStable({ idempotencyKey }) : undefined;
-  if (maxAttempts <= 1 && !idempotencyKeyHash) {
-    return {
-      idempotencyKey,
-    };
-  }
-
-  const receipt: RetryReceiptContext = {
-    attempt,
-    maxAttempts,
-    ruleFired: attempt === 1 ? "initial_attempt" : "retry_attempt",
-    idempotencyKeyHash,
-  };
-  return {
-    idempotencyKey,
-    receipt,
-    receiptMetadata: {
-      retry: {
-        attempt,
-        max_attempts: maxAttempts,
-        rule_fired: receipt.ruleFired,
-        idempotency_key_hash: idempotencyKeyHash,
-      },
-    },
-  };
-}
-
-function resolveIdempotencyKey(template: string | undefined, inputs: Readonly<Record<string, unknown>>): string | undefined {
-  if (!template) {
-    return undefined;
-  }
-  const resolved = template.replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (_match, key: string) =>
-    stringifyContextValue(resolveInputPath(inputs, key)),
-  );
-  return resolved.trim() === "" ? undefined : resolved;
-}
-
-function resolveInputPath(inputs: Readonly<Record<string, unknown>>, inputPath: string): unknown {
-  return inputPath.split(".").reduce<unknown>((value, key) => {
-    if (!isRecord(value) || !(key in value)) {
-      return undefined;
-    }
-    return value[key];
-  }, inputs);
-}
-
-function stringifyContextValue(value: unknown): string {
-  if (value === undefined || value === null) {
-    return "";
-  }
-  return typeof value === "string" ? value : JSON.stringify(value);
-}
-
-function unique(values: readonly string[]): readonly string[] {
-  return Array.from(new Set(values));
-}
-
-function mergeMetadata(
-  ...metadata: readonly (Readonly<Record<string, unknown>> | undefined)[]
-): Readonly<Record<string, unknown>> | undefined {
-  const merged = metadata
-    .filter((item): item is Readonly<Record<string, unknown>> => Boolean(item))
-    .reduce<Record<string, unknown>>((accumulator, item) => mergeRecord(accumulator, item), {});
-  if (Object.keys(merged).length === 0) {
-    return undefined;
-  }
-  return merged;
-}
-
-function mergeRecord(left: Readonly<Record<string, unknown>>, right: Readonly<Record<string, unknown>>): Record<string, unknown> {
-  const merged: Record<string, unknown> = { ...left };
-  for (const [key, value] of Object.entries(right)) {
-    const existing = merged[key];
-    merged[key] = isPlainRecord(existing) && isPlainRecord(value) ? mergeRecord(existing, value) : value;
-  }
-  return merged;
-}
-
-function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function runnerTrustMetadata(sourceType: string): Readonly<Record<string, unknown>> {
-  const approvalMediated = sourceType === "approval";
-  const agentMediated = sourceType === "agent" || sourceType === "agent-step";
-  return {
-    runner: {
-      type: sourceType,
-      enforcement: approvalMediated ? "approval-mediated" : agentMediated ? "agent-mediated" : "runx-enforced",
-      attestation: approvalMediated ? "decision-reported" : agentMediated ? "agent-reported" : "runx-observed",
-    },
   };
 }

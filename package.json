@@ -22,6 +22,7 @@
     "cli:check-global": "node scripts/link-global-cli.mjs --check",
     "dogfood:core-skills": "node scripts/dogfood-core-skills.mjs",
     "dogfood:github-issue-to-pr": "node scripts/dogfood-github-issue-to-pr.mjs",
+    "authoring:check-package-contract": "node scripts/check-authoring-package-contract.mjs",
     "release:smoke-live": "node scripts/smoke-released-cli-live.mjs",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test": "node scripts/test-workspace.mjs",

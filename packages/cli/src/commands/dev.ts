@@ -26,7 +26,8 @@ import {
   writeJsonFile,
 } from "../authoring-utils.js";
 import { statusIcon, theme } from "../ui.js";
-import { createDoctorDiagnostic, type DoctorCommandArgs, type DoctorReport, handleDoctorCommand } from "./doctor.js";
+import { type DoctorCommandArgs, handleDoctorCommand } from "./doctor.js";
+import { createDoctorDiagnostic, type DoctorReport } from "./doctor-types.js";
 import { discoverToolDirectories, handleToolBuildCommand, resolveToolDirFromRef, type ToolBuildReport } from "./tool.js";
 import { parse as parseYaml } from "yaml";
 

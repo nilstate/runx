@@ -1322,7 +1322,7 @@ harness:
           severity: "error",
           evidence: {
             line_count: 3001,
-            max_lines: 3000,
+            max_lines: 1000,
           },
           location: {
             path: "packages/cli/src/index.ts",
