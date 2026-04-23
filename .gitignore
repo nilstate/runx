@@ -30,6 +30,7 @@ packages/cli/tools/
 
 # local runx state
 .runx/
+/knowledge/
 runx-receipts/
 runx-output/
 runx-answers.json
