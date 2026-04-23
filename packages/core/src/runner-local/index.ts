@@ -43,17 +43,12 @@ import {
   type AgentWorkRequest,
   type ApprovalGate,
   type CredentialEnvelope,
-  type Question,
   type ResolutionRequest,
   type ResolutionResponse,
   type SkillAdapter,
   validateOutputContract,
 } from "../executor/index.js";
-import {
-  createFileKnowledgeStore,
-  validateOutboxEntry,
-  validateThread,
-} from "../knowledge/index.js";
+import { createFileKnowledgeStore } from "../knowledge/index.js";
 import {
   loadRunxWorkspacePolicy,
   resolveLocalSkillProfile,
@@ -85,14 +80,12 @@ import {
   type GraphPolicy,
   type GraphStep,
   type PostRunReflectPolicy,
-  type SkillInput,
   type SkillRunnerDefinition,
   type SkillSandbox,
   type ValidatedTool,
   type ValidatedSkill,
 } from "../parser/index.js";
 import {
-  admitGraphStepScopes,
   admitLocalSkill,
   admitRetryPolicy,
   sandboxRequiresApproval,
@@ -106,7 +99,6 @@ import {
   uniqueReceiptId,
   writeLocalGraphReceipt,
   writeLocalReceipt,
-  type GraphReceiptStep,
   type GraphReceiptSyncPoint,
   type ExecutionSemantics,
   type GovernedDisposition,
@@ -141,6 +133,17 @@ import {
   normalizeExecutionSemantics,
   type NormalizedExecutionSemantics,
 } from "./execution-semantics.js";
+import {
+  buildDeniedGraphStepRun,
+  buildGraphStepGovernance,
+  governanceReceiptMetadata,
+  latestFanoutReceiptIds,
+  toGraphReceiptStep,
+  toGraphReceiptSyncPoint,
+  writePolicyDeniedGraphReceipt,
+  type GraphStepGovernance,
+} from "./graph-governance.js";
+import { materializeDeclaredInputs, readResumedSelectedRunner, resolveInputs } from "./inputs.js";
 import { defaultReceiptDir } from "./receipt-paths.js";
 import { projectReflectIfEnabled } from "./reflect.js";
 
@@ -356,16 +359,6 @@ export interface GraphStepRun {
   readonly outcome?: ReceiptOutcome;
   readonly surfaceRefs?: readonly ReceiptSurfaceRef[];
   readonly evidenceRefs?: readonly ReceiptSurfaceRef[];
-}
-
-interface GraphStepGovernance {
-  readonly scopeAdmission: {
-    readonly status: "allow" | "deny";
-    readonly requestedScopes: readonly string[];
-    readonly grantedScopes: readonly string[];
-    readonly grantId?: string;
-    readonly reasons?: readonly string[];
-  };
 }
 
 interface RetryReceiptContext {
@@ -2641,6 +2634,10 @@ function isArtifactEnvelopeValue(value: unknown): value is ArtifactEnvelope {
     && "data" in value;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function isDomainArtifactEnvelope(entry: ArtifactEnvelope): boolean {
   return entry.type !== null && !new Set(["run_event", "receipt_link", "credential_resolution", "retry", "skill_state", "auth_resolution"]).has(entry.type);
 }
@@ -2671,189 +2668,6 @@ function defaultLocalGraphGrant(): GraphScopeGrant {
     grant_id: "local-default",
     scopes: ["*"],
   };
-}
-
-function buildGraphStepGovernance(step: GraphStep, graphGrant: GraphScopeGrant): GraphStepGovernance {
-  const decision = admitGraphStepScopes({
-    stepId: step.id,
-    requestedScopes: step.scopes,
-    grant: graphGrant,
-  });
-  return {
-    scopeAdmission: {
-      status: decision.status,
-      requestedScopes: decision.requestedScopes,
-      grantedScopes: decision.grantedScopes,
-      grantId: decision.grantId,
-      reasons: decision.status === "deny" ? decision.reasons : undefined,
-    },
-  };
-}
-
-function governanceReceiptMetadata(
-  step: GraphStep,
-  governance: GraphStepGovernance,
-): Readonly<Record<string, unknown>> {
-  return {
-    chain_governance: {
-      step_id: step.id,
-      selected_runner: graphStepRunner(step) ?? "default",
-      scope_admission: {
-        status: governance.scopeAdmission.status,
-        requested_scopes: governance.scopeAdmission.requestedScopes,
-        granted_scopes: governance.scopeAdmission.grantedScopes,
-        grant_id: governance.scopeAdmission.grantId,
-        reasons: governance.scopeAdmission.reasons,
-      },
-    },
-  };
-}
-
-function buildDeniedGraphStepRun(options: {
-  readonly step: GraphStep;
-  readonly stepSkillPath: string;
-  readonly attempt: number;
-  readonly parentReceipt?: string;
-  readonly fanoutGroup?: string;
-  readonly governance: GraphStepGovernance;
-  readonly context: readonly MaterializedContextEdge[];
-  readonly stderr?: string;
-}): GraphStepRun {
-  return {
-    stepId: options.step.id,
-    skill: graphStepReference(options.step),
-    skillPath: options.stepSkillPath,
-    runner: graphStepRunner(options.step),
-    attempt: options.attempt,
-    status: "failure",
-    stdout: "",
-    stderr: options.stderr ?? options.governance.scopeAdmission.reasons?.join("; ") ?? "graph step scope denied",
-    parentReceipt: options.parentReceipt,
-    fanoutGroup: options.fanoutGroup,
-    governance: options.governance,
-    artifactIds: [],
-    disposition: "policy_denied",
-    outcomeState: "complete",
-    contextFrom: options.context.map((edge) => ({
-      input: edge.input,
-      fromStep: edge.fromStep,
-      output: edge.output,
-      receiptId: edge.receiptId,
-    })),
-  };
-}
-
-async function writePolicyDeniedGraphReceipt(options: {
-  readonly receiptDir: string;
-  readonly runxHome?: string;
-  readonly graph: ExecutionGraph;
-  readonly graphId: string;
-  readonly startedAt: string;
-  readonly startedAtMs: number;
-  readonly inputs: Readonly<Record<string, unknown>>;
-  readonly stepRuns: readonly GraphStepRun[];
-  readonly errorMessage: string;
-  readonly executionSemantics: NormalizedExecutionSemantics;
-  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
-}): Promise<LocalGraphReceipt> {
-  return await writeLocalGraphReceipt({
-    receiptDir: options.receiptDir,
-    runxHome: options.runxHome,
-    graphId: options.graphId,
-    graphName: options.graph.name,
-    owner: options.graph.owner,
-    status: "failure",
-    inputs: options.inputs,
-    output: "",
-    steps: options.stepRuns.map(toGraphReceiptStep),
-    startedAt: options.startedAt,
-    completedAt: new Date().toISOString(),
-    durationMs: Date.now() - options.startedAtMs,
-    errorMessage: options.errorMessage,
-    disposition: "policy_denied",
-    inputContext: options.executionSemantics.inputContext,
-    outcomeState: options.executionSemantics.outcomeState,
-    outcome: options.executionSemantics.outcome,
-    surfaceRefs: options.executionSemantics.surfaceRefs,
-    evidenceRefs: options.executionSemantics.evidenceRefs,
-    metadata: options.receiptMetadata,
-  });
-}
-
-function toGraphReceiptStep(step: GraphStepRun): GraphReceiptStep {
-  return {
-    step_id: step.stepId,
-    attempt: step.attempt,
-    skill: step.skill,
-    runner: step.runner,
-    status: step.status,
-    receipt_id: step.receiptId,
-    parent_receipt: step.parentReceipt,
-    fanout_group: step.fanoutGroup,
-    retry: step.retry
-      ? {
-          attempt: step.retry.attempt,
-          max_attempts: step.retry.maxAttempts,
-          rule_fired: step.retry.ruleFired,
-          idempotency_key_hash: step.retry.idempotencyKeyHash,
-        }
-      : undefined,
-    context_from: step.contextFrom.map((edge) => ({
-      input: edge.input,
-      from_step: edge.fromStep,
-      output: edge.output,
-      receipt_id: edge.receiptId,
-    })),
-    governance: step.governance ? toReceiptGovernance(step.governance) : undefined,
-    artifact_ids: step.artifactIds && step.artifactIds.length > 0 ? step.artifactIds : undefined,
-    disposition: step.disposition,
-    input_context: step.inputContext,
-    outcome_state: step.outcomeState,
-    outcome: step.outcome,
-    surface_refs: step.surfaceRefs,
-    evidence_refs: step.evidenceRefs,
-  };
-}
-
-function toReceiptGovernance(governance: GraphStepGovernance): GraphReceiptStep["governance"] {
-  return {
-    scope_admission: {
-      status: governance.scopeAdmission.status,
-      requested_scopes: [...governance.scopeAdmission.requestedScopes],
-      granted_scopes: [...governance.scopeAdmission.grantedScopes],
-      grant_id: governance.scopeAdmission.grantId,
-      reasons: governance.scopeAdmission.reasons ? [...governance.scopeAdmission.reasons] : undefined,
-    },
-  };
-}
-
-function toGraphReceiptSyncPoint(
-  decision: FanoutSyncDecision,
-  branchReceipts: readonly string[],
-): GraphReceiptSyncPoint {
-  return {
-    group_id: decision.groupId,
-    strategy: decision.strategy,
-    decision: decision.decision,
-    rule_fired: decision.ruleFired,
-    reason: decision.reason,
-    branch_count: decision.branchCount,
-    success_count: decision.successCount,
-    failure_count: decision.failureCount,
-    required_successes: decision.requiredSuccesses,
-    branch_receipts: branchReceipts,
-    gate: decision.gate,
-  };
-}
-
-function latestFanoutReceiptIds(stepRuns: readonly GraphStepRun[], groupId: string): readonly string[] {
-  const latest = new Map<string, string>();
-  for (const stepRun of stepRuns) {
-    if (stepRun.fanoutGroup === groupId && stepRun.receiptId) {
-      latest.set(stepRun.stepId, stepRun.receiptId);
-    }
-  }
-  return Array.from(latest.values());
 }
 
 function parseStructuredOutput(stdout: string): Readonly<Record<string, unknown>> {
@@ -3207,250 +3021,4 @@ function buildApprovalGate(request: Parameters<SkillAdapter["invoke"]>[0]): Appr
         : `Approval required for ${request.skillName ?? "approval"}.`,
     summary,
   };
-}
-
-function buildInputResolutionRequest(skill: ValidatedSkill, questions: readonly Question[]): ResolutionRequest {
-  return {
-    id: `input.${normalizeQuestionId(skill.name)}.${questions.map((question) => question.id).join(".")}`,
-    kind: "input",
-    questions,
-  };
-}
-
-async function resolveInputs(
-  skill: ValidatedSkill,
-  options: RunLocalSkillOptions,
-): Promise<
-  | { readonly status: "resolved"; readonly inputs: Readonly<Record<string, unknown>> }
-  | { readonly status: "needs_resolution"; readonly request: ResolutionRequest }
-> {
-  const answers = options.answersPath ? await readAnswersFile(options.answersPath) : {};
-  const resolved = materializeDeclaredInputs(skill.inputs);
-  const resumedInputs = options.resumeFromRunId
-    ? await readResumedInputs(options.receiptDir ?? defaultReceiptDir(options.env), options.resumeFromRunId)
-    : {};
-  const providedInputs = normalizeDeclaredInputAliases(skill.inputs, options.inputs ?? {});
-
-  assignDefined(resolved, resumedInputs);
-  assignDefined(resolved, answers);
-  assignDefined(resolved, providedInputs);
-
-  const missing = missingRequiredInputs(skill.inputs, resolved);
-  if (missing.length === 0) {
-    return {
-      status: "resolved",
-      inputs: resolved,
-    };
-  }
-
-  const request = buildInputResolutionRequest(skill, missing);
-  await options.caller.report({
-    type: "resolution_requested",
-    message: `Resolution requested for ${request.id}.`,
-    data: { kind: request.kind, requestId: request.id },
-  });
-  const resolution = await resolveCallerRequest(options.caller, request);
-  if (resolution && isRecord(resolution.payload)) {
-    Object.assign(resolved, resolution.payload);
-  }
-  if (resolution !== undefined) {
-    await options.caller.report({
-      type: "resolution_resolved",
-      message: `Resolution satisfied for ${request.id}.`,
-      data: { kind: request.kind, requestId: request.id, actor: resolution.actor },
-    });
-  }
-
-  const stillMissing = missingRequiredInputs(skill.inputs, resolved);
-  if (stillMissing.length > 0) {
-    return {
-      status: "needs_resolution",
-      request: buildInputResolutionRequest(skill, stillMissing),
-    };
-  }
-
-  const normalizedInputs = normalizeRuntimeInputs(resolved);
-  return {
-    status: "resolved",
-    inputs: normalizedInputs,
-  };
-}
-
-function normalizeDeclaredInputAliases(
-  declaredInputs: Readonly<Record<string, SkillInput>>,
-  providedInputs: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
-  const normalized: Record<string, unknown> = {};
-  const providedKeys = new Set(Object.keys(providedInputs));
-  for (const [key, value] of Object.entries(providedInputs)) {
-    const targetKey = resolveDeclaredInputAliasKey(declaredInputs, key);
-    if (targetKey !== key && providedKeys.has(targetKey)) {
-      continue;
-    }
-    normalized[targetKey] = value;
-  }
-  return normalized;
-}
-
-function materializeDeclaredInputs(
-  declaredInputs: Readonly<Record<string, SkillInput>>,
-  providedInputs: Readonly<Record<string, unknown>> = {},
-): Record<string, unknown> {
-  const resolved: Record<string, unknown> = {};
-  for (const [key, input] of Object.entries(declaredInputs)) {
-    if (input.default !== undefined) {
-      resolved[key] = input.default;
-    }
-  }
-  assignDefined(resolved, normalizeDeclaredInputAliases(declaredInputs, providedInputs));
-  return resolved;
-}
-
-function normalizeRuntimeInputs(
-  inputs: Readonly<Record<string, unknown>>,
-): Record<string, unknown> {
-  const normalized = { ...inputs };
-  const thread = normalized.thread === undefined
-    ? undefined
-    : validateThread(normalized.thread, "inputs.thread");
-  const outboxEntry = normalized.outbox_entry === undefined
-    ? undefined
-    : validateOutboxEntry(normalized.outbox_entry, "inputs.outbox_entry");
-  const threadLocator = typeof normalized.thread_locator === "string"
-    ? normalized.thread_locator
-    : undefined;
-
-  if (thread) {
-    normalized.thread = thread;
-    if (threadLocator && thread.thread_locator !== threadLocator) {
-      throw new Error(
-        `inputs.thread.thread_locator '${thread.thread_locator}' does not match inputs.thread_locator '${threadLocator}'.`,
-      );
-    }
-  }
-
-  if (outboxEntry) {
-    normalized.outbox_entry = outboxEntry;
-    if (threadLocator && outboxEntry.thread_locator && outboxEntry.thread_locator !== threadLocator) {
-      throw new Error(
-        `inputs.outbox_entry.thread_locator '${outboxEntry.thread_locator}' does not match inputs.thread_locator '${threadLocator}'.`,
-      );
-    }
-  }
-
-  if (thread && outboxEntry?.thread_locator && outboxEntry.thread_locator !== thread.thread_locator) {
-    throw new Error(
-      `inputs.outbox_entry.thread_locator '${outboxEntry.thread_locator}' does not match inputs.thread.thread_locator '${thread.thread_locator}'.`,
-    );
-  }
-
-  return normalized;
-}
-
-function resolveDeclaredInputAliasKey(
-  declaredInputs: Readonly<Record<string, SkillInput>>,
-  key: string,
-): string {
-  if (declaredInputs[key] !== undefined) {
-    return key;
-  }
-  const snakeCase = key
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .replace(/-/g, "_")
-    .toLowerCase();
-  if (snakeCase !== key && declaredInputs[snakeCase] !== undefined) {
-    return snakeCase;
-  }
-  return key;
-}
-
-async function readResumedInputs(receiptDir: string, runId: string): Promise<Record<string, unknown>> {
-  const entries = await readLedgerEntries(receiptDir, runId);
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index]!;
-    if (entry.type !== "run_event") {
-      continue;
-    }
-    const kind = typeof entry.data.kind === "string" ? entry.data.kind : "";
-    const detail = isPlainRecord(entry.data.detail) ? entry.data.detail : undefined;
-    if (!detail || kind !== "resolution_requested") {
-      continue;
-    }
-    if (isPlainRecord(detail.inputs)) {
-      return { ...detail.inputs };
-    }
-  }
-  return {};
-}
-
-async function readResumedSelectedRunner(receiptDir: string, runId: string): Promise<string | undefined> {
-  const entries = await readLedgerEntries(receiptDir, runId);
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index]!;
-    if (entry.type !== "run_event") {
-      continue;
-    }
-    const kind = typeof entry.data.kind === "string" ? entry.data.kind : "";
-    const detail = isPlainRecord(entry.data.detail) ? entry.data.detail : undefined;
-    if (!detail || kind !== "resolution_requested") {
-      continue;
-    }
-    return typeof detail.selected_runner === "string" ? detail.selected_runner : undefined;
-  }
-  return undefined;
-}
-
-function assignDefined(target: Record<string, unknown>, value: Readonly<Record<string, unknown>>): void {
-  for (const [key, candidate] of Object.entries(value)) {
-    if (candidate !== undefined) {
-      target[key] = candidate;
-    }
-  }
-}
-
-async function readAnswersFile(answersPath: string): Promise<Record<string, unknown>> {
-  const contents = await readFile(path.resolve(answersPath), "utf8");
-  const parsed = JSON.parse(contents) as unknown;
-  if (!isRecord(parsed)) {
-    throw new Error("--answers file must contain a JSON object.");
-  }
-
-  const answers = parsed.answers;
-  if (answers === undefined) {
-    return parsed;
-  }
-  if (!isRecord(answers)) {
-    throw new Error("--answers answers field must be an object.");
-  }
-  return answers;
-}
-
-function missingRequiredInputs(
-  inputs: Readonly<Record<string, SkillInput>>,
-  resolved: Readonly<Record<string, unknown>>,
-): readonly Question[] {
-  const questions: Question[] = [];
-
-  for (const [id, input] of Object.entries(inputs)) {
-    if (!input.required) {
-      continue;
-    }
-
-    const value = resolved[id];
-    if (value === undefined || value === null || value === "") {
-      questions.push({
-        id,
-        prompt: input.description ?? `Provide ${id}`,
-        description: input.description,
-        required: true,
-        type: input.type,
-      });
-    }
-  }
-
-  return questions;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
