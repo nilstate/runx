@@ -51,5 +51,5 @@
   },
   "source_hash": "sha256:df2f581f1de08c878059f25029b0cf4dc0b2b4d331d28e941f43ff4001c2809b",
   "schema_hash": "sha256:fbf0cda792f49615ff4ab24c918c525d88d15c34c8a298208cec5033b1f552d4",
-  "toolkit_version": "0.1.0"
+  "toolkit_version": "0.1.1"
 }

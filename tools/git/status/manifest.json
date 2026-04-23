@@ -36,5 +36,5 @@
   },
   "source_hash": "sha256:767dc30c2b8f78350910ca63efbfe976d02ee5f89a2018e2963d12e94162c74c",
   "schema_hash": "sha256:cd14e7436d3ad182bc10449798337a7c33aed44ae3e426043113c4343e893b79",
-  "toolkit_version": "0.1.0"
+  "toolkit_version": "0.1.1"
 }

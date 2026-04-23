@@ -57,8 +57,11 @@ importers:
         specifier: workspace:^0.1.0
         version: link:../adapters
       '@runxhq/authoring':
-        specifier: workspace:^0.1.0
+        specifier: workspace:^0.1.1
         version: link:../authoring
+      '@runxhq/contracts':
+        specifier: workspace:^0.1.0
+        version: link:../contracts
       '@runxhq/core':
         specifier: workspace:^0.1.0
         version: link:../core
