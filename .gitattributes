@@ -1,0 +1,3 @@
+tools/**/run.mjs linguist-generated=true
+tools/**/manifest.json linguist-generated=true
+tools/**/dist/** linguist-generated=true

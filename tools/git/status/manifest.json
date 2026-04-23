@@ -1,0 +1,40 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "git.status",
+  "description": "Read git working tree status for a repository root.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository root; defaults to RUNX_CWD or the current working directory."
+    }
+  },
+  "scopes": [
+    "git.read"
+  ],
+  "runx": {
+    "artifacts": {
+      "wrap_as": "git_status"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.git.status.v1",
+    "wrap_as": "git_status"
+  },
+  "source_hash": "sha256:d65e02b11cf37b8dc6ae662c9f62c44f4c2d21b7615741905f5b7f57da5b2704",
+  "schema_hash": "sha256:cc9c64e0f6ad581cd56cdf275e854dd941ac561acedb9f4ac5fa79be219c0c47",
+  "toolkit_version": "0.0.0"
+}

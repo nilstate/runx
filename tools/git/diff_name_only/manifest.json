@@ -1,0 +1,45 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "git.diff_name_only",
+  "description": "List changed file names relative to a git base ref.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository root; defaults to RUNX_CWD or the current working directory."
+    },
+    "base": {
+      "type": "string",
+      "required": false,
+      "description": "Base revision or tree-ish to diff against; defaults to HEAD."
+    }
+  },
+  "scopes": [
+    "git.read"
+  ],
+  "runx": {
+    "artifacts": {
+      "wrap_as": "git_diff"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.git.diff.v1",
+    "wrap_as": "git_diff"
+  },
+  "source_hash": "sha256:1944829463b273eff58f646e30320749c8564b1a95d972ea7b2ab5fc2bd4a93d",
+  "schema_hash": "sha256:fc2268ac171afdd8a6f1a326e1c79cceaaaa6da1c8b4d713edfa1818842c8ed3",
+  "toolkit_version": "0.0.0"
+}

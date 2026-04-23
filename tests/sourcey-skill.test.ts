@@ -108,14 +108,30 @@ describe("sourcey skill", () => {
       }
 
       const output = JSON.parse(result.execution.stdout) as {
+        schema: string;
         verified: boolean;
         output_dir: string;
         contains_doctype: boolean;
+        discovery_report: { discovered: { brand_name: string; docs_inputs: { mode: string; config: string } } };
+        verification_report: { verified: boolean };
       };
       expect(output).toMatchObject({
+        schema: "runx.sourcey.packet.v1",
         verified: true,
         output_dir: outputDir,
         contains_doctype: true,
+        discovery_report: {
+          discovered: {
+            brand_name: "Sourcey Fixture",
+            docs_inputs: {
+              mode: "config",
+              config: "sourcey.config.ts",
+            },
+          },
+        },
+        verification_report: {
+          verified: true,
+        },
       });
 
       const generatedFiles = await collectFiles(outputDir);
@@ -149,6 +165,20 @@ describe("sourcey skill", () => {
     const receiptDir = path.join(tempDir, "receipts");
     const projectDir = path.join(tempDir, "project");
     const outputDir = path.join(tempDir, "docs");
+    const projectBrief = {
+      project_identity: {
+        name: "Sourcey Incomplete Fixture",
+        summary: "Governed docs for a fixture that starts from minimal package metadata.",
+      },
+      brand_system: {
+        primary_color: "#5a8a8a",
+        visual_direction: "Crisp technical docs with a muted industrial palette.",
+      },
+      writing_directives: {
+        must_cover: ["why it matters"],
+        avoid: ["preview", "vendor-generated"],
+      },
+    };
 
     const caller: Caller = {
       resolve: async (request) => {
@@ -166,6 +196,7 @@ describe("sourcey skill", () => {
             "git.diff_name_only",
             "cli.capture_help",
           ]);
+          expect(request.work.envelope.inputs.project_brief).toMatchObject(projectBrief);
           return {
             actor: "agent",
             payload: {
@@ -316,6 +347,7 @@ describe("sourcey skill", () => {
         skillPath: path.resolve("skills/sourcey"),
         inputs: {
           project: projectDir,
+          project_brief: projectBrief,
           output_dir: outputDir,
           sourcey_bin: sourceyBin as string,
         },
@@ -331,14 +363,26 @@ describe("sourcey skill", () => {
       }
 
       const output = JSON.parse(result.execution.stdout) as {
+        schema: string;
         verified: boolean;
         output_dir: string;
         contains_doctype: boolean;
+        project_brief: { writing_directives: { avoid: string[] } };
+        revision_bundle: { files: Array<{ path: string }> };
       };
       expect(output).toMatchObject({
+        schema: "runx.sourcey.packet.v1",
         verified: true,
         output_dir: outputDir,
         contains_doctype: true,
+        project_brief: {
+          writing_directives: {
+            avoid: ["preview", "vendor-generated"],
+          },
+        },
+        revision_bundle: {
+          files: [expect.objectContaining({ path: "introduction.md" })],
+        },
       });
 
       const generatedFiles = await collectFiles(outputDir);

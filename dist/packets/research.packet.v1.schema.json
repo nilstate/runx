@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/research/packet/v1.json",
+  "x-runx-packet-id": "runx.research.packet.v1",
+  "type": "object",
+  "properties": {
+    "research_brief": { "type": "object", "additionalProperties": true },
+    "evidence_log": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "decision_support": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "risks": { "type": "array" }
+  },
+  "additionalProperties": true
+}

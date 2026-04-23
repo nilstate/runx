@@ -2,7 +2,7 @@
 
 Public open-source boundary for the runx CLI, trusted kernel, adapters, SDK, harness, local receipts, registry CE, marketplace adapters, official skills, and IDE plugin shells.
 
-The npm CLI package is `@runxai/cli` and exposes the `runx` binary.
+The npm CLI package is `@runxhq/cli` and exposes the `runx` binary.
 
 ## Requirements
 
@@ -51,9 +51,13 @@ runx add sourcey/sourcey@1.0.0 --to ./skills
 runx design-skill --objective "build github review skill"
 runx harness ./fixtures/harness/echo-skill.yaml
 runx config set agent.provider openai
-runx config set agent.model gpt-5.4
+runx config set agent.model gpt-5.1
 runx config set agent.api_key "$OPENAI_API_KEY"
 ```
+
+With `agent.provider`, `agent.model`, and `agent.api_key` configured, the CLI
+can now resolve `agent` and `agent-step` cognitive work directly. Deterministic
+tools, approvals, and required human inputs keep their existing local behavior.
 
 The global link points at `oss/packages/cli` in this checkout. Rebuild with
 `pnpm --dir oss build`; do not reinstall.

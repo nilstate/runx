@@ -1,35 +1,42 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
-const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
-const command = String(inputs.command || "");
-if (!command) {
-  throw new Error("command is required.");
-}
+import { defineTool, failure, rawInput, stringInput } from "../../_lib/harness.mjs";
 
-const args = Array.isArray(inputs.args) ? inputs.args.map((value) => String(value)) : [];
-const helpFlag = String(inputs.help_flag || "--help");
-const cwd = path.resolve(String(inputs.cwd || inputs.repo_root || process.env.RUNX_CWD || process.cwd()));
-const result = spawnSync(command, [...args, helpFlag], {
-  cwd,
-  encoding: "utf8",
-  shell: false,
+const tool = defineTool({
+  inputs: {
+    command: stringInput(),
+    args: rawInput({ optional: true }),
+    help_flag: stringInput({ default: "--help" }),
+    cwd: stringInput({ optional: true }),
+    repo_root: stringInput({ optional: true }),
+  },
+  run({ inputs, env }) {
+    const args = Array.isArray(inputs.args) ? inputs.args.map((value) => String(value)) : [];
+    const cwd = path.resolve(inputs.cwd || inputs.repo_root || env.RUNX_CWD || process.cwd());
+    const result = spawnSync(inputs.command, [...args, inputs.help_flag], {
+      cwd,
+      encoding: "utf8",
+      shell: false,
+    });
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    const output = {
+      command: inputs.command,
+      args,
+      help_flag: inputs.help_flag,
+      cwd,
+      stdout: result.stdout ?? "",
+      stderr: result.stderr ?? "",
+      exit_code: result.status ?? 0,
+    };
+    return (result.status ?? 0) === 0
+      ? output
+      : failure(output, { exitCode: result.status ?? 1, stderr: result.stderr ?? "" });
+  },
 });
 
-if (result.error) {
-  throw result.error;
-}
-
-process.stdout.write(JSON.stringify({
-  command,
-  args,
-  help_flag: helpFlag,
-  cwd,
-  stdout: result.stdout ?? "",
-  stderr: result.stderr ?? "",
-  exit_code: result.status ?? 0,
-}));
-
-if ((result.status ?? 0) !== 0) {
-  process.exit(result.status ?? 1);
-}
+await tool.main();

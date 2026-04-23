@@ -7,6 +7,12 @@ and honest enough to stop when the evidence is weak.
 This standard is prompt contract, not only evaluator policy. Skill instructions
 should make the agent generate better work before any downstream gate runs.
 
+At runtime, runx parses each skill's `## Quality Profile`, injects it into
+agent-mediated work as `quality_profile`, and pins the profile hash in the
+receipt under `metadata.quality_profiles`. Receipts carry the hash, not the
+full profile body, so later review can prove which quality contract governed
+the run without bloating or leaking prompt text into receipts.
+
 ## Required Profile
 
 Each serious skill should make these parts explicit in its own terms:

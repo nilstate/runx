@@ -50,9 +50,9 @@ for (const required of [
   "dist/packages/cli/src/official-skills.lock.json",
   "dist/packages/runner-local/src/index.js",
   "skills/scafld/run.mjs",
-  "tools/sourcey/build/tool.yaml",
+  "tools/sourcey/build/manifest.json",
   "tools/sourcey/build/run.mjs",
-  "tools/sourcey/verify/tool.yaml",
+  "tools/sourcey/verify/manifest.json",
 ]) {
   if (!files.has(required)) {
     throw new Error(`CLI package is missing ${required}`);

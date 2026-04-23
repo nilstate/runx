@@ -91,6 +91,7 @@ runners:
       follow_up_plan: object
     artifacts:
       wrap_as: moltbook_scan_packet
+      packet: runx.moltbook.scan.v1
     inputs:
       objective:
         type: string
@@ -115,6 +116,7 @@ runners:
       publish_plan: object
     artifacts:
       wrap_as: moltbook_post_packet
+      packet: runx.moltbook.post.v1
     inputs:
       outline:
         type: json

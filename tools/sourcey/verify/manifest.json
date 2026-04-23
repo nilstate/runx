@@ -1,0 +1,47 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "sourcey.verify",
+  "description": "Verify that a Sourcey build produced an index.html output.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ],
+    "timeout_seconds": 30,
+    "input_mode": "none"
+  },
+  "inputs": {
+    "output_dir": {
+      "type": "string",
+      "required": true,
+      "description": "Output directory produced by Sourcey."
+    },
+    "index_path": {
+      "type": "string",
+      "required": false,
+      "description": "Explicit index file path; defaults to <output_dir>/index.html."
+    }
+  },
+  "scopes": [
+    "sourcey.verify"
+  ],
+  "runx": {
+    "artifacts": {
+      "wrap_as": "sourcey_verification_report"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.sourcey.verification.v1",
+    "wrap_as": "sourcey_verification_report"
+  },
+  "source_hash": "sha256:89e758af880c273e2b964317bbdbaf6e7b2af105dd6ff831516bd2de9335efd9",
+  "schema_hash": "sha256:fb4aff7339afc0c0a2792454bde7f58f0235f213641ad41acfddc65e9044575d",
+  "toolkit_version": "0.0.0"
+}

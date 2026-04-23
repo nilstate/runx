@@ -280,6 +280,7 @@ runners:
       change_set: object
     artifacts:
       wrap_as: request_triage_packet
+      packet: runx.request.triage.v1
     inputs:
       thread_title:
         type: string

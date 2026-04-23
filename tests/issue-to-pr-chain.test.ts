@@ -243,8 +243,8 @@ describe("issue-to-PR composite skill", () => {
     expect(chain.steps.find((step) => step.id === "push-pull-request")).toMatchObject({
       tool: "thread.push_outbox",
       context: {
-        outbox_entry: "package-pull-request.outbox_entry",
-        draft_pull_request: "package-pull-request.draft_pull_request",
+        outbox_entry: "package-pull-request.outbox_entry.data",
+        draft_pull_request: "package-pull-request.draft_pull_request.data",
       },
       inputs: {
         next_status: "draft",

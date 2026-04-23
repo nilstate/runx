@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/fs/file-read/v1.json",
+  "x-runx-packet-id": "runx.fs.file_read.v1",
+  "type": "object",
+  "properties": {
+    "path": { "type": "string" },
+    "contents": { "type": "string" },
+    "bytes": { "type": "integer" },
+    "truncated": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

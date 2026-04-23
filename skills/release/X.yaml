@@ -44,11 +44,11 @@ harness:
               publishable: true
               publish_plan:
                 channel: npm
-                package: "@runxai/cli"
+                package: "@runxhq/cli"
                 tag_name: v0.4.6
           agent_step.release-publish.output:
             publish_report:
-              registry_url: https://www.npmjs.com/package/@runxai/cli/v/0.4.6
+              registry_url: https://www.npmjs.com/package/@runxhq/cli/v/0.4.6
               release_tag: v0.4.6
               commit_sha: a1b2c3d
               announcement_packet:
@@ -64,7 +64,7 @@ harness:
               side_effects:
                 - kind: registry_publish
                   target: npm
-                  locator: https://www.npmjs.com/package/@runxai/cli/v/0.4.6
+                  locator: https://www.npmjs.com/package/@runxhq/cli/v/0.4.6
                 - kind: github_release
                   target: auscaster/runx
                   locator: https://github.com/auscaster/runx/releases/tag/v0.4.6
@@ -112,7 +112,7 @@ harness:
               publishable: true
               publish_plan:
                 channel: npm
-                package: "@runxai/cli"
+                package: "@runxhq/cli"
                 tag_name: v0.4.6
       expect:
         status: success
@@ -141,6 +141,7 @@ runners:
       release_brief: object
     artifacts:
       wrap_as: release_brief_packet
+      packet: runx.release.brief.v1
     inputs:
       project_root:
         type: string
@@ -206,6 +207,8 @@ runners:
           artifacts:
             named_emits:
               release_brief: release_brief
+            packets:
+              release_brief: runx.release.brief.v1
         - id: approve-publish
           label: approve the release for publication
           run:
@@ -217,6 +220,7 @@ runners:
             release_brief: prepare-release.release_brief.data
           artifacts:
             wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: publish-release
           label: publish the approved release
           run:

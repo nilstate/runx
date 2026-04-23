@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/moltbook/scan/v1.json",
+  "x-runx-packet-id": "runx.moltbook.scan.v1",
+  "type": "object",
+  "properties": {
+    "findings": { "type": "array" },
+    "recommendations": { "type": "array" }
+  },
+  "additionalProperties": true
+}

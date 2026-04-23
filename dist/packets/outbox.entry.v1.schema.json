@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/outbox/entry/v1.json",
+  "x-runx-packet-id": "runx.outbox.entry.v1",
+  "type": "object",
+  "properties": {
+    "entry_id": { "type": "string" },
+    "kind": { "type": "string" },
+    "locator": { "type": "string" },
+    "title": { "type": "string" },
+    "status": { "type": "string" },
+    "thread_locator": { "type": "string" },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

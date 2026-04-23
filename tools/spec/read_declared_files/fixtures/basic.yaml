@@ -1,0 +1,25 @@
+name: spec-read-declared-files-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: spec.read_declared_files
+workspace:
+  files:
+    src/index.ts: |
+      export const value = 1;
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  spec_contents: |
+    task:
+      context:
+        files_impacted:
+          - src/index.ts
+    phases:
+      - changes:
+          - file: src/index.ts
+expect:
+  status: success
+  output:
+    matches_packet: runx.spec.declared_file_context.v1
+    subset:
+      declared_count: 1

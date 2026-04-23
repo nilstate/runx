@@ -1,0 +1,16 @@
+name: cli-capture-help-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: cli.capture_help
+inputs:
+  command: node
+  help_flag: --help
+expect:
+  status: success
+  output:
+    matches_packet: runx.cli.help.v1
+    subset:
+      command: node
+      help_flag: --help
+      exit_code: 0

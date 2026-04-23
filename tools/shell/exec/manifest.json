@@ -1,0 +1,56 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "shell.exec",
+  "description": "Execute an explicit command as a high-risk escape hatch.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "command": {
+      "type": "string",
+      "required": true,
+      "description": "Command to execute."
+    },
+    "args": {
+      "type": "json",
+      "required": false,
+      "description": "Array of string arguments."
+    },
+    "cwd": {
+      "type": "string",
+      "required": false,
+      "description": "Working directory override."
+    },
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository root fallback for cwd."
+    }
+  },
+  "scopes": [
+    "shell.exec"
+  ],
+  "mutating": true,
+  "runx": {
+    "artifacts": {
+      "wrap_as": "shell_execution"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.shell.execution.v1",
+    "wrap_as": "shell_execution"
+  },
+  "source_hash": "sha256:cb0516308215d60bb4d268f23b3c7e6073e1503ea0fd21265a281d876789f562",
+  "schema_hash": "sha256:621e14b618426994a4ba598176c812d1b456f097057ba46f09f3a6cbc8e340da",
+  "toolkit_version": "0.0.0"
+}

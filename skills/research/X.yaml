@@ -68,6 +68,7 @@ runners:
       risks: array
     artifacts:
       wrap_as: research_packet
+      packet: runx.research.packet.v1
     inputs:
       objective:
         type: string

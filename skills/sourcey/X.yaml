@@ -34,6 +34,10 @@ runners:
         type: string
         required: true
         description: "Project root containing Sourcey inputs."
+      repo_root:
+        type: string
+        required: false
+        description: "Optional alias for the project root when Sourcey is composed inside a parent chain."
       homepage_url:
         type: string
         required: false
@@ -46,6 +50,10 @@ runners:
         type: json
         required: false
         description: "Structured docs inputs. If omitted, infer a bounded config or spec path from the project."
+      project_brief:
+        type: json
+        required: false
+        description: "Grounded project, brand, docs-audit, and writing brief to steer authoring toward native project docs."
       output_dir:
         type: string
         required: false
@@ -80,7 +88,11 @@ runners:
             the chosen output directory is inside the repo and not gitignored,
             record that as an operational gap. Treat this as a bounded
             scope/ingest/model pass. Do not author docs, build the site, or
-            propose open-ended revision.
+            propose open-ended revision. When project_brief is supplied, treat it
+            as grounded evidence about brand, current docs quality, information
+            architecture, and writing direction. Use it to resolve a better
+            documentation plan, but do not widen scope beyond the repo evidence
+            and the brief's stated priorities.
             discovery_report must use this canonical shape:
             {
               "discovered": {
@@ -100,17 +112,20 @@ runners:
           artifacts:
             named_emits:
               discovery_report: discovery_report
+            packets:
+              discovery_report: runx.sourcey.discovery.v1
         - id: approve
           label: approve docs plan
           run:
             type: approval
           inputs:
             gate_id: sourcey.discovery.approval
-            reason: Approve the discovered Sourcey documentation plan before writing or building.
+            reason: Approve the discovered documentation plan before writing or building.
           context:
             discovery_report: discover.discovery_report.data
           artifacts:
             wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: author
           label: draft docs
           run:
@@ -138,6 +153,18 @@ runners:
             repo root and the repo does not already ignore it, include the
             minimal .gitignore change needed to ignore that build artifact. This
             is one bounded materialize pass, not an open-ended iteration loop.
+            When project_brief is supplied, it is the quality bar:
+            - Use the brief's brand_system to set logo, favicon, colours, and
+              visual direction when the evidence supports it.
+            - Use the brief's current_docs_audit and information_architecture to
+              preserve what works and fill only the highest-value gaps.
+            - Use the brief's writing_directives to keep terminology, audience,
+              and tone native to the project.
+            - Never write docs that call themselves a preview, migration,
+              adoption, scaffold, or vendor-generated artifact unless the repo's
+              own evidence already uses those words.
+            - A maintainer should be able to read the result and believe it is
+              their project's docs, not a demo site.
           allowed_tools:
             - fs.read
             - cli.capture_help
@@ -146,6 +173,8 @@ runners:
           artifacts:
             named_emits:
               doc_bundle: doc_bundle
+            packets:
+              doc_bundle: runx.sourcey.doc_bundle.v1
         - id: write-docs
           label: write docs
           tool: fs.write_bundle
@@ -178,9 +207,12 @@ runners:
             index_headings, and index_excerpt. When that evidence is absent or
             thin, call it out as an evidence gap rather than inventing site
             content. Produce one bounded evaluation_report covering grounding,
-            clarity, navigation quality, and obvious gaps. Flag operational
-            mistakes such as generated output living in source control without
-            intent or deploy-time authoring assumptions. Do not propose
+            clarity, navigation quality, brand alignment, voice integrity,
+            coverage, and obvious gaps. Flag operational mistakes such as
+            generated output living in source control without intent or
+            deploy-time authoring assumptions. Explicitly call out any wording
+            that reads like a preview, adoption pitch, migration pitch, or tool
+            scaffolding instead of native project docs. Do not propose
             open-ended revision loops here.
           allowed_tools:
             - fs.read
@@ -191,6 +223,8 @@ runners:
           artifacts:
             named_emits:
               evaluation_report: evaluation_report
+            packets:
+              evaluation_report: runx.sourcey.evaluation.v1
         - id: revise
           label: revise docs
           run:
@@ -206,7 +240,9 @@ runners:
             deltas applied. If the first build is already strong, return an
             empty files array and explain why. Do not open a second critique
             loop, do not widen scope beyond the discovered plan, and do not turn
-            generated site output into committed source.
+            generated site output into committed source. Prioritize fixing
+            brand-fit errors, generic vendor framing, shallow IA, and missing
+            maintainer-grade coverage before making cosmetic changes.
           allowed_tools:
             - fs.read
           context:
@@ -217,6 +253,8 @@ runners:
           artifacts:
             named_emits:
               revision_bundle: revision_bundle
+            packets:
+              revision_bundle: runx.sourcey.revision.v1
         - id: write-revisions
           label: write revisions
           tool: fs.write_bundle
@@ -242,6 +280,18 @@ runners:
           context:
             output_dir: rebuild.sourcey_build_report.data.output_dir
             index_path: rebuild.sourcey_build_report.data.index_path
+        - id: package
+          label: package sourcey run
+          tool: sourcey.package
+          scopes:
+            - sourcey.verify
+          context:
+            discovery_report: discover.discovery_report.data
+            doc_bundle: author.doc_bundle.data
+            sourcey_build_report: rebuild.sourcey_build_report.data
+            evaluation_report: critique.evaluation_report.data
+            revision_bundle: revise.revision_bundle.data
+            sourcey_verification_report: verify.sourcey_verification_report.data
       policy:
         transitions:
           - to: author
@@ -262,3 +312,6 @@ runners:
           - to: verify
             field: rebuild.sourcey_build_report.data.generated
             equals: true
+    artifacts:
+      wrap_as: sourcey_packet
+      packet: runx.sourcey.packet.v1

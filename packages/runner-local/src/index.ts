@@ -25,6 +25,7 @@ import { createMcpAdapter } from "../../adapters/mcp/src/index.js";
 import {
   type Context,
   type ContextDocument,
+  type QualityProfileContext,
   executeSkill,
   type AgentContextProvenance,
   type AdapterInvokeResult,
@@ -52,7 +53,8 @@ import {
   parseGraphYaml,
   parseRunnerManifestYaml,
   parseSkillMarkdown,
-  parseToolManifestYaml,
+  extractSkillQualityProfile,
+  parseToolManifestJson,
   resolvePostRunReflectPolicy,
   validateGraph,
   validateSkillArtifactContract,
@@ -243,7 +245,7 @@ interface ResolvedSkillReference {
 interface ResolvedToolReference {
   readonly requestedName: string;
   readonly toolName: string;
-  readonly toolPath: string;
+  readonly manifestPath: string;
   readonly toolDirectory: string;
 }
 
@@ -960,6 +962,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     }));
   const inheritedReceiptMetadata = mergeMetadata(
     contextReceiptMetadata(contextSnapshot),
+    skillQualityProfileReceiptMetadata(skill),
     options.receiptMetadata,
   );
   const executionSemantics = normalizeExecutionSemantics(
@@ -1181,6 +1184,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     historicalContext: preparedAgentContext.historicalContext,
     contextProvenance: preparedAgentContext.provenance,
     context: preparedAgentContext.context,
+    qualityProfile: qualityProfileContext(skill),
   });
 
   if (execution.status === "needs_resolution") {
@@ -1535,13 +1539,13 @@ async function resolveToolReference(toolName: string, searchFromDirectory: strin
 
   const searchRoots = await resolveToolRoots(searchFromDirectory);
   for (const root of searchRoots) {
-    const toolPath = path.join(root, ...segments, "tool.yaml");
-    if (await pathExists(toolPath)) {
+    const manifestPath = path.join(root, ...segments, "manifest.json");
+    if (await pathExists(manifestPath)) {
       return {
         requestedName: toolName,
         toolName,
-        toolPath,
-        toolDirectory: path.dirname(toolPath),
+        manifestPath,
+        toolDirectory: path.dirname(manifestPath),
       };
     }
   }
@@ -3528,6 +3532,33 @@ function contextReceiptMetadata(context: Context | undefined): Readonly<Record<s
   };
 }
 
+function qualityProfileContext(skill: ValidatedSkill): QualityProfileContext | undefined {
+  if (!skill.qualityProfile) {
+    return undefined;
+  }
+  return {
+    source: "SKILL.md#quality-profile",
+    sha256: hashString(skill.qualityProfile.content),
+    content: skill.qualityProfile.content,
+  };
+}
+
+function skillQualityProfileReceiptMetadata(skill: ValidatedSkill): Readonly<Record<string, unknown>> | undefined {
+  const profile = qualityProfileContext(skill);
+  if (!profile) {
+    return undefined;
+  }
+  return {
+    quality_profiles: {
+      [skill.name]: {
+        source: profile.source,
+        heading: skill.qualityProfile?.heading,
+        sha256: profile.sha256,
+      },
+    },
+  };
+}
+
 function toContextDocumentReceiptRef(document: ContextDocument): ContextDocumentReceiptRef {
   return {
     root_path: document.root_path,
@@ -3941,8 +3972,8 @@ async function loadValidatedSkill(skillPath: string, runner?: string): Promise<V
 
 async function loadValidatedTool(toolName: string, searchFromDirectory: string): Promise<ValidatedSkill> {
   const resolvedTool = await resolveToolReference(toolName, searchFromDirectory);
-  const manifestContents = await readFile(resolvedTool.toolPath, "utf8");
-  const tool = validateToolManifest(parseToolManifestYaml(manifestContents));
+  const manifestContents = await readFile(resolvedTool.manifestPath, "utf8");
+  const tool = validateToolManifest(parseToolManifestJson(manifestContents));
   return validatedToolToExecutableSkill(tool);
 }
 
@@ -4045,7 +4076,7 @@ async function resolveGraphStepExecution(options: {
     const resolvedTool = await resolveToolReference(options.step.tool, options.graphDirectory);
     return {
       skill: options.graphStepCache.get(options.step.id) ?? (await loadValidatedTool(options.step.tool, options.graphDirectory)),
-      skillPath: resolvedTool.toolPath,
+      skillPath: resolvedTool.manifestPath,
       reference: options.step.tool,
     };
   }
@@ -4090,6 +4121,7 @@ function buildInlineGraphStepSkill(
     idempotency: step.idempotencyKey ? { key: step.idempotencyKey } : undefined,
     mutating: step.mutating,
     artifacts: validateSkillArtifactContract(step.artifacts, `steps.${step.id}.artifacts`),
+    qualityProfile: extractSkillQualityProfile(body),
     allowedTools: step.allowedTools,
     runx: step.allowedTools ? { allowed_tools: step.allowedTools } : undefined,
     raw: {
@@ -4237,6 +4269,7 @@ function buildAgentStepRequest(request: Parameters<SkillAdapter["invoke"]>[0]): 
       historical_context: request.historicalContext ?? [],
       provenance: request.contextProvenance ?? [],
       context: request.context,
+      quality_profile: request.qualityProfile,
       expected_outputs: validateOutputContract(request.source.outputs, "source.outputs") ?? {},
       trust_boundary: "agent-mediated: runx yields skill context and receipts the supplied result on completion",
     },
@@ -4259,6 +4292,7 @@ function buildAgentRunnerRequest(request: Parameters<SkillAdapter["invoke"]>[0])
       historical_context: request.historicalContext ?? [],
       provenance: request.contextProvenance ?? [],
       context: request.context,
+      quality_profile: request.qualityProfile,
       trust_boundary: "agent-mediated: runx yields skill context and receipts the supplied result on completion",
     },
   };

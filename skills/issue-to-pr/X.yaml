@@ -467,6 +467,8 @@ runners:
           artifacts:
             named_emits:
               fix_bundle: fix_bundle
+            packets:
+              fix_bundle: runx.issue.fix_bundle.v1
         - id: write-fix
           label: write fix
           tool: fs.write_bundle
@@ -617,8 +619,8 @@ runners:
           scopes:
             - thread:push
           context:
-            outbox_entry: package-pull-request.outbox_entry
-            draft_pull_request: package-pull-request.draft_pull_request
+            outbox_entry: package-pull-request.outbox_entry.data
+            draft_pull_request: package-pull-request.draft_pull_request.data
           inputs:
             next_status: draft
       policy:

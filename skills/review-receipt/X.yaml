@@ -72,6 +72,7 @@ runners:
       next_harness_checks: array
     artifacts:
       wrap_as: review_receipt
+      packet: runx.review.receipt.v1
     inputs:
       receipt_id:
         type: string

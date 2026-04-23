@@ -143,7 +143,7 @@ function resolveCliSkillsRoot(): string | undefined {
       if (existsSync(packageJsonPath)) {
         try {
           const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { readonly name?: string };
-          if (pkg.name === "@runxai/cli") {
+          if (pkg.name === "@runxhq/cli") {
             const skillsRoot = path.join(dir, "skills");
             cachedCliSkillsRoot = existsSync(skillsRoot) ? skillsRoot : null;
             return cachedCliSkillsRoot ?? undefined;

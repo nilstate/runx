@@ -70,7 +70,6 @@ process.exit(1);
         ok: false,
         command: "checks",
         task_id: "fixture-task",
-        warnings: [],
         state: { status: "in_progress", check_status: "failure" },
         result: {
           check: {

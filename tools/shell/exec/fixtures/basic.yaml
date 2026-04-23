@@ -1,0 +1,21 @@
+name: shell-exec-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: shell.exec
+workspace:
+  files: {}
+inputs:
+  cwd: $RUNX_FIXTURE_ROOT
+  command: node
+  args:
+    - -e
+    - process.stdout.write("shell fixture")
+expect:
+  status: success
+  output:
+    matches_packet: runx.shell.execution.v1
+    subset:
+      command: node
+      stdout: shell fixture
+      exit_code: 0

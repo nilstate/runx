@@ -1,0 +1,20 @@
+name: fs-write-bundle-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: fs.write_bundle
+workspace:
+  files: {}
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  files:
+    - path: docs/a.md
+      contents: Alpha
+    - path: docs/b.md
+      contents: Beta
+expect:
+  status: success
+  output:
+    matches_packet: runx.fs.write_bundle.v1
+    subset:
+      file_count: 2

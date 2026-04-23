@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/builder/prior-art/v1.json",
+  "x-runx-packet-id": "runx.builder.prior_art.v1",
+  "type": "object",
+  "properties": {
+    "findings": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "catalog_fit": { "type": "object", "additionalProperties": true },
+    "recommended_flow": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "sources": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "risks": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+  },
+  "additionalProperties": true
+}

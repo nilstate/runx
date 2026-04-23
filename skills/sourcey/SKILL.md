@@ -133,9 +133,13 @@ Sourcey build produces: HTML pages, `sourcey.css`, `sourcey.js`,
 ## Inputs
 
 - `project` (required): project root directory.
+- `repo_root`: optional alias for the project root when Sourcey is composed inside a parent chain that already uses `repo_root`.
 - `brand_name`: project name (discovered from package evidence if omitted).
 - `homepage_url`: project homepage (discovered from project evidence if omitted).
 - `docs_inputs`: structured docs inputs, e.g. `{"mode":"config","config":"docs/sourcey.config.ts"}` or `{"mode":"openapi","spec":"openapi.yaml"}`. Discovered if omitted and may point at authored config produced by the skill.
+- `project_brief`: optional grounded brief carrying brand cues, docs audit,
+  IA direction, and writing constraints. When present, the authored docs should
+  feel like native project docs rather than generic generated scaffolding.
 - `output_dir`: generated site output path (default: `<project>/.sourcey/runx-docs`).
 - `sourcey_bin`: explicit sourcey executable path (default: `SOURCEY_BIN` env or `sourcey` on PATH).
 
@@ -254,7 +258,12 @@ Content here. Standard markdown with code blocks, tables, links.
 - Do not document APIs by hand when a spec file exists — use the spec tab.
 - Keep navigation shallow: 1-2 tabs, 2-4 groups for most projects.
 - Use project brand colors if identifiable. Otherwise use a neutral palette.
+- When a grounded brief provides logo, favicon, color, or IA guidance, prefer
+  that over generic defaults.
 - Match the project's existing voice and terminology.
+- Never write docs that describe themselves as a preview, adoption, migration,
+  or tool-generated scaffold unless the repo's own evidence explicitly uses that
+  framing.
 - Do not write generated HTML, search indexes, or OG assets into the authored
   docs source tree.
 - If `output_dir` lives under the repo root, gitignore it or call out the

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   SkillParseError,
   SkillValidationError,
+  extractSkillQualityProfile,
   parseRunnerManifestYaml,
   parseSkillMarkdown,
   parseToolManifestYaml,
@@ -102,6 +103,33 @@ Follow the instructions.
         required: ["message"],
       },
     });
+  });
+
+  it("extracts the Quality Profile section as prompt contract", () => {
+    const skill = validateSkill(
+      parseSkillMarkdown(`---
+name: quality-demo
+---
+# Quality Demo
+
+Instructions before the contract.
+
+## Quality Profile
+
+- Purpose: produce a maintainer-grade answer.
+- Evidence bar: cite concrete repo evidence.
+
+## Outputs
+
+- answer
+`),
+    );
+
+    expect(skill.qualityProfile).toEqual({
+      heading: "Quality Profile",
+      content: "- Purpose: produce a maintainer-grade answer.\n- Evidence bar: cite concrete repo evidence.",
+    });
+    expect(extractSkillQualityProfile(skill.body)?.content).toContain("maintainer-grade");
   });
 
   it("validates cli-tool sandboprofile metadata from runx", () => {

@@ -1,0 +1,25 @@
+name: git-diff-name-only-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: git.diff_name_only
+workspace:
+  files:
+    README.md: |
+      original
+  git:
+    initial_branch: main
+    dirty_files:
+      README.md: |
+        changed
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  base: HEAD
+expect:
+  status: success
+  output:
+    matches_packet: runx.git.diff.v1
+    subset:
+      base: HEAD
+      files:
+        - README.md

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/skill/design/v1.json",
+  "x-runx-packet-id": "runx.skill.design.v1",
+  "type": "object",
+  "properties": {
+    "skill_spec": { "type": "object", "additionalProperties": true },
+    "pain_points": { "type": "array" },
+    "catalog_fit": { "type": "object", "additionalProperties": true },
+    "maintainer_decisions": { "type": "array" },
+    "execution_plan": { "type": "object", "additionalProperties": true },
+    "harness_fixture": { "type": "array" },
+    "acceptance_checks": { "type": "array" }
+  },
+  "additionalProperties": true
+}

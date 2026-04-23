@@ -1,0 +1,20 @@
+name: git-current-branch-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: git.current_branch
+workspace:
+  files:
+    README.md: |
+      # Fixture
+  git:
+    initial_branch: main
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+expect:
+  status: success
+  output:
+    matches_packet: runx.git.branch.v1
+    subset:
+      branch: main
+      detached: false

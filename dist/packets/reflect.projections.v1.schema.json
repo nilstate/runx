@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/reflect/projections/v1.json",
+  "x-runx-packet-id": "runx.reflect.projections.v1",
+  "type": "object",
+  "properties": {
+    "projections": { "type": "array" }
+  },
+  "additionalProperties": true
+}

@@ -304,6 +304,7 @@ runners:
       open_questions: array
     artifacts:
       wrap_as: work_plan
+      packet: runx.builder.work_plan.v1
     inputs:
       objective:
         type: string

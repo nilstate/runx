@@ -124,6 +124,7 @@ runners:
             review_checklist: draft-report.content_draft_packet.data.review_checklist
           artifacts:
             wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: package-report
           skill: ../draft-content
           runner: package

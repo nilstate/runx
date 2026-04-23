@@ -1,0 +1,51 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "fs.write",
+  "description": "Write a UTF-8 text file relative to a repository or workspace root.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "path": {
+      "type": "string",
+      "required": true,
+      "description": "Path to the file relative to repo_root or fixture."
+    },
+    "contents": {
+      "type": "string",
+      "required": true,
+      "description": "UTF-8 contents to write to the target file."
+    },
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository or workspace root; defaults to fixture, RUNX_CWD, or the current working directory."
+    }
+  },
+  "scopes": [
+    "fs.write"
+  ],
+  "mutating": true,
+  "runx": {
+    "artifacts": {
+      "wrap_as": "file_write"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.fs.file_write.v1",
+    "wrap_as": "file_write"
+  },
+  "source_hash": "sha256:73fe6ccab9d9404637ea76015890fe1e9523619df9d6dce184042490ffe73025",
+  "schema_hash": "sha256:b321619eea1c63353117a05d7ded403523e66619d8dd8944de0c00a98b2ab0ad",
+  "toolkit_version": "0.0.0"
+}

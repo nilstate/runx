@@ -47,6 +47,12 @@ export interface Context {
   readonly conventions?: ContextDocument;
 }
 
+export interface QualityProfileContext {
+  readonly source: "SKILL.md#quality-profile";
+  readonly sha256: string;
+  readonly content: string;
+}
+
 export interface AgentContextEnvelope {
   readonly run_id: string;
   readonly step_id?: string;
@@ -58,6 +64,7 @@ export interface AgentContextEnvelope {
   readonly historical_context: readonly ArtifactEnvelope[];
   readonly provenance: readonly AgentContextProvenance[];
   readonly context?: Context;
+  readonly quality_profile?: QualityProfileContext;
   readonly expected_outputs?: OutputContract;
   readonly trust_boundary: string;
 }
@@ -130,6 +137,7 @@ export interface AdapterInvokeRequest {
   readonly historicalContext?: readonly ArtifactEnvelope[];
   readonly contextProvenance?: readonly AgentContextProvenance[];
   readonly context?: Context;
+  readonly qualityProfile?: QualityProfileContext;
 }
 
 export type AdapterInvokeResult =
@@ -192,6 +200,7 @@ export interface ExecuteSkillOptions {
   readonly historicalContext?: readonly ArtifactEnvelope[];
   readonly contextProvenance?: readonly AgentContextProvenance[];
   readonly context?: Context;
+  readonly qualityProfile?: QualityProfileContext;
 }
 
 export async function executeSkill(options: ExecuteSkillOptions): Promise<AdapterInvokeResult> {
@@ -226,6 +235,7 @@ export async function executeSkill(options: ExecuteSkillOptions): Promise<Adapte
     historicalContext: options.historicalContext,
     contextProvenance: options.contextProvenance,
     context: options.context,
+    qualityProfile: options.qualityProfile,
   });
 }
 
@@ -296,6 +306,9 @@ export function validateAgentContextEnvelope(
     context: record.context === undefined
       ? undefined
       : validateContext(record.context, `${label}.context`),
+    quality_profile: record.quality_profile === undefined
+      ? undefined
+      : validateQualityProfileContext(record.quality_profile, `${label}.quality_profile`),
     expected_outputs: validateOutputContract(record.expected_outputs, `${label}.expected_outputs`),
     trust_boundary: requireString(record.trust_boundary, `${label}.trust_boundary`),
   };
@@ -321,6 +334,24 @@ function validateContextDocument(value: unknown, label: string): ContextDocument
   return {
     root_path: requireString(record.root_path, `${label}.root_path`),
     path: requireString(record.path, `${label}.path`),
+    sha256: requireString(record.sha256, `${label}.sha256`),
+    content: requireString(record.content, `${label}.content`, { allowEmpty: true }),
+  };
+}
+
+function validateQualityProfileContext(value: unknown, label: string): QualityProfileContext {
+  const record = asRecord(value);
+  if (!record) {
+    throw new Error(`${label} must match ${CONTROL_SCHEMA_REFS.agent_context_envelope}.`);
+  }
+
+  const source = requireString(record.source, `${label}.source`);
+  if (source !== "SKILL.md#quality-profile") {
+    throw new Error(`${label}.source must be SKILL.md#quality-profile (${CONTROL_SCHEMA_REFS.agent_context_envelope}).`);
+  }
+
+  return {
+    source,
     sha256: requireString(record.sha256, `${label}.sha256`),
     content: requireString(record.content, `${label}.content`, { allowEmpty: true }),
   };

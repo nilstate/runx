@@ -1,0 +1,20 @@
+name: fs-read-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: fs.read
+workspace:
+  files:
+    docs/readme.md: |
+      hello from fixture
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  path: docs/readme.md
+expect:
+  status: success
+  output:
+    matches_packet: runx.fs.file_read.v1
+    subset:
+      path: docs/readme.md
+      contents: |
+        hello from fixture

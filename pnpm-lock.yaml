@@ -29,11 +29,25 @@ importers:
 
   packages/adapters/mcp: {}
 
+  packages/artifacts: {}
+
+  packages/authoring:
+    dependencies:
+      '@sinclair/typebox':
+        specifier: ^0.34.41
+        version: 0.34.49
+
   packages/cli:
     dependencies:
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
+
+  packages/config: {}
+
+  packages/contracts: {}
+
+  packages/create-package: {}
 
   packages/executor: {}
 
@@ -43,9 +57,9 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
 
-  packages/marketplaces: {}
-
   packages/knowledge: {}
+
+  packages/marketplaces: {}
 
   packages/parser:
     dependencies:
@@ -362,6 +376,9 @@ packages:
     resolution: {integrity: sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ==}
     cpu: [x64]
     os: [win32]
+
+  '@sinclair/typebox@0.34.49':
+    resolution: {integrity: sha512-brySQQs7Jtn0joV8Xh9ZV/hZb9Ozb0pmazDIASBkYKCjXrXU3mpcFahmK/z4YDhGkQvP9mWJbVyahdtU5wQA+A==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -798,6 +815,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
+
+  '@sinclair/typebox@0.34.49': {}
 
   '@types/chai@5.2.3':
     dependencies:

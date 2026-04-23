@@ -8,6 +8,11 @@
   "engines": {
     "node": ">=20"
   },
+  "runx": {
+    "packets": [
+      "./dist/packets/*.schema.json"
+    ]
+  },
   "scripts": {
     "build": "node scripts/build-workspace.mjs --pack",
     "build:pack": "node scripts/build-workspace.mjs --pack",

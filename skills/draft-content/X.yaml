@@ -120,6 +120,7 @@ runners:
       distribution_notes: object
     artifacts:
       wrap_as: content_draft_packet
+      packet: runx.content.draft.v1
     inputs:
       objective:
         type: string
@@ -152,6 +153,7 @@ runners:
       handoff_notes: object
     artifacts:
       wrap_as: content_publish_packet
+      packet: runx.content.publish.v1
     inputs:
       channel:
         type: string
@@ -176,6 +178,7 @@ runners:
       follow_up_contract: object
     artifacts:
       wrap_as: content_handoff_packet
+      packet: runx.content.handoff.v1
     inputs:
       channel:
         type: string

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/release/brief/v1.json",
+  "x-runx-packet-id": "runx.release.brief.v1",
+  "type": "object",
+  "properties": {
+    "summary": { "type": "string" },
+    "changes": { "type": "array" },
+    "checks": { "type": "array" },
+    "publish": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

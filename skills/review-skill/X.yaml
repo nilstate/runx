@@ -73,6 +73,7 @@ runners:
       recommendation_report: object
     artifacts:
       wrap_as: skill_evaluation_packet
+      packet: runx.skill.evaluation.v1
     inputs:
       skill_ref:
         type: string

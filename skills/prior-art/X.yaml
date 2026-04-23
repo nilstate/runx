@@ -104,6 +104,7 @@ runners:
       risks: array
     artifacts:
       wrap_as: prior_art_report
+      packet: runx.builder.prior_art.v1
     inputs:
       objective:
         type: string

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/spec/declared-file-context/v1.json",
+  "x-runx-packet-id": "runx.spec.declared_file_context.v1",
+  "type": "object",
+  "properties": {
+    "files": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "summary": { "type": "string" }
+  },
+  "additionalProperties": true
+}

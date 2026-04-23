@@ -1,0 +1,40 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "git.current_branch",
+  "description": "Read the current git branch or detached HEAD reference for a repository root.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository root; defaults to RUNX_CWD or the current working directory."
+    }
+  },
+  "scopes": [
+    "git.read"
+  ],
+  "runx": {
+    "artifacts": {
+      "wrap_as": "git_branch"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.git.branch.v1",
+    "wrap_as": "git_branch"
+  },
+  "source_hash": "sha256:be79387b3248dde53757a9538281b200a7df6432ff89b69fb3c148478bdb50e6",
+  "schema_hash": "sha256:41b1092e5cf3d09a6274fd742ef045684c67a964939de4214519e5d1414cb9fd",
+  "toolkit_version": "0.0.0"
+}

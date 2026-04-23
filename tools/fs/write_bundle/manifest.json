@@ -1,0 +1,46 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "fs.write_bundle",
+  "description": "Write a bounded bundle of UTF-8 text files relative to a repository or workspace root.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "files": {
+      "type": "json",
+      "required": true,
+      "description": "Array of objects shaped like { path, contents }."
+    },
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository or workspace root; defaults to project, fixture, RUNX_CWD, or the current working directory."
+    }
+  },
+  "scopes": [
+    "fs.write"
+  ],
+  "mutating": true,
+  "runx": {
+    "artifacts": {
+      "wrap_as": "file_bundle_write"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.fs.write_bundle.v1",
+    "wrap_as": "file_bundle_write"
+  },
+  "source_hash": "sha256:b0e81fe33ecd650eef89af3cdd8d18d997ef479eba434ca5444227d368f9b956",
+  "schema_hash": "sha256:e5fa35111d37ae52767da3d2d64fb1b2c7b46f2095bcf84aa170fd0e6cf08ce7",
+  "toolkit_version": "0.0.0"
+}

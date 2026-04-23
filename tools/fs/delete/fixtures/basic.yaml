@@ -1,0 +1,20 @@
+name: fs-delete-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: fs.delete
+workspace:
+  files:
+    tmp/remove.txt: remove me
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  path: tmp/remove.txt
+expect:
+  status: success
+  output:
+    matches_packet: runx.fs.delete.v1
+    subset:
+      path: tmp/remove.txt
+      existed: true
+      deleted: true
+      kind: file

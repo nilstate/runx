@@ -1,0 +1,50 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "spec.read_declared_files",
+  "description": "Read the current contents of files declared in a scafld spec before bounded fix authoring.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "spec_contents": {
+      "type": "string",
+      "required": true,
+      "description": "Full scafld spec YAML contents to inspect for declared file paths."
+    },
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory."
+    },
+    "fixture": {
+      "type": "string",
+      "required": false,
+      "description": "Workspace root forwarded from chain inputs when repo_root is omitted."
+    }
+  },
+  "scopes": [
+    "spec.read_declared_files"
+  ],
+  "runx": {
+    "artifacts": {
+      "wrap_as": "declared_file_context"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.spec.declared_file_context.v1",
+    "wrap_as": "declared_file_context"
+  },
+  "source_hash": "sha256:9a067b4b96d2e0f8d361826ea8feda0ba0b2cbe82c4609bce0e323742990f954",
+  "schema_hash": "sha256:0d5333faf7f26097f6f3044eec48f1742458b07a118c8ab2a206d83842a26d59",
+  "toolkit_version": "0.0.0"
+}

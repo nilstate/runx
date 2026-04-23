@@ -110,6 +110,7 @@ runners:
             disclosure_checklist: draft-advisory.vulnerability_advisory_packet.data.disclosure_checklist
           artifacts:
             wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: package-advisory
           skill: ../draft-content
           runner: package

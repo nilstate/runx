@@ -165,6 +165,7 @@ runners:
       acceptance_checks: array
     artifacts:
       wrap_as: skill_design_packet
+      packet: runx.skill.design.v1
     inputs:
       objective:
         type: string

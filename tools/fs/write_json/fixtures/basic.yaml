@@ -1,0 +1,20 @@
+name: fs-write-json-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: fs.write_json
+workspace:
+  files: {}
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  path: data/config.json
+  data:
+    enabled: true
+    label: fixture
+  indent: "2"
+expect:
+  status: success
+  output:
+    matches_packet: runx.fs.file_write.v1
+    subset:
+      path: data/config.json

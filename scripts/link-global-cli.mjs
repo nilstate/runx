@@ -25,10 +25,10 @@ if (globalPrefix === workspaceRoot || globalPrefix.startsWith(`${workspaceRoot}$
 
 const globalBinDir = path.join(globalPrefix, "bin");
 const globalNodeModulesDir = path.join(globalPrefix, "lib", "node_modules");
-const globalScopeDir = path.join(globalNodeModulesDir, "@runxai");
+const globalScopeDir = path.join(globalNodeModulesDir, "@runxhq");
 const globalPackageLink = path.join(globalScopeDir, "cli");
 const globalBinLink = path.join(globalBinDir, "runx");
-const binLinkTarget = "../lib/node_modules/@runxai/cli/bin/runx.js";
+const binLinkTarget = "../lib/node_modules/@runxhq/cli/bin/runx.js";
 
 const mode = process.argv.includes("--unlink")
   ? "unlink"

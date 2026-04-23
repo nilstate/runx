@@ -1,0 +1,16 @@
+{
+  "name": "@runxhq/contracts",
+  "version": "0.0.0",
+  "private": false,
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}

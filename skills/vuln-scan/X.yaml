@@ -83,6 +83,7 @@ runners:
       operator_summary: object
     artifacts:
       wrap_as: vulnerability_scan_packet
+      packet: runx.security.vulnerability_scan.v1
     inputs:
       target:
         type: string
@@ -107,6 +108,7 @@ runners:
       disclosure_checklist: array
     artifacts:
       wrap_as: vulnerability_advisory_packet
+      packet: runx.security.vulnerability_advisory.v1
     inputs:
       target:
         type: string

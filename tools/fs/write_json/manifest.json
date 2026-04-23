@@ -1,0 +1,56 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "fs.write_json",
+  "description": "Write JSON to a file relative to a repository or workspace root.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "path": {
+      "type": "string",
+      "required": true,
+      "description": "Path to the file relative to repo_root or fixture."
+    },
+    "data": {
+      "type": "json",
+      "required": true,
+      "description": "JSON value to write."
+    },
+    "indent": {
+      "type": "string",
+      "required": false,
+      "description": "Number of spaces to indent; defaults to 2."
+    },
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository or workspace root; defaults to fixture, RUNX_CWD, or the current working directory."
+    }
+  },
+  "scopes": [
+    "fs.write"
+  ],
+  "mutating": true,
+  "runx": {
+    "artifacts": {
+      "wrap_as": "file_write"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.fs.file_write.v1",
+    "wrap_as": "file_write"
+  },
+  "source_hash": "sha256:a8462346dc29d458346c86e29b93bec3871a954cb4e272e7e1daa163a9d5f750",
+  "schema_hash": "sha256:90e2c28779c5b896ee22bb2ef93a25db22a09498f4aa8240bb73ea01dbf9b389",
+  "toolkit_version": "0.0.0"
+}

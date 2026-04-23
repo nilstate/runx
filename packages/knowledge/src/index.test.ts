@@ -28,9 +28,9 @@ describe("thread contract", () => {
         cursor: "comment:4286817434",
       },
       thread_kind: "work_item",
-      thread_locator: "nilstate/aster#issue/110",
+      thread_locator: "runxhq/aster#issue/110",
       title: "[skill] Add a collaboration issue distillation skill",
-      canonical_uri: "https://github.com/nilstate/aster/issues/110",
+      canonical_uri: "https://github.com/runxhq/aster/issues/110",
       entries: [
         {
           entry_id: "comment-1",
@@ -56,21 +56,21 @@ describe("thread contract", () => {
         {
           entry_id: "pr-111",
           kind: "pull_request",
-          locator: "https://github.com/nilstate/aster/pull/111",
+          locator: "https://github.com/runxhq/aster/pull/111",
           status: "draft",
         },
       ],
       source_refs: [
         {
           type: "provider_thread",
-          uri: "https://github.com/nilstate/aster/issues/110",
+          uri: "https://github.com/runxhq/aster/issues/110",
         },
       ],
       generated_at: "2026-04-21T08:05:00Z",
     });
 
     expect(state.thread_kind).toBe("work_item");
-    expect(state.thread_locator).toBe("nilstate/aster#issue/110");
+    expect(state.thread_locator).toBe("runxhq/aster#issue/110");
     expect(state.adapter.type).toBe("github");
     expect(threadAllowsGate(state, "skill-lab.publish")).toBe(true);
     expect(findOutboxEntry(state, "pull_request")?.status).toBe("draft");

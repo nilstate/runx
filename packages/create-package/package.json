@@ -1,0 +1,19 @@
+{
+  "name": "@runxhq/create-package",
+  "version": "0.0.0",
+  "private": false,
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "create-runxhq-package": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}

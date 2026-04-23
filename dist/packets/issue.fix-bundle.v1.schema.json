@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/issue/fix-bundle/v1.json",
+  "x-runx-packet-id": "runx.issue.fix_bundle.v1",
+  "type": "object",
+  "properties": {
+    "status": { "type": "string" },
+    "reason": { "type": "string" },
+    "files": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+  },
+  "additionalProperties": true
+}

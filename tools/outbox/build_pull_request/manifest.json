@@ -1,0 +1,108 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "outbox.build_pull_request",
+  "description": "Build a provider-agnostic draft pull-request packet and outbox entry from native scafld surfaces.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "task_id": {
+      "type": "string",
+      "required": true,
+      "description": "scafld task id that produced the completed engineering state."
+    },
+    "thread_title": {
+      "type": "string",
+      "required": false,
+      "description": "Canonical thread title when the caller already has one."
+    },
+    "thread_locator": {
+      "type": "string",
+      "required": false,
+      "description": "Canonical thread locator for the bounded work item."
+    },
+    "thread": {
+      "type": "json",
+      "required": false,
+      "description": "Optional hydrated thread that may already carry a pull_request outbox entry."
+    },
+    "outbox_entry": {
+      "type": "json",
+      "required": false,
+      "description": "Optional current pull_request outbox entry when refreshing an existing draft."
+    },
+    "target_repo": {
+      "type": "string",
+      "required": false,
+      "description": "Intended repository slug when the caller already knows it."
+    },
+    "summary_projection": {
+      "type": "json",
+      "required": true,
+      "description": "Native scafld summary result payload from `scafld summary --json`."
+    },
+    "checks_projection": {
+      "type": "json",
+      "required": true,
+      "description": "Native scafld checks result payload from `scafld checks --json`."
+    },
+    "pr_body_projection": {
+      "type": "json",
+      "required": true,
+      "description": "Native scafld pr-body result payload from `scafld pr-body --json`."
+    },
+    "completion_result": {
+      "type": "json",
+      "required": true,
+      "description": "Native scafld complete result payload."
+    },
+    "completion_state": {
+      "type": "json",
+      "required": false,
+      "description": "Native scafld complete state payload."
+    },
+    "status_snapshot": {
+      "type": "json",
+      "required": false,
+      "description": "Native scafld status result payload for sync and origin facts."
+    }
+  },
+  "scopes": [
+    "runx:repo:package"
+  ],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "draft_pull_request": "draft_pull_request_packet",
+        "outbox_entry": "outbox_entry"
+      }
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "named_emits": {
+      "draft_pull_request": "draft_pull_request_packet",
+      "outbox_entry": "outbox_entry"
+    },
+    "outputs": {
+      "draft_pull_request": {
+        "packet": "runx.outbox.draft_pull_request.v1"
+      },
+      "outbox_entry": {
+        "packet": "runx.outbox.entry.v1"
+      }
+    }
+  },
+  "source_hash": "sha256:ebfb842281a56c23ca86c988637cb91b0f6942f4f597a9d3af5499b50ecb87ca",
+  "schema_hash": "sha256:6898a9225f0d7c3287134a7ddc9e12faa89d6406995d979a4ffb2c7f6e0b302b",
+  "toolkit_version": "0.0.0"
+}

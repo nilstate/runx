@@ -405,6 +405,196 @@ runners:
     expect(stdout.contents()).not.toContain("sk-secret-test");
   });
 
+  it("auto-resolves structured agent-step runs through configured OpenAI runtime", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-agent-"));
+    tempDirs.push(tempDir);
+    const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: process.cwd() };
+    await configureOpenAiAgent(env, "gpt-test");
+
+    let requestCount = 0;
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      requestCount += 1;
+      expect(init?.method).toBe("POST");
+      const body = JSON.parse(String(init?.body)) as {
+        model: string;
+        tools: Array<{ name: string }>;
+      };
+      expect(body.model).toBe("gpt-test");
+      expect(body.tools.map((tool) => tool.name)).toContain("submit_result");
+
+      return new Response(JSON.stringify({
+        output: [
+          {
+            type: "function_call",
+            call_id: `call_${requestCount}`,
+            name: "submit_result",
+            arguments: JSON.stringify({ verdict: "pass" }),
+          },
+        ],
+      }), { status: 200 });
+    }) as typeof fetch;
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["skill", "fixtures/skills/agent-step", "--prompt", "review this", "--non-interactive", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      env,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    const result = JSON.parse(stdout.contents()) as {
+      status: string;
+      execution: { stdout: string };
+      receipt: { metadata?: { agent_hook?: { route?: string } } };
+    };
+    expect(result.status).toBe("success");
+    expect(JSON.parse(result.execution.stdout)).toEqual({ verdict: "pass" });
+    expect(result.receipt.metadata?.agent_hook?.route).toBe("provided");
+    expect(requestCount).toBe(1);
+  });
+
+  it("lets the automatic runtime use declared built-in tools before submitting a result", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-tool-"));
+    tempDirs.push(tempDir);
+    const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: tempDir };
+    await configureOpenAiAgent(env, "gpt-tool-test");
+
+    const skillDir = path.join(tempDir, "file-summary");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(path.join(tempDir, "note.txt"), "tool grounded note\n");
+    await writeFile(
+      path.join(skillDir, "SKILL.md"),
+      `---
+name: file-summary
+description: Summarize a file using the automatic CLI runtime.
+source:
+  type: agent-step
+  agent: codex
+  task: summarize-file
+  outputs:
+    summary: string
+runx:
+  allowed_tools:
+    - fs.read
+inputs:
+  repo_root:
+    type: string
+    required: true
+---
+Read note.txt and produce a grounded summary.
+`,
+    );
+
+    let requestCount = 0;
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      requestCount += 1;
+      const body = JSON.parse(String(init?.body)) as {
+        input: Array<Record<string, unknown>>;
+        tools: Array<{ name: string }>;
+      };
+      if (requestCount === 1) {
+        expect(body.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining(["fs_read", "submit_result"]));
+        return new Response(JSON.stringify({
+          output: [
+            {
+              type: "function_call",
+              call_id: "call_fs",
+              name: "fs_read",
+              arguments: JSON.stringify({
+                path: "note.txt",
+                repo_root: tempDir,
+              }),
+            },
+          ],
+        }), { status: 200 });
+      }
+
+      const toolOutput = body.input.find((item) => item.type === "function_call_output") as
+        | { output?: string }
+        | undefined;
+      expect(toolOutput?.output).toContain("tool grounded note");
+      return new Response(JSON.stringify({
+        output: [
+          {
+            type: "function_call",
+            call_id: "call_submit",
+            name: "submit_result",
+            arguments: JSON.stringify({ summary: "grounded from fs.read" }),
+          },
+        ],
+      }), { status: 200 });
+    }) as typeof fetch;
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      [skillDir, "--repo-root", tempDir, "--non-interactive", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      env,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    const result = JSON.parse(stdout.contents()) as { execution: { stdout: string } };
+    expect(JSON.parse(result.execution.stdout)).toEqual({ summary: "grounded from fs.read" });
+    expect(requestCount).toBe(2);
+  });
+
+  it("auto-resolves plain-text agent runs when no structured outputs are declared", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-agent-text-"));
+    tempDirs.push(tempDir);
+    const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: tempDir };
+    await configureOpenAiAgent(env, "gpt-text-test");
+
+    const skillDir = path.join(tempDir, "plain-agent");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(
+      path.join(skillDir, "SKILL.md"),
+      `---
+name: plain-agent
+description: Plain-text automatic agent fixture.
+source:
+  type: agent
+inputs:
+  prompt:
+    type: string
+    required: true
+---
+Answer the prompt directly.
+`,
+    );
+
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({
+      output: [
+        {
+          type: "message",
+          role: "assistant",
+          content: [
+            {
+              type: "output_text",
+              text: "plain agent answer",
+            },
+          ],
+        },
+      ],
+    }), { status: 200 })) as typeof fetch;
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      [skillDir, "--prompt", "hello", "--non-interactive", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      env,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    const result = JSON.parse(stdout.contents()) as { execution: { stdout: string } };
+    expect(result.execution.stdout).toBe("plain agent answer");
+  });
+
   it("renders search results with run and add commands", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-search-"));
     tempDirs.push(tempDir);
@@ -537,7 +727,7 @@ runners:
             scopes: ["repo:read", "user:read"],
             scope_family: "github_repo",
             authority_kind: "read_only",
-            target_repo: "nilstate/aster",
+            target_repo: "runxhq/aster",
             status: "active",
           },
         ],
@@ -576,12 +766,12 @@ runners:
     expect(stdout.contents()).toContain("connections");
     expect(stdout.contents()).toContain("github");
     expect(stdout.contents()).toContain("repo:read, user:read");
-    expect(stdout.contents()).toContain("nilstate/aster");
+    expect(stdout.contents()).toContain("runxhq/aster");
     stdout.clear();
     stderr.clear();
 
     const preprovisionExit = await runCli(
-      ["connect", "github", "--scope", "repo:read", "--scope-family", "github_repo", "--authority-kind", "read_only", "--target-repo", "nilstate/aster"],
+      ["connect", "github", "--scope", "repo:read", "--scope-family", "github_repo", "--authority-kind", "read_only", "--target-repo", "runxhq/aster"],
       { stdin: process.stdin, stdout, stderr },
       process.env,
       { connect },
@@ -590,7 +780,7 @@ runners:
     expect(stdout.contents()).toContain("connection ready");
     expect(stdout.contents()).toContain("grant_github_1");
     expect(stdout.contents()).toContain("github_repo");
-    expect(stdout.contents()).toContain("nilstate/aster");
+    expect(stdout.contents()).toContain("runxhq/aster");
     expect(stdout.contents()).toContain("runx connect list");
     stdout.clear();
     stderr.clear();
@@ -673,6 +863,517 @@ runners:
   });
 });
 
+describe("runx list", () => {
+  it("discovers local tools and skills without executing them", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-list-"));
+    tempDirs.push(tempDir);
+    const toolDir = path.join(tempDir, "tools", "demo", "echo");
+    const skillDir = path.join(tempDir, "skills", "demo-skill");
+    await mkdir(toolDir, { recursive: true });
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(
+      path.join(toolDir, "manifest.json"),
+      `${JSON.stringify({
+        name: "demo.echo",
+        description: "Echo fixture.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        inputs: {
+          message: {
+            type: "string",
+            required: true,
+          },
+        },
+        scopes: ["demo.echo"],
+        runx: {
+          artifacts: {
+            wrap_as: "echoed",
+          },
+        },
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(skillDir, "X.yaml"),
+      `skill: demo-skill
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - -e
+      - "process.stdout.write('{}')"
+harness:
+  cases:
+    - name: demo-smoke
+      inputs: {}
+      expect:
+        status: success
+`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["list", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    const report = JSON.parse(stdout.contents()) as {
+      readonly schema: string;
+      readonly items: readonly {
+        readonly kind: string;
+        readonly name: string;
+        readonly path: string;
+        readonly harness_cases?: number;
+      }[];
+    };
+    expect(report.schema).toBe("runx.list.v1");
+    expect(report.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "tool", name: "demo.echo", path: "tools/demo/echo/manifest.json" }),
+      expect.objectContaining({ kind: "skill", name: "demo-skill", path: "skills/demo-skill/X.yaml", harness_cases: 1 }),
+    ]));
+  });
+});
+
+describe("runx doctor", () => {
+  it("emits machine-actionable diagnostics for legacy tool.yaml files", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-"));
+    tempDirs.push(tempDir);
+    const toolDir = path.join(tempDir, "tools", "demo", "legacy");
+    await mkdir(toolDir, { recursive: true });
+    await writeFile(
+      path.join(toolDir, "tool.yaml"),
+      `name: demo.legacy
+description: Legacy tool fixture.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - ./run.mjs
+`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["doctor", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.contents()).toBe("");
+    const report = JSON.parse(stdout.contents()) as {
+      readonly schema: string;
+      readonly status: string;
+      readonly diagnostics: readonly {
+        readonly id: string;
+        readonly instance_id: string;
+        readonly repairs: readonly { readonly id: string; readonly risk: string }[];
+      }[];
+    };
+    expect(report.schema).toBe("runx.doctor.v1");
+    expect(report.status).toBe("failure");
+    expect(report.diagnostics).toEqual([
+      expect.objectContaining({
+        id: "runx.tool.manifest.legacy_format",
+        instance_id: expect.stringMatching(/^sha256:/),
+        repairs: [expect.objectContaining({ id: "migrate_to_define_tool", risk: "medium" })],
+      }),
+    ]);
+  });
+
+  it("validates chain context paths through artifact packet metadata", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-packets-"));
+    tempDirs.push(tempDir);
+    await mkdir(path.join(tempDir, "skills", "chain"), { recursive: true });
+    await mkdir(path.join(tempDir, "dist", "packets"), { recursive: true });
+    await writeFile(
+      path.join(tempDir, "package.json"),
+      `${JSON.stringify({
+        name: "packet-chain",
+        version: "0.1.0",
+        type: "module",
+        runx: {
+          packets: ["./dist/packets/*.schema.json"],
+        },
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(tempDir, "dist", "packets", "profile.v1.schema.json"),
+      `${JSON.stringify({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://schemas.runx.dev/packet-chain/profile/v1.json",
+        "x-runx-packet-id": "packet-chain.profile.v1",
+        type: "object",
+        properties: {
+          profile: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+            },
+            additionalProperties: true,
+          },
+        },
+        additionalProperties: true,
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(tempDir, "skills", "chain", "X.yaml"),
+      `skill: chain
+runners:
+  default:
+    default: true
+    type: chain
+    chain:
+      name: chain
+      steps:
+        - id: produce
+          run:
+            type: agent-step
+            agent: builder
+            task: produce
+            outputs:
+              profile: object
+          artifacts:
+            named_emits:
+              profile_packet: profile
+            packets:
+              profile_packet: packet-chain.profile.v1
+        - id: consume
+          run:
+            type: agent-step
+            agent: builder
+            task: consume
+            outputs:
+              ok: string
+          context:
+            brand_name: produce.profile_packet.data.profile.name
+harness:
+  cases:
+    - name: chain-smoke
+      inputs: {}
+      caller:
+        answers:
+          agent_step.produce.output:
+            profile:
+              name: Acme
+          agent_step.consume.output:
+            ok: yes
+      expect:
+        status: success
+`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["doctor", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      schema: "runx.doctor.v1",
+      status: "success",
+      summary: {
+        errors: 0,
+        warnings: 0,
+      },
+      diagnostics: [],
+    });
+  });
+
+  it("requires runx-extended skills to declare harness coverage", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-harness-"));
+    tempDirs.push(tempDir);
+    await mkdir(path.join(tempDir, "skills", "uncovered"), { recursive: true });
+    await writeFile(
+      path.join(tempDir, "skills", "uncovered", "X.yaml"),
+      `skill: uncovered
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - -e
+      - "process.stdout.write('{}')"
+`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["doctor", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      status: "failure",
+      diagnostics: [
+        expect.objectContaining({
+          id: "runx.skill.fixture.missing",
+          severity: "error",
+          evidence: {
+            fixture_count: 0,
+            harness_case_count: 0,
+          },
+        }),
+      ],
+    });
+  });
+
+  it("requires manifest-backed tools to declare deterministic fixtures", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-doctor-tool-fixture-"));
+    tempDirs.push(tempDir);
+    const toolDir = path.join(tempDir, "tools", "demo", "echo");
+    await mkdir(toolDir, { recursive: true });
+    await writeFile(
+      path.join(toolDir, "manifest.json"),
+      `${JSON.stringify({
+        name: "demo.echo",
+        description: "Echo fixture.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        inputs: {},
+        scopes: [],
+      }, null, 2)}\n`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["doctor", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      status: "failure",
+      diagnostics: [
+        expect.objectContaining({
+          id: "runx.tool.fixture.missing",
+          severity: "error",
+          target: {
+            kind: "tool",
+            ref: "demo.echo",
+          },
+        }),
+      ],
+    });
+  });
+});
+
+describe("runx dev", () => {
+  it("runs deterministic tool fixtures inside a disposable workspace", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-dev-tool-workspace-"));
+    tempDirs.push(tempDir);
+    const toolDir = path.join(tempDir, "tools", "demo", "read");
+    await mkdir(path.join(toolDir, "fixtures"), { recursive: true });
+    await writeFile(
+      path.join(toolDir, "run.mjs"),
+      `import { readFile } from "node:fs/promises";
+import path from "node:path";
+const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+const contents = await readFile(path.join(inputs.repo_root, inputs.path), "utf8");
+process.stdout.write(JSON.stringify({ path: inputs.path, contents, repo_root: inputs.repo_root }));
+`,
+    );
+    await writeFile(
+      path.join(toolDir, "manifest.json"),
+      `${JSON.stringify({
+        name: "demo.read",
+        description: "Read a fixture file.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        inputs: {
+          path: { type: "string", required: true },
+          repo_root: { type: "string", required: true },
+        },
+        scopes: ["demo.read"],
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(toolDir, "fixtures", "read.yaml"),
+      `name: read-sandbox
+lane: deterministic
+target:
+  kind: tool
+  ref: demo.read
+workspace:
+  files:
+    docs/readme.md: |
+      hello from sandbox
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  path: docs/readme.md
+expect:
+  status: success
+  output:
+    subset:
+      path: docs/readme.md
+      contents: |
+        hello from sandbox
+`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["dev", "--lane", "deterministic", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      status: "success",
+      fixtures: [
+        expect.objectContaining({
+          name: "read-sandbox",
+          status: "success",
+        }),
+      ],
+      receipt_id: expect.stringMatching(/^rx_/),
+    });
+  });
+
+  it("validates agent replay cassettes against packet schemas", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-dev-replay-"));
+    tempDirs.push(tempDir);
+    await mkdir(path.join(tempDir, "fixtures"), { recursive: true });
+    await mkdir(path.join(tempDir, "dist", "packets"), { recursive: true });
+    await writeFile(
+      path.join(tempDir, "package.json"),
+      `${JSON.stringify({
+        name: "replay-demo",
+        version: "0.1.0",
+        type: "module",
+        runx: {
+          packets: ["./dist/packets/*.schema.json"],
+        },
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(tempDir, "dist", "packets", "echo.v1.schema.json"),
+      `${JSON.stringify({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://schemas.runx.dev/replay-demo/echo/v1.json",
+        "x-runx-packet-id": "replay-demo.echo.v1",
+        type: "object",
+        required: ["message"],
+        properties: {
+          message: { type: "string" },
+        },
+        additionalProperties: false,
+      }, null, 2)}\n`,
+    );
+    await writeFile(
+      path.join(tempDir, "fixtures", "agent.yaml"),
+      `name: replay-basic
+lane: agent
+target:
+  kind: skill
+  ref: .
+inputs:
+  message: hello
+agent:
+  mode: replay
+expect:
+  status: success
+  outputs:
+    echo_packet:
+      matches_packet: replay-demo.echo.v1
+`,
+    );
+    await writeFile(
+      path.join(tempDir, "fixtures", "agent.replay.json"),
+      `${JSON.stringify({
+        schema: "runx.replay.v1",
+        fixture: "replay-basic",
+        status: "success",
+        outputs: {
+          echo_packet: {
+            schema: "replay-demo.echo.v1",
+            data: {
+              message: "hello",
+            },
+          },
+        },
+      }, null, 2)}\n`,
+    );
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const receiptDir = path.join(tempDir, "receipts");
+    const exitCode = await runCli(
+      ["dev", "--lane", "agent", "--receipt-dir", receiptDir, "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir, RUNX_RECEIPT_DIR: receiptDir },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    const report = JSON.parse(stdout.contents()) as {
+      readonly receipt_id?: string;
+    };
+    expect(report).toMatchObject({
+      schema: "runx.dev.v1",
+      status: "success",
+      fixtures: [
+        {
+          name: "replay-basic",
+          status: "success",
+          replay_path: "fixtures/agent.replay.json",
+        },
+      ],
+    });
+    expect(report.receipt_id).toMatch(/^rx_/);
+
+    stdout.clear();
+    stderr.clear();
+    const inspectExitCode = await runCli(
+      ["inspect", report.receipt_id ?? "", "--receipt-dir", receiptDir, "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      { ...process.env, RUNX_CWD: tempDir },
+    );
+    expect(inspectExitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    expect(JSON.parse(stdout.contents())).toMatchObject({
+      verification: {
+        status: "verified",
+      },
+      summary: {
+        id: report.receipt_id,
+        name: "runx.dev",
+        status: "success",
+      },
+    });
+  });
+});
+
 function createMemoryStream(): NodeJS.WriteStream & { contents: () => string; clear: () => void } {
   let buffer = "";
   return {
@@ -698,4 +1399,18 @@ async function createFakeAgentBin(commands: readonly string[]): Promise<string> 
     }),
   );
   return directory;
+}
+
+async function configureOpenAiAgent(env: NodeJS.ProcessEnv, model: string): Promise<void> {
+  const stdout = createMemoryStream();
+  const stderr = createMemoryStream();
+  await expect(runCli(["config", "set", "agent.provider", "openai", "--json"], { stdin: process.stdin, stdout, stderr }, env)).resolves.toBe(0);
+  stdout.clear();
+  stderr.clear();
+  await expect(runCli(["config", "set", "agent.model", model, "--json"], { stdin: process.stdin, stdout, stderr }, env)).resolves.toBe(0);
+  stdout.clear();
+  stderr.clear();
+  await expect(runCli(["config", "set", "agent.api_key", "sk-test-secret", "--json"], { stdin: process.stdin, stdout, stderr }, env)).resolves.toBe(0);
+  stdout.clear();
+  stderr.clear();
 }

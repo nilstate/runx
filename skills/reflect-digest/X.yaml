@@ -249,6 +249,8 @@ runners:
           artifacts:
             named_emits:
               reflect_projections_packet: reflect_projections
+            packets:
+              reflect_projections_packet: runx.reflect.projections.v1
         - id: group-reflect-projections
           label: group reflect projections
           context:
@@ -261,6 +263,8 @@ runners:
           artifacts:
             named_emits:
               grouped_reflections_packet: grouped_reflections
+            packets:
+              grouped_reflections_packet: runx.reflect.grouped_reflections.v1
         - id: draft-digest
           label: draft grouped proposals
           context:

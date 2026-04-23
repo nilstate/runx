@@ -72,7 +72,7 @@ async function finalizePackage(directory) {
   }
 
   const dist = path.join(directory, "dist");
-  const isCli = packageJson.name === "@runxai/cli";
+  const isCli = packageJson.name === "@runxhq/cli";
   const isExecutable = Boolean(packageJson.bin?.runx);
 
   if (isCli && mode === "pack") {

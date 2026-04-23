@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/issue/triage-queue/v1.json",
+  "x-runx-packet-id": "runx.issue.triage_queue.v1",
+  "type": "object",
+  "properties": {
+    "queue": { "type": "array" },
+    "issues": { "type": "array" }
+  },
+  "additionalProperties": true
+}

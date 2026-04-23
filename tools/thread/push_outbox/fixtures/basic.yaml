@@ -1,0 +1,18 @@
+name: thread-push-outbox-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: thread.push_outbox
+inputs:
+  outbox_entry:
+    entry_id: msg-fixture
+    kind: message
+    thread_locator: issue://fixture/123
+    body: Fixture message
+expect:
+  status: success
+  output:
+    subset:
+      push:
+        status: skipped
+        reason: thread not provided

@@ -7,7 +7,7 @@ import { runnerLocalPackage } from "../packages/runner-local/src/index.js";
 describe("bootstrap workspace", () => {
   it("wires trusted-kernel package exports", () => {
     expect([cliPackage, parserPackage, runnerLocalPackage]).toEqual([
-      "@runxai/cli",
+      "@runxhq/cli",
       "@runx/parser",
       "@runx/runner-local",
     ]);

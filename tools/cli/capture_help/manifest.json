@@ -1,0 +1,60 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "cli.capture_help",
+  "description": "Capture help output from a CLI command deterministically.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "command": {
+      "type": "string",
+      "required": true,
+      "description": "CLI command to invoke."
+    },
+    "args": {
+      "type": "json",
+      "required": false,
+      "description": "Array of arguments to pass before the help flag."
+    },
+    "help_flag": {
+      "type": "string",
+      "required": false,
+      "description": "Help flag to append; defaults to --help."
+    },
+    "cwd": {
+      "type": "string",
+      "required": false,
+      "description": "Working directory override."
+    },
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository root fallback for cwd."
+    }
+  },
+  "scopes": [
+    "cli.read"
+  ],
+  "runx": {
+    "artifacts": {
+      "wrap_as": "cli_help"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.cli.help.v1",
+    "wrap_as": "cli_help"
+  },
+  "source_hash": "sha256:b59e83bf8e2df337ba6bfc9c9677145af35e01a077708b996a49c7cfec76f884",
+  "schema_hash": "sha256:78eca9e2e677abb15ad7f4aaca1330a2110fa572c226183da400ce0439cf9ae5",
+  "toolkit_version": "0.0.0"
+}

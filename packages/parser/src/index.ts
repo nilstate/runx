@@ -57,6 +57,11 @@ export interface SkillArtifactContract {
   readonly wrapAs?: string;
 }
 
+export interface SkillQualityProfile {
+  readonly heading: "Quality Profile";
+  readonly content: string;
+}
+
 export type SkillSandboxProfile = "readonly" | "workspace-write" | "network" | "unrestricted-local-dev";
 
 export interface SkillSandbox {
@@ -82,6 +87,7 @@ export interface ValidatedSkill {
   readonly idempotency?: SkillIdempotencyPolicy;
   readonly mutating?: boolean;
   readonly artifacts?: SkillArtifactContract;
+  readonly qualityProfile?: SkillQualityProfile;
   readonly allowedTools?: readonly string[];
   readonly execution?: ExecutionSemantics;
   readonly runx?: Record<string, unknown>;
@@ -261,6 +267,24 @@ export function parseToolManifestYaml(yaml: string): RawToolManifestIR {
   };
 }
 
+export function parseToolManifestJson(json: string): RawToolManifestIR {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch (error) {
+    throw new SkillParseError(`Tool manifest JSON is invalid: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  if (!isRecord(parsed)) {
+    throw new SkillParseError("Tool manifest JSON must parse to an object.");
+  }
+
+  return {
+    document: parsed,
+    raw: json,
+  };
+}
+
 export function validateSkill(raw: RawSkillIR, options: ValidateSkillOptions = {}): ValidatedSkill {
   const mode = options.mode ?? "strict";
   const name = requiredString(raw.frontmatter.name, "name");
@@ -289,6 +313,7 @@ export function validateSkill(raw: RawSkillIR, options: ValidateSkillOptions = {
     idempotency: validateSkillIdempotency(raw.frontmatter.idempotency ?? runx?.idempotency, "idempotency"),
     mutating: validateSkillMutation(raw.frontmatter.mutating ?? recordField(risk, "mutating") ?? runx?.mutating, "mutating"),
     artifacts: validateArtifactContract(recordField(runx, "artifacts"), "runx.artifacts"),
+    qualityProfile: extractSkillQualityProfile(raw.body),
     allowedTools: validateAllowedTools(
       recordField(runx, "allowed_tools"),
       "runx.allowed_tools",
@@ -296,6 +321,17 @@ export function validateSkill(raw: RawSkillIR, options: ValidateSkillOptions = {
     execution: validateExecutionSemantics(raw.frontmatter.execution ?? recordField(runx, "execution"), "execution"),
     runx,
     raw,
+  };
+}
+
+export function extractSkillQualityProfile(body: string): SkillQualityProfile | undefined {
+  const content = extractMarkdownSection(body, "Quality Profile", 2);
+  if (!content) {
+    return undefined;
+  }
+  return {
+    heading: "Quality Profile",
+    content,
   };
 }
 
@@ -373,6 +409,43 @@ function validateCatalogMetadata(value: Record<string, unknown> | undefined, lab
     audience,
     visibility,
   };
+}
+
+function extractMarkdownSection(body: string, heading: string, level: number): string | undefined {
+  const lines = body.split(/\r?\n/);
+  const headingPattern = new RegExp(`^#{${level}}\\s+${escapeRegExp(heading)}\\s*$`, "i");
+  const boundaryPattern = new RegExp(`^#{1,${level}}\\s+\\S+`);
+  const start = lines.findIndex((line) => headingPattern.test(line.trim()));
+  if (start === -1) {
+    return undefined;
+  }
+
+  const collected: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (boundaryPattern.test(line.trim())) {
+      break;
+    }
+    collected.push(line);
+  }
+
+  const content = trimBlankLines(collected).join("\n").trim();
+  return content.length > 0 ? content : undefined;
+}
+
+function trimBlankLines(lines: readonly string[]): readonly string[] {
+  let start = 0;
+  let end = lines.length;
+  while (start < end && lines[start]?.trim() === "") {
+    start++;
+  }
+  while (end > start && lines[end - 1]?.trim() === "") {
+    end--;
+  }
+  return lines.slice(start, end);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function validateToolManifest(raw: RawToolManifestIR): ValidatedTool {

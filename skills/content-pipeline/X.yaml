@@ -126,6 +126,7 @@ runners:
             draft: draft-content.content_draft_packet.data.draft
           artifacts:
             wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: package-publication
           skill: ../draft-content
           runner: package

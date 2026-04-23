@@ -1,0 +1,19 @@
+name: fs-write-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: fs.write
+workspace:
+  files: {}
+inputs:
+  repo_root: $RUNX_FIXTURE_ROOT
+  path: docs/generated.md
+  contents: |
+    generated fixture content
+expect:
+  status: success
+  output:
+    matches_packet: runx.fs.file_write.v1
+    subset:
+      path: docs/generated.md
+      bytes_written: 26

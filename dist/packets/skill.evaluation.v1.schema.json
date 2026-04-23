@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/skill/evaluation/v1.json",
+  "x-runx-packet-id": "runx.skill.evaluation.v1",
+  "type": "object",
+  "properties": {
+    "verdict": { "type": "string" },
+    "findings": { "type": "array" },
+    "recommendations": { "type": "array" }
+  },
+  "additionalProperties": true
+}

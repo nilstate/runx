@@ -1,0 +1,47 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "scafld.capture_checks",
+  "description": "Capture the native `scafld checks --json` payload without treating a failing check as a tool failure.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "task_id": {
+      "type": "string",
+      "required": true,
+      "description": "scafld task id whose projection check surface should be captured."
+    },
+    "fixture": {
+      "type": "string",
+      "required": false,
+      "description": "Workspace root containing the governed `.ai/` state."
+    },
+    "cwd": {
+      "type": "string",
+      "required": false,
+      "description": "Optional explicit working directory used when fixture is absent."
+    },
+    "scafld_bin": {
+      "type": "string",
+      "required": false,
+      "description": "Explicit scafld executable path."
+    }
+  },
+  "scopes": [
+    "scafld:projection:read"
+  ],
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {},
+  "source_hash": "sha256:ac901dda9396869875af5e058ebca2cca4d2a0797c61e4f5807b547a470deea2",
+  "schema_hash": "sha256:259e28a3094330c3acfe39a94f6f1b595169d311eff14ca24cb27fd34b80224f",
+  "toolkit_version": "0.0.0"
+}

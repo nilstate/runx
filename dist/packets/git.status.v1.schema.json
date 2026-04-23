@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/git/status/v1.json",
+  "x-runx-packet-id": "runx.git.status.v1",
+  "type": "object",
+  "properties": {
+    "branch": { "type": "string" },
+    "clean": { "type": "boolean" },
+    "entries": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

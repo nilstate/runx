@@ -1,0 +1,56 @@
+name: outbox-build-pull-request-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: outbox.build_pull_request
+inputs:
+  task_id: task-fixture
+  thread_title: Improve docs
+  thread_locator: issue://fixture/123
+  target_repo: acme/widgets
+  summary_projection:
+    markdown: |
+      Summary of the completed fixture work.
+    model:
+      title: Improve docs
+      origin:
+        git:
+          branch: docs/fixture
+          base_ref: main
+        repo:
+          remote: origin
+          remote_url: https://github.com/acme/widgets.git
+        source:
+          system: github
+          kind: issue
+          id: "123"
+  checks_projection:
+    check:
+      status: success
+  pr_body_projection:
+    markdown: |
+      ## Summary
+      Fixture PR body.
+    model:
+      origin: {}
+  completion_result:
+    archive_path: .ai/specs/task-fixture.yml
+    blocking_count: 0
+    non_blocking_count: 0
+  completion_state:
+    status: completed
+    review_verdict: pass
+expect:
+  status: success
+  outputs:
+    draft_pull_request:
+      matches_packet: runx.outbox.draft_pull_request.v1
+      subset:
+        task_id: task-fixture
+        push_ready: true
+    outbox_entry:
+      matches_packet: runx.outbox.entry.v1
+      subset:
+        entry_id: pull_request:task-fixture
+        kind: pull_request
+        status: proposed

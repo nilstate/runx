@@ -80,6 +80,7 @@ runners:
       operator_notes: object
     artifacts:
       wrap_as: issue_triage_queue
+      packet: runx.issue.triage_queue.v1
     inputs:
       repository:
         type: string
@@ -110,6 +111,7 @@ runners:
       follow_up_actions: array
     artifacts:
       wrap_as: issue_triage_packet
+      packet: runx.issue.triage.v1
     inputs:
       issue_url:
         type: string

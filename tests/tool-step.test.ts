@@ -98,25 +98,31 @@ steps:
     const toolDir = path.join(tempDir, ".runx", "tools", "demo", "echo");
     await mkdir(toolDir, { recursive: true });
     await writeFile(
-      path.join(toolDir, "tool.yaml"),
-      `name: demo.echo
-description: Echo a local tool payload.
-source:
-  type: cli-tool
-  command: node
-  args:
-    - -e
-    - "process.stdout.write(JSON.stringify({ message: process.env.RUNX_INPUT_MESSAGE || '' }))"
-inputs:
-  message:
-    type: string
-    required: true
-scopes:
-  - demo.echo
-runx:
-  artifacts:
-    wrap_as: echoed
-`,
+      path.join(toolDir, "manifest.json"),
+      `${JSON.stringify({
+        name: "demo.echo",
+        description: "Echo a local tool payload.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: [
+            "-e",
+            "process.stdout.write(JSON.stringify({ message: process.env.RUNX_INPUT_MESSAGE || '' }))",
+          ],
+        },
+        inputs: {
+          message: {
+            type: "string",
+            required: true,
+          },
+        },
+        scopes: ["demo.echo"],
+        runx: {
+          artifacts: {
+            wrap_as: "echoed",
+          },
+        },
+      }, null, 2)}\n`,
     );
 
     const chain = validateGraph(
@@ -455,5 +461,28 @@ steps:
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it("preserves structured stdout when harness-backed tools fail", () => {
+    const result = spawnSync(process.execPath, [path.resolve("tools/shell/exec/run.mjs")], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        RUNX_INPUTS_JSON: JSON.stringify({
+          command: process.execPath,
+          args: ["-e", "process.stderr.write('boom'); process.exit(7)"],
+          cwd: process.cwd(),
+        }),
+      },
+      shell: false,
+    });
+
+    expect(result.status).toBe(7);
+    expect(result.stderr).toBe("boom\n");
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      command: process.execPath,
+      stderr: "boom",
+      exit_code: 7,
+    });
   });
 });

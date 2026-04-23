@@ -110,6 +110,8 @@ runners:
           artifacts:
             named_emits:
               repo_profile: repo_profile
+            packets:
+              repo_profile: runx.repo.profile.v1
         - id: introspect
           label: recommend next improvement
           run:
@@ -181,6 +183,8 @@ runners:
           artifacts:
             named_emits:
               repo_profile: repo_profile
+            packets:
+              repo_profile: runx.repo.profile.v1
         - id: plan
           label: draft evolve plan
           run:

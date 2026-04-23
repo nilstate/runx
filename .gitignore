@@ -5,8 +5,13 @@
 # dependencies
 node_modules/
 
-# build output
-dist/
+# build output (root and any nested package)
+dist/*
+**/dist/*
+!dist/packets/
+!**/dist/packets/
+!dist/packets/*.schema.json
+!**/dist/packets/*.schema.json
 .build/
 coverage/
 .sourcey/

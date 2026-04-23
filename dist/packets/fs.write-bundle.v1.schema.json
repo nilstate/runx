@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/fs/write-bundle/v1.json",
+  "x-runx-packet-id": "runx.fs.write_bundle.v1",
+  "type": "object",
+  "properties": {
+    "files": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "written": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+  },
+  "additionalProperties": true
+}

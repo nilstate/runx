@@ -29,7 +29,7 @@ try {
   }
 
   await execFileAsync(npm, ["init", "-y"], { cwd: tempDir, timeout: 60_000, maxBuffer: 8 * 1024 * 1024 });
-  await execFileAsync(npm, ["install", "--silent", `${"@runxai/cli"}@${cliVersion}`], {
+  await execFileAsync(npm, ["install", "--silent", `${"@runxhq/cli"}@${cliVersion}`], {
     cwd: tempDir,
     timeout: 120_000,
     maxBuffer: 8 * 1024 * 1024,

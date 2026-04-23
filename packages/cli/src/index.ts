@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 
-export const cliPackage = "@runxai/cli";
+export const cliPackage = "@runxhq/cli";
 
+import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { stdin as processStdin, stdout as processStdout } from "node:process";
 import { fileURLToPath } from "node:url";
@@ -32,8 +35,15 @@ import {
   type RunxConfigFile,
 } from "../../config/src/index.js";
 import { runHarness, runHarnessTarget, validatePublishHarness } from "../../harness/src/index.js";
+import {
+  parseRunnerManifestYaml,
+  parseToolManifestJson,
+  validateRunnerManifest,
+  validateToolManifest,
+} from "../../parser/src/index.js";
 import { createFixtureMarketplaceAdapter, searchMarketplaceAdapters, type SkillSearchResult } from "../../marketplaces/src/index.js";
 import { createFileKnowledgeStore } from "../../knowledge/src/index.js";
+import { writeLocalReceipt } from "../../receipts/src/index.js";
 import {
   createDefaultHttpCachedRegistryStore,
   createFileRegistryStore,
@@ -55,9 +65,11 @@ import {
 } from "../../runner-local/src/index.js";
 import { ensureOfficialSkillCached, type OfficialSkillLockEntry } from "../../runner-local/src/official-cache.js";
 import type { ApprovalGate, Question, ResolutionRequest, ResolutionResponse } from "../../executor/src/index.js";
+import { loadCliAgentRuntime, type CliAgentRuntime } from "./agent-runtime.js";
 import { createHttpConnectService } from "./connect-http.js";
 import { ensureRunxInstallState, ensureRunxProjectState } from "./runx-state.js";
 import { streamTrainableReceipts } from "./trainable-receipts.js";
+import { parse as parseYaml } from "yaml";
 
 export interface CliIo {
   readonly stdout: NodeJS.WriteStream;
@@ -304,9 +316,151 @@ interface CallerInputFile {
   readonly approvals?: boolean | Readonly<Record<string, boolean>>;
 }
 
+type RunxListRequestedKind = "all" | "tools" | "skills" | "chains" | "packets" | "overlays";
+type RunxListItemKind = Exclude<RunxListRequestedKind, "all"> extends infer Kind
+  ? Kind extends string
+    ? Kind extends `${infer Singular}s`
+      ? Singular
+      : Kind
+    : never
+  : never;
+type RunxListSource = "local" | "workspace" | "dependencies" | "built-in";
+
+interface RunxListItem {
+  readonly kind: RunxListItemKind;
+  readonly name: string;
+  readonly source: RunxListSource;
+  readonly path: string;
+  readonly status: "ok" | "invalid";
+  readonly diagnostics?: readonly string[];
+  readonly scopes?: readonly string[];
+  readonly emits?: readonly { readonly name: string; readonly packet?: string }[];
+  readonly fixtures?: number;
+  readonly harness_cases?: number;
+  readonly steps?: number;
+  readonly wraps?: string;
+}
+
+interface RunxListReport {
+  readonly schema: "runx.list.v1";
+  readonly root: string;
+  readonly requested_kind: RunxListRequestedKind;
+  readonly items: readonly RunxListItem[];
+}
+
+interface DoctorRepair {
+  readonly id: string;
+  readonly kind: "create_file" | "replace_file" | "edit_yaml" | "edit_json" | "add_fixture" | "run_command" | "manual";
+  readonly confidence: "low" | "medium" | "high";
+  readonly risk: "low" | "medium" | "high" | "sensitive";
+  readonly path?: string;
+  readonly json_pointer?: string;
+  readonly contents?: string;
+  readonly patch?: string;
+  readonly command?: string;
+  readonly requires_human_review: boolean;
+}
+
+interface DoctorDiagnostic {
+  readonly id: string;
+  readonly instance_id: string;
+  readonly severity: "error" | "warning" | "info";
+  readonly title: string;
+  readonly message: string;
+  readonly target: Readonly<Record<string, unknown>>;
+  readonly location: {
+    readonly path: string;
+    readonly json_pointer?: string;
+  };
+  readonly evidence?: Readonly<Record<string, unknown>>;
+  readonly repairs: readonly DoctorRepair[];
+}
+
+interface DoctorReport {
+  readonly schema: "runx.doctor.v1";
+  readonly status: "success" | "failure";
+  readonly summary: {
+    readonly errors: number;
+    readonly warnings: number;
+    readonly infos: number;
+  };
+  readonly diagnostics: readonly DoctorDiagnostic[];
+}
+
+interface ToolBuildReport {
+  readonly schema: "runx.tool.build.v1";
+  readonly status: "success" | "failure";
+  readonly built: readonly {
+    readonly path: string;
+    readonly manifest: string;
+    readonly source_hash: string;
+    readonly schema_hash: string;
+  }[];
+  readonly errors: readonly string[];
+}
+
+interface ToolMigrateReport {
+  readonly schema: "runx.tool.migrate.v1";
+  readonly status: "success" | "failure";
+  readonly migrated: readonly {
+    readonly path: string;
+    readonly manifest: string;
+  }[];
+  readonly errors: readonly string[];
+}
+
+interface FixtureAssertion {
+  readonly path: string;
+  readonly expected?: unknown;
+  readonly actual?: unknown;
+  readonly kind: "subset_miss" | "exact_mismatch" | "packet_invalid" | "status_mismatch" | "type_mismatch";
+  readonly message: string;
+}
+
+interface DevFixtureResult {
+  readonly name: string;
+  readonly lane: string;
+  readonly target: Readonly<Record<string, unknown>>;
+  readonly status: "success" | "failure" | "skipped";
+  readonly duration_ms: number;
+  readonly assertions: readonly FixtureAssertion[];
+  readonly skip_reason?: string;
+  readonly output?: unknown;
+  readonly replay_path?: string;
+}
+
+interface PreparedFixtureWorkspace {
+  readonly root?: string;
+  readonly tokens: Readonly<Record<string, string>>;
+  readonly cleanup: () => Promise<void>;
+}
+
+interface DevReport {
+  readonly schema: "runx.dev.v1";
+  readonly status: "success" | "failure" | "skipped" | "needs_approval";
+  readonly doctor: DoctorReport;
+  readonly fixtures: readonly DevFixtureResult[];
+  readonly receipt_id?: string;
+}
+
 export interface ParsedArgs {
   readonly command?: string;
   readonly subcommand?: string;
+  readonly doctorPath?: string;
+  readonly doctorFix: boolean;
+  readonly doctorExplainId?: string;
+  readonly doctorListDiagnostics: boolean;
+  readonly toolAction?: "build" | "migrate";
+  readonly toolPath?: string;
+  readonly toolAll: boolean;
+  readonly devPath?: string;
+  readonly devLane?: string;
+  readonly devRecord: boolean;
+  readonly devRealAgents: boolean;
+  readonly devWatch: boolean;
+  readonly listKind?: RunxListRequestedKind;
+  readonly listOkOnly: boolean;
+  readonly listInvalidOnly: boolean;
   readonly exportAction?: "trainable";
   readonly skillAction?: "search" | "add" | "publish" | "inspect";
   readonly knowledgeAction?: "show";
@@ -358,6 +512,10 @@ export interface ParsedArgs {
 }
 
 const builtinRootCommands = new Set([
+  "doctor",
+  "dev",
+  "list",
+  "tool",
   "skill",
   "evolve",
   "resume",
@@ -396,9 +554,10 @@ export async function runCli(
     const callerInput = parsed.answersPath
       ? await readCallerInputFile(resolvePathFromUserInput(parsed.answersPath, env))
       : { answers: {} };
+    const agentRuntimeLoader = createAgentRuntimeLoader(env);
     const caller = parsed.nonInteractive
-      ? createNonInteractiveCaller(callerInput.answers, callerInput.approvals)
-      : createInteractiveCaller(io, callerInput.answers, callerInput.approvals, { reportEvents: !parsed.json }, env);
+      ? createNonInteractiveCaller(callerInput.answers, callerInput.approvals, agentRuntimeLoader)
+      : createInteractiveCaller(io, callerInput.answers, callerInput.approvals, { reportEvents: !parsed.json }, env, agentRuntimeLoader);
     if (parsed.command === "harness" && parsed.harnessPath) {
       const result = await runHarnessTarget(resolvePathFromUserInput(parsed.harnessPath, env), {
         env,
@@ -413,6 +572,66 @@ export async function runCli(
         io.stderr.write(`${error}\n`);
       }
       return result.assertionErrors.length === 0 ? 0 : 1;
+    }
+
+    if (parsed.command === "doctor") {
+      if (parsed.doctorListDiagnostics) {
+        const result = listDoctorDiagnostics();
+        if (parsed.json) {
+          io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+        } else {
+          io.stdout.write(renderDoctorDiagnosticList(result, env));
+        }
+        return 0;
+      }
+      if (parsed.doctorExplainId) {
+        const result = explainDoctorDiagnostic(parsed.doctorExplainId);
+        if (parsed.json) {
+          io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+        } else {
+          io.stdout.write(renderDoctorDiagnosticExplanation(result, env));
+        }
+        return result.status === "success" ? 0 : 1;
+      }
+      const result = await handleDoctorCommand(parsed, env);
+      if (parsed.json) {
+        io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        io.stdout.write(renderDoctorResult(result, env));
+      }
+      return result.status === "success" ? 0 : 1;
+    }
+
+    if (parsed.command === "tool" && parsed.toolAction) {
+      const result = parsed.toolAction === "build"
+        ? await handleToolBuildCommand(parsed, env)
+        : await handleToolMigrateCommand(parsed, env);
+      if (parsed.json) {
+        io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        io.stdout.write(renderToolCommandResult(result, env));
+      }
+      return result.status === "success" ? 0 : 1;
+    }
+
+    if (parsed.command === "dev") {
+      const result = await handleDevCommand(parsed, env);
+      if (parsed.json) {
+        io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        io.stdout.write(renderDevResult(result, env));
+      }
+      return result.status === "success" || result.status === "skipped" ? 0 : 1;
+    }
+
+    if (parsed.command === "list" && parsed.listKind) {
+      const result = await handleListCommand(parsed, env);
+      if (parsed.json) {
+        io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        io.stdout.write(renderListResult(result, env));
+      }
+      return result.items.some((item) => item.status === "invalid") && !parsed.listOkOnly ? 1 : 0;
     }
 
     if (parsed.command === "connect" && parsed.connectAction) {
@@ -856,6 +1075,10 @@ function writeUsage(stream: NodeJS.WritableStream, env: NodeJS.ProcessEnv = proc
       "  runx config set|get|list [agent.provider|agent.model|agent.api_key] [value] [--json]",
       "  runx init [-g|--global] [--prefetch official] [--json]",
       "  runx harness <fixture.yaml|skill-dir|SKILL.md> [--json]",
+      "  runx list [tools|skills|chains|packets|overlays] [--ok-only|--invalid-only] [--json]",
+      "  runx doctor [path] [--fix] [--explain id|--list-diagnostics] [--json]",
+      "  runx dev [path] [--lane deterministic|agent|repo-integration|all] [--record] [--json]",
+      "  runx tool build|migrate <tool-dir>|--all [--json]",
       "",
       "Core Flow:",
       "  runx search docs",
@@ -865,6 +1088,9 @@ function writeUsage(stream: NodeJS.WritableStream, env: NodeJS.ProcessEnv = proc
       "  runx init -g --prefetch official",
       "  runx resume <run-id>",
       "  runx inspect <receipt-id>",
+      "  runx list",
+      "  runx doctor",
+      "  runx dev",
       "",
       "Manage Skills:",
       "  runx skill search <query>",
@@ -952,6 +1178,10 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const isConfig = command === "config";
   const isInit = command === "init";
   const isResume = command === "resume";
+  const isDoctor = command === "doctor";
+  const isTool = command === "tool";
+  const isDev = command === "dev";
+  const isList = command === "list";
   const isExportReceipts = command === "export-receipts";
   const isTopLevelSkillInvoke = Boolean(command) && !builtinRootCommands.has(command);
   const searchPositionals = positionals.slice(adminOffset);
@@ -1022,6 +1252,14 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
             ? {}
             : isInit
               ? omitInputs(inputs, ["global", "prefetch", "prefetchOfficial"])
+              : isDoctor
+                ? omitInputs(inputs, ["fix", "explain", "listDiagnostics", "list-diagnostics"])
+              : isTool
+                ? omitInputs(inputs, ["all"])
+              : isDev
+                ? omitInputs(inputs, ["lane", "record", "realAgents", "real-agents", "watch"])
+              : isList
+                ? omitInputs(inputs, ["okOnly", "ok-only", "invalidOnly", "invalid-only"])
               : isExportReceipts
                 ? omitInputs(inputs, ["trainable", "since", "until", "status", "source"])
               : inputs;
@@ -1029,6 +1267,21 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   return {
     command,
     subcommand: positionals[0],
+    doctorPath: isDoctor ? positionals[0] : undefined,
+    doctorFix: isDoctor && truthyFlag(inputs.fix),
+    doctorExplainId: isDoctor && typeof inputs.explain === "string" && inputs.explain !== "true" ? inputs.explain : undefined,
+    doctorListDiagnostics: isDoctor && truthyFlag(inputs.listDiagnostics ?? inputs["list-diagnostics"]),
+    toolAction: isTool && (positionals[0] === "build" || positionals[0] === "migrate") ? positionals[0] : undefined,
+    toolPath: isTool ? positionals[1] : undefined,
+    toolAll: isTool && truthyFlag(inputs.all),
+    devPath: isDev ? positionals[0] : undefined,
+    devLane: isDev && typeof inputs.lane === "string" ? inputs.lane : undefined,
+    devRecord: isDev && truthyFlag(inputs.record),
+    devRealAgents: isDev && truthyFlag(inputs.realAgents ?? inputs["real-agents"]) || isDev && truthyFlag(inputs.record),
+    devWatch: isDev && truthyFlag(inputs.watch),
+    listKind: isList ? normalizeListKind(positionals[0]) : undefined,
+    listOkOnly: isList && truthyFlag(inputs.okOnly ?? inputs["ok-only"]),
+    listInvalidOnly: isList && truthyFlag(inputs.invalidOnly ?? inputs["invalid-only"]),
     exportAction: isExportReceipts && truthyFlag(inputs.trainable) ? "trainable" : undefined,
     skillAction: isSkillSearch ? "search" : isSkillAdd ? "add" : isSkillPublish ? "publish" : isSkillInspect ? "inspect" : undefined,
     knowledgeAction: isKnowledgeShow ? "show" : undefined,
@@ -1086,6 +1339,18 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
 }
 
 function isSupportedCommand(parsed: ParsedArgs): boolean {
+  if (parsed.command === "doctor") {
+    return true;
+  }
+  if (parsed.command === "tool" && parsed.toolAction && (parsed.toolAll || parsed.toolPath)) {
+    return true;
+  }
+  if (parsed.command === "dev") {
+    return true;
+  }
+  if (parsed.command === "list" && parsed.listKind) {
+    return true;
+  }
   if ((parsed.command === "skill" || parsed.command === "search") && parsed.skillAction === "search" && parsed.searchQuery) {
     return true;
   }
@@ -1141,6 +1406,16 @@ function isSupportedCommand(parsed: ParsedArgs): boolean {
     return true;
   }
   return false;
+}
+
+function normalizeListKind(value: string | undefined): RunxListRequestedKind | undefined {
+  if (value === undefined || value === "") {
+    return "all";
+  }
+  if (["tools", "skills", "chains", "packets", "overlays"].includes(value)) {
+    return value as RunxListRequestedKind;
+  }
+  return undefined;
 }
 
 function nextValue(args: readonly string[], index: number): string {
@@ -1585,6 +1860,2326 @@ function renderHarnessResult(
   );
 }
 
+async function handleToolBuildCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<ToolBuildReport> {
+  const root = resolveRunxWorkspaceBase(env);
+  const toolDirs = parsed.toolAll
+    ? await discoverToolDirectories(root)
+    : [resolvePathFromUserInput(parsed.toolPath ?? "", env)];
+  const built: {
+    readonly path: string;
+    readonly manifest: string;
+    readonly source_hash: string;
+    readonly schema_hash: string;
+  }[] = [];
+  const errors: string[] = [];
+  for (const toolDir of toolDirs) {
+    try {
+      const result = await buildToolManifest(root, toolDir);
+      built.push(result);
+    } catch (error) {
+      errors.push(`${toProjectPath(root, toolDir)}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return {
+    schema: "runx.tool.build.v1",
+    status: errors.length > 0 ? "failure" : "success",
+    built,
+    errors,
+  };
+}
+
+async function handleToolMigrateCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<ToolMigrateReport> {
+  const root = resolveRunxWorkspaceBase(env);
+  const toolDirs = parsed.toolAll
+    ? await discoverLegacyToolDirectories(root)
+    : [resolvePathFromUserInput(parsed.toolPath ?? "", env)];
+  const migrated: {
+    readonly path: string;
+    readonly manifest: string;
+  }[] = [];
+  const errors: string[] = [];
+  for (const toolDir of toolDirs) {
+    try {
+      const yamlPath = path.join(toolDir, "tool.yaml");
+      const manifestPath = path.join(toolDir, "manifest.json");
+      const raw = parseYaml(await readFile(yamlPath, "utf8")) as unknown;
+      if (!isPlainRecord(raw)) {
+        throw new Error("tool.yaml must parse to an object.");
+      }
+      await writeJsonFile(manifestPath, raw);
+      await rm(yamlPath, { force: true });
+      await buildToolManifest(root, toolDir);
+      migrated.push({
+        path: toProjectPath(root, toolDir),
+        manifest: toProjectPath(root, manifestPath),
+      });
+    } catch (error) {
+      errors.push(`${toProjectPath(root, toolDir)}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return {
+    schema: "runx.tool.migrate.v1",
+    status: errors.length > 0 ? "failure" : "success",
+    migrated,
+    errors,
+  };
+}
+
+async function buildToolManifest(root: string, toolDir: string): Promise<ToolBuildReport["built"][number]> {
+  const manifestPath = path.join(toolDir, "manifest.json");
+  const authored = await loadAuthoredToolDefinition(toolDir);
+  if (!existsSync(manifestPath) && !authored) {
+    throw new Error("missing manifest.json");
+  }
+  const raw = authored ?? JSON.parse(await readFile(manifestPath, "utf8")) as unknown;
+  if (!isPlainRecord(raw)) {
+    throw new Error("manifest.json must be an object.");
+  }
+  if (authored) {
+    await writeAuthoredToolShim(toolDir);
+  }
+  const sourceHash = await hashToolSource(toolDir);
+  const output = isPlainRecord(raw.output)
+    ? raw.output
+    : normalizeToolOutput(raw);
+  const schemaHash = sha256Stable({
+    inputs: raw.inputs,
+    output,
+    artifacts: isPlainRecord(raw.runx) ? raw.runx.artifacts : undefined,
+  });
+  const normalized = {
+    schema: "runx.tool.manifest.v1",
+    ...raw,
+    runtime: isPlainRecord(raw.runtime)
+      ? raw.runtime
+      : {
+          command: isPlainRecord(raw.source) ? raw.source.command ?? "node" : "node",
+          args: isPlainRecord(raw.source) ? raw.source.args ?? ["./run.mjs"] : ["./run.mjs"],
+        },
+    output,
+    source_hash: sourceHash,
+    schema_hash: schemaHash,
+    toolkit_version: "0.0.0",
+  };
+  validateToolManifest(parseToolManifestJson(JSON.stringify(normalized)));
+  await writeJsonFile(manifestPath, normalized);
+  return {
+    path: toProjectPath(root, toolDir),
+    manifest: toProjectPath(root, manifestPath),
+    source_hash: sourceHash,
+    schema_hash: schemaHash,
+  };
+}
+
+async function loadAuthoredToolDefinition(toolDir: string): Promise<Readonly<Record<string, unknown>> | undefined> {
+  const sourcePath = path.join(toolDir, "src", "index.ts");
+  if (!existsSync(sourcePath)) {
+    return undefined;
+  }
+  try {
+    const imported = await import(`${pathToFileURL(sourcePath).href}?runx_build=${Date.now()}`);
+    const tool = imported.default;
+    if (!isPlainRecord(tool) || typeof tool.name !== "string") {
+      return undefined;
+    }
+    const output = isPlainRecord(tool.output) ? tool.output : undefined;
+    const wrapAs = typeof output?.wrap_as === "string" ? output.wrap_as : undefined;
+    return {
+      name: tool.name,
+      version: typeof tool.version === "string" ? tool.version : undefined,
+      description: typeof tool.description === "string" ? tool.description : undefined,
+      source: isPlainRecord(tool.source)
+        ? tool.source
+        : {
+            type: "cli-tool",
+            command: "node",
+            args: ["./run.mjs"],
+          },
+      inputs: serializeAuthoringInputs(isPlainRecord(tool.inputs) ? tool.inputs : {}),
+      output: output
+        ? {
+            ...(typeof output.packet === "string" ? { packet: output.packet } : {}),
+            ...(wrapAs ? { wrap_as: wrapAs } : {}),
+          }
+        : undefined,
+      scopes: Array.isArray(tool.scopes) ? tool.scopes.filter((scope): scope is string => typeof scope === "string") : [],
+      runx: wrapAs ? { artifacts: { wrap_as: wrapAs } } : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function serializeAuthoringInputs(inputs: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+  return Object.fromEntries(
+    Object.entries(inputs).map(([name, parser]) => {
+      const manifest = isPlainRecord(parser) && isPlainRecord(parser.manifest)
+        ? parser.manifest
+        : { type: "json", required: !(isPlainRecord(parser) && parser.optional === true) };
+      return [name, manifest];
+    }),
+  );
+}
+
+async function writeAuthoredToolShim(toolDir: string): Promise<void> {
+  await writeFile(
+    path.join(toolDir, "run.mjs"),
+    [
+      "#!/usr/bin/env node",
+      "import { register } from \"node:module\";",
+      "import { pathToFileURL } from \"node:url\";",
+      "register(\"tsx/esm\", pathToFileURL(\"./\"));",
+      "const tool = (await import(\"./src/index.ts\")).default;",
+      "await tool.main();",
+      "",
+    ].join("\n"),
+  );
+}
+
+function normalizeToolOutput(raw: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+  const runx = isPlainRecord(raw.runx) ? raw.runx : undefined;
+  const artifacts = isPlainRecord(runx?.artifacts) ? runx.artifacts : undefined;
+  if (typeof artifacts?.wrap_as === "string") {
+    return { wrap_as: artifacts.wrap_as };
+  }
+  if (isPlainRecord(artifacts?.named_emits)) {
+    return { named_emits: artifacts.named_emits };
+  }
+  return {};
+}
+
+async function hashToolSource(toolDir: string): Promise<string> {
+  const candidates = [
+    path.join(toolDir, "src", "index.ts"),
+    path.join(toolDir, "run.mjs"),
+  ];
+  const hash = createHash("sha256");
+  let found = false;
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) {
+      continue;
+    }
+    found = true;
+    hash.update(toProjectPath(toolDir, candidate));
+    hash.update("\0");
+    hash.update(await readFile(candidate));
+    hash.update("\0");
+  }
+  if (!found) {
+    hash.update("no-source");
+  }
+  return `sha256:${hash.digest("hex")}`;
+}
+
+async function discoverToolDirectories(root: string): Promise<readonly string[]> {
+  const toolsRoot = path.join(root, "tools");
+  const directories: string[] = [];
+  for (const namespaceEntry of await safeReadDir(toolsRoot)) {
+    if (!namespaceEntry.isDirectory()) continue;
+    for (const toolEntry of await safeReadDir(path.join(toolsRoot, namespaceEntry.name))) {
+      if (toolEntry.isDirectory()) {
+        directories.push(path.join(toolsRoot, namespaceEntry.name, toolEntry.name));
+      }
+    }
+  }
+  return directories.sort();
+}
+
+async function discoverLegacyToolDirectories(root: string): Promise<readonly string[]> {
+  return (await discoverToolDirectories(root)).filter((toolDir) => existsSync(path.join(toolDir, "tool.yaml")));
+}
+
+function renderToolCommandResult(result: ToolBuildReport | ToolMigrateReport, env: NodeJS.ProcessEnv = process.env): string {
+  const t = theme(process.stdout, env);
+  const count = "built" in result ? result.built.length : result.migrated.length;
+  const lines = [
+    "",
+    `  ${statusIcon(result.status, t)}  ${t.bold}${"built" in result ? "tool build" : "tool migrate"}${t.reset}  ${t.dim}${count} tool(s)${t.reset}`,
+  ];
+  for (const error of result.errors) {
+    lines.push(`  ${t.red}${error}${t.reset}`);
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+async function handleDevCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<DevReport> {
+  const root = resolveRunxWorkspaceBase(env);
+  const unitPath = parsed.devPath ? resolvePathFromUserInput(parsed.devPath, env) : root;
+  const build = await handleToolBuildCommand({ ...parsed, toolAction: "build", toolAll: true }, env);
+  if (build.status === "failure") {
+    return {
+      schema: "runx.dev.v1",
+      status: "failure",
+      doctor: {
+        schema: "runx.doctor.v1",
+        status: "failure",
+        summary: { errors: build.errors.length, warnings: 0, infos: 0 },
+        diagnostics: build.errors.map((error, index) => createDoctorDiagnostic({
+          id: "runx.tool.manifest.build_failed",
+          severity: "error",
+          title: "Tool build failed",
+          message: error,
+          target: { kind: "tool" },
+          location: { path: "." },
+          evidence: { index },
+          repairs: [{
+            id: "repair_tool_build",
+            kind: "manual",
+            confidence: "medium",
+            risk: "low",
+            requires_human_review: false,
+          }],
+        })),
+      },
+      fixtures: [],
+    };
+  }
+  const doctor = await handleDoctorCommand({ ...parsed, doctorPath: root }, env);
+  if (doctor.status === "failure") {
+    return { schema: "runx.dev.v1", status: "failure", doctor, fixtures: [] };
+  }
+  const fixturePaths = await discoverFixturePaths(unitPath, root);
+  const selectedLane = parsed.devLane ?? "deterministic";
+  const startedAt = Date.now();
+  const fixtures: DevFixtureResult[] = [];
+  for (const fixturePath of fixturePaths) {
+    fixtures.push(await runDevFixture(root, fixturePath, selectedLane, parsed, env));
+  }
+  const status = fixtures.some((fixture) => fixture.status === "failure")
+    ? "failure"
+    : fixtures.some((fixture) => fixture.status === "success")
+      ? "success"
+      : "skipped";
+  const receipt = await writeLocalReceipt({
+    receiptDir: parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : resolveDefaultReceiptDir(env),
+    runxHome: resolveRunxHomeDir(env),
+    skillName: "runx.dev",
+    sourceType: "dev",
+    inputs: { path: parsed.devPath, lane: selectedLane },
+    stdout: JSON.stringify({ fixtures: fixtures.map((fixture) => ({ name: fixture.name, status: fixture.status })) }),
+    stderr: "",
+    execution: {
+      status: status === "failure" ? "failure" : "success",
+      exitCode: status === "failure" ? 1 : 0,
+      signal: null,
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        dev: {
+          fixture_count: fixtures.length,
+          selected_lane: selectedLane,
+        },
+      },
+    },
+  });
+  return {
+    schema: "runx.dev.v1",
+    status,
+    doctor,
+    fixtures,
+    receipt_id: receipt.id,
+  };
+}
+
+async function discoverFixturePaths(unitPath: string, root: string): Promise<readonly string[]> {
+  const statPath = existsSync(unitPath) ? unitPath : root;
+  const directFixtures = path.join(statPath, "fixtures");
+  const paths: string[] = [];
+  for (const entry of await safeReadDir(directFixtures)) {
+    if (entry.isFile() && /\.ya?ml$/i.test(entry.name)) {
+      paths.push(path.join(directFixtures, entry.name));
+    }
+  }
+  if (paths.length > 0 && statPath !== root) {
+    return paths.sort();
+  }
+  for (const toolDir of await discoverToolDirectories(root)) {
+    for (const entry of await safeReadDir(path.join(toolDir, "fixtures"))) {
+      if (entry.isFile() && /\.ya?ml$/i.test(entry.name)) {
+        paths.push(path.join(toolDir, "fixtures", entry.name));
+      }
+    }
+  }
+  return paths.sort();
+}
+
+async function runDevFixture(
+  root: string,
+  fixturePath: string,
+  selectedLane: string,
+  parsed: ParsedArgs,
+  env: NodeJS.ProcessEnv,
+): Promise<DevFixtureResult> {
+  const startedAt = Date.now();
+  const fixture = parseYaml(await readFile(fixturePath, "utf8")) as unknown;
+  if (!isPlainRecord(fixture)) {
+    return failedFixture(path.basename(fixturePath), "unknown", {}, startedAt, [{
+      path: "",
+      kind: "exact_mismatch",
+      message: "Fixture must parse to an object.",
+    }]);
+  }
+  const name = typeof fixture.name === "string" ? fixture.name : path.basename(fixturePath, path.extname(fixturePath));
+  const lane = typeof fixture.lane === "string" ? fixture.lane : "deterministic";
+  const target = isPlainRecord(fixture.target) ? fixture.target : {};
+  if (selectedLane !== "all" && lane !== selectedLane) {
+    return {
+      name,
+      lane,
+      target,
+      status: "skipped",
+      duration_ms: Date.now() - startedAt,
+      assertions: [],
+      skip_reason: `lane ${lane} excluded by --lane ${selectedLane}`,
+    };
+  }
+  if (lane === "agent") {
+    return parsed.devRecord
+      ? recordReplayFixture(root, fixturePath, fixture, name, lane, target, startedAt, parsed, env)
+      : validateReplayFixture(root, fixturePath, fixture, startedAt);
+  }
+  if (lane !== "deterministic") {
+    return {
+      name,
+      lane,
+      target,
+      status: "skipped",
+      duration_ms: Date.now() - startedAt,
+      assertions: [],
+      skip_reason: `${lane} fixtures are parsed but not executed in dev v1`,
+    };
+  }
+  const kind = typeof target.kind === "string" ? target.kind : undefined;
+  if (kind === "tool") {
+    return runToolFixture(root, fixturePath, fixture, name, lane, target, startedAt, env);
+  }
+  if (kind === "skill" || kind === "chain") {
+    return runSkillFixture(root, fixture, name, lane, target, startedAt, env);
+  }
+  return failedFixture(name, lane, target, startedAt, [{
+    path: "target.kind",
+    expected: "tool | skill | chain",
+    actual: target.kind,
+    kind: "exact_mismatch",
+    message: "Fixture target.kind must be tool, skill, or chain.",
+  }]);
+}
+
+async function runToolFixture(
+  root: string,
+  fixturePath: string,
+  fixture: Readonly<Record<string, unknown>>,
+  name: string,
+  lane: string,
+  target: Readonly<Record<string, unknown>>,
+  startedAt: number,
+  env: NodeJS.ProcessEnv,
+): Promise<DevFixtureResult> {
+  const ref = typeof target.ref === "string" ? target.ref : "";
+  const toolDir = resolveToolDirFromRef(root, ref);
+  if (!toolDir) {
+    return failedFixture(name, lane, target, startedAt, [{
+      path: "target.ref",
+      expected: "existing tool",
+      actual: ref,
+      kind: "exact_mismatch",
+      message: `Tool ${ref} was not found.`,
+    }]);
+  }
+  const manifest = validateToolManifest(parseToolManifestJson(await readFile(path.join(toolDir, "manifest.json"), "utf8")));
+  const command = manifest.source.command ?? "node";
+  const args = manifest.source.args ?? ["./run.mjs"];
+  const workspace = await prepareFixtureWorkspace(root, fixturePath, fixture, env);
+  try {
+    const fixtureEnv = materializeFixtureEnv(fixture.env, workspace.tokens);
+    const inputs = materializeFixtureValue(isPlainRecord(fixture.inputs) ? fixture.inputs : {}, workspace.tokens);
+    const execution = await runProcess(command, args, {
+      cwd: toolDir,
+      env: {
+        ...env,
+        ...fixtureEnv,
+        RUNX_INPUTS_JSON: JSON.stringify(inputs),
+        RUNX_CWD: workspace.root ?? root,
+        RUNX_REPO_ROOT: root,
+        ...(workspace.root ? { RUNX_FIXTURE_ROOT: workspace.root } : {}),
+      },
+    });
+    const output = parseJsonMaybe(execution.stdout);
+    const assertions = await assertFixtureExpectation(root, fixture.expect, execution.exitCode, output);
+    return {
+      name,
+      lane,
+      target,
+      status: assertions.length === 0 ? "success" : "failure",
+      duration_ms: Date.now() - startedAt,
+      assertions,
+      output,
+    };
+  } finally {
+    await workspace.cleanup();
+  }
+}
+
+async function prepareFixtureWorkspace(
+  root: string,
+  fixturePath: string,
+  fixture: Readonly<Record<string, unknown>>,
+  env: NodeJS.ProcessEnv,
+): Promise<PreparedFixtureWorkspace> {
+  const workspace = isPlainRecord(fixture.workspace) ? fixture.workspace : undefined;
+  const fixtureDir = path.dirname(fixturePath);
+  if (!workspace) {
+    return {
+      tokens: {
+        RUNX_REPO_ROOT: root,
+        RUNX_FIXTURE_FILE: fixturePath,
+        RUNX_FIXTURE_DIR: fixtureDir,
+      },
+      cleanup: async () => {},
+    };
+  }
+
+  const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "runx-fixture-"));
+  const tokens = {
+    RUNX_REPO_ROOT: root,
+    RUNX_FIXTURE_ROOT: fixtureRoot,
+    RUNX_FIXTURE_FILE: fixturePath,
+    RUNX_FIXTURE_DIR: fixtureDir,
+  };
+  try {
+    await writeFixtureFileMap(fixtureRoot, workspace.files, tokens, 0o644);
+    await writeFixtureFileMap(fixtureRoot, workspace.json_files, tokens, 0o644, true);
+    await writeFixtureFileMap(fixtureRoot, workspace.executable_files, tokens, 0o755);
+    await initializeFixtureGit(fixtureRoot, workspace.git, tokens, env);
+    return {
+      root: fixtureRoot,
+      tokens,
+      cleanup: async () => {
+        await rm(fixtureRoot, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    await rm(fixtureRoot, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function writeFixtureFileMap(
+  root: string,
+  value: unknown,
+  tokens: Readonly<Record<string, string>>,
+  mode: number,
+  forceJson = false,
+): Promise<void> {
+  if (!isPlainRecord(value)) {
+    return;
+  }
+  for (const [relativePath, rawContents] of Object.entries(value)) {
+    const targetPath = resolveInsideFixtureRoot(root, relativePath);
+    await mkdir(path.dirname(targetPath), { recursive: true });
+    const contents = forceJson
+      ? `${JSON.stringify(materializeFixtureValue(rawContents, tokens), null, 2)}\n`
+      : typeof rawContents === "string"
+        ? materializeFixtureString(rawContents, tokens)
+        : `${JSON.stringify(materializeFixtureValue(rawContents, tokens), null, 2)}\n`;
+    await writeFile(targetPath, contents, { mode });
+  }
+}
+
+async function initializeFixtureGit(
+  root: string,
+  value: unknown,
+  tokens: Readonly<Record<string, string>>,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  const git = value === true ? {} : isPlainRecord(value) ? value : undefined;
+  if (!git) {
+    return;
+  }
+  const branch = typeof git.initial_branch === "string" && git.initial_branch.trim()
+    ? git.initial_branch.trim()
+    : "main";
+  await runRequiredProcess("git", ["init", "-b", branch], root, env);
+  await runRequiredProcess("git", ["config", "user.email", "fixture@example.com"], root, env);
+  await runRequiredProcess("git", ["config", "user.name", "Runx Fixture"], root, env);
+  if (git.commit !== false) {
+    await runRequiredProcess("git", ["add", "."], root, env);
+    await runRequiredProcess("git", ["commit", "-m", "fixture baseline"], root, env);
+  }
+  await writeFixtureFileMap(root, git.dirty_files, tokens, 0o644);
+}
+
+async function runRequiredProcess(command: string, args: readonly string[], cwd: string, env: NodeJS.ProcessEnv): Promise<void> {
+  const result = await runProcess(command, args, { cwd, env });
+  if (result.exitCode !== 0) {
+    throw new Error(`${command} ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
+  }
+}
+
+function materializeFixtureEnv(value: unknown, tokens: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+  if (!isPlainRecord(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, nested]) => nested !== undefined)
+      .map(([key, nested]) => [key, materializeFixtureString(String(nested), tokens)]),
+  );
+}
+
+function materializeFixtureValue(value: unknown, tokens: Readonly<Record<string, string>>): unknown {
+  if (typeof value === "string") {
+    return materializeFixtureString(value, tokens);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => materializeFixtureValue(entry, tokens));
+  }
+  if (!isPlainRecord(value)) {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => [key, materializeFixtureValue(nested, tokens)]),
+  );
+}
+
+function materializeFixtureString(value: string, tokens: Readonly<Record<string, string>>): string {
+  let resolved = value;
+  for (const [key, replacement] of Object.entries(tokens)) {
+    resolved = resolved.split(`$${key}`).join(replacement);
+    resolved = resolved.split(`\${${key}}`).join(replacement);
+  }
+  return resolved;
+}
+
+function resolveInsideFixtureRoot(root: string, relativePath: string): string {
+  if (path.isAbsolute(relativePath)) {
+    throw new Error(`fixture workspace path must be relative: ${relativePath}`);
+  }
+  const resolved = path.resolve(root, relativePath);
+  if (!resolved.startsWith(`${root}${path.sep}`) && resolved !== root) {
+    throw new Error(`fixture workspace path escapes root: ${relativePath}`);
+  }
+  return resolved;
+}
+
+async function runSkillFixture(
+  root: string,
+  fixture: Readonly<Record<string, unknown>>,
+  name: string,
+  lane: string,
+  target: Readonly<Record<string, unknown>>,
+  startedAt: number,
+  env: NodeJS.ProcessEnv,
+): Promise<DevFixtureResult> {
+  const ref = typeof target.ref === "string" ? target.ref : "";
+  const skillPath = resolveSkillDirFromRef(root, ref);
+  if (!skillPath) {
+    return failedFixture(name, lane, target, startedAt, [{
+      path: "target.ref",
+      expected: "existing skill",
+      actual: ref,
+      kind: "exact_mismatch",
+      message: `Skill or chain ${ref} was not found.`,
+    }]);
+  }
+  const result = await runLocalSkill({
+    skillPath,
+    inputs: isPlainRecord(fixture.inputs) ? fixture.inputs : {},
+    caller: createFixtureCaller(fixture, env),
+    env: { ...env, RUNX_CWD: root },
+    receiptDir: resolveDefaultReceiptDir(env),
+    runxHome: resolveRunxHomeDir(env),
+    registryStore: await resolveRegistryStoreForChains(env),
+  });
+  const success = result.status === "success";
+  const output = success ? parseJsonMaybe(result.execution.stdout) : result;
+  const assertions = await assertFixtureExpectation(root, fixture.expect, success ? 0 : 1, output);
+  return {
+    name,
+    lane,
+    target,
+    status: assertions.length === 0 ? "success" : "failure",
+    duration_ms: Date.now() - startedAt,
+    assertions,
+    output,
+  };
+}
+
+function createFixtureCaller(fixture: Readonly<Record<string, unknown>>, env: NodeJS.ProcessEnv): Caller {
+  const caller = isPlainRecord(fixture.caller) ? fixture.caller : {};
+  const answers = isPlainRecord(caller.answers) ? caller.answers : {};
+  const approvals = isPlainRecord(caller.approvals)
+    ? Object.fromEntries(Object.entries(caller.approvals).filter(([, value]) => typeof value === "boolean")) as Readonly<Record<string, boolean>>
+    : typeof caller.approvals === "boolean"
+      ? caller.approvals
+      : undefined;
+  return createNonInteractiveCaller(answers, approvals, createAgentRuntimeLoader(env));
+}
+
+async function recordReplayFixture(
+  root: string,
+  fixturePath: string,
+  fixture: Readonly<Record<string, unknown>>,
+  name: string,
+  lane: string,
+  target: Readonly<Record<string, unknown>>,
+  startedAt: number,
+  parsed: ParsedArgs,
+  env: NodeJS.ProcessEnv,
+): Promise<DevFixtureResult> {
+  if (!parsed.devRealAgents && !isPlainRecord(fixture.caller)) {
+    return failedFixture(name, lane, target, startedAt, [{
+      path: "agent.mode",
+      expected: "--real-agents or fixture.caller.answers",
+      actual: "record",
+      kind: "exact_mismatch",
+      message: "Recording an agent fixture requires --real-agents or fixture caller answers.",
+    }]);
+  }
+  const kind = typeof target.kind === "string" ? target.kind : undefined;
+  const result = kind === "skill" || kind === "chain"
+    ? await runSkillFixture(root, fixture, name, lane, target, startedAt, env)
+    : failedFixture(name, lane, target, startedAt, [{
+        path: "target.kind",
+        expected: "skill | chain",
+        actual: target.kind,
+        kind: "exact_mismatch",
+        message: "Agent replay recording requires a skill or chain target.",
+      }]);
+  const replayPath = fixturePath.replace(/\.ya?ml$/i, ".replay.json");
+  const cassette = {
+    schema: "runx.replay.v1",
+    fixture: name,
+    prompt_fingerprint: fixtureFingerprint(fixture),
+    recorded_at: new Date().toISOString(),
+    target,
+    status: result.status,
+    outputs: extractReplayOutputs(fixture, result.output),
+    assertions: result.assertions,
+    usage: {
+      mode: parsed.devRealAgents ? "real" : "fixture_answers",
+    },
+  };
+  await writeJsonFile(replayPath, cassette);
+  return {
+    ...result,
+    replay_path: toProjectPath(root, replayPath),
+  };
+}
+
+async function validateReplayFixture(
+  root: string,
+  fixturePath: string,
+  fixture: Readonly<Record<string, unknown>>,
+  startedAt: number,
+): Promise<DevFixtureResult> {
+  const target = isPlainRecord(fixture.target) ? fixture.target : {};
+  const name = typeof fixture.name === "string" ? fixture.name : path.basename(fixturePath, path.extname(fixturePath));
+  const replayPath = fixturePath.replace(/\.ya?ml$/i, ".replay.json");
+  if (!existsSync(replayPath)) {
+    return failedFixture(name, "agent", target, startedAt, [{
+      path: "agent.mode",
+      expected: "replay cassette",
+      actual: "missing",
+      kind: "exact_mismatch",
+      message: `Missing replay cassette ${toProjectPath(root, replayPath)}.`,
+    }]);
+  }
+  const replay = JSON.parse(readFileSync(replayPath, "utf8")) as unknown;
+  const fingerprint = fixtureFingerprint(fixture);
+  if (isPlainRecord(replay) && replay.prompt_fingerprint && replay.prompt_fingerprint !== fingerprint) {
+    return failedFixture(name, "agent", target, startedAt, [{
+      path: "replay.prompt_fingerprint",
+      expected: fingerprint,
+      actual: replay.prompt_fingerprint,
+      kind: "exact_mismatch",
+      message: "Replay cassette is stale for this fixture.",
+    }]);
+  }
+  if (!isPlainRecord(replay)) {
+    return failedFixture(name, "agent", target, startedAt, [{
+      path: "replay",
+      expected: "object",
+      actual: replay,
+      kind: "type_mismatch",
+      message: "Replay cassette must be a JSON object.",
+    }]);
+  }
+  const replayStatus = replay.status === "failure" ? 1 : 0;
+  const replayOutput = isPlainRecord(replay.outputs) ? replay.outputs : replay.output;
+  const assertions = await assertFixtureExpectation(root, fixture.expect, replayStatus, replayOutput);
+  return {
+    name,
+    lane: "agent",
+    target,
+    status: assertions.length === 0 ? "success" : "failure",
+    duration_ms: Date.now() - startedAt,
+    assertions,
+    output: replayOutput,
+    replay_path: toProjectPath(root, replayPath),
+  };
+}
+
+function fixtureFingerprint(fixture: Readonly<Record<string, unknown>>): string {
+  return sha256Stable({
+    target: fixture.target,
+    inputs: fixture.inputs,
+    agent: fixture.agent,
+    expect: fixture.expect,
+  });
+}
+
+function extractReplayOutputs(fixture: Readonly<Record<string, unknown>>, output: unknown): unknown {
+  const expectRecord = isPlainRecord(fixture.expect) ? fixture.expect : {};
+  const outputsExpectation = isPlainRecord(expectRecord.outputs) ? expectRecord.outputs : undefined;
+  if (!outputsExpectation || !isPlainRecord(output)) {
+    return output;
+  }
+  return Object.fromEntries(
+    Object.keys(outputsExpectation).map((name) => [name, selectNamedOutput(output, name)]),
+  );
+}
+
+async function assertFixtureExpectation(
+  root: string,
+  expectation: unknown,
+  exitCode: number,
+  output: unknown,
+): Promise<readonly FixtureAssertion[]> {
+  const assertions: FixtureAssertion[] = [];
+  const expectRecord = isPlainRecord(expectation) ? expectation : {};
+  const expectedStatus = typeof expectRecord.status === "string" ? expectRecord.status : "success";
+  const actualStatus = exitCode === 0 ? "success" : "failure";
+  if (expectedStatus !== actualStatus) {
+    assertions.push({
+      path: "expect.status",
+      expected: expectedStatus,
+      actual: actualStatus,
+      kind: "status_mismatch",
+      message: `Expected status ${expectedStatus}, got ${actualStatus}.`,
+    });
+  }
+  const outputExpectation = isPlainRecord(expectRecord.output) ? expectRecord.output : undefined;
+  if (outputExpectation) {
+    assertions.push(...await assertOutputExpectation(root, outputExpectation, output, "expect.output"));
+  }
+  const outputsExpectation = isPlainRecord(expectRecord.outputs) ? expectRecord.outputs : undefined;
+  if (outputsExpectation) {
+    for (const [name, expected] of Object.entries(outputsExpectation)) {
+      const actual = selectNamedOutput(output, name);
+      assertions.push(...await assertOutputExpectation(root, expected, actual, `expect.outputs.${name}`));
+    }
+  }
+  return assertions;
+}
+
+async function assertOutputExpectation(
+  root: string,
+  expectation: unknown,
+  output: unknown,
+  basePath: string,
+): Promise<readonly FixtureAssertion[]> {
+  const assertions: FixtureAssertion[] = [];
+  const outputExpectation = isPlainRecord(expectation) ? expectation : {};
+  if ("exact" in outputExpectation && !deepEqual(output, outputExpectation.exact)) {
+    assertions.push({
+      path: `${basePath}.exact`,
+      expected: outputExpectation.exact,
+      actual: output,
+      kind: "exact_mismatch",
+      message: "Output did not exactly match.",
+    });
+  }
+  if ("subset" in outputExpectation) {
+    assertions.push(...assertSubset(outputExpectation.subset, output, ""));
+  }
+  if (typeof outputExpectation.matches_packet === "string") {
+    assertions.push(...await assertMatchesPacket(root, outputExpectation.matches_packet, output, `${basePath}.matches_packet`));
+  }
+  return assertions;
+}
+
+function selectNamedOutput(output: unknown, name: string): unknown {
+  if (!isPlainRecord(output)) {
+    return output;
+  }
+  if (name in output) {
+    return output[name];
+  }
+  if (isPlainRecord(output.data) && name in output.data) {
+    return output.data[name];
+  }
+  return output;
+}
+
+function assertSubset(expected: unknown, actual: unknown, basePath: string): readonly FixtureAssertion[] {
+  if (!isPlainRecord(expected)) {
+    return deepEqual(expected, actual) ? [] : [{
+      path: basePath,
+      expected,
+      actual,
+      kind: "subset_miss",
+      message: "Subset value did not match.",
+    }];
+  }
+  const assertions: FixtureAssertion[] = [];
+  const actualRecord = isPlainRecord(actual) ? actual : {};
+  for (const [key, value] of Object.entries(expected)) {
+    const pathKey = basePath ? `${basePath}.${key}` : key;
+    assertions.push(...assertSubset(value, actualRecord[key], pathKey));
+  }
+  return assertions;
+}
+
+async function assertMatchesPacket(
+  root: string,
+  packetId: string,
+  output: unknown,
+  basePath: string,
+): Promise<readonly FixtureAssertion[]> {
+  const index = await buildLocalPacketIndex(root, { writeCache: false });
+  const packet = index.packets.find((candidate) => candidate.id === packetId);
+  if (!packet) {
+    return [{
+      path: basePath,
+      expected: packetId,
+      actual: index.packets.map((candidate) => candidate.id),
+      kind: "packet_invalid",
+      message: `Packet ${packetId} is not declared in this package index.`,
+    }];
+  }
+  const outputRecord = isPlainRecord(output) ? output : undefined;
+  const actualPacketId = typeof outputRecord?.schema === "string" ? outputRecord.schema : undefined;
+  if (actualPacketId && actualPacketId !== packetId) {
+    return [{
+      path: basePath,
+      expected: packetId,
+      actual: actualPacketId,
+      kind: "packet_invalid",
+      message: "Output packet schema did not match.",
+    }];
+  }
+  const schema = JSON.parse(await readFile(path.resolve(root, packet.path), "utf8")) as unknown;
+  const data = outputRecord && "data" in outputRecord ? outputRecord.data : output;
+  return validateJsonSchemaValue(schema, data, `${basePath}.data`);
+}
+
+function validateJsonSchemaValue(schema: unknown, value: unknown, basePath: string): readonly FixtureAssertion[] {
+  if (!isPlainRecord(schema)) {
+    return [{
+      path: basePath,
+      expected: "JSON Schema object",
+      actual: schema,
+      kind: "packet_invalid",
+      message: "Packet schema artifact is not an object.",
+    }];
+  }
+  if (Array.isArray(schema.anyOf) || Array.isArray(schema.oneOf)) {
+    const branches = (Array.isArray(schema.anyOf) ? schema.anyOf : schema.oneOf) as readonly unknown[];
+    const branchErrors = branches.map((branch) => validateJsonSchemaValue(branch, value, basePath));
+    if (branchErrors.some((errors) => errors.length === 0)) {
+      return [];
+    }
+    return branchErrors[0] ?? [];
+  }
+  const type = schema.type;
+  const allowedTypes = Array.isArray(type) ? type.filter((entry): entry is string => typeof entry === "string") : typeof type === "string" ? [type] : [];
+  if (allowedTypes.length > 0 && !allowedTypes.some((entry) => jsonTypeMatches(entry, value))) {
+    return [{
+      path: basePath,
+      expected: allowedTypes.join(" | "),
+      actual: jsonTypeName(value),
+      kind: "type_mismatch",
+      message: `Expected ${allowedTypes.join(" | ")}, got ${jsonTypeName(value)}.`,
+    }];
+  }
+  if ("const" in schema && !deepEqual(schema.const, value)) {
+    return [{
+      path: basePath,
+      expected: schema.const,
+      actual: value,
+      kind: "exact_mismatch",
+      message: "Value did not match schema const.",
+    }];
+  }
+  if (Array.isArray(schema.enum) && !schema.enum.some((entry) => deepEqual(entry, value))) {
+    return [{
+      path: basePath,
+      expected: schema.enum,
+      actual: value,
+      kind: "exact_mismatch",
+      message: "Value did not match schema enum.",
+    }];
+  }
+  const assertions: FixtureAssertion[] = [];
+  if ((schema.type === "object" || isPlainRecord(schema.properties)) && isPlainRecord(value)) {
+    const properties = isPlainRecord(schema.properties) ? schema.properties : {};
+    const required = Array.isArray(schema.required) ? schema.required.filter((entry): entry is string => typeof entry === "string") : [];
+    for (const key of required) {
+      if (!(key in value)) {
+        assertions.push({
+          path: `${basePath}.${key}`,
+          expected: "required",
+          actual: "missing",
+          kind: "subset_miss",
+          message: "Required packet field is missing.",
+        });
+      }
+    }
+    for (const [key, propertySchema] of Object.entries(properties)) {
+      if (key in value) {
+        assertions.push(...validateJsonSchemaValue(propertySchema, value[key], `${basePath}.${key}`));
+      }
+    }
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(value)) {
+        if (!(key in properties)) {
+          assertions.push({
+            path: `${basePath}.${key}`,
+            expected: "no additional property",
+            actual: value[key],
+            kind: "packet_invalid",
+            message: "Packet includes an undeclared field.",
+          });
+        }
+      }
+    }
+  }
+  if ((schema.type === "array" || schema.items !== undefined) && Array.isArray(value) && schema.items !== undefined) {
+    for (let index = 0; index < value.length; index += 1) {
+      assertions.push(...validateJsonSchemaValue(schema.items, value[index], `${basePath}[${index}]`));
+    }
+  }
+  return assertions;
+}
+
+function jsonTypeMatches(type: string, value: unknown): boolean {
+  if (type === "array") return Array.isArray(value);
+  if (type === "null") return value === null;
+  if (type === "integer") return Number.isInteger(value);
+  if (type === "number") return typeof value === "number" && Number.isFinite(value);
+  if (type === "object") return isPlainRecord(value);
+  return typeof value === type;
+}
+
+function jsonTypeName(value: unknown): string {
+  if (Array.isArray(value)) return "array";
+  if (value === null) return "null";
+  return typeof value;
+}
+
+function failedFixture(
+  name: string,
+  lane: string,
+  target: Readonly<Record<string, unknown>>,
+  startedAt: number,
+  assertions: readonly FixtureAssertion[],
+): DevFixtureResult {
+  return {
+    name,
+    lane,
+    target,
+    status: "failure",
+    duration_ms: Date.now() - startedAt,
+    assertions,
+  };
+}
+
+function renderDevResult(result: DevReport, env: NodeJS.ProcessEnv = process.env): string {
+  const t = theme(process.stdout, env);
+  const lines = [
+    "",
+    `  ${statusIcon(result.status, t)}  ${t.bold}dev${t.reset}  ${t.dim}${result.fixtures.length} fixture(s)${t.reset}`,
+  ];
+  for (const fixture of result.fixtures) {
+    lines.push(`  ${statusIcon(fixture.status, t)}  ${fixture.lane.padEnd(14)} ${fixture.name}  ${t.dim}${fixture.duration_ms}ms${t.reset}`);
+    for (const assertion of fixture.assertions.slice(0, 3)) {
+      lines.push(`     ${assertion.path}: ${assertion.message}`);
+    }
+  }
+  if (result.receipt_id) {
+    lines.push(`  ${t.dim}receipt${t.reset}  ${result.receipt_id}`);
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+function resolveToolDirFromRef(root: string, ref: string): string | undefined {
+  const parts = ref.split(".").filter(Boolean);
+  if (parts.length < 2) return undefined;
+  const candidate = path.join(root, "tools", ...parts);
+  return existsSync(path.join(candidate, "manifest.json")) ? candidate : undefined;
+}
+
+function resolveSkillDirFromRef(root: string, ref: string): string | undefined {
+  const candidates = [
+    path.join(root, "skills", ref),
+    path.resolve(root, ref),
+  ];
+  return candidates.find((candidate) => existsSync(path.join(candidate, "SKILL.md")));
+}
+
+async function runProcess(
+  command: string,
+  args: readonly string[],
+  options: { readonly cwd: string; readonly env: NodeJS.ProcessEnv },
+): Promise<{ readonly exitCode: number; readonly stdout: string; readonly stderr: string }> {
+  return await new Promise((resolve, reject) => {
+    const child = spawn(command, [...args], {
+      cwd: options.cwd,
+      env: options.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      resolve({
+        exitCode: code ?? 1,
+        stdout,
+        stderr,
+      });
+    });
+  });
+}
+
+async function handleDoctorCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<DoctorReport> {
+  const root = parsed.doctorPath
+    ? resolvePathFromUserInput(parsed.doctorPath, env)
+    : resolveRunxWorkspaceBase(env);
+  const diagnostics = [
+    ...await discoverToolDoctorDiagnostics(root),
+    ...await discoverSkillDoctorDiagnostics(root),
+    ...await discoverPacketDoctorDiagnostics(root),
+  ];
+  if (parsed.doctorFix) {
+    const applied = await applySafeDoctorRepairs(root, diagnostics);
+    if (applied > 0) {
+      return handleDoctorCommand({ ...parsed, doctorFix: false }, env);
+    }
+  }
+  const errors = diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
+  const warnings = diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length;
+  const infos = diagnostics.filter((diagnostic) => diagnostic.severity === "info").length;
+  return {
+    schema: "runx.doctor.v1",
+    status: errors > 0 ? "failure" : "success",
+    summary: {
+      errors,
+      warnings,
+      infos,
+    },
+    diagnostics: diagnostics.sort((left, right) => left.location.path.localeCompare(right.location.path) || left.id.localeCompare(right.id)),
+  };
+}
+
+async function applySafeDoctorRepairs(root: string, diagnostics: readonly DoctorDiagnostic[]): Promise<number> {
+  let applied = 0;
+  for (const diagnostic of diagnostics) {
+    const repair = diagnostic.repairs.find((candidate) =>
+      candidate.confidence === "high"
+      && candidate.requires_human_review === false
+      && candidate.risk === "low"
+      && (candidate.kind === "create_file" || candidate.kind === "replace_file")
+      && typeof candidate.path === "string"
+      && typeof candidate.contents === "string"
+    );
+    if (!repair?.path || repair.contents === undefined) {
+      continue;
+    }
+    const targetPath = path.resolve(root, repair.path);
+    if (!targetPath.startsWith(`${root}${path.sep}`) && targetPath !== root) {
+      continue;
+    }
+    if (repair.kind === "create_file" && existsSync(targetPath)) {
+      continue;
+    }
+    await mkdir(path.dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, repair.contents);
+    applied += 1;
+    break;
+  }
+  return applied;
+}
+
+async function discoverToolDoctorDiagnostics(root: string): Promise<readonly DoctorDiagnostic[]> {
+  const toolsRoot = path.join(root, "tools");
+  const diagnostics: DoctorDiagnostic[] = [];
+  for (const namespaceEntry of await safeReadDir(toolsRoot)) {
+    if (!namespaceEntry.isDirectory()) {
+      continue;
+    }
+    const namespaceDir = path.join(toolsRoot, namespaceEntry.name);
+    for (const toolEntry of await safeReadDir(namespaceDir)) {
+      if (!toolEntry.isDirectory()) {
+        continue;
+      }
+      const toolDir = path.join(namespaceDir, toolEntry.name);
+      const legacyPath = path.join(toolDir, "tool.yaml");
+      if (existsSync(legacyPath)) {
+        const relativePath = toProjectPath(root, legacyPath);
+        diagnostics.push(createDoctorDiagnostic({
+          id: "runx.tool.manifest.legacy_format",
+          severity: "error",
+          title: "Legacy tool.yaml is no longer supported",
+          message: `Tool ${namespaceEntry.name}.${toolEntry.name} still uses tool.yaml. Runx resolves manifest.json only.`,
+          target: {
+            kind: "tool",
+            ref: `${namespaceEntry.name}.${toolEntry.name}`,
+          },
+          location: {
+            path: relativePath,
+          },
+          evidence: {
+            expected_manifest: toProjectPath(root, path.join(toolDir, "manifest.json")),
+          },
+          repairs: [{
+            id: "migrate_to_define_tool",
+            kind: "run_command",
+            confidence: "high",
+            risk: "medium",
+            command: `runx tool migrate ${toProjectPath(root, toolDir)}`,
+            requires_human_review: true,
+          }],
+        }));
+      }
+
+      const manifestPath = path.join(toolDir, "manifest.json");
+      if (!existsSync(manifestPath)) {
+        continue;
+      }
+      try {
+        const manifestContents = await readFile(manifestPath, "utf8");
+        validateToolManifest(parseToolManifestJson(manifestContents));
+        const manifest = JSON.parse(manifestContents) as unknown;
+        if (isPlainRecord(manifest)) {
+          const fixtureCount = await countYamlFiles(path.join(toolDir, "fixtures"));
+          if (fixtureCount === 0) {
+            diagnostics.push(createDoctorDiagnostic({
+              id: "runx.tool.fixture.missing",
+              severity: "error",
+              title: "Tool has no deterministic fixture",
+              message: `Tool ${namespaceEntry.name}.${toolEntry.name} declares a manifest but has no deterministic fixture.`,
+              target: {
+                kind: "tool",
+                ref: `${namespaceEntry.name}.${toolEntry.name}`,
+              },
+              location: {
+                path: toProjectPath(root, manifestPath),
+              },
+              evidence: {
+                fixture_count: fixtureCount,
+                expected_location: toProjectPath(root, path.join(toolDir, "fixtures")),
+              },
+              repairs: [{
+                id: "add_tool_fixture",
+                kind: "manual",
+                confidence: "medium",
+                risk: "low",
+                requires_human_review: false,
+              }],
+            }));
+          }
+          const actualSourceHash = await hashToolSource(toolDir);
+          const actualSchemaHash = sha256Stable({
+            inputs: manifest.inputs,
+            output: manifest.output,
+            artifacts: isPlainRecord(manifest.runx) ? manifest.runx.artifacts : undefined,
+          });
+          if (typeof manifest.source_hash === "string" && manifest.source_hash !== actualSourceHash) {
+            diagnostics.push(createDoctorDiagnostic({
+              id: "runx.tool.manifest.stale",
+              severity: "error",
+              title: "Tool manifest is stale",
+              message: `Tool ${namespaceEntry.name}.${toolEntry.name} source_hash does not match current source files.`,
+              target: {
+                kind: "tool",
+                ref: `${namespaceEntry.name}.${toolEntry.name}`,
+              },
+              location: {
+                path: toProjectPath(root, manifestPath),
+                json_pointer: "/source_hash",
+              },
+              evidence: {
+                expected: actualSourceHash,
+                actual: manifest.source_hash,
+              },
+              repairs: [{
+                id: "rebuild_tool_manifest",
+                kind: "run_command",
+                confidence: "high",
+                risk: "low",
+                command: `runx tool build ${toProjectPath(root, toolDir)}`,
+                requires_human_review: false,
+              }],
+            }));
+          }
+          if (typeof manifest.schema_hash === "string" && manifest.schema_hash !== actualSchemaHash) {
+            diagnostics.push(createDoctorDiagnostic({
+              id: "runx.tool.manifest.stale",
+              severity: "error",
+              title: "Tool manifest schema hash is stale",
+              message: `Tool ${namespaceEntry.name}.${toolEntry.name} schema_hash does not match current manifest inputs/output.`,
+              target: {
+                kind: "tool",
+                ref: `${namespaceEntry.name}.${toolEntry.name}`,
+              },
+              location: {
+                path: toProjectPath(root, manifestPath),
+                json_pointer: "/schema_hash",
+              },
+              evidence: {
+                expected: actualSchemaHash,
+                actual: manifest.schema_hash,
+              },
+              repairs: [{
+                id: "rebuild_tool_manifest",
+                kind: "run_command",
+                confidence: "high",
+                risk: "low",
+                command: `runx tool build ${toProjectPath(root, toolDir)}`,
+                requires_human_review: false,
+              }],
+            }));
+          }
+        }
+      } catch (error) {
+        diagnostics.push(createDoctorDiagnostic({
+          id: "runx.tool.manifest.invalid",
+          severity: "error",
+          title: "Tool manifest is invalid",
+          message: error instanceof Error ? error.message : String(error),
+          target: {
+            kind: "tool",
+            ref: `${namespaceEntry.name}.${toolEntry.name}`,
+          },
+          location: {
+            path: toProjectPath(root, manifestPath),
+          },
+          repairs: [{
+            id: "repair_manifest",
+            kind: "manual",
+            confidence: "medium",
+            risk: "low",
+            requires_human_review: false,
+          }],
+        }));
+      }
+    }
+  }
+  return diagnostics;
+}
+
+async function discoverSkillDoctorDiagnostics(root: string): Promise<readonly DoctorDiagnostic[]> {
+  const diagnostics: DoctorDiagnostic[] = [];
+  for (const profilePath of await discoverSkillProfilePaths(root)) {
+    const skillDir = path.dirname(profilePath);
+    const skillName = skillDir === root ? path.basename(root) : path.basename(skillDir);
+    try {
+      const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(profilePath, "utf8")));
+      const fixtureCount = await countYamlFiles(path.join(skillDir, "fixtures"));
+      const harnessCaseCount = manifest.harness?.cases.length ?? 0;
+      if (fixtureCount === 0 && harnessCaseCount === 0) {
+        diagnostics.push(createDoctorDiagnostic({
+          id: "runx.skill.fixture.missing",
+          severity: "error",
+          title: "Skill has no harness coverage",
+          message: `Skill ${skillName} declares an execution profile but has no fixtures or inline harness.cases.`,
+          target: {
+            kind: "skill",
+            ref: skillName,
+          },
+          location: {
+            path: toProjectPath(root, profilePath),
+            json_pointer: "/harness",
+          },
+          evidence: {
+            fixture_count: fixtureCount,
+            harness_case_count: harnessCaseCount,
+          },
+          repairs: [{
+            id: "add_inline_harness_case",
+            kind: "manual",
+            confidence: "medium",
+            risk: "low",
+            requires_human_review: false,
+          }],
+        }));
+      }
+      diagnostics.push(...await validateChainContextReferences(root, skillDir, profilePath, manifest));
+    } catch (error) {
+      diagnostics.push(createDoctorDiagnostic({
+        id: "runx.skill.profile.invalid",
+        severity: "error",
+        title: "Skill execution profile is invalid",
+        message: error instanceof Error ? error.message : String(error),
+        target: {
+          kind: "skill",
+          ref: skillName,
+        },
+        location: {
+          path: toProjectPath(root, profilePath),
+        },
+        repairs: [{
+          id: "repair_profile",
+          kind: "manual",
+          confidence: "medium",
+          risk: "low",
+          requires_human_review: false,
+        }],
+      }));
+    }
+  }
+  return diagnostics;
+}
+
+async function discoverSkillProfilePaths(root: string): Promise<readonly string[]> {
+  const paths: string[] = [];
+  const rootProfile = path.join(root, "X.yaml");
+  if (existsSync(rootProfile)) {
+    paths.push(rootProfile);
+  }
+  const skillsRoot = path.join(root, "skills");
+  for (const skillEntry of await safeReadDir(skillsRoot)) {
+    if (!skillEntry.isDirectory()) {
+      continue;
+    }
+    const profilePath = path.join(skillsRoot, skillEntry.name, "X.yaml");
+    if (existsSync(profilePath)) {
+      paths.push(profilePath);
+    }
+  }
+  return paths.sort();
+}
+
+async function discoverPacketDoctorDiagnostics(root: string): Promise<readonly DoctorDiagnostic[]> {
+  const diagnostics: DoctorDiagnostic[] = [];
+  const index = await buildLocalPacketIndex(root, { writeCache: true });
+  for (const error of index.errors) {
+    diagnostics.push(createDoctorDiagnostic({
+      id: error.id,
+      severity: "error",
+      title: error.title,
+      message: error.message,
+      target: {
+        kind: "packet",
+        ref: error.ref,
+      },
+      location: {
+        path: error.path,
+      },
+      evidence: error.evidence,
+      repairs: [{
+        id: "repair_packet_schema",
+        kind: "manual",
+        confidence: "medium",
+        risk: "low",
+        requires_human_review: false,
+      }],
+    }));
+  }
+  return diagnostics;
+}
+
+interface StepOutputDeclaration {
+  readonly packet?: string;
+}
+
+async function validateChainContextReferences(
+  root: string,
+  skillDir: string,
+  profilePath: string,
+  manifest: ReturnType<typeof validateRunnerManifest>,
+): Promise<readonly DoctorDiagnostic[]> {
+  const diagnostics: DoctorDiagnostic[] = [];
+  for (const runner of Object.values(manifest.runners)) {
+    const graph = runner.source.chain;
+    if (!graph) {
+      continue;
+    }
+    const warnedMissingSchema = new Set<string>();
+    const outputMap = new Map<string, Readonly<Record<string, StepOutputDeclaration>>>();
+    for (const step of graph.steps) {
+      for (const edge of step.contextEdges) {
+        const producerOutputs = outputMap.get(edge.fromStep);
+        if (!producerOutputs) {
+          diagnostics.push(createDoctorDiagnostic({
+            id: "runx.chain.context.producer_missing",
+            severity: "error",
+            title: "Chain context producer is missing",
+            message: `${step.id}.${edge.input} references missing producer step ${edge.fromStep}.`,
+            target: { kind: "chain", ref: graph.name, step: step.id },
+            location: { path: toProjectPath(root, profilePath), json_pointer: `/runners/${runner.name}/chain/steps/${step.id}/context/${edge.input}` },
+            evidence: { reference: `${edge.fromStep}.${edge.output}` },
+            repairs: [{ id: "choose_existing_producer", kind: "manual", confidence: "medium", risk: "low", requires_human_review: false }],
+          }));
+          continue;
+        }
+        if (Object.keys(producerOutputs).length === 0) {
+          continue;
+        }
+        const [emitName, envelopeSegment, ...packetPath] = edge.output.split(".");
+        if (!emitName || !producerOutputs[emitName]) {
+          diagnostics.push(createDoctorDiagnostic({
+            id: "runx.chain.context.output_missing",
+            severity: "error",
+            title: "Chain context output is missing",
+            message: `${step.id}.${edge.input} references output ${emitName || "(empty)"} from ${edge.fromStep}, but that output is not declared.`,
+            target: { kind: "chain", ref: graph.name, step: step.id },
+            location: { path: toProjectPath(root, profilePath), json_pointer: `/runners/${runner.name}/chain/steps/${step.id}/context/${edge.input}` },
+            evidence: {
+              reference: `${edge.fromStep}.${edge.output}`,
+              available_outputs: Object.keys(producerOutputs),
+            },
+            repairs: [{ id: "choose_existing_output", kind: "manual", confidence: "medium", risk: "low", requires_human_review: false }],
+          }));
+          continue;
+        }
+        if (envelopeSegment !== "data") {
+          diagnostics.push(createDoctorDiagnostic({
+            id: "runx.chain.context.data_envelope_skipped",
+            severity: "error",
+            title: "Chain context skipped artifact data envelope",
+            message: `${step.id}.${edge.input} must reference ${edge.fromStep}.${emitName}.data before packet fields.`,
+            target: { kind: "chain", ref: graph.name, step: step.id },
+            location: { path: toProjectPath(root, profilePath), json_pointer: `/runners/${runner.name}/chain/steps/${step.id}/context/${edge.input}` },
+            evidence: {
+              reference: `${edge.fromStep}.${edge.output}`,
+              expected_prefix: `${edge.fromStep}.${emitName}.data`,
+            },
+            repairs: [{
+              id: "insert_data_segment",
+              kind: "edit_yaml",
+              confidence: "high",
+              risk: "low",
+              path: toProjectPath(root, profilePath),
+              requires_human_review: false,
+            }],
+          }));
+          continue;
+        }
+        const packetId = producerOutputs[emitName]?.packet;
+        if (!packetId) {
+          const warningKey = `${edge.fromStep}.${emitName}`;
+          if (!warnedMissingSchema.has(warningKey)) {
+            warnedMissingSchema.add(warningKey);
+            diagnostics.push(createDoctorDiagnostic({
+              id: "runx.chain.context.schema_missing",
+              severity: "warning",
+              title: "Chain context producer has no packet schema",
+              message: `${edge.fromStep}.${emitName} has no packet metadata, so doctor cannot verify packet paths.`,
+              target: { kind: "chain", ref: graph.name, step: step.id },
+              location: { path: toProjectPath(root, profilePath), json_pointer: `/runners/${runner.name}/chain/steps/${step.id}/context/${edge.input}` },
+              evidence: { reference: `${edge.fromStep}.${emitName}.data` },
+              repairs: [{ id: "add_output_packet", kind: "edit_yaml", confidence: "medium", risk: "low", path: toProjectPath(root, profilePath), requires_human_review: false }],
+            }));
+          }
+          continue;
+        }
+        const packetCheck = await validatePacketPath(root, packetId, packetPath);
+        if (packetCheck.status === "missing_packet") {
+          diagnostics.push(createDoctorDiagnostic({
+            id: "runx.packet.ref.missing",
+            severity: "error",
+            title: "Packet schema is missing",
+            message: `Packet ${packetId} referenced by ${edge.fromStep}.${emitName} is not declared in package.json runx.packets.`,
+            target: { kind: "packet", ref: packetId },
+            location: { path: toProjectPath(root, profilePath), json_pointer: `/runners/${runner.name}/chain/steps/${step.id}/context/${edge.input}` },
+            evidence: { reference: `${edge.fromStep}.${edge.output}` },
+            repairs: [{ id: "declare_packet_artifact", kind: "manual", confidence: "medium", risk: "low", requires_human_review: false }],
+          }));
+        } else if (packetCheck.status === "path_invalid") {
+          diagnostics.push(createDoctorDiagnostic({
+            id: "runx.chain.context.path_invalid",
+            severity: "error",
+            title: "Chain context packet path is invalid",
+            message: `${packetPath.join(".") || "(data)"} does not exist in packet ${packetId}.`,
+            target: { kind: "chain", ref: graph.name, step: step.id },
+            location: { path: toProjectPath(root, profilePath), json_pointer: `/runners/${runner.name}/chain/steps/${step.id}/context/${edge.input}` },
+            evidence: {
+              reference: `${edge.fromStep}.${edge.output}`,
+              packet: packetId,
+              available_properties: packetCheck.available,
+            },
+            repairs: [{ id: "choose_existing_property", kind: "manual", confidence: "medium", risk: "low", requires_human_review: false }],
+          }));
+        }
+      }
+      outputMap.set(step.id, await loadStepOutputDeclarations(root, skillDir, step));
+    }
+  }
+  return diagnostics;
+}
+
+async function loadStepOutputDeclarations(
+  root: string,
+  skillDir: string,
+  step: { readonly tool?: string; readonly skill?: string; readonly run?: Readonly<Record<string, unknown>>; readonly runner?: string; readonly artifacts?: Readonly<Record<string, unknown>> },
+): Promise<Readonly<Record<string, StepOutputDeclaration>>> {
+  if (step.tool) {
+    const toolDir = resolveToolDirFromRef(root, step.tool);
+    if (!toolDir) {
+      return {};
+    }
+    const raw = JSON.parse(await readFile(path.join(toolDir, "manifest.json"), "utf8")) as unknown;
+    if (!isPlainRecord(raw)) return {};
+    const output = isPlainRecord(raw.output) ? raw.output : {};
+    const packet = readPacketRef(output.packet);
+    const wrapAs = typeof output.wrap_as === "string"
+      ? output.wrap_as
+      : isPlainRecord(raw.runx) && isPlainRecord(raw.runx.artifacts) && typeof raw.runx.artifacts.wrap_as === "string"
+        ? raw.runx.artifacts.wrap_as
+        : undefined;
+    if (wrapAs) {
+      return { [wrapAs]: { packet } };
+    }
+    const namedEmits = isPlainRecord(output.named_emits) ? output.named_emits : undefined;
+    if (namedEmits) {
+      const outputPackets = isPlainRecord(output.outputs) ? output.outputs : {};
+      return Object.fromEntries(Object.keys(namedEmits).map((name) => {
+        const declared = outputPackets[name];
+        return [name, { packet: readPacketRef(isPlainRecord(declared) ? declared.packet : undefined) ?? packet }];
+      }));
+    }
+    return {};
+  }
+  if (step.skill) {
+    const profilePath = resolveNestedSkillProfilePath(skillDir, step.skill);
+    if (!profilePath) {
+      return {};
+    }
+    const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(profilePath, "utf8")));
+    const runner = step.runner ? manifest.runners[step.runner] : Object.values(manifest.runners).find((candidate) => candidate.default) ?? Object.values(manifest.runners)[0];
+    if (!runner) {
+      return {};
+    }
+    return outputDeclarationsFromArtifacts(runner.artifacts, runner.raw);
+  }
+  return outputDeclarationsFromArtifacts(
+    step.artifacts ? {
+      wrapAs: typeof step.artifacts.wrap_as === "string" ? step.artifacts.wrap_as : undefined,
+      namedEmits: isPlainRecord(step.artifacts.named_emits) ? step.artifacts.named_emits as Readonly<Record<string, string>> : undefined,
+    } : undefined,
+    { ...(step.run ?? {}), artifacts: step.artifacts },
+  );
+}
+
+function outputDeclarationsFromArtifacts(
+  artifacts: { readonly wrapAs?: string; readonly namedEmits?: Readonly<Record<string, string>> } | undefined,
+  raw: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, StepOutputDeclaration>> {
+  const outputs = isPlainRecord(raw.outputs) ? raw.outputs : {};
+  const artifactMetadata = isPlainRecord(raw.artifacts) ? raw.artifacts : {};
+  const artifactPackets = isPlainRecord(artifactMetadata.packets) ? artifactMetadata.packets : {};
+  if (artifacts?.wrapAs) {
+    const output = outputs[artifacts.wrapAs];
+    return {
+      [artifacts.wrapAs]: {
+        packet:
+          readPacketRef(isPlainRecord(output) ? output.packet : undefined)
+          ?? readPacketRef(artifactMetadata.packet)
+          ?? readPacketRef(artifactPackets[artifacts.wrapAs]),
+      },
+    };
+  }
+  if (artifacts?.namedEmits) {
+    return Object.fromEntries(
+      Object.keys(artifacts.namedEmits).map((name) => [
+        name,
+        {
+          packet:
+            readPacketRef(isPlainRecord(outputs[name]) ? outputs[name].packet : undefined)
+            ?? readPacketRef(artifactPackets[name]),
+        },
+      ]),
+    );
+  }
+  return {};
+}
+
+function resolveNestedSkillProfilePath(skillDir: string, ref: string): string | undefined {
+  const resolved = path.resolve(skillDir, ref);
+  const directory = path.basename(resolved).toLowerCase() === "skill.md" ? path.dirname(resolved) : resolved;
+  const profilePath = path.join(directory, "X.yaml");
+  return existsSync(profilePath) ? profilePath : undefined;
+}
+
+function readPacketRef(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (isPlainRecord(value) && typeof value.id === "string") {
+    return value.id;
+  }
+  return undefined;
+}
+
+async function validatePacketPath(
+  root: string,
+  packetId: string,
+  packetPath: readonly string[],
+): Promise<{ readonly status: "ok" } | { readonly status: "missing_packet" } | { readonly status: "path_invalid"; readonly available: readonly string[] }> {
+  const index = await buildLocalPacketIndex(root, { writeCache: false });
+  const packet = index.packets.find((candidate) => candidate.id === packetId);
+  if (!packet) {
+    return { status: "missing_packet" };
+  }
+  const schema = JSON.parse(await readFile(path.resolve(root, packet.path), "utf8")) as unknown;
+  const result = schemaHasPath(schema, packetPath, schema);
+  return result.ok ? { status: "ok" } : { status: "path_invalid", available: result.available };
+}
+
+function schemaHasPath(
+  schema: unknown,
+  packetPath: readonly string[],
+  rootSchema: unknown,
+): { readonly ok: boolean; readonly available: readonly string[] } {
+  const resolved = resolveJsonSchemaRef(schema, rootSchema);
+  if (packetPath.length === 0) {
+    return { ok: true, available: [] };
+  }
+  if (!isPlainRecord(resolved)) {
+    return { ok: false, available: [] };
+  }
+  if (Array.isArray(resolved.anyOf) || Array.isArray(resolved.oneOf)) {
+    const branches = (Array.isArray(resolved.anyOf) ? resolved.anyOf : resolved.oneOf) as readonly unknown[];
+    const results = branches.map((branch) => schemaHasPath(branch, packetPath, rootSchema));
+    return results.some((result) => result.ok) ? { ok: true, available: [] } : results[0] ?? { ok: false, available: [] };
+  }
+  if (Array.isArray(resolved.allOf)) {
+    const results = resolved.allOf.map((branch) => schemaHasPath(branch, packetPath, rootSchema));
+    return results.some((result) => result.ok) ? { ok: true, available: [] } : results[0] ?? { ok: false, available: [] };
+  }
+  if (resolved.type === "array" && resolved.items !== undefined) {
+    const [, ...rest] = /^\d+$/.test(packetPath[0] ?? "") ? packetPath : ["", ...packetPath];
+    return schemaHasPath(resolved.items, rest, rootSchema);
+  }
+  const properties = isPlainRecord(resolved.properties) ? resolved.properties : {};
+  const [head, ...rest] = packetPath;
+  if (!head || !(head in properties)) {
+    return { ok: false, available: Object.keys(properties) };
+  }
+  return schemaHasPath(properties[head], rest, rootSchema);
+}
+
+function resolveJsonSchemaRef(schema: unknown, rootSchema: unknown): unknown {
+  if (!isPlainRecord(schema) || typeof schema.$ref !== "string" || !schema.$ref.startsWith("#/")) {
+    return schema;
+  }
+  return schema.$ref
+    .slice(2)
+    .split("/")
+    .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"))
+    .reduce<unknown>((value, segment) => isPlainRecord(value) ? value[segment] : undefined, rootSchema) ?? schema;
+}
+
+function createDoctorDiagnostic(
+  diagnostic: Omit<DoctorDiagnostic, "instance_id">,
+): DoctorDiagnostic {
+  return {
+    ...diagnostic,
+    instance_id: `sha256:${createHash("sha256").update(JSON.stringify({
+      id: diagnostic.id,
+      target: diagnostic.target,
+      location: diagnostic.location,
+      evidence: diagnostic.evidence,
+    })).digest("hex")}`,
+  };
+}
+
+function renderDoctorResult(result: DoctorReport, env: NodeJS.ProcessEnv = process.env): string {
+  const t = theme(process.stdout, env);
+  const lines = [
+    "",
+    `  ${statusIcon(result.status, t)}  ${t.bold}doctor${t.reset}  ${t.dim}${result.summary.errors} error(s), ${result.summary.warnings} warning(s)${t.reset}`,
+  ];
+  for (const diagnostic of result.diagnostics) {
+    lines.push(`  ${statusIcon(diagnostic.severity === "error" ? "failure" : "unverified", t)}  ${diagnostic.id}  ${t.dim}${diagnostic.location.path}${t.reset}`);
+    lines.push(`     ${diagnostic.message}`);
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+const DOCTOR_DIAGNOSTIC_EXPLANATIONS: Readonly<Record<string, {
+  readonly title: string;
+  readonly severity: "error" | "warning" | "info";
+  readonly explanation: string;
+  readonly repair: string;
+}>> = {
+  "runx.tool.manifest.legacy_format": {
+    title: "Legacy tool.yaml is no longer supported",
+    severity: "error",
+    explanation: "Runx v1 resolves tools from manifest.json generated or normalized by the authoring pipeline. A remaining tool.yaml means there are two potential sources of truth.",
+    repair: "Run runx tool migrate <tool-dir>, review the generated manifest.json and run.mjs, then re-run runx doctor.",
+  },
+  "runx.tool.manifest.invalid": {
+    title: "Tool manifest is invalid",
+    severity: "error",
+    explanation: "The resolver could not validate manifest.json, so the tool is not safe to list, compose, or execute.",
+    repair: "Repair the manifest or rebuild it from src/index.ts with runx tool build <tool-dir>.",
+  },
+  "runx.tool.manifest.build_failed": {
+    title: "Tool build failed",
+    severity: "error",
+    explanation: "The dev loop runs tool build before fixtures so generated manifests and shims are fresh.",
+    repair: "Run the reported command manually, fix the tool source or manifest, then re-run runx dev.",
+  },
+  "runx.tool.manifest.stale": {
+    title: "Tool manifest is stale",
+    severity: "error",
+    explanation: "manifest.json is the checked-in runtime contract. Its hashes must match the source and schema fields reviewers see in the same PR.",
+    repair: "Run runx tool build <tool-dir> and commit the regenerated manifest.",
+  },
+  "runx.tool.fixture.missing": {
+    title: "Tool has no deterministic fixture",
+    severity: "error",
+    explanation: "Every first-party tool needs at least one repo-visible deterministic fixture so humans and agents can see how to invoke it and runx dev can prove it still works.",
+    repair: "Add tools/<namespace>/<name>/fixtures/<case>.yaml with target.kind: tool, inputs, and an output assertion.",
+  },
+  "runx.skill.profile.invalid": {
+    title: "Skill execution profile is invalid",
+    severity: "error",
+    explanation: "X.yaml is the runx execution profile layered on top of SKILL.md. The X stands for execution. If it does not validate, runx cannot reliably compose the skill.",
+    repair: "Fix the YAML and schema error reported by doctor.",
+  },
+  "runx.skill.fixture.missing": {
+    title: "Skill has no harness coverage",
+    severity: "error",
+    explanation: "A runx-extended skill needs at least one executable example. Inline harness.cases in X.yaml and fixture files both count because they give humans and agents a replayable contract.",
+    repair: "Add a focused harness.cases entry or a fixture that proves the intended success or stop condition, then re-run runx harness and runx doctor.",
+  },
+  "runx.chain.context.path_invalid": {
+    title: "Chain context path is invalid",
+    severity: "error",
+    explanation: "A chain context reference points at a producer output path that does not exist according to the producer packet schema.",
+    repair: "Use the producer step id, emitted output name, mandatory data segment, and a valid property inside the packet.",
+  },
+  "runx.chain.context.schema_missing": {
+    title: "Chain context producer has no packet schema",
+    severity: "warning",
+    explanation: "Doctor can verify topology but cannot type-check the referenced data path without a declared packet schema.",
+    repair: "Add artifacts.packet for a single emitted artifact, artifacts.packets.<emit> for named emits, or output.packet metadata for tools.",
+  },
+  "runx.packet.ref.missing": {
+    title: "Packet glob matched no files",
+    severity: "error",
+    explanation: "package.json runx.packets declares packet artifacts that do not exist, so packet assertions and chain validation cannot resolve them.",
+    repair: "Fix the glob or build the packet artifacts.",
+  },
+  "runx.packet.id.collision": {
+    title: "Packet ID collision",
+    severity: "error",
+    explanation: "Two schemas declare the same immutable packet id with different canonical hashes.",
+    repair: "Rename one packet id or bump the version segment.",
+  },
+};
+
+function listDoctorDiagnostics(): Readonly<Record<string, unknown>> {
+  return {
+    schema: "runx.doctor.diagnostics.v1",
+    diagnostics: Object.entries(DOCTOR_DIAGNOSTIC_EXPLANATIONS).map(([id, value]) => ({ id, ...value })),
+  };
+}
+
+function explainDoctorDiagnostic(id: string): Readonly<Record<string, unknown>> {
+  const diagnostic = DOCTOR_DIAGNOSTIC_EXPLANATIONS[id];
+  return diagnostic
+    ? { schema: "runx.doctor.explain.v1", status: "success", id, ...diagnostic }
+    : { schema: "runx.doctor.explain.v1", status: "failure", id, message: `Unknown diagnostic id ${id}.` };
+}
+
+function renderDoctorDiagnosticList(result: Readonly<Record<string, unknown>>, env: NodeJS.ProcessEnv = process.env): string {
+  const t = theme(process.stdout, env);
+  const diagnostics = Array.isArray(result.diagnostics) ? result.diagnostics.filter(isPlainRecord) : [];
+  const lines = ["", `  ${t.bold}doctor diagnostics${t.reset}  ${t.dim}${diagnostics.length} known${t.reset}`];
+  for (const diagnostic of diagnostics) {
+    lines.push(`  ${String(diagnostic.id).padEnd(42)} ${t.dim}${String(diagnostic.severity)}${t.reset}  ${String(diagnostic.title)}`);
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+function renderDoctorDiagnosticExplanation(result: Readonly<Record<string, unknown>>, env: NodeJS.ProcessEnv = process.env): string {
+  const t = theme(process.stdout, env);
+  if (result.status !== "success") {
+    return `\n  ${statusIcon("failure", t)}  ${String(result.message)}\n\n`;
+  }
+  return renderKeyValue(
+    String(result.id),
+    "success",
+    [
+      ["severity", String(result.severity)],
+      ["title", String(result.title)],
+      ["why", String(result.explanation)],
+      ["repair", String(result.repair)],
+    ],
+    t,
+  );
+}
+
+async function handleListCommand(parsed: ParsedArgs, env: NodeJS.ProcessEnv): Promise<RunxListReport> {
+  const root = resolveRunxWorkspaceBase(env);
+  const requestedKind = parsed.listKind ?? "all";
+  const items = await discoverListItems(root, requestedKind);
+  const filtered = items.filter((item) => {
+    if (parsed.listOkOnly) {
+      return item.status === "ok";
+    }
+    if (parsed.listInvalidOnly) {
+      return item.status === "invalid";
+    }
+    return true;
+  });
+  return {
+    schema: "runx.list.v1",
+    root,
+    requested_kind: requestedKind,
+    items: sortListItems(filtered),
+  };
+}
+
+async function discoverListItems(root: string, requestedKind: RunxListRequestedKind): Promise<readonly RunxListItem[]> {
+  const items: RunxListItem[] = [];
+  if (requestedKind === "all" || requestedKind === "tools") {
+    items.push(...await discoverToolListItems(root));
+  }
+  if (requestedKind === "all" || requestedKind === "skills" || requestedKind === "chains") {
+    items.push(...(await discoverSkillAndChainListItems(root)).filter((item) => requestedKind === "all" || `${item.kind}s` === requestedKind));
+  }
+  if (requestedKind === "all" || requestedKind === "packets") {
+    items.push(...await discoverPacketListItems(root));
+  }
+  if (requestedKind === "all" || requestedKind === "overlays") {
+    items.push(...await discoverOverlayListItems(root));
+  }
+  return items;
+}
+
+async function discoverToolListItems(root: string): Promise<readonly RunxListItem[]> {
+  const toolsRoot = path.join(root, "tools");
+  const items: RunxListItem[] = [];
+  for (const namespaceEntry of await safeReadDir(toolsRoot)) {
+    if (!namespaceEntry.isDirectory()) {
+      continue;
+    }
+    const namespaceDir = path.join(toolsRoot, namespaceEntry.name);
+    for (const toolEntry of await safeReadDir(namespaceDir)) {
+      if (!toolEntry.isDirectory()) {
+        continue;
+      }
+      const manifestPath = path.join(namespaceDir, toolEntry.name, "manifest.json");
+      if (!existsSync(manifestPath)) {
+        continue;
+      }
+      const relativePath = toProjectPath(root, manifestPath);
+      try {
+        const tool = validateToolManifest(parseToolManifestJson(await readFile(manifestPath, "utf8")));
+        const emits = tool.artifacts?.namedEmits
+          ? Object.entries(tool.artifacts.namedEmits).map(([name, packet]) => ({ name, packet }))
+          : tool.artifacts?.wrapAs
+            ? [{ name: tool.artifacts.wrapAs }]
+            : [];
+        items.push({
+          kind: "tool",
+          name: tool.name,
+          source: "local",
+          path: relativePath,
+          status: "ok",
+          scopes: tool.scopes,
+          emits,
+          fixtures: await countYamlFiles(path.join(namespaceDir, toolEntry.name, "fixtures")),
+        });
+      } catch {
+        items.push({
+          kind: "tool",
+          name: `${namespaceEntry.name}.${toolEntry.name}`,
+          source: "local",
+          path: relativePath,
+          status: "invalid",
+          diagnostics: ["runx.tool.manifest.invalid"],
+        });
+      }
+    }
+  }
+  return items;
+}
+
+async function discoverSkillAndChainListItems(root: string): Promise<readonly RunxListItem[]> {
+  const items: RunxListItem[] = [];
+  for (const profilePath of await discoverSkillProfilePaths(root)) {
+    const skillDir = path.dirname(profilePath);
+    const fallbackName = skillDir === root ? path.basename(root) : path.basename(skillDir);
+    const relativePath = toProjectPath(root, profilePath);
+    try {
+      const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(profilePath, "utf8")));
+      const runners = Object.values(manifest.runners);
+      const chainSteps = runners
+        .map((runner) => runner.source.chain?.steps.length)
+        .filter((value): value is number => typeof value === "number");
+      const isChain = chainSteps.length > 0;
+      items.push({
+        kind: isChain ? "chain" : "skill",
+        name: manifest.skill ?? fallbackName,
+        source: "local",
+        path: relativePath,
+        status: "ok",
+        fixtures: await countYamlFiles(path.join(skillDir, "fixtures")),
+        harness_cases: manifest.harness?.cases.length ?? 0,
+        steps: isChain ? chainSteps.reduce((sum, value) => sum + value, 0) : undefined,
+      });
+    } catch {
+      items.push({
+        kind: "skill",
+        name: fallbackName,
+        source: "local",
+        path: relativePath,
+        status: "invalid",
+        diagnostics: ["runx.skill.profile.invalid"],
+      });
+    }
+  }
+  return items;
+}
+
+async function discoverPacketListItems(root: string): Promise<readonly RunxListItem[]> {
+  const index = await buildLocalPacketIndex(root, { writeCache: false });
+  return [
+    ...index.packets.map((packet) => ({
+      kind: "packet" as const,
+      name: packet.id,
+      source: "local" as const,
+      path: packet.path,
+      status: "ok" as const,
+    })),
+    ...index.errors.map((error) => ({
+      kind: "packet" as const,
+      name: error.ref,
+      source: "local" as const,
+      path: error.path,
+      status: "invalid" as const,
+      diagnostics: [error.id],
+    })),
+  ];
+}
+
+async function discoverOverlayListItems(root: string): Promise<readonly RunxListItem[]> {
+  const overlaysRoot = path.join(root, "skills-overlays");
+  const items: RunxListItem[] = [];
+  for (const vendorEntry of await safeReadDir(overlaysRoot)) {
+    if (!vendorEntry.isDirectory()) {
+      continue;
+    }
+    const vendorDir = path.join(overlaysRoot, vendorEntry.name);
+    for (const skillEntry of await safeReadDir(vendorDir)) {
+      if (!skillEntry.isDirectory()) {
+        continue;
+      }
+      const profilePath = path.join(vendorDir, skillEntry.name, "X.yaml");
+      if (!existsSync(profilePath)) {
+        continue;
+      }
+      const contents = await readFile(profilePath, "utf8");
+      const wraps = /^\s*wraps:\s*(.+?)\s*$/m.exec(contents)?.[1];
+      items.push({
+        kind: "overlay",
+        name: `${vendorEntry.name}/${skillEntry.name}`,
+        source: "local",
+        path: toProjectPath(root, profilePath),
+        status: "ok",
+        wraps,
+      });
+    }
+  }
+  return items;
+}
+
+function sortListItems(items: readonly RunxListItem[]): readonly RunxListItem[] {
+  const tierOrder: Record<RunxListSource, number> = {
+    local: 0,
+    workspace: 1,
+    dependencies: 2,
+    "built-in": 3,
+  };
+  const kindOrder: Record<RunxListItemKind, number> = {
+    tool: 0,
+    skill: 1,
+    chain: 2,
+    packet: 3,
+    overlay: 4,
+  };
+  return [...items].sort((left, right) =>
+    tierOrder[left.source] - tierOrder[right.source]
+    || kindOrder[left.kind] - kindOrder[right.kind]
+    || left.name.localeCompare(right.name)
+  );
+}
+
+function renderListResult(result: RunxListReport, env: NodeJS.ProcessEnv = process.env): string {
+  const t = theme(process.stdout, env);
+  const lines = [""];
+  for (const kind of ["tool", "skill", "chain", "packet", "overlay"] as const) {
+    const items = result.items.filter((item) => item.kind === kind);
+    if (items.length === 0) {
+      continue;
+    }
+    lines.push(`  ${t.bold}${kind}s${t.reset}`);
+    for (const item of items) {
+      const status = item.status === "ok" ? statusIcon("success", t) : statusIcon("failure", t);
+      const detail = renderListItemDetail(item);
+      lines.push(`  ${status}  ${item.name.padEnd(28)} ${t.dim}${item.source.padEnd(12)}${t.reset} ${detail}`);
+    }
+    lines.push("");
+  }
+  if (lines.length === 1) {
+    lines.push(`  ${t.dim}No runx authoring primitives found.${t.reset}`, "");
+  }
+  return lines.join("\n");
+}
+
+function renderListItemDetail(item: RunxListItem): string {
+  if (item.status === "invalid") {
+    return `invalid: ${(item.diagnostics ?? []).join(", ")}`;
+  }
+  if (item.kind === "tool") {
+    const scopes = item.scopes?.join(", ") || "no scopes";
+    const emits = item.emits?.map((emit) => emit.packet ? `${emit.name}:${emit.packet}` : emit.name).join(", ");
+    return `${scopes}${emits ? `  emits ${emits}` : ""}`;
+  }
+  if (item.kind === "chain") {
+    return `${item.steps ?? 0} steps${renderCoverageDetail(item)}`;
+  }
+  if (item.kind === "skill") {
+    return `skill${renderCoverageDetail(item)}`;
+  }
+  if (item.kind === "overlay") {
+    return item.wraps ? `wraps ${item.wraps}` : "overlay";
+  }
+  return item.path;
+}
+
+function renderCoverageDetail(item: RunxListItem): string {
+  const parts: string[] = [];
+  if (item.fixtures !== undefined) {
+    parts.push(`${item.fixtures} fixture${item.fixtures === 1 ? "" : "s"}`);
+  }
+  if (item.harness_cases !== undefined) {
+    parts.push(`${item.harness_cases} harness case${item.harness_cases === 1 ? "" : "s"}`);
+  }
+  return parts.length > 0 ? `, ${parts.join(", ")}` : "";
+}
+
+interface LocalPacketIndexResult {
+  readonly packets: readonly {
+    readonly id: string;
+    readonly package: string;
+    readonly version: string;
+    readonly path: string;
+    readonly sha256: string;
+  }[];
+  readonly errors: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly message: string;
+    readonly ref: string;
+    readonly path: string;
+    readonly evidence?: Readonly<Record<string, unknown>>;
+  }[];
+}
+
+async function buildLocalPacketIndex(
+  root: string,
+  options: { readonly writeCache: boolean },
+): Promise<LocalPacketIndexResult> {
+  const packageJsonPath = path.join(root, "package.json");
+  if (!existsSync(packageJsonPath)) {
+    return { packets: [], errors: [] };
+  }
+  const errors: LocalPacketIndexResult["errors"][number][] = [];
+  let packageJson: {
+    readonly name?: string;
+    readonly version?: string;
+    readonly runx?: { readonly packets?: readonly string[] };
+  };
+  try {
+    packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
+  } catch (error) {
+    return {
+      packets: [],
+      errors: [{
+        id: "runx.packet.package.invalid",
+        title: "Package metadata is invalid",
+        message: error instanceof Error ? error.message : String(error),
+        ref: "package.json",
+        path: "package.json",
+      }],
+    };
+  }
+  const globs = packageJson.runx?.packets ?? [];
+  const packets: LocalPacketIndexResult["packets"][number][] = [];
+  const seen = new Map<string, LocalPacketIndexResult["packets"][number]>();
+  for (const glob of globs) {
+    const files = await expandLocalGlob(root, glob);
+    if (files.length === 0) {
+      errors.push({
+        id: "runx.packet.ref.missing",
+        title: "Packet glob matched no files",
+        message: `${glob} did not resolve to any packet schema artifacts.`,
+        ref: glob,
+        path: "package.json",
+      });
+      continue;
+    }
+    for (const filePath of files) {
+      const relativePath = toProjectPath(root, filePath);
+      try {
+        const schema = JSON.parse(await readFile(filePath, "utf8")) as unknown;
+        if (!isPlainRecord(schema)) {
+          throw new Error("packet schema must be a JSON object");
+        }
+        const id = typeof schema["x-runx-packet-id"] === "string"
+          ? schema["x-runx-packet-id"]
+          : typeof schema.$id === "string"
+            ? schema.$id
+            : undefined;
+        if (!id) {
+          errors.push({
+            id: "runx.packet.id.mismatch",
+            title: "Packet schema is missing a runx packet ID",
+            message: `${relativePath} must declare x-runx-packet-id or $id.`,
+            ref: relativePath,
+            path: relativePath,
+          });
+          continue;
+        }
+        const packet = {
+          id,
+          package: packageJson.name ?? "(local)",
+          version: packageJson.version ?? "0.0.0",
+          path: relativePath,
+          sha256: sha256Stable(schema),
+        };
+        const existing = seen.get(id);
+        if (existing && existing.sha256 !== packet.sha256) {
+          errors.push({
+            id: "runx.packet.id.collision",
+            title: "Packet ID collision",
+            message: `${id} is declared by multiple schemas with different hashes.`,
+            ref: id,
+            path: relativePath,
+            evidence: {
+              first_path: existing.path,
+              first_sha256: existing.sha256,
+              second_sha256: packet.sha256,
+            },
+          });
+          continue;
+        }
+        seen.set(id, packet);
+        packets.push(packet);
+      } catch (error) {
+        errors.push({
+          id: "runx.packet.schema.invalid",
+          title: "Packet schema is invalid",
+          message: error instanceof Error ? error.message : String(error),
+          ref: relativePath,
+          path: relativePath,
+        });
+      }
+    }
+  }
+  const result = { packets, errors };
+  if (options.writeCache && (packets.length > 0 || globs.length > 0)) {
+    await writeJsonFile(path.join(root, ".runx", "cache", "packet-index.json"), {
+      schema: "runx.packet.index.v1",
+      packets,
+    });
+  }
+  return result;
+}
+
+async function expandLocalGlob(root: string, glob: string): Promise<readonly string[]> {
+  if (!glob.includes("*")) {
+    const direct = path.resolve(root, glob);
+    return existsSync(direct) ? [direct] : [];
+  }
+  const normalized = glob.split(path.sep).join("/");
+  const star = normalized.indexOf("*");
+  const base = normalized.slice(0, star);
+  const baseDir = path.resolve(root, base.slice(0, base.lastIndexOf("/") + 1));
+  const suffix = normalized.slice(star + 1);
+  const files: string[] = [];
+  for (const entry of await safeReadDir(baseDir)) {
+    const candidate = path.join(baseDir, entry.name);
+    if (entry.isFile() && candidate.split(path.sep).join("/").endsWith(suffix)) {
+      files.push(candidate);
+    }
+  }
+  return files.sort();
+}
+
+async function safeReadDir(directory: string) {
+  try {
+    return await readdir(directory, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
+async function countYamlFiles(directory: string): Promise<number> {
+  return (await safeReadDir(directory)).filter((entry) => entry.isFile() && /\.ya?ml$/i.test(entry.name)).length;
+}
+
+function toProjectPath(root: string, filePath: string): string {
+  return path.relative(root, filePath).split(path.sep).join("/");
+}
+
+async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function sha256Stable(value: unknown): string {
+  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().filter((key) => record[key] !== undefined).map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function deepEqual(left: unknown, right: unknown): boolean {
+  return stableStringify(left) === stableStringify(right);
+}
+
+function parseJsonMaybe(value: string): unknown {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed;
+  }
+}
+
 function normalizeKnownFlag(rawKey: string): string {
   return rawKey.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
 }
@@ -1674,7 +4269,7 @@ let cachedOfficialSkillLock: readonly OfficialSkillLockEntry[] | undefined;
 function resolveBundledSkillsDir(): string | undefined {
   if (cachedBundledSkillsDir !== null) return cachedBundledSkillsDir ?? undefined;
   try {
-    // Walk up from the compiled entry looking for the @runxai/cli package root,
+    // Walk up from the compiled entry looking for the @runxhq/cli package root,
     // which owns a `skills/` sibling. Works across dev (src/), dist wrapper,
     // and nested-dist layouts without sentinel files.
     let dir = path.dirname(fileURLToPath(import.meta.url));
@@ -1683,7 +4278,7 @@ function resolveBundledSkillsDir(): string | undefined {
       if (existsSync(pkgJsonPath)) {
         try {
           const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-          if (pkg && pkg.name === "@runxai/cli") {
+          if (pkg && pkg.name === "@runxhq/cli") {
             const skills = path.join(dir, "skills");
             cachedBundledSkillsDir = existsSync(skills) ? skills : undefined;
             return cachedBundledSkillsDir ?? undefined;
@@ -2277,9 +4872,10 @@ function resolveDefaultReceiptDir(env: NodeJS.ProcessEnv): string {
 function createNonInteractiveCaller(
   answers: Readonly<Record<string, unknown>> = {},
   approvals?: boolean | Readonly<Record<string, boolean>>,
+  loadAgentRuntime?: () => Promise<CliAgentRuntime | undefined>,
 ): Caller {
   return {
-    resolve: async (request) => resolveNonInteractiveRequest(request, answers, approvals),
+    resolve: async (request) => resolveNonInteractiveRequest(request, answers, approvals, loadAgentRuntime),
     report: () => undefined,
   };
 }
@@ -2290,9 +4886,10 @@ function createInteractiveCaller(
   approvals?: boolean | Readonly<Record<string, boolean>>,
   options: { readonly reportEvents?: boolean } = {},
   env: NodeJS.ProcessEnv = process.env,
+  loadAgentRuntime?: () => Promise<CliAgentRuntime | undefined>,
 ): Caller {
   return {
-    resolve: async (request) => resolveInteractiveRequest(request, io, answers, approvals),
+    resolve: async (request) => resolveInteractiveRequest(request, io, answers, approvals, loadAgentRuntime),
     report: (event) => {
       if (options.reportEvents === false) {
         return;
@@ -2337,6 +4934,7 @@ async function resolveNonInteractiveRequest(
   request: ResolutionRequest,
   answers: Readonly<Record<string, unknown>> = {},
   approvals?: boolean | Readonly<Record<string, boolean>>,
+  loadAgentRuntime?: () => Promise<CliAgentRuntime | undefined>,
 ): Promise<ResolutionResponse | undefined> {
   if (request.kind === "input") {
     const payload = pickAnswers(request.questions, answers);
@@ -2347,7 +4945,11 @@ async function resolveNonInteractiveRequest(
     return approved === undefined ? undefined : { actor: "human", payload: approved };
   }
   const payload = answers[request.id];
-  return payload === undefined ? undefined : { actor: "agent", payload };
+  if (payload !== undefined) {
+    return { actor: "agent", payload };
+  }
+  const agentRuntime = loadAgentRuntime ? await loadAgentRuntime() : undefined;
+  return agentRuntime ? await agentRuntime.resolve(request) : undefined;
 }
 
 async function resolveInteractiveRequest(
@@ -2355,6 +4957,7 @@ async function resolveInteractiveRequest(
   io: CliIo,
   answers: Readonly<Record<string, unknown>> = {},
   approvals?: boolean | Readonly<Record<string, boolean>>,
+  loadAgentRuntime?: () => Promise<CliAgentRuntime | undefined>,
 ): Promise<ResolutionResponse | undefined> {
   if (request.kind === "input") {
     return {
@@ -2370,7 +4973,21 @@ async function resolveInteractiveRequest(
     };
   }
   const payload = answers[request.id];
-  return payload === undefined ? undefined : { actor: "agent", payload };
+  if (payload !== undefined) {
+    return { actor: "agent", payload };
+  }
+  const agentRuntime = loadAgentRuntime ? await loadAgentRuntime() : undefined;
+  return agentRuntime ? await agentRuntime.resolve(request) : undefined;
+}
+
+function createAgentRuntimeLoader(
+  env: NodeJS.ProcessEnv,
+): () => Promise<CliAgentRuntime | undefined> {
+  let runtimePromise: Promise<CliAgentRuntime | undefined> | undefined;
+  return async () => {
+    runtimePromise ??= loadCliAgentRuntime(env);
+    return await runtimePromise;
+  };
 }
 
 function resolveApproval(

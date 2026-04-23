@@ -63,7 +63,7 @@ describe("Node CLI package", () => {
     }
   });
 
-  it("packs @runxai/cli with the emitted dist files", async () => {
+  it("packs @runxhq/cli with the emitted dist files", async () => {
     const { stdout } = await execFileAsync(npm, ["pack", "--dry-run", "--json"], {
       cwd: cliPackageRoot,
       timeout: 30_000,
@@ -77,7 +77,7 @@ describe("Node CLI package", () => {
       },
     ];
 
-    expect(pack.name).toBe("@runxai/cli");
+    expect(pack.name).toBe("@runxhq/cli");
     expect(pack.version).not.toBe("0.0.0");
     const files = pack.files.map((file) => file.path);
     expect(files).toContain("bin/runx.js");
@@ -87,14 +87,14 @@ describe("Node CLI package", () => {
     expect(files).toContain("dist/packages/cli/src/official-skills.lock.json");
     expect(files).toContain("dist/packages/runner-local/src/index.js");
     expect(files).toContain("skills/scafld/run.mjs");
-    expect(files).toContain("tools/outbox/build_pull_request/tool.yaml");
+    expect(files).toContain("tools/outbox/build_pull_request/manifest.json");
     expect(files).toContain("tools/outbox/build_pull_request/run.mjs");
-    expect(files).toContain("tools/scafld/capture_checks/tool.yaml");
+    expect(files).toContain("tools/scafld/capture_checks/manifest.json");
     expect(files).toContain("tools/scafld/capture_checks/run.mjs");
-    expect(files).toContain("tools/sourcey/build/tool.yaml");
+    expect(files).toContain("tools/sourcey/build/manifest.json");
     expect(files).toContain("tools/sourcey/build/run.mjs");
-    expect(files).toContain("tools/sourcey/verify/tool.yaml");
-    expect(files).toContain("tools/thread/push_outbox/tool.yaml");
+    expect(files).toContain("tools/sourcey/verify/manifest.json");
+    expect(files).toContain("tools/thread/push_outbox/manifest.json");
     expect(files).toContain("tools/thread/push_outbox/run.mjs");
     expect(files).not.toContain("skills/evolve/SKILL.md");
     expect(files).not.toContain("skills/evolve/X.yaml");

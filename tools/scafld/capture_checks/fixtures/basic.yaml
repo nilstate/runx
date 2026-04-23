@@ -1,0 +1,24 @@
+name: scafld-capture-checks-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: scafld.capture_checks
+workspace:
+  executable_files:
+    bin/scafld: |
+      #!/usr/bin/env node
+      process.stdout.write(JSON.stringify({
+        check: { status: "success" },
+        model: { task_id: process.argv[3] }
+      }));
+inputs:
+  task_id: task-fixture
+  cwd: $RUNX_FIXTURE_ROOT
+  scafld_bin: $RUNX_FIXTURE_ROOT/bin/scafld
+expect:
+  status: success
+  output:
+    subset:
+      native_exit_code: 0
+      check:
+        status: success

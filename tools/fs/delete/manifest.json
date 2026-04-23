@@ -1,0 +1,46 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "fs.delete",
+  "description": "Delete a file relative to a repository or workspace root.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "path": {
+      "type": "string",
+      "required": true,
+      "description": "Path to the file relative to repo_root or fixture."
+    },
+    "repo_root": {
+      "type": "string",
+      "required": false,
+      "description": "Repository or workspace root; defaults to fixture, RUNX_CWD, or the current working directory."
+    }
+  },
+  "scopes": [
+    "fs.write"
+  ],
+  "mutating": true,
+  "runx": {
+    "artifacts": {
+      "wrap_as": "file_delete"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.fs.delete.v1",
+    "wrap_as": "file_delete"
+  },
+  "source_hash": "sha256:8058f5157bf0d7f2b0c195403343c57ed594b89577c3ee15dca60dbb70912868",
+  "schema_hash": "sha256:784baac76a77a6ca4edc8d4e78ec2f9f8edbe03e03ecd0e4af0d2fd9bb376387",
+  "toolkit_version": "0.0.0"
+}
