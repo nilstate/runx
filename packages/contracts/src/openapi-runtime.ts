@@ -419,6 +419,238 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
       required: ["status", "approved", "run"],
       additionalProperties: false,
     },
+    PolicyApprovalRouteRecipient: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["principal", "email", "slack_channel", "webhook"] },
+        value: { type: "string" },
+        label: { type: "string" },
+      },
+      required: ["kind", "value"],
+      additionalProperties: false,
+    },
+    PolicyApprovalRouteSummary: {
+      type: "object",
+      properties: {
+        principal_id: { type: "string" },
+        route_id: { type: "string" },
+        title: { type: "string" },
+        summary: { type: "string" },
+        recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },
+        created_at: { type: "string", format: "date-time" },
+        updated_at: { type: "string", format: "date-time" },
+      },
+      required: ["principal_id", "route_id", "recipients", "created_at", "updated_at"],
+      additionalProperties: false,
+    },
+    PutApprovalRouteRequest: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        summary: { type: "string" },
+        recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },
+      },
+      required: ["recipients"],
+      additionalProperties: false,
+    },
+    ApprovalRouteEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        route: openApiSchemaRef("PolicyApprovalRouteSummary"),
+      },
+      required: ["status", "route"],
+      additionalProperties: false,
+    },
+    ApprovalRouteListEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        routes: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteSummary") },
+      },
+      required: ["status", "routes"],
+      additionalProperties: false,
+    },
+    PolicyBundleRoutingRule: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        route_id: { type: "string" },
+        skill: { type: "string" },
+        gate_type: { type: "string" },
+        gate_id: { type: "string" },
+      },
+      required: ["id", "route_id"],
+      additionalProperties: false,
+    },
+    PolicyBundleRouting: {
+      type: "object",
+      properties: {
+        default_route_id: { type: "string" },
+        rules: { type: "array", items: openApiSchemaRef("PolicyBundleRoutingRule") },
+      },
+      required: ["rules"],
+      additionalProperties: false,
+    },
+    PolicyBundleWorkspacePolicy: {
+      type: "object",
+      properties: {
+        strict_cli_tool_inline_code: { type: "boolean" },
+      },
+      additionalProperties: false,
+    },
+    PolicyBundleSummary: {
+      type: "object",
+      properties: {
+        principal_id: { type: "string" },
+        bundle_id: { type: "string" },
+        version: { type: "string" },
+        title: { type: "string" },
+        summary: { type: "string" },
+        workspace_policy: openApiSchemaRef("PolicyBundleWorkspacePolicy"),
+        approval_routing: openApiSchemaRef("PolicyBundleRouting"),
+        created_at: { type: "string", format: "date-time" },
+      },
+      required: ["principal_id", "bundle_id", "version", "workspace_policy", "approval_routing", "created_at"],
+      additionalProperties: false,
+    },
+    PutPolicyBundleRequest: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        summary: { type: "string" },
+        workspace_policy: openApiSchemaRef("PolicyBundleWorkspacePolicy"),
+        approval_routing: openApiSchemaRef("PolicyBundleRouting"),
+      },
+      additionalProperties: false,
+    },
+    PolicyBundleEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        bundle: openApiSchemaRef("PolicyBundleSummary"),
+      },
+      required: ["status", "bundle"],
+      additionalProperties: false,
+    },
+    PolicyBundleListEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        bundles: { type: "array", items: openApiSchemaRef("PolicyBundleSummary") },
+      },
+      required: ["status", "bundles"],
+      additionalProperties: false,
+    },
+    PolicyAttachmentSummary: {
+      type: "object",
+      properties: {
+        principal_id: { type: "string" },
+        scope_kind: { type: "string", enum: ["principal_default", "skill"] },
+        scope_ref: { type: "string" },
+        bundle_id: { type: "string" },
+        bundle_version: { type: "string" },
+        created_at: { type: "string", format: "date-time" },
+        updated_at: { type: "string", format: "date-time" },
+      },
+      required: ["principal_id", "scope_kind", "bundle_id", "bundle_version", "created_at", "updated_at"],
+      additionalProperties: false,
+    },
+    PutPolicyAttachmentRequest: {
+      type: "object",
+      properties: {
+        bundle_id: { type: "string" },
+        bundle_version: { type: "string" },
+      },
+      required: ["bundle_id", "bundle_version"],
+      additionalProperties: false,
+    },
+    PolicyAttachmentEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", enum: ["success", "deleted"] },
+        attachment: openApiSchemaRef("PolicyAttachmentSummary"),
+      },
+      required: ["status", "attachment"],
+      additionalProperties: false,
+    },
+    PolicyAttachmentListEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        attachments: { type: "array", items: openApiSchemaRef("PolicyAttachmentSummary") },
+      },
+      required: ["status", "attachments"],
+      additionalProperties: false,
+    },
+    HostedApprovalGate: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        type: { type: "string" },
+        reason: { type: "string" },
+        summary: { type: "object", additionalProperties: true },
+      },
+      required: ["id", "reason"],
+      additionalProperties: false,
+    },
+    ApprovalInboxItem: {
+      type: "object",
+      properties: {
+        run_id: { type: "string" },
+        principal_id: { type: "string" },
+        skill: { type: "string" },
+        created_at: { type: "string", format: "date-time" },
+        updated_at: { type: "string", format: "date-time" },
+        policy_binding: {
+          type: "object",
+          properties: {
+            bundle_id: { type: "string" },
+            bundle_version: { type: "string" },
+            scope_kind: { type: "string", enum: ["principal_default", "skill"] },
+            scope_ref: { type: "string" },
+          },
+          required: ["bundle_id", "bundle_version", "scope_kind"],
+          additionalProperties: false,
+        },
+        request_id: { type: "string" },
+        gate: openApiSchemaRef("HostedApprovalGate"),
+        route: {
+          type: "object",
+          properties: {
+            route_id: { type: "string" },
+            title: { type: "string" },
+            summary: { type: "string" },
+            recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },
+          },
+          required: ["route_id", "recipients"],
+          additionalProperties: false,
+        },
+        matched_by: {
+          type: "object",
+          properties: {
+            kind: { type: "string", enum: ["none", "default", "rule"] },
+            rule_id: { type: "string" },
+            skill: { type: "string" },
+            gate_type: { type: "string" },
+            gate_id: { type: "string" },
+          },
+          required: ["kind"],
+          additionalProperties: false,
+        },
+      },
+      required: ["run_id", "principal_id", "skill", "created_at", "updated_at", "request_id", "gate", "matched_by"],
+      additionalProperties: false,
+    },
+    ApprovalInboxEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        approvals: { type: "array", items: openApiSchemaRef("ApprovalInboxItem") },
+      },
+      required: ["status", "approvals"],
+      additionalProperties: false,
+    },
     ConnectTicketEnvelope: {
       type: "object",
       properties: {
