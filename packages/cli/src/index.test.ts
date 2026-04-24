@@ -253,6 +253,41 @@ runners:
     expect(parsed.inputs).toEqual({});
   });
 
+  it("parses docs command actions without treating them as skill invocations", () => {
+    const parsed = parseArgs([
+      "docs",
+      "rerun",
+      "--issue",
+      "sourcey/sourcey.com#issue/2",
+      "--repo-root",
+      "/tmp/example-repo",
+    ]);
+
+    expect(parsed.command).toBe("docs");
+    expect(parsed.docsAction).toBe("rerun");
+    expect(parsed.skillPath).toBeUndefined();
+    expect(parsed.inputs).toEqual({
+      issue: "sourcey/sourcey.com#issue/2",
+      "repo-root": "/tmp/example-repo",
+    });
+  });
+
+  it("parses docs doctor as a dedicated CLI action", () => {
+    const parsed = parseArgs([
+      "docs",
+      "doctor",
+      "--sourcey-root",
+      "/tmp/sourcey",
+    ]);
+
+    expect(parsed.command).toBe("docs");
+    expect(parsed.docsAction).toBe("doctor");
+    expect(parsed.skillPath).toBeUndefined();
+    expect(parsed.inputs).toEqual({
+      "sourcey-root": "/tmp/sourcey",
+    });
+  });
+
   it("parses trainable export filters without leaking them into skill inputs", () => {
     const parsed = parseArgs([
       "export-receipts",

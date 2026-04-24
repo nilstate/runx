@@ -434,6 +434,7 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
       properties: {
         principal_id: { type: "string" },
         route_id: { type: "string" },
+        missing: { type: "boolean" },
         title: { type: "string" },
         summary: { type: "string" },
         recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },
@@ -546,7 +547,7 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
       type: "object",
       properties: {
         principal_id: { type: "string" },
-        scope_kind: { type: "string", enum: ["principal_default", "skill"] },
+        scope_kind: { type: "string", enum: ["workspace_default", "skill"] },
         scope_ref: { type: "string" },
         bundle_id: { type: "string" },
         bundle_version: { type: "string" },
@@ -607,7 +608,7 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
           properties: {
             bundle_id: { type: "string" },
             bundle_version: { type: "string" },
-            scope_kind: { type: "string", enum: ["principal_default", "skill"] },
+            scope_kind: { type: "string", enum: ["workspace_default", "skill"] },
             scope_ref: { type: "string" },
           },
           required: ["bundle_id", "bundle_version", "scope_kind"],
@@ -619,6 +620,7 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
           type: "object",
           properties: {
             route_id: { type: "string" },
+            missing: { type: "boolean" },
             title: { type: "string" },
             summary: { type: "string" },
             recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },

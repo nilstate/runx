@@ -2,35 +2,52 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { McpServerDefinition } from "../mcp/index.js";
 import { createMcpToolCatalogAdapter } from "./mcp.js";
 
-const fixtureDirectory = resolveFixtureDirectory();
-
 export function createFixtureMcpToolCatalogAdapter(): ReturnType<typeof createMcpToolCatalogAdapter> {
+  const runtime = resolveFixtureRuntime();
   return createMcpToolCatalogAdapter({
     source: "fixture-mcp",
     label: "Fixture MCP Catalog",
     namespace: "fixture",
-    baseDirectory: fixtureDirectory,
-    server: {
-      command: "node",
-      args: [
-        "--import",
-        "tsx",
-        "packages/core/src/harness/mcp-fixture.ts",
-      ],
-      cwd: ".",
-    },
+    baseDirectory: runtime.baseDirectory,
+    server: runtime.server,
     tags: ["fixture", "mcp"],
   });
 }
 
-function resolveFixtureDirectory(): string {
+function resolveFixtureRuntime(): {
+  readonly baseDirectory: string;
+  readonly server: McpServerDefinition;
+} {
   let current = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
   while (true) {
-    const candidate = path.join(current, "packages", "core", "src", "harness", "mcp-fixture.ts");
-    if (fs.existsSync(candidate)) {
-      return current;
+    const workspaceHarness = path.join(current, "packages", "core", "src", "harness", "mcp-fixture.ts");
+    if (fs.existsSync(workspaceHarness)) {
+      return {
+        baseDirectory: current,
+        server: {
+          command: "node",
+          args: [
+            "--import",
+            "tsx",
+            "packages/core/src/harness/mcp-fixture.ts",
+          ],
+          cwd: current,
+        },
+      };
+    }
+    const packagedHarness = path.join(current, "dist", "src", "harness", "mcp-fixture.js");
+    if (fs.existsSync(packagedHarness)) {
+      return {
+        baseDirectory: current,
+        server: {
+          command: "node",
+          args: [packagedHarness],
+          cwd: current,
+        },
+      };
     }
     const parent = path.dirname(current);
     if (parent === current) {

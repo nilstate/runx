@@ -1,6 +1,6 @@
 {
   "name": "@runxhq/adapters",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Runx concrete runtime adapters.",
   "private": false,
   "license": "Apache-2.0",

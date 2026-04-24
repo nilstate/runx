@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ensureGitHubOutboxMetadataMarker,
   ensureGitHubIssueReference,
   gitHubIssueSearchQuery,
   hydrateGitHubIssueThread,
@@ -123,6 +124,22 @@ describe("GitHub thread helper", () => {
   });
 
   it("maps runx-marked GitHub issue comments back into message outbox entries", () => {
+    const markedBody = ensureGitHubOutboxMetadataMarker(
+      [
+        "I built a private Sourcey preview for this repo.",
+        "",
+        "<!-- runx-outbox-entry: sourcey-preview-123 -->",
+        "",
+      ].join("\n"),
+      {
+        build_url: "https://sourcey.com/previews/example/repo/index.html",
+        control: {
+          workflow: "docs",
+          lane: "pr_review",
+          task_id: "docs-refresh-example-repo",
+        },
+      },
+    );
     const state = hydrateGitHubIssueThread({
       adapterRef: "example/repo#issue/123",
       issue: {
@@ -136,12 +153,7 @@ describe("GitHub thread helper", () => {
         comments: [
           {
             id: "1002",
-            body: [
-              "I built a private Sourcey preview for this repo.",
-              "",
-              "<!-- runx-outbox-entry: sourcey-preview-123 -->",
-              "",
-            ].join("\n"),
+            body: markedBody,
             createdAt: "2026-04-22T00:30:00Z",
             updatedAt: "2026-04-22T00:30:00Z",
             url: "https://github.com/example/repo/issues/123#issuecomment-1002",
@@ -169,6 +181,12 @@ describe("GitHub thread helper", () => {
         metadata: expect.objectContaining({
           comment_id: "1002",
           channel: "github_issue_comment",
+          build_url: "https://sourcey.com/previews/example/repo/index.html",
+          control: expect.objectContaining({
+            workflow: "docs",
+            lane: "pr_review",
+            task_id: "docs-refresh-example-repo",
+          }),
         }),
       }),
     ]));

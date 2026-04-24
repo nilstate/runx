@@ -130,11 +130,11 @@
               "type": "string"
             },
             {
-              "const": "community",
+              "const": "verified",
               "type": "string"
             },
             {
-              "const": "verified",
+              "const": "community",
               "type": "string"
             }
           ]

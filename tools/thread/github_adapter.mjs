@@ -110,6 +110,15 @@ export function gitHubOutboxEntryMarker(entryId) {
   return `<!-- runx-outbox-entry: ${normalized} -->`;
 }
 
+export function gitHubOutboxMetadataMarker(metadata) {
+  const persisted = normalizeGitHubPersistedOutboxMetadata(metadata);
+  if (!persisted) {
+    return undefined;
+  }
+  const encoded = Buffer.from(JSON.stringify(persisted), "utf8").toString("base64url");
+  return `<!-- runx-outbox-metadata: ${encoded} -->`;
+}
+
 export function parseGitHubOutboxEntryMarker(value) {
   const text = firstNonEmptyText(value);
   if (!text) {
@@ -129,6 +138,35 @@ export function ensureGitHubOutboxEntryMarker(bodyMarkdown, entryId) {
   return trimmed.length > 0 ? `${trimmed}\n\n${marker}\n` : `${marker}\n`;
 }
 
+export function parseGitHubOutboxMetadataMarker(value) {
+  const text = firstNonEmptyText(value);
+  if (!text) {
+    return undefined;
+  }
+  const match = text.match(/<!--\s*runx-outbox-metadata:\s*([^>\n]+?)\s*-->/i);
+  const encoded = firstNonEmptyString(match?.[1]);
+  if (!encoded) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function ensureGitHubOutboxMetadataMarker(bodyMarkdown, metadata) {
+  const marker = gitHubOutboxMetadataMarker(metadata);
+  if (!marker) {
+    return firstNonEmptyText(bodyMarkdown) ?? "";
+  }
+  const body = (firstNonEmptyText(bodyMarkdown) ?? "")
+    .replace(/<!--\s*runx-outbox-metadata:\s*([^>\n]+?)\s*-->\s*/gi, "")
+    .trimEnd();
+  return body.length > 0 ? `${body}\n\n${marker}\n` : `${marker}\n`;
+}
+
 export function stripGitHubOutboxEntryMarker(value) {
   const text = firstNonEmptyText(value);
   if (!text) {
@@ -136,6 +174,7 @@ export function stripGitHubOutboxEntryMarker(value) {
   }
   const stripped = text
     .replace(/<!--\s*runx-outbox-entry:\s*([^>\n]+?)\s*-->\s*/gi, "")
+    .replace(/<!--\s*runx-outbox-metadata:\s*([^>\n]+?)\s*-->\s*/gi, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   return stripped.length > 0 ? stripped : undefined;
@@ -542,6 +581,8 @@ export function pushGitHubMessage({
     throw new Error("outbox_entry.metadata.body_markdown is required for GitHub message push.");
   }
 
+  const commentMetadata = normalizeGitHubPersistedOutboxMetadata(metadata);
+  const commentBodyWithMetadata = ensureGitHubOutboxMetadataMarker(commentBody, commentMetadata);
   if (shouldPublish) {
     runCommand(resolveGhBinary(env), [
       "issue",
@@ -550,7 +591,7 @@ export function pushGitHubMessage({
       "--repo",
       repoSlug,
       "--body",
-      commentBody,
+      commentBodyWithMetadata,
     ], {
       cwd: workspacePath ?? process.cwd(),
       env,
@@ -562,7 +603,7 @@ export function pushGitHubMessage({
       "--method",
       "PATCH",
       "-f",
-      `body=${commentBody}`,
+      `body=${commentBodyWithMetadata}`,
     ], {
       cwd: workspacePath ?? process.cwd(),
       env,
@@ -649,6 +690,7 @@ function mapGitHubCommentToOutboxEntry(comment, threadLocator, entryId) {
     commentRecord.id,
   );
   const recordedAt = firstNonEmptyString(commentRecord.updatedAt, commentRecord.createdAt);
+  const persistedMetadata = parseGitHubOutboxMetadataMarker(commentRecord.body);
   const body = stripGitHubOutboxEntryMarker(firstNonEmptyText(commentRecord.body));
 
   return prune({
@@ -658,6 +700,7 @@ function mapGitHubCommentToOutboxEntry(comment, threadLocator, entryId) {
     status: "published",
     thread_locator: threadLocator,
     metadata: prune({
+      ...persistedMetadata,
       schema_version: "runx.outbox-entry.message.v1",
       channel: "github_issue_comment",
       comment_id: commentId,
@@ -711,6 +754,27 @@ function normalizeGitHubIssueCommentId(value) {
     return undefined;
   }
   return /^\d+$/.test(text) ? text : undefined;
+}
+
+function normalizeGitHubPersistedOutboxMetadata(value) {
+  const metadata = optionalRecord(value);
+  if (!metadata) {
+    return undefined;
+  }
+  const {
+    body,
+    body_markdown,
+    comment_id,
+    pushed_at,
+    updated_at,
+    ...rest
+  } = metadata;
+  void body;
+  void body_markdown;
+  void comment_id;
+  void pushed_at;
+  void updated_at;
+  return prune(rest);
 }
 
 function buildGitHubCommitMessage(draftPullRequest, title, outboxEntry) {

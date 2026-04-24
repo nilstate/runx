@@ -141,6 +141,7 @@ async function writePackDist({ directory, dist, compiledPackageRoot, compiledEnt
 
 async function syncCliAssets(directory) {
   await syncCliTools(directory);
+  await syncCliThreadAdapter(directory);
   await syncCliSkillRuntimeAssets(directory);
   await syncOfficialSkillLock(directory);
 }
@@ -197,6 +198,18 @@ async function syncCliTools(directory) {
   await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   if (await exists(source)) {
     await cp(source, target, { recursive: true });
+  }
+}
+
+async function syncCliThreadAdapter(directory) {
+  const threadRoot = path.join(workspaceRoot, "tools", "thread");
+  const distThreadRoot = path.join(directory, "dist", "tools", "thread");
+  for (const fileName of ["github_adapter.mjs", "github_adapter.d.mts"]) {
+    const source = path.join(threadRoot, fileName);
+    if (!(await exists(source))) {
+      continue;
+    }
+    await copyFileToTarget(source, path.join(distThreadRoot, fileName));
   }
 }
 

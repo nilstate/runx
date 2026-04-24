@@ -41,6 +41,7 @@ export interface ParsedArgs {
   readonly doctorFix: boolean;
   readonly doctorExplainId?: string;
   readonly doctorListDiagnostics: boolean;
+  readonly docsAction?: "rerun" | "push-pr" | "signal" | "status" | "doctor" | "dogfood";
   readonly toolAction?: "build" | "migrate" | "search" | "inspect";
   readonly toolPath?: string;
   readonly toolRef?: string;
@@ -112,6 +113,7 @@ export interface ParsedArgs {
 
 const builtinRootCommands = new Set([
   "doctor",
+  "docs",
   "dev",
   "mcp",
   "list",
@@ -246,6 +248,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const isReplay = command === "replay";
   const isDiff = command === "diff";
   const isDoctor = command === "doctor";
+  const isDocs = command === "docs";
   const isTool = command === "tool";
   const isToolSearch = isTool && positionals[0] === "search";
   const isToolInspect = isTool && positionals[0] === "inspect";
@@ -334,6 +337,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
                 ? omitInputs(inputs, ["global", "prefetch", "prefetchOfficial"])
                 : isDoctor
                   ? omitInputs(inputs, ["fix", "explain", "listDiagnostics", "list-diagnostics"])
+                  : isDocs
+                    ? inputs
                   : isTool
                     ? omitInputs(inputs, ["all", "source"])
                     : isDev
@@ -355,6 +360,16 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     doctorFix: isDoctor && truthyFlag(inputs.fix),
     doctorExplainId: isDoctor && typeof inputs.explain === "string" && inputs.explain !== "true" ? inputs.explain : undefined,
     doctorListDiagnostics: isDoctor && truthyFlag(inputs.listDiagnostics ?? inputs["list-diagnostics"]),
+    docsAction: isDocs && (
+      positionals[0] === "rerun"
+      || positionals[0] === "push-pr"
+      || positionals[0] === "signal"
+      || positionals[0] === "status"
+      || positionals[0] === "doctor"
+      || positionals[0] === "dogfood"
+    )
+      ? positionals[0]
+      : undefined,
     toolAction: isTool && (positionals[0] === "build" || positionals[0] === "migrate" || positionals[0] === "search" || positionals[0] === "inspect") ? positionals[0] : undefined,
     toolPath: isTool && (positionals[0] === "build" || positionals[0] === "migrate") ? positionals[1] : undefined,
     toolRef: isToolInspect ? toolSearchPositionals.join(" ") || undefined : undefined,
@@ -439,6 +454,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
 
 function isSupportedCommand(parsed: ParsedArgs): boolean {
   if (parsed.command === "doctor") {
+    return true;
+  }
+  if (parsed.command === "docs" && parsed.docsAction) {
     return true;
   }
   if (parsed.command === "tool" && parsed.toolAction === "search" && parsed.searchQuery) {

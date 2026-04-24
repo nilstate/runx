@@ -1,6 +1,6 @@
 {
   "name": "@runxhq/authoring",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Runx authoring SDK — defineTool, definePacket, typed input parsers, harness runtime.",
   "private": false,
   "license": "Apache-2.0",

@@ -25,6 +25,13 @@ export function firstNonEmptyString(...values: readonly unknown[]): string | und
 export function parseGitHubIssueRef(...values: readonly unknown[]): GitHubIssueRef;
 export function ensureGitHubIssueReference(bodyMarkdown: string | undefined, issueRef: GitHubIssueRef): string;
 export function gitHubIssueSearchQuery(issueRef: GitHubIssueRef): string;
+export function gitHubOutboxEntryMarker(entryId: string): string;
+export function gitHubOutboxMetadataMarker(metadata: Record<string, unknown> | undefined): string | undefined;
+export function parseGitHubOutboxMetadataMarker(value: string | undefined): Record<string, unknown> | undefined;
+export function ensureGitHubOutboxMetadataMarker(
+  bodyMarkdown: string | undefined,
+  metadata: Record<string, unknown> | undefined,
+): string;
 export function hydrateGitHubIssueThread(options: {
   readonly adapterRef: string;
   readonly issue: unknown;
