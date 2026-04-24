@@ -6,6 +6,7 @@ const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 
 const commands = [
   ["pnpm", ["typecheck"]],
+  ["node", ["scripts/build-workspace.mjs"]],
   ["node", ["scripts/check-publishable-package-manifests.mjs"]],
   ["node", ["scripts/check-authoring-package-contract.mjs"]],
   ["node", ["scripts/check-create-skill-package-contract.mjs"]],

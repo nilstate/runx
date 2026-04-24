@@ -24,4 +24,28 @@ describe("agent context envelope", () => {
       trust_boundary: "test",
     })).toThrow("context.voice_grammar is no longer supported; use voice_profile");
   });
+
+  it("accepts execution_location metadata for surfaced cognitive work", () => {
+    expect(validateAgentContextEnvelope({
+      run_id: "rx_test",
+      step_id: "plan",
+      skill: "demo.plan",
+      instructions: "Do the work.",
+      inputs: {},
+      allowed_tools: ["fs.read"],
+      current_context: [],
+      historical_context: [],
+      provenance: [],
+      execution_location: {
+        skill_directory: "/tmp/demo-skill",
+        tool_roots: ["/tmp/extra-tools"],
+      },
+      trust_boundary: "test",
+    })).toMatchObject({
+      execution_location: {
+        skill_directory: "/tmp/demo-skill",
+        tool_roots: ["/tmp/extra-tools"],
+      },
+    });
+  });
 });

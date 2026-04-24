@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { createDefaultSkillAdapters, resolveDefaultSkillAdapters } from "@runxhq/adapters";
 import type {
   DevFixtureAssertionContract,
   DevFixtureResultContract,
@@ -246,7 +246,7 @@ async function runDevFixture(
     return runToolFixture(root, fixturePath, fixture, name, lane, target, startedAt, env);
   }
   if (kind === "skill" || kind === "chain") {
-    return runSkillFixture(root, fixturePath, fixture, name, lane, target, startedAt, env, deps);
+    return runSkillFixture(root, fixturePath, fixture, name, lane, target, startedAt, parsed.devRealAgents, env, deps);
   }
   return failedFixture(name, lane, target, startedAt, [{
     path: "target.kind",
@@ -476,6 +476,7 @@ async function runSkillFixture(
   lane: string,
   target: Readonly<Record<string, unknown>>,
   startedAt: number,
+  useRealAgents: boolean,
   env: NodeJS.ProcessEnv,
   deps: DevCommandDependencies,
 ): Promise<DevFixtureResult> {
@@ -518,7 +519,9 @@ async function runSkillFixture(
       receiptDir: deps.resolveDefaultReceiptDir(env),
       runxHome: resolveRunxHomeDir(env),
       registryStore: await deps.resolveRegistryStoreForChains(env),
-      adapters: createDefaultSkillAdapters(),
+      adapters: useRealAgents
+        ? await resolveDefaultSkillAdapters(env)
+        : createDefaultSkillAdapters(),
       voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
     });
     const success = result.status === "success";
@@ -596,7 +599,7 @@ async function recordReplayFixture(
   }
   const kind = typeof target.kind === "string" ? target.kind : undefined;
   const result = kind === "skill" || kind === "chain"
-    ? await runSkillFixture(root, fixturePath, fixture, name, lane, target, startedAt, env, deps)
+    ? await runSkillFixture(root, fixturePath, fixture, name, lane, target, startedAt, parsed.devRealAgents, env, deps)
     : failedFixture(name, lane, target, startedAt, [{
         path: "target.kind",
         expected: "skill | chain",

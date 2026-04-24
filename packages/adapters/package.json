@@ -20,6 +20,10 @@
       "types": "./dist/src/a2a/index.d.ts",
       "import": "./dist/src/a2a/index.js"
     },
+    "./agent": {
+      "types": "./dist/src/agent/index.d.ts",
+      "import": "./dist/src/agent/index.js"
+    },
     "./cli-tool": {
       "types": "./dist/src/cli-tool/index.d.ts",
       "import": "./dist/src/cli-tool/index.js"

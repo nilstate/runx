@@ -86,7 +86,7 @@
   },
   {
     "skill_id": "runx/review-skill",
-    "version": "sha-19519c37d625",
+    "version": "sha-64d043bb7ddf",
     "digest": "f2c4de4444ef08906db7022bd496fa75c6aa948abb44ef2119eaf95707622762"
   },
   {
@@ -101,7 +101,7 @@
   },
   {
     "skill_id": "runx/skill-testing",
-    "version": "sha-2861e6c2657d",
+    "version": "sha-59d2e08ed01b",
     "digest": "499373a9c8aacb2b1f5550a52c0ad9dc671105d23fdd8f5352c515227c93a5ff"
   },
   {

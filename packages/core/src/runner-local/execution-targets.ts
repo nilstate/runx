@@ -42,9 +42,20 @@ interface ResolvedToolReference {
   readonly manifestPath: string;
 }
 
+export interface ResolvedToolExecutionTarget {
+  readonly manifestPath: string;
+  readonly skillDirectory: string;
+  readonly skill: ValidatedSkill;
+}
+
 interface SkillEnvironment {
   readonly name: string;
   readonly body: string;
+}
+
+interface ToolResolutionOptions {
+  readonly env?: NodeJS.ProcessEnv;
+  readonly toolRoots?: readonly string[];
 }
 
 export async function resolveSkillRunner(
@@ -259,11 +270,27 @@ async function loadValidatedSkill(skillPath: string, runner?: string): Promise<V
   return selection.skill;
 }
 
-async function loadValidatedTool(toolName: string, searchFromDirectory: string): Promise<ValidatedSkill> {
-  const resolvedTool = await resolveToolReference(toolName, searchFromDirectory);
+async function loadValidatedTool(
+  toolName: string,
+  searchFromDirectory: string,
+  options: ToolResolutionOptions = {},
+): Promise<ValidatedSkill> {
+  return (await resolveToolExecutionTarget(toolName, searchFromDirectory, options)).skill;
+}
+
+export async function resolveToolExecutionTarget(
+  toolName: string,
+  searchFromDirectory: string,
+  options: ToolResolutionOptions = {},
+): Promise<ResolvedToolExecutionTarget> {
+  const resolvedTool = await resolveToolReference(toolName, searchFromDirectory, options);
   const manifestContents = await readFile(resolvedTool.manifestPath, "utf8");
   const tool = validateToolManifest(parseToolManifestJson(manifestContents));
-  return validatedToolToExecutableSkill(tool);
+  return {
+    manifestPath: resolvedTool.manifestPath,
+    skillDirectory: path.dirname(resolvedTool.manifestPath),
+    skill: validatedToolToExecutableSkill(tool),
+  };
 }
 
 function validatedToolToExecutableSkill(tool: ValidatedTool): ValidatedSkill {
@@ -339,13 +366,17 @@ function applyRunner(skill: ValidatedSkill, runner: SkillRunnerDefinition): Vali
   };
 }
 
-async function resolveToolReference(toolName: string, searchFromDirectory: string): Promise<ResolvedToolReference> {
+async function resolveToolReference(
+  toolName: string,
+  searchFromDirectory: string,
+  options: ToolResolutionOptions = {},
+): Promise<ResolvedToolReference> {
   const segments = toolName.split(".").filter((segment) => segment.length > 0);
   if (segments.length < 2) {
     throw new Error(`Tool '${toolName}' must include a namespace, for example fs.read.`);
   }
 
-  const searchRoots = await resolveToolRoots(searchFromDirectory);
+  const searchRoots = await resolveToolRoots(searchFromDirectory, options);
   for (const root of searchRoots) {
     const manifestPath = path.join(root, ...segments, "manifest.json");
     if (await pathExists(manifestPath)) {
@@ -356,9 +387,21 @@ async function resolveToolReference(toolName: string, searchFromDirectory: strin
   throw new Error(`Tool '${toolName}' was not found in configured tool roots.`);
 }
 
-async function resolveToolRoots(searchFromDirectory: string): Promise<readonly string[]> {
+async function resolveToolRoots(
+  searchFromDirectory: string,
+  options: ToolResolutionOptions = {},
+): Promise<readonly string[]> {
   const roots: string[] = [];
   const seen = new Set<string>();
+
+  for (const root of options.toolRoots ?? []) {
+    const resolvedRoot = path.resolve(root);
+    if (!seen.has(resolvedRoot) && await isDirectory(resolvedRoot)) {
+      roots.push(resolvedRoot);
+      seen.add(resolvedRoot);
+    }
+  }
+
   let current = path.resolve(searchFromDirectory);
 
   while (true) {
@@ -374,7 +417,7 @@ async function resolveToolRoots(searchFromDirectory: string): Promise<readonly s
     current = parent;
   }
 
-  for (const builtinRoot of await resolveBuiltinToolRoots()) {
+  for (const builtinRoot of await resolveBuiltinToolRoots(options.env)) {
     if (!seen.has(builtinRoot)) {
       roots.push(builtinRoot);
       seen.add(builtinRoot);
@@ -384,10 +427,10 @@ async function resolveToolRoots(searchFromDirectory: string): Promise<readonly s
   return roots;
 }
 
-async function resolveBuiltinToolRoots(): Promise<readonly string[]> {
+async function resolveBuiltinToolRoots(env: NodeJS.ProcessEnv = process.env): Promise<readonly string[]> {
   const roots: string[] = [];
   const seen = new Set<string>();
-  const envRoots = (process.env.RUNX_TOOL_ROOTS ?? "")
+  const envRoots = (env.RUNX_TOOL_ROOTS ?? "")
     .split(path.delimiter)
     .map((value) => value.trim())
     .filter((value) => value.length > 0)

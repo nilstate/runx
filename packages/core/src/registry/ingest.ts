@@ -10,12 +10,23 @@ import {
 } from "../parser/index.js";
 
 import { buildSkillId, type RegistrySkillVersion, type RegistrySourceMetadata, type RegistryStore } from "./store.js";
+import {
+  buildPublisherAttestations,
+  buildSourceAttestations,
+  defaultRegistryPublisher,
+  deriveRegistryTrustTier,
+  mergeRegistryAttestations,
+} from "./trust.js";
+import type { RegistryAttestation, RegistryPublisher, RegistryTrustTier } from "./store.js";
 
 export interface IngestSkillOptions {
   readonly owner?: string;
   readonly version?: string;
   readonly createdAt?: string;
   readonly profileDocument?: string;
+  readonly publisher?: RegistryPublisher;
+  readonly trustTier?: RegistryTrustTier;
+  readonly attestations?: readonly RegistryAttestation[];
   readonly sourceMetadata?: RegistrySourceMetadata;
   readonly upsert?: boolean;
 }
@@ -72,6 +83,9 @@ export function buildRegistrySkillVersion(markdown: string, options: IngestSkill
   const bindingArtifact = buildBindingArtifact(skill, options.profileDocument);
   const catalog = resolveCatalogMetadata(bindingArtifact.manifest);
   const owner = options.owner ?? "local";
+  const createdAt = options.createdAt ?? new Date().toISOString();
+  const publisher = options.publisher ?? defaultRegistryPublisher(owner);
+  const trustTier = options.trustTier ?? deriveRegistryTrustTier({ owner });
   const version = options.version ?? `sha-${defaultRegistryVersionSeed(digest, bindingArtifact.digest).slice(0, 12)}`;
   return {
     skill_id: buildSkillId(owner, skill.name),
@@ -85,21 +99,24 @@ export function buildRegistrySkillVersion(markdown: string, options: IngestSkill
     profile_digest: bindingArtifact.digest,
     runner_names: bindingArtifact.runnerNames,
     source_type: skill.source.type,
+    trust_tier: trustTier,
     catalog_kind: catalog.kind,
     catalog_audience: catalog.audience,
     catalog_visibility: catalog.visibility,
     source_metadata: options.sourceMetadata,
+    attestations: mergeRegistryAttestations(
+      buildPublisherAttestations(publisher, trustTier, createdAt),
+      buildSourceAttestations(options.sourceMetadata, createdAt),
+      options.attestations,
+    ),
     required_scopes: unique([...extractScopes(skill), ...extractRunnerScopes(bindingArtifact.manifest)]),
     runtime: skill.runtime ?? recordField(skill.runx, "runtime") ?? extractRunnerRuntime(bindingArtifact.manifest),
     auth: skill.auth,
     risk: skill.risk ?? recordField(skill.runx, "risk"),
     runx: skill.runx,
     tags: unique([...extractTags(skill), ...extractRunnerTags(bindingArtifact.manifest)]),
-    publisher: {
-      type: "placeholder",
-      id: owner,
-    },
-    created_at: options.createdAt ?? new Date().toISOString(),
+    publisher,
+    created_at: createdAt,
     updated_at: new Date().toISOString(),
   };
 }

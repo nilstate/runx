@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { readLedgerEntries } from "../artifacts/index.js";
-import type { Question, ResolutionRequest } from "../executor/index.js";
+import { validateResolutionRequest, type Question, type ResolutionRequest } from "../executor/index.js";
 import { validateOutboxEntry, validateThread } from "../knowledge/index.js";
 import type { SkillInput, ValidatedSkill } from "../parser/index.js";
 
@@ -69,6 +69,21 @@ export async function resolveInputs(
 }
 
 export async function readResumedSelectedRunner(receiptDir: string, runId: string): Promise<string | undefined> {
+  return (await readPendingRunState(receiptDir, runId))?.selectedRunner;
+}
+
+export interface PendingRunState {
+  readonly skillPath?: string;
+  readonly selectedRunner?: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly requestIds: readonly string[];
+  readonly resolutionKinds: readonly ResolutionRequest["kind"][];
+  readonly requests?: readonly ResolutionRequest[];
+  readonly stepIds: readonly string[];
+  readonly stepLabels: readonly string[];
+}
+
+export async function readPendingRunState(receiptDir: string, runId: string): Promise<PendingRunState | undefined> {
   const entries = await readLedgerEntries(receiptDir, runId);
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index]!;
@@ -80,9 +95,25 @@ export async function readResumedSelectedRunner(receiptDir: string, runId: strin
     if (!detail || kind !== "resolution_requested") {
       continue;
     }
-    return typeof detail.selected_runner === "string" ? detail.selected_runner : undefined;
+    const requests = parseRecordedRequests(detail.requests, `ledger(${runId}).detail.requests`);
+    return {
+      skillPath: typeof detail.skill_path === "string" ? detail.skill_path : undefined,
+      selectedRunner: typeof detail.selected_runner === "string" ? detail.selected_runner : undefined,
+      inputs: isPlainRecord(detail.inputs) ? { ...detail.inputs } : {},
+      requestIds: requests ? requests.map((request) => request.id) : normalizeStringArray(detail.request_ids),
+      resolutionKinds: requests
+        ? Array.from(new Set(requests.map((request) => request.kind)))
+        : normalizeResolutionKinds(detail.resolution_kinds),
+      requests,
+      stepIds: normalizeStringArray(detail.step_ids),
+      stepLabels: normalizeStringArray(detail.step_labels),
+    };
   }
   return undefined;
+}
+
+export async function readPendingSkillPath(receiptDir: string, runId: string): Promise<string | undefined> {
+  return (await readPendingRunState(receiptDir, runId))?.skillPath;
 }
 
 function buildInputResolutionRequest(skill: ValidatedSkill, questions: readonly Question[]): ResolutionRequest {
@@ -182,22 +213,7 @@ function resolveDeclaredInputAliasKey(
 }
 
 async function readResumedInputs(receiptDir: string, runId: string): Promise<Record<string, unknown>> {
-  const entries = await readLedgerEntries(receiptDir, runId);
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index]!;
-    if (entry.type !== "run_event") {
-      continue;
-    }
-    const kind = typeof entry.data.kind === "string" ? entry.data.kind : "";
-    const detail = isPlainRecord(entry.data.detail) ? entry.data.detail : undefined;
-    if (!detail || kind !== "resolution_requested") {
-      continue;
-    }
-    if (isPlainRecord(detail.inputs)) {
-      return { ...detail.inputs };
-    }
-  }
-  return {};
+  return { ...((await readPendingRunState(receiptDir, runId))?.inputs ?? {}) };
 }
 
 async function readAnswersFile(answersPath: string): Promise<Record<string, unknown>> {
@@ -262,6 +278,29 @@ function assignDefined(target: Record<string, unknown>, value: Readonly<Record<s
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseRecordedRequests(value: unknown, label: string): readonly ResolutionRequest[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array when present.`);
+  }
+  return value.map((entry, index) => validateResolutionRequest(entry, `${label}[${index}]`));
+}
+
+function normalizeStringArray(value: unknown): readonly string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
+}
+
+function normalizeResolutionKinds(value: unknown): readonly ResolutionRequest["kind"][] {
+  return normalizeStringArray(value).filter(
+    (entry): entry is ResolutionRequest["kind"] => entry === "input" || entry === "approval" || entry === "cognitive_work",
+  );
 }
 
 function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {

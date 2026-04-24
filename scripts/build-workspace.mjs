@@ -88,18 +88,33 @@ async function finalizePackage(directory) {
     return;
   }
 
-  // Dev mode: write a thin wrapper that imports from .build/runtime.
-  // No copying, no duplication. Idempotent and race-free.
+  // Dev mode must also refresh dist/src because workspace consumers import
+  // package subpath exports (for example @runxhq/core/registry) directly from
+  // dist/src. Leaving those stale causes cross-workspace drift.
+  await writeDevDist({
+    directory,
+    dist,
+    compiledPackageRoot: runtimePackageRoot,
+    compiledEntry: path.join(dist, "src", "index.js"),
+    executable: isExecutable,
+    syncCliAssets: isCli,
+  });
+}
+
+async function writeDevDist({ directory, dist, compiledPackageRoot, compiledEntry, executable, syncCliAssets: shouldSyncCliAssets }) {
+  await rm(dist, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   await mkdir(dist, { recursive: true });
+  await copyIntoDist(compiledPackageRoot, dist);
+  await stripSourceMaps(dist);
   await writeEntryWrapper({
     dist,
-    compiledEntry: runtimeEntry,
-    executable: isExecutable,
+    compiledEntry,
+    executable,
   });
-  if (isExecutable) {
+  if (executable) {
     await chmod(path.join(dist, "index.js"), 0o755);
   }
-  if (isCli) {
+  if (shouldSyncCliAssets) {
     await syncCliAssets(directory);
   }
 }

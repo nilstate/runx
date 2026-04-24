@@ -28,7 +28,7 @@ harness:
             capability_profile:
               summary: Bounded docs generation with approval and verification steps.
             trust_assessment:
-              tier: runx-derived
+              tier: first_party
               caveats:
                 - Path contract docs needed tightening.
             test_matrix:

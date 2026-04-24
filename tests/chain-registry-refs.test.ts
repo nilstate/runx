@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import {
   createFileRegistryStore,
   HttpCachedRegistryStore,
@@ -19,6 +20,7 @@ const caller: Caller = {
   resolve: async () => undefined,
   report: () => undefined,
 };
+const adapters = createDefaultSkillAdapters();
 
 const ECHO_MARKDOWN = `---
 name: echo
@@ -125,6 +127,7 @@ steps:
         env: process.env,
         registryStore: store,
         skillCacheDir: path.join(tempDir, "skill-cache"),
+        adapters,
       });
 
       expect(result.status).toBe("success");
@@ -178,6 +181,7 @@ steps:
         env: process.env,
         registryStore: store,
         skillCacheDir: path.join(tempDir, "skill-cache"),
+        adapters,
       });
 
       expect(result.status).toBe("success");
@@ -213,6 +217,7 @@ steps:
           receiptDir: path.join(tempDir, "receipts"),
           runxHome: path.join(tempDir, "home"),
           env: process.env,
+          adapters,
         }),
       ).rejects.toThrow(/Registry ref 'testorg\/echo' used in graph step/);
     } finally {
@@ -246,6 +251,7 @@ steps:
           env: process.env,
           registryStore: store,
           skillCacheDir: path.join(tempDir, "skill-cache"),
+          adapters,
         }),
       ).rejects.toThrow(/Registry skill 'testorg\/missing' not found in registry/);
     } finally {
@@ -286,6 +292,7 @@ steps:
           env: process.env,
           registryStore: store,
           skillCacheDir: path.join(tempDir, "skill-cache"),
+          adapters,
         }),
       ).rejects.toThrow(/Registry skill 'testorg\/echo@9\.9\.9' not found \(available: 0\.1\.0\)\./);
     } finally {
@@ -317,6 +324,20 @@ steps:
               markdown: ECHO_MARKDOWN,
               profile_document: ECHO_PROFILE,
               profile_digest: "b".repeat(64),
+              trust_tier: "community",
+              publisher: {
+                id: "testorg",
+                kind: "publisher",
+                handle: "testorg",
+              },
+              attestations: [
+                {
+                  kind: "publisher",
+                  id: "publisher:testorg",
+                  status: "declared",
+                  summary: "testorg",
+                },
+              ],
               runner_names: ["echo"],
             },
           }),
@@ -352,6 +373,7 @@ steps:
         env: process.env,
         registryStore: store,
         skillCacheDir: path.join(tempDir, "skill-cache"),
+        adapters,
       });
 
       expect(result.status).toBe("success");
@@ -369,6 +391,7 @@ steps:
         env: process.env,
         registryStore: store,
         skillCacheDir: path.join(tempDir, "skill-cache"),
+        adapters,
       });
       expect(second.status).toBe("success");
       expect(fetches).toBe(1);
@@ -404,6 +427,7 @@ steps:
         receiptDir: path.join(tempDir, "receipts"),
         runxHome: path.join(tempDir, "home"),
         env: process.env,
+        adapters,
       });
 
       expect(result.status).toBe("success");

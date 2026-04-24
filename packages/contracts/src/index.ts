@@ -92,7 +92,7 @@ const registryBindingStates = [
   "harness_verified",
   "published",
 ] as const;
-const registryTrustTiers = ["upstream-owned", "community", "unverified"] as const;
+const registryTrustTiers = ["first_party", "verified", "community"] as const;
 const harnessStatuses = ["pending", "failed", "harness_verified"] as const;
 const reviewReceiptVerdicts = ["pass", "needs_update", "blocked"] as const;
 const doctorDiagnosticSeverities = ["error", "warning", "info"] as const;

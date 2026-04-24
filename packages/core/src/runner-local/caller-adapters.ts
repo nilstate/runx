@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type {
   AgentWorkRequest,
   ApprovalGate,
@@ -220,6 +222,7 @@ function normalizeQuestionId(value: string): string {
 
 function buildAgentStepRequest(request: Parameters<SkillAdapter["invoke"]>[0]): AgentWorkRequest {
   const skillName = request.skillName ?? "agent-step";
+  const expectedOutputs = validateOutputContract(request.source.outputs, "source.outputs");
   return {
     id: `agent_step.${normalizeQuestionId(request.source.task ?? skillName)}.output`,
     source_type: "agent-step",
@@ -238,7 +241,8 @@ function buildAgentStepRequest(request: Parameters<SkillAdapter["invoke"]>[0]): 
       context: request.context,
       voice_profile: request.voiceProfile,
       quality_profile: request.qualityProfile,
-      expected_outputs: validateOutputContract(request.source.outputs, "source.outputs") ?? {},
+      execution_location: buildExecutionLocation(request),
+      ...(expectedOutputs ? { expected_outputs: expectedOutputs } : {}),
       trust_boundary: "agent-mediated: runx yields skill context and receipts the supplied result on completion",
     },
   };
@@ -262,6 +266,7 @@ function buildAgentRunnerRequest(request: Parameters<SkillAdapter["invoke"]>[0])
       context: request.context,
       voice_profile: request.voiceProfile,
       quality_profile: request.qualityProfile,
+      execution_location: buildExecutionLocation(request),
       trust_boundary: "agent-mediated: runx yields skill context and receipts the supplied result on completion",
     },
   };
@@ -278,6 +283,25 @@ function buildApprovalGate(request: Parameters<SkillAdapter["invoke"]>[0]): Appr
         : `Approval required for ${request.skillName ?? "approval"}.`,
     summary,
   };
+}
+
+function buildExecutionLocation(request: Parameters<SkillAdapter["invoke"]>[0]): {
+  readonly skill_directory: string;
+  readonly tool_roots?: readonly string[];
+} {
+  const toolRoots = parseConfiguredToolRoots(request.env);
+  return {
+    skill_directory: request.skillDirectory,
+    ...(toolRoots.length > 0 ? { tool_roots: toolRoots } : {}),
+  };
+}
+
+function parseConfiguredToolRoots(env: NodeJS.ProcessEnv | undefined): readonly string[] {
+  return String(env?.RUNX_TOOL_ROOTS ?? "")
+    .split(path.delimiter)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+    .map((value) => path.resolve(value));
 }
 
 function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {

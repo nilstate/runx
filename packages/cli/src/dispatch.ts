@@ -1,7 +1,6 @@
 import path from "node:path";
 
-import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { readLedgerEntries } from "@runxhq/core/artifacts";
+import { createDefaultSkillAdapters, resolveDefaultSkillAdapters } from "@runxhq/adapters";
 import {
   isRemoteRegistryUrl,
   loadLocalSkillPackage,
@@ -24,6 +23,7 @@ import {
 } from "@runxhq/core/registry";
 import {
   installLocalSkill,
+  readPendingSkillPath,
   runLocalSkill,
   type Caller,
   type RunLocalSkillResult,
@@ -67,6 +67,7 @@ import {
 } from "./commands/history.js";
 import { handleInitCommand } from "./commands/init.js";
 import { handleListCommand } from "./commands/list.js";
+import { handleMcpServeCommand } from "./commands/mcp.js";
 import { handleNewCommand } from "./commands/new.js";
 import {
   handleToolBuildCommand,
@@ -158,6 +159,14 @@ export async function dispatchCli(
       io.stdout.write(renderDevResult(result, env));
     }
     return result.status === "success" || result.status === "skipped" ? 0 : 1;
+  }
+
+  if (parsed.command === "mcp" && parsed.mcpAction === "serve") {
+    await handleMcpServeCommand(parsed, io, env, {
+      resolveRegistryStoreForChains,
+      resolveDefaultReceiptDir,
+    });
+    return 0;
   }
 
   if (parsed.command === "list" && parsed.listKind) {
@@ -428,6 +437,7 @@ async function executeLocalSkillCommand(options: {
   readonly caller: Caller;
   readonly env: NodeJS.ProcessEnv;
 }): Promise<RunLocalSkillResult> {
+  const adapters = await resolveDefaultSkillAdapters(options.env);
   return await runLocalSkill({
     skillPath: options.skillPath,
     inputs: options.inputs,
@@ -438,7 +448,7 @@ async function executeLocalSkillCommand(options: {
     runner: options.parsed.runner,
     resumeFromRunId: options.parsed.resumeReceiptId,
     registryStore: await resolveRegistryStoreForChains(options.env),
-    adapters: createDefaultSkillAdapters(),
+    adapters,
     voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
   });
 }
@@ -460,23 +470,12 @@ async function resolveResumeSkillPath(
   receiptDir: string | undefined,
   env: NodeJS.ProcessEnv,
 ): Promise<string> {
-  const entries = await readLedgerEntries(receiptDir ? resolvePathFromUserInput(receiptDir, env) : resolveDefaultReceiptDir(env), runId);
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index];
-    if (entry?.type !== "run_event") {
-      continue;
-    }
-    const data = isRecord(entry.data) ? entry.data : undefined;
-    const kind = typeof data?.kind === "string" ? data.kind : undefined;
-    const detail = isRecord(data?.detail) ? data.detail : undefined;
-    if (kind !== "resolution_requested" || typeof detail?.skill_path !== "string") {
-      continue;
-    }
-    return detail.skill_path;
+  const skillPath = await readPendingSkillPath(
+    receiptDir ? resolvePathFromUserInput(receiptDir, env) : resolveDefaultReceiptDir(env),
+    runId,
+  );
+  if (skillPath) {
+    return skillPath;
   }
   throw new Error(`Run '${runId}' cannot be resumed because no pending skill path was recorded.`);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

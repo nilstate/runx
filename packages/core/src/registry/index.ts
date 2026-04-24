@@ -42,11 +42,14 @@ export {
   createFileRegistryStore,
   slugify,
   splitSkillId,
+  type RegistryAttestation,
   type RegistryPublisher,
+  type RegistryPublisherKind,
   type RegistrySourceMetadata,
   type RegistrySkill,
   type RegistrySkillVersion,
   type RegistryStore,
+  type RegistryTrustTier,
 } from "./store.js";
 export {
   HttpCachedRegistryStore,
@@ -54,4 +57,4 @@ export {
   createDefaultHttpCachedRegistryStore,
   type HttpCachedRegistryStoreOptions,
 } from "./http-cached-store.js";
-export { deriveTrustSignals, type TrustSignal, type TrustSignalStatus } from "./trust.js";
+export { buildPublisherAttestations, deriveTrustSignals, type TrustSignal, type TrustSignalStatus } from "./trust.js";

@@ -35,6 +35,8 @@ export interface CliServices {
 export interface ParsedArgs {
   readonly command?: string;
   readonly subcommand?: string;
+  readonly mcpAction?: "serve";
+  readonly mcpRefs?: readonly string[];
   readonly doctorPath?: string;
   readonly doctorFix: boolean;
   readonly doctorExplainId?: string;
@@ -105,6 +107,7 @@ export interface ParsedArgs {
 const builtinRootCommands = new Set([
   "doctor",
   "dev",
+  "mcp",
   "list",
   "tool",
   "skill",
@@ -235,6 +238,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const isDoctor = command === "doctor";
   const isTool = command === "tool";
   const isDev = command === "dev";
+  const isMcp = command === "mcp";
   const isList = command === "list";
   const isExportReceipts = command === "export-receipts";
   const isTopLevelSkillInvoke = Boolean(command) && !builtinRootCommands.has(command);
@@ -321,15 +325,19 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
                     ? omitInputs(inputs, ["all"])
                     : isDev
                       ? omitInputs(inputs, ["lane", "record", "realAgents", "real-agents", "watch"])
+                      : isMcp
+                        ? inputs
                       : isList
                         ? omitInputs(inputs, ["okOnly", "ok-only", "invalidOnly", "invalid-only"])
-                        : isExportReceipts
+                          : isExportReceipts
                           ? omitInputs(inputs, ["trainable", "since", "until", "status", "source"])
                           : inputs;
 
   return {
     command,
     subcommand: positionals[0],
+    mcpAction: isMcp && positionals[0] === "serve" ? "serve" : undefined,
+    mcpRefs: isMcp && positionals[0] === "serve" ? positionals.slice(1) : undefined,
     doctorPath: isDoctor ? positionals[0] : undefined,
     doctorFix: isDoctor && truthyFlag(inputs.fix),
     doctorExplainId: isDoctor && typeof inputs.explain === "string" && inputs.explain !== "true" ? inputs.explain : undefined,
@@ -411,6 +419,9 @@ function isSupportedCommand(parsed: ParsedArgs): boolean {
     return true;
   }
   if (parsed.command === "dev") {
+    return true;
+  }
+  if (parsed.command === "mcp" && parsed.mcpAction === "serve" && (parsed.mcpRefs?.length ?? 0) > 0) {
     return true;
   }
   if (parsed.command === "list" && parsed.listKind) {

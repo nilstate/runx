@@ -1,6 +1,6 @@
 # Upstream Bindings
 
-Bindings connect an upstream-owned `SKILL.md` to a runx execution profile.
+Bindings connect a verified upstream `SKILL.md` to a runx execution profile.
 
 The upstream repository remains the source of truth for the portable skill
 document. This directory stores runx-owned binding data:

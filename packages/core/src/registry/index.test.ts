@@ -44,8 +44,10 @@ describe("registry package", () => {
       const trustSignals = deriveTrustSignals(version);
       expect(trustSignals.map((signal) => signal.id)).toEqual([
         "digest",
-        "source_type",
+        "trust_tier",
         "publisher",
+        "provenance",
+        "source_type",
         "scopes",
         "runtime",
         "runner_metadata",
@@ -63,7 +65,7 @@ describe("registry package", () => {
         source: "runx-registry",
         source_label: "runx registry",
         source_type: "agent",
-        trust_tier: "runx-derived",
+        trust_tier: "community",
         profile_mode: "profiled",
         runner_names: ["agent", "sourcey"],
         profile_digest: version.profile_digest,
@@ -110,7 +112,7 @@ runners:
     task: upstream-tagged
     runx:
       tags:
-        - upstream-owned
+        - verified
         - operator
 `;
       const version = await ingestSkillMarkdown(store, markdown, {
@@ -119,7 +121,7 @@ runners:
         profileDocument,
       });
 
-      expect(version.tags).toEqual(["upstream-owned", "operator"]);
+      expect(version.tags).toEqual(["verified", "operator"]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -187,7 +189,7 @@ runners:
     task: upstream-tagged
     runx:
       tags:
-        - upstream-owned
+        - verified
         - operator
 `;
       const derived = buildRegistrySkillVersion(markdown, {
@@ -215,10 +217,10 @@ runners:
       });
 
       expect(refreshed.created).toBe(false);
-      expect(refreshed.record.tags).toEqual(["upstream-owned", "operator"]);
+      expect(refreshed.record.tags).toEqual(["verified", "operator"]);
       expect(refreshed.record.created_at).toBe("2026-04-01T00:00:00.000Z");
       await expect(store.getVersion("nilstate/upstream-tagged", "upstream-abc123")).resolves.toMatchObject({
-        tags: ["upstream-owned", "operator"],
+        tags: ["verified", "operator"],
         created_at: "2026-04-01T00:00:00.000Z",
       });
     } finally {

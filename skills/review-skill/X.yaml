@@ -29,7 +29,7 @@ harness:
               skill_ref: sourcey/sourcey
               summary: Generates a bounded docs site with approval and verification steps.
             trust_assessment:
-              tier: runx-derived
+              tier: first_party
               caveats:
                 - Needs better path-contract documentation.
             test_matrix:

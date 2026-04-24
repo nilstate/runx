@@ -4,7 +4,7 @@ import path from "node:path";
 
 import type { SkillAdapter } from "@runxhq/core/executor";
 
-import { createDefaultSkillAdapters } from "./index.js";
+import { resolveDefaultSkillAdapters } from "./index.js";
 
 export interface LocalSkillRuntimePaths {
   readonly root: string;
@@ -31,9 +31,10 @@ export async function createDefaultLocalSkillRuntime(
   options: DefaultLocalSkillRuntimeOptions = {},
 ): Promise<DefaultLocalSkillRuntime> {
   const paths = await resolveLocalSkillRuntimePaths(options);
+  const env = createDefaultLocalSkillEnv(options.env);
   return {
-    adapters: options.adapters ?? createDefaultSkillAdapters(),
-    env: createDefaultLocalSkillEnv(options.env),
+    adapters: options.adapters ?? await resolveDefaultSkillAdapters(env),
+    env,
     paths,
   };
 }

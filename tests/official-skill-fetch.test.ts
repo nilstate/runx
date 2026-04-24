@@ -51,6 +51,20 @@ describe("official skill fetch", () => {
           markdown,
           profile_document: profileDocument,
           profile_digest: "stub-x-digest",
+          trust_tier: "first_party",
+          publisher: {
+            id: "runx",
+            kind: "organization",
+            handle: "runx",
+          },
+          attestations: [
+            {
+              kind: "publisher",
+              id: "publisher:runx",
+              status: "verified",
+              summary: "runx",
+            },
+          ],
           runner_names: ["agent", "sourcey"],
         },
       }), { status: 200 })) as typeof fetch;
@@ -102,6 +116,20 @@ describe("official skill fetch", () => {
           version: sourceyLock.version,
           digest: sourceyLock.digest,
           markdown: "---\nname: sourcey\ndescription: wrong\nsource:\n  type: prompt\ninstructions: []\n---\n",
+          trust_tier: "first_party",
+          publisher: {
+            id: "runx",
+            kind: "organization",
+            handle: "runx",
+          },
+          attestations: [
+            {
+              kind: "publisher",
+              id: "publisher:runx",
+              status: "verified",
+              summary: "runx",
+            },
+          ],
           runner_names: [],
         },
       }), { status: 200 })) as typeof fetch;
@@ -146,6 +174,20 @@ describe("official skill fetch", () => {
           digest: lockEntry.digest,
           markdown,
           profile_document: profileDocument,
+          trust_tier: "first_party",
+          publisher: {
+            id: "runx",
+            kind: "organization",
+            handle: "runx",
+          },
+          attestations: [
+            {
+              kind: "publisher",
+              id: "publisher:runx",
+              status: "verified",
+              summary: "runx",
+            },
+          ],
           runner_names: ["agent", "scafld-cli"],
         },
       }), { status: 200 })) as typeof fetch;

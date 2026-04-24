@@ -42,7 +42,8 @@ describe("registry CE", () => {
         expect.arrayContaining([
           expect.objectContaining({ id: "digest", status: "verified", value: `sha256:${version.digest}` }),
           expect.objectContaining({ id: "source_type", status: "declared", value: "agent" }),
-          expect.objectContaining({ id: "publisher", status: "placeholder", value: "acme" }),
+          expect.objectContaining({ id: "trust_tier", status: "declared", value: "community" }),
+          expect.objectContaining({ id: "publisher", status: "declared", value: "acme" }),
           expect.objectContaining({ id: "runner_metadata", status: "verified" }),
         ]),
       );
@@ -75,7 +76,7 @@ describe("registry CE", () => {
           source: "runx-registry",
           source_label: "runx registry",
           source_type: "agent",
-          trust_tier: "runx-derived",
+          trust_tier: "community",
           profile_mode: "profiled",
           runner_names: ["agent", "sourcey"],
           profile_digest: version.profile_digest,

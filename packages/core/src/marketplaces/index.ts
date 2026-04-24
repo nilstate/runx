@@ -1,7 +1,7 @@
 export const marketplacesPackage = "@runxhq/core/marketplaces";
 
 export type SkillSearchSource = "runx-registry" | string;
-export type SkillSearchTrustTier = "runx-derived" | "external-unverified";
+export type SkillSearchTrustTier = "first_party" | "verified" | "community";
 export type SkillRunnerMode = "portable" | "profiled";
 
 export interface SkillSearchResult {

@@ -193,6 +193,7 @@ describe("TypeScript SDK", () => {
                 runner_names: ["agent", "sourcey"],
                 required_scopes: [],
                 tags: [],
+                trust_tier: "first_party",
                 trust_signals: [],
                 install_command: "runx add runx/sourcey@1.0.0 --registry https://runx.example.test",
                 run_command: "runx sourcey",
@@ -214,6 +215,20 @@ describe("TypeScript SDK", () => {
             markdown,
             profile_document: profileDocument,
             profile_digest: hashString(profileDocument),
+            trust_tier: "first_party",
+            publisher: {
+              id: "runx",
+              kind: "organization",
+              handle: "runx",
+            },
+            attestations: [
+              {
+                kind: "publisher",
+                id: "publisher:runx",
+                status: "verified",
+                summary: "runx",
+              },
+            ],
             runner_names: ["agent", "sourcey"],
           },
         }), { status: 200 });

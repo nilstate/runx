@@ -1,6 +1,9 @@
 import type { ResolutionRequest, ResolutionResponse } from "../executor/index.js";
 import type { AuthResolver, Caller, ExecutionEvent, RunLocalSkillResult } from "../runner-local/index.js";
 
+// Framework bridges let external hosts act as surfaces over the runx kernel.
+// The host gets normalized run states; runx keeps ownership of execution,
+// pause/resume, approvals, and receipts.
 export interface FrameworkBridgeRunOptions {
   readonly skillPath: string;
   readonly inputs?: Readonly<Record<string, unknown>>;

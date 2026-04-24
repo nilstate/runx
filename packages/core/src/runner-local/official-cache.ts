@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { acquireRegistrySkill, type AcquiredRegistrySkill } from "../registry/index.js";
+import { buildPublisherAttestations, defaultRegistryPublisher } from "../registry/trust.js";
 
 export interface OfficialSkillLockEntry {
   readonly skill_id: string;
@@ -31,6 +32,7 @@ export async function ensureOfficialSkillCached(
   const cachedMarkdown = await readOptionalFile(path.join(skillPath, "SKILL.md"));
   if (cachedMarkdown && hashString(cachedMarkdown) === options.entry.digest) {
     await syncPackagedRuntimeAssets(skillPath, options.entry.skill_id);
+    const publisher = defaultRegistryPublisher(ownerFromSkillId(options.entry.skill_id));
     return {
       skillPath,
       fromCache: true,
@@ -42,6 +44,9 @@ export async function ensureOfficialSkillCached(
         digest: options.entry.digest,
         markdown: cachedMarkdown,
         profile_document: await readProfileDocumentState(skillPath),
+        trust_tier: "first_party",
+        publisher,
+        attestations: buildPublisherAttestations(publisher, "first_party", new Date().toISOString()),
         runner_names: [],
         install_count: 0,
       },

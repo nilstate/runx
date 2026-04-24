@@ -168,7 +168,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
         digest: acquired.digest,
         profile_digest: acquired.profile_digest,
         runner_names: acquired.runner_names,
-        trust_tier: "runx-derived",
+        trust_tier: acquired.trust_tier,
       },
     };
   }
@@ -196,7 +196,7 @@ async function fetchInstallCandidate(options: InstallLocalSkillOptions): Promise
       digest: resolved.digest,
       profile_digest: resolved.profile_digest,
       runner_names: resolved.runner_names,
-      trust_tier: "runx-derived",
+      trust_tier: resolved.trust_tier,
     },
   };
 }

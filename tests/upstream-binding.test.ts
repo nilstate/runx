@@ -10,7 +10,7 @@ import { runHarnessTarget } from "@runxhq/core/harness";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
 describe("upstream bindings", () => {
-  it("declares the nilstate icey-cli binding as upstream-owned and harnessed", async () => {
+  it("declares the nilstate icey-cli binding as verified and harnessed", async () => {
     const binding = JSON.parse(await readFile("bindings/nilstate/icey-server-operator/binding.json", "utf8")) as {
       schema: string;
       state: string;
@@ -36,7 +36,7 @@ describe("upstream bindings", () => {
       },
       registry: {
         owner: "nilstate",
-        trust_tier: "upstream-owned",
+        trust_tier: "verified",
         version: "upstream-ee9aa1c",
         materialized_package_is_registry_artifact: true,
       },
@@ -140,7 +140,7 @@ Portable upstream skill fixture.
         },
         registry: {
           owner: "fixture",
-          trust_tier: "upstream-owned",
+          trust_tier: "verified",
           version: "upstream-abc123",
           profile_path: "X.yaml",
           materialized_package_is_registry_artifact: true,

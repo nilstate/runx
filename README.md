@@ -51,6 +51,7 @@ runx resume <run-id>
 runx inspect <receipt-id>
 runx history
 runx add sourcey/sourcey@1.0.0 --to ./skills
+runx mcp serve ./fixtures/skills/echo
 runx design-skill --objective "build github review skill"
 runx harness ./fixtures/harness/echo-skill.yaml
 runx config set agent.provider openai
@@ -84,6 +85,11 @@ authored and published as standalone packages created this way. The main `runx`
 repo is the first-party lane for official skills and runtime code, not the
 community package catalog.
 
+Registry search and install now normalize public trust into three tiers:
+`first_party`, `verified`, and `community`. Richer provenance and attestation
+metadata still travels with the registry row, but the user-facing install/search
+surface stays readable.
+
 ## Skill And X Model
 
 Executable skills now split authored skill content from execution profiles:
@@ -97,7 +103,7 @@ skills/sourcey/
 Direct execution accepts the package directory or `SKILL.md` inside it. Flat
 `foo.md` skill files are no longer a supported execution surface.
 
-See `../docs/skill-profile-model.md` for resolution rules, runner trust levels, and composite skill behavior.
+See `../docs/skill-profile-model.md` for resolution rules, publication modes, trust tiers, MCP export, and composite skill behavior.
 
 See `../docs/evolution-model.md` for the evolve lane, the skill/tool boundary,
 and the canonical composite execution geometry.
@@ -155,6 +161,15 @@ under `bindings/<owner>/<skill>/X.yaml` with adjacent `binding.json`
 governance metadata. Official skills are registry-backed and cached locally on
 first acquisition. The npm CLI package no longer needs to ship the official
 runtime skill bodies for normal execution.
+
+Any runnable skill package can also be exposed locally as an MCP tool with:
+
+```bash
+runx mcp serve ./skills/sourcey
+```
+
+That MCP surface is a thin facade over the normal runx kernel path, so receipts,
+policy, approvals, and resolution requests still behave the same way.
 
 ## Receipts
 

@@ -1,5 +1,5 @@
 import { runxLinkForVersion } from "./links.js";
-import { slugify, type RegistrySkillVersion, type RegistryStore } from "./store.js";
+import { slugify, type RegistrySkillVersion, type RegistryStore, type RegistryTrustTier } from "./store.js";
 
 export interface RegistrySkillResolution {
   readonly markdown: string;
@@ -13,6 +13,7 @@ export interface RegistrySkillResolution {
   readonly source: "runx-registry";
   readonly source_label: "runx registry";
   readonly source_type: string;
+  readonly trust_tier: RegistryTrustTier;
   readonly registry_url?: string;
   readonly add_command: string;
   readonly run_command: string;
@@ -51,6 +52,7 @@ export async function resolveRegistrySkill(
     source: "runx-registry",
     source_label: "runx registry",
     source_type: record.source_type,
+    trust_tier: record.trust_tier,
     registry_url: options.registryUrl,
     add_command: link.install_command,
     run_command: link.run_command,

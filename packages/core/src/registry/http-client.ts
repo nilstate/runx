@@ -1,5 +1,14 @@
 import { parseRegistrySkillRef } from "./resolve.js";
 import { normalizeRegistrySearchResult, type RegistrySearchResult } from "./search.js";
+import {
+  validateRegistryAttestations,
+  validateRegistryPublisher,
+  validateRegistryTrustTier,
+  type RegistryAttestation,
+  type RegistryPublisher,
+  type RegistrySourceMetadata,
+  type RegistryTrustTier,
+} from "./store.js";
 
 export interface AcquireRegistrySkillOptions {
   readonly baseUrl: string;
@@ -32,8 +41,12 @@ export interface RemoteRegistrySkillDetail {
   readonly profile_digest?: string;
   readonly runner_names: readonly string[];
   readonly source_type: string;
+  readonly trust_tier: RegistryTrustTier;
   readonly required_scopes: readonly string[];
   readonly tags: readonly string[];
+  readonly publisher: RegistryPublisher;
+  readonly source_metadata?: RegistrySourceMetadata;
+  readonly attestations: readonly RegistryAttestation[];
   readonly install_command: string;
   readonly run_command: string;
 }
@@ -54,6 +67,10 @@ export interface AcquiredRegistrySkill {
   readonly profile_document?: string;
   readonly profile_digest?: string;
   readonly runner_names: readonly string[];
+  readonly trust_tier: RegistryTrustTier;
+  readonly publisher: RegistryPublisher;
+  readonly source_metadata?: RegistrySourceMetadata;
+  readonly attestations: readonly RegistryAttestation[];
   readonly install_count: number;
 }
 
@@ -84,6 +101,7 @@ export async function searchRemoteRegistry(
       readonly runner_names?: readonly string[];
       readonly required_scopes?: readonly string[];
       readonly tags?: readonly string[];
+      readonly trust_tier?: RegistryTrustTier;
       readonly trust_signals?: RegistrySearchResult["trust_signals"];
       readonly install_command?: string;
       readonly run_command?: string;
@@ -102,6 +120,7 @@ export async function searchRemoteRegistry(
       || !Array.isArray(skill.runner_names)
       || !Array.isArray(skill.required_scopes)
       || !Array.isArray(skill.tags)
+      || (skill.trust_tier !== "first_party" && skill.trust_tier !== "verified" && skill.trust_tier !== "community")
       || typeof skill.install_command !== "string"
       || typeof skill.run_command !== "string"
     ) {
@@ -114,6 +133,7 @@ export async function searchRemoteRegistry(
       owner: skill.owner,
       version: typeof skill.version === "string" ? skill.version : undefined,
       source_type: skill.source_type,
+      trust_tier: validateRegistryTrustTier(skill.trust_tier, "remote_registry.skills[].trust_tier"),
       required_scopes: skill.required_scopes,
       tags: skill.tags,
       profile_mode: skill.profile_mode,
@@ -154,8 +174,12 @@ export async function readRemoteRegistrySkill(
       readonly profile_digest?: string;
       readonly runner_names?: readonly string[];
       readonly source_type?: string;
+      readonly trust_tier?: RegistryTrustTier;
       readonly required_scopes?: readonly string[];
       readonly tags?: readonly string[];
+      readonly publisher?: RegistryPublisher;
+      readonly source_metadata?: RegistrySourceMetadata;
+      readonly attestations?: readonly RegistryAttestation[];
       readonly install_command?: string;
       readonly run_command?: string;
     };
@@ -172,8 +196,11 @@ export async function readRemoteRegistrySkill(
     || typeof skill.markdown !== "string"
     || !Array.isArray(skill.runner_names)
     || typeof skill.source_type !== "string"
+    || (skill.trust_tier !== "first_party" && skill.trust_tier !== "verified" && skill.trust_tier !== "community")
     || !Array.isArray(skill.required_scopes)
     || !Array.isArray(skill.tags)
+    || skill.publisher === undefined
+    || skill.attestations === undefined
     || typeof skill.install_command !== "string"
     || typeof skill.run_command !== "string"
   ) {
@@ -190,8 +217,12 @@ export async function readRemoteRegistrySkill(
     profile_digest: typeof skill.profile_digest === "string" ? skill.profile_digest : undefined,
     runner_names: skill.runner_names,
     source_type: skill.source_type,
+    trust_tier: validateRegistryTrustTier(skill.trust_tier, "remote_registry.skill.trust_tier"),
     required_scopes: skill.required_scopes,
     tags: skill.tags,
+    publisher: validateRegistryPublisher(skill.publisher, "remote_registry.skill.publisher"),
+    source_metadata: skill.source_metadata,
+    attestations: validateRegistryAttestations(skill.attestations, "remote_registry.skill.attestations") ?? [],
     install_command: skill.install_command,
     run_command: skill.run_command,
   };
@@ -265,6 +296,10 @@ export async function acquireRegistrySkill(
       readonly profile_document?: string;
       readonly profile_digest?: string;
       readonly runner_names?: readonly string[];
+      readonly trust_tier?: RegistryTrustTier;
+      readonly publisher?: RegistryPublisher;
+      readonly source_metadata?: RegistrySourceMetadata;
+      readonly attestations?: readonly RegistryAttestation[];
     };
   };
   const acquisition = payload.acquisition;
@@ -278,6 +313,9 @@ export async function acquireRegistrySkill(
     || typeof acquisition.digest !== "string"
     || typeof acquisition.markdown !== "string"
     || !Array.isArray(acquisition.runner_names)
+    || (acquisition.trust_tier !== "first_party" && acquisition.trust_tier !== "verified" && acquisition.trust_tier !== "community")
+    || acquisition.publisher === undefined
+    || acquisition.attestations === undefined
   ) {
     throw new Error(`Registry acquire returned an invalid payload for ${skillId}.`);
   }
@@ -292,6 +330,10 @@ export async function acquireRegistrySkill(
     profile_document: acquisition.profile_document,
     profile_digest: acquisition.profile_digest,
     runner_names: acquisition.runner_names,
+    trust_tier: validateRegistryTrustTier(acquisition.trust_tier, "remote_registry.acquisition.trust_tier"),
+    publisher: validateRegistryPublisher(acquisition.publisher, "remote_registry.acquisition.publisher"),
+    source_metadata: acquisition.source_metadata,
+    attestations: validateRegistryAttestations(acquisition.attestations, "remote_registry.acquisition.attestations") ?? [],
     install_count: typeof payload.install_count === "number" ? payload.install_count : 0,
   };
 }

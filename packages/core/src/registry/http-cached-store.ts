@@ -6,6 +6,7 @@ import {
   type RegistrySkillVersion,
   type RegistryStore,
 } from "./store.js";
+import { mergeRegistryAttestations } from "./trust.js";
 
 export interface HttpCachedRegistryStoreOptions {
   readonly remoteBaseUrl: string;
@@ -90,9 +91,12 @@ function acquiredToRegistrySkillVersion(
     profile_digest: acquired.profile_digest,
     runner_names: acquired.runner_names,
     source_type: "runx-registry",
+    trust_tier: acquired.trust_tier,
+    source_metadata: acquired.source_metadata,
+    attestations: mergeRegistryAttestations(acquired.attestations),
     required_scopes: [],
     tags: [],
-    publisher: { type: "placeholder", id: acquired.owner },
+    publisher: acquired.publisher,
     created_at: isoNow,
     updated_at: isoNow,
   };

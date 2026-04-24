@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import { createFixtureMarketplaceAdapter, type MarketplaceAdapter, type SkillSearchResult } from "@runxhq/core/marketplaces";
 import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
 import { installLocalSkill, runLocalSkill, type Caller } from "@runxhq/core/runner-local";
@@ -77,6 +78,7 @@ runners:
         receiptDir: path.join(tempDir, "receipts"),
         runxHome: path.join(tempDir, "home"),
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(run.status).toBe("success");
@@ -109,7 +111,7 @@ runners:
         destination: path.join(tempDir, "skills", "sourcey-docs", "SKILL.md"),
         profileStatePath: path.join(tempDir, "skills", "sourcey-docs", ".runx", "profile.json"),
         runnerNames: ["sourcey-docs-cli"],
-        trust_tier: "external-unverified",
+        trust_tier: "community",
       });
       await expect(readFile(path.join(tempDir, "skills", "sourcey-docs", ".runx", "profile.json"), "utf8")).resolves.toContain(
         "sourcey-docs-cli",
@@ -197,7 +199,7 @@ runners:
     source: "invalid-x",
     source_label: "Invalid X Fixture",
     source_type: "agent",
-    trust_tier: "external-unverified",
+    trust_tier: "community",
     required_scopes: [],
     tags: [],
     profile_mode: "profiled",

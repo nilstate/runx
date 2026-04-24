@@ -126,7 +126,7 @@
         "trust_tier": {
           "anyOf": [
             {
-              "const": "upstream-owned",
+              "const": "first_party",
               "type": "string"
             },
             {
@@ -134,7 +134,7 @@
               "type": "string"
             },
             {
-              "const": "unverified",
+              "const": "verified",
               "type": "string"
             }
           ]

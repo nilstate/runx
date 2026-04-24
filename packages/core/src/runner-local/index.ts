@@ -4,6 +4,8 @@ export * from "./official-cache.js";
 export * from "./registry-resolver.js";
 export * from "./skill-install.js";
 export * from "./history.js";
+export { resolveSkillRunner, resolveToolExecutionTarget } from "./execution-targets.js";
+export { readPendingRunState, readPendingSkillPath } from "./inputs.js";
 export { createCallerAgentAdapter, createCallerAgentStepAdapter, createCallerApprovalAdapter } from "./caller-adapters.js";
 export type { MaterializedContextEdge } from "./graph-context.js";
 
@@ -182,6 +184,9 @@ export interface ExecutionEvent {
 }
 
 export interface Caller {
+  // A Caller is the interaction surface attached to the kernel. It presents
+  // questions, approvals, and progress to a host and returns structured
+  // answers, but it does not execute skills itself.
   readonly resolve: (request: ResolutionRequest) => Promise<ResolutionResponse | undefined>;
   readonly report: (event: ExecutionEvent) => void | Promise<void>;
 }
@@ -428,6 +433,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
         selected_runner: runnerSelection.selectedRunnerName,
         request_ids: [inputResolution.request.id],
         resolution_kinds: [inputResolution.request.kind],
+        requests: [inputResolution.request],
         step_ids: [],
         step_labels: [],
         inputs: pendingResult.inputs,
@@ -485,6 +491,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
         selected_runner: runnerSelection.selectedRunnerName,
         request_ids: pendingResult.requests.map((request) => request.id),
         resolution_kinds: Array.from(new Set(pendingResult.requests.map((request) => request.kind))),
+        requests: pendingResult.requests,
         step_ids: pendingResult.stepIds ?? [],
         step_labels: pendingResult.stepLabels ?? [],
         inputs: pendingResult.inputs,
@@ -1168,6 +1175,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
             detail: {
               request_ids: stepResult.requests.map((request) => request.id),
               resolution_kinds: Array.from(new Set(stepResult.requests.map((request) => request.kind))),
+              requests: stepResult.requests,
               runner: graphStepRunner(prep.step) ?? "default",
               step_label: prep.step.label,
             },
@@ -1508,6 +1516,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
         detail: {
           request_ids: stepResult.requests.map((request) => request.id),
           resolution_kinds: Array.from(new Set(stepResult.requests.map((request) => request.kind))),
+          requests: stepResult.requests,
           runner: graphStepRunner(step) ?? "default",
           step_label: step.label,
         },

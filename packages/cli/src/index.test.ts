@@ -411,7 +411,7 @@ runners:
     expect(stdout.contents()).not.toContain("sk-secret-test");
   });
 
-  it("auto-resolves structured agent-step runs through configured OpenAI runtime", async () => {
+  it("auto-resolves structured agent-step runs through the configured OpenAI managed adapter", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-agent-"));
     tempDirs.push(tempDir);
     const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: process.cwd() };
@@ -457,11 +457,62 @@ runners:
     };
     expect(result.status).toBe("success");
     expect(JSON.parse(result.execution.stdout)).toEqual({ verdict: "pass" });
-    expect(result.receipt.metadata?.agent_hook?.route).toBe("provided");
+    expect(result.receipt.metadata?.agent_hook?.route).toBe("native");
     expect(requestCount).toBe(1);
   });
 
-  it("lets the automatic runtime use declared built-in tools before submitting a result", async () => {
+  it("auto-resolves structured agent-step runs through the configured Anthropic managed adapter", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-agent-anthropic-"));
+    tempDirs.push(tempDir);
+    const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: process.cwd() };
+    await configureAnthropicAgent(env, "claude-test");
+
+    let requestCount = 0;
+    globalThis.fetch = vi.fn(async (input, init) => {
+      requestCount += 1;
+      expect(String(input)).toBe("https://api.anthropic.com/v1/messages");
+      expect(init?.method).toBe("POST");
+      const body = JSON.parse(String(init?.body)) as {
+        model: string;
+        tools: Array<{ name: string }>;
+      };
+      expect(body.model).toBe("claude-test");
+      expect(body.tools.map((tool) => tool.name)).toContain("submit_result");
+
+      return new Response(JSON.stringify({
+        content: [
+          {
+            type: "tool_use",
+            id: `tool_${requestCount}`,
+            name: "submit_result",
+            input: { verdict: "pass" },
+          },
+        ],
+      }), { status: 200 });
+    }) as typeof fetch;
+
+    const stdout = createMemoryStream();
+    const stderr = createMemoryStream();
+    const exitCode = await runCli(
+      ["skill", "fixtures/skills/agent-step", "--prompt", "review this", "--non-interactive", "--json"],
+      { stdin: process.stdin, stdout, stderr },
+      env,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.contents()).toBe("");
+    const result = JSON.parse(stdout.contents()) as {
+      status: string;
+      execution: { stdout: string };
+      receipt: { metadata?: { agent_hook?: { route?: string } } };
+    };
+    expect(result.status).toBe("success");
+    expect(JSON.parse(result.execution.stdout)).toEqual({ verdict: "pass" });
+    expect(result.receipt.metadata?.agent_hook?.route).toBe("native");
+    expect(requestCount).toBe(1);
+  });
+
+  it("lets the managed runtime use declared runx tools before submitting a result", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-tool-"));
     tempDirs.push(tempDir);
     const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: tempDir };
@@ -661,6 +712,20 @@ Answer the prompt directly.
           markdown,
           profile_document: profileDocument,
           profile_digest: profileDigest,
+          trust_tier: "community",
+          publisher: {
+            id: "acme",
+            kind: "publisher",
+            handle: "acme",
+          },
+          attestations: [
+            {
+              kind: "publisher",
+              id: "publisher:acme",
+              status: "declared",
+              summary: "acme",
+            },
+          ],
           runner_names: ["agent", "sourcey"],
         },
       }), { status: 200 });
@@ -1793,6 +1858,20 @@ async function configureOpenAiAgent(env: NodeJS.ProcessEnv, model: string): Prom
   stdout.clear();
   stderr.clear();
   await expect(runCli(["config", "set", "agent.api_key", "sk-test-secret", "--json"], { stdin: process.stdin, stdout, stderr }, env)).resolves.toBe(0);
+  stdout.clear();
+  stderr.clear();
+}
+
+async function configureAnthropicAgent(env: NodeJS.ProcessEnv, model: string): Promise<void> {
+  const stdout = createMemoryStream();
+  const stderr = createMemoryStream();
+  await expect(runCli(["config", "set", "agent.provider", "anthropic", "--json"], { stdin: process.stdin, stdout, stderr }, env)).resolves.toBe(0);
+  stdout.clear();
+  stderr.clear();
+  await expect(runCli(["config", "set", "agent.model", model, "--json"], { stdin: process.stdin, stdout, stderr }, env)).resolves.toBe(0);
+  stdout.clear();
+  stderr.clear();
+  await expect(runCli(["config", "set", "agent.api_key", "anthropic-test-secret", "--json"], { stdin: process.stdin, stdout, stderr }, env)).resolves.toBe(0);
   stdout.clear();
   stderr.clear();
 }

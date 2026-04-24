@@ -44,6 +44,20 @@ function buildAcquirePayload(overrides: {
       markdown: ECHO_MARKDOWN,
       profile_document: ECHO_PROFILE,
       profile_digest: "b".repeat(64),
+      trust_tier: "community",
+      publisher: {
+        id: overrides.owner ?? "acme",
+        kind: "publisher",
+        handle: overrides.owner ?? "acme",
+      },
+      attestations: [
+        {
+          kind: "publisher",
+          id: `publisher:${overrides.owner ?? "acme"}`,
+          status: "declared",
+          summary: overrides.owner ?? "acme",
+        },
+      ],
       runner_names: ["echo"],
     },
   };

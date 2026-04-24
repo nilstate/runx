@@ -58,6 +58,11 @@ export interface QualityProfileContext {
   readonly content: string;
 }
 
+export interface ExecutionLocation {
+  readonly skill_directory: string;
+  readonly tool_roots?: readonly string[];
+}
+
 export interface AgentContextEnvelope {
   readonly run_id: string;
   readonly step_id?: string;
@@ -71,6 +76,7 @@ export interface AgentContextEnvelope {
   readonly context?: Context;
   readonly voice_profile?: ContextDocument;
   readonly quality_profile?: QualityProfileContext;
+  readonly execution_location?: ExecutionLocation;
   readonly expected_outputs?: OutputContract;
   readonly trust_boundary: string;
 }
@@ -171,6 +177,9 @@ export type AdapterInvokeResult =
     };
 
 export interface SkillAdapter {
+  // Execution adapters do work for one source type. They do not own
+  // approvals, receipts, or host interaction; the kernel mediates those
+  // boundaries and surfaces resolve them.
   readonly type: string;
   readonly invoke: (request: AdapterInvokeRequest) => Promise<AdapterInvokeResult>;
 }
@@ -290,6 +299,9 @@ export function validateAgentContextEnvelope(
   const context = record.context === undefined
     ? undefined
     : validateContext(record.context, `${label}.context`);
+  const executionLocation = record.execution_location === undefined
+    ? undefined
+    : validateExecutionLocation(record.execution_location, `${label}.execution_location`);
 
   return {
     run_id: requireString(record.run_id, `${label}.run_id`),
@@ -309,6 +321,7 @@ export function validateAgentContextEnvelope(
     quality_profile: record.quality_profile === undefined
       ? undefined
       : validateQualityProfileContext(record.quality_profile, `${label}.quality_profile`),
+    execution_location: executionLocation,
     expected_outputs: validateOutputContract(record.expected_outputs, `${label}.expected_outputs`),
     trust_boundary: requireString(record.trust_boundary, `${label}.trust_boundary`),
   };
@@ -357,6 +370,20 @@ function validateQualityProfileContext(value: unknown, label: string): QualityPr
     source,
     sha256: requireString(record.sha256, `${label}.sha256`),
     content: requireString(record.content, `${label}.content`, { allowEmpty: true }),
+  };
+}
+
+function validateExecutionLocation(value: unknown, label: string): ExecutionLocation {
+  const record = asRecord(value);
+  if (!record) {
+    throw new Error(`${label} must match ${CONTROL_SCHEMA_REFS.agent_context_envelope}.`);
+  }
+
+  return {
+    skill_directory: requireString(record.skill_directory, `${label}.skill_directory`),
+    tool_roots: record.tool_roots === undefined
+      ? undefined
+      : requireStringArray(record.tool_roots, `${label}.tool_roots`, { allowEmptyValues: false }),
   };
 }
 

@@ -129,7 +129,7 @@ describe("@runxhq/contracts", () => {
       },
       registry: {
         owner: "runx",
-        trust_tier: "upstream-owned",
+        trust_tier: "first_party",
         version: "1.0.0",
         profile_path: "X.yaml",
         materialized_package_is_registry_artifact: true,

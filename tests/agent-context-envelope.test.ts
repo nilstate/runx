@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 const passiveCaller: Caller = {
@@ -26,6 +27,7 @@ describe("agent context envelope", () => {
         env: { ...process.env, RUNX_CWD: process.cwd() },
         receiptDir: path.join(tempDir, "receipts"),
         runxHome: path.join(tempDir, "home"),
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("needs_resolution");
@@ -44,6 +46,8 @@ describe("agent context envelope", () => {
         "git.status",
         "shell.exec",
       ]);
+      expect(request?.kind === "cognitive_work" ? request.work.envelope.execution_location?.skill_directory : undefined)
+        .toBe(path.resolve("skills/evolve"));
       expect(request?.kind === "cognitive_work" ? request.work.envelope.current_context.map((artifact) => artifact.type) : []).toEqual([
         "repo_profile",
       ]);
@@ -112,6 +116,7 @@ describe("agent context envelope", () => {
         env: { ...process.env, RUNX_CWD: process.cwd() },
         receiptDir,
         runxHome,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(first.status).toBe("success");
@@ -126,6 +131,7 @@ describe("agent context envelope", () => {
         env: { ...process.env, RUNX_CWD: process.cwd() },
         receiptDir,
         runxHome,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(second.status).toBe("needs_resolution");

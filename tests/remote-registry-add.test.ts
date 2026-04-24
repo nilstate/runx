@@ -50,6 +50,20 @@ describe("remote registry add", () => {
             markdown,
             profile_document: profileDocument,
             profile_digest: profileDigest,
+            trust_tier: "first_party",
+            publisher: {
+              id: "runx",
+              kind: "organization",
+              handle: "runx",
+            },
+            attestations: [
+              {
+                kind: "publisher",
+                id: "publisher:runx",
+                status: "verified",
+                summary: "runx",
+              },
+            ],
             runner_names: ["agent", "sourcey"],
           },
         }), { status: 200 });
@@ -115,6 +129,7 @@ describe("remote registry add", () => {
                 runner_names: [],
                 required_scopes: [],
                 tags: [],
+                trust_tier: "first_party",
                 trust_signals: [],
                 install_command: "runx add runx/sourcey@1.0.0 --registry https://runx.example.test",
                 run_command: "runx sourcey",
@@ -134,6 +149,20 @@ describe("remote registry add", () => {
             version: "1.0.0",
             digest,
             markdown,
+            trust_tier: "first_party",
+            publisher: {
+              id: "runx",
+              kind: "organization",
+              handle: "runx",
+            },
+            attestations: [
+              {
+                kind: "publisher",
+                id: "publisher:runx",
+                status: "verified",
+                summary: "runx",
+              },
+            ],
             runner_names: [],
           },
         }), { status: 200 });
@@ -186,6 +215,7 @@ describe("remote registry add", () => {
               runner_names: [],
               required_scopes: [],
               tags: [],
+              trust_tier: "first_party",
               trust_signals: [],
               install_command: "runx add runx/sourcey@1.0.0 --registry https://runx.example.test",
               run_command: "runx sourcey",
@@ -200,6 +230,7 @@ describe("remote registry add", () => {
               runner_names: [],
               required_scopes: [],
               tags: [],
+              trust_tier: "community",
               trust_signals: [],
               install_command: "runx add acme/sourcey@1.0.0 --registry https://runx.example.test",
               run_command: "runx sourcey",

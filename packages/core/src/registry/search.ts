@@ -1,11 +1,11 @@
 import { runxLinkForVersion } from "./links.js";
 import { deriveTrustSignals } from "./trust.js";
 import type { SkillSearchResult } from "../marketplaces/index.js";
-import type { RegistrySkillVersion, RegistryStore } from "./store.js";
+import type { RegistrySkillVersion, RegistryStore, RegistryTrustTier } from "./store.js";
 
 export type RegistrySearchResult = SkillSearchResult & {
   readonly source: "runx-registry";
-  readonly trust_tier: "runx-derived";
+  readonly trust_tier: RegistryTrustTier;
 };
 
 export async function searchRegistry(
@@ -31,12 +31,13 @@ export async function searchRegistry(
       version: version.version,
       digest: version.digest,
       source_type: version.source_type,
+      trust_tier: version.trust_tier,
       required_scopes: version.required_scopes,
       tags: version.tags,
       profile_mode: version.profile_document ? "profiled" : "portable",
       runner_names: version.runner_names,
       profile_digest: version.profile_digest,
-      profile_trust_tier: version.profile_document ? "runx-derived" : undefined,
+      profile_trust_tier: version.profile_document ? version.trust_tier : undefined,
       trust_signals: deriveTrustSignals(version),
       add_command: link.install_command,
       run_command: link.run_command,
@@ -45,13 +46,12 @@ export async function searchRegistry(
 }
 
 export function normalizeRegistrySearchResult(
-  input: Omit<RegistrySearchResult, "source" | "source_label" | "trust_tier">,
+  input: Omit<RegistrySearchResult, "source" | "source_label">,
 ): RegistrySearchResult {
   return {
     ...input,
     source: "runx-registry",
     source_label: "runx registry",
-    trust_tier: "runx-derived",
   };
 }
 

@@ -125,7 +125,7 @@ async function searchBundledSkills(query: string): Promise<readonly SkillSearchR
       source: "runx-registry",
       source_label: "runx (bundled)",
       source_type: "bundled",
-      trust_tier: "runx-derived",
+      trust_tier: "first_party",
       required_scopes: [],
       tags: [],
       profile_mode: hasProfile ? "profiled" : "portable",

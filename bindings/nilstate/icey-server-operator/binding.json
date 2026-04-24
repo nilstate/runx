@@ -22,7 +22,7 @@
   },
   "registry": {
     "owner": "nilstate",
-    "trust_tier": "upstream-owned",
+    "trust_tier": "verified",
     "version": "upstream-ee9aa1c",
     "install_command": "runx add nilstate/icey-server-operator@upstream-ee9aa1c --registry https://runx.ai",
     "run_command": "runx icey-server-operator",
@@ -54,6 +54,6 @@
     "release",
     "packaging",
     "docker",
-    "upstream-owned"
+    "verified"
   ]
 }
