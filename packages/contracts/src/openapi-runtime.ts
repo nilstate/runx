@@ -649,6 +649,7 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
       properties: {
         status: { type: "string", const: "success" },
         approvals: { type: "array", items: openApiSchemaRef("ApprovalInboxItem") },
+        next_cursor: { type: "string" },
       },
       required: ["status", "approvals"],
       additionalProperties: false,

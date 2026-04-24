@@ -128,6 +128,11 @@ describe("@runxhq/contracts", () => {
         },
       }),
     });
+    expect(schemas.ApprovalInboxEnvelope).toMatchObject({
+      properties: expect.objectContaining({
+        next_cursor: { type: "string" },
+      }),
+    });
   });
 
   it("validates auxiliary schema payloads", () => {
