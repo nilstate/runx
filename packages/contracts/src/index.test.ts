@@ -5,6 +5,7 @@ import {
   RUNX_AUXILIARY_SCHEMA_IDS,
   RUNX_CONTROL_SCHEMA_REFS,
   RUNX_LOGICAL_SCHEMAS,
+  buildHostedOpenApiSchemas,
   credentialEnvelopeSchema,
   registryBindingSchema,
   reviewReceiptOutputSchema,
@@ -83,6 +84,16 @@ describe("@runxhq/contracts", () => {
     expect(runxAuxiliarySchemas.reviewReceiptOutput).toBe(reviewReceiptOutputSchema);
     expect(runxGeneratedSchemaArtifacts["doctor.schema.json"]).toBe(runxContractSchemas.doctor);
     expect(runxGeneratedSchemaArtifacts["review-receipt-output.schema.json"]).toBe(reviewReceiptOutputSchema);
+  });
+
+  it("owns hosted OpenAPI components for cloud consumers", () => {
+    const schemas = buildHostedOpenApiSchemas();
+
+    expect(schemas).toHaveProperty("CreateRunRequest", {
+      $ref: "../../spec/hosted/create-run.request.schema.json",
+    });
+    expect(schemas).toHaveProperty("PublicSkillDetailEnvelope");
+    expect(schemas).toHaveProperty("KnowledgeEntryEnvelope");
   });
 
   it("validates auxiliary schema payloads", () => {

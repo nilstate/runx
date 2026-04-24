@@ -62,6 +62,15 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     },
   },
   {
+    skillName: "deep-research-brief",
+    extraInputKeys: ["channel", "deliverable"],
+    expectation: {
+      requestId: "agent_step.research.output",
+      inputKeys: ["objective", "audience", "domain", "operator_context", "target_entities", "channel", "deliverable"],
+      sourceType: "agent-step",
+    },
+  },
+  {
     skillName: "ecosystem-vuln-scan",
     extraInputKeys: ["objective", "channel"],
     expectation: {

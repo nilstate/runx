@@ -114,7 +114,8 @@ The official catalog has two public kinds:
 - skills: `request-triage`, `issue-triage`, `research`, `draft-content`,
   `vuln-scan`, `scafld`, `sourcey`, `moltbook`
 - skill chains: `issue-to-pr`, `release`, `content-pipeline`,
-  `ecosystem-vuln-scan`, `ecosystem-brief`, `skill-lab`, `skill-testing`
+  `deep-research-brief`, `ecosystem-vuln-scan`, `ecosystem-brief`,
+  `skill-lab`, `skill-testing`
 
 Builder and operator packages stay in the same `SKILL.md` + `X.yaml` shape,
 but default to private visibility. That internal set currently includes

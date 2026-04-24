@@ -9,6 +9,7 @@ import { parseSkillMarkdown, parseRunnerManifestYaml, validateRunnerManifest, va
 
 const officialSkillPackages = [
   "content-pipeline",
+  "deep-research-brief",
   "draft-content",
   "ecosystem-vuln-scan",
   "evolve",
@@ -36,6 +37,7 @@ const officialSkillPackages = [
 
 const harnessedShowcasePackages = [
   "content-pipeline",
+  "deep-research-brief",
   "draft-content",
   "ecosystem-vuln-scan",
   "evolve",

@@ -33,6 +33,7 @@
   "devDependencies": {
     "@runxhq/adapters": "workspace:^0.1.0",
     "@runxhq/authoring": "workspace:*",
+    "@runxhq/contracts": "workspace:^0.1.0",
     "@runxhq/core": "workspace:^0.1.0",
     "@sinclair/typebox": "^0.34.41",
     "@types/node": "^24.0.0",

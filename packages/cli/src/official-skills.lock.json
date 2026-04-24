@@ -5,6 +5,11 @@
     "digest": "09ac2dba487bee6e43b2e783fb2fe8a93733b4fd7ffdf41ae32a36bc9462d2ca"
   },
   {
+    "skill_id": "runx/deep-research-brief",
+    "version": "sha-4f9704e4fe89",
+    "digest": "27e22bc2026c12cf04e4fbaf3ecadb40651511b6dbf3cf829820eda4e99276be"
+  },
+  {
     "skill_id": "runx/design-skill",
     "version": "sha-3730d90139c3",
     "digest": "524b59c64793c3a50d0d8bedca20610373cb9c1dcc818cb73d5e3965bb92a016"

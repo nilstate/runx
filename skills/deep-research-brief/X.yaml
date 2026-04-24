@@ -1,0 +1,164 @@
+skill: deep-research-brief
+version: "0.1.0"
+
+catalog:
+  kind: chain
+  audience: public
+  visibility: public
+
+harness:
+  cases:
+    - name: deep-research-brief-produces-governed-brief
+      inputs:
+        objective: Should runx prioritize the deep-research-brief lane before broader assistant bundles?
+        audience: operators
+        domain: OSS AI tooling
+        operator_context: Bias toward skills that demonstrate receipts, approvals, and reusable evidence.
+        target_entities:
+          - runx
+          - langchain
+          - sourcey
+      caller:
+        answers:
+          agent_step.research.output:
+            research_brief:
+              objective: Should runx prioritize the deep-research-brief lane before broader assistant bundles?
+              scope: OSS AI tooling, workflow demand signals, first-party seed leverage
+              summary: Deep research is one of the clearest high-signal tutorial categories and aligns with runx's governance strengths.
+              open_questions:
+                - Which default tools and references should ship in the first public pack?
+            evidence_log:
+              - claim: LangChain documents deep research explicitly as a first-class tutorial surface.
+                source: plans/skill-seeds.md
+                confidence: verified
+                relevance: establishes demand for a first-party deep research lane
+            decision_support:
+              - option: Seed deep-research-brief before wider assistant bundles.
+                rationale: It demonstrates runx receipts, approvals, and evidence handling without requiring broad tool coverage first.
+            risks:
+              - risk: The lane becomes a generic article writer if the memo framing is weak.
+                likelihood: medium
+                impact: medium
+                mitigation: keep the deliverable decision-oriented and approval-gated.
+          agent_step.draft-content-draft.output:
+            content_brief:
+              angle: decision memo for maintainers evaluating the next first-party seed
+              audience: operators
+              channel: brief
+            draft:
+              title: Deep research should be the first LangChain-grounded seed
+              sections:
+                - Conclusion
+                - Evidence
+                - Recommended posture
+                - Open questions
+            review_checklist:
+              - verify every external-demand claim against the evidence pack
+              - keep verified facts separate from recommendation language
+            distribution_notes:
+              primary_channel: brief
+              follow_ups:
+                - cut a shorter public summary after approval
+          agent_step.draft-content-package.output:
+            publish_packet:
+              channel: brief
+              headline: Deep research should be the first LangChain-grounded seed
+            qa_checklist:
+              - evidence reviewed
+              - approval gate recorded
+            handoff_notes:
+              next_action: publish or route into skill implementation planning
+        approvals:
+          deep-research-brief.publish.approval: true
+      expect:
+        status: success
+        receipt:
+          kind: graph_execution
+          status: success
+
+    - name: deep-research-brief-minimal-inputs
+      inputs:
+        objective: Minimal smoke-case for deep-research-brief regression
+      expect:
+        status: needs_resolution
+
+runners:
+  deep-research-brief:
+    default: true
+    type: chain
+    inputs:
+      objective:
+        type: string
+        required: false
+        default: "Should runx prioritize the deep-research-brief lane before broader assistant bundles?"
+        description: "Specific high-signal question the brief should answer."
+      audience:
+        type: string
+        required: false
+        default: "operators"
+        description: "Primary reader for the decision memo."
+      channel:
+        type: string
+        required: false
+        default: "brief"
+        description: "Final delivery channel."
+      domain:
+        type: string
+        required: false
+        default: "AI developer tools"
+        description: "Product, ecosystem, or market slice to bound the work."
+      operator_context:
+        type: string
+        required: false
+        description: "Local decision frame or evaluation lens for the brief."
+      target_entities:
+        type: json
+        required: false
+        description: "Structured list of projects, companies, or repos to keep in scope."
+    chain:
+      name: deep-research-brief
+      owner: runx
+      steps:
+        - id: research-topic
+          skill: ../research
+          runner: research
+          scopes:
+            - runx:research:read
+          inputs:
+            deliverable: deep research brief
+        - id: draft-brief
+          skill: ../draft-content
+          runner: draft
+          scopes:
+            - runx:content:draft
+          inputs:
+            voice_guide: Write like a decision memo. Lead with the answer, separate verified evidence from inference, and end with recommended posture plus open questions.
+          context:
+            evidence_pack: research-topic.research_packet.data
+        - id: approve-brief
+          run:
+            type: approval
+          inputs:
+            gate_id: deep-research-brief.publish.approval
+            reason: Approve the deep-research-brief draft before packaging the brief.
+          context:
+            draft: draft-brief.content_draft_packet.data.draft
+            review_checklist: draft-brief.content_draft_packet.data.review_checklist
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+        - id: package-brief
+          skill: ../draft-content
+          runner: package
+          scopes:
+            - runx:content:package
+          inputs:
+            channel: brief
+          context:
+            draft: draft-brief.content_draft_packet.data.draft
+            distribution_notes: draft-brief.content_draft_packet.data.distribution_notes
+      policy:
+        transitions:
+          - to: package-brief
+            field: approve-brief.approval_decision.data.approved
+            equals: true

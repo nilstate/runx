@@ -615,3 +615,9 @@ export const runxGeneratedSchemaArtifacts = {
   "registry-binding.schema.json": registryBindingSchema,
   "review-receipt-output.schema.json": reviewReceiptOutputSchema,
 } as const;
+
+export {
+  buildHostedOpenApiPublicSchemas,
+} from "./openapi-public.js";
+export { buildHostedOpenApiRuntimeSchemas } from "./openapi-runtime.js";
+export { buildHostedOpenApiSchemas } from "./openapi.js";
