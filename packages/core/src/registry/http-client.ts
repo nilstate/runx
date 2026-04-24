@@ -1,5 +1,6 @@
 import { parseRegistrySkillRef } from "./resolve.js";
 import { normalizeRegistrySearchResult, type RegistrySearchResult } from "./search.js";
+import type { ToolCatalogSearchResult, ToolInspectResult } from "../tool-catalogs/index.js";
 import {
   validateRegistryAttestations,
   validateRegistryPublisher,
@@ -27,6 +28,19 @@ export interface SearchRemoteRegistryOptions {
 export interface ReadRemoteRegistrySkillOptions {
   readonly baseUrl: string;
   readonly version?: string;
+  readonly fetchImpl?: typeof fetch;
+}
+
+export interface SearchRemoteToolsOptions {
+  readonly baseUrl: string;
+  readonly limit?: number;
+  readonly source?: string;
+  readonly fetchImpl?: typeof fetch;
+}
+
+export interface ReadRemoteToolOptions {
+  readonly baseUrl: string;
+  readonly source?: string;
   readonly fetchImpl?: typeof fetch;
 }
 
@@ -143,6 +157,62 @@ export async function searchRemoteRegistry(
       run_command: skill.run_command,
     });
   });
+}
+
+export async function searchRemoteTools(
+  query: string,
+  options: SearchRemoteToolsOptions,
+): Promise<readonly ToolCatalogSearchResult[]> {
+  const fetchImpl = requireFetch(options.fetchImpl);
+  const params = new URLSearchParams();
+  if (query.trim().length > 0) {
+    params.set("q", query.trim());
+  }
+  if (options.source?.trim()) {
+    params.set("source", options.source.trim());
+  }
+  params.set("limit", String(options.limit ?? 20));
+  const response = await fetchImpl(`${options.baseUrl.replace(/\/$/, "")}/v1/tools?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Remote tool search failed for '${query}': HTTP ${response.status}`);
+  }
+  const payload = await response.json() as {
+    readonly status?: string;
+    readonly tools?: readonly ToolCatalogSearchResult[];
+  };
+  if (payload.status !== "success" || !Array.isArray(payload.tools)) {
+    throw new Error(`Remote tool search returned an invalid payload for '${query}'.`);
+  }
+  return payload.tools.map(validateRemoteToolSearchResult);
+}
+
+export async function readRemoteTool(
+  ref: string,
+  options: ReadRemoteToolOptions,
+): Promise<ToolInspectResult | undefined> {
+  const fetchImpl = requireFetch(options.fetchImpl);
+  const params = new URLSearchParams();
+  if (options.source?.trim()) {
+    params.set("source", options.source.trim());
+  }
+  const query = params.toString();
+  const response = await fetchImpl(
+    `${options.baseUrl.replace(/\/$/, "")}/v1/tools/${encodeURIComponent(ref)}${query ? `?${query}` : ""}`,
+  );
+  if (response.status === 404) {
+    return undefined;
+  }
+  if (!response.ok) {
+    throw new Error(`Remote tool read failed for ${ref}: HTTP ${response.status}`);
+  }
+  const payload = await response.json() as {
+    readonly status?: string;
+    readonly tool?: ToolInspectResult;
+  };
+  if (payload.status !== "success" || payload.tool === undefined) {
+    throw new Error(`Remote tool read returned an invalid payload for ${ref}.`);
+  }
+  return validateRemoteToolInspectResult(payload.tool);
 }
 
 export async function readRemoteRegistrySkill(
@@ -352,4 +422,121 @@ function splitRegistrySkillId(skillId: string): readonly [string, string] {
     throw new Error(`Invalid registry skill id '${skillId}'. Expected '<owner>/<name>'.`);
   }
   return [parts[0], parts[1]];
+}
+
+function validateRemoteToolSearchResult(value: unknown): ToolCatalogSearchResult {
+  const record = requireRecord(value, "remote_tools.tools[]");
+  return {
+    tool_id: requireString(record.tool_id, "remote_tools.tools[].tool_id"),
+    name: requireString(record.name, "remote_tools.tools[].name"),
+    summary: optionalString(record.summary, "remote_tools.tools[].summary"),
+    source: requireString(record.source, "remote_tools.tools[].source"),
+    source_label: requireString(record.source_label, "remote_tools.tools[].source_label"),
+    source_type: requireString(record.source_type, "remote_tools.tools[].source_type"),
+    namespace: requireString(record.namespace, "remote_tools.tools[].namespace"),
+    external_name: requireString(record.external_name, "remote_tools.tools[].external_name"),
+    required_scopes: requireStringArray(record.required_scopes, "remote_tools.tools[].required_scopes"),
+    tags: requireStringArray(record.tags, "remote_tools.tools[].tags"),
+    catalog_ref: requireString(record.catalog_ref, "remote_tools.tools[].catalog_ref"),
+  };
+}
+
+function validateRemoteToolInspectResult(value: unknown): ToolInspectResult {
+  const record = requireRecord(value, "remote_tools.tool");
+  const inputsRecord = requireRecord(record.inputs, "remote_tools.tool.inputs");
+  const inputs: Record<string, { readonly type: string; readonly required: boolean; readonly description?: string }> = {};
+  for (const [name, entry] of Object.entries(inputsRecord)) {
+    const input = requireRecord(entry, `remote_tools.tool.inputs.${name}`);
+    inputs[name] = {
+      type: requireString(input.type, `remote_tools.tool.inputs.${name}.type`),
+      required: requireBoolean(input.required, `remote_tools.tool.inputs.${name}.required`),
+      description: optionalString(input.description, `remote_tools.tool.inputs.${name}.description`),
+    };
+  }
+  const provenanceRecord = requireRecord(record.provenance, "remote_tools.tool.provenance");
+  return {
+    ref: requireString(record.ref, "remote_tools.tool.ref"),
+    name: requireString(record.name, "remote_tools.tool.name"),
+    description: optionalString(record.description, "remote_tools.tool.description"),
+    execution_source_type: requireString(record.execution_source_type, "remote_tools.tool.execution_source_type"),
+    inputs,
+    scopes: requireStringArray(record.scopes, "remote_tools.tool.scopes"),
+    mutating: optionalBoolean(record.mutating, "remote_tools.tool.mutating"),
+    runtime: optionalRecord(record.runtime, "remote_tools.tool.runtime"),
+    risk: optionalRecord(record.risk, "remote_tools.tool.risk"),
+    runx: optionalRecord(record.runx, "remote_tools.tool.runx"),
+    reference_path: requireString(record.reference_path, "remote_tools.tool.reference_path"),
+    skill_directory: requireString(record.skill_directory, "remote_tools.tool.skill_directory"),
+    provenance: {
+      origin: requireEnum(provenanceRecord.origin, "remote_tools.tool.provenance.origin", ["local", "imported"]) as "local" | "imported",
+      source: optionalString(provenanceRecord.source, "remote_tools.tool.provenance.source"),
+      source_label: optionalString(provenanceRecord.source_label, "remote_tools.tool.provenance.source_label"),
+      source_type: optionalString(provenanceRecord.source_type, "remote_tools.tool.provenance.source_type"),
+      namespace: optionalString(provenanceRecord.namespace, "remote_tools.tool.provenance.namespace"),
+      external_name: optionalString(provenanceRecord.external_name, "remote_tools.tool.provenance.external_name"),
+      catalog_ref: optionalString(provenanceRecord.catalog_ref, "remote_tools.tool.provenance.catalog_ref"),
+      tool_id: optionalString(provenanceRecord.tool_id, "remote_tools.tool.provenance.tool_id"),
+      tags: optionalStringArray(provenanceRecord.tags, "remote_tools.tool.provenance.tags"),
+    },
+  };
+}
+
+function requireRecord(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${label} must be an object.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function requireString(value: unknown, label: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${label} must be a string.`);
+  }
+  return value;
+}
+
+function optionalString(value: unknown, _label: string): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function requireStringArray(value: unknown, label: string): readonly string[] {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+    throw new Error(`${label} must be an array of strings.`);
+  }
+  return value;
+}
+
+function optionalStringArray(value: unknown, label: string): readonly string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return requireStringArray(value, label);
+}
+
+function requireBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new Error(`${label} must be a boolean.`);
+  }
+  return value;
+}
+
+function optionalBoolean(value: unknown, label: string): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return requireBoolean(value, label);
+}
+
+function optionalRecord(value: unknown, label: string): Readonly<Record<string, unknown>> | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return requireRecord(value, label);
+}
+
+function requireEnum(value: unknown, label: string, allowed: readonly string[]): string {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    throw new Error(`${label} must be one of ${allowed.join(", ")}.`);
+  }
+  return value;
 }

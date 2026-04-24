@@ -5,7 +5,7 @@ import { runHarness, runHarnessTarget } from "@runxhq/core/harness";
 import type { SkillSearchResult } from "@runxhq/core/marketplaces";
 import type { ResolutionRequest } from "@runxhq/core/executor";
 import type { ExecutionEvent, RunLocalSkillResult } from "@runxhq/core/runner-local";
-import type { ToolCatalogSearchResult } from "@runxhq/core/tool-catalogs";
+import type { ToolCatalogSearchResult, ToolInspectResult } from "@runxhq/core/tool-catalogs";
 
 import type { CliIo, ParsedArgs } from "./index.js";
 import { flattenConfig, type ConfigResult } from "./commands/config.js";
@@ -689,6 +689,51 @@ export function renderToolSearchResults(
     }
     lines.push("");
   }
+  return `${lines.join("\n")}\n`;
+}
+
+export function renderToolInspectResult(
+  result: ToolInspectResult,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const t = theme(process.stdout, env);
+  const lines = [
+    "",
+    `  ${t.bold}${result.name}${t.reset}  ${t.dim}${result.provenance.origin}${t.reset}`,
+    `  ${t.dim}exec${t.reset}      ${result.execution_source_type}`,
+    `  ${t.dim}path${t.reset}      ${result.reference_path}`,
+    `  ${t.dim}root${t.reset}      ${result.skill_directory}`,
+  ];
+
+  if (result.provenance.origin === "imported") {
+    lines.push(
+      `  ${t.dim}catalog${t.reset}   ${result.provenance.catalog_ref ?? "unknown"}`,
+      `  ${t.dim}source${t.reset}    ${result.provenance.source_label ?? result.provenance.source ?? "unknown"}`,
+      `  ${t.dim}kind${t.reset}      ${result.provenance.source_type ?? "unknown"}`,
+      `  ${t.dim}external${t.reset}  ${result.provenance.external_name ?? "unknown"}`,
+    );
+  }
+
+  if (result.scopes.length > 0) {
+    lines.push(`  ${t.dim}scopes${t.reset}    ${result.scopes.join(", ")}`);
+  }
+  if (result.description) {
+    lines.push(`  ${t.dim}summary${t.reset}   ${result.description}`);
+  }
+
+  const inputEntries = Object.entries(result.inputs);
+  if (inputEntries.length > 0) {
+    lines.push(`  ${t.dim}inputs${t.reset}`);
+    for (const [name, input] of inputEntries) {
+      const pieces = [input.type, input.required ? "required" : "optional"];
+      if (input.description) {
+        pieces.push(input.description);
+      }
+      lines.push(`    ${name}: ${pieces.join(" · ")}`);
+    }
+  }
+
+  lines.push("");
   return `${lines.join("\n")}\n`;
 }
 

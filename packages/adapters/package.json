@@ -20,6 +20,10 @@
       "types": "./dist/src/a2a/index.d.ts",
       "import": "./dist/src/a2a/index.js"
     },
+    "./catalog": {
+      "types": "./dist/src/catalog/index.d.ts",
+      "import": "./dist/src/catalog/index.js"
+    },
     "./agent": {
       "types": "./dist/src/agent/index.d.ts",
       "import": "./dist/src/agent/index.js"

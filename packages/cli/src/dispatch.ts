@@ -14,6 +14,7 @@ import {
 import { runHarnessTarget, validatePublishHarness } from "@runxhq/core/harness";
 import { createFixtureMarketplaceAdapter } from "@runxhq/core/marketplaces";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
+import { createRunxSdk } from "@runxhq/core/sdk";
 import { resolveEnvToolCatalogAdapters, searchToolCatalogAdapters } from "@runxhq/core/tool-catalogs";
 import {
   createDefaultHttpCachedRegistryStore,
@@ -43,6 +44,7 @@ import {
   renderNewResult,
   renderPublishResult,
   renderSearchResults,
+  renderToolInspectResult,
   renderToolSearchResults,
   writeLocalSkillResult,
 } from "./cli-presentation.js";
@@ -256,6 +258,23 @@ export async function dispatchCli(
       }, null, 2)}\n`);
     } else {
       io.stdout.write(renderToolSearchResults(results, env));
+    }
+    return 0;
+  }
+
+  if (parsed.command === "tool" && parsed.toolAction === "inspect" && parsed.toolRef) {
+    const sdk = createRunxSdk({
+      env,
+      toolCatalogAdapters: resolveEnvToolCatalogAdapters(env, parsed.sourceFilter),
+    });
+    const result = await sdk.inspectTool({
+      ref: parsed.toolRef,
+      source: parsed.sourceFilter,
+    });
+    if (parsed.json) {
+      io.stdout.write(`${JSON.stringify({ status: "success", tool: result }, null, 2)}\n`);
+    } else {
+      io.stdout.write(renderToolInspectResult(result, env));
     }
     return 0;
   }

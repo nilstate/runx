@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { createHash } from "node:crypto";
 import path from "node:path";
 
 export const mcpCorePackage = "@runxhq/core/mcp";
@@ -38,6 +39,11 @@ export interface McpClientInfo {
   readonly version: string;
 }
 
+export interface McpExecutionSource {
+  readonly server?: McpServerDefinition;
+  readonly tool?: string;
+}
+
 export async function listMcpTools(options: {
   readonly server: McpServerDefinition;
   readonly skillDirectory: string;
@@ -65,6 +71,63 @@ export async function invokeMcpTool(options: {
       name: options.tool,
       arguments: options.args,
     }));
+}
+
+export function mapMcpArguments(
+  argumentTemplate: Readonly<Record<string, unknown>> | undefined,
+  inputs: Readonly<Record<string, unknown>>,
+  resolvedInputs?: Readonly<Record<string, string>>,
+): Readonly<Record<string, unknown>> {
+  if (!argumentTemplate) {
+    return resolvedInputs ? { ...inputs, ...resolvedInputs } : inputs;
+  }
+
+  const mapped: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(argumentTemplate)) {
+    if (typeof value === "string") {
+      const exact = /^\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}$/.exec(value);
+      if (exact) {
+        mapped[key] = exact[1] in (resolvedInputs ?? {}) ? resolvedInputs?.[exact[1]] : inputs[exact[1]];
+      } else {
+        mapped[key] = value.replace(
+          /\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g,
+          (_m, templateKey: string) =>
+            templateKey in (resolvedInputs ?? {})
+              ? resolvedInputs?.[templateKey] ?? ""
+              : stringifyMcpInput(inputs[templateKey]),
+        );
+      }
+    } else {
+      mapped[key] = value;
+    }
+  }
+  return mapped;
+}
+
+export function stringifyMcpToolResult(result: unknown): string {
+  const record = asRecord(result);
+  if (record && Array.isArray(record.content)) {
+    return record.content
+      .map((entry: unknown) => {
+        const contentEntry = asRecord(entry);
+        if (contentEntry && contentEntry.type === "text" && typeof contentEntry.text === "string") {
+          return contentEntry.text;
+        }
+        return JSON.stringify(entry);
+      })
+      .join("\n");
+  }
+  return typeof result === "string" ? result : JSON.stringify(result) ?? "";
+}
+
+export function createMcpExecutionMetadata(source: McpExecutionSource): Readonly<Record<string, unknown>> {
+  return {
+    mcp: {
+      tool: source.tool,
+      server_command_hash: hashString(source.server?.command ?? ""),
+      server_args_hash: hashString(JSON.stringify(source.server?.args ?? [])),
+    },
+  };
 }
 
 async function withMcpClient<T>(
@@ -262,4 +325,18 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : undefined;
+}
+
+function stringifyMcpInput(value: unknown): string {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+function hashString(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }

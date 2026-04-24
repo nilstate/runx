@@ -41,8 +41,9 @@ export interface ParsedArgs {
   readonly doctorFix: boolean;
   readonly doctorExplainId?: string;
   readonly doctorListDiagnostics: boolean;
-  readonly toolAction?: "build" | "migrate" | "search";
+  readonly toolAction?: "build" | "migrate" | "search" | "inspect";
   readonly toolPath?: string;
+  readonly toolRef?: string;
   readonly toolAll: boolean;
   readonly devPath?: string;
   readonly devLane?: string;
@@ -240,6 +241,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const isDoctor = command === "doctor";
   const isTool = command === "tool";
   const isToolSearch = isTool && positionals[0] === "search";
+  const isToolInspect = isTool && positionals[0] === "inspect";
   const isDev = command === "dev";
   const isMcp = command === "mcp";
   const isList = command === "list";
@@ -250,7 +252,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const addPositionals = positionals.slice(adminOffset);
   const inspectPositionals = positionals.slice(adminOffset);
   const knowledgeProject = isKnowledgeShow && typeof inputs.project === "string" ? inputs.project : undefined;
-  const sourceFilter = (isSkillSearch || isToolSearch) && typeof inputs.source === "string" ? inputs.source : undefined;
+  const sourceFilter = (isSkillSearch || isToolSearch || isToolInspect) && typeof inputs.source === "string" ? inputs.source : undefined;
   const installVersion = isSkillAdd && typeof inputs.version === "string" ? inputs.version : undefined;
   const installTo = isSkillAdd && typeof inputs.to === "string" ? inputs.to : undefined;
   const publishOwner = isSkillPublish && typeof inputs.owner === "string" ? inputs.owner : undefined;
@@ -346,8 +348,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     doctorFix: isDoctor && truthyFlag(inputs.fix),
     doctorExplainId: isDoctor && typeof inputs.explain === "string" && inputs.explain !== "true" ? inputs.explain : undefined,
     doctorListDiagnostics: isDoctor && truthyFlag(inputs.listDiagnostics ?? inputs["list-diagnostics"]),
-    toolAction: isTool && (positionals[0] === "build" || positionals[0] === "migrate" || positionals[0] === "search") ? positionals[0] : undefined,
-    toolPath: isTool ? positionals[1] : undefined,
+    toolAction: isTool && (positionals[0] === "build" || positionals[0] === "migrate" || positionals[0] === "search" || positionals[0] === "inspect") ? positionals[0] : undefined,
+    toolPath: isTool && (positionals[0] === "build" || positionals[0] === "migrate") ? positionals[1] : undefined,
+    toolRef: isToolInspect ? toolSearchPositionals.join(" ") || undefined : undefined,
     toolAll: isTool && truthyFlag(inputs.all),
     devPath: isDev ? positionals[0] : undefined,
     devLane: isDev && typeof inputs.lane === "string" ? inputs.lane : undefined,
@@ -429,6 +432,9 @@ function isSupportedCommand(parsed: ParsedArgs): boolean {
     return true;
   }
   if (parsed.command === "tool" && parsed.toolAction === "search" && parsed.searchQuery) {
+    return true;
+  }
+  if (parsed.command === "tool" && parsed.toolAction === "inspect" && parsed.toolRef) {
     return true;
   }
   if (parsed.command === "tool" && parsed.toolAction && (parsed.toolAll || parsed.toolPath)) {

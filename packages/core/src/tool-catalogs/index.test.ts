@@ -38,8 +38,8 @@ describe("tool catalogs", () => {
       tool: {
         name: "fixture.echo",
         source: {
-          type: "mcp",
-          tool: "echo",
+          type: "catalog",
+          catalogRef: "fixture-mcp:fixture.echo",
         },
         scopes: ["fixture.echo"],
         inputs: {
@@ -51,5 +51,15 @@ describe("tool catalogs", () => {
         },
       },
     });
-  });
+
+    const invoked = await resolved?.invoke({
+      inputs: { message: "from-catalog-adapter" },
+      skillDirectory: process.cwd(),
+      env: process.env,
+    });
+    expect(invoked).toMatchObject({
+      status: "success",
+      stdout: "from-catalog-adapter",
+    });
+  }, 15000);
 });

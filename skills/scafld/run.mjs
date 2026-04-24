@@ -65,7 +65,6 @@ switch (command) {
   case "start":
   case "status":
   case "review":
-  case "complete":
   case "validate":
   case "sync":
   case "summary":
@@ -74,6 +73,15 @@ switch (command) {
   case "fail":
   case "cancel":
     args.push(command, taskId);
+    break;
+  case "complete":
+    args.push("complete", taskId);
+    if (truthy(inputs.human_reviewed ?? inputs.humanReviewed)) {
+      args.push("--human-reviewed");
+    }
+    if (inputs.reason) {
+      args.push("--reason", String(inputs.reason));
+    }
     break;
   case "audit":
     args.push("audit", taskId);

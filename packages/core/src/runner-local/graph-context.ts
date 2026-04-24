@@ -60,10 +60,20 @@ export function resolveOutputPath(output: GraphStepOutput, outputPath: string): 
   };
 
   return outputPath.split(".").reduce<unknown>((value, key) => {
-    if (!isRecord(value) || !(key in value)) {
+    if (!isRecord(value)) {
       throw new Error(`Context output path '${outputPath}' was not produced by the source step.`);
     }
-    return value[key];
+
+    if (key in value) {
+      return value[key];
+    }
+
+    const packetPayload = unwrapPacketPayload(value);
+    if (packetPayload && key in packetPayload) {
+      return packetPayload[key];
+    }
+
+    throw new Error(`Context output path '${outputPath}' was not produced by the source step.`);
   }, record);
 }
 
@@ -88,4 +98,11 @@ function isArtifactEnvelopeValue(value: unknown): value is ArtifactEnvelope {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function unwrapPacketPayload(value: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (typeof value.schema !== "string") {
+    return undefined;
+  }
+  return isRecord(value.data) ? value.data : undefined;
 }

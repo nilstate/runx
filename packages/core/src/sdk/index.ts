@@ -23,8 +23,12 @@ import {
 } from "../marketplaces/index.js";
 import {
   resolveEnvToolCatalogAdapters,
+  resolveCatalogTool,
   searchToolCatalogAdapters,
+  createToolInspectResult,
+  inspectCatalogResolvedTool,
   type ToolCatalogAdapter,
+  type ToolInspectResult,
   type ToolCatalogSearchResult,
 } from "../tool-catalogs/index.js";
 import { type LocalReceipt, type ReceiptVerification } from "../receipts/index.js";
@@ -32,7 +36,9 @@ import {
   createFileRegistryStore,
   createLocalRegistryClient,
   publishSkillMarkdown,
+  readRemoteTool,
   searchRemoteRegistry,
+  searchRemoteTools,
   searchRegistry,
   type PublishSkillMarkdownOptions,
   type PublishSkillMarkdownResult,
@@ -42,6 +48,7 @@ import {
   installLocalSkill,
   inspectLocalReceipt,
   listLocalHistory,
+  resolveToolExecutionTarget,
   runLocalSkill,
   type AuthResolver,
   type Caller,
@@ -50,6 +57,7 @@ import {
 } from "../runner-local/index.js";
 import { validatePublishHarness, type PublishHarnessSummary } from "../harness/index.js";
 import type { SkillAdapter } from "../executor/index.js";
+import { parseToolManifestJson, validateToolManifest } from "../parser/index.js";
 import { createStructuredCaller, type StructuredCallerOptions } from "./caller.js";
 
 export interface ConnectService {
@@ -109,6 +117,12 @@ export interface SearchToolsOptions {
   readonly query: string;
   readonly source?: string;
   readonly limit?: number;
+}
+
+export interface InspectToolOptions {
+  readonly ref: string;
+  readonly source?: string;
+  readonly searchFromDirectory?: string;
 }
 
 export interface AddSkillOptions {
@@ -234,11 +248,79 @@ export class RunxSdk {
   }
 
   async searchTools(options: SearchToolsOptions): Promise<readonly ToolCatalogSearchResult[]> {
-    return await searchToolCatalogAdapters(
+    const normalizedSource = options.source?.trim().toLowerCase();
+    const results: ToolCatalogSearchResult[] = [];
+    const registryTarget = this.registryTarget();
+
+    if (registryTarget.mode === "remote") {
+      results.push(...(await searchRemoteTools(options.query, {
+        baseUrl: registryTarget.registryUrl,
+        limit: options.limit,
+        source: normalizedSource,
+      })));
+    }
+
+    results.push(...(await searchToolCatalogAdapters(
       this.toolCatalogAdapters(options.source),
       options.query,
       { limit: options.limit },
+    )));
+
+    return dedupeToolSearchResults(results).slice(0, options.limit ?? 20);
+  }
+
+  async inspectTool(options: InspectToolOptions): Promise<ToolInspectResult> {
+    const searchFromDirectory = resolvePathFromUserInput(
+      options.searchFromDirectory ?? this.env().RUNX_CWD ?? process.cwd(),
+      this.env(),
     );
+    const adapters = this.toolCatalogAdapters(options.source);
+    let localError: Error | undefined;
+    try {
+      const resolvedExecutionTarget = await resolveToolExecutionTarget(options.ref, searchFromDirectory, {
+        env: this.env(),
+        toolCatalogAdapters: adapters,
+      });
+
+      if (resolvedExecutionTarget.referencePath.startsWith("catalog:")) {
+        const resolvedCatalogTool = await resolveCatalogTool(adapters, options.ref, {
+          env: this.env(),
+          searchFromDirectory,
+        });
+        if (!resolvedCatalogTool) {
+          throw new Error(`Imported tool '${options.ref}' was resolved for execution but could not be inspected.`);
+        }
+        return inspectCatalogResolvedTool(options.ref, resolvedCatalogTool);
+      }
+
+      const tool = validateToolManifest(parseToolManifestJson(
+        await readFile(resolvedExecutionTarget.referencePath, "utf8"),
+      ));
+      return createToolInspectResult({
+        ref: options.ref,
+        tool,
+        referencePath: resolvedExecutionTarget.referencePath,
+        skillDirectory: resolvedExecutionTarget.skillDirectory,
+        provenance: {
+          origin: "local",
+        },
+      });
+    } catch (error) {
+      localError = error instanceof Error ? error : new Error(String(error));
+    }
+
+    const registryTarget = this.registryTarget();
+    if (registryTarget.mode === "remote") {
+      const remoteTool = await readRemoteTool(options.ref, {
+        baseUrl: registryTarget.registryUrl,
+        source: options.source,
+      });
+      if (remoteTool) {
+        return remoteTool;
+      }
+    }
+
+    throw localError ?? new Error(`Tool '${options.ref}' was not found.`);
   }
 
   async addSkill(options: AddSkillOptions): Promise<InstallLocalSkillResult> {
@@ -382,6 +464,18 @@ export async function search(options: SearchSkillsOptions & RunxSdkOptions): Pro
 
 export async function searchTools(options: SearchToolsOptions & RunxSdkOptions): Promise<readonly ToolCatalogSearchResult[]> {
   return await createRunxSdk(options).searchTools(options);
+}
+
+export async function inspectTool(options: InspectToolOptions & RunxSdkOptions): Promise<ToolInspectResult> {
+  return await createRunxSdk(options).inspectTool(options);
+}
+
+function dedupeToolSearchResults(results: readonly ToolCatalogSearchResult[]): readonly ToolCatalogSearchResult[] {
+  const deduped = new Map<string, ToolCatalogSearchResult>();
+  for (const result of results) {
+    deduped.set(result.catalog_ref, result);
+  }
+  return Array.from(deduped.values());
 }
 
 interface RunxInstallState {

@@ -28,11 +28,65 @@ export interface ToolCatalogSearchOptions {
   readonly limit?: number;
 }
 
+export interface ToolInspectProvenance {
+  readonly origin: "local" | "imported";
+  readonly source?: string;
+  readonly source_label?: string;
+  readonly source_type?: string;
+  readonly namespace?: string;
+  readonly external_name?: string;
+  readonly catalog_ref?: string;
+  readonly tool_id?: string;
+  readonly tags?: readonly string[];
+}
+
+export interface ToolInspectResult {
+  readonly ref: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly execution_source_type: string;
+  readonly inputs: Readonly<Record<string, SkillInput>>;
+  readonly scopes: readonly string[];
+  readonly mutating?: boolean;
+  readonly runtime?: unknown;
+  readonly risk?: unknown;
+  readonly runx?: Record<string, unknown>;
+  readonly reference_path: string;
+  readonly skill_directory: string;
+  readonly provenance: ToolInspectProvenance;
+}
+
+export interface ToolCatalogInvokeRequest {
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly resolvedInputs?: Readonly<Record<string, string>>;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly signal?: AbortSignal;
+  readonly skillDirectory: string;
+  readonly runId?: string;
+  readonly stepId?: string;
+}
+
+export type ToolCatalogInvokeResult =
+  | {
+      readonly status: "success";
+      readonly stdout: string;
+      readonly stderr?: string;
+      readonly metadata?: Readonly<Record<string, unknown>>;
+    }
+  | {
+      readonly status: "failure";
+      readonly stdout?: string;
+      readonly stderr: string;
+      readonly errorMessage?: string;
+      readonly metadata?: Readonly<Record<string, unknown>>;
+    };
+
 export interface ToolCatalogResolvedTool {
   readonly tool: ValidatedTool;
   readonly result: ToolCatalogSearchResult;
   readonly skillDirectory: string;
   readonly referencePath: string;
+  readonly invoke: (request: ToolCatalogInvokeRequest) => Promise<ToolCatalogInvokeResult>;
 }
 
 export interface ToolCatalogAdapter {
@@ -92,6 +146,50 @@ export async function resolveCatalogTool(
   return undefined;
 }
 
+export function createToolInspectResult(options: {
+  readonly ref: string;
+  readonly tool: ValidatedTool;
+  readonly referencePath: string;
+  readonly skillDirectory: string;
+  readonly provenance: ToolInspectProvenance;
+}): ToolInspectResult {
+  return {
+    ref: options.ref,
+    name: options.tool.name,
+    description: options.tool.description,
+    execution_source_type: options.tool.source.type,
+    inputs: options.tool.inputs,
+    scopes: options.tool.scopes,
+    mutating: options.tool.mutating,
+    runtime: options.tool.runtime,
+    risk: options.tool.risk,
+    runx: options.tool.runx,
+    reference_path: options.referencePath,
+    skill_directory: options.skillDirectory,
+    provenance: options.provenance,
+  };
+}
+
+export function inspectCatalogResolvedTool(ref: string, resolved: ToolCatalogResolvedTool): ToolInspectResult {
+  return createToolInspectResult({
+    ref,
+    tool: resolved.tool,
+    referencePath: resolved.referencePath,
+    skillDirectory: resolved.skillDirectory,
+    provenance: {
+      origin: "imported",
+      source: resolved.result.source,
+      source_label: resolved.result.source_label,
+      source_type: resolved.result.source_type,
+      namespace: resolved.result.namespace,
+      external_name: resolved.result.external_name,
+      catalog_ref: resolved.result.catalog_ref,
+      tool_id: resolved.result.tool_id,
+      tags: resolved.result.tags,
+    },
+  });
+}
+
 export function createImportedTool(options: {
   readonly name: string;
   readonly description?: string;
@@ -100,7 +198,6 @@ export function createImportedTool(options: {
   readonly source: string;
   readonly sourceLabel: string;
   readonly sourceType: string;
-  readonly skillSource: SkillSource;
   readonly inputSchema?: Readonly<Record<string, unknown>>;
   readonly scopes?: readonly string[];
   readonly tags?: readonly string[];
@@ -110,10 +207,19 @@ export function createImportedTool(options: {
 } {
   const qualifiedName = `${options.namespace}.${options.name}`;
   const scopes = options.scopes ?? [qualifiedName];
+  const catalogRef = `${options.source}:${qualifiedName}`;
   const document = {
     name: qualifiedName,
     description: options.description,
-    source: skillSourceToRaw(options.skillSource),
+    source: skillSourceToRaw({
+      type: "catalog",
+      args: [],
+      catalogRef,
+      raw: {
+        type: "catalog",
+        catalog_ref: catalogRef,
+      },
+    }),
     inputs: jsonSchemaToToolInputs(options.inputSchema),
     scopes,
     runx: {
@@ -149,7 +255,7 @@ export function createImportedTool(options: {
       external_name: options.externalName,
       required_scopes: scopes,
       tags: options.tags ?? [options.sourceType],
-      catalog_ref: `${options.source}:${qualifiedName}`,
+      catalog_ref: catalogRef,
     },
   };
 }
@@ -188,6 +294,7 @@ function skillSourceToRaw(source: SkillSource): Record<string, unknown> {
       ...(source.server.cwd ? { cwd: source.server.cwd } : {}),
     };
   }
+  if (source.catalogRef) raw.catalog_ref = source.catalogRef;
   if (source.tool) raw.tool = source.tool;
   if (source.arguments) raw.arguments = source.arguments;
   if (source.agentCardUrl) raw.agent_card_url = source.agentCardUrl;

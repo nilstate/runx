@@ -4,13 +4,17 @@ export { createLocalRegistryClient, type RegistryClient } from "./client.js";
 export {
   acquireRegistrySkill,
   readRemoteRegistrySkill,
+  readRemoteTool,
   resolveRemoteRegistryRef,
   searchRemoteRegistry,
+  searchRemoteTools,
   type AcquiredRegistrySkill,
   type AcquireRegistrySkillOptions,
+  type ReadRemoteToolOptions,
   type RemoteRegistrySkillDetail,
   type ResolveRemoteRegistryRefOptions,
   type SearchRemoteRegistryOptions,
+  type SearchRemoteToolsOptions,
 } from "./http-client.js";
 export {
   buildGitHubRegistrySkillVersion,

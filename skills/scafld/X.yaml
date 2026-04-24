@@ -106,6 +106,14 @@ runners:
         type: string
         required: false
         description: "Explicit scafld executable path; defaults to SCAFLD_BIN or scafld on PATH."
+      human_reviewed:
+        type: boolean
+        required: false
+        description: "When true, pass --human-reviewed to scafld complete."
+      reason:
+        type: string
+        required: false
+        description: "Required with human_reviewed; forwarded to scafld complete --reason."
     runtime:
       requirements:
         - "scafld CLI with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input"

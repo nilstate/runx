@@ -39,6 +39,7 @@ export interface SkillSource {
     readonly args: readonly string[];
     readonly cwd?: string;
   };
+  readonly catalogRef?: string;
   readonly tool?: string;
   readonly arguments?: Readonly<Record<string, unknown>>;
   readonly agentCardUrl?: string;
@@ -515,6 +516,9 @@ function validateSource(source: Record<string, unknown>, runx: Record<string, un
   const mcpServer = type === "mcp" ? validateMcpServer(source.server) : undefined;
   const mcpTool = type === "mcp" ? requiredString(source.tool, "source.tool") : optionalString(source.tool, "source.tool");
   const mcpArguments = optionalRecord(source.arguments, "source.arguments");
+  const catalogRef = type === "catalog"
+    ? requiredString(source.catalog_ref, "source.catalog_ref")
+    : optionalString(source.catalog_ref, "source.catalog_ref");
   const a2aAgentCardUrl =
     type === "a2a"
       ? requiredString(source.agent_card_url, "source.agent_card_url")
@@ -544,6 +548,7 @@ function validateSource(source: Record<string, unknown>, runx: Record<string, un
     inputMode,
     sandbox,
     server: mcpServer,
+    catalogRef,
     tool: mcpTool,
     arguments: mcpArguments,
     agentCardUrl: a2aAgentCardUrl,
@@ -563,8 +568,8 @@ function validateChainSource(value: unknown): ExecutionGraph {
 }
 
 function validateToolSource(source: SkillSource, field: string): SkillSource {
-  if (!["cli-tool", "mcp", "a2a"].includes(source.type)) {
-    throw new SkillValidationError(`${field} must be one of cli-tool, mcp, or a2a for tool manifests.`);
+  if (!["cli-tool", "mcp", "a2a", "catalog"].includes(source.type)) {
+    throw new SkillValidationError(`${field} must be one of cli-tool, mcp, a2a, or catalog for tool manifests.`);
   }
   return source;
 }

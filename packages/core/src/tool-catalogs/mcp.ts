@@ -1,4 +1,12 @@
-import { listMcpTools, type McpServerDefinition, type McpToolDescriptor } from "../mcp/index.js";
+import {
+  createMcpExecutionMetadata,
+  invokeMcpTool,
+  listMcpTools,
+  mapMcpArguments,
+  stringifyMcpToolResult,
+  type McpServerDefinition,
+  type McpToolDescriptor,
+} from "../mcp/index.js";
 import type { ToolCatalogAdapter, ToolCatalogResolvedTool, ToolCatalogSearchResult } from "./index.js";
 
 import { createImportedTool } from "./index.js";
@@ -72,17 +80,6 @@ function importedToolFromMcpDescriptor(
     source: options.source,
     sourceLabel: options.label,
     sourceType: "mcp",
-    skillSource: {
-      type: "mcp",
-      args: [],
-      server: options.server,
-      tool: listed.name,
-      raw: {
-        type: "mcp",
-        server: options.server,
-        tool: listed.name,
-      },
-    },
     inputSchema: listed.inputSchema,
     tags: options.tags,
   });
@@ -92,6 +89,38 @@ function importedToolFromMcpDescriptor(
     externalName: listed.name,
     skillDirectory: options.baseDirectory,
     referencePath: `catalog:${options.source}:${imported.result.name}`,
+    invoke: async (request) => {
+      try {
+        const result = await invokeMcpTool({
+          server: options.server,
+          skillDirectory: options.baseDirectory,
+          env: request.env ?? options.env,
+          timeoutMs: options.timeoutMs,
+          tool: listed.name,
+          args: mapMcpArguments(undefined, request.inputs, request.resolvedInputs),
+        });
+        return {
+          status: "success",
+          stdout: stringifyMcpToolResult(result),
+          metadata: createMcpExecutionMetadata({
+            server: options.server,
+            tool: listed.name,
+          }),
+        } as const;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : `Failed to invoke imported MCP tool '${listed.name}'.`;
+        return {
+          status: "failure",
+          stdout: "",
+          stderr: message,
+          errorMessage: message,
+          metadata: createMcpExecutionMetadata({
+            server: options.server,
+            tool: listed.name,
+          }),
+        } as const;
+      }
+    },
   };
 }
 

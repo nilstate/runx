@@ -88,6 +88,47 @@ describe("TypeScript SDK", () => {
     ]);
   });
 
+  it("can inspect imported tools and local manifest-backed tools", async () => {
+    const sdk = createRunxSdk({
+      env: {
+        ...process.env,
+        RUNX_CWD: process.cwd(),
+        RUNX_ENABLE_FIXTURE_TOOL_CATALOG: "1",
+      },
+    });
+
+    const imported = await sdk.inspectTool({
+      ref: "fixture.echo",
+      source: "fixture-mcp",
+    });
+    expect(imported).toMatchObject({
+      name: "fixture.echo",
+      execution_source_type: "catalog",
+      provenance: {
+        origin: "imported",
+        source: "fixture-mcp",
+        source_type: "mcp",
+        catalog_ref: "fixture-mcp:fixture.echo",
+      },
+    });
+
+    const local = await sdk.inspectTool({ ref: "fs.read" });
+    expect(local).toMatchObject({
+      name: "fs.read",
+      execution_source_type: "cli-tool",
+      provenance: {
+        origin: "local",
+      },
+      scopes: ["fs.read"],
+      inputs: {
+        path: {
+          type: "string",
+          required: true,
+        },
+      },
+    });
+  });
+
   it("wraps registry search/add and connect without exposing a second engine", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sdk-js-registry-"));
     const registryDir = path.join(tempDir, "registry");
@@ -256,6 +297,100 @@ describe("TypeScript SDK", () => {
         destination: path.join(installDir, "runx", "sourcey", "SKILL.md"),
         skill_id: "runx/sourcey",
         version: "1.0.0",
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("supports remote imported tools through the hosted public API", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sdk-js-remote-tools-"));
+
+    try {
+      globalThis.fetch = vi.fn(async (input) => {
+        const url = String(input);
+        if (url === "https://runx.example.test/v1/tools?q=echo&limit=20") {
+          return new Response(JSON.stringify({
+            status: "success",
+            query: { q: "echo", source: "all", limit: 20 },
+            total: 1,
+            tools: [
+              {
+                tool_id: "fixture-mcp/fixture.echo",
+                name: "fixture.echo",
+                summary: "Echo a message through the fixture MCP server.",
+                source: "fixture-mcp",
+                source_label: "Fixture MCP Catalog",
+                source_type: "mcp",
+                namespace: "fixture",
+                external_name: "echo",
+                required_scopes: ["fixture.echo"],
+                tags: ["fixture", "mcp"],
+                catalog_ref: "fixture-mcp:fixture.echo",
+              },
+            ],
+          }), { status: 200 });
+        }
+        expect(url).toBe("https://runx.example.test/v1/tools/fixture.echo");
+        return new Response(JSON.stringify({
+          status: "success",
+          tool: {
+            ref: "fixture.echo",
+            name: "fixture.echo",
+            description: "Echo a message through the fixture MCP server.",
+            execution_source_type: "catalog",
+            inputs: {
+              message: {
+                type: "string",
+                required: true,
+                description: "Message to echo.",
+              },
+            },
+            scopes: ["fixture.echo"],
+            reference_path: "catalog:fixture-mcp:fixture.echo",
+            skill_directory: "/srv/runx/catalogs/fixture-mcp",
+            provenance: {
+              origin: "imported",
+              source: "fixture-mcp",
+              source_label: "Fixture MCP Catalog",
+              source_type: "mcp",
+              namespace: "fixture",
+              external_name: "echo",
+              catalog_ref: "fixture-mcp:fixture.echo",
+              tool_id: "fixture-mcp/fixture.echo",
+              tags: ["fixture", "mcp"],
+            },
+          },
+        }), { status: 200 });
+      }) as typeof fetch;
+
+      const sdk = createRunxSdk({
+        env: {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          RUNX_HOME: path.join(tempDir, "home"),
+          RUNX_REGISTRY_URL: "https://runx.example.test",
+        },
+      });
+
+      const searchResults = await sdk.searchTools({ query: "echo" });
+      expect(searchResults).toMatchObject([
+        {
+          name: "fixture.echo",
+          source: "fixture-mcp",
+          source_type: "mcp",
+        },
+      ]);
+
+      const detail = await sdk.inspectTool({ ref: "fixture.echo" });
+      expect(detail).toMatchObject({
+        name: "fixture.echo",
+        execution_source_type: "catalog",
+        provenance: {
+          origin: "imported",
+          source: "fixture-mcp",
+          source_type: "mcp",
+        },
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });

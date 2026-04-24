@@ -589,8 +589,16 @@ runners:
             JSON block must include schema_version: 3, round_status: completed,
             reviewer_mode, reviewer_session, reviewed_at, override_reason, and
             pass_results for spec_compliance, scope_drift, regression_hunt,
-            convention_check, and dark_patterns. Use verdict pass_with_issues
-            when there are non-blocking findings, and use pass only when the
+            convention_check, and dark_patterns. `### Metadata` must contain a
+            fenced code block exactly in the form ```json ... ``` with valid
+            JSON inside; do not inline raw JSON without fences. In
+            `### Regression Hunt`, `### Convention Check`, and
+            `### Dark Patterns`, use one of two forms only:
+            - `No issues found — checked <grounded scope>.`
+            - `- **severity** \`file:line\` — explanation`
+            Do not use bullets for no-issues notes, and do not omit the
+            grounded `checked ...` clause when reporting no issues. Use verdict
+            pass_with_issues when there are non-blocking findings, and use pass only when the
             blocking section is empty and the pass_results block reflects a
             clean review. When `### Blocking` or `### Non-blocking` has no
             findings, write the literal `None.` on the next line with no bullet

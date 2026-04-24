@@ -501,7 +501,7 @@ source:
   task: think
 `),
       ),
-    ).toThrow("source.type must be one of cli-tool, mcp, or a2a for tool manifests.");
+    ).toThrow("source.type must be one of cli-tool, mcp, a2a, or catalog for tool manifests.");
   });
 });
 

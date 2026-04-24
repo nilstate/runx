@@ -1,0 +1,36 @@
+{
+  "name": "@runxhq/langchain",
+  "version": "0.1.0",
+  "description": "Optional LangChain bridge for runx tool catalogs and governed workflow tools.",
+  "private": false,
+  "license": "Apache-2.0",
+  "type": "module",
+  "homepage": "https://github.com/runxhq/runx",
+  "bugs": {
+    "url": "https://github.com/runxhq/runx/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/runxhq/runx.git",
+    "directory": "packages/langchain"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@langchain/core": "^1.0.6",
+    "@runxhq/core": "workspace:^0.1.1",
+    "zod": "^4.1.12",
+    "zod-to-json-schema": "^3.24.6"
+  }
+}
