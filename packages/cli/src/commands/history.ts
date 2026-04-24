@@ -18,6 +18,8 @@ export interface HistoryCommandArgs {
   readonly historySkill?: string;
   readonly historyStatus?: string;
   readonly historySource?: string;
+  readonly historyActor?: string;
+  readonly historyArtifactType?: string;
   readonly historySince?: string;
   readonly historyUntil?: string;
 }
@@ -44,6 +46,8 @@ export async function handleHistoryCommand(
     skill: parsed.historySkill,
     status: parsed.historyStatus,
     sourceType: parsed.historySource,
+    actor: parsed.historyActor,
+    artifactType: parsed.historyArtifactType,
     sinceMs: parseDateFilter(parsed.historySince, "--since"),
     untilMs: parseDateFilter(parsed.historyUntil, "--until"),
   });
@@ -59,6 +63,8 @@ export function renderReceiptInspection(summary: LocalReceiptSummary, env: NodeJ
   if (summary.sourceType) rows.push(["source", summary.sourceType]);
   if (summary.startedAt) rows.push(["started", relativeTime(summary.startedAt)]);
   if (summary.completedAt) rows.push(["completed", relativeTime(summary.completedAt)]);
+  if (summary.actors && summary.actors.length > 0) rows.push(["actors", summary.actors.join(", ")]);
+  if (summary.artifactTypes && summary.artifactTypes.length > 0) rows.push(["artifacts", summary.artifactTypes.join(", ")]);
   if (summary.verification) rows.push(["verify", `${summary.verification.status}${summary.verification.reason ? ` (${summary.verification.reason})` : ""}`]);
   rows.push(["history", "runx history"]);
   rows.push(["json", `runx inspect ${summary.id} --json`]);

@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 const nonInteractiveCaller: Caller = {
@@ -25,6 +26,7 @@ describe("MCP skill runner", () => {
         receiptDir,
         runxHome,
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("success");

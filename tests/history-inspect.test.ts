@@ -5,7 +5,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
+import { appendLedgerEntries, createArtifactEnvelope } from "@runxhq/core/artifacts";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
+import { writeLocalReceipt } from "@runxhq/core/receipts";
+import { inspectLocalReceipt, listLocalHistory } from "@runxhq/core/runner-local";
 
 describe("history, inspect, and knowledge CLI", () => {
   it("uses receipt files for history/inspect and knowledge for project projections", async () => {
@@ -109,6 +112,150 @@ describe("history, inspect, and knowledge CLI", () => {
             key: "homepage_url",
             value: "https://example.test",
             receipt_id: runReport.receipt.id,
+          },
+        ],
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("filters local history by actor and artifact type and exposes the same summary through inspect", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-history-filters-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+
+    try {
+      const builderReceiptId = "rx_historybuilder0001";
+      const builderArtifact = createArtifactEnvelope({
+        type: "draft_pull_request",
+        data: { title: "Draft PR" },
+        runId: builderReceiptId,
+        producer: { skill: "draft-content", runner: "agent-step" },
+      });
+      await writeLocalReceipt({
+        receiptId: builderReceiptId,
+        receiptDir,
+        runxHome,
+        skillName: "draft-content",
+        sourceType: "agent-step",
+        inputs: { objective: "draft a pull request" },
+        stdout: JSON.stringify({ ok: true }),
+        stderr: "",
+        execution: {
+          status: "success",
+          exitCode: 0,
+          signal: null,
+          durationMs: 2,
+          metadata: {
+            agent_hook: {
+              source_type: "agent-step",
+              agent: "builder",
+              task: "draft-pr",
+              route: "provided",
+              status: "success",
+            },
+            runner: {
+              provider: "openai",
+            },
+          },
+        },
+        artifactIds: [builderArtifact.meta.artifact_id],
+        startedAt: "2026-04-24T00:00:00Z",
+        completedAt: "2026-04-24T00:00:01Z",
+      });
+      await appendLedgerEntries({
+        receiptDir,
+        runId: builderReceiptId,
+        entries: [builderArtifact],
+      });
+
+      const reviewerReceiptId = "rx_historyreviewer0001";
+      const reviewerArtifact = createArtifactEnvelope({
+        type: "triage_packet",
+        data: { verdict: "needs follow-up" },
+        runId: reviewerReceiptId,
+        producer: { skill: "request-triage", runner: "cli-tool" },
+      });
+      await writeLocalReceipt({
+        receiptId: reviewerReceiptId,
+        receiptDir,
+        runxHome,
+        skillName: "request-triage",
+        sourceType: "cli-tool",
+        inputs: { thread: "support request" },
+        stdout: JSON.stringify({ ok: true }),
+        stderr: "",
+        execution: {
+          status: "success",
+          exitCode: 0,
+          signal: null,
+          durationMs: 2,
+          metadata: {
+            runner: {
+              provider: "anthropic",
+            },
+          },
+        },
+        artifactIds: [reviewerArtifact.meta.artifact_id],
+        startedAt: "2026-04-24T00:10:00Z",
+        completedAt: "2026-04-24T00:10:01Z",
+      });
+      await appendLedgerEntries({
+        receiptDir,
+        runId: reviewerReceiptId,
+        entries: [reviewerArtifact],
+      });
+
+      await expect(listLocalHistory({ receiptDir, runxHome, actor: "builder" })).resolves.toMatchObject({
+        receipts: [
+          {
+            id: builderReceiptId,
+            actors: ["builder", "openai"],
+            artifactTypes: ["draft_pull_request"],
+          },
+        ],
+      });
+
+      await expect(listLocalHistory({ receiptDir, runxHome, artifactType: "triage_packet" })).resolves.toMatchObject({
+        receipts: [
+          {
+            id: reviewerReceiptId,
+            artifactTypes: ["triage_packet"],
+          },
+        ],
+      });
+
+      await expect(inspectLocalReceipt({ receiptDir, runxHome, receiptId: builderReceiptId })).resolves.toMatchObject({
+        summary: {
+          id: builderReceiptId,
+          actors: ["builder", "openai"],
+          artifactTypes: ["draft_pull_request"],
+        },
+      });
+
+      const historyStdout = createMemoryStream();
+      const historyExit = await runCli(
+        ["history", "--actor", "builder", "--artifact-type", "draft_pull_request", "--receipt-dir", receiptDir, "--json"],
+        { stdin: process.stdin, stdout: historyStdout, stderr: createMemoryStream() },
+        {
+          ...process.env,
+          RUNX_CWD: process.cwd(),
+          RUNX_HOME: runxHome,
+        },
+      );
+      expect(historyExit).toBe(0);
+      expect(JSON.parse(historyStdout.contents())).toMatchObject({
+        status: "success",
+        filters: {
+          actor: "builder",
+          artifact_type: "draft_pull_request",
+        },
+        receipts: [
+          {
+            id: builderReceiptId,
+            actors: ["builder", "openai"],
+            artifactTypes: ["draft_pull_request"],
           },
         ],
       });

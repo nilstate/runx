@@ -44,45 +44,64 @@ harness:
               updated: "2026-04-20T00:00:00Z"
               status: "draft"
               task:
-                title: "Reach author-spec harness stub"
+                title: "Fixture README guidance"
                 summary: >
-                  Minimal stub spec emitted by the cycle-8 harness fixture; the
-                  chain uses this to exercise steps past author-spec.
+                  Add one bounded README update so the harness can prove the
+                  lane crosses the author-spec boundary with a fully formed
+                  scafld document instead of an inline stub.
                 size: "micro"
                 risk_level: "low"
                 context:
-                  packages: []
-                  invariants: []
+                  packages:
+                    - "fixture"
+                  invariants:
+                    - "bounded_scope"
+                    - "single_file_change"
                   files_impacted:
                     - "README.md"
                   cwd: "/tmp"
                 objectives:
-                  - "Update the stub readme"
+                  - "Replace the fixture README text with the approved guidance."
                 touchpoints:
                   - area: "docs"
-                    description: "Keep the stub README aligned with the fixture."
+                    description: "Keep the README fixture aligned with the authored spec."
                 acceptance:
                   definition_of_done:
                     - id: "dod1"
-                      description: "Stub"
+                      description: "README.md contains the fixture guidance text."
                       status: "pending"
-                  validation: []
+                  validation:
+                    - id: "v1"
+                      type: "test"
+                      description: "README.md contains the fixture guidance text."
+                      command: "grep -q '^fixture guidance$' README.md"
+                      expected: "exit code 0"
               planning_log:
                 - timestamp: "2026-04-20T00:00:00Z"
                   actor: "agent"
-                  summary: "Stub from cycle-8 harness fixture."
+                  summary: "Fixture-grade spec used to cross the author-spec boundary."
               phases:
                 - id: "phase1"
-                  name: "Stub"
-                  objective: "Stub"
-                  changes: []
-                  acceptance_criteria: []
+                  name: "Update fixture README"
+                  objective: "Write the bounded README change and validate it."
+                  changes:
+                    - file: "README.md"
+                      action: "update"
+                      content_spec: |
+                        Replace the fixture README contents with the approved
+                        harness guidance text.
+                  acceptance_criteria:
+                    - id: "ac1_1"
+                      type: "test"
+                      description: "README.md contains the fixture guidance text."
+                      command: "grep -q '^fixture guidance$' README.md"
+                      expected: "exit code 0"
                   status: "pending"
               rollback:
                 strategy: "per_phase"
                 commands:
-                  phase1: "true"
-      # The stub spec lets the chain progress past author-spec.
+                  phase1: "git checkout HEAD -- README.md"
+      # This fully formed fixture spec lets the chain progress past author-spec.
       # author-fix (the next agent-step hand-off) has no canned
       # answer here, so the chain yields `needs_resolution` at
       # that point.
@@ -107,42 +126,55 @@ harness:
               updated: "2026-04-20T00:00:00Z"
               status: "draft"
               task:
-                title: "Reviewer-boundary harness stub"
+                title: "Fixture reviewer boundary"
                 summary: >
-                  Minimal stub spec emitted by the reviewer-boundary harness case.
+                  Apply one bounded README update so the harness can reach the
+                  explicit reviewer hand-off with a real authored spec and fix
+                  bundle instead of stub fixture prose.
                 size: "micro"
                 risk_level: "low"
                 context:
-                  packages: []
-                  invariants: []
-                  files_impacted: []
+                  packages:
+                    - "fixture"
+                  invariants:
+                    - "bounded_scope"
+                    - "single_file_change"
+                  files_impacted:
+                    - "README.md"
                   cwd: "/tmp"
                 objectives:
-                  - "Stub objective"
-                touchpoints: []
+                  - "Replace README.md with the reviewer-boundary fixture text."
+                touchpoints:
+                  - area: "docs"
+                    description: "Keep the README fixture aligned with the reviewer-boundary contract."
                 acceptance:
                   definition_of_done:
                     - id: "dod1"
-                      description: "Stub"
+                      description: "README.md contains the reviewer-boundary fixture text."
                       status: "pending"
-                  validation: []
+                  validation:
+                    - id: "v1"
+                      type: "test"
+                      description: "README.md contains the reviewer-boundary fixture text."
+                      command: "grep -q '^review boundary fixture$' README.md"
+                      expected: "exit code 0"
               planning_log:
                 - timestamp: "2026-04-20T00:00:00Z"
                   actor: "agent"
-                  summary: "Stub from reviewer-boundary fixture."
+                  summary: "Fixture-grade spec used to reach the explicit reviewer boundary."
               phases:
                 - id: "phase1"
-                  name: "Stub"
-                  objective: "Stub"
+                  name: "Write reviewer-boundary fixture"
+                  objective: "Write the bounded README change and carry it to review."
                   changes:
                     - file: "README.md"
                       action: "update"
-                      content_spec: "Write the fixture README text."
+                      content_spec: "Write the reviewer-boundary fixture README text."
                   acceptance_criteria:
                     - id: "ac1"
                       type: "test"
-                      description: "README contains the stub output"
-                      command: "grep -q '^stub fixture$' README.md"
+                      description: "README contains the reviewer-boundary fixture text"
+                      command: "grep -q '^review boundary fixture$' README.md"
                       expected: "exit code 0"
                   status: "pending"
               rollback:
@@ -153,8 +185,8 @@ harness:
             fix_bundle:
               files:
                 - path: "README.md"
-                  contents: "stub fixture\n"
-              summary: Stub fix bundle writing one declared fixture file.
+                  contents: "review boundary fixture\n"
+              summary: Fixture-grade fix bundle writing the one declared README file.
       # With authored spec and fix answers canned, the lane advances all the
       # way to the explicit reviewer boundary and then yields
       # `needs_resolution`. That proves the engineering loop without faking a

@@ -123,6 +123,99 @@ describe("thread.push_outbox tool", () => {
     }
   });
 
+  it("preserves multiple message outbox entries on the same file-backed thread", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-tool-messages-"));
+    const statePath = path.join(tempDir, "thread.json");
+
+    try {
+      const baseThread = {
+        kind: "runx.thread.v1",
+        adapter: {
+          type: "file",
+          adapter_ref: statePath,
+        },
+        thread_kind: "work_item",
+        thread_locator: "local://provider/issues/123",
+        entries: [],
+        decisions: [],
+        outbox: [],
+        source_refs: [],
+      };
+      await writeFile(statePath, `${JSON.stringify(baseThread, null, 2)}\n`);
+
+      const first = runTool({
+        thread: baseThread,
+        outbox_entry: {
+          entry_id: "message:review-pr",
+          kind: "message",
+          title: "Review docs PR draft",
+          status: "proposed",
+          thread_locator: "local://provider/issues/123",
+          metadata: {
+            body_markdown: "## Exact PR Body",
+          },
+        },
+        next_status: "published",
+      });
+
+      const second = runTool({
+        thread: first.thread,
+        outbox_entry: {
+          entry_id: "message:review-outreach",
+          kind: "message",
+          title: "Review docs outreach draft",
+          status: "proposed",
+          thread_locator: "local://provider/issues/123",
+          metadata: {
+            body_markdown: "## Exact Outreach Body",
+          },
+        },
+        next_status: "published",
+      });
+
+      expect(first.outbox_entry).toMatchObject({
+        entry_id: "message:review-pr",
+        status: "published",
+      });
+      expect(second.outbox_entry).toMatchObject({
+        entry_id: "message:review-outreach",
+        status: "published",
+      });
+      expect(first.outbox_entry.locator).not.toBe(second.outbox_entry.locator);
+
+      expect(second.thread.outbox).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            entry_id: "message:review-pr",
+            kind: "message",
+            status: "published",
+          }),
+          expect.objectContaining({
+            entry_id: "message:review-outreach",
+            kind: "message",
+            status: "published",
+          }),
+        ]),
+      );
+      expect(second.thread.outbox).toHaveLength(2);
+
+      expect(JSON.parse(await readFile(statePath, "utf8"))).toMatchObject({
+        outbox: expect.arrayContaining([
+          expect.objectContaining({
+            entry_id: "message:review-pr",
+            locator: expect.any(String),
+          }),
+          expect.objectContaining({
+            entry_id: "message:review-outreach",
+            locator: expect.any(String),
+          }),
+        ]),
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("pushes a GitHub draft pull request, rehydrates the issue thread, and returns refreshed thread", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-tool-"));
     const workspace = path.join(tempDir, "workspace");

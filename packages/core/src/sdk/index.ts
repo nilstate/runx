@@ -21,6 +21,12 @@ import {
   type MarketplaceAdapter,
   type SkillSearchResult,
 } from "../marketplaces/index.js";
+import {
+  resolveEnvToolCatalogAdapters,
+  searchToolCatalogAdapters,
+  type ToolCatalogAdapter,
+  type ToolCatalogSearchResult,
+} from "../tool-catalogs/index.js";
 import { type LocalReceipt, type ReceiptVerification } from "../receipts/index.js";
 import {
   createFileRegistryStore,
@@ -69,6 +75,7 @@ export interface RunxSdkOptions {
   readonly registryUrl?: string;
   readonly registryStore?: RegistryStore;
   readonly marketplaceAdapters?: readonly MarketplaceAdapter[];
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly connect?: ConnectService;
   readonly authResolver?: AuthResolver;
   readonly allowedSourceTypes?: readonly string[];
@@ -93,6 +100,12 @@ export interface RunSkillOptions {
 }
 
 export interface SearchSkillsOptions {
+  readonly query: string;
+  readonly source?: string;
+  readonly limit?: number;
+}
+
+export interface SearchToolsOptions {
   readonly query: string;
   readonly source?: string;
   readonly limit?: number;
@@ -157,6 +170,7 @@ export class RunxSdk {
       resumeFromRunId: options.resumeFromRunId,
       adapters: options.adapters ?? this.options.adapters,
       voiceProfilePath: options.voiceProfilePath ?? this.options.voiceProfilePath,
+      toolCatalogAdapters: this.toolCatalogAdapters(),
     });
   }
 
@@ -217,6 +231,14 @@ export class RunxSdk {
     results.push(...(await searchMarketplaceAdapters(marketplaceAdapters, options.query, { limit: options.limit })));
 
     return results.slice(0, options.limit ?? 20);
+  }
+
+  async searchTools(options: SearchToolsOptions): Promise<readonly ToolCatalogSearchResult[]> {
+    return await searchToolCatalogAdapters(
+      this.toolCatalogAdapters(options.source),
+      options.query,
+      { limit: options.limit },
+    );
   }
 
   async addSkill(options: AddSkillOptions): Promise<InstallLocalSkillResult> {
@@ -323,6 +345,13 @@ export class RunxSdk {
     return [];
   }
 
+  private toolCatalogAdapters(source?: string): readonly ToolCatalogAdapter[] {
+    if (this.options.toolCatalogAdapters) {
+      return this.options.toolCatalogAdapters;
+    }
+    return resolveEnvToolCatalogAdapters(this.env(), source);
+  }
+
   private requireConnect(): ConnectService {
     if (!this.options.connect) {
       throw new Error("runx SDK connect methods require a configured connect service.");
@@ -349,6 +378,10 @@ export async function history(options: HistoryOptions & RunxSdkOptions = {}): Pr
 
 export async function search(options: SearchSkillsOptions & RunxSdkOptions): Promise<readonly SkillSearchResult[]> {
   return await createRunxSdk(options).searchSkills(options);
+}
+
+export async function searchTools(options: SearchToolsOptions & RunxSdkOptions): Promise<readonly ToolCatalogSearchResult[]> {
+  return await createRunxSdk(options).searchTools(options);
 }
 
 interface RunxInstallState {

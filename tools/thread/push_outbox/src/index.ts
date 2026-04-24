@@ -246,12 +246,7 @@ async function runPushOutbox({ inputs, env }) {
     (candidate) =>
       candidate.entry_id === outboxEntry.entry_id ||
       (firstNonEmptyString(outboxEntry.locator) &&
-        candidate.locator === outboxEntry.locator) ||
-      (candidate.kind === outboxEntry.kind &&
-        firstNonEmptyString(
-          candidate.thread_locator,
-          currentState.thread_locator,
-        ) === threadLocator),
+        candidate.locator === outboxEntry.locator),
   );
   const pushedAt = new Date().toISOString();
   const pushedEntry = {
@@ -356,12 +351,7 @@ function upsertOutboxEntry(existingEntries, entry) {
   const filtered = existingEntries.filter(
     (candidate) =>
       candidate.entry_id !== entry.entry_id &&
-      candidate.locator !== entry.locator &&
-      !(
-        candidate.kind === entry.kind &&
-        firstNonEmptyString(candidate.thread_locator) ===
-          firstNonEmptyString(entry.thread_locator)
-      ),
+      candidate.locator !== entry.locator,
   );
   return [...filtered, entry];
 }

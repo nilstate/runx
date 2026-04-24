@@ -23,6 +23,7 @@ import {
   type RunLocalSkillResult,
 } from "../runner-local/index.js";
 import type { RegistryStore } from "../registry/index.js";
+import type { ToolCatalogAdapter } from "../tool-catalogs/index.js";
 import type { ResolutionRequest, ResolutionResponse, SkillAdapter } from "../executor/index.js";
 
 type HarnessKind = "skill" | "graph";
@@ -43,6 +44,7 @@ export interface HarnessRunOptions {
   readonly keepFiles?: boolean;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly adapters?: readonly SkillAdapter[];
   readonly voiceProfilePath?: string;
 }
@@ -222,6 +224,7 @@ async function executeHarnessFixture(args: {
             runxHome,
             registryStore: args.options.registryStore,
             skillCacheDir: args.options.skillCacheDir,
+            toolCatalogAdapters: args.options.toolCatalogAdapters,
             adapters: args.options.adapters,
             voiceProfilePath: args.options.voiceProfilePath,
           })
@@ -234,6 +237,7 @@ async function executeHarnessFixture(args: {
             runxHome,
             registryStore: args.options.registryStore,
             skillCacheDir: args.options.skillCacheDir,
+            toolCatalogAdapters: args.options.toolCatalogAdapters,
             adapters: args.options.adapters,
             voiceProfilePath: args.options.voiceProfilePath,
           });

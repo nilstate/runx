@@ -7,6 +7,7 @@ import {
 } from "@runxhq/contracts";
 import type { ArtifactEnvelope } from "../artifacts/index.js";
 import type { ValidatedSkill } from "../parser/index.js";
+import type { ToolCatalogAdapter } from "../tool-catalogs/index.js";
 
 export const CONTROL_SCHEMA_REFS = {
   output_contract: RUNX_CONTROL_SCHEMA_REFS.output_contract,
@@ -151,6 +152,7 @@ export interface AdapterInvokeRequest {
   readonly context?: Context;
   readonly voiceProfile?: ContextDocument;
   readonly qualityProfile?: QualityProfileContext;
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
 }
 
 export type AdapterInvokeResult =
@@ -204,6 +206,7 @@ export interface ExecuteSkillOptions {
   readonly context?: Context;
   readonly voiceProfile?: ContextDocument;
   readonly qualityProfile?: QualityProfileContext;
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
 }
 
 export async function executeSkill(options: ExecuteSkillOptions): Promise<AdapterInvokeResult> {
@@ -240,6 +243,7 @@ export async function executeSkill(options: ExecuteSkillOptions): Promise<Adapte
     context: options.context,
     voiceProfile: options.voiceProfile,
     qualityProfile: options.qualityProfile,
+    toolCatalogAdapters: options.toolCatalogAdapters,
   });
 }
 

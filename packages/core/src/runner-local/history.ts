@@ -1,4 +1,8 @@
 import {
+  SYSTEM_ARTIFACT_TYPES,
+  readLedgerEntries,
+} from "../artifacts/index.js";
+import {
   listVerifiedLocalReceipts,
   readVerifiedLocalReceipt,
   type LocalGraphReceipt,
@@ -36,6 +40,8 @@ export interface ListLocalHistoryOptions {
   readonly skill?: string;
   readonly status?: string;
   readonly sourceType?: string;
+  readonly actor?: string;
+  readonly artifactType?: string;
   readonly sinceMs?: number;
   readonly untilMs?: number;
 }
@@ -53,6 +59,8 @@ export interface LocalReceiptSummary {
   readonly sourceType?: string;
   readonly startedAt?: string;
   readonly completedAt?: string;
+  readonly actors?: readonly string[];
+  readonly artifactTypes?: readonly string[];
 }
 
 export interface InspectLocalGraphResult {
@@ -115,38 +123,48 @@ export async function inspectLocalGraph(options: InspectLocalGraphOptions): Prom
 }
 
 export async function inspectLocalReceipt(options: InspectLocalReceiptOptions): Promise<InspectLocalReceiptResult> {
+  const receiptDir = options.receiptDir ?? defaultReceiptDir(options.env);
   const { receipt, verification } = await readVerifiedLocalReceipt(
-    options.receiptDir ?? defaultReceiptDir(options.env),
+    receiptDir,
     options.receiptId,
     options.runxHome ?? options.env?.RUNX_HOME,
   );
   return {
     receipt,
     verification,
-    summary: summarizeLocalReceipt(receipt, verification),
+    summary: await summarizeLocalReceipt(receipt, verification, receiptDir),
   };
 }
 
 export async function listLocalHistory(options: ListLocalHistoryOptions = {}): Promise<ListLocalHistoryResult> {
+  const receiptDir = options.receiptDir ?? defaultReceiptDir(options.env);
   const receipts = await listVerifiedLocalReceipts(
-    options.receiptDir ?? defaultReceiptDir(options.env),
+    receiptDir,
     options.runxHome ?? options.env?.RUNX_HOME,
   );
   const normalizedQuery = options.query?.trim().toLowerCase();
   const skillFilter = options.skill?.trim().toLowerCase();
   const statusFilter = options.status?.trim().toLowerCase();
   const sourceFilter = options.sourceType?.trim().toLowerCase();
+  const actorFilter = options.actor?.trim().toLowerCase();
+  const artifactTypeFilter = options.artifactType?.trim().toLowerCase();
   const sinceMs = options.sinceMs;
   const untilMs = options.untilMs;
+  const summaries = await Promise.all(
+    receipts.map(async ({ receipt, verification }) => await summarizeLocalReceipt(receipt, verification, receiptDir)),
+  );
   return {
-    receipts: receipts
-      .map(({ receipt, verification }) => summarizeLocalReceipt(receipt, verification))
+    receipts: summaries
       .filter((summary) => {
         if (normalizedQuery) {
+          const normalizedActors = (summary.actors ?? []).map((entry) => entry.toLowerCase());
+          const normalizedArtifactTypes = (summary.artifactTypes ?? []).map((entry) => entry.toLowerCase());
           const matchesQuery =
             summary.name.toLowerCase().includes(normalizedQuery) ||
             summary.id.toLowerCase().includes(normalizedQuery) ||
-            (summary.sourceType?.toLowerCase().includes(normalizedQuery) ?? false);
+            (summary.sourceType?.toLowerCase().includes(normalizedQuery) ?? false) ||
+            normalizedActors.some((entry) => entry.includes(normalizedQuery)) ||
+            normalizedArtifactTypes.some((entry) => entry.includes(normalizedQuery));
           if (!matchesQuery) return false;
         }
         if (skillFilter && !summary.name.toLowerCase().includes(skillFilter)) {
@@ -157,6 +175,18 @@ export async function listLocalHistory(options: ListLocalHistoryOptions = {}): P
         }
         if (sourceFilter && (summary.sourceType ?? "").toLowerCase() !== sourceFilter) {
           return false;
+        }
+        if (actorFilter) {
+          const normalizedActors = (summary.actors ?? []).map((entry) => entry.toLowerCase());
+          if (!normalizedActors.includes(actorFilter)) {
+            return false;
+          }
+        }
+        if (artifactTypeFilter) {
+          const normalizedArtifactTypes = (summary.artifactTypes ?? []).map((entry) => entry.toLowerCase());
+          if (!normalizedArtifactTypes.includes(artifactTypeFilter)) {
+            return false;
+          }
         }
         if (sinceMs !== undefined) {
           const startedMs = summary.startedAt ? Date.parse(summary.startedAt) : NaN;
@@ -172,7 +202,13 @@ export async function listLocalHistory(options: ListLocalHistoryOptions = {}): P
   };
 }
 
-function summarizeLocalReceipt(receipt: LocalReceipt, verification: ReceiptVerification): LocalReceiptSummary {
+async function summarizeLocalReceipt(
+  receipt: LocalReceipt,
+  verification: ReceiptVerification,
+  receiptDir: string,
+): Promise<LocalReceiptSummary> {
+  const actors = extractReceiptActors(receipt);
+  const artifactTypes = await extractReceiptArtifactTypes(receipt, receiptDir);
   if (receipt.kind === "skill_execution") {
     return {
       id: receipt.id,
@@ -183,6 +219,8 @@ function summarizeLocalReceipt(receipt: LocalReceipt, verification: ReceiptVerif
       sourceType: receipt.source_type,
       startedAt: receipt.started_at,
       completedAt: receipt.completed_at,
+      actors,
+      artifactTypes,
     };
   }
 
@@ -194,5 +232,49 @@ function summarizeLocalReceipt(receipt: LocalReceipt, verification: ReceiptVerif
     name: receipt.graph_name,
     startedAt: receipt.started_at,
     completedAt: receipt.completed_at,
+    actors,
+    artifactTypes,
   };
+}
+
+function extractReceiptActors(receipt: LocalReceipt): readonly string[] | undefined {
+  const metadata = isRecord(receipt.metadata) ? receipt.metadata : undefined;
+  if (!metadata) {
+    return undefined;
+  }
+  const actors = [
+    readNestedString(metadata, ["agent_hook", "agent"]),
+    readNestedString(metadata, ["agent_runner", "skill"]),
+    readNestedString(metadata, ["auth", "provider"]),
+    readNestedString(metadata, ["runner", "provider"]),
+    readNestedString(metadata, ["approval", "gate_type"]),
+  ].filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+  return actors.length > 0 ? Array.from(new Set(actors)) : undefined;
+}
+
+async function extractReceiptArtifactTypes(receipt: LocalReceipt, receiptDir: string): Promise<readonly string[] | undefined> {
+  const ledgerEntries = await readLedgerEntries(receiptDir, receipt.id);
+  const directArtifactIds = receipt.kind === "skill_execution" && Array.isArray(receipt.artifact_ids)
+    ? new Set(receipt.artifact_ids)
+    : undefined;
+  const artifactTypes = ledgerEntries
+    .filter((entry) => entry.type !== null && !SYSTEM_ARTIFACT_TYPES.has(entry.type))
+    .filter((entry) => !directArtifactIds || directArtifactIds.has(entry.meta.artifact_id))
+    .map((entry) => entry.type as string);
+  return artifactTypes.length > 0 ? Array.from(new Set(artifactTypes)) : undefined;
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readNestedString(value: Readonly<Record<string, unknown>>, path: readonly string[]): string | undefined {
+  let current: unknown = value;
+  for (const key of path) {
+    if (!isRecord(current) || !(key in current)) {
+      return undefined;
+    }
+    current = current[key];
+  }
+  return typeof current === "string" ? current : undefined;
 }

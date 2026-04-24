@@ -22,6 +22,7 @@ import {
   type ValidatedTool,
 } from "../parser/index.js";
 import type { RegistryStore } from "../registry/index.js";
+import { resolveCatalogTool, type ToolCatalogAdapter } from "../tool-catalogs/index.js";
 
 import { defaultRegistrySkillCacheDir, isRegistryRef, materializeRegistrySkill } from "./registry-resolver.js";
 
@@ -39,11 +40,13 @@ export interface ResolvedSkillReference {
 }
 
 interface ResolvedToolReference {
-  readonly manifestPath: string;
+  readonly referencePath: string;
+  readonly skillDirectory: string;
+  readonly tool?: ValidatedTool;
 }
 
 export interface ResolvedToolExecutionTarget {
-  readonly manifestPath: string;
+  readonly referencePath: string;
   readonly skillDirectory: string;
   readonly skill: ValidatedSkill;
 }
@@ -56,6 +59,7 @@ interface SkillEnvironment {
 interface ToolResolutionOptions {
   readonly env?: NodeJS.ProcessEnv;
   readonly toolRoots?: readonly string[];
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
 }
 
 export async function resolveSkillRunner(
@@ -167,6 +171,7 @@ export async function loadGraphStepExecutables(
   graphDirectory: string,
   registryStore?: RegistryStore,
   skillCacheDir?: string,
+  toolCatalogAdapters?: readonly ToolCatalogAdapter[],
 ): Promise<ReadonlyMap<string, ValidatedSkill>> {
   const skills = new Map<string, ValidatedSkill>();
   for (const step of graph.steps) {
@@ -176,7 +181,7 @@ export async function loadGraphStepExecutables(
       continue;
     }
     if (step.tool) {
-      skills.set(step.id, await loadValidatedTool(step.tool, graphDirectory));
+      skills.set(step.id, await loadValidatedTool(step.tool, graphDirectory, { toolCatalogAdapters }));
     }
   }
   return skills;
@@ -189,6 +194,7 @@ export async function resolveGraphStepExecution(options: {
   readonly skillEnvironment?: SkillEnvironment;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
 }): Promise<{
   readonly skill: ValidatedSkill;
   readonly skillPath: string;
@@ -211,10 +217,14 @@ export async function resolveGraphStepExecution(options: {
   }
 
   if (options.step.tool) {
-    const resolvedTool = await resolveToolReference(options.step.tool, options.graphDirectory);
+    const resolvedTool = await resolveToolReference(options.step.tool, options.graphDirectory, {
+      toolCatalogAdapters: options.toolCatalogAdapters,
+    });
     return {
-      skill: options.graphStepCache.get(options.step.id) ?? (await loadValidatedTool(options.step.tool, options.graphDirectory)),
-      skillPath: resolvedTool.manifestPath,
+      skill: options.graphStepCache.get(options.step.id) ?? (await loadValidatedTool(options.step.tool, options.graphDirectory, {
+        toolCatalogAdapters: options.toolCatalogAdapters,
+      })),
+      skillPath: resolvedTool.referencePath,
       reference: options.step.tool,
     };
   }
@@ -284,11 +294,11 @@ export async function resolveToolExecutionTarget(
   options: ToolResolutionOptions = {},
 ): Promise<ResolvedToolExecutionTarget> {
   const resolvedTool = await resolveToolReference(toolName, searchFromDirectory, options);
-  const manifestContents = await readFile(resolvedTool.manifestPath, "utf8");
-  const tool = validateToolManifest(parseToolManifestJson(manifestContents));
+  const tool = resolvedTool.tool
+    ?? validateToolManifest(parseToolManifestJson(await readFile(resolvedTool.referencePath, "utf8")));
   return {
-    manifestPath: resolvedTool.manifestPath,
-    skillDirectory: path.dirname(resolvedTool.manifestPath),
+    referencePath: resolvedTool.referencePath,
+    skillDirectory: resolvedTool.skillDirectory,
     skill: validatedToolToExecutableSkill(tool),
   };
 }
@@ -380,8 +390,23 @@ async function resolveToolReference(
   for (const root of searchRoots) {
     const manifestPath = path.join(root, ...segments, "manifest.json");
     if (await pathExists(manifestPath)) {
-      return { manifestPath };
+      return {
+        referencePath: manifestPath,
+        skillDirectory: path.dirname(manifestPath),
+      };
     }
+  }
+
+  const catalogTool = await resolveCatalogTool(options.toolCatalogAdapters ?? [], toolName, {
+    env: options.env,
+    searchFromDirectory,
+  });
+  if (catalogTool) {
+    return {
+      referencePath: catalogTool.referencePath,
+      skillDirectory: catalogTool.skillDirectory,
+      tool: catalogTool.tool,
+    };
   }
 
   throw new Error(`Tool '${toolName}' was not found in configured tool roots.`);

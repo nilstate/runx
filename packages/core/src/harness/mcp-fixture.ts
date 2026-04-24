@@ -57,6 +57,51 @@ function handle(request: JsonRpcRequest): void {
     return;
   }
 
+  if (request.method === "tools/list") {
+    respond(request.id, {
+      tools: [
+        {
+          name: "echo",
+          description: "Echo a message through the fixture MCP server.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+                description: "Message to echo.",
+              },
+            },
+            required: ["message"],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "fail",
+          description: "Return a fixture MCP error for testing.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: "sleep",
+          description: "Never respond, for timeout testing.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+          },
+        },
+      ],
+    });
+    return;
+  }
+
   if (request.method === "tools/call") {
     handleToolCall(request.id, request.params);
     return;

@@ -14,6 +14,7 @@ import {
   type Caller,
 } from "@runxhq/core/runner-local";
 import { createSurfaceBridge, type SurfaceBoundaryResolver, type SurfaceRunResult } from "@runxhq/core/sdk";
+import { resolveEnvToolCatalogAdapters } from "@runxhq/core/tool-catalogs";
 
 import type { CliIo } from "../index.js";
 import { readCliPackageMetadata } from "../metadata.js";
@@ -76,6 +77,7 @@ export async function handleMcpServeCommand(
 
   const registryStore = await deps.resolveRegistryStoreForChains(env);
   const adapters = await resolveDefaultSkillAdapters(env);
+  const toolCatalogAdapters = resolveEnvToolCatalogAdapters(env);
   const receiptDir = parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : deps.resolveDefaultReceiptDir(env);
   const runxHome = resolveRunxHomeDir(env);
   const voiceProfilePath = await resolveBundledCliVoiceProfilePath();
@@ -96,6 +98,7 @@ export async function handleMcpServeCommand(
         resumeFromRunId: options.resumeFromRunId,
         registryStore,
         adapters,
+        toolCatalogAdapters,
         voiceProfilePath,
       }),
   });

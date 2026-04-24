@@ -1,0 +1,265 @@
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import path from "node:path";
+
+export const mcpCorePackage = "@runxhq/core/mcp";
+
+const maxMcpMessageBytes = 1024 * 1024;
+const defaultMcpTimeoutMs = 60_000;
+
+interface JsonRpcResponse {
+  readonly jsonrpc: "2.0";
+  readonly id: number;
+  readonly result?: unknown;
+  readonly error?: {
+    readonly code: number;
+    readonly message: string;
+  };
+}
+
+interface PendingRequest {
+  readonly resolve: (value: unknown) => void;
+  readonly reject: (error: Error) => void;
+}
+
+export interface McpServerDefinition {
+  readonly command: string;
+  readonly args: readonly string[];
+  readonly cwd?: string;
+}
+
+export interface McpToolDescriptor {
+  readonly name: string;
+  readonly description?: string;
+  readonly inputSchema?: Readonly<Record<string, unknown>>;
+}
+
+export interface McpClientInfo {
+  readonly name: string;
+  readonly version: string;
+}
+
+export async function listMcpTools(options: {
+  readonly server: McpServerDefinition;
+  readonly skillDirectory: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly timeoutMs?: number;
+  readonly clientInfo?: McpClientInfo;
+}): Promise<readonly McpToolDescriptor[]> {
+  return await withMcpClient(options, async (client) => {
+    const result = await client.request("tools/list", {});
+    return parseMcpToolsList(result);
+  });
+}
+
+export async function invokeMcpTool(options: {
+  readonly server: McpServerDefinition;
+  readonly skillDirectory: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly timeoutMs?: number;
+  readonly clientInfo?: McpClientInfo;
+  readonly tool: string;
+  readonly args: Readonly<Record<string, unknown>>;
+}): Promise<unknown> {
+  return await withMcpClient(options, async (client) =>
+    await client.request("tools/call", {
+      name: options.tool,
+      arguments: options.args,
+    }));
+}
+
+async function withMcpClient<T>(
+  options: {
+    readonly server: McpServerDefinition;
+    readonly skillDirectory: string;
+    readonly env?: NodeJS.ProcessEnv;
+    readonly timeoutMs?: number;
+    readonly clientInfo?: McpClientInfo;
+  },
+  action: (client: StdioJsonRpcClient) => Promise<T>,
+): Promise<T> {
+  const child = spawn(options.server.command, options.server.args, {
+    cwd: resolveMcpCwd(options.skillDirectory, options.server.cwd),
+    env: options.env,
+    shell: false,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const client = new StdioJsonRpcClient(child);
+  const timeoutMs = Math.max(options.timeoutMs ?? defaultMcpTimeoutMs, 50);
+
+  try {
+    return await withTimeout((async () => {
+      await initializeMcpClient(client, options.clientInfo);
+      return await action(client);
+    })(), timeoutMs, () => terminate(child));
+  } finally {
+    terminate(child);
+  }
+}
+
+async function initializeMcpClient(
+  client: StdioJsonRpcClient,
+  clientInfo: McpClientInfo = {
+    name: "runx",
+    version: "0.0.0",
+  },
+): Promise<void> {
+  await client.request("initialize", {
+    protocolVersion: "2025-06-18",
+    capabilities: {},
+    clientInfo,
+  });
+  client.notify("notifications/initialized", {});
+}
+
+function parseMcpToolsList(value: unknown): readonly McpToolDescriptor[] {
+  const record = asRecord(value);
+  const entries = Array.isArray(record?.tools) ? record.tools : [];
+  return entries.flatMap((entry) => {
+    const tool = asRecord(entry);
+    if (!tool || typeof tool.name !== "string" || tool.name.trim() === "") {
+      return [];
+    }
+    return [{
+      name: tool.name,
+      description: typeof tool.description === "string" ? tool.description : undefined,
+      inputSchema: asRecord(tool.inputSchema) ?? asRecord(tool.input_schema) ?? undefined,
+    }] satisfies readonly McpToolDescriptor[];
+  });
+}
+
+class StdioJsonRpcClient {
+  private nextId = 1;
+  private stdout = Buffer.alloc(0);
+  private readonly pending = new Map<number, PendingRequest>();
+
+  constructor(private readonly child: ChildProcessWithoutNullStreams) {
+    this.child.stdout.on("data", (chunk: Buffer) => {
+      this.stdout = Buffer.concat([this.stdout, chunk]);
+      if (this.stdout.length > maxMcpMessageBytes) {
+        this.rejectAll(new Error("MCP server response exceeded size limit."));
+        return;
+      }
+      this.parseAvailableMessages();
+    });
+    this.child.on("error", (error) => {
+      this.rejectAll(error);
+    });
+    this.child.on("close", () => {
+      this.rejectAll(new Error("MCP server exited before responding."));
+    });
+  }
+
+  request(method: string, params: unknown): Promise<unknown> {
+    const id = this.nextId;
+    this.nextId += 1;
+    this.send({ jsonrpc: "2.0", id, method, params });
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+    });
+  }
+
+  notify(method: string, params: unknown): void {
+    this.send({ jsonrpc: "2.0", method, params });
+  }
+
+  private send(message: unknown): void {
+    const body = JSON.stringify(message);
+    this.child.stdin.write(`Content-Length: ${Buffer.byteLength(body, "utf8")}\r\n\r\n${body}`);
+  }
+
+  private parseAvailableMessages(): void {
+    while (true) {
+      const headerEnd = this.stdout.indexOf("\r\n\r\n");
+      if (headerEnd === -1) {
+        return;
+      }
+
+      const header = this.stdout.subarray(0, headerEnd).toString("utf8");
+      const match = /Content-Length:\s*(\d+)/i.exec(header);
+      if (!match) {
+        this.rejectAll(new Error("MCP server sent a response without Content-Length."));
+        return;
+      }
+
+      const contentLength = Number(match[1]);
+      if (!Number.isSafeInteger(contentLength) || contentLength > maxMcpMessageBytes) {
+        this.rejectAll(new Error("MCP server response exceeded size limit."));
+        return;
+      }
+      const bodyStart = headerEnd + 4;
+      const bodyEnd = bodyStart + contentLength;
+      if (this.stdout.length < bodyEnd) {
+        return;
+      }
+
+      const body = this.stdout.subarray(bodyStart, bodyEnd).toString("utf8");
+      this.stdout = this.stdout.subarray(bodyEnd);
+      this.handleMessage(JSON.parse(body) as JsonRpcResponse);
+    }
+  }
+
+  private handleMessage(message: JsonRpcResponse): void {
+    const pending = this.pending.get(message.id);
+    if (!pending) {
+      return;
+    }
+
+    this.pending.delete(message.id);
+    if (message.error) {
+      pending.reject(new Error(`MCP error ${message.error.code}: ${message.error.message}`));
+      return;
+    }
+    pending.resolve(message.result);
+  }
+
+  private rejectAll(error: Error): void {
+    for (const pending of this.pending.values()) {
+      pending.reject(error);
+    }
+    this.pending.clear();
+  }
+}
+
+function resolveMcpCwd(skillDirectory: string, sourceCwd: string | undefined): string {
+  if (!sourceCwd) {
+    return skillDirectory;
+  }
+  return path.isAbsolute(sourceCwd) ? sourceCwd : path.resolve(skillDirectory, sourceCwd);
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout: () => void): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeout = setTimeout(() => {
+          onTimeout();
+          reject(new Error(`MCP call timed out after ${timeoutMs}ms.`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
+
+function terminate(child: ChildProcessWithoutNullStreams): void {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+  child.kill("SIGTERM");
+  setTimeout(() => {
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill("SIGKILL");
+    }
+  }, 100).unref();
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}

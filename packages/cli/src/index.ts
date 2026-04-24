@@ -41,7 +41,7 @@ export interface ParsedArgs {
   readonly doctorFix: boolean;
   readonly doctorExplainId?: string;
   readonly doctorListDiagnostics: boolean;
-  readonly toolAction?: "build" | "migrate";
+  readonly toolAction?: "build" | "migrate" | "search";
   readonly toolPath?: string;
   readonly toolAll: boolean;
   readonly devPath?: string;
@@ -64,6 +64,8 @@ export interface ParsedArgs {
   readonly historySkill?: string;
   readonly historyStatus?: string;
   readonly historySource?: string;
+  readonly historyActor?: string;
+  readonly historyArtifactType?: string;
   readonly historySince?: string;
   readonly historyUntil?: string;
   readonly skillPath?: string;
@@ -237,16 +239,18 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const isResume = command === "resume";
   const isDoctor = command === "doctor";
   const isTool = command === "tool";
+  const isToolSearch = isTool && positionals[0] === "search";
   const isDev = command === "dev";
   const isMcp = command === "mcp";
   const isList = command === "list";
   const isExportReceipts = command === "export-receipts";
   const isTopLevelSkillInvoke = Boolean(command) && !builtinRootCommands.has(command);
   const searchPositionals = positionals.slice(adminOffset);
+  const toolSearchPositionals = isTool ? positionals.slice(1) : [];
   const addPositionals = positionals.slice(adminOffset);
   const inspectPositionals = positionals.slice(adminOffset);
   const knowledgeProject = isKnowledgeShow && typeof inputs.project === "string" ? inputs.project : undefined;
-  const sourceFilter = isSkillSearch && typeof inputs.source === "string" ? inputs.source : undefined;
+  const sourceFilter = (isSkillSearch || isToolSearch) && typeof inputs.source === "string" ? inputs.source : undefined;
   const installVersion = isSkillAdd && typeof inputs.version === "string" ? inputs.version : undefined;
   const installTo = isSkillAdd && typeof inputs.to === "string" ? inputs.to : undefined;
   const publishOwner = isSkillPublish && typeof inputs.owner === "string" ? inputs.owner : undefined;
@@ -322,7 +326,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
                 : isDoctor
                   ? omitInputs(inputs, ["fix", "explain", "listDiagnostics", "list-diagnostics"])
                   : isTool
-                    ? omitInputs(inputs, ["all"])
+                    ? omitInputs(inputs, ["all", "source"])
                     : isDev
                       ? omitInputs(inputs, ["lane", "record", "realAgents", "real-agents", "watch"])
                       : isMcp
@@ -342,7 +346,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     doctorFix: isDoctor && truthyFlag(inputs.fix),
     doctorExplainId: isDoctor && typeof inputs.explain === "string" && inputs.explain !== "true" ? inputs.explain : undefined,
     doctorListDiagnostics: isDoctor && truthyFlag(inputs.listDiagnostics ?? inputs["list-diagnostics"]),
-    toolAction: isTool && (positionals[0] === "build" || positionals[0] === "migrate") ? positionals[0] : undefined,
+    toolAction: isTool && (positionals[0] === "build" || positionals[0] === "migrate" || positionals[0] === "search") ? positionals[0] : undefined,
     toolPath: isTool ? positionals[1] : undefined,
     toolAll: isTool && truthyFlag(inputs.all),
     devPath: isDev ? positionals[0] : undefined,
@@ -356,7 +360,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     exportAction: isExportReceipts && truthyFlag(inputs.trainable) ? "trainable" : undefined,
     skillAction: isSkillSearch ? "search" : isSkillAdd ? "add" : isSkillPublish ? "publish" : isSkillInspect ? "inspect" : undefined,
     knowledgeAction: isKnowledgeShow ? "show" : undefined,
-    searchQuery: isSkillSearch ? searchPositionals.join(" ") || undefined : undefined,
+    searchQuery: isSkillSearch
+      ? searchPositionals.join(" ") || undefined
+      : isToolSearch
+        ? toolSearchPositionals.join(" ") || undefined
+        : undefined,
     skillRef: isSkillAdd ? addPositionals.join(" ") || undefined : undefined,
     publishPath: isSkillPublish ? positionals[1] : undefined,
     receiptId: isSkillInspect ? inspectPositionals[0] : undefined,
@@ -364,6 +372,11 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     historySkill: command === "history" && typeof inputs.skill === "string" ? inputs.skill : undefined,
     historyStatus: command === "history" && typeof inputs.status === "string" ? inputs.status : undefined,
     historySource: command === "history" && typeof inputs.source === "string" ? inputs.source : undefined,
+    historyActor: command === "history" && typeof inputs.actor === "string" ? inputs.actor : undefined,
+    historyArtifactType:
+      command === "history" && typeof (inputs.artifactType ?? inputs.artifact_type ?? inputs["artifact-type"]) === "string"
+        ? String(inputs.artifactType ?? inputs.artifact_type ?? inputs["artifact-type"])
+        : undefined,
     historySince: command === "history" && typeof inputs.since === "string" ? inputs.since : undefined,
     historyUntil: command === "history" && typeof inputs.until === "string" ? inputs.until : undefined,
     skillPath:
@@ -413,6 +426,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
 
 function isSupportedCommand(parsed: ParsedArgs): boolean {
   if (parsed.command === "doctor") {
+    return true;
+  }
+  if (parsed.command === "tool" && parsed.toolAction === "search" && parsed.searchQuery) {
     return true;
   }
   if (parsed.command === "tool" && parsed.toolAction && (parsed.toolAll || parsed.toolPath)) {

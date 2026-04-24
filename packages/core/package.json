@@ -40,6 +40,10 @@
       "types": "./dist/src/marketplaces/index.d.ts",
       "import": "./dist/src/marketplaces/index.js"
     },
+    "./mcp": {
+      "types": "./dist/src/mcp/index.d.ts",
+      "import": "./dist/src/mcp/index.js"
+    },
     "./parser": {
       "types": "./dist/src/parser/index.d.ts",
       "import": "./dist/src/parser/index.js"
@@ -63,6 +67,10 @@
     "./sdk": {
       "types": "./dist/src/sdk/index.d.ts",
       "import": "./dist/src/sdk/index.js"
+    },
+    "./tool-catalogs": {
+      "types": "./dist/src/tool-catalogs/index.d.ts",
+      "import": "./dist/src/tool-catalogs/index.js"
     },
     "./state-machine": {
       "types": "./dist/src/state-machine/index.d.ts",

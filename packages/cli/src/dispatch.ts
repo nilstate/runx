@@ -14,6 +14,7 @@ import {
 import { runHarnessTarget, validatePublishHarness } from "@runxhq/core/harness";
 import { createFixtureMarketplaceAdapter } from "@runxhq/core/marketplaces";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
+import { resolveEnvToolCatalogAdapters, searchToolCatalogAdapters } from "@runxhq/core/tool-catalogs";
 import {
   createDefaultHttpCachedRegistryStore,
   createFileRegistryStore,
@@ -42,6 +43,7 @@ import {
   renderNewResult,
   renderPublishResult,
   renderSearchResults,
+  renderToolSearchResults,
   writeLocalSkillResult,
 } from "./cli-presentation.js";
 import { handleConfigCommand } from "./commands/config.js";
@@ -73,6 +75,7 @@ import {
   handleToolBuildCommand,
   handleToolMigrateCommand,
   renderToolCommandResult,
+  type ToolCommandArgs,
 } from "./commands/tool.js";
 import { ensureRunxInstallState } from "./runx-state.js";
 import { resolveBundledCliVoiceProfilePath } from "./runtime-assets.js";
@@ -92,6 +95,7 @@ export async function dispatchCli(
     const result = await runHarnessTarget(resolvePathFromUserInput(parsed.harnessPath, env), {
       env,
       registryStore: await resolveRegistryStoreForChains(env),
+      toolCatalogAdapters: resolveEnvToolCatalogAdapters(env),
       adapters: createDefaultSkillAdapters(),
       voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
     });
@@ -134,10 +138,15 @@ export async function dispatchCli(
     return result.status === "success" ? 0 : 1;
   }
 
-  if (parsed.command === "tool" && parsed.toolAction) {
-    const result = parsed.toolAction === "build"
-      ? await handleToolBuildCommand(parsed, env)
-      : await handleToolMigrateCommand(parsed, env);
+  if (parsed.command === "tool" && (parsed.toolAction === "build" || parsed.toolAction === "migrate")) {
+    const toolArgs: ToolCommandArgs = {
+      toolAction: parsed.toolAction,
+      toolPath: parsed.toolPath,
+      toolAll: parsed.toolAll,
+    };
+    const result = toolArgs.toolAction === "build"
+      ? await handleToolBuildCommand(toolArgs, env)
+      : await handleToolMigrateCommand(toolArgs, env);
     if (parsed.json) {
       io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     } else {
@@ -233,6 +242,24 @@ export async function dispatchCli(
     return 0;
   }
 
+  if (parsed.command === "tool" && parsed.toolAction === "search" && parsed.searchQuery) {
+    const results = await searchToolCatalogAdapters(
+      resolveEnvToolCatalogAdapters(env, parsed.sourceFilter),
+      parsed.searchQuery,
+    );
+    if (parsed.json) {
+      io.stdout.write(`${JSON.stringify({
+        status: "success",
+        query: parsed.searchQuery,
+        source: parsed.sourceFilter ?? "all",
+        results,
+      }, null, 2)}\n`);
+    } else {
+      io.stdout.write(renderToolSearchResults(results, env));
+    }
+    return 0;
+  }
+
   if ((parsed.command === "skill" || parsed.command === "search") && parsed.skillAction === "search" && parsed.searchQuery) {
     const results = await runSkillSearch(parsed.searchQuery, parsed.sourceFilter, env, parsed.registryUrl);
     if (parsed.json) {
@@ -287,6 +314,7 @@ export async function dispatchCli(
     const harness = await validatePublishHarness(resolvedPublishPath, {
       env,
       registryStore: await resolveRegistryStoreForChains(env),
+      toolCatalogAdapters: resolveEnvToolCatalogAdapters(env),
       adapters: createDefaultSkillAdapters(),
       voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
     });
@@ -328,7 +356,20 @@ export async function dispatchCli(
   if (parsed.command === "history") {
     const history = await handleHistoryCommand(parsed, env);
     if (parsed.json) {
-      io.stdout.write(`${JSON.stringify({ status: "success", query: parsed.historyQuery, ...history }, null, 2)}\n`);
+      io.stdout.write(`${JSON.stringify({
+        status: "success",
+        query: parsed.historyQuery,
+        filters: {
+          skill: parsed.historySkill,
+          status: parsed.historyStatus,
+          source_type: parsed.historySource,
+          actor: parsed.historyActor,
+          artifact_type: parsed.historyArtifactType,
+          since: parsed.historySince,
+          until: parsed.historyUntil,
+        },
+        ...history,
+      }, null, 2)}\n`);
     } else {
       io.stdout.write(renderHistory(history.receipts, env, parsed.historyQuery));
     }
@@ -449,6 +490,7 @@ async function executeLocalSkillCommand(options: {
     resumeFromRunId: options.parsed.resumeReceiptId,
     registryStore: await resolveRegistryStoreForChains(options.env),
     adapters,
+    toolCatalogAdapters: resolveEnvToolCatalogAdapters(options.env),
     voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
   });
 }

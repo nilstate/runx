@@ -212,6 +212,7 @@ async function invokeManagedAgentAdapter(
         env,
         signal: request.signal,
         searchFromDirectory: request.skillDirectory,
+        toolCatalogAdapters: request.toolCatalogAdapters,
       },
     );
 
@@ -247,6 +248,7 @@ async function executeManagedAgentRequest(
     readonly env?: NodeJS.ProcessEnv;
     readonly signal?: AbortSignal;
     readonly searchFromDirectory?: string;
+    readonly toolCatalogAdapters?: AdapterInvokeRequest["toolCatalogAdapters"];
   } = {},
 ): Promise<ManagedAgentExecutionDetails> {
   const env = options.env ?? process.env;
@@ -262,6 +264,7 @@ async function executeManagedAgentRequest(
     env,
     options.signal,
     request.work.envelope.execution_location?.tool_roots,
+    options.toolCatalogAdapters,
   );
 
   if (config.provider === "anthropic") {
@@ -464,6 +467,7 @@ async function resolveManagedRuntimeTools(
   env: NodeJS.ProcessEnv,
   signal: AbortSignal | undefined,
   toolRoots: readonly string[] | undefined,
+  toolCatalogAdapters: AdapterInvokeRequest["toolCatalogAdapters"],
 ): Promise<readonly ManagedRuntimeTool[]> {
   const tools: ManagedRuntimeTool[] = [];
   const seenRunxNames = new Set<string>();
@@ -476,6 +480,7 @@ async function resolveManagedRuntimeTools(
     const target = await resolveToolExecutionTarget(toolName, searchFromDirectory, {
       env,
       toolRoots,
+      toolCatalogAdapters,
     });
     const providerName = sanitizeProviderToolName(toolName);
     if (seenProviderNames.has(providerName)) {
@@ -490,7 +495,15 @@ async function resolveManagedRuntimeTools(
       description: target.skill.description ?? `runx tool ${toolName}`,
       parameters: skillInputsToJsonSchema(target.skill.inputs),
       invoke: async (argumentsValue) => ({
-        value: await invokeManagedRuntimeTool(toolName, target.skill, target.skillDirectory, argumentsValue, env, signal),
+        value: await invokeManagedRuntimeTool(
+          toolName,
+          target.skill,
+          target.skillDirectory,
+          argumentsValue,
+          env,
+          signal,
+          toolCatalogAdapters,
+        ),
       }),
     });
   }
@@ -505,6 +518,7 @@ async function invokeManagedRuntimeTool(
   argumentsValue: unknown,
   env: NodeJS.ProcessEnv,
   signal: AbortSignal | undefined,
+  toolCatalogAdapters: AdapterInvokeRequest["toolCatalogAdapters"],
 ): Promise<unknown> {
   const inputs = asRecord(argumentsValue);
   if (!inputs) {
@@ -520,6 +534,7 @@ async function invokeManagedRuntimeTool(
     adapters: toolExecutionAdapters,
     env,
     signal,
+    toolCatalogAdapters,
   });
 
   if (result.status === "needs_resolution") {

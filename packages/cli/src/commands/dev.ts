@@ -14,6 +14,7 @@ import { parseToolManifestJson, validateToolManifest } from "@runxhq/core/parser
 import { writeLocalReceipt } from "@runxhq/core/receipts";
 import { type RegistryStore } from "@runxhq/core/registry";
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { resolveEnvToolCatalogAdapters } from "@runxhq/core/tool-catalogs";
 import type { CliAgentRuntime } from "../agent-runtime.js";
 import { resolveBundledCliVoiceProfilePath } from "../runtime-assets.js";
 
@@ -522,6 +523,7 @@ async function runSkillFixture(
       adapters: useRealAgents
         ? await resolveDefaultSkillAdapters(env)
         : createDefaultSkillAdapters(),
+      toolCatalogAdapters: resolveEnvToolCatalogAdapters(env),
       voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
     });
     const success = result.status === "success";

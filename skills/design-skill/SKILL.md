@@ -28,6 +28,10 @@ review for the catalog:
   residue
 - keep evidence, issue discussion, and approval mechanics as provenance; do not
   turn them into the reader-facing proposal body
+- when the proposal is for upstream seeding, draft portable `SKILL.md`
+  language that matches the seeded upstream template: repo-specific workflow,
+  repo evidence, safe read steps, mutation boundaries, outputs, and an optional
+  restrained tooling note only
 - avoid builder-internal language such as "supplied decomposition",
   "supplied work-plan", "supplied catalog", `UNRESOLVED_*` placeholders,
   "machine output", "agent output", "model output", issue-number-specific

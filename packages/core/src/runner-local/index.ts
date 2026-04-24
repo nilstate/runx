@@ -112,6 +112,7 @@ import {
   type SingleStepState,
 } from "../state-machine/index.js";
 import type { RegistryStore } from "../registry/index.js";
+import type { ToolCatalogAdapter } from "../tool-catalogs/index.js";
 import {
   mergeExecutionSemantics,
   normalizeExecutionSemantics,
@@ -211,6 +212,7 @@ export interface RunLocalSkillOptions {
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly context?: Context;
   readonly voiceProfile?: ContextDocument;
   readonly voiceProfilePath?: string;
@@ -240,6 +242,7 @@ interface RunResolvedSkillOptions {
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly context?: Context;
   readonly voiceProfile?: ContextDocument;
   readonly voiceProfilePath?: string;
@@ -319,6 +322,7 @@ export interface RunLocalGraphOptions {
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly receiptMetadata?: Readonly<Record<string, unknown>>;
   readonly context?: Context;
   readonly voiceProfile?: ContextDocument;
@@ -468,6 +472,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
     executionSemantics: options.executionSemantics,
     registryStore: options.registryStore,
     skillCacheDir: options.skillCacheDir,
+    toolCatalogAdapters: options.toolCatalogAdapters,
     context: options.context,
     voiceProfile: options.voiceProfile,
     voiceProfilePath: options.voiceProfilePath,
@@ -621,6 +626,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
       executionSemantics: mergeExecutionSemantics(skill.execution, options.executionSemantics),
       registryStore: options.registryStore,
       skillCacheDir: options.skillCacheDir,
+      toolCatalogAdapters: options.toolCatalogAdapters,
       receiptMetadata: inheritedReceiptMetadata,
       context: contextSnapshot,
       voiceProfile,
@@ -750,6 +756,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     context: preparedAgentContext.context,
     voiceProfile: preparedAgentContext.voiceProfile,
     qualityProfile: qualityProfileContext(skill),
+    toolCatalogAdapters: options.toolCatalogAdapters,
   });
 
   if (execution.status === "needs_resolution") {
@@ -904,7 +911,13 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     options.receiptMetadata,
   );
   const graphId = options.runId ?? options.resumeFromRunId ?? uniqueReceiptId("gx");
-  const graphStepCache = await loadGraphStepExecutables(graph, graphDirectory, options.registryStore, options.skillCacheDir);
+  const graphStepCache = await loadGraphStepExecutables(
+    graph,
+    graphDirectory,
+    options.registryStore,
+    options.skillCacheDir,
+    options.toolCatalogAdapters,
+  );
   const graphGrant = options.graphGrant ?? defaultLocalGraphGrant();
   const graphSteps = graph.steps.map((step) => ({
     id: step.id,
@@ -1017,6 +1030,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
           skillEnvironment: options.skillEnvironment,
           registryStore: options.registryStore,
           skillCacheDir: options.skillCacheDir,
+          toolCatalogAdapters: options.toolCatalogAdapters,
         });
         const stepSkillPath = resolvedStep.skillPath;
         const stepSkill = resolvedStep.skill;
@@ -1127,6 +1141,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
             currentContext: prep.context,
             registryStore: options.registryStore,
             skillCacheDir: options.skillCacheDir,
+            toolCatalogAdapters: options.toolCatalogAdapters,
             context: contextSnapshot,
             voiceProfile,
             voiceProfilePath: options.voiceProfilePath,
@@ -1359,6 +1374,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       skillEnvironment: options.skillEnvironment,
       registryStore: options.registryStore,
       skillCacheDir: options.skillCacheDir,
+      toolCatalogAdapters: options.toolCatalogAdapters,
     });
     const stepSkillPath = resolvedStep.skillPath;
     const stepSkill = resolvedStep.skill;
@@ -1494,6 +1510,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       currentContext: context,
       registryStore: options.registryStore,
       skillCacheDir: options.skillCacheDir,
+      toolCatalogAdapters: options.toolCatalogAdapters,
       context: contextSnapshot,
       voiceProfile,
       voiceProfilePath: options.voiceProfilePath,

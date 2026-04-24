@@ -5,6 +5,7 @@ import { runHarness, runHarnessTarget } from "@runxhq/core/harness";
 import type { SkillSearchResult } from "@runxhq/core/marketplaces";
 import type { ResolutionRequest } from "@runxhq/core/executor";
 import type { ExecutionEvent, RunLocalSkillResult } from "@runxhq/core/runner-local";
+import type { ToolCatalogSearchResult } from "@runxhq/core/tool-catalogs";
 
 import type { CliIo, ParsedArgs } from "./index.js";
 import { flattenConfig, type ConfigResult } from "./commands/config.js";
@@ -660,6 +661,35 @@ export function renderSearchResults(results: readonly SkillSearchResult[], env: 
     lines.push("");
   }
   return lines.join("\n");
+}
+
+export function renderToolSearchResults(
+  results: readonly ToolCatalogSearchResult[],
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const t = theme(process.stdout, env);
+  if (results.length === 0) {
+    return `\n  ${t.dim}No imported tools found.${t.reset}\n\n`;
+  }
+
+  const lines = ["", `  ${t.bold}Imported Tools${t.reset}`];
+  for (const result of results) {
+    lines.push(
+      `  ${t.bold}${result.name}${t.reset}  ${t.dim}${result.source_label}${t.reset}`,
+      `  ${t.dim}type${t.reset}      ${result.source_type}`,
+      `  ${t.dim}namespace${t.reset} ${result.namespace}`,
+      `  ${t.dim}external${t.reset}  ${result.external_name}`,
+      `  ${t.dim}catalog${t.reset}   ${result.catalog_ref}`,
+    );
+    if (result.required_scopes.length > 0) {
+      lines.push(`  ${t.dim}scopes${t.reset}    ${result.required_scopes.join(", ")}`);
+    }
+    if (result.summary) {
+      lines.push(`  ${t.dim}summary${t.reset}   ${result.summary}`);
+    }
+    lines.push("");
+  }
+  return `${lines.join("\n")}\n`;
 }
 
 export function renderKnowledgeProjections(
