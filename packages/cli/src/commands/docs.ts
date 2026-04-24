@@ -213,7 +213,7 @@ async function handleDocsRerunAction(
   if (!repoRootInput) {
     throw new Error(`runx docs ${parsed.docsAction} requires --repo-root pointing at a local target repo clone.`);
   }
-  const repoRoot = resolvePathFromUserInput(repoRootInput, env);
+  const repoRoot = normalizeDocsRepoRoot(resolvePathFromUserInput(repoRootInput, env));
   const skillEnv = { ...env, RUNX_CWD: sourceyRoot };
   const scanPacket = await executeDocsSkill(
     sourceyRoot,
@@ -970,7 +970,7 @@ function toDocsSkillFailure(
       action,
       issue,
       phase,
-      message: `The ${phase} phase needs resolution before the docs flow can continue.`,
+      message: buildNeedsResolutionMessage(phase, result),
       result,
     };
   }
@@ -992,6 +992,36 @@ function toDocsSkillFailure(
     message: firstNonEmptyString(result.execution.stderr, result.execution.errorMessage, `The ${phase} phase failed.`) ?? `The ${phase} phase failed.`,
     result,
   };
+}
+
+function normalizeDocsRepoRoot(candidate: string): string {
+  try {
+    const topLevel = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: candidate,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return topLevel.length > 0 ? topLevel : candidate;
+  } catch {
+    return candidate;
+  }
+}
+
+function buildNeedsResolutionMessage(
+  phase: "scan" | "build" | "review" | "signal",
+  result: Extract<RunLocalSkillResult, { readonly status: "needs_resolution" }>,
+): string {
+  const requests = Array.isArray(result.requests) ? result.requests : [];
+  const cognitiveRequest = requests.find((request) => request.kind === "cognitive_work");
+  if (!cognitiveRequest) {
+    return `The ${phase} phase needs resolution before the docs flow can continue.`;
+  }
+
+  const labels = Array.isArray(result.stepLabels) ? result.stepLabels.filter((value): value is string => typeof value === "string" && value.length > 0) : [];
+  const label = labels[0];
+  return label
+    ? `The ${phase} phase paused at '${label}' and needs managed agent work. Configure RUNX_AGENT_PROVIDER and RUNX_AGENT_MODEL plus OPENAI_API_KEY or ANTHROPIC_API_KEY, then rerun.`
+    : `The ${phase} phase needs managed agent work. Configure RUNX_AGENT_PROVIDER and RUNX_AGENT_MODEL plus OPENAI_API_KEY or ANTHROPIC_API_KEY, then rerun.`;
 }
 
 async function checkContains(

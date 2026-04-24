@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -210,6 +211,127 @@ describe("handleDocsCommand", () => {
         }),
       }),
     });
+  });
+
+  it("normalizes docs rerun repo-root inputs to the git top-level", async () => {
+    const sourceyRoot = await mkDocsRoot();
+    const repoRoot = await mkdtemp(path.join(os.tmpdir(), "runx-docs-repo-"));
+    tempDirs.push(repoRoot);
+    execFileSync("git", ["init", "-q"], { cwd: repoRoot });
+    const nestedRoot = path.join(repoRoot, "packages", "easyllm");
+    await mkdir(nestedRoot, { recursive: true });
+    const thread = {
+      thread_locator: "github://sourcey/sourcey.com/issues/2",
+      canonical_uri: "https://github.com/sourcey/sourcey.com/issues/2",
+      outbox: [],
+    };
+    vi.stubGlobal("__runxDocsThreadFixture", thread);
+    runLocalSkill
+      .mockResolvedValueOnce(successSkillResult({
+        target: { repo_slug: "example/repo" },
+      }))
+      .mockResolvedValueOnce(successSkillResult({
+        operator_summary: {
+          should_open_pr: true,
+          rationale: "ready",
+        },
+        before_after_evidence: {
+          build_url: "https://sourcey.com/previews/example/repo/index.html",
+        },
+      }))
+      .mockResolvedValueOnce(successSkillResult({
+        package_summary: {
+          should_push: false,
+        },
+        review_outbox_entry: {
+          entry_id: "message:docs-refresh-example-repo:review",
+          locator: "https://github.com/sourcey/sourcey.com/issues/2#issuecomment-1",
+        },
+      }));
+
+    await handleDocsCommand(
+      {
+        command: "docs",
+        docsAction: "rerun",
+        inputs: {
+          issue: "sourcey/sourcey.com#issue/2",
+          "repo-root": nestedRoot,
+          "sourcey-root": sourceyRoot,
+        },
+      } satisfies DocsCommandArgs,
+      {
+        ...process.env,
+        RUNX_CWD: process.cwd(),
+        RUNX_DOCS_THREAD_ADAPTER_PATH: path.join(sourceyRoot, "adapter.mjs"),
+      },
+      caller,
+      deps,
+    );
+
+    expect(runLocalSkill.mock.calls[0]?.[0]).toMatchObject({
+      runner: "docs-scan",
+      inputs: expect.objectContaining({
+        repo_root: repoRoot,
+      }),
+    });
+  });
+
+  it("returns a managed-agent hint when docs-build pauses on cognitive work", async () => {
+    const sourceyRoot = await mkDocsRoot();
+    const thread = {
+      thread_locator: "github://sourcey/sourcey.com/issues/2",
+      canonical_uri: "https://github.com/sourcey/sourcey.com/issues/2",
+      outbox: [],
+    };
+    vi.stubGlobal("__runxDocsThreadFixture", thread);
+    runLocalSkill
+      .mockResolvedValueOnce(successSkillResult({
+        target: { repo_slug: "example/repo" },
+      }))
+      .mockResolvedValueOnce({
+        status: "needs_resolution",
+        skillPath: path.join(sourceyRoot, "skills", "docs-build"),
+        runId: "rx_docs_build",
+        stepIds: ["shape-brief"],
+        stepLabels: ["shape native docs brief"],
+        requests: [
+          {
+            id: "req_1",
+            kind: "cognitive_work",
+            work: {
+              id: "req_1",
+              source_type: "agent-step",
+              skill: "docs-build",
+            },
+          },
+        ],
+      });
+
+    const result = await handleDocsCommand(
+      {
+        command: "docs",
+        docsAction: "rerun",
+        inputs: {
+          issue: "sourcey/sourcey.com#issue/2",
+          "repo-root": "/tmp/example-repo",
+          "sourcey-root": sourceyRoot,
+        },
+      } satisfies DocsCommandArgs,
+      {
+        ...process.env,
+        RUNX_CWD: process.cwd(),
+        RUNX_DOCS_THREAD_ADAPTER_PATH: path.join(sourceyRoot, "adapter.mjs"),
+      },
+      caller,
+      deps,
+    );
+
+    expect(result).toMatchObject({
+      status: "needs_resolution",
+      phase: "build",
+    });
+    expect(result.message).toContain("shape native docs brief");
+    expect(result.message).toContain("RUNX_AGENT_PROVIDER");
   });
 });
 
