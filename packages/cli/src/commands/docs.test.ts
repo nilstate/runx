@@ -60,7 +60,7 @@ describe("handleDocsCommand", () => {
           kind: "message",
           locator: "https://github.com/sourcey/sourcey.com/issues/2#issuecomment-1",
           metadata: {
-            body_markdown: "## Exact PR Body",
+            body_markdown: "## Preview Site\nhttps://sourcey.com/previews/example/repo/\n\n## Exact PR Body",
             control: {
               workflow: "docs",
               lane: "pr_review",
@@ -270,6 +270,7 @@ describe("handleDocsCommand", () => {
           kind: "message",
           locator: "https://github.com/sourcey/sourcey.com/issues/2#issuecomment-1",
           metadata: {
+            build_url: "https://sourcey.com/previews/example/repo/",
             body_markdown: "## Exact PR Body",
             control: {
               workflow: "docs",
@@ -336,6 +337,7 @@ describe("handleDocsCommand", () => {
     expect((globalThis as typeof globalThis & { __runxDocsPushedSignal?: unknown }).__runxDocsPushedSignal).toMatchObject({
       entry_id: "message:docs-refresh-example-repo:signal",
       metadata: {
+        body_markdown: expect.stringContaining("Preview site: https://sourcey.com/previews/example/repo/"),
         control: {
           workflow: "docs",
           lane: "handoff_signal",
@@ -346,6 +348,8 @@ describe("handleDocsCommand", () => {
         },
       },
     });
+    expect((globalThis as typeof globalThis & { __runxDocsPushedSignal?: { metadata?: { body_markdown?: string } } }).__runxDocsPushedSignal?.metadata?.body_markdown)
+      .toContain("Draft review: https://github.com/sourcey/sourcey.com/issues/2#issuecomment-1");
     expect(runLocalSkill).toHaveBeenCalledTimes(1);
     expect(runLocalSkill.mock.calls[0]?.[0]).toMatchObject({
       runner: "docs-signal",

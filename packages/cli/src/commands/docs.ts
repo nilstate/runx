@@ -1172,25 +1172,38 @@ function buildDocsSignalOutboxEntry(
   const suppressionRecord = readRecord(signalPacket.suppression_record);
   const sourceRef = readRecord(handoffSignal.source_ref);
   const existing = control.latestSignal;
+  const previewUrl = deriveDocsPreviewUrl(control.latestReview);
+  const reviewUrl = firstNonEmptyString(control.latestReview?.locator);
+  const targetRepo = firstNonEmptyString(
+    readStringFromRecord(handoffRef, ["target_repo"]),
+    control.targetRepo,
+    parseTargetRepoFromPreviewUrl(previewUrl),
+  );
+  const status = readStringFromRecord(handoffState, ["status"]) ?? "unknown";
+  const summary = firstNonEmptyString(readStringFromRecord(handoffState, ["summary"]));
   const bodyLines = [
-    "Recorded docs control signal for the current review thread.",
+    "Current control status for the active docs handoff.",
     "",
-    "## Signal",
+    "## Current State",
+    targetRepo ? `Target repo: \`${targetRepo}\`` : undefined,
+    `Status: \`${status}\``,
+    summary ? `Summary: ${summary}` : undefined,
+    previewUrl ? `Preview site: ${previewUrl}` : undefined,
+    reviewUrl ? `Draft review: ${reviewUrl}` : undefined,
+    "",
+    "## Latest Signal",
     `Source: \`${readStringFromRecord(handoffSignal, ["source"]) ?? "unknown"}\``,
     `Disposition: \`${readStringFromRecord(handoffSignal, ["disposition"]) ?? "unknown"}\``,
     `Recorded at: \`${readStringFromRecord(handoffSignal, ["recorded_at"]) ?? "unknown"}\``,
-    "",
-    "## Handoff State",
-    `Status: \`${readStringFromRecord(handoffState, ["status"]) ?? "unknown"}\``,
-    firstNonEmptyString(readStringFromRecord(handoffState, ["summary"]))
-      ? `Summary: ${readStringFromRecord(handoffState, ["summary"])}`
-      : undefined,
     sourceRef
       ? `Source ref: ${readStringFromRecord(sourceRef, ["uri"]) ?? "unknown"}`
       : undefined,
     suppressionRecord
       ? `Suppression: \`${readStringFromRecord(suppressionRecord, ["scope"]) ?? "unknown"}\` / \`${readStringFromRecord(suppressionRecord, ["reason"]) ?? "unknown"}\``
       : undefined,
+    "",
+    "## Next Action",
+    describeDocsNextAction(status),
   ].filter((line): line is string => typeof line === "string");
 
   return pruneRecord({
@@ -1217,6 +1230,53 @@ function buildDocsSignalOutboxEntry(
       },
     }),
   });
+}
+
+function describeDocsNextAction(status: string): string {
+  switch (status) {
+    case "needs_revision":
+      return "Revise the docs draft, rerun the review refresh, and keep the upstream PR gated until the thread is accepted.";
+    case "accepted":
+      return "The control thread is approved. Trigger the upstream PR push when ready.";
+    case "sent":
+      return "The upstream handoff has already been sent. Watch the maintainer thread for follow-up signals.";
+    case "suppressed":
+      return "Do not send follow-up outreach from this handoff unless an operator intentionally clears the suppression state.";
+    default:
+      return "Review the current handoff state and decide whether to revise, approve, or suppress the next outbound step.";
+  }
+}
+
+function deriveDocsPreviewUrl(entry: Record<string, unknown> | undefined): string | undefined {
+  const direct = sanitizeDocsPreviewUrl(firstNonEmptyString(
+    readStringFromRecord(entry, ["metadata", "build_url"]),
+    readStringFromRecord(entry, ["metadata", "control", "build_url"]),
+  ));
+  if (direct) {
+    return direct;
+  }
+  const body = readStringFromRecord(entry, ["metadata", "body_markdown"]);
+  if (!body) {
+    return undefined;
+  }
+  const match = body.match(/https:\/\/sourcey\.com\/previews\/[^\s)'"`]+/i);
+  return sanitizeDocsPreviewUrl(firstNonEmptyString(match?.[0]));
+}
+
+function sanitizeDocsPreviewUrl(value: string | undefined): string | undefined {
+  return firstNonEmptyString(value?.replace(/[.,;:!?]+$/u, ""));
+}
+
+function parseTargetRepoFromPreviewUrl(value: string | undefined): string | undefined {
+  const previewUrl = firstNonEmptyString(value);
+  if (!previewUrl) {
+    return undefined;
+  }
+  const match = previewUrl.match(/\/previews\/([^/]+)\/([^/]+)\/?/i);
+  if (!match) {
+    return undefined;
+  }
+  return `${match[1]}/${match[2]}`;
 }
 
 async function readDocsRepoBindings(sourceyRoot: string): Promise<Readonly<Record<string, unknown>>> {
