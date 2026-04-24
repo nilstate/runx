@@ -1,6 +1,6 @@
 {
   "name": "@runxhq/adapters",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Runx concrete runtime adapters.",
   "private": false,
   "license": "Apache-2.0",
@@ -34,7 +34,7 @@
     }
   },
   "peerDependencies": {
-    "@runxhq/core": "workspace:^0.1.0"
+    "@runxhq/core": "workspace:^0.1.1"
   },
   "peerDependenciesMeta": {
     "@runxhq/core": {

@@ -1,6 +1,6 @@
 {
   "name": "@runxhq/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Runx core runtime domains: parser, runner, policy, receipts, registry, harness, knowledge, config, executor, and SDK.",
   "private": false,
   "license": "Apache-2.0",

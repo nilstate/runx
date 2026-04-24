@@ -1,6 +1,6 @@
 {
   "name": "@runxhq/create-skill",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cold-start scaffolder for runx standalone skill packages.",
   "private": false,
   "license": "Apache-2.0",
@@ -32,6 +32,6 @@
     }
   },
   "dependencies": {
-    "@runxhq/cli": "workspace:^0.5.0"
+    "@runxhq/cli": "workspace:^0.5.1"
   }
 }

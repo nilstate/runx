@@ -45,7 +45,7 @@ importers:
   packages/adapters:
     dependencies:
       '@runxhq/core':
-        specifier: workspace:^0.1.0
+        specifier: workspace:^0.1.1
         version: link:../core
 
   packages/authoring:
@@ -57,7 +57,7 @@ importers:
   packages/cli:
     dependencies:
       '@runxhq/adapters':
-        specifier: workspace:^0.1.0
+        specifier: workspace:^0.1.1
         version: link:../adapters
       '@runxhq/authoring':
         specifier: workspace:^0.1.1
@@ -66,7 +66,7 @@ importers:
         specifier: workspace:^0.2.0
         version: link:../contracts
       '@runxhq/core':
-        specifier: workspace:^0.1.0
+        specifier: workspace:^0.1.1
         version: link:../core
       yaml:
         specifier: ^2.8.3
@@ -90,7 +90,7 @@ importers:
   packages/create-skill:
     dependencies:
       '@runxhq/cli':
-        specifier: workspace:^0.5.0
+        specifier: workspace:^0.5.1
         version: link:../cli
 
   plugins/antigravity:
