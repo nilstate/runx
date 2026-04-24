@@ -249,9 +249,14 @@ function normalizeQuestionId(value: string): string {
 
 function assignDefined(target: Record<string, unknown>, value: Readonly<Record<string, unknown>>): void {
   for (const [key, candidate] of Object.entries(value)) {
-    if (candidate !== undefined) {
-      target[key] = candidate;
+    if (candidate === undefined) {
+      continue;
     }
+    if (isInputUnsetDirective(candidate)) {
+      delete target[key];
+      continue;
+    }
+    target[key] = candidate;
   }
 }
 
@@ -261,4 +266,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isInputUnsetDirective(value: unknown): value is Readonly<Record<string, unknown>> {
+  return isPlainRecord(value) && value.$runx_unset === true;
 }

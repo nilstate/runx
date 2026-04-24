@@ -390,6 +390,129 @@ describe("thread.push_outbox tool", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   }, 15_000);
+
+  it("edits an existing GitHub issue comment for a message outbox entry and returns the refreshed thread", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-message-edit-tool-"));
+    const fakeGh = path.join(tempDir, "fake-gh.mjs");
+    const fakeState = path.join(tempDir, "fake-gh-state.json");
+
+    try {
+      await writeFile(
+        fakeState,
+        `${JSON.stringify({
+          issue: {
+            number: 123,
+            title: "Sourcey adoption thread",
+            body: "Initial issue body.",
+            url: "https://github.com/example/repo/issues/123",
+            state: "OPEN",
+            createdAt: "2026-04-22T00:00:00Z",
+            updatedAt: "2026-04-22T00:00:00Z",
+            author: {
+              login: "maintainer",
+            },
+            comments: [
+              {
+                id: "1000",
+                body: [
+                  "Old review body.",
+                  "",
+                  "<!-- runx-outbox-entry: sourcey-preview-123 -->",
+                ].join("\n"),
+                createdAt: "2026-04-22T01:00:00Z",
+                updatedAt: "2026-04-22T01:00:00Z",
+                url: "https://github.com/example/repo/issues/123#issuecomment-1000",
+                author: {
+                  login: "runx-bot",
+                },
+              },
+            ],
+            labels: [],
+            closedByPullRequestsReferences: [],
+          },
+          pulls: [],
+          nextPullNumber: 77,
+          nextCommentId: 1001,
+        }, null, 2)}\n`,
+      );
+      await writeFakeGhScript(fakeGh);
+
+      const result = runTool({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "sourcey-preview-123",
+          kind: "message",
+          title: "Sourcey preview ready",
+          status: "published",
+          locator: "https://github.com/example/repo/issues/123#issuecomment-1000",
+          thread_locator: "github://example/repo/issues/123",
+          metadata: {
+            schema_version: "runx.outbox-entry.message.v1",
+            channel: "github_issue_comment",
+            comment_id: "1000",
+            body_markdown: "Updated Sourcey preview review body.",
+          },
+        },
+        next_status: "published",
+      }, {
+        RUNX_GH_BIN: fakeGh,
+        RUNX_FAKE_GH_STATE: fakeState,
+      });
+
+      expect(result).toMatchObject({
+        outbox_entry: {
+          entry_id: "sourcey-preview-123",
+          kind: "message",
+          locator: "https://github.com/example/repo/issues/123#issuecomment-1000",
+          status: "published",
+          metadata: {
+            comment_id: "1000",
+            channel: "github_issue_comment",
+          },
+        },
+        push: {
+          status: "pushed",
+          message: {
+            locator: "https://github.com/example/repo/issues/123#issuecomment-1000",
+            comment_id: "1000",
+          },
+        },
+      });
+      expect(result.thread.entries).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          entry_id: "comment-1000",
+          body: "Updated Sourcey preview review body.",
+        }),
+      ]));
+
+      expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        issue: {
+          comments: [
+            {
+              id: "1000",
+              body: expect.stringContaining("Updated Sourcey preview review body."),
+              url: "https://github.com/example/repo/issues/123#issuecomment-1000",
+            },
+          ],
+        },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
 });
 
 function runTool(inputs: Readonly<Record<string, unknown>>, envOverrides: NodeJS.ProcessEnv = {}) {
@@ -463,6 +586,21 @@ if (args[0] === "issue" && args[1] === "comment") {
   state.issue.updatedAt = "2026-04-22T01:00:00Z";
   writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
   process.stdout.write(\`\${comment.url}\\n\`);
+  process.exit(0);
+}
+
+if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/issues\\/comments\\/\\d+$/.test(args[1] || "")) {
+  const body = readFlag(args, "-f")?.replace(/^body=/, "");
+  const commentId = (args[1] || "").split("/").pop();
+  const comment = state.issue.comments.find((candidate) => String(candidate.id) === String(commentId));
+  if (!comment) {
+    throw new Error(\`unknown comment \${commentId}\`);
+  }
+  comment.body = body;
+  comment.updatedAt = "2026-04-22T02:00:00Z";
+  state.issue.updatedAt = "2026-04-22T02:00:00Z";
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.stdout.write(JSON.stringify(comment));
   process.exit(0);
 }
 

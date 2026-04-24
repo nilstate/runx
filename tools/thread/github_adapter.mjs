@@ -516,9 +516,16 @@ export function pushGitHubMessage({
   );
   const repoSlug = firstNonEmptyString(optionalRecord(state.metadata)?.repo, issueRef.repo_slug);
   const bodyMarkdown = firstNonEmptyText(metadata.body_markdown, metadata.body);
-  const commentId = firstNonEmptyString(metadata.comment_id);
-  const locator = firstNonEmptyString(outbox.locator);
-  const shouldPublish = !commentId && !locator;
+  const commentId = firstNonEmptyString(
+    metadata.comment_id,
+    parseGitHubIssueCommentId(outbox.locator),
+  );
+  const locator = firstNonEmptyString(
+    outbox.locator,
+    commentId ? `${issueRef.issue_url}#issuecomment-${commentId}` : undefined,
+  );
+  const commentBody = ensureGitHubOutboxEntryMarker(bodyMarkdown, outbox.entry_id);
+  const shouldPublish = !commentId;
 
   if (!repoSlug) {
     throw new Error("GitHub issue repo slug is required to push a message outbox entry.");
@@ -535,7 +542,19 @@ export function pushGitHubMessage({
       "--repo",
       repoSlug,
       "--body",
-      ensureGitHubOutboxEntryMarker(bodyMarkdown, outbox.entry_id),
+      commentBody,
+    ], {
+      cwd: workspacePath ?? process.cwd(),
+      env,
+    });
+  } else {
+    runCommand(resolveGhBinary(env), [
+      "api",
+      `repos/${repoSlug}/issues/comments/${commentId}`,
+      "--method",
+      "PATCH",
+      "-f",
+      `body=${commentBody}`,
     ], {
       cwd: workspacePath ?? process.cwd(),
       env,
@@ -546,13 +565,15 @@ export function pushGitHubMessage({
     outbox_entry: prune({
       ...outbox,
       status: firstNonEmptyString(nextStatus, outbox.status, "published"),
+      locator,
       thread_locator: firstNonEmptyString(outbox.thread_locator, state.thread_locator, issueRef.thread_locator),
       metadata: prune({
         ...metadata,
         schema_version: firstNonEmptyString(metadata.schema_version, "runx.outbox-entry.message.v1"),
         channel: firstNonEmptyString(metadata.channel, "github_issue_comment"),
         body_markdown: bodyMarkdown,
-        pushed_at: shouldPublish ? new Date().toISOString() : firstNonEmptyString(metadata.pushed_at),
+        comment_id: commentId,
+        pushed_at: new Date().toISOString(),
       }),
     }),
     message: prune({
@@ -661,6 +682,15 @@ function gitHubPullRequestStateRank(pullRequest) {
     return 2;
   }
   return pullRequest.isDraft === true ? 0 : 1;
+}
+
+function parseGitHubIssueCommentId(value) {
+  const text = firstNonEmptyString(value);
+  if (!text) {
+    return undefined;
+  }
+  const match = text.match(/#issuecomment-(\d+)$/i);
+  return firstNonEmptyString(match?.[1]);
 }
 
 function buildGitHubCommitMessage(draftPullRequest, title) {
