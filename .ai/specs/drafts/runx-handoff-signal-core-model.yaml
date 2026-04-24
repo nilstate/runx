@@ -1,0 +1,272 @@
+spec_version: "1.1"
+task_id: "runx-handoff-signal-core-model"
+created: "2026-04-24T02:15:00Z"
+updated: "2026-04-24T02:15:00Z"
+status: "draft"
+
+task:
+  title: "Introduce a generic handoff signal model for post-boundary state"
+  summary: >
+    Runx already has generic transport and delivery primitives for external
+    work: thread hydration, outbox packaging, explicit decisions, and boundary
+    semantics. What it still lacks is a generic post-handoff state model. The
+    Sourcey `docs-signal` need exposed a real core gap, but the canonical model
+    should not be docs-specific or maintainer-specific. The stable runx concept
+    is an outward handoff crossing an explicit boundary and then receiving
+    normalized response signals, reduced state, and suppression policy. Freeze
+    that nomenclature now so Sourcey, skill upstream PRs, issue-response
+    workflows, and future outreach lanes all build on one core model.
+  size: "medium"
+  risk_level: "medium"
+  context:
+    packages:
+      - "packages/contracts"
+      - "packages/core"
+      - "skills"
+      - "tools/thread"
+    files_impacted:
+      - path: "packages/contracts/src/index.ts"
+        lines: "all"
+        reason: "Canonical home for handoff signal, handoff state, and suppression contracts."
+      - path: "packages/core/src/knowledge/index.ts"
+        lines: "all"
+        reason: "Generic knowledge/boundary helpers should own persistence and reduction of post-handoff state."
+      - path: "skills/draft-content/SKILL.md"
+        lines: "all"
+        reason: "Existing boundary terminology should stay aligned with the new handoff model."
+      - path: "skills/issue-to-pr/SKILL.md"
+        lines: "all"
+        reason: "Issue-to-PR is the current thin wrapper around generic transport and delivery surfaces."
+      - path: "../plans/sourcey-adoption-engine.md"
+        lines: "all"
+        reason: "Sourcey adoption planning currently names a docs-specific signal surface and should map to the generic model."
+    invariants:
+      - "Thread and outbox stay transport and delivery primitives, not domain posture models."
+      - "Boundary terminology stays aligned with existing boundary_kind and boundary_state concepts."
+      - "Observed response signals stay distinct from explicit suppression policy."
+      - "Sourcey and other domain lanes map into generic handoff concepts instead of becoming the platform vocabulary."
+    related_docs:
+      - "../plans/sourcey-adoption-engine.md"
+      - "../docs/skill-lab-contribution-spec.md"
+      - "skills/draft-content/SKILL.md"
+      - "packages/core/src/knowledge/index.ts"
+      - "packages/contracts/src/index.ts"
+    cwd: "."
+  objectives:
+    - "Define the canonical runx nouns for post-handoff state."
+    - "Separate immutable observed signals from reduced current state and from durable suppression policy."
+    - "Place the generic capability in contracts plus knowledge, not in Sourcey-specific lanes or runner-local kernel code."
+    - "Leave Sourcey, skill-upstream, and future outreach workflows as thin wrappers over the generic model."
+  scope:
+    in_scope:
+      - "Canonical contracts for handoff_signal, handoff_state, and suppression_record."
+      - "Knowledge-layer persistence and reduction responsibilities for post-handoff state."
+      - "Tool and skill naming rules for generic versus domain-specific wrappers."
+      - "Mapping from Sourcey docs review/PR/outreach flows onto the generic model."
+    out_of_scope:
+      - "Crawler, ranking, scheduling, or portfolio-scale outreach automation."
+      - "Hosted moderation UI or suppression dashboard implementation."
+      - "Provider-specific polling infrastructure beyond the boundary contract shape."
+  assumptions:
+    - "Runx should continue treating explicit external handoff boundaries as first-class concepts."
+    - "Sourcey is only the first strong consumer of the generic post-handoff model, not its owner."
+    - "Email, GitHub, discussions, and future channels all need to fit the same response model."
+  touchpoints:
+    - area: "contracts"
+      description: "Canonical contract ids, TypeBox schemas, and runtime validation for generic post-handoff state."
+      links:
+        - "packages/contracts/src/index.ts"
+    - area: "knowledge"
+      description: "Generic boundary-state storage, lookup, and reduction logic should live with thread and outbox knowledge."
+      links:
+        - "packages/core/src/knowledge/index.ts"
+    - area: "boundary semantics"
+      description: "Existing boundary_kind and boundary_state language in draft-content must remain coherent with the new model."
+      links:
+        - "skills/draft-content/SKILL.md"
+        - "skills/draft-content/X.yaml"
+    - area: "Sourcey adoption"
+      description: "Sourcey docs PR and outreach lanes should consume the generic model instead of defining platform nouns."
+      links:
+        - "../plans/sourcey-adoption-engine.md"
+    - area: "upstream handoff flows"
+      description: "Issue-to-PR and future skill-upstream lanes should be able to reuse the same post-handoff primitives."
+      links:
+        - "skills/issue-to-pr/SKILL.md"
+  risks:
+    - description: "A docs-specific or maintainer-specific name could leak into core and become hard to unwind later."
+      impact: "high"
+      mitigation: "Freeze the canonical nouns before implementation and treat docs-specific names as wrappers only."
+    - description: "Signals, decisions, and suppression rules could collapse into one object and muddy operator reasoning."
+      impact: "high"
+      mitigation: "Keep immutable observations, reduced state, and policy records as separate contracts."
+    - description: "A thread-centric model could exclude email or other non-thread surfaces."
+      impact: "medium"
+      mitigation: "Anchor the core concept on outward handoff and boundary response, not on GitHub thread mechanics."
+  acceptance:
+    validation_profile: "standard"
+    definition_of_done:
+      - id: "dod1"
+        description: "Canonical runx nouns are frozen as handoff_signal, handoff_state, and suppression_record."
+      - id: "dod2"
+        description: "The design explicitly states that docs-signal and maintainer-signal are consumer-level names, not core contract names."
+      - id: "dod3"
+        description: "The design assigns contracts to packages/contracts and persistence/reduction to packages/core knowledge."
+      - id: "dod4"
+        description: "The mapping from Sourcey docs PR/outreach flows to the generic model is explicit."
+    validation:
+      - id: "v1"
+        type: "documentation"
+        description: "The spec documents the canonical nomenclature and placement unambiguously."
+      - id: "v2"
+        type: "documentation"
+        description: "The spec preserves existing boundary terminology instead of inventing a competing vocabulary."
+      - id: "v3"
+        type: "documentation"
+        description: "The spec leaves room for GitHub, email, and future channels under the same core model."
+  notes: >
+    Canonical nomenclature:
+
+    - `thread`: hydrated provider conversation or work-item surface.
+    - `outbox_entry`: outbound artifact proposed or published through that surface.
+    - `boundary_state`: pre-send or handoff-semantics object describing who acts
+      next at the boundary and what acknowledgement is expected.
+    - `handoff_signal`: immutable normalized observation captured after an
+      outward handoff crosses an explicit boundary.
+    - `handoff_state`: reduced current posture for one handoff or target after
+      signals and suppression are considered.
+    - `suppression_record`: explicit durable no-contact or operator-block rule.
+
+    Non-canonical names:
+
+    - `docs-signal`: acceptable only as a Sourcey wrapper or lane label.
+    - `maintainer_signal`: acceptable only as a consumer-facing explanation when
+      the downstream actor really is an upstream maintainer.
+    - `thread_signal`: rejected as the core term because email and other
+      boundary surfaces must also fit.
+
+planning_log:
+  - timestamp: "2026-04-24T02:15:00Z"
+    actor: "user"
+    summary: "Asked whether docs-signal should be core and requested a proper future-proof design with correct nomenclature."
+  - timestamp: "2026-04-24T02:15:00Z"
+    actor: "agent"
+    summary: "Chose handoff as the stable core concept, with signals and suppression layered on top of existing thread and outbox transport surfaces."
+    notes: >
+      The existing knowledge package already owns thread, outbox, and decision
+      contracts. The missing layer is generic post-handoff state, not another
+      Sourcey-specific workflow primitive.
+
+phases:
+  - id: "phase1"
+    name: "Freeze canonical contracts and naming"
+    objective: "Define the generic nouns and shapes before implementation drift hardens."
+    changes:
+      - file: "packages/contracts/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Add canonical contract families named runx.handoff_signal.v1,
+          runx.handoff_state.v1, and runx.suppression_record.v1. The handoff
+          signal should represent one immutable normalized observation after an
+          outward handoff. The handoff state should represent the reduced
+          posture for a handoff or target after replaying signals and
+          suppression. The suppression record should remain a separate explicit
+          policy object rather than a signal subtype.
+      - file: "packages/contracts/src/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep boundary_kind as the taxonomy hook for who or what sits on the
+          far side of the boundary. Use handoff as the noun for the attempt
+          crossing that boundary. Do not make docs, maintainer, PR, or thread
+          part of the canonical contract name.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "documentation"
+        description: "The spec names handoff_signal, handoff_state, and suppression_record as the canonical contract family."
+      - id: "ac1_2"
+        type: "documentation"
+        description: "The design explicitly rejects docs-signal, maintainer-signal, and thread-signal as platform contract names."
+    status: "pending"
+
+  - id: "phase2"
+    name: "Place persistence and reduction in knowledge"
+    objective: "Keep generic post-handoff state beside thread and outbox knowledge instead of burying it in a product lane."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "packages/core/src/knowledge/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Add generic helpers to append, load, query, and reduce handoff
+          signals and suppression records. The knowledge layer should be able to
+          answer questions such as: what is the current posture for this
+          handoff, has this repo or contact been suppressed, and what signal
+          last moved the state?
+      - file: "packages/core/src/knowledge/index.ts"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Keep this out of runner-local orchestration code. This is boundary
+          knowledge and reduction logic, not execution-kernel logic.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "documentation"
+        description: "The design assigns generic signal storage and reduction to knowledge, not to Sourcey lanes or runner-local."
+      - id: "ac2_2"
+        type: "documentation"
+        description: "The design keeps decisions, signals, and suppression as distinct concepts."
+    status: "pending"
+
+  - id: "phase3"
+    name: "Expose generic tools and keep domain wrappers thin"
+    objective: "Ensure product lanes consume the generic model instead of duplicating it."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "tools/thread"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Introduce generic post-handoff helpers under a neutral surface such as
+          handoff or boundary, for example record signal, reduce state, and
+          check suppression. Do not make docs or maintainer part of the generic
+          tool namespace.
+      - file: "../plans/sourcey-adoption-engine.md"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Reframe docs-signal as a Sourcey consumer of the generic handoff
+          model. Sourcey may still expose docs-specific policy, but it should
+          emit and consume the generic contracts.
+      - file: "skills/issue-to-pr/SKILL.md"
+        action: "update"
+        lines: "all"
+        content_spec: >
+          Clarify that issue-to-pr owns packaging and push boundaries, while
+          post-handoff signal capture is a separate generic concern that can be
+          reused by Sourcey, skill-upstream, and future outreach lanes.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "documentation"
+        description: "The design leaves Sourcey docs-signal as a thin wrapper name, not the platform primitive."
+      - id: "ac3_2"
+        type: "documentation"
+        description: "The design allows future skill-upstream and outreach lanes to consume the same generic contracts."
+    status: "pending"
+
+rollback:
+  strategy: "manual"
+  commands: {}
+
+metadata:
+  estimated_effort_hours: 6
+  ai_model: "gpt-5"
+  tags:
+    - "architecture"
+    - "nomenclature"
+    - "boundary"
+    - "handoff"
+    - "knowledge"
