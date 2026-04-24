@@ -434,7 +434,6 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
       properties: {
         principal_id: { type: "string" },
         route_id: { type: "string" },
-        missing: { type: "boolean" },
         title: { type: "string" },
         summary: { type: "string" },
         recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },
@@ -442,6 +441,18 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
         updated_at: { type: "string", format: "date-time" },
       },
       required: ["principal_id", "route_id", "recipients", "created_at", "updated_at"],
+      additionalProperties: false,
+    },
+    ApprovalRouteSnapshot: {
+      type: "object",
+      properties: {
+        route_id: { type: "string" },
+        missing: { type: "boolean" },
+        title: { type: "string" },
+        summary: { type: "string" },
+        recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },
+      },
+      required: ["route_id", "recipients"],
       additionalProperties: false,
     },
     PutApprovalRouteRequest: {
@@ -616,18 +627,7 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
         },
         request_id: { type: "string" },
         gate: openApiSchemaRef("HostedApprovalGate"),
-        route: {
-          type: "object",
-          properties: {
-            route_id: { type: "string" },
-            missing: { type: "boolean" },
-            title: { type: "string" },
-            summary: { type: "string" },
-            recipients: { type: "array", items: openApiSchemaRef("PolicyApprovalRouteRecipient") },
-          },
-          required: ["route_id", "recipients"],
-          additionalProperties: false,
-        },
+        route: openApiSchemaRef("ApprovalRouteSnapshot"),
         matched_by: {
           type: "object",
           properties: {

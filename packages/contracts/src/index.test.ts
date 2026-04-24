@@ -109,6 +109,25 @@ describe("@runxhq/contracts", () => {
     });
     expect(schemas).toHaveProperty("PublicSkillDetailEnvelope");
     expect(schemas).toHaveProperty("KnowledgeEntryEnvelope");
+    expect(schemas).toHaveProperty("ApprovalRouteSnapshot");
+    expect(schemas.PolicyApprovalRouteSummary).not.toMatchObject({
+      properties: expect.objectContaining({
+        missing: expect.anything(),
+      }),
+    });
+    expect(schemas.ApprovalRouteSnapshot).toMatchObject({
+      properties: expect.objectContaining({
+        missing: { type: "boolean" },
+      }),
+      required: ["route_id", "recipients"],
+    });
+    expect(schemas.ApprovalInboxItem).toMatchObject({
+      properties: expect.objectContaining({
+        route: {
+          $ref: "#/components/schemas/ApprovalRouteSnapshot",
+        },
+      }),
+    });
   });
 
   it("validates auxiliary schema payloads", () => {
