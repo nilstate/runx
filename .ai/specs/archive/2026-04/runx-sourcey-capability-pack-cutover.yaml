@@ -1,0 +1,325 @@
+spec_version: "1.1"
+task_id: "runx-sourcey-capability-pack-cutover"
+created: "2026-04-25T10:10:00Z"
+updated: "2026-04-25T15:50:00Z"
+status: "completed"
+
+task:
+  title: "Cut Sourcey over to a clean runx capability-pack model"
+  summary: >
+    Sourcey currently proves the wrong extension shape: product-specific docs
+    outreach control lives inside the runx CLI as `runx docs ...`, while the
+    Sourcey repo shells out to those bespoke product commands. That makes the
+    engine own service nouns and leaves the example product consuming runx
+    through a privileged escape hatch instead of the generic execution model.
+    The clean cut is: runx keeps only generic runtime and invocation verbs,
+    while Sourcey owns its outreach operator flows as registered local
+    skills/chains/tools executed through normal runx skill invocation.
+  size: "large"
+  risk_level: "high"
+  context:
+    packages:
+      - "packages/cli"
+      - "packages/core"
+      - "packages/contracts"
+      - "../sourcey.com/skills"
+      - "../sourcey.com/.runx/tools"
+      - "../sourcey.com/README.md"
+      - "../sourcey.com/package.json"
+    files_impacted:
+      - path: "packages/cli/src/index.ts"
+        lines: "all"
+        reason: "Remove product-specific docs command parsing from the runx CLI."
+      - path: "packages/cli/src/dispatch.ts"
+        lines: "all"
+        reason: "Remove docs command dispatch and keep only generic engine verbs."
+      - path: "packages/cli/src/help.ts"
+        lines: "all"
+        reason: "Delete product-specific docs command help and replace it with generic extension guidance."
+      - path: "../sourcey.com/skills"
+        lines: "all"
+        reason: "Add Sourcey-owned operator skills/chains for outreach control flows."
+      - path: "../sourcey.com/.runx/tools"
+        lines: "all"
+        reason: "Move control-state, doctor, and dogfood behavior into Sourcey-owned tools."
+      - path: "../sourcey.com/README.md"
+        lines: "all"
+        reason: "Document the new generic runx invocation path for Sourcey skills."
+      - path: "../sourcey.com/package.json"
+        lines: "all"
+        reason: "Route outreach scripts through normal runx skill execution instead of a special docs subcommand."
+    invariants:
+      - "Runx owns generic runtime, thread, outbox, receipts, and handoff primitives only."
+      - "Sourcey owns docs/outreach product workflows as skills, chains, and tools in its own repo."
+      - "Operators execute Sourcey flows through generic runx skill invocation, not through runx product commands or a separate Sourcey CLI."
+      - "No unrelated in-flight issue-to-pr work in runx/oss is touched or reverted."
+    related_docs:
+      - "README.md"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/dispatch.ts"
+      - "../sourcey.com/README.md"
+      - "../sourcey.com/skills/docs-pr/SKILL.md"
+      - "../sourcey.com/skills/docs-outreach/SKILL.md"
+      - "../sourcey.com/skills/docs-signal/SKILL.md"
+    cwd: "."
+  objectives:
+    - "Remove the Sourcey-specific docs command surface from runx."
+    - "Re-express Sourcey outreach operator flows as Sourcey-owned runx skills/chains/tools."
+    - "Keep runx as the generic execution engine and Sourcey as the capability pack."
+    - "Update docs, scripts, and dogfood so Sourcey consumes runx through the same public model other services would use."
+  scope:
+    in_scope:
+      - "Deleting `runx docs ...` parsing, dispatch, help, and tests from runx."
+      - "Porting status, bind-repo, rerun, push-pr, signal, doctor, and dogfood flows into Sourcey-owned skills/tools."
+      - "Updating Sourcey scripts and docs to invoke those flows through generic `runx <skill>` execution."
+      - "Dogfooding the new Sourcey invocation path and recording UX gaps."
+    out_of_scope:
+      - "Changing generic runx thread/outbox/handoff contracts that are already correct."
+      - "Building a separate Sourcey CLI."
+      - "Adding another runx product namespace or plugin framework beyond the existing generic skill invocation path."
+  assumptions:
+    - "Local skill resolution through `runx <skill>` in a repo with `skills/<name>/SKILL.md` is the intended extension seam."
+    - "Sourcey operator convenience can be achieved with Sourcey-owned wrapper skills rather than a special-case runx command."
+    - "Sourcey doctor/dogfood should continue to prove the review-first thread model after the cut."
+  touchpoints:
+    - area: "runx CLI"
+      description: "The engine CLI must shed product-specific Sourcey/docs nouns."
+      links:
+        - "packages/cli/src/index.ts"
+        - "packages/cli/src/dispatch.ts"
+        - "packages/cli/src/help.ts"
+    - area: "Sourcey operator surface"
+      description: "Sourcey needs its own operator chains for outreach status, rerun, push, signal, doctor, and dogfood."
+      links:
+        - "../sourcey.com/skills"
+        - "../sourcey.com/.runx/tools"
+    - area: "Documentation"
+      description: "Both repos must explain the new capability-pack model clearly."
+      links:
+        - "README.md"
+        - "../sourcey.com/README.md"
+  risks:
+    - description: "The cut could strand Sourcey without a usable operator path if the new wrapper skills are under-specified."
+      impact: "high"
+      mitigation: "Port the existing working control logic into Sourcey tools and dogfood every operator action before finishing."
+    - description: "The runx CLI could lose valuable generic capability if docs-specific code is deleted without preserving the underlying primitives elsewhere."
+      impact: "medium"
+      mitigation: "Delete only product orchestration; keep generic thread/handoff/runtime contracts untouched."
+    - description: "The new Sourcey invocation model could be technically pure but ergonomically bad."
+      impact: "medium"
+      mitigation: "Dogfood non-JSON operator paths and record concrete UX notes in docs and follow-up notes."
+  acceptance:
+    validation_profile: "standard"
+    definition_of_done:
+      - id: "dod1"
+        description: "runx no longer parses, dispatches, or documents a `docs` product command."
+      - id: "dod2"
+        description: "Sourcey exposes outreach operator flows as Sourcey-owned skills/chains/tools executed through generic runx skill invocation."
+      - id: "dod3"
+        description: "Sourcey package scripts and docs no longer use `runx docs ...`."
+      - id: "dod4"
+        description: "Sourcey dogfood and doctor pass on the new invocation model."
+      - id: "dod5"
+        description: "The docs in both repos explain Sourcey as a runx capability pack instead of a runx subcommand."
+    validation:
+      - id: "v1"
+        type: "command"
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        description: "runx CLI parser/tests stay clean after removing the docs command."
+      - id: "v2"
+        type: "command"
+        command: "npm run verify:outreach"
+        description: "Sourcey outreach doctor/tests/dogfood pass on the new invocation path."
+      - id: "v3"
+        type: "command"
+        command: "npm exec runx -- outreach --runner status --issue sourcey/sourcey.com#issue/2 --json"
+        description: "A real Sourcey-owned operator skill can be invoked through generic runx execution."
+  notes: >
+    Canonical operator model after the cut:
+
+    - runx: generic verbs such as direct skill execution, `surface`, `doctor`,
+      `resume`, `inspect`, `history`, and generic runtime contracts.
+    - Sourcey: a local `outreach` skill package with operator runners such as
+      `status`, `bind-repo`, `rerun`, `push-pr`, `signal`, `doctor`, and
+      `dogfood`.
+    - Invocation: `runx outreach --runner status --issue ...` from the
+      Sourcey repo, or `runx ./skills/outreach --runner status --issue ...`
+      from elsewhere.
+
+planning_log:
+  - timestamp: "2026-04-25T10:10:00Z"
+    actor: "user"
+    summary: "Rejected both a separate Sourcey CLI and a runx product subcommand; required Sourcey outreach to be a runx chain/capability pack."
+  - timestamp: "2026-04-25T10:10:00Z"
+    actor: "agent"
+    summary: "Chose the capability-pack model: generic runx engine, a Sourcey-owned outreach skill package with operator runners, and no `runx docs` command."
+
+phases:
+  - id: "phase1"
+    name: "Freeze the capability-pack architecture"
+    objective: "Record the end state before code moves begin."
+    changes:
+      - file: "README.md"
+        action: "update"
+        lines: "Local CLI and extension sections"
+        content_spec: >
+          Explain that services extend runx by shipping skills/tools/chains that
+          execute through generic runx verbs, and remove any implication that
+          product workflows belong inside the runx CLI itself.
+      - file: "../sourcey.com/README.md"
+        action: "update"
+        lines: "operator workflow sections"
+        content_spec: >
+          Reframe Sourcey as a runx capability pack and document the intended
+          generic invocation style using Sourcey-owned skills.
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "documentation"
+        description: "The architecture docs describe Sourcey as a capability pack, not a runx subcommand."
+    status: "completed"
+
+  - id: "phase2"
+    name: "Delete the product command from runx"
+    objective: "Strip the Sourcey/docs command surface out of the engine CLI."
+    dependencies:
+      - "phase1"
+    changes:
+      - file: "packages/cli/src/index.ts"
+        action: "update"
+        lines: "all docs-command parsing and support"
+        content_spec: >
+          Remove docsAction parsing, remove `docs` from builtinRootCommands,
+          and leave only the generic skill invocation path.
+      - file: "packages/cli/src/dispatch.ts"
+        action: "update"
+        lines: "all docs-command dispatch"
+        content_spec: >
+          Remove handleDocsCommand/renderDocsResult routing and delete any dead
+          imports introduced solely for the docs command.
+      - file: "packages/cli/src/help.ts"
+        action: "update"
+        lines: "docs help sections"
+        content_spec: >
+          Remove `runx docs ...` examples and replace them with generic skill
+          invocation guidance where needed.
+      - file: "packages/cli/src/commands/docs*.ts"
+        action: "delete_or_stop_referencing"
+        lines: "all"
+        content_spec: >
+          Remove the product-specific docs command implementation from runx.
+      - file: "packages/cli/src/index.test.ts"
+        action: "update"
+        lines: "docs parser tests"
+        content_spec: >
+          Delete tests that assert a `docs` command and replace them with
+          coverage for generic local skill invocation where needed.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "command"
+        command: "pnpm exec vitest run packages/cli/src/index.test.ts"
+        description: "The runx CLI no longer recognizes a docs product command."
+    status: "completed"
+
+  - id: "phase3"
+    name: "Port operator flows into Sourcey-owned tools and skills"
+    objective: "Make Sourcey consume runx through local capabilities instead of a privileged CLI path."
+    dependencies:
+      - "phase2"
+    changes:
+      - file: "../sourcey.com/.runx/tools/**"
+        action: "update_or_add"
+        lines: "control-state and verification helpers"
+        content_spec: >
+          Add Sourcey-owned tools for outreach control-state loading, repo
+          binding, rerun orchestration, push gating, signal packaging, doctor,
+          and dogfood as needed. Shared logic may live in local helper modules
+          under `.runx/tools`, but no implementation should depend on a runx
+          product command.
+      - file: "../sourcey.com/skills/outreach/{SKILL.md,X.yaml}"
+        action: "add"
+        lines: "all"
+        content_spec: >
+          Add one Sourcey-owned outreach skill package with multiple operator
+          runners such as status, bind-repo, rerun, push-pr, signal, doctor,
+          and dogfood. Use Sourcey-owned tools to orchestrate the existing
+          docs-scan/docs-build/docs-pr/docs-outreach/docs-signal flows while
+          keeping the operator surface as generic runx skill execution.
+      - file: "../sourcey.com/package.json"
+        action: "update"
+        lines: "scripts"
+        content_spec: >
+          Replace `runx docs ...` scripts with generic
+          `runx outreach --runner <runner>` execution from the Sourcey repo
+          root.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "command"
+        command: "npm exec runx -- outreach --runner doctor --json"
+        description: "A Sourcey-owned outreach runner can run through generic runx execution."
+      - id: "ac3_2"
+        type: "command"
+        command: "npm exec runx -- outreach --runner status --issue sourcey/sourcey.com#issue/2 --json"
+        description: "A Sourcey-owned issue control runner resolves through generic runx invocation."
+    status: "completed"
+
+  - id: "phase4"
+    name: "Refresh docs, scripts, and proof loops"
+    objective: "Make the new model legible and proven end to end."
+    dependencies:
+      - "phase3"
+    changes:
+      - file: "../sourcey.com/README.md"
+        action: "update"
+        lines: "operator workflow sections"
+        content_spec: >
+          Document the new runx capability-pack invocation model with concrete
+          commands for doctor, dogfood, status, rerun, signal, bind-repo, and
+          push-pr using Sourcey-owned skills.
+      - file: "README.md"
+        action: "update"
+        lines: "extension sections"
+        content_spec: >
+          Show Sourcey as the example of a service extending runx through local
+          skills/tools/chains rather than a runx subcommand.
+      - file: "../sourcey.com/tests/**"
+        action: "update"
+        lines: "operator-surface and doctor expectations"
+        content_spec: >
+          Update tests and doctor assertions to reflect Sourcey-owned skills and
+          the absence of `runx docs ...`.
+    acceptance_criteria:
+      - id: "ac4_1"
+        type: "command"
+        command: "npm run verify:outreach"
+        description: "Sourcey doctor, tests, and dogfood all pass on the new model."
+    status: "completed"
+
+rollback:
+  strategy: "Revert the runx CLI removal commit and the Sourcey capability-pack commit independently if the cut exposes an operator gap."
+  commands:
+    - "git revert <runx-cli-cutover-commit>"
+    - "git revert <sourcey-capability-pack-cutover-commit>"
+
+review:
+  status: "reviewed"
+  summary: >
+    The cut holds the intended boundary: runx keeps generic engine/runtime
+    primitives while Sourcey owns the outreach capability pack, its operator
+    runners, and its control-plane logic.
+
+self_eval:
+  status: "completed"
+  summary: >
+    Completed with one material follow-up caught during verification: published
+    @runxhq packages needed real semver dependency metadata plus packaged tool
+    runtimes in the CLI tarball. Sourcey now consumes packaged runx artifacts
+    correctly, and the live issue status path works through the installed CLI.
+
+metadata:
+  owner: "agent"
+  repository: "runx/oss"
+  tags:
+    - "architecture"
+    - "cli"
+    - "sourcey"
+    - "capability-pack"

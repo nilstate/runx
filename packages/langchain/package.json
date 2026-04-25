@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@langchain/core": "^1.0.6",
-    "@runxhq/core": "workspace:^0.1.1",
+    "@runxhq/core": "^0.1.4",
     "zod": "^4.1.12",
     "zod-to-json-schema": "^3.24.6"
   }

@@ -65,7 +65,6 @@ import {
   renderDoctorDiagnosticList,
   renderDoctorResult,
 } from "./commands/doctor.js";
-import { handleDocsCommand, renderDocsResult } from "./commands/docs.js";
 import {
   handleDiffCommand,
   handleHistoryCommand,
@@ -161,18 +160,6 @@ export async function dispatchCli(
     });
     io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return 0;
-  }
-
-  if (parsed.command === "docs" && parsed.docsAction) {
-    const result = await handleDocsCommand(parsed, env, caller, {
-      resolveRegistryStoreForChains,
-    });
-    if (parsed.json) {
-      io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    } else {
-      io.stdout.write(renderDocsResult(result));
-    }
-    return result.status === "success" ? 0 : result.status === "needs_resolution" ? 2 : 1;
   }
 
   if (parsed.command === "tool" && (parsed.toolAction === "build" || parsed.toolAction === "migrate")) {

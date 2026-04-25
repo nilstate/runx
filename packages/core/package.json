@@ -78,7 +78,7 @@
     }
   },
   "dependencies": {
-    "@runxhq/contracts": "workspace:^0.2.0",
+    "@runxhq/contracts": "^0.2.3",
     "yaml": "^2.8.3"
   }
 }

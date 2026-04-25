@@ -341,9 +341,10 @@ function extractOutputHighlights(stdout: string): Array<[string, string]> {
     return trimmed.includes("\n") ? [] : [["output", trimmed]];
   }
   if (!isRecord(parsed)) return [];
+  const output = isRecord(parsed.data) ? parsed.data : parsed;
   const fields: Array<[string, string]> = [];
   const push = (key: string, label = key) => {
-    const value = parsed[key];
+    const value = output[key];
     if (value === undefined) return;
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       fields.push([label, String(value)]);
@@ -358,6 +359,18 @@ function extractOutputHighlights(stdout: string): Array<[string, string]> {
   push("completed_state");
   push("review_path");
   push("spec_path");
+  push("action");
+  push("status");
+  push("summary");
+  push("issue");
+  push("thread_locator", "thread");
+  push("task_id", "task");
+  push("lane");
+  push("target_repo", "target");
+  push("repo_root", "repo");
+  push("preview_url", "preview");
+  push("review_comment_url", "review");
+  push("pull_request_url", "pr");
   return fields;
 }
 

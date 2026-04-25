@@ -66,6 +66,22 @@ tools, approvals, and required human inputs keep their existing local behavior.
 The global link points at `oss/packages/cli` in this checkout. Rebuild with
 `pnpm --dir oss build`; do not reinstall.
 
+## Capability Packs
+
+Runx is the generic execution engine. Product workflows stay outside the runx
+CLI and ship as local skills, runners, and tools in the consuming repo.
+
+The intended extension model is:
+
+- `runx` owns generic runtime, thread, outbox, receipt, and handoff machinery
+- service repos own their product workflows as local capability packs
+- operators execute those workflows through normal skill invocation
+
+Sourcey is the reference shape for this model: the repo exposes an `outreach`
+skill with multiple runners, and operators invoke it with generic runx verbs
+such as `runx outreach --runner status --issue ...`. There is no privileged
+`runx docs ...` path inside the engine.
+
 ## Standalone Skill Packages
 
 `runx new <name>` is the canonical standalone package scaffold:

@@ -10,6 +10,7 @@ const packageRoot = path.join(workspaceRoot, "packages");
 const packageSearchRoots = [packageRoot, path.join(workspaceRoot, "plugins")];
 const runtimeOutDir = path.join(workspaceRoot, ".build", "runtime");
 const tscPath = require.resolve("typescript/bin/tsc");
+const ts = require("typescript");
 
 const mode = process.argv.includes("--pack") ? "pack" : "dev";
 
@@ -195,9 +196,52 @@ async function copyIntoDist(source, target) {
 async function syncCliTools(directory) {
   const source = path.join(workspaceRoot, "tools");
   const target = path.join(directory, "tools");
+  const compiledTarget = path.join(directory, "dist", "tools");
   await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  await rm(compiledTarget, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   if (await exists(source)) {
     await cp(source, target, { recursive: true });
+    await copyCliToolRuntimeTree(source, compiledTarget);
+  }
+  await stripSourceMaps(compiledTarget);
+}
+
+async function copyCliToolRuntimeTree(sourceRoot, targetRoot) {
+  const entries = await readdir(sourceRoot, { withFileTypes: true });
+  for (const entry of entries) {
+    const sourcePath = path.join(sourceRoot, entry.name);
+    const targetPath = path.join(targetRoot, entry.name);
+    if (entry.isDirectory()) {
+      await copyCliToolRuntimeTree(sourcePath, targetPath);
+      continue;
+    }
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    if (sourcePath.endsWith(".ts")) {
+      const sourceText = await readFile(sourcePath, "utf8");
+      const transpiled = ts.transpileModule(sourceText, {
+        compilerOptions: {
+          module: ts.ModuleKind.ESNext,
+          target: ts.ScriptTarget.ES2022,
+          moduleResolution: ts.ModuleResolutionKind.Bundler,
+          verbatimModuleSyntax: true,
+        },
+        fileName: sourcePath,
+      }).outputText;
+      await mkdir(path.dirname(targetPath), { recursive: true });
+      await writeFile(targetPath.replace(/\.ts$/, ".js"), transpiled, "utf8");
+      continue;
+    }
+
+    if (
+      sourcePath.endsWith(".mjs") ||
+      sourcePath.endsWith(".json") ||
+      sourcePath.endsWith(".mts")
+    ) {
+      await copyFileToTarget(sourcePath, targetPath);
+    }
   }
 }
 

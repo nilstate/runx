@@ -1,6 +1,6 @@
 {
   "name": "@runxhq/cli",
-  "version": "0.5.18",
+  "version": "0.5.20",
   "description": "Runx CLI — governed runtime for agent skills, tools, chains, and packets.",
   "private": false,
   "license": "Apache-2.0",
@@ -46,10 +46,10 @@
     }
   },
   "dependencies": {
-    "@runxhq/adapters": "workspace:^0.1.1",
-    "@runxhq/authoring": "workspace:^0.1.1",
-    "@runxhq/contracts": "workspace:^0.2.0",
-    "@runxhq/core": "workspace:^0.1.1",
+    "@runxhq/adapters": "^0.1.4",
+    "@runxhq/authoring": "^0.1.3",
+    "@runxhq/contracts": "^0.2.3",
+    "@runxhq/core": "^0.1.4",
     "yaml": "^2.8.3"
   }
 }
