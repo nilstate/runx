@@ -8,19 +8,20 @@ import {
   resolveRunxHomeDir,
 } from "@runxhq/core/config";
 import {
-  executeSkill,
   validateOutputContract,
   type AdapterInvokeRequest,
   type AdapterInvokeResult,
   type AgentWorkRequest,
   type CognitiveResolutionRequest,
+  type NestedSkillInvoker,
   type OutputContract,
   type OutputContractEntry,
+  type ResolutionRequest,
   type ResolutionResponse,
   type SkillAdapter,
 } from "@runxhq/core/executor";
 import type { SkillInput } from "@runxhq/core/parser";
-import { resolveToolExecutionTarget } from "@runxhq/core/runner-local";
+import { resolveToolExecutionTarget, runValidatedSkill } from "@runxhq/core/runner-local";
 
 import { createA2aAdapter, createFixtureA2aTransport } from "../a2a/index.js";
 import { createCliToolAdapter } from "../cli-tool/index.js";
@@ -36,6 +37,14 @@ export interface ManagedAgentConfig {
 
 interface ManagedToolCallResult {
   readonly value: unknown;
+  readonly trace?: ManagedToolExecutionTrace;
+}
+
+interface ManagedToolExecutionTrace {
+  readonly tool: string;
+  readonly status: "success" | "failure" | "policy_denied" | "needs_resolution";
+  readonly receiptId?: string;
+  readonly resolutionKind?: ResolutionRequest["kind"];
 }
 
 interface ManagedRuntimeTool {
@@ -51,6 +60,7 @@ interface ManagedAgentExecutionDetails {
   readonly rounds: number;
   readonly toolCalls: number;
   readonly tools: readonly string[];
+  readonly toolExecutions: readonly ManagedToolExecutionTrace[];
 }
 
 interface OpenAiToolDefinition {
@@ -186,6 +196,7 @@ export async function executeManagedAgentResolution(
     readonly env?: NodeJS.ProcessEnv;
     readonly signal?: AbortSignal;
     readonly searchFromDirectory?: string;
+    readonly nestedSkillInvoker?: NestedSkillInvoker;
   } = {},
 ): Promise<ResolutionResponse> {
   return (await executeManagedAgentRequest(config, request, options)).response;
@@ -212,6 +223,7 @@ async function invokeManagedAgentAdapter(
         env,
         signal: request.signal,
         searchFromDirectory: request.skillDirectory,
+        nestedSkillInvoker: request.nestedSkillInvoker,
         toolCatalogAdapters: request.toolCatalogAdapters,
       },
     );
@@ -248,6 +260,7 @@ async function executeManagedAgentRequest(
     readonly env?: NodeJS.ProcessEnv;
     readonly signal?: AbortSignal;
     readonly searchFromDirectory?: string;
+    readonly nestedSkillInvoker?: NestedSkillInvoker;
     readonly toolCatalogAdapters?: AdapterInvokeRequest["toolCatalogAdapters"];
   } = {},
 ): Promise<ManagedAgentExecutionDetails> {
@@ -264,6 +277,7 @@ async function executeManagedAgentRequest(
     env,
     options.signal,
     request.work.envelope.execution_location?.tool_roots,
+    options.nestedSkillInvoker,
     options.toolCatalogAdapters,
   );
 
@@ -283,6 +297,7 @@ async function resolveWithOpenAi(
   const toolByProviderName = new Map(runtimeTools.map((tool) => [tool.providerName, tool] as const));
   const history: OpenAiResponseInputItem[] = [buildOpenAiInitialRequestMessage(request)];
   let toolCalls = 0;
+  const toolExecutions: ManagedToolExecutionTrace[] = [];
 
   for (let round = 1; round <= maxManagedAgentRounds; round += 1) {
     const response = await createOpenAiResponse(config, {
@@ -304,6 +319,7 @@ async function resolveWithOpenAi(
           rounds: round,
           toolCalls,
           tools: runtimeTools.map((tool) => tool.runxName),
+          toolExecutions,
         };
       }
 
@@ -331,6 +347,7 @@ async function resolveWithOpenAi(
               rounds: round,
               toolCalls,
               tools: runtimeTools.map((tool) => tool.runxName),
+              toolExecutions,
             };
           }
           toolOutputs.push({
@@ -360,10 +377,14 @@ async function resolveWithOpenAi(
         continue;
       }
 
+      const result = await executeManagedToolCall(tool, parseJsonValue(call.arguments, `${call.name}.arguments`));
+      if (result.trace) {
+        toolExecutions.push(result.trace);
+      }
       toolOutputs.push({
         type: "function_call_output",
         call_id: call.call_id,
-        output: JSON.stringify(await executeManagedToolCall(tool, parseJsonValue(call.arguments, `${call.name}.arguments`))),
+        output: JSON.stringify(result.value),
       });
     }
 
@@ -383,6 +404,7 @@ async function resolveWithAnthropic(
   const toolByProviderName = new Map(runtimeTools.map((tool) => [tool.providerName, tool] as const));
   const messages: AnthropicMessage[] = [buildAnthropicInitialRequestMessage(request)];
   let toolCalls = 0;
+  const toolExecutions: ManagedToolExecutionTrace[] = [];
 
   for (let round = 1; round <= maxManagedAgentRounds; round += 1) {
     const response = await createAnthropicMessage(config, {
@@ -405,6 +427,7 @@ async function resolveWithAnthropic(
           rounds: round,
           toolCalls,
           tools: runtimeTools.map((tool) => tool.runxName),
+          toolExecutions,
         };
       }
 
@@ -422,7 +445,7 @@ async function resolveWithAnthropic(
 
     for (const toolUse of toolUses) {
       if (toolUse.name === FINAL_RESULT_TOOL_NAME) {
-        const finalized = completeAnthropicFinalResult(toolUse, request, round, toolCalls, runtimeTools);
+        const finalized = completeAnthropicFinalResult(toolUse, request, round, toolCalls, runtimeTools, toolExecutions);
         if (finalized.ok) {
           return finalized.value;
         }
@@ -447,11 +470,14 @@ async function resolveWithAnthropic(
       }
 
       const result = await executeManagedToolCall(tool, toolUse.input);
+      if (result.trace) {
+        toolExecutions.push(result.trace);
+      }
       toolResults.push({
         type: "tool_result",
         tool_use_id: toolUse.id,
-        content: JSON.stringify(result),
-        is_error: isToolErrorResult(result),
+        content: JSON.stringify(result.value),
+        is_error: isToolErrorResult(result.value),
       });
     }
 
@@ -467,6 +493,7 @@ async function resolveManagedRuntimeTools(
   env: NodeJS.ProcessEnv,
   signal: AbortSignal | undefined,
   toolRoots: readonly string[] | undefined,
+  nestedSkillInvoker: NestedSkillInvoker | undefined,
   toolCatalogAdapters: AdapterInvokeRequest["toolCatalogAdapters"],
 ): Promise<readonly ManagedRuntimeTool[]> {
   const tools: ManagedRuntimeTool[] = [];
@@ -494,17 +521,18 @@ async function resolveManagedRuntimeTools(
       providerName,
       description: target.skill.description ?? `runx tool ${toolName}`,
       parameters: skillInputsToJsonSchema(target.skill.inputs),
-      invoke: async (argumentsValue) => ({
-        value: await invokeManagedRuntimeTool(
+      invoke: async (argumentsValue) =>
+        await invokeManagedRuntimeTool(
           toolName,
           target.skill,
+          target.referencePath,
           target.skillDirectory,
           argumentsValue,
           env,
           signal,
+          nestedSkillInvoker,
           toolCatalogAdapters,
         ),
-      }),
     });
   }
 
@@ -514,32 +542,77 @@ async function resolveManagedRuntimeTools(
 async function invokeManagedRuntimeTool(
   toolName: string,
   skill: Awaited<ReturnType<typeof resolveToolExecutionTarget>>["skill"],
+  requestedSkillPath: string,
   skillDirectory: string,
   argumentsValue: unknown,
   env: NodeJS.ProcessEnv,
   signal: AbortSignal | undefined,
+  nestedSkillInvoker: NestedSkillInvoker | undefined,
   toolCatalogAdapters: AdapterInvokeRequest["toolCatalogAdapters"],
-): Promise<unknown> {
+): Promise<ManagedToolCallResult> {
   const inputs = asRecord(argumentsValue);
   if (!inputs) {
     return {
-      error: `Tool '${toolName}' arguments must be a JSON object.`,
+      value: {
+        error: `Tool '${toolName}' arguments must be a JSON object.`,
+      },
+      trace: {
+        tool: toolName,
+        status: "failure",
+      },
     };
   }
 
-  const result = await executeSkill({
-    skill,
-    inputs,
-    skillDirectory,
-    adapters: toolExecutionAdapters,
-    env,
-    signal,
-    toolCatalogAdapters,
-  });
+  const result = await (
+    nestedSkillInvoker
+      ? nestedSkillInvoker({
+          skill,
+          skillDirectory,
+          requestedSkillPath,
+          inputs,
+          receiptMetadata: {
+            runx: {
+              managed_tool: {
+                name: toolName,
+              },
+            },
+          },
+        })
+      : invokeManagedRuntimeToolDirect({
+          skill,
+          skillDirectory,
+          requestedSkillPath,
+          inputs,
+          env,
+          toolCatalogAdapters,
+        })
+  );
 
   if (result.status === "needs_resolution") {
     return {
-      error: `Tool '${toolName}' requested ${result.request.kind} resolution and cannot be used inside managed agent execution.`,
+      value: {
+        error: `Tool '${toolName}' requested ${result.request.kind} resolution and cannot be used inside managed agent execution.`,
+      },
+      trace: {
+        tool: toolName,
+        status: "needs_resolution",
+        resolutionKind: result.request.kind,
+        receiptId: result.receiptId,
+      },
+    };
+  }
+
+  if (result.status === "policy_denied") {
+    return {
+      value: {
+        error: result.errorMessage ?? `Tool '${toolName}' was denied by policy.`,
+        reasons: result.reasons,
+      },
+      trace: {
+        tool: toolName,
+        status: "policy_denied",
+        receiptId: result.receiptId,
+      },
     };
   }
 
@@ -548,29 +621,114 @@ async function invokeManagedRuntimeTool(
   const unwrapped = unwrapPacketData(stdoutValue);
   if (result.status === "success") {
     return packetSchema
-      ? { schema: packetSchema, data: unwrapped }
-      : unwrapped;
+      ? {
+          value: { schema: packetSchema, data: unwrapped },
+          trace: {
+            tool: toolName,
+            status: "success",
+            receiptId: result.receiptId,
+          },
+        }
+      : {
+          value: unwrapped,
+          trace: {
+            tool: toolName,
+            status: "success",
+            receiptId: result.receiptId,
+          },
+        };
   }
 
   return {
-    error: result.errorMessage ?? `Tool '${toolName}' failed.`,
-    exit_code: result.exitCode,
-    stderr: result.stderr || undefined,
-    signal: result.signal ?? undefined,
-    output: packetSchema
-      ? { schema: packetSchema, data: unwrapped }
-      : unwrapped,
+    value: {
+      error: result.errorMessage ?? `Tool '${toolName}' failed.`,
+      exit_code: result.exitCode,
+      stderr: result.stderr || undefined,
+      signal: result.signal ?? undefined,
+      output: packetSchema
+        ? { schema: packetSchema, data: unwrapped }
+        : unwrapped,
+    },
+    trace: {
+      tool: toolName,
+      status: "failure",
+      receiptId: result.receiptId,
+    },
   };
 }
 
-async function executeManagedToolCall(tool: ManagedRuntimeTool, argumentsValue: unknown): Promise<unknown> {
+async function executeManagedToolCall(tool: ManagedRuntimeTool, argumentsValue: unknown): Promise<ManagedToolCallResult> {
   try {
-    return (await tool.invoke(argumentsValue)).value;
+    return await tool.invoke(argumentsValue);
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : String(error),
+      value: {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      trace: {
+        tool: tool.runxName,
+        status: "failure",
+      },
     };
   }
+}
+
+async function invokeManagedRuntimeToolDirect(options: {
+  readonly skill: Awaited<ReturnType<typeof resolveToolExecutionTarget>>["skill"];
+  readonly skillDirectory: string;
+  readonly requestedSkillPath: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly env: NodeJS.ProcessEnv;
+  readonly toolCatalogAdapters: AdapterInvokeRequest["toolCatalogAdapters"];
+}) {
+  const result = await runValidatedSkill({
+    skill: options.skill,
+    skillDirectory: options.skillDirectory,
+    requestedSkillPath: options.requestedSkillPath,
+    inputs: options.inputs,
+    caller: {
+      resolve: async () => undefined,
+      report: async () => undefined,
+    },
+    env: options.env,
+    adapters: toolExecutionAdapters,
+    receiptDir: options.env.RUNX_RECEIPT_DIR,
+    runxHome: options.env.RUNX_HOME,
+    toolCatalogAdapters: options.toolCatalogAdapters,
+  });
+
+  if (result.status === "needs_resolution") {
+    const request = result.requests[0];
+    if (!request) {
+      throw new Error(
+        `Direct managed-tool execution for '${options.requestedSkillPath}' requested resolution without a request payload.`,
+      );
+    }
+    return {
+      status: "needs_resolution" as const,
+      request,
+    };
+  }
+
+  if (result.status === "policy_denied") {
+    return {
+      status: "policy_denied" as const,
+      reasons: result.reasons,
+      receiptId: result.receipt?.id,
+      errorMessage: result.reasons.join("; "),
+    };
+  }
+
+  return {
+    status: result.status,
+    stdout: result.execution.stdout,
+    stderr: result.execution.stderr,
+    exitCode: result.execution.exitCode,
+    signal: result.execution.signal,
+    durationMs: result.execution.durationMs,
+    errorMessage: result.execution.errorMessage,
+    receiptId: result.receipt.id,
+  };
 }
 
 function buildManagedRuntimeInstructions(request: CognitiveResolutionRequest): string {
@@ -663,6 +821,7 @@ function nativeAgentMetadata(
         rounds: execution?.rounds,
         tool_calls: execution?.toolCalls,
         tools: execution?.tools,
+        tool_executions: execution?.toolExecutions,
       },
     };
   }
@@ -677,6 +836,7 @@ function nativeAgentMetadata(
       rounds: execution?.rounds,
       tool_calls: execution?.toolCalls,
       tools: execution?.tools,
+      tool_executions: execution?.toolExecutions,
     },
   };
 }
@@ -789,6 +949,7 @@ function completeAnthropicFinalResult(
   round: number,
   toolCalls: number,
   runtimeTools: readonly ManagedRuntimeTool[],
+  toolExecutions: readonly ManagedToolExecutionTrace[],
 ): { readonly ok: true; readonly value: ManagedAgentExecutionDetails } | { readonly ok: false; readonly error: string } {
   const submittedPayload = asRecord(toolUse.input);
   if (!submittedPayload) {
@@ -811,6 +972,7 @@ function completeAnthropicFinalResult(
       rounds: round,
       toolCalls,
       tools: runtimeTools.map((tool) => tool.runxName),
+      toolExecutions,
     },
   };
 }

@@ -152,8 +152,44 @@ export interface AdapterInvokeRequest {
   readonly context?: Context;
   readonly voiceProfile?: ContextDocument;
   readonly qualityProfile?: QualityProfileContext;
+  readonly nestedSkillInvoker?: NestedSkillInvoker;
   readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
 }
+
+export interface NestedSkillInvocation {
+  readonly skill: ValidatedSkill;
+  readonly skillDirectory: string;
+  readonly requestedSkillPath: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly receiptMetadata?: Readonly<Record<string, unknown>>;
+}
+
+export type NestedSkillInvocationResult =
+  | {
+      readonly status: "needs_resolution";
+      readonly request: ResolutionRequest;
+      readonly receiptId?: string;
+    }
+  | {
+      readonly status: "policy_denied";
+      readonly reasons: readonly string[];
+      readonly receiptId?: string;
+      readonly errorMessage?: string;
+    }
+  | {
+      readonly status: "success" | "failure";
+      readonly stdout: string;
+      readonly stderr: string;
+      readonly exitCode: number | null;
+      readonly signal: NodeJS.Signals | null;
+      readonly durationMs: number;
+      readonly errorMessage?: string;
+      readonly receiptId?: string;
+    };
+
+export type NestedSkillInvoker = (
+  options: NestedSkillInvocation,
+) => Promise<NestedSkillInvocationResult>;
 
 export type AdapterInvokeResult =
   | {
@@ -206,6 +242,7 @@ export interface ExecuteSkillOptions {
   readonly context?: Context;
   readonly voiceProfile?: ContextDocument;
   readonly qualityProfile?: QualityProfileContext;
+  readonly nestedSkillInvoker?: NestedSkillInvoker;
   readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
 }
 
@@ -243,6 +280,7 @@ export async function executeSkill(options: ExecuteSkillOptions): Promise<Adapte
     context: options.context,
     voiceProfile: options.voiceProfile,
     qualityProfile: options.qualityProfile,
+    nestedSkillInvoker: options.nestedSkillInvoker,
     toolCatalogAdapters: options.toolCatalogAdapters,
   });
 }

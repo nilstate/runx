@@ -11,7 +11,7 @@ import {
   validateRunxListReportContract,
 } from "@runxhq/contracts";
 import { runCli, parseArgs, resolveSkillReference } from "./index.js";
-import { hashString } from "@runxhq/core/receipts";
+import { hashString, listLocalReceipts } from "@runxhq/core/receipts";
 import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
 import { readCliDependencyVersion } from "./metadata.js";
 
@@ -570,7 +570,8 @@ runners:
   it("lets the managed runtime use declared runx tools before submitting a result", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-tool-"));
     tempDirs.push(tempDir);
-    const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: tempDir };
+    const receiptDir = path.join(tempDir, "receipts");
+    const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: tempDir, RUNX_RECEIPT_DIR: receiptDir };
     await configureOpenAiAgent(env, "gpt-tool-test");
 
     const skillDir = path.join(tempDir, "file-summary");
@@ -649,8 +650,35 @@ Read note.txt and produce a grounded summary.
 
     expect(exitCode).toBe(0);
     expect(stderr.contents()).toBe("");
-    const result = JSON.parse(stdout.contents()) as { execution: { stdout: string } };
+    const result = JSON.parse(stdout.contents()) as {
+      execution: { stdout: string };
+      receipt: {
+        id: string;
+        metadata?: {
+          agent_hook?: {
+            tool_executions?: Array<{
+              tool?: string;
+              status?: string;
+            }>;
+          };
+        };
+      };
+    };
     expect(JSON.parse(result.execution.stdout)).toEqual({ summary: "grounded from fs.read" });
+    const toolExecutions = result.receipt.metadata?.agent_hook?.tool_executions ?? [];
+    expect(toolExecutions).toHaveLength(1);
+    expect(toolExecutions[0]).toMatchObject({
+      tool: "fs.read",
+      status: "success",
+    });
+    const receipts = await listLocalReceipts(path.join(receiptDir, ".runx", "receipts"));
+    const toolReceipt = receipts.find((receipt) =>
+      receipt.kind === "skill_execution" && receipt.source_type === "cli-tool"
+    );
+    expect(toolReceipt).toBeDefined();
+    expect((toolReceipt?.metadata as { runx?: { parent_run_id?: string } } | undefined)?.runx?.parent_run_id).toBe(
+      result.receipt.id,
+    );
     expect(requestCount).toBe(2);
   });
 

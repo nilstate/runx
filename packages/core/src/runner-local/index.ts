@@ -46,6 +46,8 @@ import {
   type AdapterInvokeResult,
   type ApprovalGate,
   type CredentialEnvelope,
+  type NestedSkillInvocation,
+  type NestedSkillInvocationResult,
   type ResolutionRequest,
   type ResolutionResponse,
   type SkillAdapter,
@@ -220,7 +222,7 @@ export interface RunLocalSkillOptions {
   readonly lineage?: RunLineageMetadata;
 }
 
-interface RunResolvedSkillOptions {
+export interface RunValidatedSkillOptions {
   readonly skill: ValidatedSkill;
   readonly skillDirectory: string;
   readonly requestedSkillPath: string;
@@ -494,7 +496,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
     message: `Resolved ${Object.keys(inputResolution.inputs).length} input(s).`,
   });
 
-  const result = await runResolvedSkill({
+  const result = await runValidatedSkill({
     skill,
     skillDirectory: resolvedSkill.skillDirectory,
     runId,
@@ -562,7 +564,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
   return result;
 }
 
-async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLocalSkillResult> {
+export async function runValidatedSkill(options: RunValidatedSkillOptions): Promise<RunLocalSkillResult> {
   const { skill } = options;
   const runId = options.runId ?? options.resumeFromRunId ?? uniqueReceiptId("rx");
   const contextEnvelopeRunId = options.orchestrationRunId ?? runId;
@@ -792,6 +794,72 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     message: `Executing ${skill.source.type} skill source.`,
   });
 
+  const managedToolCaller: Caller = {
+    resolve: async () => undefined,
+    report: async () => undefined,
+  };
+  const nestedSkillInvoker = async (
+    nested: NestedSkillInvocation,
+  ): Promise<NestedSkillInvocationResult> => {
+    const nestedResult = await runValidatedSkill({
+      skill: nested.skill,
+      skillDirectory: nested.skillDirectory,
+      requestedSkillPath: nested.requestedSkillPath,
+      inputs: nested.inputs,
+      caller: managedToolCaller,
+      env: options.env,
+      receiptDir: options.receiptDir,
+      runxHome: options.runxHome,
+      knowledgeDir: options.knowledgeDir,
+      adapters: options.adapters,
+      allowedSourceTypes: options.allowedSourceTypes,
+      authResolver: options.authResolver,
+      receiptMetadata: mergeMetadata(
+        {
+          runx: {
+            parent_run_id: runId,
+          },
+        },
+        nested.receiptMetadata,
+      ),
+      registryStore: options.registryStore,
+      skillCacheDir: options.skillCacheDir,
+      toolCatalogAdapters: options.toolCatalogAdapters,
+      workspacePolicy,
+    });
+
+    if (nestedResult.status === "needs_resolution") {
+      const request = nestedResult.requests[0];
+      if (!request) {
+        throw new Error(`Nested managed-tool execution for '${nested.requestedSkillPath}' requested resolution without a request payload.`);
+      }
+      return {
+        status: "needs_resolution",
+        request,
+      };
+    }
+
+    if (nestedResult.status === "policy_denied") {
+      return {
+        status: "policy_denied",
+        reasons: nestedResult.reasons,
+        receiptId: nestedResult.receipt?.id,
+        errorMessage: nestedResult.reasons.join("; "),
+      };
+    }
+
+    return {
+      status: nestedResult.status,
+      stdout: nestedResult.execution.stdout,
+      stderr: nestedResult.execution.stderr,
+      exitCode: nestedResult.execution.exitCode,
+      signal: nestedResult.execution.signal,
+      durationMs: nestedResult.execution.durationMs,
+      errorMessage: nestedResult.execution.errorMessage,
+      receiptId: nestedResult.receipt.id,
+    };
+  };
+
   const executionSkill = withSandboxApproval(skill, approvedSandboxEscalation);
 
   const execution = await executeSkill({
@@ -815,6 +883,7 @@ async function runResolvedSkill(options: RunResolvedSkillOptions): Promise<RunLo
     context: preparedAgentContext.context,
     voiceProfile: preparedAgentContext.voiceProfile,
     qualityProfile: qualityProfileContext(skill),
+    nestedSkillInvoker,
     toolCatalogAdapters: options.toolCatalogAdapters,
   });
 
@@ -1189,7 +1258,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       const branchTasks = branchPreps.map((prep) => ({
         id: prep.step.id,
         fn: async (_signal: AbortSignal) => {
-          return await runResolvedSkill({
+          return await runValidatedSkill({
             skill: prep.stepSkill,
             skillDirectory: graphStepExecutionDirectory(prep.step, prep.stepSkillPath, graphDirectory),
             requestedSkillPath: prep.stepReference,
@@ -1559,7 +1628,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       createdAt: stepStartedAt,
     });
 
-    const stepResult = await runResolvedSkill({
+    const stepResult = await runValidatedSkill({
       skill: stepSkill,
       skillDirectory: graphStepExecutionDirectory(step, stepSkillPath, graphDirectory),
       requestedSkillPath: resolvedStep.reference,
