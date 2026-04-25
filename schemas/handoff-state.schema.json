@@ -54,6 +54,10 @@
           "type": "string"
         },
         {
+          "const": "approved_to_send",
+          "type": "string"
+        },
+        {
           "const": "completed",
           "type": "string"
         },
@@ -100,6 +104,10 @@
         },
         {
           "const": "accepted",
+          "type": "string"
+        },
+        {
+          "const": "approved_to_send",
           "type": "string"
         },
         {

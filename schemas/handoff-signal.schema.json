@@ -108,6 +108,10 @@
           "type": "string"
         },
         {
+          "const": "approved_to_send",
+          "type": "string"
+        },
+        {
           "const": "merged",
           "type": "string"
         },

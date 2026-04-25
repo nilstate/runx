@@ -65,6 +65,7 @@ export function writeUsage(stream: Writable, env: NodeJS.ProcessEnv = process.en
       "  runx docs rerun --issue owner/repo#issue/123 [--repo-root ../target-repo] [--sourcey-root .] [--handoff auto|pr|outreach] [--json]",
       "  runx docs push-pr --issue owner/repo#issue/123 [--repo-root ../target-repo] [--sourcey-root .] [--json]",
       "  runx docs signal --issue owner/repo#issue/123 --source issue_comment --disposition requested_changes [--source-ref https://github.com/...#issuecomment-1] [--json]",
+      "  runx docs signal --issue owner/repo#issue/123 --source manual_note --disposition approved_to_send [--json]",
       "  runx dev [path] [--lane deterministic|agent|repo-integration|all] [--record] [--json]",
       "  runx mcp serve <skill-ref> [<skill-ref> ...]",
       "  runx tool search <query> [--source fixture-mcp] [--json]",

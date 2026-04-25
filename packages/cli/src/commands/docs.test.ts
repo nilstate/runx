@@ -394,8 +394,8 @@ describe("handleDocsCommand", () => {
               lane: "handoff_signal",
               task_id: "docs-refresh-example-repo",
               handoff_state: {
-                status: "accepted",
-                summary: "accepted from issue_comment (accepted)",
+                status: "approved_to_send",
+                summary: "approved_to_send from manual_note (approved_to_send)",
               },
             },
           },
@@ -426,13 +426,13 @@ describe("handleDocsCommand", () => {
       status: "success",
       action: "status",
       handoff_state: {
-        status: "accepted",
+        status: "approved_to_send",
       },
-      summary: "accepted from issue_comment (accepted)",
+      summary: "approved_to_send from manual_note (approved_to_send)",
     });
   });
 
-  it("fails closed on push-pr until the control thread records acceptance", async () => {
+  it("fails closed on push-pr until the control thread records explicit send approval", async () => {
     const sourceyRoot = await mkDocsRoot();
     const repoRoot = await mkdtemp(path.join(os.tmpdir(), "runx-docs-push-pr-"));
     tempDirs.push(repoRoot);
@@ -484,7 +484,72 @@ describe("handleDocsCommand", () => {
     if (result.status !== "failure") {
       throw new Error(`Expected failure result, received ${result.status}.`);
     }
-    expect(result.message).toContain("accepted review signal");
+    expect(result.message).toContain("approved_to_send");
+    expect(runLocalSkill).not.toHaveBeenCalled();
+  });
+
+  it("rejects approved_to_send until the current control state is accepted", async () => {
+    const sourceyRoot = await mkDocsRoot();
+    const thread = {
+      thread_locator: "github://sourcey/sourcey.com/issues/2",
+      canonical_uri: "https://github.com/sourcey/sourcey.com/issues/2",
+      outbox: [
+        {
+          entry_id: "message:docs-refresh-example-repo:review",
+          kind: "message",
+          locator: "https://github.com/sourcey/sourcey.com/issues/2#issuecomment-1",
+          metadata: {
+            control: {
+              workflow: "docs",
+              lane: "pr_review",
+              task_id: "docs-refresh-example-repo",
+              handoff_ref: {
+                handoff_id: "sourcey.docs-pr:docs-refresh-example-repo",
+                boundary_kind: "external_maintainer",
+                thread_locator: "github://sourcey/sourcey.com/issues/2",
+              },
+            },
+          },
+        },
+        {
+          entry_id: "message:docs-refresh-example-repo:signal",
+          kind: "message",
+          locator: "https://github.com/sourcey/sourcey.com/issues/2#issuecomment-2",
+          metadata: {
+            control: {
+              workflow: "docs",
+              lane: "handoff_signal",
+              task_id: "docs-refresh-example-repo",
+              handoff_state: {
+                status: "needs_revision",
+                summary: "needs_revision from issue_comment (requested_changes)",
+              },
+            },
+          },
+        },
+      ],
+    };
+    vi.stubGlobal("__runxDocsThreadFixture", thread);
+
+    await expect(handleDocsCommand(
+      {
+        command: "docs",
+        docsAction: "signal",
+        inputs: {
+          issue: "sourcey/sourcey.com#issue/2",
+          "sourcey-root": sourceyRoot,
+          source: "manual_note",
+          disposition: "approved_to_send",
+        },
+      } satisfies DocsCommandArgs,
+      {
+        ...process.env,
+        RUNX_CWD: process.cwd(),
+        RUNX_DOCS_THREAD_ADAPTER_PATH: path.join(sourceyRoot, "adapter.mjs"),
+      },
+      caller,
+      deps,
+    )).rejects.toThrow(/requires the control thread to already be in accepted state/);
     expect(runLocalSkill).not.toHaveBeenCalled();
   });
 

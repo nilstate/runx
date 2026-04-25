@@ -392,6 +392,8 @@ function handoffDispositionToStatus(disposition: HandoffSignal["disposition"]): 
       return "needs_revision";
     case "accepted":
       return "accepted";
+    case "approved_to_send":
+      return "approved_to_send";
     case "merged":
       return "completed";
     case "declined":
