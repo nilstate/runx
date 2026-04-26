@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 
-import { prepareLocalProcessSandbox } from "@runxhq/core/policy";
+import { cleanupLocalProcessSandbox, prepareLocalProcessSandbox } from "@runxhq/core/policy";
 
 export type CliToolInputMode = "args" | "stdin" | "none";
 
@@ -88,6 +88,8 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
     sourceCwd: request.source.cwd,
     env: request.env,
     writablePaths,
+    command: request.source.command,
+    args,
   });
   if (sandbox.status === "deny") {
     return {
@@ -105,9 +107,11 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
   }
   const cwd = sandbox.cwd;
   const childEnv = buildChildEnv(sandbox.env, request.inputs);
+  const command = sandbox.command ?? request.source.command;
+  const spawnArgs = sandbox.args ?? args;
 
   return await new Promise<CliToolInvokeResult>((resolve) => {
-    const child = spawn(request.source.command as string, args, {
+    const child = spawn(command as string, spawnArgs, {
       cwd,
       env: childEnv,
       shell: false,
@@ -170,6 +174,7 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
       finished = true;
       clearTimeout(timeout);
       if (forceKill) clearTimeout(forceKill);
+      cleanupLocalProcessSandbox(sandbox);
 
       const durationMs = Math.round(performance.now() - started);
       const errorMessage = spawnError?.message
@@ -209,7 +214,7 @@ function buildChildEnv(
   return {
     ...baseEnv,
     RUNX_CWD: baseEnv.RUNX_CWD ?? baseEnv.INIT_CWD ?? process.cwd(),
-    ...inputEnv(inputs),
+    ...inputEnv(inputs, baseEnv.TMPDIR),
   };
 }
 
@@ -224,11 +229,11 @@ function resolveArg(
   });
 }
 
-function inputEnv(inputs: Readonly<Record<string, unknown>>): Record<string, string> {
+function inputEnv(inputs: Readonly<Record<string, unknown>>, tempRoot?: string): Record<string, string> {
   const env: Record<string, string> = {};
   const serializedInputs = JSON.stringify(inputs);
   if (Buffer.byteLength(serializedInputs, "utf8") > maxInlineInputsBytes) {
-    const tempDir = mkdtempSync(path.join(os.tmpdir(), "runx-cli-inputs-"));
+    const tempDir = mkdtempSync(path.join(tempRoot ?? os.tmpdir(), "runx-cli-inputs-"));
     const inputsPath = path.join(tempDir, "inputs.json");
     writeFileSync(inputsPath, serializedInputs, "utf8");
     env.RUNX_INPUTS_PATH = inputsPath;

@@ -1,7 +1,7 @@
 spec_version: "1.1"
 task_id: "runx-claim-via-nango"
 created: "2026-04-26T00:00:00Z"
-updated: "2026-04-26T00:00:00Z"
+updated: "2026-04-26T01:00:00Z"
 status: "draft"
 
 task:
@@ -76,12 +76,15 @@ task:
       - path: "cloud/apps/web/src/pages/x/claim/index.astro"
         lines: "all"
         reason: "Drop the 'OAuth coming soon' copy. Pass owner/name into ClaimAction."
-      - path: "cloud/apps/web/src/pages/x/claim/return.astro"
-        lines: "all"
-        reason: "New page. Server-side: read request_id, look up enrollment, await resolver promise (5s timeout), render success / mismatch / processing."
       - path: "cloud/apps/web/src/pages/api/claim/sessions.ts"
         lines: "all"
-        reason: "New Astro proxy route. POST forwards to /v1/claim/sessions on the upstream API."
+        reason: "New Astro proxy route. POST forwards to /v1/claim/sessions."
+      - path: "cloud/apps/web/src/pages/api/claim/sessions/[request_id]/await.ts"
+        lines: "all"
+        reason: "New Astro proxy route. GET long-poll forwards to /v1/claim/sessions/:id/await with extended fetch timeout."
+      - path: "cloud/packages/api/src/skill-indexer.ts"
+        lines: "indexValidatedCandidate trustTier resolution"
+        reason: "URL-publish tier inheritance: when an existing version is in the registry, inherit its trust_tier instead of hardcoding `community`. Only the very first publish lands at `community`. Required so claim's promotion is sticky across subsequent URL-publish pushes (not just webhook reindex). Safe because name-uniqueness means only one source per (owner, name)."
       - path: "cloud/packages/ui/src/ClaimAction/ClaimAction.tsx"
         lines: "all"
         reason: "Restore the real button. Click → POST /api/claim/sessions → redirect to authorize_url. Render mismatch/error states from the response."
@@ -166,7 +169,8 @@ task:
     - "ClaimService orchestrating start, complete, and tier promotion."
     - "ClaimResolver in-process registry with TTL-based pruning."
     - "Restored web `/x/claim` page with a working ClaimAction button."
-    - "New `/x/claim/return.astro` page with server-side promise await."
+    - "Restored `/x/claim/index.astro` with the new long-poll-driven ClaimAction (no return page)."
+    - "Skill-indexer change: URL-publish inherits the existing trust_tier instead of always pinning community. Closes the post-claim downgrade gap."
     - "Astro proxy at `/api/claim/sessions`."
     - "Tests covering: happy path, identity mismatch, public-org membership match, listing-not-found, expired session, webhook arriving before vs after redirect, two concurrent claims for the same listing."
 
@@ -209,7 +213,7 @@ task:
       - id: "dod5"
         description: "Simulated webhook with public-org match (e.g. authenticated as `@alice`, claiming `@stripe/x`, public-orgs includes `stripe`) promotes successfully."
       - id: "dod6"
-        description: "Return page (`/x/claim/return?request_id=...`) renders the final state synchronously after webhook resolution. With webhook delayed >5s, renders 'still processing' fallback."
+        description: "ClaimAction renders the final state on the original /x/claim tab via a single long-poll. Webhook delayed >120s renders the manual-refresh state."
       - id: "dod7"
         description: "Concurrent /v1/claim/sessions calls for the same listing return the same pending enrollment instead of creating duplicates."
       - id: "dod8"
@@ -251,9 +255,9 @@ task:
       - "Claim revocation or downgrade UI."
 
   info_sources:
-    - "cloud/packages/auth/src/nango-hosted.ts (HostedNangoClient.beginOauth)"
-    - "cloud/packages/auth/src/http.ts (existing principal-bound connect flow as reference)"
-    - "Nango docs: /connect/sessions accepts redirect_url; /proxy supports per-connection passthrough"
+    - "cloud/packages/auth/src/nango-hosted.ts (HostedNangoClient.beginOauth — verified does NOT use redirect_url; we don't depend on Nango redirecting back to runx)"
+    - "cloud/packages/auth/src/http.ts (existing principal-bound connect flow — referenced as model only; the claim flow uses a separate webhook branch path that does NOT touch the connect-surface flows Map)"
+    - "Nango docs: /proxy supports per-connection passthrough; verify proxy permission on the configured secret key before phase 2 ships"
 
   notes: >
     The crux: the github connection IS the proof, not a runx-side identity. We
@@ -265,7 +269,10 @@ task:
 planning_log:
   - timestamp: "2026-04-26T00:00:00Z"
     actor: "agent"
-    summary: "Drafted Nango-backed claim spec after the surgical cutover left /v1/claim as a 503 stub. Confirmed Nango mechanics by reading nango-hosted.ts (beginOauth + webhook + redirect_url) and http.ts (existing principal-bound flow as model). User confirmed: Path B (Nango proxy), broad org-claim semantics, operator handles Nango secret key permissions."
+    summary: "Drafted Nango-backed claim spec after the surgical cutover left /v1/claim as a 503 stub. Confirmed Nango mechanics by reading nango-hosted.ts (beginOauth + webhook) and http.ts (existing principal-bound flow as model). User confirmed: Path B (Nango proxy), broad org-claim semantics, operator handles Nango secret key permissions."
+  - timestamp: "2026-04-26T01:00:00Z"
+    actor: "agent"
+    summary: "Codex spec review surfaced 12 findings. Revised: (1) dropped Nango redirect_url assumption — UX now uses new-tab OAuth + single long-poll on the original tab, no return page; (3) documented connect-surface vs Hono boundary, plumbing change contained in nango-hosted.ts + server.ts; (4) added explicit deletes for SelfPublishService.claimListing + its tests + the legacy claim.astro page; (5) per-IP rate limit on POST /v1/claim/sessions; (6) reordered startClaim to persist enrollment BEFORE beginOauth; (7) added version-digest snapshot at startClaim, bulk promotion locked to that snapshot; (8) explicit 24h expiry on claim_rejected, prune sweep at startup; (9) picked proxyGet(connectionId, provider, githubPath) signature; (10) added /v1/claim/sessions/:id/await long-poll route to phase 4 catalog + schemas; (11) added single-replica startup assertion; (12) deleted legacy claim.astro. Plus URL-publish tier inheritance change (skill-indexer.ts) so claim's promotion is sticky across subsequent URL-publishes."
 
 phases:
   - id: "phase1"
@@ -287,7 +294,16 @@ phases:
         action: "update"
         lines: "FileSelfPublishStore + InMemorySelfPublishStore"
         content_spec: |
-          Add: `findByRequestId(request_id)`, `findByRunxFlowId(flow_id)`, `findPendingByListing(owner, name)`. Each is a list-and-filter for v1.
+          Add: `findByRequestId(request_id)`, `findByRunxFlowId(flow_id)`, `findPendingByListing(owner, name)` (filters by status `pending_connection` AND `expires_at > now()` — does NOT match claim_rejected). Each is a list-and-filter for v1. Plus `pruneExpired(now)` that removes pending_connection past expires_at AND claim_rejected past their expires_at.
+      - file: "cloud/packages/api/src/skill-indexer.ts"
+        action: "update"
+        lines: "indexValidatedCandidate trustTier resolution"
+        content_spec: |
+          Currently URL-publish hardcodes `trustTier: "community"` (per the security fix from the cutover). Change `indexValidatedCandidate` to:
+            (a) read the latest existing version of the same skill_id (registryStore.getVersion(skill_id) without a version pin);
+            (b) if one exists, inherit its `trust_tier` (NEVER downgrade — first_party stays first_party, verified stays verified);
+            (c) if none exists, default to `"community"`.
+          The url-publish-service.ts call site stops passing trustTier explicitly. Self-publish-service.ts (webhook reindex) still passes it explicitly to short-circuit the lookup. Safe because name-uniqueness means only one source can publish under a given (owner, name); an attacker cannot front-run claim by publishing first under the same name from a different repo.
     acceptance_criteria:
       - id: "ac1_1"
         type: "test"
@@ -342,22 +358,29 @@ phases:
         lines: "all"
         content_spec: |
           ClaimService:
-            - constructor injects: registryStore, selfPublishStore, nangoClient, githubIdentity, resolver, publicBaseUrl, ttlMs (default 600s).
+            - constructor injects: registryStore, selfPublishStore, nangoClient, githubIdentity, resolver, publicBaseUrl, ttlMs (default 600s for pending_connection; 86_400_000 ms / 24h for claim_rejected).
             - `startClaim({ owner, name }): Promise<{ request_id, authorize_url, expires_at }>`:
-              - Reject if listing has zero versions (404).
-              - Single-flight: if a non-expired pending_connection enrollment exists for (owner, name), return its authorize_url + request_id.
-              - Otherwise mint request_id (`cr_<uuid>`), flow_id, register resolver entry.
-              - Call nangoClient.beginOauth({ flowId, principalId: `claim:${request_id}`, provider: "github", scopes: ["read:user","read:org"] }) WITH redirect_url=`${publicBaseUrl}/x/claim/return?request_id=${request_id}`.
-              - Persist enrollment: status pending_connection, target owner/name, request_id, runx_flow_id, expires_at.
+              - Validate listing exists: registryStore.listVersions(`${owner}/${name}`) returns >= 1 version. Else throw NotFound.
+              - **Single-flight (with expires_at check):** find pending enrollment via `selfPublishStore.findPendingByListing(owner, name)`. If one exists with status `pending_connection` AND `expires_at > now()` AND non-empty `authorize_url`, return its `{ request_id, authorize_url, expires_at }`. Stale or rejected enrollments do NOT block — they fall through to a fresh session.
+              - Mint `request_id = "cr_" + crypto.randomUUID().replace(/-/g, "")` and `flow_id = crypto.randomUUID()` (≥122 bits each).
+              - **Snapshot the version-digest set:** `version_snapshot = registryStore.listVersions(skill_id).map(v => ({ version: v.version, digest: v.digest }))`. Persist on the enrollment as `claim_version_snapshot`.
+              - **Persist the enrollment FIRST** (status `pending_connection`, target owner/name, request_id, runx_flow_id, claim_version_snapshot, expires_at = now + 600s, authorize_url = ""). Closes the webhook-races-persistence race.
+              - Register resolver entry for request_id.
+              - Call `nangoClient.beginOauth({ flowId: flow_id, principalId: "claim:" + request_id, provider: "github", scopes: ["read:user","read:org"] })`. (No redirect_url — Nango shows its default success page; ClaimAction's long-poll resolves the original tab.)
+              - Update the persisted enrollment with the returned authorize_url.
               - Return { request_id, authorize_url, expires_at }.
-            - `completeClaim({ flow_id, connection_id }): Promise<void>`:
-              - Look up enrollment by runx_flow_id. If none, log + ignore.
-              - Fetch identity via GithubIdentityClient.fetchIdentity(connection_id).
-              - Match: github_user === enrollment.owner OR enrollment.owner ∈ public_orgs.
-              - On match: load all RegistrySkillVersion for skill_id, putVersion each with trust_tier=verified (preserve first_party). Update enrollment to status indexed, persist github_user, github_orgs, connection_id. Resolve resolver with { status: "indexed" }.
-              - On mismatch: update enrollment to claim_rejected with claim_reason. Resolve resolver with { status: "claim_rejected", reason }.
-              - On any thrown error: update enrollment to claim_rejected with claim_reason="Identity verification failed". Resolve resolver. NEVER rethrow — webhook must return 2xx.
-            - `awaitClaim(request_id, timeout_ms = 5000)`: delegates to resolver.await.
+            - `completeClaim({ flow_id, connection_id }): Promise<boolean>`:
+              - Returns true if the flow_id was a claim flow (whether successful or rejected); false if not a claim flow (so the existing principal-bound completeFlow path can take over).
+              - Look up enrollment via `selfPublishStore.findByRunxFlowId(flow_id)`. If none, return false (let the existing connect handler take it).
+              - If enrollment is not status `pending_connection`, log and resolve as no-op (idempotent — webhook may retry).
+              - Fetch identity via `GithubIdentityClient.fetchIdentity(connection_id)` (lowercased user + public_orgs).
+              - Match: `github_user === enrollment.owner.toLowerCase()` OR `enrollment.owner.toLowerCase() ∈ public_orgs`.
+              - **On match:** load `registryStore.listVersions(skill_id)`. For each version whose `(version, digest)` is in `claim_version_snapshot`, putVersion with trust_tier=verified (preserve first_party — never downgrade). Update enrollment: status `indexed`, persist github_user, github_orgs, connection_id, last_indexed_at. Resolve resolver with `{ status: "indexed", github_user, listing_promoted: true }`. Return true.
+              - **On mismatch:** update enrollment: status `claim_rejected`, claim_reason = "Authenticated github user @${github_user} does not own ${enrollment.owner} or any matching public org membership.", expires_at = now + 24h, persist github_user. Resolve resolver with `{ status: "claim_rejected", github_user, reason }`. Return true.
+              - **On any thrown error during identity fetch or registry mutation:** update enrollment: status `claim_rejected`, claim_reason = "Identity verification failed: <err.message>". Resolve resolver with `{ status: "claim_rejected", reason }`. Never rethrow — webhook MUST return 2xx so Nango doesn't retry indefinitely. Return true.
+            - `getClaimSession(request_id)`: lookup by request_id; return enrollment status + (if indexed) github_user + listing_promoted: true.
+            - `awaitClaim(request_id, timeout_ms = 120_000)`: delegates to resolver.await with up to 2-min cap. Returns final status or "timeout".
+            - `pruneExpired()`: removes pending_connection enrollments past expires_at AND claim_rejected enrollments past their 24h retention. Called at startup and (optionally) periodically.
     acceptance_criteria:
       - id: "ac3_1"
         type: "test"
@@ -391,13 +414,26 @@ phases:
         action: "create"
         lines: "all"
         content_spec: |
-          POST /v1/claim/sessions: body { owner, name }; calls claimService.startClaim; returns 201 { request_id, authorize_url, expires_at }. 404 if listing missing. 503 if claimService not configured.
-          GET /v1/claim/sessions/:request_id: looks up enrollment; returns { status, github_user?, claim_reason?, listing_promoted: boolean }.
+          THREE routes:
+            POST /v1/claim/sessions: body { owner, name }. Mounts the per-IP rate-limit middleware (10 sessions/24h per IP, distinct from URL-publish budget). Calls claimService.startClaim. Returns 201 { request_id, authorize_url, expires_at }. 404 if listing missing. 429 on rate limit. 503 if claimService not configured.
+            GET /v1/claim/sessions/:request_id: non-blocking status read. Returns { request_status, github_user?, github_orgs?, claim_reason?, listing_promoted: boolean }.
+            GET /v1/claim/sessions/:request_id/await?timeout_ms=120000: long-poll. Awaits claimService.awaitClaim(request_id, timeout_ms_clamped_to_120000). On resolution, returns the same shape as the status read with the final state. On timeout, returns 200 { request_status: "pending_connection", timed_out: true } so the UI can render a refresh hint.
+      - file: "cloud/packages/api/src/rate-limit.ts"
+        action: "update"
+        lines: "factory"
+        content_spec: |
+          Add a `createClaimSessionRateLimiter` factory: 10 sessions/24h per source_ip. Same primitives as `createUrlPublishRateLimiters`, separate budget.
       - file: "cloud/packages/auth/src/nango-hosted.ts"
         action: "update"
-        lines: "createNangoWebhookHandler"
+        lines: "createNangoWebhookHandler signature"
         content_spec: |
-          Add an optional `claimWebhookHandler?: { complete: (flow_id, connection_id) => Promise<void> }` option. Inside the handler, AFTER signature verification AND before falling through to completeFlow, if `claimWebhookHandler` is set, attempt `claimWebhookHandler.complete(flowId, connection_id)` first; if that returns true (i.e. flow_id matched a claim), short-circuit. If false, fall through to the existing completeFlow path.
+          Add a SECOND optional callback to the webhook handler factory: `claimComplete?: (flowId: string, connectionId: string) => Promise<boolean>`. Inside the handler, AFTER signature verification AND parsing, BEFORE the existing `getFlow(flowId)` lookup, call `claimComplete(flowId, connectionId)` if present. If it returns `true`, short-circuit with status 200. If `false`, fall through to the existing principal-bound `completeFlow` path. This ordering matters because claim flows are NOT in the connect-surface's flows Map.
+      - file: "cloud/packages/auth/src/http.ts"
+        action: "update"
+        lines: "ConnectWebhookHandler.handle signature; ConnectHttpSurfaceOptions"
+        content_spec: |
+          The connect-surface webhook handler currently only knows about principal-bound flows. To support claim webhooks, the handler signature stays the same — but the upstream `createNangoWebhookHandler` (now called from server.ts with `claimComplete` injected) handles the branching. No changes to the connect-surface itself; the wiring change is fully contained in `nango-hosted.ts` + `server.ts`.
+          However: explicitly DOCUMENT in the file header comment that the Nango webhook may complete claim flows OR principal-bound flows; the principal-bound path requires `getFlow(flowId)` to find the flow, while the claim path bypasses that Map. This documentation prevents future contributors from "consolidating" the lookups and breaking claim.
       - file: "cloud/packages/api/src/index.ts"
         action: "update"
         lines: "HostedApiOptions + route registration"
@@ -405,9 +441,13 @@ phases:
           Add `claimService?: ClaimService` to HostedApiOptions. Register claim-routes alongside url-publish-routes.
       - file: "cloud/packages/api/src/server.ts"
         action: "update"
-        lines: "service construction"
+        lines: "service construction + startup assertions"
         content_spec: |
-          Construct ClaimResolver + GithubIdentityClient + ClaimService. Pass claimService into createHostedApiApp options. Pass claimService.completeClaim into the createNangoWebhookHandler options as claimWebhookHandler.complete.
+          Construct ClaimResolver + GithubIdentityClient + ClaimService. Wire claimService.completeClaim into createNangoWebhookHandler as the new `claimComplete` callback. Pass claimService into createHostedApiApp.
+          Add startup assertions:
+            (1) If `RUNX_HOSTED_REPLICA_COUNT` is set and !== "1", throw with a clear "v1 claim flow requires single-replica deploys" error.
+            (2) If `RUNX_NANGO_WEBHOOK_SECRET` is unset OR equals `RUNX_NANGO_SECRET_KEY`, throw with a clear "webhook secret must be set and distinct from secret key" error.
+          Run `await claimService.pruneExpired()` once at boot to clear stale enrollments from prior runs.
       - file: "cloud/packages/api/src/self-publish-routes.ts"
         action: "update"
         lines: "remove /v1/claim handler"
@@ -415,34 +455,72 @@ phases:
           DELETE the entire `app.post("/v1/claim", ...)` block (the 503 stub from the surgical cutover). No legacy alias, no redirect, no compat. The only claim surface is /v1/claim/sessions. Anything still calling /v1/claim hits the framework's 404.
       - file: "cloud/packages/api/src/openapi-route-catalog.ts"
         action: "update"
-        lines: "remove /v1/claim, add /v1/claim/sessions + /v1/claim/sessions/{request_id}"
+        lines: "remove /v1/claim, add three claim-session entries"
         content_spec: |
-          Drop the existing `/v1/claim` operation entry. Add `claimSession` (POST /v1/claim/sessions, body ClaimSessionRequest, 201 ClaimSessionEnvelope) and `getClaimSession` (GET /v1/claim/sessions/{request_id}, 200 ClaimSessionStatusEnvelope, 404 ErrorEnvelope).
+          Drop the existing `/v1/claim` operation entry. Add: `claimSession` (POST /v1/claim/sessions, body ClaimSessionRequest, 201 ClaimSessionEnvelope, 429 IndexErrorEnvelope), `getClaimSession` (GET /v1/claim/sessions/{request_id}, 200 ClaimSessionStatusEnvelope, 404 ErrorEnvelope), `awaitClaimSession` (GET /v1/claim/sessions/{request_id}/await, query timeout_ms, 200 ClaimSessionStatusEnvelope).
       - file: "oss/packages/contracts/src/openapi-public.ts"
         action: "update"
         lines: "swap ClaimRequest schema → claim-session schemas"
         content_spec: |
-          Drop the `ClaimRequest` schema added during the cutover (it described the /v1/claim body). Add: `ClaimSessionRequest` ({ owner, name }), `ClaimSessionEnvelope` ({ status: "success", request_id, authorize_url, expires_at }), `ClaimSessionStatusEnvelope` ({ status: "success", request_status: enum["pending_connection","indexed","claim_rejected","tombstoned"], github_user?, github_orgs?, claim_reason?, listing_promoted: boolean }).
+          Drop the `ClaimRequest` schema added during the cutover. Add: `ClaimSessionRequest` ({ owner, name }), `ClaimSessionEnvelope` ({ status: "success", request_id, authorize_url, expires_at }), `ClaimSessionStatusEnvelope` ({ status: "success", request_status: enum["pending_connection","indexed","claim_rejected","tombstoned"], github_user?, github_orgs?: string[], claim_reason?, listing_promoted: boolean, timed_out?: boolean }).
+      - file: "cloud/packages/api/src/self-publish-service.ts"
+        action: "update"
+        lines: "delete claimListing method"
+        content_spec: |
+          DELETE the entire `claimListing` method (lines ~40-116) from SelfPublishService. The hard cutover removed the route; keeping the method is a foot-gun where a future caller could promote listings without OAuth. Also delete the import of `randomUUID` and the local `slugifyHandle` reference if they're no longer used after the deletion.
+      - file: "cloud/packages/api/src/self-publish-service.test.ts"
+        action: "delete"
+        lines: "all"
+        content_spec: |
+          DELETE the entire test file. Every test case targets `claimListing`, which is being removed. Identity-mismatch and idempotency are now covered by claim-service tests in phase 3 + claim-routes tests in this phase.
+      - file: "cloud/apps/web/src/pages/x/claim.astro"
+        action: "delete"
+        lines: "all"
+        content_spec: |
+          DELETE the legacy /x/claim.astro file. Both /x/claim.astro AND /x/claim/index.astro currently resolve to the same URL — a routing footgun. claim/index.astro is canonical (matches the URL parameter pattern and the new long-poll-based ClaimAction).
       - file: "cloud/apps/web/src/pages/api/claim.ts"
         action: "delete"
         lines: "all"
         content_spec: |
-          DELETE the proxy route. Superseded by /api/claim/sessions (added in phase 5). Anything pointed at it will see Astro's default 404.
+          DELETE the proxy route. Superseded by /api/claim/sessions in phase 5. Anything pointed at /api/claim sees Astro's default 404.
     acceptance_criteria:
       - id: "ac4_1"
         type: "test"
-        description: "POST /v1/claim/sessions wires through claimService.startClaim end-to-end."
+        description: "POST /v1/claim/sessions wires through claimService.startClaim end-to-end. Persisted enrollment exists with status `pending_connection` and a non-empty authorize_url."
       - id: "ac4_2"
         type: "test"
-        description: "Webhook with runx_flow_id matching a claim flow routes to claimWebhookHandler.complete and short-circuits the existing completeFlow path."
+        description: "POST /v1/claim/sessions enforces the per-IP rate limit (10 sessions/24h)."
       - id: "ac4_3"
         type: "test"
-        description: "Webhook for a non-claim flow still works through the existing completeFlow."
+        description: "GET /v1/claim/sessions/:id returns the current enrollment status without blocking."
+      - id: "ac4_4"
+        type: "test"
+        description: "GET /v1/claim/sessions/:id/await blocks until the resolver completes; returns the final state on resolution."
+      - id: "ac4_5"
+        type: "test"
+        description: "GET /v1/claim/sessions/:id/await with no completion times out at the requested ms (capped at 120000) and returns timed_out: true."
+      - id: "ac4_6"
+        type: "test"
+        description: "Webhook with runx_flow_id matching a claim flow returns true from claimComplete and short-circuits the existing completeFlow path."
+      - id: "ac4_7"
+        type: "test"
+        description: "Webhook for a non-claim flow returns false from claimComplete and falls through to the existing completeFlow."
+      - id: "ac4_8"
+        type: "boundary"
+        description: "/v1/claim is a 404 (route deleted, not a redirect or 503)."
+      - id: "ac4_9"
+        type: "boundary"
+        description: "claimListing method does not exist on SelfPublishService."
+        command: "rg 'claimListing' cloud/packages/api/src cloud/tests"
+        expected: "No matches."
+      - id: "ac4_10"
+        type: "boundary"
+        description: "Server.ts startup throws when RUNX_HOSTED_REPLICA_COUNT > 1 OR webhookSecret is missing/equal-to-secretKey."
     status: "pending"
 
   - id: "phase5"
-    name: "Web surface — return page + restored ClaimAction"
-    objective: "User-visible flow: button on /x/claim → Nango → return page → result."
+    name: "Web surface — long-poll ClaimAction, no return page"
+    objective: "User-visible flow: button on /x/claim → new tab for OAuth → original tab long-polls → result renders inline."
     dependencies: ["phase4"]
     changes:
       - file: "cloud/apps/web/src/pages/api/claim/sessions.ts"
@@ -450,11 +528,28 @@ phases:
         lines: "all"
         content_spec: |
           POST forwards to upstream /v1/claim/sessions. Mirrors /api/claim.ts pattern but for the sessions route. Returns the upstream response unchanged.
+      - file: "cloud/apps/web/src/pages/api/claim/sessions/[request_id]/await.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Astro proxy GET. Forwards GET /v1/claim/sessions/:id/await?timeout_ms=... to the upstream API. Sets a server-side fetch timeout slightly higher than the client's requested timeout (e.g. timeout_ms + 2000) so Astro doesn't kill the long-poll prematurely.
       - file: "cloud/packages/ui/src/ClaimAction/ClaimAction.tsx"
         action: "update"
         lines: "all"
         content_spec: |
-          Replace the 'verified tier — coming soon' panel with a working button: 'connect github to claim @{owner}/{name}'. On click, POST /api/claim/sessions { owner, name }, then `window.location.href = response.authorize_url`. Show inline error states for 404 (listing missing) and unexpected failures.
+          Replace the 'verified tier — coming soon' panel with a working two-step component:
+          STEP 1 — IDLE: render button "connect github to claim @{owner}/{name}".
+          On click:
+            (a) POST /api/claim/sessions { owner, name }; on 404 render "listing not found", on 429 render "rate limit reached, try again later".
+            (b) `window.open(response.authorize_url, "_blank")` to open Nango in a new tab.
+            (c) Transition to STEP 2 — AWAITING.
+          STEP 2 — AWAITING:
+            - Render "waiting for github authentication… complete the OAuth in the new tab" with a spinner.
+            - In the same effect: `fetch("/api/claim/sessions/" + request_id + "/await?timeout_ms=120000")` — ONE request, no timer-based polling.
+            - On response with `request_status === "indexed"`: transition to STEP 3 — SUCCESS, render "verified as @{github_user} — listing promoted" with a link to the listing.
+            - On `request_status === "claim_rejected"`: transition to STEP 3 — REJECTED, render "github user @{github_user} doesn't own @{owner} or any matching public org. {claim_reason}" + a "try a different github account" button (resets to STEP 1, mints a fresh session).
+            - On `timed_out: true`: render "still finishing — click to refresh" with a button that fires another long-poll (a second long-poll, NOT a polling loop).
+          The component is purely state-machine driven: idle → awaiting → success/rejected/timeout. No setInterval, no setTimeout-based polling, no recursive periodic fetch.
       - file: "cloud/apps/web/src/pages/x/claim/index.astro"
         action: "update"
         lines: "FAQ copy"
@@ -464,21 +559,22 @@ phases:
           - "who can claim?" — the github actor whose handle matches the listing owner, or any public member of the named org.
           - "do I need a runx account?" — no, claim is anonymous.
           - "what happens after?" — the github connection persists, scoped to the listing. Pushes auto-reindex.
-      - file: "cloud/apps/web/src/pages/x/claim/return.astro"
-        action: "create"
-        lines: "all"
-        content_spec: |
-          Reads request_id from query. Server-side: fetch upstream `GET /v1/claim/sessions/:request_id`. If status is indexed, render success card with the listing link. If claim_rejected, render mismatch with the actual github_user. If pending_connection, server-side `await` the resolver via a new endpoint `GET /v1/claim/sessions/:request_id/await?timeout_ms=5000` (added in phase 4 acceptance — server holds open for up to 5s and returns final status). On timeout, render 'still processing — refresh in a few seconds'.
     acceptance_criteria:
       - id: "ac5_1"
         type: "test"
-        description: "ClaimAction's button click submits /api/claim/sessions with owner+name and redirects to authorize_url."
+        description: "ClaimAction's button click POSTs to /api/claim/sessions, opens authorize_url in a new tab, transitions to AWAITING."
       - id: "ac5_2"
         type: "test"
-        description: "/x/claim/return server-side fetches the awaiting endpoint and renders the final state on first load when webhook has resolved."
+        description: "ClaimAction issues exactly ONE long-poll request to /api/claim/sessions/:id/await per session (no setInterval / repeated fetches)."
       - id: "ac5_3"
         type: "test"
-        description: "/x/claim/return renders 'still processing' when webhook has not resolved within timeout."
+        description: "On long-poll resolution with request_status indexed, ClaimAction transitions to SUCCESS state."
+      - id: "ac5_4"
+        type: "test"
+        description: "On long-poll resolution with request_status claim_rejected, ClaimAction transitions to REJECTED with the rejection reason and a retry button."
+      - id: "ac5_5"
+        type: "test"
+        description: "On timed_out response, ClaimAction renders the manual-refresh state without auto-retrying."
     status: "pending"
 
   - id: "phase6"
@@ -490,34 +586,39 @@ phases:
         action: "create"
         lines: "all"
         content_spec: |
-          Build a fake HostedNangoClient that captures beginOauth calls, exposes a `simulateWebhook(flow_id, connection_id, identity)` helper that pushes the same shape as Nango's webhook into createNangoWebhookHandler. Stub proxyGet so /user and /user/orgs return canned identities.
-          Test the happy path: startClaim → simulateWebhook → poll-free GET /v1/claim/sessions/:request_id returns indexed.
-          Test public-org match.
-          Test mismatch.
-          Test single-flight (two startClaim calls return same authorize_url).
-          Test webhook arriving before the GET (resolver already complete; GET returns immediately).
-          Test webhook arriving during the await GET (resolver completes mid-await; GET returns at completion).
+          Build a fake HostedNangoClient that captures beginOauth calls and exposes `simulateWebhook(flow_id, connection_id, identity)` that pushes a Nango-shaped webhook into createNangoWebhookHandler. Stub proxyGet so /user and /user/orgs return canned identities. Use a real registryStore + InMemorySelfPublishStore.
+          Cover:
+            - HAPPY: startClaim → simulateWebhook with matching identity → GET /v1/claim/sessions/:id returns indexed; trust_tier on the registry version is verified.
+            - PUBLIC-ORG MATCH: actor "alice", target "stripe", canned public_orgs includes "stripe" → indexed.
+            - MISMATCH: actor "bob", target "stripe", no matching org → claim_rejected; trust_tier unchanged.
+            - SINGLE-FLIGHT: two startClaim calls back-to-back for same listing return identical authorize_url + request_id; only ONE enrollment row exists.
+            - SINGLE-FLIGHT EXPIRED: first startClaim, advance clock past expires_at, second startClaim mints a fresh session.
+            - SINGLE-FLIGHT REJECTED: first startClaim → simulateWebhook with mismatch → claim_rejected; second startClaim mints a fresh session (rejected does NOT block retries).
+            - WEBHOOK BEFORE AWAIT: simulateWebhook fires; THEN GET /v1/claim/sessions/:id/await returns indexed immediately.
+            - WEBHOOK DURING AWAIT: GET /v1/claim/sessions/:id/await is in-flight; simulateWebhook fires; GET resolves with indexed before timeout.
+            - AWAIT TIMEOUT: GET /v1/claim/sessions/:id/await with timeout_ms=100 and no webhook → returns timed_out: true after ~100ms.
+            - WEBHOOK BEFORE PERSIST IS UNREACHABLE: assert that startClaim's persist-before-beginOauth ordering means even with a fast webhook, findByRunxFlowId always succeeds. (Use a slow-beginOauth mock to force the ordering.)
+            - URL-PUBLISH RACE: startClaim snapshots versions {v1}; while pending, run UrlPublishService.index that adds v2 (community); simulateWebhook with matching identity → v1 promoted to verified, v2 stays community; subsequent webhook reindex of v2 inherits verified via the existing preserve-tier rule.
+            - PRINCIPAL-BOUND PASSTHROUGH: a webhook with a flow_id NOT in any enrollment → claimComplete returns false; existing connect-surface completeFlow runs (uses a real grant store with a seeded principal-bound flow).
+            - WEBHOOK SECRET MISSING: createHostedApiApp without githubWebhookSecret → server.ts startup assertion throws. (Already covered by phase 4 boundary AC; cross-link.)
     acceptance_criteria:
       - id: "ac6_1"
         type: "test"
-        description: "End-to-end happy path passes."
-      - id: "ac6_2"
-        type: "test"
-        description: "All four edge cases pass."
+        description: "All eleven cases pass."
     status: "pending"
 
 rollback:
   strategy: "per_phase"
   commands:
-    phase1: "git checkout HEAD -- cloud/packages/api/src/self-publish-{model,helpers,stores}.ts"
+    phase1: "git checkout HEAD -- cloud/packages/api/src/self-publish-{model,helpers,stores}.ts cloud/packages/api/src/skill-indexer.ts"
     phase2: "git rm cloud/packages/api/src/github-identity.ts && git checkout HEAD -- cloud/packages/auth/src/nango-hosted.ts"
-    phase3: "git rm cloud/packages/api/src/claim-{resolver,service}.ts cloud/packages/api/src/claim-{resolver,service}.test.ts"
-    phase4: "git rm cloud/packages/api/src/claim-routes.ts && git checkout HEAD -- cloud/packages/api/src/index.ts cloud/packages/api/src/server.ts cloud/packages/api/src/self-publish-routes.ts cloud/packages/auth/src/nango-hosted.ts"
-    phase5: "git rm -r cloud/apps/web/src/pages/x/claim/return.astro cloud/apps/web/src/pages/api/claim/sessions.ts && git checkout HEAD -- cloud/packages/ui/src/ClaimAction/ClaimAction.tsx cloud/apps/web/src/pages/x/claim/index.astro"
+    phase3: "git rm cloud/packages/api/src/claim-{resolver,service,resolver.test,service.test}.ts"
+    phase4: "git rm cloud/packages/api/src/claim-routes.ts && git checkout HEAD -- cloud/packages/api/src/index.ts cloud/packages/api/src/server.ts cloud/packages/api/src/self-publish-routes.ts cloud/packages/api/src/self-publish-service.ts cloud/packages/api/src/openapi-route-catalog.ts cloud/packages/auth/src/nango-hosted.ts cloud/packages/auth/src/http.ts oss/packages/contracts/src/openapi-public.ts && git checkout HEAD -- cloud/apps/web/src/pages/x/claim.astro cloud/apps/web/src/pages/api/claim.ts cloud/packages/api/src/self-publish-service.test.ts && git checkout HEAD -- cloud/packages/api/src/rate-limit.ts"
+    phase5: "git rm -r cloud/apps/web/src/pages/api/claim/sessions.ts cloud/apps/web/src/pages/api/claim/sessions/ && git checkout HEAD -- cloud/packages/ui/src/ClaimAction/ClaimAction.tsx cloud/apps/web/src/pages/x/claim/index.astro"
     phase6: "git rm cloud/tests/claim-via-nango.test.ts"
 
 metadata:
-  estimated_effort_hours: 10
+  estimated_effort_hours: 12
   tags:
     - "claim"
     - "nango"

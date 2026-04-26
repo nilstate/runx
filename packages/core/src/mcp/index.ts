@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
 
-import { prepareLocalProcessSandbox, type SandboxDeclaration } from "../policy/index.js";
+import { cleanupLocalProcessSandbox, prepareLocalProcessSandbox, type SandboxDeclaration } from "../policy/index.js";
 
 export const mcpCorePackage = "@runxhq/core/mcp";
 
@@ -53,10 +53,11 @@ export async function listMcpTools(options: {
   readonly timeoutMs?: number;
   readonly clientInfo?: McpClientInfo;
 }): Promise<readonly McpToolDescriptor[]> {
-  return await withMcpClient(options, async (client) => {
+  const invocation = await withMcpClient(options, async (client) => {
     const result = await client.request("tools/list", {});
     return parseMcpToolsList(result);
   });
+  return invocation.value;
 }
 
 export async function invokeMcpTool(options: {
@@ -69,11 +70,34 @@ export async function invokeMcpTool(options: {
   readonly tool: string;
   readonly args: Readonly<Record<string, unknown>>;
 }): Promise<unknown> {
-  return await withMcpClient(options, async (client) =>
+  const invocation = await invokeMcpToolWithMetadata(options);
+  return invocation.result;
+}
+
+export interface McpToolInvocationResult {
+  readonly result: unknown;
+  readonly sandboxMetadata: Readonly<Record<string, unknown>>;
+}
+
+export async function invokeMcpToolWithMetadata(options: {
+  readonly server: McpServerDefinition;
+  readonly skillDirectory: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly sandbox?: SandboxDeclaration & { readonly approvedEscalation?: boolean };
+  readonly timeoutMs?: number;
+  readonly clientInfo?: McpClientInfo;
+  readonly tool: string;
+  readonly args: Readonly<Record<string, unknown>>;
+}): Promise<McpToolInvocationResult> {
+  const invocation = await withMcpClient(options, async (client) =>
     await client.request("tools/call", {
       name: options.tool,
       arguments: options.args,
     }));
+  return {
+    result: invocation.value,
+    sandboxMetadata: invocation.sandboxMetadata,
+  };
 }
 
 export function mapMcpArguments(
@@ -123,14 +147,28 @@ export function stringifyMcpToolResult(result: unknown): string {
   return typeof result === "string" ? result : JSON.stringify(result) ?? "";
 }
 
-export function createMcpExecutionMetadata(source: McpExecutionSource): Readonly<Record<string, unknown>> {
+export function createMcpExecutionMetadata(
+  source: McpExecutionSource,
+  sandboxMetadata?: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
   return {
     mcp: {
       tool: source.tool,
       server_command_hash: hashString(source.server?.command ?? ""),
       server_args_hash: hashString(JSON.stringify(source.server?.args ?? [])),
     },
+    ...(sandboxMetadata ? { sandbox: sandboxMetadata } : {}),
   };
+}
+
+export class McpSandboxDeniedError extends Error {
+  constructor(
+    message: string,
+    readonly sandboxMetadata: Readonly<Record<string, unknown>>,
+  ) {
+    super(message);
+    this.name = "McpSandboxDeniedError";
+  }
 }
 
 async function withMcpClient<T>(
@@ -143,17 +181,19 @@ async function withMcpClient<T>(
     readonly clientInfo?: McpClientInfo;
   },
   action: (client: StdioJsonRpcClient) => Promise<T>,
-): Promise<T> {
+): Promise<{ readonly value: T; readonly sandboxMetadata: Readonly<Record<string, unknown>> }> {
   const sandbox = prepareLocalProcessSandbox({
     sandbox: options.sandbox,
     skillDirectory: options.skillDirectory,
     sourceCwd: options.server.cwd,
     env: options.env,
+    command: options.server.command,
+    args: options.server.args,
   });
   if (sandbox.status === "deny") {
-    throw new Error(`MCP sandbox denied: ${sandbox.reason}`);
+    throw new McpSandboxDeniedError(`MCP sandbox denied: ${sandbox.reason}`, sandbox.metadata);
   }
-  const child = spawn(options.server.command, options.server.args, {
+  const child = spawn(sandbox.command ?? options.server.command, sandbox.args ?? options.server.args, {
     cwd: sandbox.cwd,
     env: sandbox.env,
     shell: false,
@@ -163,12 +203,17 @@ async function withMcpClient<T>(
   const timeoutMs = Math.max(options.timeoutMs ?? defaultMcpTimeoutMs, 50);
 
   try {
-    return await withTimeout((async () => {
+    const value = await withTimeout((async () => {
       await initializeMcpClient(client, options.clientInfo);
       return await action(client);
     })(), timeoutMs, () => terminate(child));
+    return {
+      value,
+      sandboxMetadata: sandbox.metadata,
+    };
   } finally {
     terminate(child);
+    cleanupLocalProcessSandbox(sandbox);
   }
 }
 

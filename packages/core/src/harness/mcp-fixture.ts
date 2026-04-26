@@ -97,6 +97,20 @@ function handle(request: JsonRpcRequest): void {
             additionalProperties: false,
           },
         },
+        {
+          name: "env",
+          description: "Return a single fixture server environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+              },
+            },
+            required: ["name"],
+            additionalProperties: false,
+          },
+        },
       ],
     });
     return;
@@ -121,6 +135,18 @@ function handleToolCall(id: number, params: unknown): void {
   }
 
   const args = isRecord(params.arguments) ? params.arguments : {};
+
+  if (params.name === "env") {
+    respond(id, {
+      content: [
+        {
+          type: "text",
+          text: String(process.env[String(args.name ?? "")] ?? ""),
+        },
+      ],
+    });
+    return;
+  }
 
   if (params.name === "fail") {
     respondError(id, -32000, `fixture failure: ${String(args.message ?? "")}`);

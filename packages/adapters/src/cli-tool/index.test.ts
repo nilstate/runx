@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp, rm, writeFile, chmod } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile, chmod } from "node:fs/promises";
+import { createServer, type AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 
@@ -97,41 +98,82 @@ describe("invokeCliTool", () => {
   });
 
   it("applies declared env allowlist and reports sandbox profile metadata", async () => {
-    const result = await invokeCliTool({
-      source: {
-        command: "node",
-        args: [
-          "-e",
-          "process.stdout.write(`${process.env.ALLOWED_VALUE ?? ''}:${process.env.BLOCKED_VALUE ?? ''}:${process.env.RUNX_INPUT_MESSAGE ?? ''}`)",
-        ],
-        timeoutSeconds: 5,
-        sandbox: {
-          profile: "workspace-write",
-          envAllowlist: ["ALLOWED_VALUE"],
-          writablePaths: ["{{output_path}}"],
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-tool-env-"));
+    try {
+      const result = await invokeCliTool({
+        source: {
+          command: "node",
+          args: [
+            "-e",
+            "process.stdout.write(`${process.env.ALLOWED_VALUE ?? ''}:${process.env.BLOCKED_VALUE ?? ''}:${process.env.RUNX_INPUT_MESSAGE ?? ''}`)",
+          ],
+          timeoutSeconds: 5,
+          sandbox: {
+            profile: "workspace-write",
+            envAllowlist: ["ALLOWED_VALUE"],
+            writablePaths: ["{{output_path}}"],
+          },
         },
-      },
-      inputs: { message: "hi", output_path: "out.txt" },
-      env: {
-        ALLOWED_VALUE: "yes",
-        BLOCKED_VALUE: "no",
-      },
-      skillDirectory: process.cwd(),
-    });
+        inputs: { message: "hi", output_path: "out.txt" },
+        env: {
+          ALLOWED_VALUE: "yes",
+          BLOCKED_VALUE: "no",
+          RUNX_CWD: tempDir,
+        },
+        skillDirectory: tempDir,
+      });
 
-    expect(result.status).toBe("success");
-    expect(result.stdout).toBe("yes::hi");
-    expect(result.metadata?.sandbox).toMatchObject({
-      profile: "workspace-write",
-      env: {
-        mode: "allowlist",
-        allowlist: ["ALLOWED_VALUE"],
-      },
-      writable_paths: ["out.txt"],
-      filesystem: {
-        enforcement: "cwd-boundary-and-writable-path-admission",
-      },
-    });
+      expect(result.status).toBe("success");
+      expect(result.stdout).toBe("yes::hi");
+      expect(result.metadata?.sandbox).toMatchObject({
+        profile: "workspace-write",
+        env: {
+          mode: "allowlist",
+          allowlist: ["ALLOWED_VALUE"],
+        },
+        writable_paths: ["out.txt"],
+        filesystem: {
+          enforcement: "bubblewrap-mount-namespace",
+        },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("blocks readonly filesystem writes at runtime", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-tool-readonly-"));
+    const outputPath = path.join(tempDir, "out.txt");
+    try {
+      const result = await invokeCliTool({
+        source: {
+          command: "node",
+          args: ["-e", "require('node:fs').writeFileSync('out.txt', 'should-not-write')"],
+          timeoutSeconds: 5,
+          sandbox: {
+            profile: "readonly",
+          },
+        },
+        inputs: {},
+        skillDirectory: tempDir,
+        env: {
+          PATH: process.env.PATH,
+          RUNX_CWD: tempDir,
+        },
+      });
+
+      expect(result.status).toBe("failure");
+      expect(result.metadata?.sandbox).toMatchObject({
+        profile: "readonly",
+        filesystem: {
+          enforcement: "bubblewrap-mount-namespace",
+          readonly_paths: true,
+        },
+      });
+      await expect(readFile(outputPath, "utf8")).rejects.toThrow();
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it("uses a default env allowlist instead of inheriting ambient secrets", async () => {
@@ -240,17 +282,94 @@ describe("invokeCliTool", () => {
     expect(result.stdout).toBe(`true:${largePayload.length}:`);
   });
 
-  it("inherits the ambient process environment when no explicit env is passed", async () => {
+  it("isolates host network when network is not declared", async () => {
+    const server = createServer((socket) => socket.end("host-network"));
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const port = (server.address() as AddressInfo).port;
+
+    try {
+      const result = await invokeCliTool({
+        source: {
+          command: "node",
+          args: [
+            "-e",
+            [
+              "const net = require('node:net');",
+              "const socket = net.connect({ host: '127.0.0.1', port: Number(process.env.RUNX_INPUT_PORT) }, () => {",
+              "  process.stdout.write('connected');",
+              "  socket.destroy();",
+              "  process.exit(0);",
+              "});",
+              "socket.on('error', () => { process.stdout.write('blocked'); process.exit(0); });",
+              "setTimeout(() => { process.stdout.write('blocked-timeout'); socket.destroy(); process.exit(0); }, 500);",
+            ].join(" "),
+          ],
+          timeoutSeconds: 5,
+          sandbox: {
+            profile: "readonly",
+          },
+        },
+        inputs: { port },
+        skillDirectory: process.cwd(),
+        env: {
+          PATH: process.env.PATH,
+          RUNX_CWD: process.cwd(),
+        },
+      });
+
+      expect(result.status).toBe("success");
+      expect(result.stdout).not.toBe("connected");
+      expect(result.metadata?.sandbox).toMatchObject({
+        network: {
+          declared: false,
+          enforcement: "isolated-namespace",
+        },
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+      });
+    }
+  });
+
+  it("allows out-of-workspace PATH commands only for unrestricted local development", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-tool-path-"));
     const scriptPath = path.join(tempDir, "ambient-command");
     try {
       await writeFile(scriptPath, "#!/usr/bin/env bash\nprintf 'ambient-ok'\n", "utf8");
       await chmod(scriptPath, 0o755);
 
+      const readonlyResult = await invokeCliTool({
+        source: {
+          command: "ambient-command",
+          timeoutSeconds: 5,
+          sandbox: {
+            profile: "readonly",
+          },
+        },
+        inputs: {},
+        skillDirectory: process.cwd(),
+        env: {
+          PATH: `${tempDir}:${process.env.PATH ?? ""}`,
+        },
+      });
+      expect(readonlyResult.status).toBe("failure");
+      expect(readonlyResult.stdout).toBe("");
+      expect(readonlyResult.metadata?.sandbox).toMatchObject({
+        profile: "readonly",
+        runtime: {
+          enforcer: "bubblewrap",
+        },
+      });
+
       const result = await invokeCliTool({
         source: {
           command: "ambient-command",
           timeoutSeconds: 5,
+          sandbox: {
+            profile: "unrestricted-local-dev",
+            approvedEscalation: true,
+          },
         },
         inputs: {},
         skillDirectory: process.cwd(),
@@ -262,6 +381,12 @@ describe("invokeCliTool", () => {
 
       expect(result.status).toBe("success");
       expect(result.stdout).toBe("ambient-ok");
+      expect(result.metadata?.sandbox).toMatchObject({
+        profile: "unrestricted-local-dev",
+        runtime: {
+          enforcer: "direct",
+        },
+      });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

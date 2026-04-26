@@ -1,8 +1,9 @@
 import type { AdapterInvokeRequest, AdapterInvokeResult, SkillAdapter } from "@runxhq/core/executor";
 import {
   createMcpExecutionMetadata,
-  invokeMcpTool,
+  invokeMcpToolWithMetadata,
   mapMcpArguments,
+  McpSandboxDeniedError,
   stringifyMcpToolResult,
 } from "@runxhq/core/mcp";
 
@@ -33,7 +34,7 @@ export async function invokeMcp(request: AdapterInvokeRequest): Promise<AdapterI
   const toolArgs = mapMcpArguments(source.arguments, request.inputs, request.resolvedInputs);
 
   try {
-    const result = await invokeMcpTool({
+    const result = await invokeMcpToolWithMetadata({
       server,
       skillDirectory: request.skillDirectory,
       env: request.env,
@@ -45,15 +46,15 @@ export async function invokeMcp(request: AdapterInvokeRequest): Promise<AdapterI
 
     return {
       status: "success",
-      stdout: stringifyMcpToolResult(result),
+      stdout: stringifyMcpToolResult(result.result),
       stderr: "",
       exitCode: 0,
       signal: null,
       durationMs: Math.round(performance.now() - started),
-      metadata: createMcpExecutionMetadata(source),
+      metadata: createMcpExecutionMetadata(source, result.sandboxMetadata),
     };
   } catch (error) {
-    return failure(sanitizeError(error), started, createMcpExecutionMetadata(source));
+    return failure(sanitizeError(error), started, createMcpExecutionMetadata(source, sandboxMetadataFromError(error)));
   }
 }
 
@@ -78,6 +79,9 @@ function sanitizeError(error: unknown): string {
   if (!(error instanceof Error)) {
     return "MCP adapter failed.";
   }
+  if (error instanceof McpSandboxDeniedError) {
+    return error.message;
+  }
   if (error.message.startsWith("MCP error ")) {
     const code = /^MCP error (-?\d+)/.exec(error.message)?.[1] ?? "unknown";
     return `MCP tool returned error ${code}.`;
@@ -86,4 +90,8 @@ function sanitizeError(error: unknown): string {
     return error.message;
   }
   return "MCP adapter failed.";
+}
+
+function sandboxMetadataFromError(error: unknown): Readonly<Record<string, unknown>> | undefined {
+  return error instanceof McpSandboxDeniedError ? error.sandboxMetadata : undefined;
 }

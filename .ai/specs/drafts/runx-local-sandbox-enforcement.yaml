@@ -1,8 +1,8 @@
 spec_version: "1.1"
 task_id: "runx-local-sandbox-enforcement"
 created: "2026-04-25T15:35:00Z"
-updated: "2026-04-25T16:18:00Z"
-status: "in_progress"
+updated: "2026-04-26T07:06:47Z"
+status: "completed"
 
 task:
   title: "Enforce local sandbox policy instead of recording declarations only"
@@ -77,6 +77,9 @@ planning_log:
   - timestamp: "2026-04-25T16:18:00Z"
     actor: "agent"
     summary: "Added a shared local process sandbox preparation helper, default env allowlisting, cwd boundary checks, writable path admission for workspace-write, MCP/cli-tool spawn integration, and focused tests."
+  - timestamp: "2026-04-26T07:06:47Z"
+    actor: "agent"
+    summary: "Completed Linux Bubblewrap-backed local process enforcement for cli-tool and MCP, including readonly mount namespaces, workspace-write path mounts, private temp/input spill paths, network namespace isolation, MCP sandbox metadata, and focused coverage for write denial, env allowlisting, and host network blocking."
 
 phases:
   - id: "phase1"
@@ -86,11 +89,11 @@ phases:
   - id: "phase2"
     name: "Process Enforcement"
     objective: "Implement shared cli-tool/MCP process sandbox assembly for cwd, env, filesystem, and network controls."
-    status: "in_progress"
+    status: "completed"
   - id: "phase3"
     name: "Receipts And Tests"
     objective: "Update receipt metadata and add regression coverage for enforcement and unsupported-control denial."
-    status: "in_progress"
+    status: "completed"
 
 metadata:
   estimated_effort_hours: 10

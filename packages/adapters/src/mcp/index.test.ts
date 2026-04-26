@@ -51,6 +51,78 @@ describe("invokeMcp", () => {
     expect(JSON.stringify(result)).not.toContain("super-secret-value");
   }, 15000);
 
+  it("applies the sandbox env allowlist to MCP server processes", async () => {
+    const blocked = await invokeMcp({
+      source: {
+        type: "mcp",
+        args: [],
+        server: fixtureServer,
+        tool: "env",
+        arguments: { name: "RUNX_SECRET_VALUE" },
+        raw: {},
+        timeoutSeconds: 15,
+        sandbox: {
+          profile: "readonly",
+          cwdPolicy: "workspace",
+          envAllowlist: ["PATH", "ALLOWED_VALUE"],
+          writablePaths: [],
+          raw: {},
+        },
+      },
+      inputs: {},
+      skillDirectory: process.cwd(),
+      env: {
+        PATH: process.env.PATH,
+        ALLOWED_VALUE: "allowed",
+        RUNX_SECRET_VALUE: "secret",
+      },
+    });
+
+    expect(blocked.status).toBe("success");
+    expect(blocked.stdout).toBe("");
+    expect(blocked.metadata?.sandbox).toMatchObject({
+      profile: "readonly",
+      env: {
+        mode: "allowlist",
+        allowlist: ["PATH", "ALLOWED_VALUE"],
+      },
+      filesystem: {
+        enforcement: "bubblewrap-mount-namespace",
+      },
+    });
+
+    const allowed = await invokeMcp({
+      source: {
+        type: "mcp",
+        args: [],
+        server: fixtureServer,
+        tool: "env",
+        arguments: { name: "ALLOWED_VALUE" },
+        raw: {},
+        timeoutSeconds: 15,
+        sandbox: {
+          profile: "readonly",
+          cwdPolicy: "workspace",
+          envAllowlist: ["PATH", "ALLOWED_VALUE"],
+          writablePaths: [],
+          raw: {},
+        },
+      },
+      inputs: {},
+      skillDirectory: process.cwd(),
+      env: {
+        PATH: process.env.PATH,
+        ALLOWED_VALUE: "allowed",
+        RUNX_SECRET_VALUE: "secret",
+      },
+    });
+
+    expect(allowed.status).toBe("success");
+    expect(allowed.stdout).toBe("allowed");
+    expect(JSON.stringify(blocked)).not.toContain("secret");
+    expect(JSON.stringify(allowed)).not.toContain("secret");
+  }, 15000);
+
   it("times out unanswered MCP tool calls", async () => {
     const result = await invokeMcp({
       source: {

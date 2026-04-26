@@ -64,8 +64,64 @@ describe("cli-tool sandbox profiles", () => {
       await expect(readFile(outputPath, "utf8")).resolves.toBe("sandbox-ok");
       const receiptContents = await readFile(path.join(receiptDir, `${result.receipt.id}.json`), "utf8");
       expect(receiptContents).toContain('"profile": "workspace-write"');
-      expect(receiptContents).toContain('"enforcement": "cwd-boundary-and-writable-path-admission"');
+      expect(receiptContents).toContain('"enforcement": "bubblewrap-mount-namespace"');
+      expect(receiptContents).toContain('"writable_paths_enforced": true');
       expect(receiptContents).toContain('"mode": "allowlist"');
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("blocks readonly writes at execution time even without declared writable paths", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sandbox-readonly-enforced-"));
+    const skillPath = path.join(tempDir, "sandbox-readonly-enforced");
+    const outputPath = path.join(tempDir, "should-not-exist.txt");
+    const receiptDir = path.join(tempDir, "receipts");
+
+    try {
+      await mkdir(skillPath, { recursive: true });
+      await writeFile(
+        path.join(skillPath, "SKILL.md"),
+        `---
+name: sandbox-readonly-enforced
+source:
+  type: cli-tool
+  command: node
+  args:
+    - -e
+    - "require('node:fs').writeFileSync(process.env.RUNX_INPUT_OUTPUT_PATH, 'should-not-write')"
+  sandbox:
+    profile: readonly
+inputs:
+  output_path:
+    type: string
+    required: true
+---
+Readonly fixture.
+`,
+      );
+
+      const result = await runLocalSkill({
+        skillPath,
+        inputs: { output_path: outputPath },
+        caller: caller(),
+        receiptDir,
+        runxHome: path.join(tempDir, "home"),
+        env: {
+          PATH: process.env.PATH,
+          RUNX_CWD: tempDir,
+        },
+        adapters: createDefaultSkillAdapters(),
+      });
+
+      expect(result.status).toBe("failure");
+      await expect(readFile(outputPath, "utf8")).rejects.toThrow();
+      if (result.status !== "failure") {
+        return;
+      }
+      const receiptContents = await readFile(path.join(receiptDir, `${result.receipt.id}.json`), "utf8");
+      expect(receiptContents).toContain('"profile": "readonly"');
+      expect(receiptContents).toContain('"enforcement": "bubblewrap-mount-namespace"');
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

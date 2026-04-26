@@ -109,7 +109,7 @@ export function admitLocalSkill(
     }
   }
 
-  if (skill.source.type === "cli-tool") {
+  if (skill.source.type === "cli-tool" || skill.source.type === "mcp") {
     const sandboxDecision = admitSandbox(skill.source.sandbox, {
       approvedEscalation: options.approvedSandboxEscalation,
       skipEscalation: options.skipSandboxEscalation,
@@ -361,6 +361,7 @@ export {
   type SandboxProfile,
 } from "./sandbox.js";
 export {
+  cleanupLocalProcessSandbox,
   prepareLocalProcessSandbox,
   type LocalProcessSandboxOptions,
   type LocalProcessSandboxResult,
