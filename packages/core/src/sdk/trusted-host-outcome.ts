@@ -1,13 +1,13 @@
 import type { ResolutionRequest } from "../executor/index.js";
 import type { LocalReceipt } from "../receipts/index.js";
 import type { RunLocalSkillResult } from "../runner-local/index.js";
-import type { SurfaceRunResult } from "./surface-protocol.js";
+import type { HostRunResult } from "./host-protocol.js";
 
 // First-party projection for trusted hosts such as the runx cloud worker.
 // This is not a provider response shape and must not be returned by public
 // host adapters, CLI output, public hosted APIs, or marketplace MCP tools.
-export interface TrustedSurfaceOutcome {
-  readonly surface: SurfaceRunResult;
+export interface TrustedHostOutcome {
+  readonly host: HostRunResult;
   readonly kernelStatus: RunLocalSkillResult["status"];
   readonly kernelRunId?: string;
   readonly ledgerRunId?: string;
@@ -22,14 +22,14 @@ export interface TrustedSurfaceOutcome {
   readonly stepLabels?: readonly string[];
 }
 
-export function createTrustedSurfaceOutcome(
-  surface: SurfaceRunResult,
+export function createTrustedHostOutcome(
+  host: HostRunResult,
   kernel: RunLocalSkillResult,
-): TrustedSurfaceOutcome {
-  assertSurfaceKernelParity(surface, kernel);
+): TrustedHostOutcome {
+  assertHostKernelParity(host, kernel);
   if (kernel.status === "needs_resolution") {
     return {
-      surface,
+      host,
       kernelStatus: kernel.status,
       kernelRunId: kernel.runId,
       ledgerRunId: kernel.runId,
@@ -40,7 +40,7 @@ export function createTrustedSurfaceOutcome(
   }
   if (kernel.status === "policy_denied") {
     return {
-      surface,
+      host,
       kernelStatus: kernel.status,
       ledgerRunId: kernel.receipt?.id,
       receipt: kernel.receipt,
@@ -50,7 +50,7 @@ export function createTrustedSurfaceOutcome(
     };
   }
   return {
-    surface,
+    host,
     kernelStatus: kernel.status,
     ledgerRunId: kernel.receipt.id,
     receipt: kernel.receipt,
@@ -61,14 +61,14 @@ export function createTrustedSurfaceOutcome(
   };
 }
 
-function assertSurfaceKernelParity(surface: SurfaceRunResult, kernel: RunLocalSkillResult): void {
-  const expected = expectedSurfaceStatuses(kernel);
-  if (!expected.includes(surface.status)) {
-    throw new Error(`Trusted surface status ${surface.status} did not match kernel status ${kernel.status}.`);
+function assertHostKernelParity(host: HostRunResult, kernel: RunLocalSkillResult): void {
+  const expected = expectedHostStatuses(kernel);
+  if (!expected.includes(host.status)) {
+    throw new Error(`Trusted host status ${host.status} did not match kernel status ${kernel.status}.`);
   }
 }
 
-function expectedSurfaceStatuses(kernel: RunLocalSkillResult): readonly SurfaceRunResult["status"][] {
+function expectedHostStatuses(kernel: RunLocalSkillResult): readonly HostRunResult["status"][] {
   if (kernel.status === "needs_resolution") {
     return ["paused"];
   }

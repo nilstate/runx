@@ -3,20 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
-from . import RunxClient
-
 
 @dataclass(frozen=True)
-class SurfaceBoundaryContext:
+class HostBoundaryContext:
     request: Mapping[str, Any]
     events: tuple[Mapping[str, Any], ...] = ()
 
 
-SurfaceBoundaryResolver = Callable[[SurfaceBoundaryContext], Any | None]
+HostBoundaryResolver = Callable[[HostBoundaryContext], Any | None]
+HostRunCallable = Callable[[str, Mapping[str, Any] | None], Mapping[str, Any]]
+HostResumeCallable = Callable[[str, Sequence[Mapping[str, Any]] | None], Mapping[str, Any]]
+HostInspectCallable = Callable[[str], Mapping[str, Any]]
 
 
 @dataclass(frozen=True)
-class SurfacePausedResult:
+class HostPausedResult:
     status: str
     skill_name: str
     run_id: str
@@ -27,7 +28,7 @@ class SurfacePausedResult:
 
 
 @dataclass(frozen=True)
-class SurfaceCompletedResult:
+class HostCompletedResult:
     status: str
     skill_name: str
     receipt_id: str
@@ -36,7 +37,7 @@ class SurfaceCompletedResult:
 
 
 @dataclass(frozen=True)
-class SurfaceFailedResult:
+class HostFailedResult:
     status: str
     skill_name: str
     error: str
@@ -45,7 +46,16 @@ class SurfaceFailedResult:
 
 
 @dataclass(frozen=True)
-class SurfaceDeniedResult:
+class HostEscalatedResult:
+    status: str
+    skill_name: str
+    error: str
+    receipt_id: str
+    events: tuple[Mapping[str, Any], ...] = ()
+
+
+@dataclass(frozen=True)
+class HostDeniedResult:
     status: str
     skill_name: str
     reasons: tuple[str, ...]
@@ -53,16 +63,17 @@ class SurfaceDeniedResult:
     events: tuple[Mapping[str, Any], ...] = ()
 
 
-SurfaceRunResult = (
-    SurfacePausedResult
-    | SurfaceCompletedResult
-    | SurfaceFailedResult
-    | SurfaceDeniedResult
+HostRunResult = (
+    HostPausedResult
+    | HostCompletedResult
+    | HostFailedResult
+    | HostEscalatedResult
+    | HostDeniedResult
 )
 
 
 @dataclass(frozen=True)
-class SurfacePausedState:
+class HostPausedState:
     status: str
     skill_name: str
     run_id: str
@@ -76,7 +87,7 @@ class SurfacePausedState:
 
 
 @dataclass(frozen=True)
-class SurfaceTerminalState:
+class HostTerminalState:
     status: str
     kind: str
     skill_name: str
@@ -95,49 +106,58 @@ class SurfaceTerminalState:
     lineage: Mapping[str, Any] | None = None
 
 
-SurfaceRunState = SurfacePausedState | SurfaceTerminalState
+HostRunState = HostPausedState | HostTerminalState
 
 
-class SurfaceBridge:
-    def __init__(self, client: RunxClient) -> None:
-        self.client = client
+class HostBridge:
+    def __init__(
+        self,
+        run: HostRunCallable,
+        resume: HostResumeCallable | None = None,
+        inspect: HostInspectCallable | None = None,
+    ) -> None:
+        self._run = run
+        self._resume = resume
+        self._inspect = inspect
 
     def run(
         self,
         skill_path: str,
         inputs: Mapping[str, Any] | None = None,
-        resolver: SurfaceBoundaryResolver | None = None,
-    ) -> SurfaceRunResult:
-        initial = self.client.surface_run(skill_path, inputs=inputs)
+        resolver: HostBoundaryResolver | None = None,
+    ) -> HostRunResult:
+        initial = self._run(skill_path, inputs)
         return self._drive(initial, resolver=resolver)
 
     def resume(
         self,
         run_id: str,
-        resolver: SurfaceBoundaryResolver | None = None,
-    ) -> SurfaceRunResult:
-        initial = self.client.surface_resume(run_id)
+        resolver: HostBoundaryResolver | None = None,
+    ) -> HostRunResult:
+        initial = self._resume_payload(run_id, None)
         return self._drive(initial, resolver=resolver)
 
-    def inspect(self, reference_id: str) -> SurfaceRunState:
-        return normalize_surface_state(self.client.surface_inspect(reference_id))
+    def inspect(self, reference_id: str) -> HostRunState:
+        if self._inspect is None:
+            raise RuntimeError("This host bridge does not support inspect().")
+        return normalize_host_state(self._inspect(reference_id))
 
     def _drive(
         self,
         payload: Mapping[str, Any],
-        resolver: SurfaceBoundaryResolver | None,
-    ) -> SurfaceRunResult:
+        resolver: HostBoundaryResolver | None,
+    ) -> HostRunResult:
         current = dict(payload)
         while True:
-            result = normalize_surface_result(current)
-            if not isinstance(result, SurfacePausedResult):
+            result = normalize_host_result(current)
+            if not isinstance(result, HostPausedResult):
                 return result
             if resolver is None:
                 return result
 
             responses: list[dict[str, Any]] = []
             for request in result.requests:
-                reply = resolver(SurfaceBoundaryContext(request=request, events=result.events))
+                reply = resolver(HostBoundaryContext(request=request, events=result.events))
                 normalized = _normalize_resolution_reply(request, reply)
                 if normalized is None:
                     continue
@@ -152,11 +172,20 @@ class SurfaceBridge:
             if not responses:
                 return result
 
-            current = self.client.surface_resume(result.run_id, responses=responses)
+            current = self._resume_payload(result.run_id, responses)
+
+    def _resume_payload(
+        self,
+        run_id: str,
+        responses: Sequence[Mapping[str, Any]] | None,
+    ) -> Mapping[str, Any]:
+        if self._resume is None:
+            raise RuntimeError("This host bridge does not support resume().")
+        return self._resume(run_id, responses)
 
 
-class ProviderSurfaceAdapter:
-    def __init__(self, bridge: SurfaceBridge, formatter: Callable[[SurfaceRunResult], Mapping[str, Any]]) -> None:
+class ProviderHostAdapter:
+    def __init__(self, bridge: HostBridge, formatter: Callable[[HostRunResult], Mapping[str, Any]]) -> None:
         self.bridge = bridge
         self.formatter = formatter
 
@@ -164,51 +193,55 @@ class ProviderSurfaceAdapter:
         self,
         skill_path: str,
         inputs: Mapping[str, Any] | None = None,
-        resolver: SurfaceBoundaryResolver | None = None,
+        resolver: HostBoundaryResolver | None = None,
     ) -> Mapping[str, Any]:
         return self.formatter(self.bridge.run(skill_path, inputs=inputs, resolver=resolver))
 
     def resume(
         self,
         run_id: str,
-        resolver: SurfaceBoundaryResolver | None = None,
+        resolver: HostBoundaryResolver | None = None,
     ) -> Mapping[str, Any]:
         return self.formatter(self.bridge.resume(run_id, resolver=resolver))
 
 
-def create_surface_bridge(client: RunxClient) -> SurfaceBridge:
-    return SurfaceBridge(client)
+def create_host_bridge(
+    run: HostRunCallable,
+    resume: HostResumeCallable | None = None,
+    inspect: HostInspectCallable | None = None,
+) -> HostBridge:
+    return HostBridge(run=run, resume=resume, inspect=inspect)
 
 
-def create_openai_surface_adapter(bridge: SurfaceBridge) -> ProviderSurfaceAdapter:
-    return ProviderSurfaceAdapter(bridge, _to_openai_response)
+def create_openai_host_adapter(bridge: HostBridge) -> ProviderHostAdapter:
+    return ProviderHostAdapter(bridge, _to_openai_response)
 
 
-def create_anthropic_surface_adapter(bridge: SurfaceBridge) -> ProviderSurfaceAdapter:
-    return ProviderSurfaceAdapter(bridge, _to_anthropic_response)
+def create_anthropic_host_adapter(bridge: HostBridge) -> ProviderHostAdapter:
+    return ProviderHostAdapter(bridge, _to_anthropic_response)
 
 
-def create_vercel_ai_surface_adapter(bridge: SurfaceBridge) -> ProviderSurfaceAdapter:
-    return ProviderSurfaceAdapter(bridge, _to_vercel_response)
+def create_vercel_ai_host_adapter(bridge: HostBridge) -> ProviderHostAdapter:
+    return ProviderHostAdapter(bridge, _to_vercel_response)
 
 
-def create_langchain_surface_adapter(bridge: SurfaceBridge) -> ProviderSurfaceAdapter:
-    return ProviderSurfaceAdapter(bridge, _to_langchain_response)
+def create_langchain_host_adapter(bridge: HostBridge) -> ProviderHostAdapter:
+    return ProviderHostAdapter(bridge, _to_langchain_response)
 
 
-def create_crewai_surface_adapter(bridge: SurfaceBridge) -> ProviderSurfaceAdapter:
-    return ProviderSurfaceAdapter(bridge, _to_crewai_response)
+def create_crewai_host_adapter(bridge: HostBridge) -> ProviderHostAdapter:
+    return ProviderHostAdapter(bridge, _to_crewai_response)
 
 
-def normalize_surface_result(payload: Mapping[str, Any]) -> SurfaceRunResult:
-    if _is_canonical_surface_result(payload):
-        return _normalize_canonical_surface_result(payload)
+def normalize_host_result(payload: Mapping[str, Any]) -> HostRunResult:
+    if _is_canonical_host_result(payload):
+        return _normalize_canonical_host_result(payload)
 
     status = str(payload.get("status") or "")
     skill = payload.get("skill")
     skill_name = str(skill.get("name")) if isinstance(skill, Mapping) else str(skill or "")
     if status == "needs_resolution":
-        return SurfacePausedResult(
+        return HostPausedResult(
             status="paused",
             skill_name=skill_name,
             run_id=str(payload.get("run_id") or ""),
@@ -219,36 +252,46 @@ def normalize_surface_result(payload: Mapping[str, Any]) -> SurfaceRunResult:
     if status == "policy_denied":
         reasons = payload.get("reasons") or ()
         receipt = payload.get("receipt") or {}
-        return SurfaceDeniedResult(
+        return HostDeniedResult(
             status="denied",
             skill_name=skill_name,
             reasons=tuple(str(item) for item in reasons),
-            receipt_id=_nested_str(receipt, "id"),
+            receipt_id=_nested_str(receipt, "id") if isinstance(receipt, Mapping) else None,
         )
     if status == "success":
         execution = payload.get("execution") or {}
         receipt = payload.get("receipt") or {}
-        return SurfaceCompletedResult(
+        return HostCompletedResult(
             status="completed",
             skill_name=skill_name,
-            receipt_id=str(receipt.get("id") or ""),
-            output=str(execution.get("stdout") or ""),
+            receipt_id=str(receipt.get("id") or "") if isinstance(receipt, Mapping) else "",
+            output=str(execution.get("stdout") or "") if isinstance(execution, Mapping) else "",
         )
+
     execution = payload.get("execution") or {}
     receipt = payload.get("receipt") or {}
-    error = str(execution.get("errorMessage") or execution.get("stderr") or execution.get("stdout") or "")
-    return SurfaceFailedResult(
+    disposition = str(receipt.get("disposition") or "") if isinstance(receipt, Mapping) else ""
+    error = str(execution.get("errorMessage") or execution.get("stderr") or execution.get("stdout") or "") if isinstance(execution, Mapping) else ""
+    receipt_id = _nested_str(receipt, "id") if isinstance(receipt, Mapping) else None
+    if disposition == "escalated":
+        return HostEscalatedResult(
+            status="escalated",
+            skill_name=skill_name,
+            error=error,
+            receipt_id=receipt_id or "",
+        )
+    return HostFailedResult(
         status="failed",
         skill_name=skill_name,
         error=error,
-        receipt_id=_nested_str(receipt, "id"),
+        receipt_id=receipt_id,
     )
 
 
-def normalize_surface_state(payload: Mapping[str, Any]) -> SurfaceRunState:
+def normalize_host_state(payload: Mapping[str, Any]) -> HostRunState:
     status = str(payload.get("status") or "")
     if status == "paused":
-        return SurfacePausedState(
+        return HostPausedState(
             status="paused",
             skill_name=str(payload.get("skillName") or ""),
             run_id=str(payload.get("runId") or ""),
@@ -260,7 +303,7 @@ def normalize_surface_state(payload: Mapping[str, Any]) -> SurfaceRunState:
             step_labels=tuple(str(item) for item in payload.get("stepLabels") or ()),
             lineage=payload.get("lineage") if isinstance(payload.get("lineage"), Mapping) else None,
         )
-    return SurfaceTerminalState(
+    return HostTerminalState(
         status=status,
         kind=str(payload.get("kind") or ""),
         skill_name=str(payload.get("skillName") or ""),
@@ -308,29 +351,32 @@ def _default_actor_for_request(request: Mapping[str, Any]) -> str:
     return "agent" if request.get("kind") == "cognitive_work" else "human"
 
 
-def _summary(result: SurfaceRunResult) -> str:
-    if isinstance(result, SurfaceCompletedResult):
+def _summary(result: HostRunResult) -> str:
+    if isinstance(result, HostCompletedResult):
         return f"{result.skill_name} completed. Inspect receipt {result.receipt_id}."
-    if isinstance(result, SurfacePausedResult):
+    if isinstance(result, HostPausedResult):
         return f"{result.skill_name} paused at {result.run_id}. Resume after resolving {len(result.requests)} request(s)."
-    if isinstance(result, SurfaceDeniedResult):
+    if isinstance(result, HostDeniedResult):
         return f"{result.skill_name} was denied by policy."
+    if isinstance(result, HostEscalatedResult):
+        return f"{result.skill_name} escalated. Inspect receipt {result.receipt_id}."
     return f"{result.skill_name} failed. Inspect receipt {result.receipt_id or 'n/a'}."
 
 
-def _is_canonical_surface_result(payload: Mapping[str, Any]) -> bool:
+def _is_canonical_host_result(payload: Mapping[str, Any]) -> bool:
     return isinstance(payload.get("skillName"), str) and str(payload.get("status") or "") in {
         "paused",
         "completed",
         "failed",
+        "escalated",
         "denied",
     }
 
 
-def _normalize_canonical_surface_result(payload: Mapping[str, Any]) -> SurfaceRunResult:
+def _normalize_canonical_host_result(payload: Mapping[str, Any]) -> HostRunResult:
     status = str(payload.get("status") or "")
     if status == "paused":
-        return SurfacePausedResult(
+        return HostPausedResult(
             status="paused",
             skill_name=str(payload.get("skillName") or ""),
             run_id=str(payload.get("runId") or ""),
@@ -340,7 +386,7 @@ def _normalize_canonical_surface_result(payload: Mapping[str, Any]) -> SurfaceRu
             events=tuple(payload.get("events") or ()),
         )
     if status == "completed":
-        return SurfaceCompletedResult(
+        return HostCompletedResult(
             status="completed",
             skill_name=str(payload.get("skillName") or ""),
             receipt_id=str(payload.get("receiptId") or ""),
@@ -348,14 +394,22 @@ def _normalize_canonical_surface_result(payload: Mapping[str, Any]) -> SurfaceRu
             events=tuple(payload.get("events") or ()),
         )
     if status == "denied":
-        return SurfaceDeniedResult(
+        return HostDeniedResult(
             status="denied",
             skill_name=str(payload.get("skillName") or ""),
             reasons=tuple(str(item) for item in payload.get("reasons") or ()),
             receipt_id=_optional_str(payload.get("receiptId")),
             events=tuple(payload.get("events") or ()),
         )
-    return SurfaceFailedResult(
+    if status == "escalated":
+        return HostEscalatedResult(
+            status="escalated",
+            skill_name=str(payload.get("skillName") or ""),
+            error=str(payload.get("error") or ""),
+            receipt_id=str(payload.get("receiptId") or ""),
+            events=tuple(payload.get("events") or ()),
+        )
+    return HostFailedResult(
         status="failed",
         skill_name=str(payload.get("skillName") or ""),
         error=str(payload.get("error") or ""),
@@ -364,7 +418,7 @@ def _normalize_canonical_surface_result(payload: Mapping[str, Any]) -> SurfaceRu
     )
 
 
-def _to_openai_response(result: SurfaceRunResult) -> Mapping[str, Any]:
+def _to_openai_response(result: HostRunResult) -> Mapping[str, Any]:
     return {
         "role": "tool",
         "content": [{"type": "text", "text": _summary(result)}],
@@ -372,36 +426,36 @@ def _to_openai_response(result: SurfaceRunResult) -> Mapping[str, Any]:
     }
 
 
-def _to_anthropic_response(result: SurfaceRunResult) -> Mapping[str, Any]:
+def _to_anthropic_response(result: HostRunResult) -> Mapping[str, Any]:
     return {
         "content": [{"type": "text", "text": _summary(result)}],
         "metadata": {"runx": _result_to_dict(result)},
     }
 
 
-def _to_vercel_response(result: SurfaceRunResult) -> Mapping[str, Any]:
+def _to_vercel_response(result: HostRunResult) -> Mapping[str, Any]:
     return {
         "messages": [{"role": "assistant", "content": _summary(result)}],
         "data": {"runx": _result_to_dict(result)},
     }
 
 
-def _to_langchain_response(result: SurfaceRunResult) -> Mapping[str, Any]:
+def _to_langchain_response(result: HostRunResult) -> Mapping[str, Any]:
     return {
         "content": _summary(result),
         "additional_kwargs": {"runx": _result_to_dict(result)},
     }
 
 
-def _to_crewai_response(result: SurfaceRunResult) -> Mapping[str, Any]:
+def _to_crewai_response(result: HostRunResult) -> Mapping[str, Any]:
     return {
         "raw": _summary(result),
         "json_dict": {"runx": _result_to_dict(result)},
     }
 
 
-def _result_to_dict(result: SurfaceRunResult) -> Mapping[str, Any]:
-    if isinstance(result, SurfacePausedResult):
+def _result_to_dict(result: HostRunResult) -> Mapping[str, Any]:
+    if isinstance(result, HostPausedResult):
         return {
             "status": result.status,
             "skillName": result.skill_name,
@@ -411,7 +465,7 @@ def _result_to_dict(result: SurfaceRunResult) -> Mapping[str, Any]:
             "stepLabels": list(result.step_labels),
             "events": list(result.events),
         }
-    if isinstance(result, SurfaceCompletedResult):
+    if isinstance(result, HostCompletedResult):
         return {
             "status": result.status,
             "skillName": result.skill_name,
@@ -419,7 +473,7 @@ def _result_to_dict(result: SurfaceRunResult) -> Mapping[str, Any]:
             "output": result.output,
             "events": list(result.events),
         }
-    if isinstance(result, SurfaceDeniedResult):
+    if isinstance(result, HostDeniedResult):
         return {
             "status": result.status,
             "skillName": result.skill_name,

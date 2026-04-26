@@ -1,10 +1,10 @@
-import { createRunxSdk, createSurfaceBridge } from "@runx/sdk";
-import { createOpenAiSurfaceAdapter } from "@runxhq/host-adapters";
+import { createRunxSdk, createHostBridge } from "@runx/sdk";
+import { createOpenAiHostAdapter } from "@runxhq/host-adapters";
 
 async function main(): Promise<void> {
   const sdk = createRunxSdk({ callerOptions: { maxAttempts: 1 } });
-  const bridge = createSurfaceBridge({ execute: sdk.runSkill.bind(sdk) });
-  const openai = createOpenAiSurfaceAdapter(bridge);
+  const bridge = createHostBridge({ execute: sdk.runSkill.bind(sdk) });
+  const openai = createOpenAiHostAdapter(bridge);
 
   const response = await openai.run({
     skillPath: "skills/sourcey",

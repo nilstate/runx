@@ -28,15 +28,15 @@ task:
       - path: "packages/core/src/runner-local/graph-hydration.ts"
         lines: "resume support"
         reason: "Hydrate completed fanout branches so a paused graph can resume after the gate decision."
-      - path: "packages/core/src/sdk/surface-protocol.ts"
+      - path: "packages/core/src/sdk/host-protocol.ts"
         lines: "paused run mapping"
-        reason: "Expose gate pauses through the same surface protocol as other pending resolution."
+        reason: "Expose gate pauses through the same host protocol as other pending resolution."
       - path: "packages/cli/src/cli-presentation.ts"
         lines: "paused and escalated graph output"
         reason: "Render fanout gate pauses and escalations distinctly from execution failures."
   objectives:
     - "Add a graph result path for fanout gate pause that includes a structured resolution request."
-    - "Add explicit escalation behavior with a receipt disposition and surface status that is not generic failure."
+    - "Add explicit escalation behavior with a receipt disposition and host status that is not generic failure."
     - "Persist enough fanout branch ledger state to resume after a gate pause."
     - "Keep halt and branch execution failure semantics unchanged."
   scope:

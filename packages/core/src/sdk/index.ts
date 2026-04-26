@@ -2,8 +2,8 @@ export const sdkJsPackage = "@runxhq/core/sdk";
 
 export * from "./caller.js";
 export * from "./capability-execution.js";
-export * from "./surface-protocol.js";
-export * from "./trusted-surface-outcome.js";
+export * from "./host-protocol.js";
+export * from "./trusted-host-outcome.js";
 
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -62,14 +62,14 @@ import type { SkillAdapter } from "../executor/index.js";
 import { parseToolManifestJson, validateToolManifest } from "../parser/index.js";
 import { createStructuredCaller, type StructuredCallerOptions } from "./caller.js";
 import {
-  createSurfaceBridge,
-  inspectLocalSurfaceState,
-  type SurfaceBridge,
-  type SurfaceInspectOptions,
-  type SurfaceRunOptions,
-  type SurfaceRunResult,
-  type SurfaceRunState,
-} from "./surface-protocol.js";
+  createHostBridge,
+  inspectLocalHostState,
+  type HostBridge,
+  type HostInspectOptions,
+  type HostRunOptions,
+  type HostRunResult,
+  type HostRunState,
+} from "./host-protocol.js";
 
 export interface ConnectService {
   readonly list: () => Promise<unknown>;
@@ -233,24 +233,24 @@ export class RunxSdk {
     }));
   }
 
-  async surfaceRun(options: SurfaceRunOptions & {
-    readonly resolver?: Parameters<SurfaceBridge["run"]>[0]["resolver"];
-  }): Promise<SurfaceRunResult> {
-    return await buildRunxSurfaceBridge(this).run(options);
+  async hostRun(options: HostRunOptions & {
+    readonly resolver?: Parameters<HostBridge["run"]>[0]["resolver"];
+  }): Promise<HostRunResult> {
+    return await buildRunxHostBridge(this).run(options);
   }
 
-  async surfaceResume(
+  async hostResume(
     runId: string,
-    options: Omit<SurfaceRunOptions, "resumeFromRunId" | "skillPath"> & {
+    options: Omit<HostRunOptions, "resumeFromRunId" | "skillPath"> & {
       readonly skillPath?: string;
-      readonly resolver?: Parameters<SurfaceBridge["resume"]>[1]["resolver"];
+      readonly resolver?: Parameters<HostBridge["resume"]>[1]["resolver"];
     } = {},
-  ): Promise<SurfaceRunResult> {
-    return await buildRunxSurfaceBridge(this).resume(runId, options);
+  ): Promise<HostRunResult> {
+    return await buildRunxHostBridge(this).resume(runId, options);
   }
 
-  async inspectSurface(referenceId: string, options: SurfaceInspectOptions = {}): Promise<SurfaceRunState> {
-    return await inspectLocalSurfaceState(referenceId, {
+  async inspectHost(referenceId: string, options: HostInspectOptions = {}): Promise<HostRunState> {
+    return await inspectLocalHostState(referenceId, {
       receiptDir: this.receiptDir(options.receiptDir),
       runxHome: options.runxHome ?? this.options.runxHome,
       env: this.env(),
@@ -483,43 +483,43 @@ export function createRunxSdk(options: RunxSdkOptions = {}): RunxSdk {
   return new RunxSdk(options);
 }
 
-export function createRunxSurfaceBridge(options: RunxSdkOptions = {}): SurfaceBridge {
-  return buildRunxSurfaceBridge(createRunxSdk(options));
+export function createRunxHostBridge(options: RunxSdkOptions = {}): HostBridge {
+  return buildRunxHostBridge(createRunxSdk(options));
 }
 
 export async function runSkill(options: RunSkillOptions & RunxSdkOptions): Promise<RunLocalSkillResult> {
   return await createRunxSdk(options).runSkill(options);
 }
 
-export async function surfaceRun(
-  options: SurfaceRunOptions & RunxSdkOptions & {
-    readonly resolver?: Parameters<SurfaceBridge["run"]>[0]["resolver"];
+export async function hostRun(
+  options: HostRunOptions & RunxSdkOptions & {
+    readonly resolver?: Parameters<HostBridge["run"]>[0]["resolver"];
   },
-): Promise<SurfaceRunResult> {
-  return await createRunxSdk(options).surfaceRun(options);
+): Promise<HostRunResult> {
+  return await createRunxSdk(options).hostRun(options);
 }
 
-export async function surfaceResume(
+export async function hostResume(
   runId: string,
-  options: Omit<SurfaceRunOptions, "resumeFromRunId" | "skillPath"> & RunxSdkOptions & {
+  options: Omit<HostRunOptions, "resumeFromRunId" | "skillPath"> & RunxSdkOptions & {
     readonly skillPath?: string;
-    readonly resolver?: Parameters<SurfaceBridge["resume"]>[1]["resolver"];
+    readonly resolver?: Parameters<HostBridge["resume"]>[1]["resolver"];
   } = {},
-): Promise<SurfaceRunResult> {
-  return await createRunxSdk(options).surfaceResume(runId, options);
+): Promise<HostRunResult> {
+  return await createRunxSdk(options).hostResume(runId, options);
 }
 
-export async function inspectSurface(
+export async function inspectHost(
   referenceId: string,
-  options: SurfaceInspectOptions & RunxSdkOptions = {},
-): Promise<SurfaceRunState> {
-  return await createRunxSdk(options).inspectSurface(referenceId, options);
+  options: HostInspectOptions & RunxSdkOptions = {},
+): Promise<HostRunState> {
+  return await createRunxSdk(options).inspectHost(referenceId, options);
 }
 
-function buildRunxSurfaceBridge(sdk: RunxSdk): SurfaceBridge {
-  return createSurfaceBridge({
+function buildRunxHostBridge(sdk: RunxSdk): HostBridge {
+  return createHostBridge({
     execute: sdk.runSkill.bind(sdk),
-    inspect: sdk.inspectSurface.bind(sdk),
+    inspect: sdk.inspectHost.bind(sdk),
   });
 }
 

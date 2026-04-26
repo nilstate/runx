@@ -1,7 +1,7 @@
 {
   "name": "@runxhq/host-adapters",
   "version": "0.1.0",
-  "description": "Thin host response adapters over the runx surface protocol.",
+  "description": "Thin host response adapters over the runx host protocol.",
   "private": false,
   "license": "Apache-2.0",
   "type": "module",

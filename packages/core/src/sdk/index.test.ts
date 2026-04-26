@@ -9,10 +9,10 @@ import { createFileRegistryStore, ingestSkillMarkdown } from "../registry/index.
 import { hashString } from "../receipts/index.js";
 import {
   connectPreprovision,
-  createRunxSurfaceBridge,
+  createRunxHostBridge,
   createRunxSdk,
   createStructuredCaller,
-  createTrustedSurfaceOutcome,
+  createTrustedHostOutcome,
   inspect,
   type ConnectService,
 } from "./index.js";
@@ -90,12 +90,12 @@ describe("TypeScript SDK", () => {
     ]);
   });
 
-  it("exposes run, inspect, and resume through the shared surface bridge", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sdk-surface-"));
+  it("exposes run, inspect, and resume through the shared host bridge", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-sdk-host-"));
     const receiptDir = path.join(tempDir, "receipts");
 
     try {
-      const bridge = createRunxSurfaceBridge({
+      const bridge = createRunxHostBridge({
         env: { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
         receiptDir,
         adapters: createDefaultSkillAdapters(),
@@ -141,14 +141,14 @@ describe("TypeScript SDK", () => {
         receiptDir,
         resolver: ({ request }) => (
           request.kind === "input"
-            ? { message: "from-sdk-surface" }
+            ? { message: "from-sdk-host" }
             : undefined
         ),
       });
       expect(completed).toMatchObject({
         status: "completed",
         skillName: "echo",
-        output: "from-sdk-surface",
+        output: "from-sdk-host",
       });
       if (completed.status !== "completed") {
         return;
@@ -166,8 +166,8 @@ describe("TypeScript SDK", () => {
     }
   });
 
-  it("projects trusted first-party surface outcomes without exposing a second public protocol", () => {
-    const paused = createTrustedSurfaceOutcome(
+  it("projects trusted first-party host outcomes without exposing a second public protocol", () => {
+    const paused = createTrustedHostOutcome(
       {
         status: "paused",
         skillName: "echo",
@@ -196,7 +196,7 @@ describe("TypeScript SDK", () => {
       ],
     });
 
-    const completed = createTrustedSurfaceOutcome(
+    const completed = createTrustedHostOutcome(
       {
         status: "completed",
         skillName: "echo",
@@ -221,7 +221,7 @@ describe("TypeScript SDK", () => {
       stdout: "ok",
     });
 
-    const denied = createTrustedSurfaceOutcome(
+    const denied = createTrustedHostOutcome(
       {
         status: "denied",
         skillName: "guarded",
@@ -240,7 +240,7 @@ describe("TypeScript SDK", () => {
     });
 
     expect(() =>
-      createTrustedSurfaceOutcome(
+      createTrustedHostOutcome(
         {
           status: "completed",
           skillName: "echo",

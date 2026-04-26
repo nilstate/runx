@@ -13,7 +13,7 @@ import {
   runLocalSkill,
   type Caller,
 } from "@runxhq/core/runner-local";
-import { createSurfaceBridge, type SurfaceBoundaryResolver, type SurfaceRunResult } from "@runxhq/core/sdk";
+import { createHostBridge, type HostBoundaryResolver, type HostRunResult } from "@runxhq/core/sdk";
 import { resolveEnvToolCatalogAdapters } from "@runxhq/core/tool-catalogs";
 
 import type { CliIo } from "../index.js";
@@ -81,7 +81,7 @@ export async function handleMcpServeCommand(
   const receiptDir = parsed.receiptDir ? resolvePathFromUserInput(parsed.receiptDir, env) : deps.resolveDefaultReceiptDir(env);
   const runxHome = resolveRunxHomeDir(env);
   const voiceProfilePath = await resolveBundledCliVoiceProfilePath();
-  const bridge = createSurfaceBridge({
+  const bridge = createHostBridge({
     execute: async (options) =>
       await runLocalSkill({
         skillPath: options.skillPath,
@@ -228,7 +228,7 @@ async function loadServedMcpTool(
 }
 
 function createResumeToolDefinition(options: {
-  readonly bridge: ReturnType<typeof createSurfaceBridge>;
+  readonly bridge: ReturnType<typeof createHostBridge>;
   readonly receiptDir: string;
   readonly runxHome: string;
 }): McpToolDefinition {
@@ -280,7 +280,7 @@ function createResumeToolDefinition(options: {
   };
 }
 
-function createResumeResolver(submissions: readonly ResumeSubmission[]): SurfaceBoundaryResolver | undefined {
+function createResumeResolver(submissions: readonly ResumeSubmission[]): HostBoundaryResolver | undefined {
   if (submissions.length === 0) {
     return undefined;
   }
@@ -324,7 +324,7 @@ function parseResumeSubmissions(value: unknown): readonly ResumeSubmission[] {
   });
 }
 
-function toMcpToolResult(result: SurfaceRunResult): Readonly<Record<string, unknown>> {
+function toMcpToolResult(result: HostRunResult): Readonly<Record<string, unknown>> {
   const base = {
     structuredContent: {
       runx: result,
@@ -337,7 +337,7 @@ function toMcpToolResult(result: SurfaceRunResult): Readonly<Record<string, unkn
       content: [
         {
           type: "text",
-          text: result.output.trim().length > 0 ? result.output : summarizeSurfaceResult(result),
+          text: result.output.trim().length > 0 ? result.output : summarizeHostResult(result),
         },
       ],
     };
@@ -349,7 +349,7 @@ function toMcpToolResult(result: SurfaceRunResult): Readonly<Record<string, unkn
       content: [
         {
           type: "text",
-          text: summarizeSurfaceResult(result),
+          text: summarizeHostResult(result),
         },
       ],
     };
@@ -361,13 +361,13 @@ function toMcpToolResult(result: SurfaceRunResult): Readonly<Record<string, unkn
     content: [
       {
         type: "text",
-        text: summarizeSurfaceResult(result),
+        text: summarizeHostResult(result),
       },
     ],
   };
 }
 
-function summarizeSurfaceResult(result: SurfaceRunResult): string {
+function summarizeHostResult(result: HostRunResult): string {
   switch (result.status) {
     case "completed":
       return `${result.skillName} completed. Inspect receipt ${result.receiptId}.`;

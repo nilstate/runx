@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createCrewAiSurfaceAdapter } from "@runxhq/host-adapters";
-import { createSurfaceHarness } from "./surface-protocol-test-utils.js";
+import { createCrewAiHostAdapter } from "@runxhq/host-adapters";
+import { createHostHarness } from "./host-protocol-test-utils.js";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -14,11 +14,11 @@ afterEach(async () => {
   }
 });
 
-describe("CrewAI surface adapter", () => {
+describe("CrewAI host adapter", () => {
   it("wraps paused and resumed runs in a CrewAI-style response", async () => {
-    const harness = await createSurfaceHarness();
+    const harness = await createHostHarness();
     cleanups.push(harness.cleanup);
-    const adapter = createCrewAiSurfaceAdapter(harness.bridge);
+    const adapter = createCrewAiHostAdapter(harness.bridge);
 
     const paused = await adapter.run({
       skillPath: "fixtures/skills/echo",
@@ -31,12 +31,12 @@ describe("CrewAI surface adapter", () => {
 
     const resumed = await adapter.resume(paused.json_dict.runx.runId, {
       skillPath: "fixtures/skills/echo",
-      resolver: ({ request }) => (request.kind === "input" ? { message: "from-crewai-surface-adapter" } : undefined),
+      resolver: ({ request }) => (request.kind === "input" ? { message: "from-crewai-host-adapter" } : undefined),
     });
 
     expect(resumed.json_dict.runx).toMatchObject({
       status: "completed",
-      output: "from-crewai-surface-adapter",
+      output: "from-crewai-host-adapter",
     });
   });
 });

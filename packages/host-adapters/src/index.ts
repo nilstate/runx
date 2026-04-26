@@ -1,133 +1,133 @@
 import type {
-  SurfaceBoundaryResolver,
-  SurfaceBridge,
-  SurfaceRunOptions,
-  SurfaceRunResult,
+  HostBoundaryResolver,
+  HostBridge,
+  HostRunOptions,
+  HostRunResult,
 } from "@runxhq/core/sdk";
 
-export interface OpenAISurfaceResponse {
+export interface OpenAIHostResponse {
   readonly role: "tool";
   readonly content: readonly [{ readonly type: "text"; readonly text: string }];
   readonly structuredContent: {
-    readonly runx: SurfaceRunResult;
+    readonly runx: HostRunResult;
   };
 }
 
-export interface AnthropicSurfaceResponse {
+export interface AnthropicHostResponse {
   readonly content: readonly [{ readonly type: "text"; readonly text: string }];
   readonly metadata: {
-    readonly runx: SurfaceRunResult;
+    readonly runx: HostRunResult;
   };
 }
 
-export interface VercelAiSurfaceResponse {
+export interface VercelAiHostResponse {
   readonly messages: readonly [{ readonly role: "assistant"; readonly content: string }];
   readonly data: {
-    readonly runx: SurfaceRunResult;
+    readonly runx: HostRunResult;
   };
 }
 
-export interface LangChainSurfaceResponse {
+export interface LangChainHostResponse {
   readonly content: string;
   readonly additional_kwargs: {
-    readonly runx: SurfaceRunResult;
+    readonly runx: HostRunResult;
   };
 }
 
-export interface CrewAiSurfaceResponse {
+export interface CrewAiHostResponse {
   readonly raw: string;
   readonly json_dict: {
-    readonly runx: SurfaceRunResult;
+    readonly runx: HostRunResult;
   };
 }
 
-export interface ProviderSurfaceAdapter<TResponse> {
+export interface ProviderHostAdapter<TResponse> {
   readonly run: (
-    options: SurfaceRunOptions & {
-      readonly resolver?: SurfaceBoundaryResolver;
+    options: HostRunOptions & {
+      readonly resolver?: HostBoundaryResolver;
     },
   ) => Promise<TResponse>;
   readonly resume: (
     runId: string,
-    options: Omit<SurfaceRunOptions, "resumeFromRunId" | "skillPath"> & {
+    options: Omit<HostRunOptions, "resumeFromRunId" | "skillPath"> & {
       readonly skillPath?: string;
-      readonly resolver?: SurfaceBoundaryResolver;
+      readonly resolver?: HostBoundaryResolver;
     },
   ) => Promise<TResponse>;
 }
 
-export function createOpenAiSurfaceAdapter(bridge: SurfaceBridge): ProviderSurfaceAdapter<OpenAISurfaceResponse> {
+export function createOpenAiHostAdapter(bridge: HostBridge): ProviderHostAdapter<OpenAIHostResponse> {
   return {
     run: async (options) => toOpenAiResponse(await bridge.run(options)),
     resume: async (runId, options) => toOpenAiResponse(await bridge.resume(runId, options)),
   };
 }
 
-export function createAnthropicSurfaceAdapter(bridge: SurfaceBridge): ProviderSurfaceAdapter<AnthropicSurfaceResponse> {
+export function createAnthropicHostAdapter(bridge: HostBridge): ProviderHostAdapter<AnthropicHostResponse> {
   return {
     run: async (options) => toAnthropicResponse(await bridge.run(options)),
     resume: async (runId, options) => toAnthropicResponse(await bridge.resume(runId, options)),
   };
 }
 
-export function createVercelAiSurfaceAdapter(bridge: SurfaceBridge): ProviderSurfaceAdapter<VercelAiSurfaceResponse> {
+export function createVercelAiHostAdapter(bridge: HostBridge): ProviderHostAdapter<VercelAiHostResponse> {
   return {
     run: async (options) => toVercelAiResponse(await bridge.run(options)),
     resume: async (runId, options) => toVercelAiResponse(await bridge.resume(runId, options)),
   };
 }
 
-export function createLangChainSurfaceAdapter(bridge: SurfaceBridge): ProviderSurfaceAdapter<LangChainSurfaceResponse> {
+export function createLangChainHostAdapter(bridge: HostBridge): ProviderHostAdapter<LangChainHostResponse> {
   return {
     run: async (options) => toLangChainResponse(await bridge.run(options)),
     resume: async (runId, options) => toLangChainResponse(await bridge.resume(runId, options)),
   };
 }
 
-export function createCrewAiSurfaceAdapter(bridge: SurfaceBridge): ProviderSurfaceAdapter<CrewAiSurfaceResponse> {
+export function createCrewAiHostAdapter(bridge: HostBridge): ProviderHostAdapter<CrewAiHostResponse> {
   return {
     run: async (options) => toCrewAiResponse(await bridge.run(options)),
     resume: async (runId, options) => toCrewAiResponse(await bridge.resume(runId, options)),
   };
 }
 
-function toOpenAiResponse(result: SurfaceRunResult): OpenAISurfaceResponse {
+function toOpenAiResponse(result: HostRunResult): OpenAIHostResponse {
   return {
     role: "tool",
-    content: [{ type: "text", text: summarizeSurfaceResult(result) }],
+    content: [{ type: "text", text: summarizeHostResult(result) }],
     structuredContent: { runx: result },
   };
 }
 
-function toAnthropicResponse(result: SurfaceRunResult): AnthropicSurfaceResponse {
+function toAnthropicResponse(result: HostRunResult): AnthropicHostResponse {
   return {
-    content: [{ type: "text", text: summarizeSurfaceResult(result) }],
+    content: [{ type: "text", text: summarizeHostResult(result) }],
     metadata: { runx: result },
   };
 }
 
-function toVercelAiResponse(result: SurfaceRunResult): VercelAiSurfaceResponse {
+function toVercelAiResponse(result: HostRunResult): VercelAiHostResponse {
   return {
-    messages: [{ role: "assistant", content: summarizeSurfaceResult(result) }],
+    messages: [{ role: "assistant", content: summarizeHostResult(result) }],
     data: { runx: result },
   };
 }
 
-function toLangChainResponse(result: SurfaceRunResult): LangChainSurfaceResponse {
+function toLangChainResponse(result: HostRunResult): LangChainHostResponse {
   return {
-    content: summarizeSurfaceResult(result),
+    content: summarizeHostResult(result),
     additional_kwargs: { runx: result },
   };
 }
 
-function toCrewAiResponse(result: SurfaceRunResult): CrewAiSurfaceResponse {
+function toCrewAiResponse(result: HostRunResult): CrewAiHostResponse {
   return {
-    raw: summarizeSurfaceResult(result),
+    raw: summarizeHostResult(result),
     json_dict: { runx: result },
   };
 }
 
-function summarizeSurfaceResult(result: SurfaceRunResult): string {
+function summarizeHostResult(result: HostRunResult): string {
   switch (result.status) {
     case "completed":
       return `${result.skillName} completed. Inspect receipt ${result.receiptId}.`;

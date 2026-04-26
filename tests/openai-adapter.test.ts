@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createOpenAiSurfaceAdapter } from "@runxhq/host-adapters";
-import { createSurfaceHarness } from "./surface-protocol-test-utils.js";
+import { createOpenAiHostAdapter } from "@runxhq/host-adapters";
+import { createHostHarness } from "./host-protocol-test-utils.js";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -14,11 +14,11 @@ afterEach(async () => {
   }
 });
 
-describe("OpenAI surface adapter", () => {
+describe("OpenAI host adapter", () => {
   it("wraps paused and resumed runs in an OpenAI-style tool response", async () => {
-    const harness = await createSurfaceHarness();
+    const harness = await createHostHarness();
     cleanups.push(harness.cleanup);
-    const adapter = createOpenAiSurfaceAdapter(harness.bridge);
+    const adapter = createOpenAiHostAdapter(harness.bridge);
 
     const paused = await adapter.run({
       skillPath: "fixtures/skills/echo",
@@ -32,13 +32,13 @@ describe("OpenAI surface adapter", () => {
 
     const resumed = await adapter.resume(paused.structuredContent.runx.runId, {
       skillPath: "fixtures/skills/echo",
-      resolver: ({ request }) => (request.kind === "input" ? { message: "from-openai-surface-adapter" } : undefined),
+      resolver: ({ request }) => (request.kind === "input" ? { message: "from-openai-host-adapter" } : undefined),
     });
 
     expect(resumed.role).toBe("tool");
     expect(resumed.structuredContent.runx).toMatchObject({
       status: "completed",
-      output: "from-openai-surface-adapter",
+      output: "from-openai-host-adapter",
     });
   });
 });

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createVercelAiSurfaceAdapter } from "@runxhq/host-adapters";
-import { createSurfaceHarness } from "./surface-protocol-test-utils.js";
+import { createVercelAiHostAdapter } from "@runxhq/host-adapters";
+import { createHostHarness } from "./host-protocol-test-utils.js";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -14,11 +14,11 @@ afterEach(async () => {
   }
 });
 
-describe("Vercel AI surface adapter", () => {
+describe("Vercel AI host adapter", () => {
   it("wraps paused and resumed runs in a Vercel AI-style response", async () => {
-    const harness = await createSurfaceHarness();
+    const harness = await createHostHarness();
     cleanups.push(harness.cleanup);
-    const adapter = createVercelAiSurfaceAdapter(harness.bridge);
+    const adapter = createVercelAiHostAdapter(harness.bridge);
 
     const paused = await adapter.run({
       skillPath: "fixtures/skills/echo",
@@ -31,12 +31,12 @@ describe("Vercel AI surface adapter", () => {
 
     const resumed = await adapter.resume(paused.data.runx.runId, {
       skillPath: "fixtures/skills/echo",
-      resolver: ({ request }) => (request.kind === "input" ? { message: "from-vercel-ai-surface-adapter" } : undefined),
+      resolver: ({ request }) => (request.kind === "input" ? { message: "from-vercel-ai-host-adapter" } : undefined),
     });
 
     expect(resumed.data.runx).toMatchObject({
       status: "completed",
-      output: "from-vercel-ai-surface-adapter",
+      output: "from-vercel-ai-host-adapter",
     });
   });
 });

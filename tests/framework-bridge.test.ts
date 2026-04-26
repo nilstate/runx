@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createStructuredCaller } from "@runxhq/core/sdk";
-import { createSurfaceHarness } from "./surface-protocol-test-utils.js";
+import { createHostHarness } from "./host-protocol-test-utils.js";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -14,9 +14,9 @@ afterEach(async () => {
   }
 });
 
-describe("surface bridge", () => {
+describe("host bridge", () => {
   it("pauses on unresolved work and resumes the same run through the shared bridge", async () => {
-    const harness = await createSurfaceHarness();
+    const harness = await createHostHarness();
     cleanups.push(harness.cleanup);
 
     const paused = await harness.bridge.run({
@@ -37,19 +37,19 @@ describe("surface bridge", () => {
         if (request.kind !== "input") {
           return undefined;
         }
-        return { message: "from-surface-bridge" };
+        return { message: "from-host-bridge" };
       },
     });
 
     expect(resumed).toMatchObject({
       status: "completed",
       skillName: "echo",
-      output: "from-surface-bridge",
+      output: "from-host-bridge",
     });
   });
 
   it("falls back to an upstream caller when the bridge resolver does not answer", async () => {
-    const harness = await createSurfaceHarness();
+    const harness = await createHostHarness();
     cleanups.push(harness.cleanup);
     const caller = createStructuredCaller({
       answers: {

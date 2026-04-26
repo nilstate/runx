@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createRunxSdk, createSurfaceBridge } from "@runxhq/core/sdk";
-import { createOpenAiSurfaceAdapter } from "@runxhq/host-adapters";
+import { createRunxSdk, createHostBridge } from "@runxhq/core/sdk";
+import { createOpenAiHostAdapter } from "@runxhq/host-adapters";
 
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -18,9 +18,9 @@ afterEach(async () => {
   }
 });
 
-describe("surface protocol", () => {
-  it("exposes the canonical surface bridge and provider wrapper", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-surface-protocol-"));
+describe("host protocol", () => {
+  it("exposes the canonical host bridge and provider wrapper", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-host-protocol-"));
     cleanups.push(async () => {
       await rm(tempDir, { recursive: true, force: true });
     });
@@ -30,8 +30,8 @@ describe("surface protocol", () => {
       receiptDir: path.join(tempDir, "receipts"),
     });
 
-    const bridge = createSurfaceBridge({ execute: sdk.runSkill.bind(sdk) });
-    const adapter = createOpenAiSurfaceAdapter(bridge);
+    const bridge = createHostBridge({ execute: sdk.runSkill.bind(sdk) });
+    const adapter = createOpenAiHostAdapter(bridge);
 
     const paused = await adapter.run({
       skillPath: "fixtures/skills/echo",
@@ -41,8 +41,8 @@ describe("surface protocol", () => {
     expect(paused.structuredContent.runx.status).toBe("paused");
   });
 
-  it("maps escalated graph receipts to an explicit surface status", async () => {
-    const bridge = createSurfaceBridge({
+  it("maps escalated graph receipts to an explicit host status", async () => {
+    const bridge = createHostBridge({
       execute: async () => ({
         status: "failure",
         skill: { name: "fanout-skill" },

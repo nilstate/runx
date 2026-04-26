@@ -2,10 +2,10 @@ import type { ResolutionRequest, ResolutionResponse } from "../executor/index.js
 import { inspectLocalRunState } from "../runner-local/index.js";
 import type { AuthResolver, Caller, ExecutionEvent, RunLocalSkillResult } from "../runner-local/index.js";
 
-// Surface bridges let external hosts act as surfaces over the runx kernel.
-// The host gets normalized run states; runx keeps ownership of execution,
-// pause/resume, approvals, and receipts.
-export interface SurfaceRunOptions {
+// Host bridges let external runtimes host the runx kernel. Hosts get
+// normalized run states while runx keeps ownership of execution, pause/resume,
+// approvals, and receipts.
+export interface HostRunOptions {
   readonly skillPath: string;
   readonly inputs?: Readonly<Record<string, unknown>>;
   readonly answersPath?: string;
@@ -20,16 +20,16 @@ export interface SurfaceRunOptions {
   readonly resumeFromRunId?: string;
 }
 
-export type SurfaceSkillExecutor = (
-  options: SurfaceRunOptions & { readonly caller: Caller },
+export type HostSkillExecutor = (
+  options: HostRunOptions & { readonly caller: Caller },
 ) => Promise<RunLocalSkillResult>;
 
-export interface SurfaceBoundaryContext {
+export interface HostBoundaryContext {
   readonly request: ResolutionRequest;
   readonly events: readonly ExecutionEvent[];
 }
 
-export type SurfaceBoundaryReply =
+export type HostBoundaryReply =
   | ResolutionResponse
   | {
       readonly actor?: "agent" | "human";
@@ -41,16 +41,16 @@ export type SurfaceBoundaryReply =
   | Readonly<Record<string, unknown>>
   | undefined;
 
-export type SurfaceBoundaryResolver = (
-  context: SurfaceBoundaryContext,
-) => Promise<SurfaceBoundaryReply> | SurfaceBoundaryReply;
+export type HostBoundaryResolver = (
+  context: HostBoundaryContext,
+) => Promise<HostBoundaryReply> | HostBoundaryReply;
 
-export interface SurfaceBridgeOptions {
-  readonly execute: SurfaceSkillExecutor;
-  readonly inspect?: SurfaceStateInspector;
+export interface HostBridgeOptions {
+  readonly execute: HostSkillExecutor;
+  readonly inspect?: HostStateInspector;
 }
 
-export interface SurfacePausedResult {
+export interface HostPausedResult {
   readonly status: "paused";
   readonly skillName: string;
   readonly runId: string;
@@ -60,7 +60,7 @@ export interface SurfacePausedResult {
   readonly events: readonly ExecutionEvent[];
 }
 
-export interface SurfaceCompletedResult {
+export interface HostCompletedResult {
   readonly status: "completed";
   readonly skillName: string;
   readonly receiptId: string;
@@ -68,7 +68,7 @@ export interface SurfaceCompletedResult {
   readonly events: readonly ExecutionEvent[];
 }
 
-export interface SurfaceFailedResult {
+export interface HostFailedResult {
   readonly status: "failed";
   readonly skillName: string;
   readonly receiptId?: string;
@@ -76,7 +76,7 @@ export interface SurfaceFailedResult {
   readonly events: readonly ExecutionEvent[];
 }
 
-export interface SurfaceEscalatedResult {
+export interface HostEscalatedResult {
   readonly status: "escalated";
   readonly skillName: string;
   readonly receiptId: string;
@@ -84,7 +84,7 @@ export interface SurfaceEscalatedResult {
   readonly events: readonly ExecutionEvent[];
 }
 
-export interface SurfaceDeniedResult {
+export interface HostDeniedResult {
   readonly status: "denied";
   readonly skillName: string;
   readonly reasons: readonly string[];
@@ -92,42 +92,42 @@ export interface SurfaceDeniedResult {
   readonly events: readonly ExecutionEvent[];
 }
 
-export type SurfaceRunResult =
-  | SurfacePausedResult
-  | SurfaceCompletedResult
-  | SurfaceFailedResult
-  | SurfaceEscalatedResult
-  | SurfaceDeniedResult;
+export type HostRunResult =
+  | HostPausedResult
+  | HostCompletedResult
+  | HostFailedResult
+  | HostEscalatedResult
+  | HostDeniedResult;
 
-export interface SurfaceRunVerification {
+export interface HostRunVerification {
   readonly status: "verified" | "unverified" | "invalid";
   readonly reason?: string;
 }
 
-export interface SurfaceRunLineage {
+export interface HostRunLineage {
   readonly kind: "rerun";
   readonly sourceRunId: string;
   readonly sourceReceiptId?: string;
 }
 
-export interface SurfaceRunApproval {
+export interface HostRunApproval {
   readonly gateId?: string;
   readonly gateType?: string;
   readonly decision?: "approved" | "denied";
   readonly reason?: string;
 }
 
-export interface SurfaceInspectOptions {
+export interface HostInspectOptions {
   readonly receiptDir?: string;
   readonly runxHome?: string;
 }
 
-export type SurfaceStateInspector = (
+export type HostStateInspector = (
   referenceId: string,
-  options?: SurfaceInspectOptions,
-) => Promise<SurfaceRunState>;
+  options?: HostInspectOptions,
+) => Promise<HostRunState>;
 
-export interface SurfacePausedState {
+export interface HostPausedState {
   readonly status: "paused";
   readonly skillName: string;
   readonly runId: string;
@@ -137,15 +137,15 @@ export interface SurfacePausedState {
   readonly requests: readonly ResolutionRequest[];
   readonly stepIds?: readonly string[];
   readonly stepLabels?: readonly string[];
-  readonly lineage?: SurfaceRunLineage;
+  readonly lineage?: HostRunLineage;
 }
 
-interface SurfaceTerminalState {
+interface HostTerminalState {
   readonly kind: "skill_execution" | "graph_execution";
   readonly skillName: string;
   readonly runId: string;
   readonly receiptId: string;
-  readonly verification: SurfaceRunVerification;
+  readonly verification: HostRunVerification;
   readonly sourceType?: string;
   readonly startedAt?: string;
   readonly completedAt?: string;
@@ -154,54 +154,54 @@ interface SurfaceTerminalState {
   readonly actors?: readonly string[];
   readonly artifactTypes?: readonly string[];
   readonly runnerProvider?: string;
-  readonly approval?: SurfaceRunApproval;
-  readonly lineage?: SurfaceRunLineage;
+  readonly approval?: HostRunApproval;
+  readonly lineage?: HostRunLineage;
 }
 
-export interface SurfaceCompletedState extends SurfaceTerminalState {
+export interface HostCompletedState extends HostTerminalState {
   readonly status: "completed";
 }
 
-export interface SurfaceFailedState extends SurfaceTerminalState {
+export interface HostFailedState extends HostTerminalState {
   readonly status: "failed";
 }
 
-export interface SurfaceEscalatedState extends SurfaceTerminalState {
+export interface HostEscalatedState extends HostTerminalState {
   readonly status: "escalated";
 }
 
-export interface SurfaceDeniedState extends SurfaceTerminalState {
+export interface HostDeniedState extends HostTerminalState {
   readonly status: "denied";
 }
 
-export type SurfaceRunState =
-  | SurfacePausedState
-  | SurfaceCompletedState
-  | SurfaceFailedState
-  | SurfaceEscalatedState
-  | SurfaceDeniedState;
+export type HostRunState =
+  | HostPausedState
+  | HostCompletedState
+  | HostFailedState
+  | HostEscalatedState
+  | HostDeniedState;
 
-export interface SurfaceBridge {
+export interface HostBridge {
   readonly run: (
-    options: SurfaceRunOptions & {
-      readonly resolver?: SurfaceBoundaryResolver;
+    options: HostRunOptions & {
+      readonly resolver?: HostBoundaryResolver;
     },
-  ) => Promise<SurfaceRunResult>;
+  ) => Promise<HostRunResult>;
   readonly resume: (
     runId: string,
-    options: Omit<SurfaceRunOptions, "resumeFromRunId" | "skillPath"> & {
+    options: Omit<HostRunOptions, "resumeFromRunId" | "skillPath"> & {
       readonly skillPath?: string;
-      readonly resolver?: SurfaceBoundaryResolver;
+      readonly resolver?: HostBoundaryResolver;
     },
-  ) => Promise<SurfaceRunResult>;
+  ) => Promise<HostRunResult>;
   readonly inspect: (
     referenceId: string,
-    options?: SurfaceInspectOptions,
-  ) => Promise<SurfaceRunState>;
+    options?: HostInspectOptions,
+  ) => Promise<HostRunState>;
 }
 
-export function createSurfaceBridge(options: SurfaceBridgeOptions): SurfaceBridge {
-  const bridge: SurfaceBridge = {
+export function createHostBridge(options: HostBridgeOptions): HostBridge {
+  const bridge: HostBridge = {
     run: async (runOptions) => {
       const events: ExecutionEvent[] = [];
       const caller: Caller = {
@@ -210,7 +210,7 @@ export function createSurfaceBridge(options: SurfaceBridgeOptions): SurfaceBridg
           await runOptions.caller?.report(event);
         },
         resolve: async (request) => {
-          const resolved = normalizeSurfaceReply(await runOptions.resolver?.({ request, events }), request);
+          const resolved = normalizeHostReply(await runOptions.resolver?.({ request, events }), request);
           return resolved ?? await runOptions.caller?.resolve(request);
         },
       };
@@ -222,7 +222,7 @@ export function createSurfaceBridge(options: SurfaceBridgeOptions): SurfaceBridg
       return normalizeRunResult(result, events);
     },
     resume: async (runId, runOptions) => {
-      const skillPath = runOptions.skillPath ?? await resolveSurfaceResumeSkillPath(runId, runOptions, options.inspect);
+      const skillPath = runOptions.skillPath ?? await resolveHostResumeSkillPath(runId, runOptions, options.inspect);
       return await bridge.run({
         ...runOptions,
         skillPath,
@@ -231,7 +231,7 @@ export function createSurfaceBridge(options: SurfaceBridgeOptions): SurfaceBridg
     },
     inspect: async (referenceId, inspectOptions) => {
       if (!options.inspect) {
-        throw new Error("This surface bridge does not support inspect().");
+        throw new Error("This host bridge does not support inspect().");
       }
       return await options.inspect(referenceId, inspectOptions);
     },
@@ -239,8 +239,8 @@ export function createSurfaceBridge(options: SurfaceBridgeOptions): SurfaceBridg
   return bridge;
 }
 
-function normalizeSurfaceReply(
-  reply: SurfaceBoundaryReply,
+function normalizeHostReply(
+  reply: HostBoundaryReply,
   request: ResolutionRequest,
 ): ResolutionResponse | undefined {
   if (reply === undefined) {
@@ -277,7 +277,7 @@ function isResolutionResponse(value: unknown): value is ResolutionResponse {
     && (((value as { readonly actor?: unknown }).actor === "agent") || ((value as { readonly actor?: unknown }).actor === "human"));
 }
 
-function normalizeRunResult(result: RunLocalSkillResult, events: readonly ExecutionEvent[]): SurfaceRunResult {
+function normalizeRunResult(result: RunLocalSkillResult, events: readonly ExecutionEvent[]): HostRunResult {
   if (result.status === "needs_resolution") {
     return {
       status: "paused",
@@ -325,12 +325,12 @@ function normalizeRunResult(result: RunLocalSkillResult, events: readonly Execut
   };
 }
 
-export async function inspectLocalSurfaceState(
+export async function inspectLocalHostState(
   referenceId: string,
-  options: SurfaceInspectOptions & {
+  options: HostInspectOptions & {
     readonly env?: NodeJS.ProcessEnv;
   } = {},
-): Promise<SurfaceRunState> {
+): Promise<HostRunState> {
   const inspected = await inspectLocalRunState({
     referenceId,
     receiptDir: options.receiptDir,
@@ -376,7 +376,7 @@ export async function inspectLocalSurfaceState(
 function inspectStatus(summary: {
   readonly status: string;
   readonly disposition?: string;
-}): SurfaceCompletedState["status"] | SurfaceFailedState["status"] | SurfaceEscalatedState["status"] | SurfaceDeniedState["status"] {
+}): HostCompletedState["status"] | HostFailedState["status"] | HostEscalatedState["status"] | HostDeniedState["status"] {
   if (summary.disposition === "policy_denied") {
     return "denied";
   }
@@ -408,18 +408,18 @@ function deriveSkillNameFromPending(pending: {
   return segments[segments.length - 1] ?? "unknown";
 }
 
-async function resolveSurfaceResumeSkillPath(
+async function resolveHostResumeSkillPath(
   runId: string,
-  options: SurfaceInspectOptions & {
+  options: HostInspectOptions & {
     readonly skillPath?: string;
   },
-  inspect?: SurfaceStateInspector,
+  inspect?: HostStateInspector,
 ): Promise<string> {
   if (options.skillPath) {
     return options.skillPath;
   }
   if (!inspect) {
-    throw new Error(`Run '${runId}' cannot be resumed because this surface bridge cannot resolve pending skill paths.`);
+    throw new Error(`Run '${runId}' cannot be resumed because this host bridge cannot resolve pending skill paths.`);
   }
   const state = await inspect(runId, options);
   if (state.status !== "paused") {

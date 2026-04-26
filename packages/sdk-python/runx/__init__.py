@@ -106,18 +106,6 @@ class RunxClient:
             args.append("--non-interactive")
         return self.run_json(args)
 
-    def surface_run(
-        self,
-        skill_path: str,
-        inputs: Mapping[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        args = ["surface", "run", skill_path]
-        payload: dict[str, Any] | None = None
-        if inputs is not None:
-            args.extend(["--input-json", "-"])
-            payload = {"inputs": dict(inputs)}
-        return self.run_json(args, input=None if payload is None else json.dumps(payload))
-
     def resume_run(
         self,
         run_id: str,
@@ -127,21 +115,6 @@ class RunxClient:
         payload = {"answers": dict(answers or {}), "approvals": dict(approvals or {})}
         return self.run_json(["resume", run_id], input=json.dumps(payload))
 
-    def surface_resume(
-        self,
-        run_id: str,
-        responses: Sequence[Mapping[str, Any]] | None = None,
-    ) -> dict[str, Any]:
-        args = ["surface", "resume", run_id]
-        payload: dict[str, Any] | None = None
-        if responses is not None:
-            args.extend(["--input-json", "-"])
-            payload = {"responses": [dict(response) for response in responses]}
-        return self.run_json(args, input=None if payload is None else json.dumps(payload))
-
-    def surface_inspect(self, reference_id: str) -> dict[str, Any]:
-        return self.run_json(["surface", "inspect", reference_id])
-
     def connect_list(self) -> dict[str, Any]:
         return self.run_json(["connect", "list"])
 
@@ -150,25 +123,26 @@ def _optional_str(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
-from .surface_protocol import (  # noqa: E402
-    ProviderSurfaceAdapter,
-    SurfaceBoundaryContext,
-    SurfaceBoundaryResolver,
-    SurfaceBridge,
-    SurfaceCompletedResult,
-    SurfaceDeniedResult,
-    SurfaceFailedResult,
-    SurfacePausedResult,
-    SurfaceRunResult,
-    SurfaceRunState,
-    create_anthropic_surface_adapter,
-    create_crewai_surface_adapter,
-    create_langchain_surface_adapter,
-    create_openai_surface_adapter,
-    create_surface_bridge,
-    create_vercel_ai_surface_adapter,
-    normalize_surface_result,
-    normalize_surface_state,
+from .host_protocol import (  # noqa: E402
+    ProviderHostAdapter,
+    HostBoundaryContext,
+    HostBoundaryResolver,
+    HostBridge,
+    HostCompletedResult,
+    HostDeniedResult,
+    HostEscalatedResult,
+    HostFailedResult,
+    HostPausedResult,
+    HostRunResult,
+    HostRunState,
+    create_anthropic_host_adapter,
+    create_crewai_host_adapter,
+    create_host_bridge,
+    create_langchain_host_adapter,
+    create_openai_host_adapter,
+    create_vercel_ai_host_adapter,
+    normalize_host_result,
+    normalize_host_state,
 )
 
 
@@ -176,22 +150,23 @@ __all__ = [
     "RunxClient",
     "RunxCommandError",
     "SkillSearchResult",
-    "ProviderSurfaceAdapter",
-    "SurfaceBoundaryContext",
-    "SurfaceBoundaryResolver",
-    "SurfaceBridge",
-    "SurfaceCompletedResult",
-    "SurfaceDeniedResult",
-    "SurfaceFailedResult",
-    "SurfacePausedResult",
-    "SurfaceRunResult",
-    "SurfaceRunState",
-    "create_anthropic_surface_adapter",
-    "create_crewai_surface_adapter",
-    "create_langchain_surface_adapter",
-    "create_openai_surface_adapter",
-    "create_surface_bridge",
-    "create_vercel_ai_surface_adapter",
-    "normalize_surface_result",
-    "normalize_surface_state",
+    "ProviderHostAdapter",
+    "HostBoundaryContext",
+    "HostBoundaryResolver",
+    "HostBridge",
+    "HostCompletedResult",
+    "HostDeniedResult",
+    "HostEscalatedResult",
+    "HostFailedResult",
+    "HostPausedResult",
+    "HostRunResult",
+    "HostRunState",
+    "create_anthropic_host_adapter",
+    "create_crewai_host_adapter",
+    "create_host_bridge",
+    "create_langchain_host_adapter",
+    "create_openai_host_adapter",
+    "create_vercel_ai_host_adapter",
+    "normalize_host_result",
+    "normalize_host_state",
 ]

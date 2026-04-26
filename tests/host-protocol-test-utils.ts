@@ -3,15 +3,15 @@ import os from "node:os";
 import path from "node:path";
 
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { createRunxSdk, createSurfaceBridge, type SurfaceBridge } from "@runxhq/core/sdk";
+import { createRunxSdk, createHostBridge, type HostBridge } from "@runxhq/core/sdk";
 
-export interface SurfaceHarness {
-  readonly bridge: SurfaceBridge;
+export interface HostHarness {
+  readonly bridge: HostBridge;
   readonly cleanup: () => Promise<void>;
 }
 
-export async function createSurfaceHarness(): Promise<SurfaceHarness> {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-surface-protocol-"));
+export async function createHostHarness(): Promise<HostHarness> {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-host-protocol-"));
   const sdk = createRunxSdk({
     env: { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: path.join(tempDir, "home") },
     receiptDir: path.join(tempDir, "receipts"),
@@ -19,7 +19,7 @@ export async function createSurfaceHarness(): Promise<SurfaceHarness> {
   });
 
   return {
-    bridge: createSurfaceBridge({ execute: sdk.runSkill.bind(sdk) }),
+    bridge: createHostBridge({ execute: sdk.runSkill.bind(sdk) }),
     cleanup: async () => {
       await rm(tempDir, { recursive: true, force: true });
     },

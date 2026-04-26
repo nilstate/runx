@@ -2,7 +2,7 @@
 
 Python SDK for [runx](https://runx.ai) — the governed runtime for agent skills, tools, and chains.
 
-`runx-py` is a thin Python client over the `runx` CLI and its JSON surfaces. Install the CLI separately (`@runxhq/cli` on npm), then use this package from Python to search and run skills, resume paused runs, and bridge results into popular agent frameworks.
+`runx-py` is a thin Python client over the `runx` CLI JSON output. Install the CLI separately (`@runxhq/cli` on npm), then use this package from Python to search and run skills, resume paused runs, and format host protocol results for popular agent frameworks.
 
 ## Install
 
@@ -31,9 +31,8 @@ for result in client.search_skills("sourcey"):
 report = client.run_skill("skills/sourcey", inputs={"project": "."})
 print(report["status"])
 
-# Use the canonical surface control path
-surface = client.surface_run("skills/sourcey", inputs={"project": "."})
-print(surface["status"])
+paused = client.resume_run("run_123", approvals={"publish": True})
+print(paused["status"])
 ```
 
 ## Framework adapters
@@ -41,19 +40,14 @@ print(surface["status"])
 Bridge runx into an existing agent framework (OpenAI, Anthropic, CrewAI, LangChain, Vercel AI):
 
 ```python
-from runx import RunxClient, create_openai_surface_adapter, create_surface_bridge
+from runx import create_host_bridge, create_openai_host_adapter
 
-adapter = create_openai_surface_adapter(create_surface_bridge(RunxClient()))
+bridge = create_host_bridge(run=my_host_run, resume=my_host_resume)
+adapter = create_openai_host_adapter(bridge)
 response = adapter.run("skills/sourcey")
 ```
 
-The bridge translates paused runs (required inputs, approval gates) into framework-native tool messages, so your agent loop can resolve them and resume.
-
-The same canonical control helpers are available directly on `RunxClient`:
-
-- `surface_run(...)`
-- `surface_resume(...)`
-- `surface_inspect(...)`
+The bridge translates host protocol results, including paused runs and approval gates, into framework-native tool messages. `RunxClient` remains a CLI client; host protocol execution is provided by the embedding runtime.
 
 ## Links
 
