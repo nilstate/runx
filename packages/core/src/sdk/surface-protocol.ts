@@ -76,6 +76,14 @@ export interface SurfaceFailedResult {
   readonly events: readonly ExecutionEvent[];
 }
 
+export interface SurfaceEscalatedResult {
+  readonly status: "escalated";
+  readonly skillName: string;
+  readonly receiptId: string;
+  readonly error: string;
+  readonly events: readonly ExecutionEvent[];
+}
+
 export interface SurfaceDeniedResult {
   readonly status: "denied";
   readonly skillName: string;
@@ -88,6 +96,7 @@ export type SurfaceRunResult =
   | SurfacePausedResult
   | SurfaceCompletedResult
   | SurfaceFailedResult
+  | SurfaceEscalatedResult
   | SurfaceDeniedResult;
 
 export interface SurfaceRunVerification {
@@ -157,6 +166,10 @@ export interface SurfaceFailedState extends SurfaceTerminalState {
   readonly status: "failed";
 }
 
+export interface SurfaceEscalatedState extends SurfaceTerminalState {
+  readonly status: "escalated";
+}
+
 export interface SurfaceDeniedState extends SurfaceTerminalState {
   readonly status: "denied";
 }
@@ -165,6 +178,7 @@ export type SurfaceRunState =
   | SurfacePausedState
   | SurfaceCompletedState
   | SurfaceFailedState
+  | SurfaceEscalatedState
   | SurfaceDeniedState;
 
 export interface SurfaceBridge {
@@ -379,6 +393,15 @@ function normalizeRunResult(result: RunLocalSkillResult, events: readonly Execut
       events,
     };
   }
+  if (result.receipt.disposition === "escalated") {
+    return {
+      status: "escalated",
+      skillName: result.skill.name,
+      receiptId: result.receipt.id,
+      error: result.execution.errorMessage ?? (result.execution.stderr || result.execution.stdout),
+      events,
+    };
+  }
   return {
     status: "failed",
     skillName: result.skill.name,
@@ -439,9 +462,12 @@ export async function inspectLocalSurfaceState(
 function inspectStatus(summary: {
   readonly status: string;
   readonly disposition?: string;
-}): SurfaceCompletedState["status"] | SurfaceFailedState["status"] | SurfaceDeniedState["status"] {
+}): SurfaceCompletedState["status"] | SurfaceFailedState["status"] | SurfaceEscalatedState["status"] | SurfaceDeniedState["status"] {
   if (summary.disposition === "policy_denied") {
     return "denied";
+  }
+  if (summary.disposition === "escalated") {
+    return "escalated";
   }
   return summary.status === "success" ? "completed" : "failed";
 }
@@ -536,6 +562,8 @@ function summarizeSurfaceResult(result: SurfaceRunResult): string {
       return `${result.skillName} paused at ${result.runId}. Resume after resolving ${result.requests.length} request(s).`;
     case "denied":
       return `${result.skillName} was denied by policy.`;
+    case "escalated":
+      return `${result.skillName} escalated. Inspect receipt ${result.receiptId}.`;
     case "failed":
       return `${result.skillName} failed. Inspect receipt ${result.receiptId ?? "n/a"}.`;
   }

@@ -85,7 +85,13 @@ export interface RunnerReceiptMetadata {
   };
 }
 
-export type GovernedDisposition = "completed" | "needs_resolution" | "policy_denied" | "approval_required" | "observing";
+export type GovernedDisposition =
+  | "completed"
+  | "needs_resolution"
+  | "policy_denied"
+  | "approval_required"
+  | "observing"
+  | "escalated";
 
 export interface ReceiptSurfaceRef {
   readonly type: string;

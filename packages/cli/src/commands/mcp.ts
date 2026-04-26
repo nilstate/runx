@@ -375,6 +375,8 @@ function summarizeSurfaceResult(result: SurfaceRunResult): string {
       return `${result.skillName} paused at ${result.runId}. Resume with runx_resume after resolving ${result.requests.length} request(s).`;
     case "denied":
       return `${result.skillName} was denied by policy${result.receiptId ? ` (receipt ${result.receiptId})` : ""}.`;
+    case "escalated":
+      return `${result.skillName} escalated. Inspect receipt ${result.receiptId}. ${result.error}`.trim();
     case "failed":
       return `${result.skillName} failed. Inspect receipt ${result.receiptId ?? "n/a"}. ${result.error}`.trim();
   }

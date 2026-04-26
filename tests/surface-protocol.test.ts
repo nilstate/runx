@@ -39,4 +39,41 @@ describe("surface protocol", () => {
     expect(paused.role).toBe("tool");
     expect(paused.structuredContent.runx.status).toBe("paused");
   });
+
+  it("maps escalated graph receipts to an explicit surface status", async () => {
+    const bridge = createSurfaceBridge({
+      execute: async () => ({
+        status: "failure",
+        skill: { name: "fanout-skill" },
+        inputs: {},
+        execution: {
+          status: "failure",
+          stdout: "",
+          stderr: "",
+          exitCode: 1,
+          signal: null,
+          durationMs: 1,
+          errorMessage: "fanout escalation: conflicting recommendations",
+        },
+        state: {},
+        receipt: {
+          id: "gx_escalated",
+          kind: "graph_execution",
+          status: "failure",
+          duration_ms: 1,
+          disposition: "escalated",
+          outcome_state: "pending",
+        },
+      }) as any,
+    });
+
+    const result = await bridge.run({ skillPath: "unused" });
+
+    expect(result).toMatchObject({
+      status: "escalated",
+      skillName: "fanout-skill",
+      receiptId: "gx_escalated",
+      error: "fanout escalation: conflicting recommendations",
+    });
+  });
 });

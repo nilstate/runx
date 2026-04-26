@@ -470,7 +470,7 @@ export function buildHostedOpenApiPublicSchemas(): Readonly<Record<string, unkno
       properties: {
         name: { type: "string" },
         runner: { type: "string" },
-        expected_status: { type: "string", enum: ["success", "failure", "needs_resolution", "policy_denied"] },
+        expected_status: { type: "string", enum: ["success", "failure", "needs_resolution", "policy_denied", "escalated"] },
       },
       required: ["name"],
       additionalProperties: false,

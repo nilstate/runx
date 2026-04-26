@@ -129,6 +129,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
   let lastReceiptId: string | undefined;
   let finalOutput = "";
   let finalError: string | undefined;
+  let terminalReceiptMetadata: Readonly<Record<string, unknown>> | undefined;
   let graphAlreadyTerminal = false;
   let involvedAgentMediatedWork = false;
   if (options.resumeFromRunId) {
@@ -241,7 +242,27 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       break;
     }
 
-    if (plan.type === "paused" || plan.type === "escalated") {
+    if (plan.type === "escalated") {
+      const syncPoint = toGraphReceiptSyncPoint(
+        plan.syncDecision,
+        latestFanoutReceiptIds(stepRuns, plan.syncDecision.groupId),
+      );
+      syncPoints.push(syncPoint);
+      finalError = `fanout escalation: ${plan.reason}`;
+      terminalReceiptMetadata = fanoutGateReceiptMetadata(plan.syncDecision, "escalated");
+      await options.caller.report({
+        type: "warning",
+        message: finalError,
+        data: {
+          kind: "fanout_escalated",
+          syncPoint,
+        },
+      });
+      state = transitionSequentialGraph(state, { type: "escalate_graph", reason: finalError });
+      break;
+    }
+
+    if (plan.type === "paused") {
       const gateRequest = buildFanoutGateResolutionRequest(plan.syncDecision);
       await options.caller.report({
         type: "resolution_requested",
@@ -296,12 +317,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
           },
           createdAt: new Date().toISOString(),
         });
-        state = transitionSequentialGraph(
-          state,
-          plan.type === "escalated"
-            ? { type: "escalate_graph", reason: plan.reason }
-            : { type: "pause_graph", reason: plan.reason },
-        );
+        state = transitionSequentialGraph(state, { type: "pause_graph", reason: plan.reason });
         return {
           status: "needs_resolution",
           graph,
@@ -329,7 +345,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       });
       syncPoints.push(toGraphReceiptSyncPoint(plan.syncDecision, latestFanoutReceiptIds(stepRuns, plan.syncDecision.groupId)));
       if (!approved) {
-        finalError = `${plan.type === "escalated" ? "fanout escalation" : "fanout gate"} denied: ${plan.reason}`;
+        finalError = `fanout gate denied: ${plan.reason}`;
         state = transitionSequentialGraph(state, { type: "fail_graph", error: finalError });
         break;
       }
@@ -1049,6 +1065,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
   }
 
   const completedAt = new Date().toISOString();
+  const graphEscalated = state.status === "escalated";
   const receipt = await writeLocalGraphReceipt({
     receiptDir,
     runxHome: options.runxHome ?? options.env?.RUNX_HOME,
@@ -1064,13 +1081,13 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     completedAt,
     durationMs: Date.now() - startedAtMs,
     errorMessage: finalError,
-    disposition: executionSemantics.disposition,
+    disposition: graphEscalated ? "escalated" : executionSemantics.disposition,
     inputContext: executionSemantics.inputContext,
-    outcomeState: executionSemantics.outcomeState,
+    outcomeState: graphEscalated ? "pending" : executionSemantics.outcomeState,
     outcome: executionSemantics.outcome,
     surfaceRefs: executionSemantics.surfaceRefs,
     evidenceRefs: executionSemantics.evidenceRefs,
-    metadata: inheritedReceiptMetadata,
+    metadata: mergeMetadata(inheritedReceiptMetadata, terminalReceiptMetadata),
   });
   await appendGraphCompletedLedgerEntry({
     receiptDir,
@@ -1107,7 +1124,7 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
   });
 
   return {
-    status: receipt.status,
+    status: graphEscalated ? "escalated" : receipt.status,
     graph,
     state,
     steps: stepRuns,
@@ -1133,6 +1150,29 @@ function buildFanoutGateResolutionRequest(
         decision: decision.decision,
         strategy: decision.strategy,
         rule_fired: decision.ruleFired,
+        branch_count: decision.branchCount,
+        success_count: decision.successCount,
+        failure_count: decision.failureCount,
+        required_successes: decision.requiredSuccesses,
+        gate: decision.gate,
+      },
+    },
+  };
+}
+
+function fanoutGateReceiptMetadata(
+  decision: FanoutSyncDecision,
+  status: "escalated",
+): Readonly<Record<string, unknown>> {
+  return {
+    runx: {
+      fanout_gate: {
+        status,
+        group_id: decision.groupId,
+        decision: decision.decision,
+        strategy: decision.strategy,
+        rule_fired: decision.ruleFired,
+        reason: decision.reason,
         branch_count: decision.branchCount,
         success_count: decision.successCount,
         failure_count: decision.failureCount,

@@ -466,9 +466,10 @@ function renderRunFailure(
   env: NodeJS.ProcessEnv,
 ): string {
   const t = theme(io.stderr, env);
+  const status = result.receipt.disposition === "escalated" ? "escalated" : "failure";
   const lines = [
     "",
-    `  ${statusIcon("failure", t)}  ${t.bold}${result.skill.name}${t.reset}  ${t.dim}failure${t.reset}`,
+    `  ${statusIcon(status, t)}  ${t.bold}${result.skill.name}${t.reset}  ${t.dim}${status}${t.reset}`,
     `  ${t.dim}receipt${t.reset}   ${shortId(result.receipt.id)}`,
     `  ${t.dim}kind${t.reset}      ${result.receipt.kind}`,
   ];
@@ -481,7 +482,7 @@ function renderRunFailure(
   }
   const errorText = result.execution.errorMessage ?? result.execution.stderr ?? result.execution.stdout;
   if (errorText.trim()) {
-    lines.push(`  ${t.dim}error${t.reset}     ${truncateMultiline(errorText, 8)}`);
+    lines.push(`  ${t.dim}${status === "escalated" ? "reason" : "error"}${t.reset}     ${truncateMultiline(errorText, 8)}`);
   }
   lines.push(`  ${t.dim}inspect${t.reset}   runx inspect ${result.receipt.id} --json`);
   lines.push("");
@@ -850,10 +851,12 @@ export function writeLocalSkillResult(
     return writePolicyDeniedResult(io, parsed, result);
   }
   if (parsed.json) {
+    const status = result.receipt.disposition === "escalated" ? "escalated" : result.status;
     io.stdout.write(
       `${JSON.stringify(
         {
           ...result,
+          status,
           execution_status: result.status,
           disposition: result.receipt.disposition ?? "completed",
           outcome_state: result.receipt.outcome_state ?? "complete",

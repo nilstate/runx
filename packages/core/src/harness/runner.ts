@@ -537,11 +537,11 @@ function optionalStatus(value: unknown, field: string): HarnessExpectation["stat
     value === "failure" ||
     value === "needs_resolution" ||
     value === "policy_denied" ||
-    value === "policy_denied"
+    value === "escalated"
   ) {
     return value;
   }
-  throw new Error(`${field} must be success, failure, needs_resolution, or policy_denied.`);
+  throw new Error(`${field} must be success, failure, needs_resolution, policy_denied, or escalated.`);
 }
 
 function optionalSuccessFailure(value: unknown, field: string): "success" | "failure" | undefined {

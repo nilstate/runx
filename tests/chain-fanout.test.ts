@@ -236,7 +236,7 @@ steps:
     }
   });
 
-  it("escalates structured fanout conflicts through a resolution gate", async () => {
+  it("records structured fanout conflicts as explicit escalation outcomes", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-fanout-escalate-"));
     const graphPath = path.join(tempDir, "graph.yaml");
     const receiptDir = path.join(tempDir, "receipts");
@@ -283,17 +283,32 @@ steps:
         adapters,
       });
 
-      expect(result.status).toBe("needs_resolution");
-      if (result.status !== "needs_resolution") {
+      expect(result.status).toBe("escalated");
+      if (result.status !== "escalated") {
         return;
       }
+      expect(result.receipt.status).toBe("failure");
+      expect(result.receipt.disposition).toBe("escalated");
+      expect(result.receipt.outcome_state).toBe("pending");
       expect(result.state.status).toBe("escalated");
-      expect(result.requests[0]).toMatchObject({
-        id: "fanout.advisors.conflict.recommendation",
-        kind: "approval",
-        gate: {
-          type: "fanout-escalation",
+      expect(result.errorMessage).toBe("fanout escalation: fanout branches disagreed on structured field recommendation");
+      expect(result.receipt.sync_points).toEqual([
+        expect.objectContaining({
+          group_id: "advisors",
+          decision: "escalate",
+          rule_fired: "conflict.recommendation",
           reason: "fanout branches disagreed on structured field recommendation",
+          branch_receipts: result.steps.slice(0, 2).map((step) => step.receiptId),
+        }),
+      ]);
+      expect(result.receipt.metadata).toMatchObject({
+        runx: {
+          fanout_gate: {
+            status: "escalated",
+            group_id: "advisors",
+            decision: "escalate",
+            rule_fired: "conflict.recommendation",
+          },
         },
       });
     } finally {

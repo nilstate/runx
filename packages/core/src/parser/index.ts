@@ -150,7 +150,7 @@ export interface HarnessReceiptExpectation {
 }
 
 export interface HarnessExpectation {
-  readonly status?: "success" | "failure" | "needs_resolution" | "policy_denied";
+  readonly status?: "success" | "failure" | "needs_resolution" | "policy_denied" | "escalated";
   readonly receipt?: HarnessReceiptExpectation;
   readonly steps?: readonly string[];
 }
@@ -687,9 +687,9 @@ function optionalDisposition(value: unknown, field: string): ExecutionSemantics[
   if (disposition === undefined) {
     return undefined;
   }
-  if (!["completed", "needs_resolution", "policy_denied", "approval_required", "observing"].includes(disposition)) {
+  if (!["completed", "needs_resolution", "policy_denied", "approval_required", "observing", "escalated"].includes(disposition)) {
     throw new SkillValidationError(
-      `${field} must be one of completed, needs_resolution, policy_denied, approval_required, or observing.`,
+      `${field} must be one of completed, needs_resolution, policy_denied, approval_required, observing, or escalated.`,
     );
   }
   return disposition as ExecutionSemantics["disposition"];
@@ -886,11 +886,12 @@ function optionalHarnessStatus(value: unknown, field: string): HarnessExpectatio
     value === "success" ||
     value === "failure" ||
     value === "needs_resolution" ||
-    value === "policy_denied"
+    value === "policy_denied" ||
+    value === "escalated"
   ) {
     return value;
   }
-  throw new SkillValidationError(`${field} must be success, failure, needs_resolution, or policy_denied.`);
+  throw new SkillValidationError(`${field} must be success, failure, needs_resolution, policy_denied, or escalated.`);
 }
 
 function optionalHarnessReceiptStatus(value: unknown, field: string): HarnessReceiptExpectation["status"] {

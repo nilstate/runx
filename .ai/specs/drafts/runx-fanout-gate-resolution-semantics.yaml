@@ -1,8 +1,8 @@
 spec_version: "1.1"
 task_id: "runx-fanout-gate-resolution-semantics"
 created: "2026-04-25T15:35:00Z"
-updated: "2026-04-25T16:18:00Z"
-status: "in_progress"
+updated: "2026-04-26T08:18:08Z"
+status: "completed"
 
 task:
   title: "Make fanout pause and escalate gates first-class graph states"
@@ -79,6 +79,9 @@ planning_log:
   - timestamp: "2026-04-25T16:18:00Z"
     actor: "agent"
     summary: "Implemented distinct paused/escalated fanout plans, approval-style gate resolution, fanout branch hydration on resume, and focused state-machine/runner coverage."
+  - timestamp: "2026-04-26T08:18:08Z"
+    actor: "agent"
+    summary: "Completed surface semantics: pause remains resumable, escalation now writes a terminal escalated graph receipt with pending outcome metadata, and SDK/CLI/MCP surfaces expose escalated separately from generic failure."
 
 phases:
   - id: "phase1"
@@ -92,7 +95,7 @@ phases:
   - id: "phase3"
     name: "Surfaces"
     objective: "Update SDK and CLI surfaces to render gate pause/escalate outcomes distinctly from failure."
-    status: "in_progress"
+    status: "completed"
 
 metadata:
   estimated_effort_hours: 8

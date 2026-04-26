@@ -35,7 +35,7 @@ export function theme(stream: NodeJS.WritableStream | undefined = process.stdout
 export function statusIcon(status: string, t: UiTheme): string {
   if (status === "success" || status === "verified" || status === "installed") return `${t.green}✓${t.reset}`;
   if (status === "failure" || status === "invalid" || status === "denied") return `${t.red}✗${t.reset}`;
-  if (status === "needs_resolution") return `${t.yellow}◇${t.reset}`;
+  if (status === "needs_resolution" || status === "escalated") return `${t.yellow}◇${t.reset}`;
   if (status === "unverified" || status === "unchanged") return `${t.dim}·${t.reset}`;
   return `${t.dim}·${t.reset}`;
 }
