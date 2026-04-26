@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "task_id": "runx-claim-via-nango",
+  "created_at": "2026-04-26T08:57:26Z",
+  "updated_at": "2026-04-26T08:57:26Z",
+  "model_profile": "default",
+  "entries": [
+    {
+      "type": "approval",
+      "recorded_at": "2026-04-26T08:57:26Z",
+      "gate": "approve",
+      "actor": "human",
+      "note": "spec approved"
+    }
+  ],
+  "recovery_attempts": {},
+  "criterion_states": {},
+  "phases": [],
+  "attempts": [],
+  "phase_summaries": [],
+  "workspace_baseline": null,
+  "usage": {}
+}

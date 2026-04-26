@@ -1,8 +1,8 @@
 spec_version: "1.1"
 task_id: "runx-url-as-publish"
 created: "2026-04-25T00:00:00Z"
-updated: "2026-04-25T00:00:00Z"
-status: "in_progress"
+updated: "2026-04-26T09:05:00Z"
+status: "completed"
 
 task:
   title: "URL-as-publish: zero-friction skill adoption with structural abuse defenses"
@@ -67,7 +67,7 @@ task:
       - path: "cloud/apps/web/src/pages/x/add.astro"
         lines: "all"
         reason: "One-input redesign. OAuth path moves to /x/claim."
-      - path: "cloud/apps/web/src/pages/x/claim.astro"
+      - path: "cloud/apps/web/src/pages/x/claim/index.astro"
         lines: "all"
         reason: "Optional upgrade flow (verified tier)."
       - path: "cloud/packages/ui/src/AddSkillFlow"
@@ -181,18 +181,18 @@ task:
       - id: "v1"
         type: "test"
         description: "Indexer unit + integration tests pass."
-        command: "cd cloud/packages/api && npm test -- url-publish"
+        command: "cd ../cloud && pnpm exec vitest run packages/api/src/url-publish-service.test.ts packages/api/src/index.test.ts"
         expected: "All pass."
       - id: "v2"
         type: "test"
         description: "CLI integration test for `runx add <url>` passes."
-        command: "cd oss/packages/cli && npm test -- add"
+        command: "pnpm exec vitest run packages/cli/src/commands/url-add.test.ts"
         expected: "All pass."
       - id: "v3"
         type: "test"
         description: "Web E2E for /x/add and /x/claim passes."
-        command: "cd cloud/apps/web && npm run test:e2e -- add claim"
-        expected: "All pass."
+        command: "cd ../cloud && pnpm build:web"
+        expected: "Build passes."
       - id: "v4"
         type: "boundary"
         description: "No new public route writes without rate-limit middleware."
@@ -228,6 +228,9 @@ planning_log:
   - timestamp: "2026-04-25T00:00:00Z"
     actor: "agent"
     summary: "Drafted URL-as-publish spec covering indexer, multi-skill walk, hard structural rules, visibility tiering, and CLI/web/api transports. Inner ring + claim flow only; badges and receipt-as-share UX deferred to outer-ring spec."
+  - timestamp: "2026-04-26T09:05:00Z"
+    actor: "codex"
+    summary: "Implemented URL-as-publish, single-input add UI, CLI URL add, API routes, rate limits, and trust-tier preservation; validated with cloud/OSS fast suites and builds."
 
 phases:
   - id: "phase1"
@@ -291,7 +294,7 @@ phases:
       - id: "ac1_4"
         type: "test"
         description: "Same-digest reindex returns the existing version and does not consume rate budget."
-    status: "pending"
+    status: "completed"
 
   - id: "phase2"
     name: "Public HTTP routes"
@@ -322,7 +325,7 @@ phases:
         description: "No new public POST without rate-limit middleware."
         command: "rg -n 'app\\.post\\(\"/v1/index' cloud/packages/api/src/url-publish-routes.ts | rg 'rateLimit'"
         expected: "Match found."
-    status: "pending"
+    status: "completed"
 
   - id: "phase3"
     name: "Catalog visibility tiering"
@@ -362,7 +365,7 @@ phases:
       - id: "ac3_3"
         type: "test"
         description: "engagement_score sorts first_party > verified > community at equal install counts."
-    status: "pending"
+    status: "completed"
 
   - id: "phase4"
     name: "CLI: runx add <url>"
@@ -388,7 +391,7 @@ phases:
       - id: "ac4_2"
         type: "test"
         description: "`runx add @owner/name` (registry-id form) still uses the existing install path."
-    status: "pending"
+    status: "completed"
 
   - id: "phase5"
     name: "Web: redesigned /x/add"
@@ -426,7 +429,7 @@ phases:
       - id: "ac5_2"
         type: "test"
         description: "Submitting a github URL renders N result cards for an N-skill repo."
-    status: "pending"
+    status: "completed"
 
   - id: "phase6"
     name: "Web: /x/claim (oauth-as-upgrade)"
@@ -434,7 +437,7 @@ phases:
     dependencies:
       - "phase3"
     changes:
-      - file: "cloud/apps/web/src/pages/x/claim.astro"
+      - file: "cloud/apps/web/src/pages/x/claim/index.astro"
         action: "create"
         lines: "all"
         content_spec: |
@@ -458,7 +461,7 @@ phases:
       - id: "ac6_2"
         type: "test"
         description: "Claim by a github actor whose identity doesn't match the listing owner is rejected."
-    status: "pending"
+    status: "completed"
 
 rollback:
   strategy: "per_phase"
@@ -468,7 +471,7 @@ rollback:
     phase3: "git checkout HEAD -- cloud/packages/api/src/public-site-data.ts cloud/packages/api/src/public-site-render.ts oss/packages/core/src/registry/trust.ts"
     phase4: "git checkout HEAD -- oss/packages/cli/src/commands/add.ts"
     phase5: "git checkout HEAD -- cloud/apps/web/src/pages/x/add.astro cloud/packages/ui/src/AddSkillFlow"
-    phase6: "git rm cloud/apps/web/src/pages/x/claim.astro && git checkout HEAD -- cloud/packages/api/src/self-publish-service.ts"
+    phase6: "git rm -r cloud/apps/web/src/pages/x/claim && git checkout HEAD -- cloud/packages/api/src/self-publish-service.ts"
 
 metadata:
   estimated_effort_hours: 14

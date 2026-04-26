@@ -1,0 +1,686 @@
+spec_version: "1.1"
+task_id: "runx-claim-via-nango"
+created: "2026-04-26T00:00:00Z"
+updated: "2026-04-26T09:00:00Z"
+status: "completed"
+
+task:
+  title: "Claim via Nango: durable GitHub repo ownership proof"
+  summary: >
+    URL-as-publish lands every listing at `community` tier. Promotion to
+    `verified` requires proof that the connected GitHub actor can maintain the
+    source repo for the exact listing being claimed. The architecture is durable
+    and webhook-driven: runx creates a persisted claim session, returns a Nango
+    Connect session token, the browser opens Nango Connect UI, and a single
+    finalize call reconciles the finished connection. Nango's signed auth
+    webhook performs the same completion path idempotently. There is no
+    long-poll route, no in-process promise resolver, no client polling loop, and
+    no single-replica deployment constraint.
+
+  size: "large"
+  risk_level: "medium"
+
+  context:
+    packages:
+      - "cloud/packages/api/src"
+      - "cloud/packages/auth/src"
+      - "cloud/apps/web/src"
+      - "cloud/packages/ui/src"
+      - "oss/packages/contracts/src"
+    files_impacted:
+      - path: "cloud/packages/api/src/claim-session-model.ts"
+        lines: "all"
+        reason: "New durable claim-session model. Pending/rejected state lives here, not in self-publish enrollments."
+      - path: "cloud/packages/api/src/claim-session-stores.ts"
+        lines: "all"
+        reason: "New file + in-memory stores keyed by request_id and runx_flow_id."
+      - path: "cloud/packages/api/src/self-publish-model.ts"
+        lines: "SelfPublishEnrollmentRecord"
+        reason: "Only successful repo bindings need claim metadata: claim_session_id, connection_id, github_user, github_permission. Do not model pending/rejected claim sessions here."
+      - path: "cloud/packages/api/src/self-publish-helpers.ts"
+        lines: "normalizeEnrollment"
+        reason: "Round-trip successful-claim metadata only."
+      - path: "cloud/packages/api/src/self-publish-stores.ts"
+        lines: "FileSelfPublishStore + InMemorySelfPublishStore"
+        reason: "Keep findByRepo for webhook reindex; add optional findByClaimSessionId if useful. No pending-session lookup here."
+      - path: "cloud/packages/api/src/github-identity.ts"
+        lines: "all"
+        reason: "New module. Fetch GitHub user and verify repo-level permissions through Nango proxy."
+      - path: "cloud/packages/auth/src/nango-hosted.ts"
+        lines: "HostedNangoClient"
+        reason: "Add official Connect-session token support, list-connections by endUserId, proxyGet via GET /proxy/{path}, dual webhook signature header support, and remove webhookSecret fallback."
+      - path: "cloud/packages/api/src/claim-service.ts"
+        lines: "all"
+        reason: "New orchestration service for start, finalize, webhook completion, permission verification, and tier promotion."
+      - path: "cloud/packages/api/src/claim-routes.ts"
+        lines: "all"
+        reason: "New routes: POST /v1/claim/sessions, GET /v1/claim/sessions/:request_id, POST /v1/claim/sessions/:request_id/finalize."
+      - path: "cloud/packages/api/src/rate-limit.ts"
+        lines: "factory"
+        reason: "Add claim-session rate limiters. Do not single-flight anonymous sessions by listing."
+      - path: "cloud/packages/api/src/self-publish-routes.ts"
+        lines: "remove /v1/claim block"
+        reason: "Delete the 503 stub. The only claim surface is /v1/claim/sessions."
+      - path: "cloud/packages/api/src/openapi-route-catalog.ts"
+        lines: "/v1/claim removed; claim-session entries added"
+        reason: "Catalog must match the live route surface."
+      - path: "oss/packages/contracts/src/openapi-public.ts"
+        lines: "ClaimRequest schema removed; claim-session schemas added"
+        reason: "Public OpenAPI follows the new route surface."
+      - path: "cloud/packages/api/src/index.ts"
+        lines: "HostedApiOptions + route registration"
+        reason: "Register claim routes and pass ClaimService into the hosted API app."
+      - path: "cloud/packages/api/src/server.ts"
+        lines: "service construction + webhook wiring"
+        reason: "Construct ClaimSessionStore, GithubIdentityClient, ClaimService; inject claim completion into the Nango webhook handler."
+      - path: "cloud/packages/api/src/server-config.ts"
+        lines: "RUNX_PUBLIC_BASE_URL + Nango webhook validation"
+        reason: "Expose app base URL and require a distinct Nango webhook secret when Nango mode is enabled."
+      - path: "cloud/packages/api/src/skill-indexer.ts"
+        lines: "indexValidatedCandidate trust tier"
+        reason: "URL-publish inherits an existing trust_tier for the same source; first publish still defaults to community."
+      - path: "cloud/packages/api/src/self-publish-service.ts"
+        lines: "delete claimListing method"
+        reason: "Remove the pre-OAuth promotion foot-gun."
+      - path: "cloud/packages/api/src/self-publish-service.test.ts"
+        lines: "claimListing tests"
+        reason: "Delete or replace tests that exercise the removed unsafe method."
+      - path: "cloud/apps/web/src/pages/x/claim.astro"
+        lines: "delete file"
+        reason: "Remove duplicate Astro route; /x/claim/index.astro is canonical."
+      - path: "cloud/apps/web/src/pages/api/claim.ts"
+        lines: "delete file"
+        reason: "Replace legacy proxy with /api/claim/sessions routes."
+      - path: "cloud/apps/web/src/pages/api/claim/sessions.ts"
+        lines: "all"
+        reason: "New Astro proxy for POST start claim."
+      - path: "cloud/apps/web/src/pages/api/claim/sessions/[request_id].ts"
+        lines: "all"
+        reason: "New Astro proxy for GET status and POST finalize. No await/long-poll endpoint."
+      - path: "cloud/packages/ui/src/ClaimAction/ClaimAction.tsx"
+        lines: "all"
+        reason: "Replace placeholder with Nango Connect UI state machine and one-shot finalize call."
+      - path: "cloud/packages/ui/package.json"
+        lines: "dependencies"
+        reason: "Add @nangohq/frontend if ClaimAction owns the Connect UI import."
+
+    invariants:
+      - "No runx account is required. A claim session is a short-lived capability, not a user identity."
+      - "Pending/rejected claim state lives in ClaimSessionStore. SelfPublishEnrollmentStore records only successful repo bindings and tombstones."
+      - "No broad org-membership claim. A connected actor must have repo-level write, maintain, or admin permission on the exact source repo for the listing."
+      - "The browser never polls. ClaimAction opens Nango Connect UI and makes one finalize request when Nango reports a connect event. Manual retry is user-triggered only."
+      - "Nango signed webhooks and explicit finalize both call the same idempotent completion method."
+      - "No in-process resolver, no long-poll endpoint, no server-held browser request, no single-replica assumption."
+      - "GitHub identity and permission checks use Nango proxy. runx never reads or stores raw GitHub OAuth tokens."
+      - "Hard cutover on /v1/claim: the previous 503 stub is deleted, no alias, no redirect."
+      - "Claim never downgrades: verified and first_party versions remain at least as trusted as before."
+      - "Promotion is locked to the version-digest snapshot taken at startClaim. New versions URL-published during the pending window are not promoted by that claim."
+      - "A successful claim creates a repo binding for one (owner, name, source_repo) only. It does not authorize any other repo owned by the same actor."
+      - "OAuth-user connection does not auto-install GitHub webhooks. Existing GitHub webhook ingestion honors claimed repo bindings when events arrive; automatic repo webhook installation belongs to a GitHub App follow-on, not this OAuth claim flow."
+      - "Nango webhook signature verification uses an explicit webhook secret, never the API secret key fallback. Support both current local `x-nango-hmac-sha256` and Nango-documented `X-Nango-Signature` headers during migration."
+
+    related_docs:
+      - "oss/.ai/specs/active/runx-url-as-publish.yaml"
+      - "cloud/packages/auth/src/nango-hosted.ts"
+      - "cloud/packages/auth/src/http.ts"
+      - "Nango docs: Connect sessions return a short-lived session token for frontend Connect UI."
+      - "Nango docs: auth webhooks carry connectionId and endUser identity for backend reconciliation."
+      - "Nango docs: proxy GET uses /proxy/{path} with Connection-Id and Provider-Config-Key headers."
+      - "GitHub docs: authenticated-user repos and collaborator permission APIs expose repo-level permissions."
+
+  objectives:
+    - "Ship self-serve verified claims without creating runx accounts."
+    - "Use durable state and idempotent reconciliation instead of long-polling or in-memory promises."
+    - "Verify actual source-repo permission, not merely public org membership."
+    - "Persist the successful GitHub connection and repo binding for one listing."
+    - "Remove every unsafe legacy promotion path."
+
+  scope:
+    in_scope:
+      - "Anonymous claim-session creation for an existing URL-published listing."
+      - "Nango Connect session-token flow using `end_user.id = claim:<request_id>` and `allowed_integrations = [github integration id]`."
+      - "Webhook completion through the existing /webhooks/nango surface."
+      - "Finalize endpoint for one-shot browser reconciliation after Nango Connect UI emits a connect event."
+      - "GitHub user + repo permission verification via Nango proxy."
+      - "Tier promotion for snapshot-matched RegistrySkillVersion records."
+      - "Successful repo binding stored in SelfPublishEnrollmentStore for future GitHub webhook ingestion."
+      - "Per-IP and per-target claim-session rate limits."
+      - "URL-publish tier inheritance so verified listings are not downgraded by later URL-publish reindexes."
+      - "Tests for race ordering, idempotency, permission mismatch, duplicate concurrent valid claims, stale sessions, and no-poll UI behavior."
+    out_of_scope:
+      - "Public runx sign-up or long-lived runx user accounts."
+      - "CLI `runx connect github` changes beyond preserving current behavior."
+      - "Private-repo URL-publish."
+      - "Installing GitHub repo/org webhooks from OAuth user tokens."
+      - "GitHub App installation flow for automatic webhook delivery. Recommended follow-on for the cleanest repo-add experience."
+      - "Disputes, revocation UI, and operator demotion workflows."
+
+  decisions:
+    - "Use a dedicated ClaimSessionStore. The previous draft overloaded SelfPublishEnrollment with pending/rejected states; that mixes UI workflow state with claimed-repo bindings and makes webhook code harder to reason about."
+    - "Do not single-flight anonymous sessions by (owner, name). Returning the same Nango token to another anonymous requester lets strangers interfere with an in-progress claim. Rate-limit instead; concurrent sessions are harmless because completion is idempotent and permission-gated."
+    - "Use Nango Connect UI session tokens, not a hand-built long-poll tab. The frontend SDK gives a connect event; backend webhooks remain the source of truth for the connection ID."
+    - "Finalize is one-shot reconciliation, not polling. It first returns terminal session state if already completed; otherwise it asks Nango for the newest connection for `endUserId = claim:<request_id>` and completes if found."
+    - "Verification is repo-level. Accept GitHub permissions equivalent to write, maintain, or admin on the source repo. Reject read-only org membership."
+    - "Nango proxy implementation follows the documented GET `/proxy/{githubPath}` API with `Connection-Id` and `Provider-Config-Key` headers. The earlier POST `/proxy` body shape is not the target."
+    - "Keep OAuth scopes small for public-repo v1: `read:user`, `read:org`, and `public_repo` if required for repo permission reads. Private repo and webhook-management scopes are separate work."
+    - "A successful claim writes or updates one SelfPublishEnrollment for `repo_full_name`, with connection_id, github_user, github_permission, indexed_skill_id, and published_versions. Push/tag webhook reindex remains keyed by repo_full_name."
+    - "Nango webhook handling checks claim sessions before the existing principal-bound flow Map. Unknown claim flow IDs are 202-ignored."
+    - "Identity/permission failures mark the claim session rejected with a specific reason and leave registry trust tiers unchanged."
+    - "Nango/registry transient failures mark the claim session error and are safe to retry through finalize; webhook responses stay 2xx after durable recording to avoid unbounded retries."
+    - "Hard-delete `SelfPublishService.claimListing` and its tests. All promotion must flow through ClaimService."
+
+  deliverables:
+    - "ClaimSession model and file/in-memory stores."
+    - "HostedNangoClient methods: createConnectSession, findConnectionsByEndUser, proxyGet, strict webhook secret handling."
+    - "GithubIdentityClient with repo-permission verification."
+    - "ClaimService start/finalize/complete lifecycle."
+    - "Claim HTTP routes and OpenAPI schemas."
+    - "Nango webhook branch for claim sessions."
+    - "ClaimAction using Nango Connect UI and one-shot finalize."
+    - "Deletion of /v1/claim, legacy /api/claim, duplicate /x/claim.astro, and unsafe claimListing."
+    - "Focused unit and integration tests."
+
+  assumptions:
+    - "The configured Nango GitHub integration can create Connect sessions with an end_user.id and sends auth creation webhooks that include connectionId plus endUser or equivalent tags."
+    - "Nango connection listing can filter by endUserId; this is required for browser-triggered finalize when webhook delivery is slower than the UI event."
+    - "Nango proxy can call GitHub REST endpoints for `/user`, `/user/repos`, and/or `/repos/{owner}/{repo}/collaborators/{username}/permission` for the connected account."
+    - "GitHub public-repo claims can be verified without requesting private-repo `repo` scope. If GitHub requires broader scope for a specific permission endpoint, use the authenticated-user repos endpoint first and keep private-repo claim out of v1."
+    - "Existing GitHub webhook ingestion is already deployed for events that runx receives. This spec creates bindings that make those events trusted; it does not provision GitHub webhooks."
+
+  risks:
+    - description: "Nango webhook is delayed or not delivered."
+      impact: "low"
+      mitigation: "ClaimAction's one finalize call reconciles by endUserId through Nango. If neither webhook nor list-connections sees a connection yet, the UI shows a manual retry button."
+    - description: "Connected GitHub user is a public org member but lacks repo write/admin permission."
+      impact: "expected rejection."
+      mitigation: "Session is rejected with a repo-permission reason; registry tiers stay unchanged."
+    - description: "Two valid maintainers claim the same listing concurrently."
+      impact: "low"
+      mitigation: "Both sessions may complete, but promotion is idempotent and the binding is updated to the latest successful connection. No downgrade is possible."
+    - description: "The OAuth connection does not install repository webhooks."
+      impact: "medium"
+      mitigation: "Spec states this boundary explicitly. Existing webhook ingestion works for delivered events; automatic webhook delivery moves to GitHub App installation work."
+    - description: "Nango API shape differs between local code and current docs."
+      impact: "medium"
+      mitigation: "Implement documented APIs for new claim code while preserving existing beginOauth behavior for /v1/connect. Tests cover both legacy connect_link and session-token paths where necessary."
+
+  acceptance:
+    validation_profile: "standard"
+    definition_of_done:
+      - id: "dod1"
+        description: "POST /v1/claim/sessions returns 201 with request_id, connect_session_token, expires_at, and persists a ClaimSession pending_connection."
+      - id: "dod2"
+        description: "No /v1/claim route remains; it returns framework 404."
+      - id: "dod3"
+        description: "Nango auth webhook for a claim session completes it idempotently and never touches principal-bound connect flows."
+      - id: "dod4"
+        description: "POST /v1/claim/sessions/:request_id/finalize completes a session when Nango already has a connection for endUserId claim:<request_id>."
+      - id: "dod5"
+        description: "Repo-level write/maintain/admin permission promotes snapshot-matched versions to verified and writes a successful self-publish repo binding."
+      - id: "dod6"
+        description: "Read-only org membership or missing repo permission rejects the session and leaves trust tiers unchanged."
+      - id: "dod7"
+        description: "ClaimAction opens Nango Connect UI, makes exactly one finalize request after a connect event, and contains no setInterval, polling loop, or long-poll call."
+      - id: "dod8"
+        description: "URL-publish after a claim does not downgrade verified listings when publishing from the same source."
+      - id: "dod9"
+        description: "No code path reads or stores raw GitHub access tokens."
+    validation:
+      - id: "v1"
+        type: "test"
+        description: "Claim-session store tests cover lookup, expiration, rejection retention, and idempotent terminal updates."
+        command: "cd ../cloud && pnpm exec vitest run packages/api/src/claim-session-stores.test.ts"
+        expected: "All pass."
+      - id: "v2"
+        type: "test"
+        description: "Claim-service tests cover start, finalize, webhook completion, permission match, permission mismatch, duplicate valid claims, expired sessions, and URL-publish race."
+        command: "cd ../cloud && pnpm exec vitest run packages/api/src/claim-service.test.ts"
+        expected: "All pass."
+      - id: "v3"
+        type: "test"
+        description: "Nango-hosted tests cover createConnectSession token parsing, findConnectionsByEndUser, proxyGet GET headers, dual signature headers, and no webhookSecret fallback."
+        command: "cd ../cloud && pnpm exec vitest run packages/auth/src/nango-hosted.test.ts"
+        expected: "All pass."
+      - id: "v4"
+        type: "boundary"
+        description: "No in-process resolver or await route is implemented."
+        command: "cd ../cloud && rg -n 'ClaimResolver|/await|long-poll|setInterval|setTimeout\\(' packages/api/src/claim-* apps/web/src/pages/api/claim packages/ui/src/ClaimAction"
+        expected: "No matches."
+      - id: "v5"
+        type: "boundary"
+        description: "No raw GitHub token handling in claim code."
+        command: "cd ../cloud && rg -n 'access_token|github_token|Authorization.*github' packages/api/src/claim-* packages/api/src/github-identity.ts"
+        expected: "No matches."
+
+  constraints:
+    approvals_required:
+      - "registry_invariants"
+      - "nango_proxy_permissions"
+      - "github_repo_permission_semantics"
+    non_goals:
+      - "Runx user accounts."
+      - "Automatic GitHub webhook installation."
+      - "Private-repo publishing."
+      - "Claim dispute or revocation UI."
+
+  info_sources:
+    - "cloud/packages/auth/src/nango-hosted.ts"
+    - "cloud/packages/auth/src/http.ts"
+    - "cloud/packages/api/src/self-publish-service.ts"
+    - "cloud/packages/api/src/url-publish-service.ts"
+    - "Nango official docs: Connect session creation, frontend Connect UI, auth webhooks, list connections, proxy GET."
+    - "GitHub official docs: list repositories for authenticated user and repository collaborator permissions."
+
+  notes: >
+    I do not agree with the previous in-memory resolver/long-poll shape. It was
+    workable for a single replica but not a clean architecture. The revised
+    shape treats claim completion as a durable state transition and uses both
+    webhook and browser finalize as idempotent ways to drive that transition.
+    It also tightens the authorization check from broad org membership to actual
+    source-repo permission.
+
+planning_log:
+  - timestamp: "2026-04-26T00:00:00Z"
+    actor: "agent"
+    summary: "Drafted initial Nango-backed claim spec after /v1/claim was left as a 503 stub."
+  - timestamp: "2026-04-26T01:00:00Z"
+    actor: "agent"
+    summary: "Earlier hardening pass moved away from redirect assumptions but still used an in-process resolver and long-poll."
+  - timestamp: "2026-04-26T03:00:00Z"
+    actor: "codex"
+    summary: "Reviewed the runx cloud and oss codebase with scafld status/validate. Replaced the long-poll/in-memory resolver design with durable ClaimSessionStore + Nango Connect UI session token + one-shot finalize + idempotent webhook completion. Tightened GitHub verification to repo-level permission and corrected Nango proxy API shape."
+  - timestamp: "2026-04-26T09:00:00Z"
+    actor: "codex"
+    summary: "Implemented the durable claim-session design across cloud and OSS contracts, verified focused claim/Nango tests, cloud fast/build, and OSS fast/build."
+
+  - timestamp: "2026-04-26T08:57:26Z"
+    actor: "cli"
+    summary: "Spec approved"
+phases:
+  - id: "phase1"
+    name: "Durable claim-session model"
+    objective: "Separate claim workflow state from successful self-publish repo bindings."
+    changes:
+      - file: "cloud/packages/api/src/claim-session-model.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Define ClaimSessionRecord with:
+            request_id, runx_flow_id, nango_end_user_id, owner, name, skill_id,
+            repo_full_name, source_repo_owner, source_repo_name,
+            status enum pending_connection|verified|rejected|expired|error,
+            connect_session_token?, connection_id?, github_user?,
+            github_permission?, claim_reason?, version_snapshot,
+            created_at, updated_at, expires_at, completed_at?.
+          request_id and runx_flow_id are generated with crypto.randomUUID-derived
+          entropy. request_id is the browser capability. Do not make it guessable.
+      - file: "cloud/packages/api/src/claim-session-stores.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Add FileClaimSessionStore and InMemoryClaimSessionStore with:
+            get(request_id), put(record), list(), findByRunxFlowId(flow_id),
+            findActiveByConnectionId(connection_id), pruneExpired(now).
+          File store writes one JSON file per request_id atomically.
+      - file: "cloud/packages/api/src/self-publish-model.ts"
+        action: "update"
+        lines: "SelfPublishEnrollmentRecord"
+        content_spec: |
+          Keep statuses to indexed|tombstoned for repo bindings. Add successful
+          claim metadata only if absent: claim_session_id?, connection_id?,
+          github_user?, github_permission?. Pending/rejected claim sessions do
+          not belong in SelfPublishEnrollmentRecord.
+      - file: "cloud/packages/api/src/self-publish-helpers.ts"
+        action: "update"
+        lines: "normalizeEnrollment"
+        content_spec: "Round-trip only successful claim metadata."
+      - file: "cloud/packages/api/src/self-publish-stores.ts"
+        action: "update"
+        lines: "stores"
+        content_spec: "Keep findByRepo. Optionally add findByClaimSessionId. Do not add pending-claim lookup methods here."
+    acceptance_criteria:
+      - id: "ac1_1"
+        type: "test"
+        description: "ClaimSessionStore round-trips pending, verified, rejected, expired, and error records."
+      - id: "ac1_2"
+        type: "test"
+        description: "SelfPublishEnrollment normalization does not expose pending_connection or claim_rejected statuses."
+      - id: "ac1_3"
+        type: "boundary"
+        description: "No pending claim lookup is implemented on SelfPublishStore."
+    status: "completed"
+
+  - id: "phase2"
+    name: "Nango + GitHub permission clients"
+    objective: "Use official Nango surfaces and verify exact repo authority without raw tokens."
+    dependencies: ["phase1"]
+    changes:
+      - file: "cloud/packages/auth/src/nango-hosted.ts"
+        action: "update"
+        lines: "HostedNangoClient"
+        content_spec: |
+          Add createConnectSession(request) returning
+          { connectSessionToken, authorizationUrl?, expiresAt? }. Body uses:
+            end_user: { id: request.principalId, display_name, tags:
+              { runx_flow_id, runx_provider, runx_scopes, runx_claim_request_id? } },
+            allowed_integrations: [providerConfigKey],
+            integrations_config_defaults for GitHub user scopes.
+          Preserve existing beginOauth/connect_link behavior for /v1/connect.
+          Add findConnectionsByEndUser(provider, endUserId) using Nango list
+          connections filtered by endUserId.
+          Add proxyGet<T>(connectionId, provider, githubPath) using documented
+          GET ${baseUrl}/proxy/{githubPath} with Authorization,
+          Connection-Id, and Provider-Config-Key headers.
+          Remove webhookSecret fallback to secretKey. Constructor throws if
+          webhookSecret is absent in Nango mode. verifyWebhookSignature supports
+          both x-nango-hmac-sha256 and X-Nango-Signature during migration.
+      - file: "cloud/packages/api/src/github-identity.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Export GithubIdentityClient with verifyRepoAuthority(connectionId,
+          repoFullName): Promise<{ user, permission, public_orgs? }>.
+          It fetches /user for login, then verifies permission for the exact
+          source repo. Prefer /repos/{owner}/{repo}/collaborators/{user}/permission
+          when available; otherwise use /user/repos with pagination and inspect
+          the matching repo's permissions. Accept admin, maintain, write, or
+          permissions.push/admin/maintain true. Reject read/triage/none.
+    acceptance_criteria:
+      - id: "ac2_1"
+        type: "test"
+        description: "createConnectSession sends end_user.id claim:<request_id>, allowed_integrations, and GitHub scopes."
+      - id: "ac2_2"
+        type: "test"
+        description: "proxyGet uses GET /proxy/{path} with Connection-Id and Provider-Config-Key headers."
+      - id: "ac2_3"
+        type: "test"
+        description: "GithubIdentityClient accepts write/maintain/admin and rejects read-only org membership."
+      - id: "ac2_4"
+        type: "boundary"
+        description: "No access_token references in github-identity.ts."
+        command: "rg 'access_token' cloud/packages/api/src/github-identity.ts"
+        expected: "No matches."
+    status: "completed"
+
+  - id: "phase3"
+    name: "ClaimService"
+    objective: "Start durable sessions and complete them idempotently from either webhook or finalize."
+    dependencies: ["phase1", "phase2"]
+    changes:
+      - file: "cloud/packages/api/src/claim-service.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          ClaimService constructor injects registryStore, claimSessionStore,
+          selfPublishStore, nangoClient, githubIdentity, publicBaseUrl, now,
+          ttlMs (default 10 minutes), rejectedRetentionMs (24h).
+
+          startClaim({ owner, name }):
+            - Normalize owner/name.
+            - Load registryStore.listVersions(skill_id); 404 if absent.
+            - Require latest.source_metadata.repo; 409 if absent.
+            - Snapshot version+digest for all existing versions.
+            - Create request_id and runx_flow_id.
+            - Persist ClaimSessionRecord pending_connection before calling Nango.
+            - Call nangoClient.createConnectSession with principalId
+              `claim:${request_id}`, provider github, and public-repo identity scopes.
+            - Persist connect_session_token and Nango expires_at.
+            - Return request_id, connect_session_token, expires_at.
+            - No single-flight by listing.
+
+          finalizeClaim(request_id):
+            - Return terminal state if session is verified/rejected/error/expired.
+            - If pending and expired, mark expired.
+            - If pending has connection_id, call completeClaimWithConnection.
+            - Otherwise call nangoClient.findConnectionsByEndUser("github",
+              `claim:${request_id}`); if none, return pending.
+            - Complete with the newest matching connection.
+
+          completeClaimFromWebhook(event):
+            - Resolve claim by endUser.id / endUserId / tags.runx_claim_request_id
+              / tags.runx_flow_id before principal-bound connect flow lookup.
+            - If not a claim, return false.
+            - If success=false, mark rejected/error with Nango error details.
+            - If connectionId is present, call completeClaimWithConnection.
+            - Return true when handled.
+
+          completeClaimWithConnection(session, connection_id):
+            - Idempotent for terminal sessions.
+            - Verify repo authority through GithubIdentityClient.
+            - On accepted permission, promote only snapshot-matched versions to
+              verified while preserving first_party, write/update one
+              SelfPublishEnrollment repo binding, mark session verified.
+            - On mismatch, mark session rejected and do not mutate registry.
+            - On transient Nango/GitHub errors from finalize, mark error only if
+              error is deterministic; otherwise keep pending and return retryable.
+    acceptance_criteria:
+      - id: "ac3_1"
+        type: "test"
+        description: "startClaim persists before creating Nango session and returns a token."
+      - id: "ac3_2"
+        type: "test"
+        description: "finalizeClaim completes when Nango list-connections returns a connection."
+      - id: "ac3_3"
+        type: "test"
+        description: "webhook completion and finalize are idempotent under every ordering."
+      - id: "ac3_4"
+        type: "test"
+        description: "valid repo permission promotes snapshot-matched versions and writes a successful repo binding."
+      - id: "ac3_5"
+        type: "test"
+        description: "read-only or missing repo permission rejects without promotion."
+      - id: "ac3_6"
+        type: "test"
+        description: "new URL-published version during pending window is not promoted by the old snapshot."
+    status: "completed"
+
+  - id: "phase4"
+    name: "HTTP routes + webhook branch"
+    objective: "Expose durable sessions and wire Nango auth webhooks cleanly."
+    dependencies: ["phase3"]
+    changes:
+      - file: "cloud/packages/api/src/claim-routes.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Add routes:
+            POST /v1/claim/sessions:
+              body { owner, name }, rate-limited by IP and target.
+              Returns 201 { status:"success", request_id, connect_session_token,
+              expires_at }. 404 listing missing, 409 unclaimable source, 429.
+            GET /v1/claim/sessions/:request_id:
+              status read only. Does not return connect_session_token.
+            POST /v1/claim/sessions/:request_id/finalize:
+              calls claimService.finalizeClaim and returns current/final state.
+              202-style pending is represented as 200 { request_status:"pending_connection" }
+              to keep browser handling simple.
+      - file: "cloud/packages/api/src/rate-limit.ts"
+        action: "update"
+        lines: "factory"
+        content_spec: "Add createClaimSessionRateLimiters: per-IP and per-target budgets. Do not coalesce sessions globally."
+      - file: "cloud/packages/auth/src/nango-hosted.ts"
+        action: "update"
+        lines: "createNangoWebhookHandler"
+        content_spec: |
+          Add optional claimComplete callback. After signature verification and
+          parsing, before getFlow(flowId), pass the normalized auth webhook event
+          to claimComplete. If it returns true, respond 200. If false, fall
+          through to existing principal-bound connect behavior.
+      - file: "cloud/packages/api/src/index.ts"
+        action: "update"
+        lines: "HostedApiOptions + route registration"
+        content_spec: "Add claimService?: ClaimService and register claim routes."
+      - file: "cloud/packages/api/src/server.ts"
+        action: "update"
+        lines: "service construction + webhook wiring"
+        content_spec: |
+          Construct FileClaimSessionStore, GithubIdentityClient, ClaimService.
+          Call claimSessionStore.pruneExpired at boot. Wire claimComplete into
+          createNangoWebhookHandler. Keep connect-surface routing unchanged.
+      - file: "cloud/packages/api/src/self-publish-routes.ts"
+        action: "update"
+        lines: "remove /v1/claim"
+        content_spec: "Delete the app.post('/v1/claim') 503 stub."
+      - file: "cloud/packages/api/src/openapi-route-catalog.ts"
+        action: "update"
+        lines: "claim route catalog"
+        content_spec: "Remove /v1/claim. Add POST/GET/POST-finalize claim-session operations."
+      - file: "oss/packages/contracts/src/openapi-public.ts"
+        action: "update"
+        lines: "claim schemas"
+        content_spec: |
+          Replace ClaimRequest with ClaimSessionRequest, ClaimSessionEnvelope,
+          ClaimSessionStatusEnvelope. Status enum:
+          pending_connection|verified|rejected|expired|error.
+      - file: "cloud/packages/api/src/self-publish-service.ts"
+        action: "update"
+        lines: "claimListing"
+        content_spec: "Delete claimListing and now-unused imports."
+      - file: "cloud/packages/api/src/self-publish-service.test.ts"
+        action: "update"
+        lines: "claimListing tests"
+        content_spec: "Delete claimListing tests or replace with claim-service tests."
+      - file: "cloud/apps/web/src/pages/x/claim.astro"
+        action: "delete"
+        lines: "all"
+        content_spec: "Delete duplicate route."
+      - file: "cloud/apps/web/src/pages/api/claim.ts"
+        action: "delete"
+        lines: "all"
+        content_spec: "Delete legacy proxy."
+    acceptance_criteria:
+      - id: "ac4_1"
+        type: "test"
+        description: "POST /v1/claim/sessions persists a claim session and returns a token."
+      - id: "ac4_2"
+        type: "test"
+        description: "POST finalize returns terminal state if webhook completed first."
+      - id: "ac4_3"
+        type: "test"
+        description: "POST finalize completes if Nango has a connection and webhook has not arrived."
+      - id: "ac4_4"
+        type: "test"
+        description: "Claim webhook short-circuits before principal-bound getFlow; non-claim webhook falls through."
+      - id: "ac4_5"
+        type: "boundary"
+        description: "/v1/claim is a 404."
+      - id: "ac4_6"
+        type: "boundary"
+        description: "SelfPublishService.claimListing no longer exists."
+        command: "rg 'claimListing' cloud/packages/api/src cloud/tests"
+        expected: "No matches."
+    status: "completed"
+
+  - id: "phase5"
+    name: "Web ClaimAction without polling"
+    objective: "Use Nango Connect UI events and one finalize request."
+    dependencies: ["phase4"]
+    changes:
+      - file: "cloud/apps/web/src/pages/api/claim/sessions.ts"
+        action: "create"
+        lines: "all"
+        content_spec: "POST proxy to upstream /v1/claim/sessions."
+      - file: "cloud/apps/web/src/pages/api/claim/sessions/[request_id].ts"
+        action: "create"
+        lines: "all"
+        content_spec: "GET proxies status. POST proxies finalize. No await route."
+      - file: "cloud/packages/ui/package.json"
+        action: "update"
+        lines: "dependencies"
+        content_spec: "Add @nangohq/frontend if ClaimAction imports it directly."
+      - file: "cloud/packages/ui/src/ClaimAction/ClaimAction.tsx"
+        action: "update"
+        lines: "all"
+        content_spec: |
+          State machine:
+            idle -> connecting -> connected_event -> finalizing -> verified|rejected|expired|error|pending_manual_retry.
+          On click, POST /api/claim/sessions. Instantiate Nango frontend SDK
+          with connect_session_token and open Connect UI for GitHub.
+          On Nango connect event, POST /api/claim/sessions/:request_id/finalize once.
+          On close/cancel, show retry. On finalize pending, show a manual "check
+          again" button that calls finalize once per click. No setInterval, no
+          recursive fetch, no long-poll.
+      - file: "cloud/apps/web/src/pages/x/claim/index.astro"
+        action: "update"
+        lines: "copy + ClaimAction props"
+        content_spec: |
+          Drop coming-soon copy. Explain that claim verifies repo maintainer
+          permission and creates a repo binding. Do not promise OAuth installs
+          GitHub webhooks.
+    acceptance_criteria:
+      - id: "ac5_1"
+        type: "test"
+        description: "ClaimAction starts a session and opens Nango Connect UI with the returned token."
+      - id: "ac5_2"
+        type: "test"
+        description: "A Nango connect event triggers exactly one finalize request."
+      - id: "ac5_3"
+        type: "test"
+        description: "Pending finalize renders manual retry without automatic retry."
+      - id: "ac5_4"
+        type: "boundary"
+        description: "No polling APIs or timers in ClaimAction."
+        command: "cd ../cloud && rg -n 'setInterval|setTimeout|/await|while \\(' packages/ui/src/ClaimAction apps/web/src/pages/api/claim"
+        expected: "No matches."
+    status: "completed"
+
+  - id: "phase6"
+    name: "Integration tests + cleanup"
+    objective: "Prove the whole flow and remove unsafe leftovers."
+    dependencies: ["phase5"]
+    changes:
+      - file: "cloud/tests/claim-via-nango.test.ts"
+        action: "create"
+        lines: "all"
+        content_spec: |
+          Build a fake HostedNangoClient that creates connect session tokens,
+          lists connections by endUserId, and proxies GitHub responses. Cover:
+            - happy path via webhook;
+            - happy path via finalize before webhook;
+            - webhook before finalize;
+            - finalize before Nango connection exists returns pending;
+            - repo permission read-only rejection;
+            - public org membership alone rejected;
+            - duplicate valid concurrent sessions are idempotent;
+            - expired session cannot promote;
+            - URL-publish race promotes only snapshot versions;
+            - /v1/claim 404 and no claimListing method;
+            - existing /v1/connect Nango webhook flow still works.
+      - file: "cloud/packages/api/src/skill-indexer.ts"
+        action: "update"
+        lines: "trust tier inheritance"
+        content_spec: |
+          If context.trustTier is absent, get latest existing version for
+          skill_id and inherit trust_tier; otherwise default first publish to
+          community. URL-publish stops passing trustTier explicitly. Webhook
+          reindex may still pass trustTier explicitly.
+    acceptance_criteria:
+      - id: "ac6_1"
+        type: "test"
+        description: "End-to-end claim-via-nango integration suite passes."
+      - id: "ac6_2"
+        type: "test"
+        description: "Existing runx-connect Nango webhook tests still pass."
+      - id: "ac6_3"
+        type: "test"
+        description: "URL-publish preserves existing verified trust tier from same source."
+    status: "completed"
+
+rollback:
+  strategy: "per_phase"
+  commands:
+    phase1: "git rm cloud/packages/api/src/claim-session-{model,stores}.ts && git checkout HEAD -- cloud/packages/api/src/self-publish-{model,helpers,stores}.ts"
+    phase2: "git rm cloud/packages/api/src/github-identity.ts && git checkout HEAD -- cloud/packages/auth/src/nango-hosted.ts"
+    phase3: "git rm cloud/packages/api/src/claim-service.ts"
+    phase4: "git rm cloud/packages/api/src/claim-routes.ts && git checkout HEAD -- cloud/packages/api/src/index.ts cloud/packages/api/src/server.ts cloud/packages/api/src/server-config.ts cloud/packages/api/src/rate-limit.ts cloud/packages/api/src/self-publish-routes.ts cloud/packages/api/src/self-publish-service.ts cloud/packages/api/src/self-publish-service.test.ts cloud/packages/api/src/openapi-route-catalog.ts oss/packages/contracts/src/openapi-public.ts && git checkout HEAD -- cloud/apps/web/src/pages/x/claim.astro cloud/apps/web/src/pages/api/claim.ts"
+    phase5: "git rm -r cloud/apps/web/src/pages/api/claim/sessions.ts cloud/apps/web/src/pages/api/claim/sessions && git checkout HEAD -- cloud/packages/ui/package.json cloud/packages/ui/src/ClaimAction/ClaimAction.tsx cloud/apps/web/src/pages/x/claim/index.astro"
+    phase6: "git rm cloud/tests/claim-via-nango.test.ts && git checkout HEAD -- cloud/packages/api/src/skill-indexer.ts"
+
+metadata:
+  estimated_effort_hours: 16
+  tags:
+    - "claim"
+    - "nango"
+    - "github"
+    - "trust-tier"
+    - "repo-permission"

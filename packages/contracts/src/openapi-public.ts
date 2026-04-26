@@ -850,6 +850,11 @@ export function buildHostedOpenApiPublicSchemas(): Readonly<Record<string, unkno
                 "rate_limited",
                 "repo_url_invalid",
                 "no_skills_found",
+                "claim_request_invalid",
+                "claim_not_configured",
+                "claim_not_found",
+                "claim_unclaimable",
+                "claim_internal_error",
               ],
             },
             detail: { type: "string" },
@@ -875,14 +880,42 @@ export function buildHostedOpenApiPublicSchemas(): Readonly<Record<string, unkno
       required: ["status", "skill_id", "trust_tier", "latest_version", "latest_digest"],
       additionalProperties: false,
     },
-    ClaimRequest: {
+    ClaimSessionRequest: {
       type: "object",
       properties: {
-        actor: { type: "string" },
         owner: { type: "string" },
         name: { type: "string" },
       },
-      required: ["actor", "owner", "name"],
+      required: ["owner", "name"],
+      additionalProperties: false,
+    },
+    ClaimSessionEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        request_id: { type: "string" },
+        connect_session_token: { type: "string" },
+        authorization_url: { type: "string", format: "uri" },
+        expires_at: { type: "string", format: "date-time" },
+      },
+      required: ["status", "request_id", "connect_session_token", "expires_at"],
+      additionalProperties: false,
+    },
+    ClaimSessionStatusEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        request_id: { type: "string" },
+        request_status: {
+          type: "string",
+          enum: ["pending_connection", "verified", "rejected", "expired", "error"],
+        },
+        github_user: { type: "string" },
+        github_permission: { type: "string" },
+        claim_reason: { type: "string" },
+        listing_promoted: { type: "boolean" },
+      },
+      required: ["status", "request_id", "request_status", "listing_promoted"],
       additionalProperties: false,
     },
     PublicHarnessEnvelope: {
