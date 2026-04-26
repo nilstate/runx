@@ -53,8 +53,17 @@ task:
         lines: "all"
         reason: "New module. `POST /v1/claim/sessions`, `GET /v1/claim/sessions/:request_id`."
       - path: "cloud/packages/api/src/self-publish-routes.ts"
-        lines: "/v1/claim — replace 503 stub with delegation to claim-service"
-        reason: "The 503 placeholder from the surgical cutover comes back to life via claim-service."
+        lines: "remove /v1/claim block"
+        reason: "Hard cutover: the 503 stub is deleted entirely. The only claim surface going forward is /v1/claim/sessions."
+      - path: "cloud/apps/web/src/pages/api/claim.ts"
+        lines: "delete file"
+        reason: "Hard cutover: the legacy proxy route disappears. Replaced by /api/claim/sessions in phase 5."
+      - path: "cloud/packages/api/src/openapi-route-catalog.ts"
+        lines: "/v1/claim entry removed; new claim-session entries added"
+        reason: "Catalog must match the live route surface — no ghost entries for deleted routes."
+      - path: "oss/packages/contracts/src/openapi-public.ts"
+        lines: "ClaimRequest schema removed; claim-session schemas added"
+        reason: "Schema set follows the route surface."
       - path: "cloud/packages/auth/src/nango-hosted.ts"
         lines: "createNangoWebhookHandler"
         reason: "Branch on `runx_flow_id` resolution: if the flow belongs to a claim session (looked up via the new ClaimWebhookResolver), invoke claim-service.completeClaim; otherwise fall through to the existing principal-bound completeFlow."
@@ -77,23 +86,40 @@ task:
         lines: "all"
         reason: "Restore the real button. Click → POST /api/claim/sessions → redirect to authorize_url. Render mismatch/error states from the response."
       - path: "cloud/packages/api/src/server-config.ts"
-        lines: "RUNX_PUBLIC_BASE_URL usage"
-        reason: "claim-service needs the public base URL to construct redirect_url. Already in config; just thread it through."
+        lines: "RUNX_PUBLIC_BASE_URL + RUNX_NANGO_WEBHOOK_SECRET + RUNX_HOSTED_REPLICA_COUNT"
+        reason: "claim-service needs the public base URL for the listing permalink. server.ts assertions need the webhook secret + replica count surfaced through config."
+      - path: "cloud/packages/auth/src/http.ts"
+        lines: "ConnectWebhookHandler.handle signature; ConnectHttpSurfaceOptions.webhookHandler"
+        reason: "The Nango webhook is delivered to the connect-surface HTTP server (not the Hono API app). Current handler signature only knows about flow Map<flowId, ConnectFlowRecord> for principal-bound flows. Spec needs a precondition hook that checks claim flows BEFORE the existing getFlow lookup, since claim flows are not in that Map."
+      - path: "cloud/packages/auth/src/nango-hosted.ts"
+        lines: "constructor — drop webhookSecret fallback to secretKey"
+        reason: "Per the security finding, the fallback `webhookSecret ?? secretKey` makes claim flows forgeable if any test fixture leaks the integration secret. Webhook secret becomes required. Existing callers (server.ts) already pass it; the fallback removal is internal."
+      - path: "cloud/packages/api/src/self-publish-service.ts"
+        lines: "delete claimListing method + private slugifyHandle import (if only used here)"
+        reason: "Hard cutover: the previous claim path is gone. claimListing was the implementation behind the deleted /v1/claim route — keeping it leaves a foot-gun where any future caller could re-promote listings without OAuth. Delete the method + its tests in self-publish-service.test.ts."
+      - path: "cloud/apps/web/src/pages/x/claim.astro"
+        lines: "delete file"
+        reason: "Astro routing footgun: both /x/claim.astro AND /x/claim/index.astro resolve at /x/claim. claim/index.astro is canonical. Delete the legacy claim.astro from the surgical cutover."
     invariants:
       - "Anonymous flow: no runx-side principal required, no runx account exists."
       - "Connection-as-claim: the github connection itself is the trust artifact. Each successful claim persists the connection scoped to one (owner, name) listing. No long-lived runx user identity."
-      - "Server-side-await, not client-side polling: the return page resolves a single in-process promise that the webhook handler completes."
+      - "ClaimAction does NOT depend on Nango redirecting the browser back to runx after OAuth. The browser opens authorize_url in a NEW TAB; the original /x/claim tab fires ONE long-poll to /v1/claim/sessions/:id/await. Webhook resolves an in-process promise; long-poll returns the final state. No client-side polling timer, no return page."
       - "Github identity is fetched via Nango proxy, never by handling the OAuth token directly in runx code."
       - "Existing principal-bound /v1/connect flows are untouched — claim is its own surface."
+      - "Hard cutover on /v1/claim: the previous 503 stub is deleted, no legacy alias, no redirect. Anything pointing at /v1/claim gets a framework 404."
       - "Claim never downgrades: re-claiming a `verified` or `first_party` listing is a no-op promotion."
       - "Per-listing scope: a successful claim grants ongoing webhook reindex authority for that one (owner, name) listing only, not the actor's other repos."
+      - "Promotion is locked to the version-digest snapshot taken at startClaim. New versions URL-published during the pending window are NOT auto-promoted; they re-acquire `verified` only on the next webhook reindex (which uses the existing 'preserve existing tier' rule). Closes the URL-publish-during-claim content-substitution race."
+      - "v1 deploys to a single replica. server.ts asserts at startup: `RUNX_HOSTED_REPLICA_COUNT` is unset OR equals 1. Multi-replica is a future spec (durable resolver via DB or pub/sub)."
+      - "Nango webhook signature is verified against `RUNX_NANGO_WEBHOOK_SECRET` REQUIRED, not falling back to `RUNX_NANGO_SECRET_KEY`. server.ts asserts both are set AND distinct. The HostedNangoClient constructor's existing fallback (line 55: `webhookSecret ?? secretKey`) is removed."
+      - "`runx_flow_id` is generated via `crypto.randomUUID()` (~122 bits of entropy). Webhooks claiming an unknown flow_id 202-ignore."
     related_docs:
       - "oss/.ai/specs/active/runx-url-as-publish.yaml (the publish flow this builds on)"
       - "cloud/packages/auth/src/nango-hosted.ts (existing Nango client)"
       - "cloud/packages/auth/src/http.ts (existing principal-bound connect surface — model only, not extended)"
 
   objectives:
-    - "Replace the 503 stub at /v1/claim with a real Nango-backed flow."
+    - "Delete /v1/claim (the cutover's 503 stub) entirely and ship the real flow under /v1/claim/sessions. No legacy compat path."
     - "Make `verified` self-serve for legitimate github owners and org members."
     - "Persist the github connection per-listing so subsequent push/tag webhooks reindex automatically."
     - "Avoid client-side polling: the return page renders the final state on first load."
@@ -106,8 +132,9 @@ task:
       - "Github identity fetch via Nango proxy (`/user`, `/user/orgs?type=public`)."
       - "Tier promotion across all RegistrySkillVersion records for `(owner, name)` on successful identity match."
       - "Persisted enrollment with `connection_id` so future webhook events on that repo are honored."
-      - "Return page with server-side promise await, single page load, no client polling."
-      - "Restored ClaimAction component on /x/claim."
+      - "ClaimAction with new-tab OAuth + single long-poll await. No return page."
+      - "Per-IP rate limit on POST /v1/claim/sessions to prevent quota burn / store flood."
+      - "URL-publish indexer change: inherit existing trust_tier when a prior version exists (so claim's promotion is sticky across subsequent pushes via URL-publish, not just webhook reindex)."
       - "Tests across model, store, webhook resolver, claim-service happy path, identity-mismatch, expired-session, and end-to-end mock-Nango simulation."
     out_of_scope:
       - "Public sign-up / runx user accounts."
@@ -121,8 +148,13 @@ task:
     - "Synthetic Nango principalId of the form `claim:<request_id>`. This satisfies the existing Connect flow's principalId requirement without colliding with bearer principals."
     - "Identity fetch path: Nango proxy (option B from the design conversation). Nango handles token refresh; runx never sees raw github tokens."
     - "Org-claim semantics: broad. `@stripe/x` is claimable by any github actor whose **public** org membership list (from `GET /user/orgs?type=public`) includes `stripe`. We deliberately exclude private memberships — public membership is the verifiable signal."
-    - "Webhook precedence: the webhook handler ALWAYS completes the claim before the return page can render success. The return page server-side `await`s the same in-memory resolver entry the webhook resolves; if the webhook never arrives within 5s the return page renders a 'still processing' fallback (rare; usually the webhook is resolved before the redirect lands)."
-    - "Resolver state lives in-process only. A node restart in the middle of an unclaimed-but-pending session results in the user landing on the return page, finding `status: pending_connection`, and falling through to the 'still processing' fallback. Acceptable — they retry."
+    - "UX flow with no Nango redirect dependency: ClaimAction opens authorize_url in a NEW TAB AND fires ONE long-poll to GET /v1/claim/sessions/:id/await?timeout_ms=120000. Server holds the long-poll open against the in-process resolver until the webhook fires (or the 2-minute cap). User sees a single 'connecting…' spinner that resolves to success/mismatch in real time — no client polling timer, no return page. If the long-poll times out, ClaimAction renders a 'still processing — refresh to check' message and a manual retry button (a second long-poll). Nango's default success page is acceptable in the OAuth tab; the user closes it when done."
+    - "Resolver state lives in-process only. A node restart in the middle of a pending session: the long-poll connection drops, the user retries from the 'still processing' message, and the next long-poll lands on the post-restart resolver — which has lost the pending session. The retry hits the GET-status endpoint and finds the persisted enrollment. If the webhook fired during the restart, the enrollment is `indexed` and the user sees success. If it didn't, the user is stuck — operator runbook: re-trigger via Nango's UI. v1 single-replica mitigates this; durable resolver is a future spec."
+    - "Webhook → claim ordering safety: `claim-service.startClaim` persists the enrollment FIRST (status `pending_connection`, with placeholder authorize_url=''), THEN registers the resolver entry, THEN calls `nangoClient.beginOauth` to get the real authorize_url, THEN updates the enrollment with the URL. This guarantees the webhook handler's `findByRunxFlowId` lookup ALWAYS finds the enrollment, even if Nango is faster than our store write."
+    - "URL-publish-during-claim race: at startClaim time, `claim-service` snapshots the set of `(skill_id, version, digest)` tuples from `registryStore.listVersions(skill_id)`. completeClaim's bulk promotion ONLY promotes versions whose `(version, digest)` is in that snapshot. New versions URL-published during the pending window land at community per the existing pin and inherit `verified` only on the next webhook reindex (which uses the existing 'preserve existing tier' rule from `self-publish-service.ts` — already shipped in the surgical cutover)."
+    - "Claim-rejected lifecycle: rejected enrollments persist with `expires_at = now + 24h` and a `claim_reason`. `findPendingByListing(owner, name)` filters by status `pending_connection` ONLY — rejected enrollments do NOT block fresh attempts. A startup prune sweep (and a periodic one if we add a worker) removes expired rejected/pending enrollments. Audit log retention is a future spec."
+    - "Single-flight expires_at check: `findPendingByListing` returns a record only if `expires_at > now()`. Stale pending enrollments past Nango session expiry mint a fresh session. This handles the edge case where a user starts a claim, walks away for 30+ minutes, and comes back."
+    - "URL-publish tier inheritance: the URL-publish indexer (skill-indexer.ts indexValidatedCandidate) is updated to look up the latest stored version's trust_tier and inherit it when one exists, defaulting to `community` only on first publish. Safe because name uniqueness means only one source can publish under a given (owner, name); an attacker cannot front-run claim by publishing first under the same name from a different repo."
     - "Persist `connection_id` on the enrollment so the existing webhook reindex path (push/tag) honors claimed repos. The standard `/webhooks/nango` flow already updates by `runx_flow_id`; we ALSO key future github push/tag events to the enrollment by `repo_full_name` lookup (already implemented)."
     - "Trust tier promotion is bulk: every existing RegistrySkillVersion for `(owner, name)` is promoted in one pass. Subsequent versions inherit `verified` via the existing 'preserve existing tier on reindex' rule we shipped in the surgical cutover."
     - "Single-flight per (owner, name): if a `pending_connection` enrollment already exists for that listing and is not expired, /v1/claim/sessions returns the existing authorize_url. Prevents duplicate Nango sessions racing each other."
@@ -272,9 +304,10 @@ phases:
     changes:
       - file: "cloud/packages/auth/src/nango-hosted.ts"
         action: "update"
-        lines: "HostedNangoClient — add proxyGet method"
+        lines: "HostedNangoClient — add proxyGet method; remove webhookSecret fallback"
         content_spec: |
-          Add `proxyGet<T>(connectionId, provider, githubPath): Promise<T>`. POSTs to `${baseUrl}/proxy` with body `{ connection_id, provider_config_key: this.providerConfigKey(provider), method: "GET", endpoint: githubPath }` and parses the upstream JSON. Throws on non-2xx with the upstream error message.
+          Add `proxyGet<T>(connectionId: string, provider: string, githubPath: string): Promise<T>`. (Provider-parametrized — `provider` resolves through `this.providerConfigKey(provider)`.) POSTs to `${baseUrl}/proxy` with body `{ connection_id, provider_config_key, method: "GET", endpoint: githubPath }` and parses the upstream JSON. Throws on non-2xx with the upstream error message.
+          Constructor: drop `this.webhookSecret = options.webhookSecret ?? options.secretKey` (line 55). Replace with `this.webhookSecret = options.webhookSecret;` and assert `if (!options.webhookSecret) throw new Error("HostedNangoClient: webhookSecret is required.")`. server.ts already passes both keys; this just removes the silent fallback.
       - file: "cloud/packages/api/src/github-identity.ts"
         action: "create"
         lines: "all"
@@ -377,9 +410,24 @@ phases:
           Construct ClaimResolver + GithubIdentityClient + ClaimService. Pass claimService into createHostedApiApp options. Pass claimService.completeClaim into the createNangoWebhookHandler options as claimWebhookHandler.complete.
       - file: "cloud/packages/api/src/self-publish-routes.ts"
         action: "update"
-        lines: "/v1/claim handler"
+        lines: "remove /v1/claim handler"
         content_spec: |
-          Replace the 503 stub. The standalone /v1/claim path is repurposed: POST /v1/claim with { request_id } returns the current enrollment status (a thin alias for GET /v1/claim/sessions/:request_id, kept for backwards compat with anything that already calls /v1/claim by URL). Or, alternatively, drop /v1/claim entirely and have everything go through /v1/claim/sessions. **DECIDE during phase4 implementation; default = drop, keep only /v1/claim/sessions.**
+          DELETE the entire `app.post("/v1/claim", ...)` block (the 503 stub from the surgical cutover). No legacy alias, no redirect, no compat. The only claim surface is /v1/claim/sessions. Anything still calling /v1/claim hits the framework's 404.
+      - file: "cloud/packages/api/src/openapi-route-catalog.ts"
+        action: "update"
+        lines: "remove /v1/claim, add /v1/claim/sessions + /v1/claim/sessions/{request_id}"
+        content_spec: |
+          Drop the existing `/v1/claim` operation entry. Add `claimSession` (POST /v1/claim/sessions, body ClaimSessionRequest, 201 ClaimSessionEnvelope) and `getClaimSession` (GET /v1/claim/sessions/{request_id}, 200 ClaimSessionStatusEnvelope, 404 ErrorEnvelope).
+      - file: "oss/packages/contracts/src/openapi-public.ts"
+        action: "update"
+        lines: "swap ClaimRequest schema → claim-session schemas"
+        content_spec: |
+          Drop the `ClaimRequest` schema added during the cutover (it described the /v1/claim body). Add: `ClaimSessionRequest` ({ owner, name }), `ClaimSessionEnvelope` ({ status: "success", request_id, authorize_url, expires_at }), `ClaimSessionStatusEnvelope` ({ status: "success", request_status: enum["pending_connection","indexed","claim_rejected","tombstoned"], github_user?, github_orgs?, claim_reason?, listing_promoted: boolean }).
+      - file: "cloud/apps/web/src/pages/api/claim.ts"
+        action: "delete"
+        lines: "all"
+        content_spec: |
+          DELETE the proxy route. Superseded by /api/claim/sessions (added in phase 5). Anything pointed at it will see Astro's default 404.
     acceptance_criteria:
       - id: "ac4_1"
         type: "test"

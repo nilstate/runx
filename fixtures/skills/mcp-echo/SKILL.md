@@ -14,6 +14,9 @@ source:
   arguments:
     message: "{{message}}"
   timeout_seconds: 15
+  sandbox:
+    profile: readonly
+    cwd_policy: workspace
 inputs:
   message:
     type: string

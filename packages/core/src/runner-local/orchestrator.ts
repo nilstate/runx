@@ -1,8 +1,9 @@
 import {
   materializeArtifacts,
   readLedgerEntries,
+  type ArtifactEnvelope,
 } from "../artifacts/index.js";
-import type { ResolutionRequest } from "../executor/index.js";
+import { validateResolutionRequest, type ResolutionRequest } from "../executor/index.js";
 import {
   loadRunxWorkspacePolicy,
 } from "../config/index.js";
@@ -12,7 +13,7 @@ import {
   loadVoiceProfile,
   voiceProfileReceiptMetadata,
 } from "./context.js";
-import type { GraphStep, ValidatedSkill } from "../parser/index.js";
+import type { ExecutionGraph, GraphStep, ValidatedSkill } from "../parser/index.js";
 import { admitRetryPolicy } from "../policy/index.js";
 import {
   uniqueReceiptId,
@@ -22,8 +23,10 @@ import {
 import {
   createSequentialGraphState,
   evaluateFanoutSync,
+  fanoutSyncDecisionKey,
   planSequentialGraphTransition,
   transitionSequentialGraph,
+  type FanoutSyncDecision,
   type SequentialGraphState,
 } from "../state-machine/index.js";
 import { runFanout } from "./fanout.js";
@@ -121,14 +124,17 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
   let state = createSequentialGraphState(graphId, graphSteps);
   const stepRuns: GraphStepRun[] = [];
   const syncPoints: GraphReceiptSyncPoint[] = [];
+  const resolvedFanoutGateKeys = new Set<string>();
   const outputs = new Map<string, GraphStepOutput>();
   let lastReceiptId: string | undefined;
   let finalOutput = "";
   let finalError: string | undefined;
+  let graphAlreadyTerminal = false;
   let involvedAgentMediatedWork = false;
   if (options.resumeFromRunId) {
+    const resumeEntries = await readLedgerEntries(receiptDir, options.resumeFromRunId);
     hydrateGraphFromLedger({
-      entries: await readLedgerEntries(receiptDir, options.resumeFromRunId),
+      entries: resumeEntries,
       graph,
       graphStepCache,
       skillEnvironment: options.skillEnvironment,
@@ -153,6 +159,45 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
         },
       },
     });
+    const pendingFanoutGate = readPendingFanoutGate(resumeEntries);
+    if (pendingFanoutGate) {
+      syncPoints.push(pendingFanoutGate.syncPoint);
+      const resolution = await options.caller.resolve(pendingFanoutGate.request);
+      if (resolution === undefined) {
+        const pendingStep = firstFanoutStep(graph, pendingFanoutGate.groupId);
+        if (!pendingStep) {
+          throw new Error(`Unable to resume fanout gate for unknown group '${pendingFanoutGate.groupId}'.`);
+        }
+        const resolvedStep = await resolveGraphStepExecution({
+          step: pendingStep,
+          graphDirectory,
+          graphStepCache,
+          skillEnvironment: options.skillEnvironment,
+          registryStore: options.registryStore,
+          skillCacheDir: options.skillCacheDir,
+          toolCatalogAdapters: options.toolCatalogAdapters,
+        });
+        return {
+          status: "needs_resolution",
+          graph,
+          stepIds: pendingFanoutGate.stepIds,
+          stepLabels: pendingFanoutGate.stepLabels,
+          skillPath: resolvedStep.skillPath,
+          skill: resolvedStep.skill,
+          requests: [pendingFanoutGate.request],
+          state,
+          runId: graphId,
+        };
+      }
+      const approved = typeof resolution.payload === "boolean" ? resolution.payload : Boolean(resolution.payload);
+      if (approved) {
+        resolvedFanoutGateKeys.add(pendingFanoutGate.gateKey);
+      } else {
+        finalError = `fanout gate denied: ${pendingFanoutGate.syncPoint.reason}`;
+        state = transitionSequentialGraph(state, { type: "fail_graph", error: finalError });
+        graphAlreadyTerminal = true;
+      }
+    }
     involvedAgentMediatedWork = stepRuns.some((stepRun) => {
       const step = graph.steps.find((candidate) => candidate.id === stepRun.stepId);
       const cachedSkill = graphStepCache.get(stepRun.stepId);
@@ -169,8 +214,10 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     data: { graphPath: graphResolution.resolvedGraphPath, graphId },
   });
 
-  while (true) {
-    const plan = planSequentialGraphTransition(state, graphSteps, graph.fanoutGroups);
+  while (!graphAlreadyTerminal) {
+    const plan = planSequentialGraphTransition(state, graphSteps, graph.fanoutGroups, {
+      resolvedFanoutGateKeys,
+    });
     if (plan.type === "complete") {
       state = transitionSequentialGraph(state, { type: "complete" });
       break;
@@ -192,6 +239,103 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
       }
       state = transitionSequentialGraph(state, { type: "fail_graph", error: plan.reason });
       break;
+    }
+
+    if (plan.type === "paused" || plan.type === "escalated") {
+      const gateRequest = buildFanoutGateResolutionRequest(plan.syncDecision);
+      await options.caller.report({
+        type: "resolution_requested",
+        message: plan.syncDecision.reason,
+        data: {
+          kind: gateRequest.kind,
+          requestId: gateRequest.id,
+          gate: gateRequest.gate,
+        },
+      });
+      const resolution = await options.caller.resolve(gateRequest);
+
+      if (resolution === undefined) {
+        const stepIds = graphSteps
+          .filter((step) => step.fanoutGroup === plan.syncDecision.groupId)
+          .map((step) => step.id);
+        const stepLabels = graph.steps
+          .filter((step) => step.fanoutGroup === plan.syncDecision.groupId)
+          .map((step) => step.label ?? step.id);
+        const pendingStep = findGraphStep(graph, plan.stepId);
+        const resolvedStep = await resolveGraphStepExecution({
+          step: pendingStep,
+          graphDirectory,
+          graphStepCache,
+          skillEnvironment: options.skillEnvironment,
+          registryStore: options.registryStore,
+          skillCacheDir: options.skillCacheDir,
+          toolCatalogAdapters: options.toolCatalogAdapters,
+        });
+        await appendPendingGraphLedgerEntry({
+          receiptDir,
+          runId: graphId,
+          topLevelSkillName: graphProducerSkillName(options.skillEnvironment?.name, graph.name),
+          stepId: `fanout:${plan.syncDecision.groupId}`,
+          kind: "step_waiting_resolution",
+          detail: {
+            request_ids: [gateRequest.id],
+            resolution_kinds: [gateRequest.kind],
+            requests: [gateRequest],
+            runner: "graph",
+            step_label: `fanout ${plan.syncDecision.groupId}`,
+            step_ids: stepIds,
+            step_labels: stepLabels,
+            inputs: options.inputs ?? {},
+            skill_path: graphResolution.resolvedGraphPath ?? graphDirectory,
+            resolved_path: graphResolution.resolvedGraphPath ?? graphDirectory,
+            fanout_gate_key: fanoutSyncDecisionKey(plan.syncDecision),
+            sync_decision: toGraphReceiptSyncPoint(
+              plan.syncDecision,
+              latestFanoutReceiptIds(stepRuns, plan.syncDecision.groupId),
+            ),
+          },
+          createdAt: new Date().toISOString(),
+        });
+        state = transitionSequentialGraph(
+          state,
+          plan.type === "escalated"
+            ? { type: "escalate_graph", reason: plan.reason }
+            : { type: "pause_graph", reason: plan.reason },
+        );
+        return {
+          status: "needs_resolution",
+          graph,
+          stepIds,
+          stepLabels,
+          skillPath: resolvedStep.skillPath,
+          skill: resolvedStep.skill,
+          requests: [gateRequest],
+          state,
+          runId: graphId,
+        };
+      }
+
+      const approved = typeof resolution.payload === "boolean" ? resolution.payload : Boolean(resolution.payload);
+      await options.caller.report({
+        type: "resolution_resolved",
+        message: approved ? `Fanout gate ${gateRequest.gate.id} approved.` : `Fanout gate ${gateRequest.gate.id} denied.`,
+        data: {
+          kind: gateRequest.kind,
+          requestId: gateRequest.id,
+          gate: gateRequest.gate,
+          actor: resolution.actor,
+          approved,
+        },
+      });
+      syncPoints.push(toGraphReceiptSyncPoint(plan.syncDecision, latestFanoutReceiptIds(stepRuns, plan.syncDecision.groupId)));
+      if (!approved) {
+        finalError = `${plan.type === "escalated" ? "fanout escalation" : "fanout gate"} denied: ${plan.reason}`;
+        state = transitionSequentialGraph(state, { type: "fail_graph", error: finalError });
+        break;
+      }
+
+      resolvedFanoutGateKeys.add(fanoutSyncDecisionKey(plan.syncDecision));
+      continue;
     }
 
     if (plan.type === "run_fanout") {
@@ -554,7 +698,9 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
         };
       }
 
-      const followUpPlan = planSequentialGraphTransition(state, graphSteps, graph.fanoutGroups);
+      const followUpPlan = planSequentialGraphTransition(state, graphSteps, graph.fanoutGroups, {
+        resolvedFanoutGateKeys,
+      });
       if (followUpPlan.type === "run_fanout" && followUpPlan.groupId === plan.groupId) {
         continue;
       }
@@ -566,6 +712,11 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
         syncPoints.push(toGraphReceiptSyncPoint(followUpPlan.syncDecision, latestFanoutReceiptIds(stepRuns, plan.groupId)));
         state = transitionSequentialGraph(state, { type: "fail_graph", error: finalError });
         break;
+      }
+      if ((followUpPlan.type === "paused" || followUpPlan.type === "escalated") && followUpPlan.syncDecision.groupId === plan.groupId) {
+        const groupReceiptIds = latestFanoutReceiptIds(stepRuns, plan.groupId);
+        lastReceiptId = groupReceiptIds[groupReceiptIds.length - 1] ?? lastReceiptId;
+        continue;
       }
 
       const policy = graph.fanoutGroups[plan.groupId];
@@ -582,8 +733,11 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
                 outputs: stepState?.outputs,
               };
             }),
+          { resolvedGateKeys: resolvedFanoutGateKeys },
         );
-        syncPoints.push(toGraphReceiptSyncPoint(decision, latestFanoutReceiptIds(stepRuns, plan.groupId)));
+        if (decision.decision === "proceed" || decision.decision === "halt") {
+          syncPoints.push(toGraphReceiptSyncPoint(decision, latestFanoutReceiptIds(stepRuns, plan.groupId)));
+        }
       }
 
       const groupReceiptIds = latestFanoutReceiptIds(stepRuns, plan.groupId);
@@ -961,4 +1115,138 @@ export async function runLocalGraph(options: RunLocalGraphOptions): Promise<RunL
     output: finalOutput,
     errorMessage: finalError,
   };
+}
+
+function buildFanoutGateResolutionRequest(
+  decision: FanoutSyncDecision,
+): Extract<ResolutionRequest, { readonly kind: "approval" }> {
+  const id = `fanout.${normalizeResolutionId(decision.groupId)}.${normalizeResolutionId(decision.ruleFired)}`;
+  return {
+    id,
+    kind: "approval",
+    gate: {
+      id,
+      type: decision.decision === "escalate" ? "fanout-escalation" : "fanout-gate",
+      reason: decision.reason,
+      summary: {
+        group_id: decision.groupId,
+        decision: decision.decision,
+        strategy: decision.strategy,
+        rule_fired: decision.ruleFired,
+        branch_count: decision.branchCount,
+        success_count: decision.successCount,
+        failure_count: decision.failureCount,
+        required_successes: decision.requiredSuccesses,
+        gate: decision.gate,
+      },
+    },
+  };
+}
+
+interface PendingFanoutGate {
+  readonly gateKey: string;
+  readonly groupId: string;
+  readonly request: Extract<ResolutionRequest, { readonly kind: "approval" }>;
+  readonly syncPoint: GraphReceiptSyncPoint;
+  readonly stepIds: readonly string[];
+  readonly stepLabels: readonly string[];
+}
+
+function readPendingFanoutGate(entries: readonly ArtifactEnvelope[]): PendingFanoutGate | undefined {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index]!;
+    if (entry.type !== "run_event") {
+      continue;
+    }
+    const kind = typeof entry.data.kind === "string" ? entry.data.kind : "";
+    if (kind === "chain_completed" || kind === "run_completed" || kind === "run_failed") {
+      return undefined;
+    }
+    if (kind !== "step_waiting_resolution" || !isRecord(entry.data.detail)) {
+      continue;
+    }
+    const detail = entry.data.detail;
+    const gateKey = typeof detail.fanout_gate_key === "string" ? detail.fanout_gate_key : undefined;
+    const syncPoint = parseGraphReceiptSyncPoint(detail.sync_decision);
+    if (!gateKey || !syncPoint) {
+      continue;
+    }
+    const requests = Array.isArray(detail.requests)
+      ? detail.requests.map((request, requestIndex) =>
+          validateResolutionRequest(request, `fanout_gate.requests[${requestIndex}]`))
+      : [];
+    const request = requests.find((candidate): candidate is Extract<ResolutionRequest, { readonly kind: "approval" }> =>
+      candidate.kind === "approval");
+    if (!request) {
+      continue;
+    }
+    return {
+      gateKey,
+      groupId: syncPoint.group_id,
+      request,
+      syncPoint,
+      stepIds: stringArray(detail.step_ids),
+      stepLabels: stringArray(detail.step_labels),
+    };
+  }
+  return undefined;
+}
+
+function firstFanoutStep(graph: ExecutionGraph, groupId: string): GraphStep | undefined {
+  return graph.steps.find((step) => step.fanoutGroup === groupId);
+}
+
+function parseGraphReceiptSyncPoint(value: unknown): GraphReceiptSyncPoint | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const groupId = stringValue(value.group_id);
+  const strategy = stringValue(value.strategy);
+  const decision = stringValue(value.decision);
+  const ruleFired = stringValue(value.rule_fired);
+  const reason = stringValue(value.reason);
+  if (
+    !groupId ||
+    !ruleFired ||
+    !reason ||
+    (strategy !== "all" && strategy !== "any" && strategy !== "quorum") ||
+    (decision !== "proceed" && decision !== "halt" && decision !== "pause" && decision !== "escalate")
+  ) {
+    return undefined;
+  }
+  return {
+    group_id: groupId,
+    strategy,
+    decision,
+    rule_fired: ruleFired,
+    reason,
+    branch_count: numberValue(value.branch_count),
+    success_count: numberValue(value.success_count),
+    failure_count: numberValue(value.failure_count),
+    required_successes: numberValue(value.required_successes),
+    branch_receipts: stringArray(value.branch_receipts),
+    gate: isRecord(value.gate) ? value.gate : undefined,
+  };
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function numberValue(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function stringArray(value: unknown): readonly string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
+    : [];
+}
+
+function normalizeResolutionId(value: string): string {
+  return value.replace(/[^A-Za-z0-9_.-]+/g, "_");
 }

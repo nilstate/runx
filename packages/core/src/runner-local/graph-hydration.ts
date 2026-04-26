@@ -74,10 +74,6 @@ export function hydrateGraphFromLedger(options: {
   if (options.entries.length === 0) {
     return;
   }
-  if (options.graph.steps.some((step) => step.fanoutGroup)) {
-    throw new Error("resumeFromRunId currently supports sequential chains only.");
-  }
-
   const stepsById = new Map(options.graph.steps.map((step) => [step.id, step]));
   const latestEvents = new Map<string, ArtifactEnvelope>();
   const artifactsByStep = new Map<string, ArtifactEnvelope[]>();
@@ -157,6 +153,7 @@ export function hydrateGraphFromLedger(options: {
         receiptId,
         stdout: reconstructStdout(stepArtifacts, stepFields),
         stderr: "",
+        fanoutGroup: step.fanoutGroup,
         artifactIds: stepArtifacts.map((artifact) => artifact.meta.artifact_id),
         contextFrom: [],
       });

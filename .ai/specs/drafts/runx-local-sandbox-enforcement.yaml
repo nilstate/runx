@@ -1,8 +1,8 @@
 spec_version: "1.1"
 task_id: "runx-local-sandbox-enforcement"
 created: "2026-04-25T15:35:00Z"
-updated: "2026-04-25T15:35:00Z"
-status: "draft"
+updated: "2026-04-25T16:18:00Z"
+status: "in_progress"
 
 task:
   title: "Enforce local sandbox policy instead of recording declarations only"
@@ -74,20 +74,23 @@ planning_log:
   - timestamp: "2026-04-25T15:35:00Z"
     actor: "agent"
     summary: "Created from deep review finding that sandbox policy is admission and metadata only."
+  - timestamp: "2026-04-25T16:18:00Z"
+    actor: "agent"
+    summary: "Added a shared local process sandbox preparation helper, default env allowlisting, cwd boundary checks, writable path admission for workspace-write, MCP/cli-tool spawn integration, and focused tests."
 
 phases:
   - id: "phase1"
     name: "Capability Matrix"
     objective: "Define enforceable local sandbox capabilities and fail-closed behavior."
-    status: "pending"
+    status: "completed"
   - id: "phase2"
     name: "Process Enforcement"
     objective: "Implement shared cli-tool/MCP process sandbox assembly for cwd, env, filesystem, and network controls."
-    status: "pending"
+    status: "in_progress"
   - id: "phase3"
     name: "Receipts And Tests"
     objective: "Update receipt metadata and add regression coverage for enforcement and unsupported-control denial."
-    status: "pending"
+    status: "in_progress"
 
 metadata:
   estimated_effort_hours: 10

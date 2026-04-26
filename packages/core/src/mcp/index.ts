@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
-import path from "node:path";
+
+import { prepareLocalProcessSandbox, type SandboxDeclaration } from "../policy/index.js";
 
 export const mcpCorePackage = "@runxhq/core/mcp";
 
@@ -48,6 +49,7 @@ export async function listMcpTools(options: {
   readonly server: McpServerDefinition;
   readonly skillDirectory: string;
   readonly env?: NodeJS.ProcessEnv;
+  readonly sandbox?: SandboxDeclaration & { readonly approvedEscalation?: boolean };
   readonly timeoutMs?: number;
   readonly clientInfo?: McpClientInfo;
 }): Promise<readonly McpToolDescriptor[]> {
@@ -61,6 +63,7 @@ export async function invokeMcpTool(options: {
   readonly server: McpServerDefinition;
   readonly skillDirectory: string;
   readonly env?: NodeJS.ProcessEnv;
+  readonly sandbox?: SandboxDeclaration & { readonly approvedEscalation?: boolean };
   readonly timeoutMs?: number;
   readonly clientInfo?: McpClientInfo;
   readonly tool: string;
@@ -135,14 +138,24 @@ async function withMcpClient<T>(
     readonly server: McpServerDefinition;
     readonly skillDirectory: string;
     readonly env?: NodeJS.ProcessEnv;
+    readonly sandbox?: SandboxDeclaration & { readonly approvedEscalation?: boolean };
     readonly timeoutMs?: number;
     readonly clientInfo?: McpClientInfo;
   },
   action: (client: StdioJsonRpcClient) => Promise<T>,
 ): Promise<T> {
-  const child = spawn(options.server.command, options.server.args, {
-    cwd: resolveMcpCwd(options.skillDirectory, options.server.cwd),
+  const sandbox = prepareLocalProcessSandbox({
+    sandbox: options.sandbox,
+    skillDirectory: options.skillDirectory,
+    sourceCwd: options.server.cwd,
     env: options.env,
+  });
+  if (sandbox.status === "deny") {
+    throw new Error(`MCP sandbox denied: ${sandbox.reason}`);
+  }
+  const child = spawn(options.server.command, options.server.args, {
+    cwd: sandbox.cwd,
+    env: sandbox.env,
     shell: false,
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -289,13 +302,6 @@ class StdioJsonRpcClient {
     }
     this.pending.clear();
   }
-}
-
-function resolveMcpCwd(skillDirectory: string, sourceCwd: string | undefined): string {
-  if (!sourceCwd) {
-    return skillDirectory;
-  }
-  return path.isAbsolute(sourceCwd) ? sourceCwd : path.resolve(skillDirectory, sourceCwd);
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout: () => void): Promise<T> {

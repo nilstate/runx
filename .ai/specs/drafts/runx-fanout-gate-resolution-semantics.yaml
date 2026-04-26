@@ -1,8 +1,8 @@
 spec_version: "1.1"
 task_id: "runx-fanout-gate-resolution-semantics"
 created: "2026-04-25T15:35:00Z"
-updated: "2026-04-25T15:35:00Z"
-status: "draft"
+updated: "2026-04-25T16:18:00Z"
+status: "in_progress"
 
 task:
   title: "Make fanout pause and escalate gates first-class graph states"
@@ -76,20 +76,23 @@ planning_log:
   - timestamp: "2026-04-25T15:35:00Z"
     actor: "agent"
     summary: "Created from deep review finding that pause/escalate fanout gates currently collapse into graph failure."
+  - timestamp: "2026-04-25T16:18:00Z"
+    actor: "agent"
+    summary: "Implemented distinct paused/escalated fanout plans, approval-style gate resolution, fanout branch hydration on resume, and focused state-machine/runner coverage."
 
 phases:
   - id: "phase1"
     name: "Result Model"
     objective: "Add first-class plan and result states for fanout pause and escalation."
-    status: "pending"
+    status: "completed"
   - id: "phase2"
     name: "Resume Hydration"
     objective: "Persist and hydrate completed fanout branch state so graph resume works after a gate pause."
-    status: "pending"
+    status: "completed"
   - id: "phase3"
     name: "Surfaces"
     objective: "Update SDK and CLI surfaces to render gate pause/escalate outcomes distinctly from failure."
-    status: "pending"
+    status: "in_progress"
 
 metadata:
   estimated_effort_hours: 8

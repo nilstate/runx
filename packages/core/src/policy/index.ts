@@ -361,6 +361,11 @@ export {
   type SandboxProfile,
 } from "./sandbox.js";
 export {
+  prepareLocalProcessSandbox,
+  type LocalProcessSandboxOptions,
+  type LocalProcessSandboxResult,
+} from "./process-sandbox.js";
+export {
   DEFAULT_PUBLIC_WORK_POLICY,
   evaluatePublicCommentOpportunity,
   evaluatePublicPullRequestCandidate,

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createSequentialGraphState,
   evaluateFanoutSync,
+  fanoutSyncDecisionKey,
   planSequentialGraphTransition,
   transitionSequentialGraph,
   type FanoutGroupPolicy,
@@ -192,19 +193,18 @@ describe("fanout sync graph policy", () => {
   });
 
   it("pauses on structured threshold gates", () => {
-    const decision = evaluateFanoutSync(
-      {
-        groupId: "advisors",
-        strategy: "all",
-        onBranchFailure: "halt",
-        thresholdGates: [{ step: "risk", field: "risk_score", above: 0.8, action: "pause" }],
-        conflictGates: [],
-      },
-      [
-        { stepId: "market", status: "succeeded", outputs: { recommendation: "go" } },
-        { stepId: "risk", status: "succeeded", outputs: { risk_score: 0.91 } },
-      ],
-    );
+    const policy: FanoutGroupPolicy = {
+      groupId: "advisors",
+      strategy: "all",
+      onBranchFailure: "halt",
+      thresholdGates: [{ step: "risk", field: "risk_score", above: 0.8, action: "pause" }],
+      conflictGates: [],
+    };
+    const results = [
+      { stepId: "market", status: "succeeded" as const, outputs: { recommendation: "go" } },
+      { stepId: "risk", status: "succeeded" as const, outputs: { risk_score: 0.91 } },
+    ];
+    const decision = evaluateFanoutSync(policy, results);
 
     expect(decision).toMatchObject({
       groupId: "advisors",
@@ -214,6 +214,59 @@ describe("fanout sync graph policy", () => {
         type: "threshold",
         field: "risk_score",
         value: 0.91,
+      },
+    });
+    expect(evaluateFanoutSync(policy, results, { resolvedGateKeys: new Set([fanoutSyncDecisionKey(decision)]) })).toMatchObject({
+      decision: "proceed",
+      ruleFired: "all.min_success",
+    });
+  });
+
+  it("plans structured threshold pauses as first-class paused graph plans", () => {
+    let state = createSequentialGraphState("gx_test", fanoutSteps.slice(0, 3));
+    state = finishFanoutStep(state, "market", "succeeded", { recommendation: "go" });
+    state = finishFanoutStep(state, "risk", "succeeded", { risk_score: 0.91 });
+    state = finishFanoutStep(state, "finance", "succeeded", { budget: "approved" });
+
+    expect(planSequentialGraphTransition(state, fanoutSteps.slice(0, 3), {
+      advisors: {
+        groupId: "advisors",
+        strategy: "all",
+        onBranchFailure: "halt",
+        thresholdGates: [{ step: "risk", field: "risk_score", above: 0.8, action: "pause" }],
+        conflictGates: [],
+      },
+    })).toMatchObject({
+      type: "paused",
+      stepId: "market",
+      syncDecision: {
+        groupId: "advisors",
+        decision: "pause",
+        ruleFired: "threshold.risk.risk_score.above",
+      },
+    });
+  });
+
+  it("plans structured conflict escalations as first-class escalated graph plans", () => {
+    let state = createSequentialGraphState("gx_test", fanoutSteps.slice(0, 2));
+    state = finishFanoutStep(state, "market", "succeeded", { report: "ship" });
+    state = finishFanoutStep(state, "risk", "succeeded", { report: "hold" });
+
+    expect(planSequentialGraphTransition(state, fanoutSteps.slice(0, 2), {
+      advisors: {
+        groupId: "advisors",
+        strategy: "all",
+        onBranchFailure: "halt",
+        thresholdGates: [],
+        conflictGates: [{ field: "report", action: "escalate", steps: ["market", "risk"] }],
+      },
+    })).toMatchObject({
+      type: "escalated",
+      stepId: "market",
+      syncDecision: {
+        groupId: "advisors",
+        decision: "escalate",
+        ruleFired: "conflict.report",
       },
     });
   });

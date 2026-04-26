@@ -5,6 +5,8 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 
+import { prepareLocalProcessSandbox } from "@runxhq/core/policy";
+
 export type CliToolInputMode = "args" | "stdin" | "none";
 
 export interface CliToolSource {
@@ -76,11 +78,33 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
   }
 
   const started = performance.now();
-  const cwd = resolveCwd(request.skillDirectory, request.source.cwd);
   const resolved = request.resolvedInputs ?? {};
   const args = (request.source.args ?? []).map((arg) => resolveArg(arg, resolved, request.inputs));
-  const sandboxMetadata = sandboxExecutionMetadata(request.source.sandbox, cwd);
-  const childEnv = buildChildEnv(request.env, request.inputs, request.source.sandbox);
+  const writablePaths = (request.source.sandbox?.writablePaths ?? []).map((writablePath) =>
+    resolveArg(writablePath, resolved, request.inputs));
+  const sandbox = prepareLocalProcessSandbox({
+    sandbox: request.source.sandbox,
+    skillDirectory: request.skillDirectory,
+    sourceCwd: request.source.cwd,
+    env: request.env,
+    writablePaths,
+  });
+  if (sandbox.status === "deny") {
+    return {
+      status: "failure",
+      stdout: "",
+      stderr: sandbox.reason,
+      exitCode: null,
+      signal: null,
+      durationMs: Math.round(performance.now() - started),
+      errorMessage: sandbox.reason,
+      metadata: {
+        sandbox: sandbox.metadata,
+      },
+    };
+  }
+  const cwd = sandbox.cwd;
+  const childEnv = buildChildEnv(sandbox.env, request.inputs);
 
   return await new Promise<CliToolInvokeResult>((resolve) => {
     const child = spawn(request.source.command as string, args, {
@@ -165,7 +189,7 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
         durationMs,
         errorMessage,
         metadata: {
-          sandbox: sandboxMetadata,
+          sandbox: sandbox.metadata,
         },
       });
     });
@@ -179,52 +203,14 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
 }
 
 function buildChildEnv(
-  env: NodeJS.ProcessEnv | undefined,
+  baseEnv: NodeJS.ProcessEnv,
   inputs: Readonly<Record<string, unknown>>,
-  sandbox: CliToolSandbox | undefined,
 ): NodeJS.ProcessEnv {
-  const ambientEnv = env ?? process.env;
-  const allowlist = sandbox?.envAllowlist;
-  const baseEnv =
-    allowlist === undefined
-      ? { ...ambientEnv }
-      : Object.fromEntries(allowlist.filter((key) => ambientEnv?.[key] !== undefined).map((key) => [key, ambientEnv?.[key]]));
-
   return {
     ...baseEnv,
     RUNX_CWD: baseEnv.RUNX_CWD ?? baseEnv.INIT_CWD ?? process.cwd(),
     ...inputEnv(inputs),
   };
-}
-
-function sandboxExecutionMetadata(sandbox: CliToolSandbox | undefined, cwd: string): Readonly<Record<string, unknown>> {
-  const profile = sandbox?.profile ?? "readonly";
-  const envAllowlist = sandbox?.envAllowlist;
-  return {
-    profile,
-    cwd,
-    cwd_policy: sandbox?.cwdPolicy ?? "skill-directory",
-    env: envAllowlist ? { mode: "allowlist", allowlist: envAllowlist } : { mode: "ambient-inherited" },
-    network: {
-      declared: sandbox?.network ?? profile === "network",
-      enforcement: "not-enforced-locally",
-    },
-    writable_paths: sandbox?.writablePaths ?? [],
-    filesystem: {
-      enforcement: "declared-policy-only",
-    },
-    approval: {
-      required: profile === "unrestricted-local-dev",
-      approved: sandbox?.approvedEscalation ?? false,
-    },
-  };
-}
-
-function resolveCwd(skillDirectory: string, sourceCwd: string | undefined): string {
-  if (!sourceCwd) {
-    return skillDirectory;
-  }
-  return path.isAbsolute(sourceCwd) ? sourceCwd : path.resolve(skillDirectory, sourceCwd);
 }
 
 function resolveArg(

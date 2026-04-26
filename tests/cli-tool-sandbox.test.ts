@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
 
 function caller(approved = false): Caller {
@@ -26,6 +27,7 @@ describe("cli-tool sandbox profiles", () => {
         receiptDir: path.join(tempDir, "receipts"),
         runxHome: path.join(tempDir, "home"),
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("policy_denied");
@@ -51,7 +53,8 @@ describe("cli-tool sandbox profiles", () => {
         caller: caller(),
         receiptDir,
         runxHome: path.join(tempDir, "home"),
-        env: process.env,
+        env: { ...process.env, RUNX_CWD: tempDir },
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("success");
@@ -61,7 +64,7 @@ describe("cli-tool sandbox profiles", () => {
       await expect(readFile(outputPath, "utf8")).resolves.toBe("sandbox-ok");
       const receiptContents = await readFile(path.join(receiptDir, `${result.receipt.id}.json`), "utf8");
       expect(receiptContents).toContain('"profile": "workspace-write"');
-      expect(receiptContents).toContain('"enforcement": "declared-policy-only"');
+      expect(receiptContents).toContain('"enforcement": "cwd-boundary-and-writable-path-admission"');
       expect(receiptContents).toContain('"mode": "allowlist"');
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -98,6 +101,7 @@ Unrestricted fixture.
         receiptDir,
         runxHome: path.join(tempDir, "home-denied"),
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
       expect(denied.status).toBe("policy_denied");
 
@@ -107,6 +111,7 @@ Unrestricted fixture.
         receiptDir,
         runxHome: path.join(tempDir, "home-approved"),
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
       expect(approved.status).toBe("success");
       if (approved.status !== "success") {

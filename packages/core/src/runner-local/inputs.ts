@@ -98,7 +98,7 @@ export async function readPendingRunState(receiptDir: string, runId: string): Pr
       return undefined;
     }
     const detail = isPlainRecord(entry.data.detail) ? entry.data.detail : undefined;
-    if (!detail || kind !== "resolution_requested") {
+    if (!detail || (kind !== "resolution_requested" && kind !== "step_waiting_resolution")) {
       continue;
     }
     const requests = parseRecordedRequests(detail.requests, `ledger(${runId}).detail.requests`);

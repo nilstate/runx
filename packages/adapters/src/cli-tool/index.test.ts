@@ -15,7 +15,7 @@ describe("invokeCliTool", () => {
         args: ["-e", "process.stdout.write(process.env.RUNX_INPUT_MESSAGE ?? '')"],
         timeoutSeconds: 5,
       },
-      inputs: { message: "hi" },
+      inputs: { message: "hi", output_path: "out.txt" },
       skillDirectory: process.cwd(),
     });
 
@@ -96,7 +96,7 @@ describe("invokeCliTool", () => {
     expect(result.stdout).toBe("a".repeat(outputLimitBytes - 1));
   });
 
-  it("applies declared env allowlist and reports sandboprofile metadata", async () => {
+  it("applies declared env allowlist and reports sandbox profile metadata", async () => {
     const result = await invokeCliTool({
       source: {
         command: "node",
@@ -111,7 +111,7 @@ describe("invokeCliTool", () => {
           writablePaths: ["{{output_path}}"],
         },
       },
-      inputs: { message: "hi" },
+      inputs: { message: "hi", output_path: "out.txt" },
       env: {
         ALLOWED_VALUE: "yes",
         BLOCKED_VALUE: "no",
@@ -127,11 +127,67 @@ describe("invokeCliTool", () => {
         mode: "allowlist",
         allowlist: ["ALLOWED_VALUE"],
       },
-      writable_paths: ["{{output_path}}"],
+      writable_paths: ["out.txt"],
       filesystem: {
-        enforcement: "declared-policy-only",
+        enforcement: "cwd-boundary-and-writable-path-admission",
       },
     });
+  });
+
+  it("uses a default env allowlist instead of inheriting ambient secrets", async () => {
+    const result = await invokeCliTool({
+      source: {
+        command: "node",
+        args: [
+          "-e",
+          "process.stdout.write(`${process.env.RUNX_SECRET_VALUE ?? ''}:${Boolean(process.env.PATH)}:${process.env.RUNX_INPUT_MESSAGE ?? ''}`)",
+        ],
+        timeoutSeconds: 5,
+      },
+      inputs: { message: "hi" },
+      env: {
+        PATH: process.env.PATH,
+        RUNX_SECRET_VALUE: "secret",
+      },
+      skillDirectory: process.cwd(),
+    });
+
+    expect(result.status).toBe("success");
+    expect(result.stdout).toBe(":true:hi");
+    expect(result.metadata?.sandbox).toMatchObject({
+      profile: "readonly",
+      env: {
+        mode: "default-allowlist",
+      },
+    });
+  });
+
+  it("denies non-unrestricted cwd escapes before spawning", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-tool-cwd-"));
+    try {
+      const skillDirectory = path.join(tempDir, "skill");
+      const outside = path.join(tempDir, "outside");
+      const result = await invokeCliTool({
+        source: {
+          command: "node",
+          args: ["-e", "process.stdout.write('should-not-run')"],
+          cwd: outside,
+          timeoutSeconds: 5,
+          sandbox: {
+            profile: "readonly",
+            cwdPolicy: "skill-directory",
+          },
+        },
+        inputs: {},
+        skillDirectory,
+      });
+
+      expect(result.status).toBe("failure");
+      expect(result.errorMessage).toContain("outside skill directory");
+      expect(result.stdout).toBe("");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it("does not claim unrestricted approval when invoked without runner approval metadata", async () => {

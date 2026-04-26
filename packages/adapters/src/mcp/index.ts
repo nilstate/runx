@@ -37,6 +37,7 @@ export async function invokeMcp(request: AdapterInvokeRequest): Promise<AdapterI
       server,
       skillDirectory: request.skillDirectory,
       env: request.env,
+      sandbox: source.sandbox,
       timeoutMs,
       tool,
       args: toolArgs,

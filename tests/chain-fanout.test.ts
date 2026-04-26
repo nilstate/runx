@@ -169,14 +169,19 @@ steps:
     }
   });
 
-  it("pauses deterministically when a structured threshold gate fires", async () => {
+  it("pauses and resumes deterministically when a structured threshold gate fires", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-fanout-threshold-"));
     const receiptDir = path.join(tempDir, "receipts");
     const runxHome = path.join(tempDir, "home");
+    const graphPath = path.resolve("fixtures/chains/fanout/threshold.yaml");
+    const approvingCaller: Caller = {
+      resolve: async (request) => request.kind === "approval" ? { actor: "human", payload: true } : undefined,
+      report: () => undefined,
+    };
 
     try {
       const result = await runLocalGraph({
-        graphPath: path.resolve("fixtures/chains/fanout/threshold.yaml"),
+        graphPath,
         caller: nonInteractiveCaller,
         receiptDir,
         runxHome,
@@ -184,20 +189,113 @@ steps:
         adapters,
       });
 
-      expect(result.status).toBe("failure");
-      if (result.status !== "failure") {
+      expect(result.status).toBe("needs_resolution");
+      if (result.status !== "needs_resolution") {
         return;
       }
+      expect(result.state.status).toBe("paused");
 
-      expect(result.steps.map((step) => step.stepId)).toEqual(["market", "risk"]);
-      expect(result.receipt.sync_points).toEqual([
+      expect(result.requests).toEqual([
+        expect.objectContaining({
+          id: "fanout.advisors.threshold.risk.risk_score.above",
+          kind: "approval",
+          gate: expect.objectContaining({
+            type: "fanout-gate",
+            reason: "risk.risk_score=0.91 exceeded 0.8",
+          }),
+        }),
+      ]);
+
+      const resumed = await runLocalGraph({
+        graphPath,
+        caller: approvingCaller,
+        receiptDir,
+        runxHome,
+        env: process.env,
+        adapters,
+        resumeFromRunId: result.runId,
+      });
+      expect(resumed.status).toBe("success");
+      if (resumed.status !== "success") {
+        return;
+      }
+      expect(resumed.steps.map((step) => step.stepId)).toEqual(["market", "risk", "synthesize"]);
+      expect(resumed.steps.slice(0, 2).map((step) => step.fanoutGroup)).toEqual(["advisors", "advisors"]);
+      expect(resumed.output).toBe("go");
+      expect(resumed.receipt.sync_points).toEqual([
         expect.objectContaining({
           group_id: "advisors",
           decision: "pause",
           rule_fired: "threshold.risk.risk_score.above",
           reason: "risk.risk_score=0.91 exceeded 0.8",
+          branch_receipts: resumed.steps.slice(0, 2).map((step) => step.receiptId),
         }),
       ]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("escalates structured fanout conflicts through a resolution gate", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-fanout-escalate-"));
+    const graphPath = path.join(tempDir, "graph.yaml");
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+    const jsonSkillPath = path.resolve("fixtures/skills/json-output");
+
+    try {
+      await writeFile(
+        graphPath,
+        `name: fanout-escalate
+fanout:
+  groups:
+    advisors:
+      strategy: all
+      on_branch_failure: halt
+      conflict_gates:
+        - field: recommendation
+          action: escalate
+          steps:
+            - market
+            - risk
+steps:
+  - id: market
+    mode: fanout
+    fanout_group: advisors
+    skill: ${jsonSkillPath}
+    inputs:
+      recommendation: ship
+  - id: risk
+    mode: fanout
+    fanout_group: advisors
+    skill: ${jsonSkillPath}
+    inputs:
+      recommendation: hold
+`,
+      );
+
+      const result = await runLocalGraph({
+        graphPath,
+        caller: nonInteractiveCaller,
+        receiptDir,
+        runxHome,
+        env: process.env,
+        adapters,
+      });
+
+      expect(result.status).toBe("needs_resolution");
+      if (result.status !== "needs_resolution") {
+        return;
+      }
+      expect(result.state.status).toBe("escalated");
+      expect(result.requests[0]).toMatchObject({
+        id: "fanout.advisors.conflict.recommendation",
+        kind: "approval",
+        gate: {
+          type: "fanout-escalation",
+          reason: "fanout branches disagreed on structured field recommendation",
+        },
+      });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

@@ -1,7 +1,7 @@
 export const stateMachinePackage = "@runxhq/core/state-machine";
 
 export type StepStatus = "pending" | "admitted" | "running" | "succeeded" | "failed";
-export type GraphStatus = "pending" | "running" | "succeeded" | "failed";
+export type GraphStatus = "pending" | "running" | "succeeded" | "failed" | "paused" | "escalated";
 export type GraphStepStatus = "pending" | "running" | "succeeded" | "failed";
 export type FanoutSyncStrategy = "all" | "any" | "quorum";
 export type FanoutBranchFailurePolicy = "halt" | "continue";
@@ -73,6 +73,10 @@ export interface FanoutSyncDecision {
   };
 }
 
+export function fanoutSyncDecisionKey(decision: Pick<FanoutSyncDecision, "groupId" | "ruleFired">): string {
+  return `${decision.groupId}:${decision.ruleFired}`;
+}
+
 export interface SequentialGraphStepState {
   readonly stepId: string;
   readonly status: GraphStepStatus;
@@ -101,6 +105,8 @@ export type SequentialGraphEvent =
     }
   | { readonly type: "step_failed"; readonly stepId: string; readonly at: string; readonly error: string }
   | { readonly type: "complete" }
+  | { readonly type: "pause_graph"; readonly reason: string }
+  | { readonly type: "escalate_graph"; readonly reason: string }
   | { readonly type: "fail_graph"; readonly error: string };
 
 export type SequentialGraphPlan =
@@ -119,7 +125,9 @@ export type SequentialGraphPlan =
     }
   | { readonly type: "complete" }
   | { readonly type: "failed"; readonly stepId: string; readonly reason: string; readonly syncDecision?: FanoutSyncDecision }
-  | { readonly type: "blocked"; readonly stepId: string; readonly reason: string; readonly syncDecision?: FanoutSyncDecision };
+  | { readonly type: "blocked"; readonly stepId: string; readonly reason: string; readonly syncDecision?: FanoutSyncDecision }
+  | { readonly type: "paused"; readonly stepId: string; readonly reason: string; readonly syncDecision: FanoutSyncDecision }
+  | { readonly type: "escalated"; readonly stepId: string; readonly reason: string; readonly syncDecision: FanoutSyncDecision };
 
 export type SingleStepEvent =
   | { readonly type: "admit" }
@@ -194,6 +202,9 @@ export function planSequentialGraphTransition(
   state: SequentialGraphState,
   steps: readonly SequentialGraphStepDefinition[],
   fanoutPolicies: Readonly<Record<string, FanoutGroupPolicy>> = {},
+  options: {
+    readonly resolvedFanoutGateKeys?: ReadonlySet<string>;
+  } = {},
 ): SequentialGraphPlan {
   const runningStep = state.steps.find((step) => step.status === "running");
   if (runningStep) {
@@ -212,7 +223,7 @@ export function planSequentialGraphTransition(
 
     if (stepDefinition.fanoutGroup) {
       const groupSteps = collectContiguousFanoutGroup(steps, index, stepDefinition.fanoutGroup);
-      const groupPlan = planFanoutGroup(state, groupSteps, fanoutPolicies[stepDefinition.fanoutGroup]);
+      const groupPlan = planFanoutGroup(state, groupSteps, fanoutPolicies[stepDefinition.fanoutGroup], options.resolvedFanoutGateKeys);
       if (groupPlan.type === "proceed") {
         index += groupSteps.length - 1;
         continue;
@@ -320,6 +331,16 @@ export function transitionSequentialGraph(
         };
       }
       return state;
+    case "pause_graph":
+      return {
+        ...state,
+        status: "paused",
+      };
+    case "escalate_graph":
+      return {
+        ...state,
+        status: "escalated",
+      };
     case "fail_graph":
       return {
         ...state,
@@ -331,6 +352,9 @@ export function transitionSequentialGraph(
 export function evaluateFanoutSync(
   policy: FanoutGroupPolicy,
   results: readonly FanoutBranchResult[],
+  options: {
+    readonly resolvedGateKeys?: ReadonlySet<string>;
+  } = {},
 ): FanoutSyncDecision {
   const branchCount = results.length;
   const successCount = results.filter((result) => result.status === "succeeded").length;
@@ -376,7 +400,7 @@ export function evaluateFanoutSync(
       });
     }
     if (value > gate.above) {
-      return syncDecision(policy, gate.action, "threshold", branchCount, successCount, failureCount, requiredSuccesses, {
+      const decision = syncDecision(policy, gate.action, "threshold", branchCount, successCount, failureCount, requiredSuccesses, {
         ruleFired: `threshold.${gate.step}.${gate.field}.above`,
         reason: `${gate.step}.${gate.field}=${value} exceeded ${gate.above}`,
         gate: {
@@ -388,6 +412,9 @@ export function evaluateFanoutSync(
           action: gate.action,
         },
       });
+      if (!options.resolvedGateKeys?.has(fanoutSyncDecisionKey(decision))) {
+        return decision;
+      }
     }
   }
 
@@ -400,7 +427,7 @@ export function evaluateFanoutSync(
     );
     const distinct = new Set(Object.values(values).map((value) => stableValue(value)));
     if (distinct.size > 1) {
-      return syncDecision(policy, gate.action, "conflict", branchCount, successCount, failureCount, requiredSuccesses, {
+      const decision = syncDecision(policy, gate.action, "conflict", branchCount, successCount, failureCount, requiredSuccesses, {
         ruleFired: `conflict.${gate.field}`,
         reason: `fanout branches disagreed on structured field ${gate.field}`,
         gate: {
@@ -410,6 +437,9 @@ export function evaluateFanoutSync(
           action: gate.action,
         },
       });
+      if (!options.resolvedGateKeys?.has(fanoutSyncDecisionKey(decision))) {
+        return decision;
+      }
     }
   }
 
@@ -430,6 +460,7 @@ function planFanoutGroup(
   state: SequentialGraphState,
   groupSteps: readonly SequentialGraphStepDefinition[],
   policy: FanoutGroupPolicy | undefined,
+  resolvedFanoutGateKeys: ReadonlySet<string> | undefined,
 ):
   | { readonly type: "proceed" }
   | {
@@ -524,6 +555,7 @@ function planFanoutGroup(
         outputs: stepState?.outputs,
       };
     }),
+    { resolvedGateKeys: resolvedFanoutGateKeys },
   );
   if (decision.decision === "proceed") {
     return { type: "proceed" };
@@ -532,7 +564,11 @@ function planFanoutGroup(
   return {
     type: "plan",
     plan: {
-      type: decision.decision === "halt" ? "failed" : "blocked",
+      type: decision.decision === "halt"
+        ? "failed"
+        : decision.decision === "pause"
+          ? "paused"
+          : "escalated",
       stepId: firstStep.id,
       reason: decision.reason,
       syncDecision: decision,

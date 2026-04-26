@@ -365,7 +365,7 @@ export type RunLocalGraphResult =
       readonly receipt?: LocalGraphReceipt;
     }
   | {
-      readonly status: "success" | "failure";
+      readonly status: "success" | "failure" | "escalated";
       readonly graph: ExecutionGraph;
       readonly state: SequentialGraphState;
       readonly steps: readonly GraphStepRun[];
@@ -687,21 +687,23 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
       },
     });
 
+    const skillExecutionStatus = graphResult.status === "success" ? "success" : "failure";
     return {
-      status: graphResult.status,
+      status: skillExecutionStatus,
       skill,
       inputs: options.inputs,
       execution: {
-        status: graphResult.status,
+        status: skillExecutionStatus,
         stdout: graphResult.output,
         stderr: graphResult.errorMessage ?? "",
-        exitCode: graphResult.status === "success" ? 0 : 1,
+        exitCode: skillExecutionStatus === "success" ? 0 : 1,
         signal: null,
         durationMs: graphResult.receipt.duration_ms,
         errorMessage: graphResult.errorMessage,
         metadata: {
           composite: {
             graph_receipt_id: graphResult.receipt.id,
+            graph_status: graphResult.status,
             top_level_skill: skill.name,
           },
         },
