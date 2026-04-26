@@ -1,7 +1,7 @@
 spec_version: "1.1"
 task_id: "runx-unified-workspace-topology"
 created: "2026-04-24T00:45:00Z"
-updated: "2026-04-26T12:58:00Z"
+updated: "2026-04-26T15:40:48Z"
 status: "in_progress"
 
 task:
@@ -132,6 +132,9 @@ planning_log:
   - timestamp: "2026-04-26T12:58:00Z"
     actor: "agent"
     summary: "Adversarial review kept phase3 open because parent git still tracks oss and cloud as 160000 gitlinks; removing nested repo history requires an explicit destructive topology cutover."
+  - timestamp: "2026-04-26T15:40:48Z"
+    actor: "agent"
+    summary: "Added a precise final topology cutover checklist and rollback path; phase3 remains blocked until the user explicitly approves the gitlink removal."
 
 phases:
   - id: "phase1"
@@ -242,6 +245,19 @@ phases:
         expected: "exit code 0"
     status: "pending"
     blocked_reason: "Parent git still tracks oss and cloud as 160000 gitlinks. Completing this phase requires removing nested .git directories or otherwise converting both trees into parent-tracked files, which is intentionally not hidden inside this spec execution while both nested repos have active dirt."
+    cutover_checklist:
+      - "Freeze nested repo work: `git -C oss status --short --branch` and `git -C cloud status --short --branch` must be clean except intended final commits."
+      - "Record exact nested SHAs and parent gitlink SHAs before mutation: `git -C oss rev-parse HEAD`, `git -C cloud rev-parse HEAD`, and `git ls-files -s oss cloud`."
+      - "Create rollback anchors before destructive topology changes: parent branch/tag plus timestamped backups of `oss/.git` and `cloud/.git` outside the workspace."
+      - "Commit the parent gitlink updates first so the parent repo records the final nested SHAs before the cutover."
+      - "Choose history strategy explicitly: squash-import current trees into parent, or use subtree/filter import if preserving nested history is required."
+      - "Remove gitlink index entries only after backups exist: `git rm --cached oss cloud`; remove `.gitmodules` entries if any are present."
+      - "Move nested `.git` directories out of the tree rather than deleting them: for example `.git-backups/runx-oss-<sha>` and `.git-backups/runx-cloud-<sha>` outside `/home/kam/dev/runx`."
+      - "Re-add `oss` and `cloud` as ordinary parent-tracked directories, respecting parent `.gitignore` so `node_modules`, caches, and generated build output stay out."
+      - "Verify no gitlinks remain: `test -z \"$(git ls-files -s oss cloud | awk '$1 == 160000 { print }')\"`."
+      - "Run root install and verification from `/home/kam/dev/runx`: `pnpm install`, `pnpm --dir oss typecheck`, `pnpm --dir cloud typecheck`, and targeted fast suites."
+      - "Commit the cutover as one topology commit that contains only gitlink removal, ordinary file tracking, root ignore/tooling updates, and verification notes."
+      - "Rollback path: restore the pre-cutover parent commit, move backed-up `.git` directories back into `oss/.git` and `cloud/.git`, and reset the parent gitlinks to the recorded SHAs."
 
 rollback:
   strategy: "per_phase"
