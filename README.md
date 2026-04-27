@@ -66,6 +66,22 @@ tools, approvals, and required human inputs keep their existing local behavior.
 The global link points at `oss/packages/cli` in this checkout. Rebuild with
 `pnpm --dir oss build`; do not reinstall.
 
+## Package Topology
+
+`@runxhq/core` is the pure kernel package. Its public subpaths are parser,
+state-machine, policy, executor, receipts, registry, config, knowledge,
+artifacts, marketplaces, and pure tool-catalog contracts.
+
+`@runxhq/runtime-local` is the local runtime package. It owns local
+orchestration, caller interaction, sandbox preparation, receipt writes, harness
+execution, runtime SDK entrypoints, MCP process-client behavior, and concrete
+local catalog adapters.
+
+Runtime imports are a hard cut. Use `@runxhq/runtime-local`,
+`@runxhq/runtime-local/harness`, `@runxhq/runtime-local/sdk`,
+`@runxhq/runtime-local/mcp`, or `@runxhq/runtime-local/tool-catalogs` for local
+runtime work. `@runxhq/core` does not publish old runtime subpaths.
+
 ### Local Sandbox Enforcement
 
 `cli-tool` skills declare sandbox intent in `SKILL.md`: profile, cwd policy,

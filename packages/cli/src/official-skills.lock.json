@@ -1,18 +1,18 @@
 [
   {
     "skill_id": "runx/content-pipeline",
-    "version": "sha-16a850f6d176",
-    "digest": "09ac2dba487bee6e43b2e783fb2fe8a93733b4fd7ffdf41ae32a36bc9462d2ca"
+    "version": "sha-a7061144f468",
+    "digest": "4bd95843285faaf179c350e13fd16e7ed7acf9e0dba14d1f6081137f9f6aa58e"
   },
   {
     "skill_id": "runx/deep-research-brief",
-    "version": "sha-4f9704e4fe89",
-    "digest": "27e22bc2026c12cf04e4fbaf3ecadb40651511b6dbf3cf829820eda4e99276be"
+    "version": "sha-842b63648146",
+    "digest": "b5eadec6310bc74a3442abbc0ac97c592b546b6690fe93341b494c2c7beb5b47"
   },
   {
     "skill_id": "runx/design-skill",
-    "version": "sha-3730d90139c3",
-    "digest": "524b59c64793c3a50d0d8bedca20610373cb9c1dcc818cb73d5e3965bb92a016"
+    "version": "sha-33926c53b169",
+    "digest": "ea05e016f4dde64f2c61a64c131d6b1b911dadc7ddb76b08bb660c1654c686ac"
   },
   {
     "skill_id": "runx/draft-content",
@@ -21,33 +21,33 @@
   },
   {
     "skill_id": "runx/ecosystem-brief",
-    "version": "sha-db38fe0cdd18",
-    "digest": "857240b0188d2c1a9cce4886a88704e42510d80fff095123b0112cffdf1bb9d2"
+    "version": "sha-5533977e2b74",
+    "digest": "b6afeb2d1b4de0c4844d82be5bee2e906a45ab1678b3fca30ea7255d39490737"
   },
   {
     "skill_id": "runx/ecosystem-vuln-scan",
-    "version": "sha-ae04781dae40",
+    "version": "sha-4e9dd232df20",
     "digest": "b151846aa4eb313ae31b7c3ab370ace22da2b1e9113357d2f402d935154630fd"
   },
   {
     "skill_id": "runx/evolve",
-    "version": "sha-c35e627e513b",
-    "digest": "3326d928553c7f5f91e9339cbf5b681bacccaf67b87c72874858221c54a3dec1"
+    "version": "sha-3c0439fd518e",
+    "digest": "310abc1d5d9cbfcecf6a8cdad13d301b46d736e9e00674a668ecc0eb31916bed"
   },
   {
     "skill_id": "runx/improve-skill",
-    "version": "sha-95da1d388978",
-    "digest": "0df52d89ae086acd5f23b162743665c3f2845bf4f3ce417ab1b7d8c3c08f7298"
+    "version": "sha-fe65b1865745",
+    "digest": "288252af3fbc4cdce2e2134dd1512aac813ee17030cba6cc51860aeb7b51c194"
   },
   {
     "skill_id": "runx/issue-to-pr",
-    "version": "sha-21b73a115cdd",
-    "digest": "098090ecb870278806ea2d5bf6aa1349710bb447d31e1adef2431300ce2bc696"
+    "version": "sha-ed4f8396b02d",
+    "digest": "e70c0adc312ffca6a140a702e97afe049f161399a6572f80c410433f9f972e39"
   },
   {
     "skill_id": "runx/issue-triage",
-    "version": "sha-d9c83fc43fb1",
-    "digest": "df99a13a989e8a81c34af5ff5aa5f708c978a91082dfb8ca1f966764be028ef4"
+    "version": "sha-a78b07dee8e9",
+    "digest": "02dfd8d7c5b314076600851f5fb08cbb3026e655184068be96ab11e21b3e2996"
   },
   {
     "skill_id": "runx/moltbook",
@@ -56,18 +56,18 @@
   },
   {
     "skill_id": "runx/prior-art",
-    "version": "sha-9af16eaeb87f",
-    "digest": "cd57921d9c359b5ee84eec1a080979aad98a58a22945d418626bf5131f566080"
+    "version": "sha-98c8fad5fb22",
+    "digest": "e47ac38e83f07db2b90a9c4b60f03287e6fdc20c45749144a42034386baa037b"
   },
   {
     "skill_id": "runx/reflect-digest",
-    "version": "sha-4c0fc08ce78f",
+    "version": "sha-13d290030849",
     "digest": "b4c3cff90454e143b454c5ae804bbb94879b8d2d8d2315ce269a3ddb5e0cf275"
   },
   {
     "skill_id": "runx/release",
-    "version": "sha-5a481cb1cfae",
-    "digest": "3a320f671581e3aa281616edeb42f506b9023ea9df75183cd5b3a83880a16562"
+    "version": "sha-2ebf98494b47",
+    "digest": "20f172c32fb9270d020175d5f0e91474694ff84ed4b05b139e27f3d7a016ee1a"
   },
   {
     "skill_id": "runx/request-triage",
@@ -76,13 +76,13 @@
   },
   {
     "skill_id": "runx/research",
-    "version": "sha-349575212f80",
-    "digest": "a6b8b10162d1ba1bdfa7c5293a1dda99aca3224599f9dc4222fcde78d7f4039a"
+    "version": "sha-f07c1e2c8a3b",
+    "digest": "cc7d1007d3bdeeb35fe8790c5808deb1c33f3646271f47b0cf8dbc7819c509dc"
   },
   {
     "skill_id": "runx/review-receipt",
-    "version": "sha-dcf3dc7d7c38",
-    "digest": "6574b56f836e72cad60d01362804d89fef3c78b4936ab5d459db1aeb6ebdc7ee"
+    "version": "sha-d7712232954d",
+    "digest": "301dc0d30aba08aec0d0e255534e97f9aaec2371fd54abb9f2be9a659ef499a4"
   },
   {
     "skill_id": "runx/review-skill",
@@ -91,23 +91,23 @@
   },
   {
     "skill_id": "runx/scafld",
-    "version": "sha-0ad4e43adb4f",
-    "digest": "50f8bb3a33985c77b0daa1a86a5daf64e62578cf723f7d0268f766f9dbd2194a"
+    "version": "sha-41a0e46d3116",
+    "digest": "12ff0813a837933db15d61f6313ab66d637bee753ba0143316a370cb54003e0f"
   },
   {
     "skill_id": "runx/skill-lab",
-    "version": "sha-0315b7372277",
-    "digest": "c91f9aec71270384a8dec39c4c919005c75c3e4467363e8f7bbcc6a7e3d1fdcd"
+    "version": "sha-38afb69d42dc",
+    "digest": "3b07ef3260c307f34fb149a0e91d504f1fe3ab464235675bd79d6a7a9c8fffb9"
   },
   {
     "skill_id": "runx/skill-testing",
-    "version": "sha-59d2e08ed01b",
-    "digest": "499373a9c8aacb2b1f5550a52c0ad9dc671105d23fdd8f5352c515227c93a5ff"
+    "version": "sha-6d7bfaffad2d",
+    "digest": "78493692fb50143a894d4df3c7740e637f36f34f630307329948e8d000ef26de"
   },
   {
     "skill_id": "runx/sourcey",
-    "version": "sha-290658cbb0a7",
-    "digest": "eb115a19ad6c090776639f8cba1120cd89847b573e1b880ad1e908a2e4f91daf"
+    "version": "sha-05bb3c88eeba",
+    "digest": "1473f655631a56f6cd86183ca07e61afb4dd91937ffd67ff5113dc28bbbb9aee"
   },
   {
     "skill_id": "runx/vuln-scan",
@@ -116,12 +116,12 @@
   },
   {
     "skill_id": "runx/work-plan",
-    "version": "sha-7f669774cf4b",
-    "digest": "6e3369503cfc8d709e2543de3198c36e1d63ff7a23b8fad2c8b0e47483d19b16"
+    "version": "sha-17c4f4faf60a",
+    "digest": "f6b07d644732c81b0005b48fb2ef6837286e7245d0ef7d9f8b2b96fbc2342b66"
   },
   {
     "skill_id": "runx/write-harness",
-    "version": "sha-87bc04e6c4e6",
-    "digest": "584dd977b6b6454d5dad8987b88065a0864aadabc56ba1d522a419303bc58979"
+    "version": "sha-50e648b4ee1b",
+    "digest": "cef451306c2d717bf37b4892ffc5cc0056600254f2ffa1c0c7ab1e6814614d15"
   }
 ]

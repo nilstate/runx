@@ -11,7 +11,7 @@ correct behavior looks like for a skill, before or after implementation.
 A runx harness fixture is a self-contained test case in YAML. It specifies
 exact inputs, the target skill or graph, and assertions against the receipt
 and step outputs. Fixtures are run by the harness runner in
-`packages/core/src/harness/`.
+`packages/runtime-local/src/harness/`.
 
 ## Fixture format
 

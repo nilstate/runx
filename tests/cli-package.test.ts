@@ -85,8 +85,7 @@ describe("Node CLI package", () => {
     expect(files).toContain("dist/index.d.ts");
     expect(files).toContain("dist/src/index.js");
     expect(files).toContain("dist/src/official-skills.lock.json");
-    expect(files).not.toContain("dist/packages/core/src/runner-local/index.js");
-    expect(files).not.toContain("dist/packages/runner-local/src/index.js");
+    expect(files).not.toContain("dist/packages/runtime-local/src/runner-local/index.js");
     expect(files).toContain("skills/scafld/run.mjs");
     expect(files).toContain("tools/outbox/build_pull_request/manifest.json");
     expect(files).toContain("tools/outbox/build_pull_request/run.mjs");
@@ -94,6 +93,8 @@ describe("Node CLI package", () => {
     expect(files).toContain("tools/scafld/capture_checks/run.mjs");
     expect(files).toContain("tools/sourcey/build/manifest.json");
     expect(files).toContain("tools/sourcey/build/run.mjs");
+    expect(files).toContain("tools/sourcey/package/manifest.json");
+    expect(files).toContain("tools/sourcey/package/run.mjs");
     expect(files).toContain("tools/sourcey/verify/manifest.json");
     expect(files).toContain("tools/thread/push_outbox/manifest.json");
     expect(files).toContain("tools/thread/push_outbox/run.mjs");
