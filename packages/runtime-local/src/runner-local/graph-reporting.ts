@@ -6,7 +6,13 @@ import type { GraphStep } from "@runxhq/core/parser";
 import type { Caller } from "./index.js";
 
 export function graphStepExecutionDirectory(step: GraphStep, stepExecutablePath: string, graphDirectory: string): string {
-  return step.skill || step.tool ? path.dirname(stepExecutablePath) : graphDirectory;
+  if (step.tool) {
+    return path.dirname(stepExecutablePath);
+  }
+  if (step.skill) {
+    return stepExecutablePath;
+  }
+  return graphDirectory;
 }
 
 export function graphStepReference(step: GraphStep): string {

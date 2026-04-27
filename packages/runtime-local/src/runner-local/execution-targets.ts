@@ -24,7 +24,11 @@ import {
 import type { RegistryStore } from "@runxhq/core/registry";
 import { resolveCatalogTool, type ToolCatalogAdapter } from "@runxhq/runtime-local/tool-catalogs";
 
-import { defaultRegistrySkillCacheDir, isRegistryRef, materializeRegistrySkill } from "./registry-resolver.js";
+import { defaultRegistrySkillCacheDir, isRegistryRef, materializeRegistrySkill, parseRegistryRef, type ParsedRegistryRef } from "./registry-resolver.js";
+
+export interface OfficialSkillResolver {
+  resolve(ref: ParsedRegistryRef): Promise<string | undefined>;
+}
 
 const executionTargetsModuleDirectory = path.dirname(fileURLToPath(import.meta.url));
 
@@ -172,11 +176,12 @@ export async function loadGraphStepExecutables(
   registryStore?: RegistryStore,
   skillCacheDir?: string,
   toolCatalogAdapters?: readonly ToolCatalogAdapter[],
+  officialSkillResolver?: OfficialSkillResolver,
 ): Promise<ReadonlyMap<string, ValidatedSkill>> {
   const skills = new Map<string, ValidatedSkill>();
   for (const step of graph.steps) {
     if (step.skill) {
-      const resolvedPath = await resolveGraphStepSkillPath(step.skill, graphDirectory, registryStore, skillCacheDir);
+      const resolvedPath = await resolveGraphStepSkillPath(step.skill, graphDirectory, registryStore, skillCacheDir, officialSkillResolver);
       skills.set(step.id, await loadValidatedSkill(resolvedPath, step.runner));
       continue;
     }
@@ -195,6 +200,7 @@ export async function resolveGraphStepExecution(options: {
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
   readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
+  readonly officialSkillResolver?: OfficialSkillResolver;
 }): Promise<{
   readonly skill: ValidatedSkill;
   readonly skillPath: string;
@@ -206,6 +212,7 @@ export async function resolveGraphStepExecution(options: {
       options.graphDirectory,
       options.registryStore,
       options.skillCacheDir,
+      options.officialSkillResolver,
     );
     return {
       skill:
@@ -330,11 +337,19 @@ async function resolveGraphStepSkillPath(
   graphDirectory: string,
   registryStore: RegistryStore | undefined,
   skillCacheDir: string | undefined,
+  officialSkillResolver?: OfficialSkillResolver,
 ): Promise<string> {
   if (isRegistryRef(stepSkill)) {
+    const parsed = parseRegistryRef(stepSkill);
+    if (officialSkillResolver) {
+      const resolved = await officialSkillResolver.resolve(parsed);
+      if (resolved) {
+        return resolved;
+      }
+    }
     if (!registryStore) {
       throw new Error(
-        `Registry ref '${stepSkill}' used in graph step, but no registry store is configured. Pass registryStore to runLocalGraph, or set RUNX_REGISTRY_URL / RUNX_REGISTRY_DIR to a local registry path.`,
+        `Registry ref '${stepSkill}' used in graph step, but no registry store or official-skill resolver is configured. Pass registryStore or officialSkillResolver to runLocalGraph, or set RUNX_REGISTRY_URL / RUNX_REGISTRY_DIR to a local registry path.`,
       );
     }
     const materialized = await materializeRegistrySkill({

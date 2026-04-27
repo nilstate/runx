@@ -95,7 +95,7 @@ import {
 } from "./commands/tool.js";
 import { ensureRunxInstallState } from "./runx-state.js";
 import { resolveBundledCliVoiceProfilePath } from "./runtime-assets.js";
-import { resolveRunnableSkillReference, runSkillSearch } from "./skill-refs.js";
+import { createOfficialSkillResolver, resolveRunnableSkillReference, runSkillSearch } from "./skill-refs.js";
 import { streamTrainableReceipts } from "./trainable-receipts.js";
 
 export async function dispatchCli(
@@ -596,6 +596,7 @@ async function executeLocalSkillCommand(options: {
     runner: options.parsed.runner,
     resumeFromRunId: options.parsed.resumeReceiptId,
     registryStore: await resolveRegistryStoreForGraphs(options.env),
+    officialSkillResolver: createOfficialSkillResolver(options.env),
     adapters,
     toolCatalogAdapters: resolveEnvToolCatalogAdapters(options.env),
     voiceProfilePath: await resolveBundledCliVoiceProfilePath(),

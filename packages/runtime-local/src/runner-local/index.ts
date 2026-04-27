@@ -4,7 +4,11 @@ export * from "./official-cache.js";
 export * from "./registry-resolver.js";
 export * from "./skill-install.js";
 export * from "./history.js";
-export { resolveSkillRunner, resolveToolExecutionTarget } from "./execution-targets.js";
+export {
+  resolveSkillRunner,
+  resolveToolExecutionTarget,
+  type OfficialSkillResolver,
+} from "./execution-targets.js";
 export { readPendingRunState, readPendingSkillPath } from "./inputs.js";
 export { createCallerAgentAdapter, createCallerAgentStepAdapter, createCallerApprovalAdapter } from "./caller-adapters.js";
 export {
@@ -104,6 +108,7 @@ import {
   materializeInlineGraph,
   resolveSkillReference,
   resolveSkillRunner,
+  type OfficialSkillResolver,
 } from "./execution-targets.js";
 import { projectReflectIfEnabled } from "./reflect.js";
 import {
@@ -164,6 +169,7 @@ export interface RunLocalSkillOptions {
   readonly resumeFromRunId?: string;
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
+  readonly officialSkillResolver?: OfficialSkillResolver;
   readonly skillCacheDir?: string;
   readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly context?: Context;
@@ -197,6 +203,7 @@ export interface RunValidatedSkillOptions {
   readonly currentContext?: readonly MaterializedContextEdge[];
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
+  readonly officialSkillResolver?: OfficialSkillResolver;
   readonly skillCacheDir?: string;
   readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly context?: Context;
@@ -309,6 +316,7 @@ export interface RunLocalGraphOptions {
   readonly executionSemantics?: ExecutionSemantics;
   readonly registryStore?: RegistryStore;
   readonly skillCacheDir?: string;
+  readonly officialSkillResolver?: OfficialSkillResolver;
   readonly toolCatalogAdapters?: readonly ToolCatalogAdapter[];
   readonly receiptMetadata?: Readonly<Record<string, unknown>>;
   readonly context?: Context;
@@ -468,6 +476,7 @@ export async function runLocalSkill(options: RunLocalSkillOptions): Promise<RunL
     skillPathForMissingContext: resolvedSkill.skillPath,
     executionSemantics: options.executionSemantics,
     registryStore: options.registryStore,
+    officialSkillResolver: options.officialSkillResolver,
     skillCacheDir: options.skillCacheDir,
     toolCatalogAdapters: options.toolCatalogAdapters,
     context: options.context,
@@ -637,6 +646,7 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
       resumeFromRunId: options.resumeFromRunId,
       executionSemantics: mergeExecutionSemantics(skill.execution, options.executionSemantics),
       registryStore: options.registryStore,
+      officialSkillResolver: options.officialSkillResolver,
       skillCacheDir: options.skillCacheDir,
       toolCatalogAdapters: options.toolCatalogAdapters,
       receiptMetadata: inheritedReceiptMetadata,
@@ -762,6 +772,7 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
       allowedSourceTypes: options.allowedSourceTypes,
       authResolver: options.authResolver,
       registryStore: options.registryStore,
+      officialSkillResolver: options.officialSkillResolver,
       skillCacheDir: options.skillCacheDir,
       toolCatalogAdapters: options.toolCatalogAdapters,
       context: options.context,
@@ -798,6 +809,7 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
         nested.receiptMetadata,
       ),
       registryStore: options.registryStore,
+      officialSkillResolver: options.officialSkillResolver,
       skillCacheDir: options.skillCacheDir,
       toolCatalogAdapters: options.toolCatalogAdapters,
       workspacePolicy,

@@ -65,6 +65,7 @@ export async function hydrateResumedRun(
         registryStore: options.registryStore,
         skillCacheDir: options.skillCacheDir,
         toolCatalogAdapters: options.toolCatalogAdapters,
+        officialSkillResolver: options.officialSkillResolver,
       });
       return {
         status: "needs_resolution",

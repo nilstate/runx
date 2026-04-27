@@ -58,6 +58,7 @@ export async function handlePausedPlan(
       registryStore: options.registryStore,
       skillCacheDir: options.skillCacheDir,
       toolCatalogAdapters: options.toolCatalogAdapters,
+      officialSkillResolver: options.officialSkillResolver,
     });
     await appendPendingGraphLedgerEntry({
       receiptDir: ctx.receiptDir,

@@ -20,7 +20,7 @@ import { normalizeListKind, type RunxListRequestedKind } from "./commands/list.j
 import { dispatchCli, writeCliError } from "./dispatch.js";
 import { isHelpRequest, writeUsage } from "./help.js";
 
-export { resolveSkillReference, resolveRunnableSkillReference } from "./skill-refs.js";
+export { resolveSkillReference, resolveRunnableSkillReference, createOfficialSkillResolver } from "./skill-refs.js";
 
 export interface CliIo {
   readonly stdout: NodeJS.WriteStream;

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +24,8 @@ import {
 import {
   ensureOfficialSkillCached,
   type OfficialSkillLockEntry,
+  type OfficialSkillResolver,
+  type ParsedRegistryRef,
 } from "@runxhq/runtime-local";
 
 import { ensureRunxInstallState } from "./runx-state.js";
@@ -99,7 +101,97 @@ export async function resolveRunnableSkillReference(ref: string, env: NodeJS.Pro
     installationId: install.state.installation_id,
     entry: official,
   });
+  await rewriteOfficialSkillSiblingRefs(cache.skillPath, official.skill_id);
   return cache.skillPath;
+}
+
+export function createOfficialSkillResolver(env: NodeJS.ProcessEnv): OfficialSkillResolver {
+  return {
+    async resolve(parsed: ParsedRegistryRef): Promise<string | undefined> {
+      const lock = loadOfficialSkillLock();
+      const entry = lock.find((candidate) => candidate.skill_id === parsed.skillId);
+      if (!entry) {
+        return undefined;
+      }
+      if (parsed.version && entry.version !== parsed.version) {
+        return undefined;
+      }
+      const globalHomeDir = resolveRunxGlobalHomeDir(env);
+      const install = await ensureRunxInstallState(globalHomeDir);
+      const registryBaseUrl = env.RUNX_REGISTRY_URL ?? "https://runx.ai";
+      const cache = await ensureOfficialSkillCached({
+        cacheRoot: resolveRunxOfficialSkillsDir(env),
+        registryBaseUrl,
+        installationId: install.state.installation_id,
+        entry,
+      });
+      await rewriteOfficialSkillSiblingRefs(cache.skillPath, entry.skill_id);
+      return cache.skillPath;
+    },
+  };
+}
+
+const SIBLING_SKILL_REF_PATTERN = /(\bskill:\s*)\.\.\/([A-Za-z0-9][A-Za-z0-9_-]*)\b/g;
+
+export function rewriteSiblingSkillRefs(
+  text: string,
+  owner: string,
+  siblingVersions: ReadonlyMap<string, string>,
+): { readonly text: string; readonly didRewrite: boolean } {
+  let didRewrite = false;
+  const out = text.replace(SIBLING_SKILL_REF_PATTERN, (match, prefix, siblingName) => {
+    const siblingVersion = siblingVersions.get(siblingName);
+    if (!siblingVersion) {
+      return match;
+    }
+    didRewrite = true;
+    return `${prefix}${owner}/${siblingName}@${siblingVersion}`;
+  });
+  return { text: out, didRewrite };
+}
+
+async function rewriteOfficialSkillSiblingRefs(skillDir: string, ownerSkillId: string): Promise<void> {
+  const owner = ownerSkillId.split("/")[0];
+  if (!owner) {
+    return;
+  }
+  const lock = loadOfficialSkillLock();
+  const lockBySiblingName = new Map<string, string>();
+  for (const entry of lock) {
+    const [entryOwner, entryName] = entry.skill_id.split("/");
+    if (entryOwner === owner && entryName) {
+      lockBySiblingName.set(entryName, entry.version);
+    }
+  }
+  if (lockBySiblingName.size === 0) {
+    return;
+  }
+
+  const profilePath = path.join(skillDir, "X.yaml");
+  if (existsSync(profilePath)) {
+    const original = await readFile(profilePath, "utf8");
+    const { text: rewritten, didRewrite } = rewriteSiblingSkillRefs(original, owner, lockBySiblingName);
+    if (didRewrite) {
+      await writeFile(profilePath, rewritten);
+    }
+  }
+
+  const profileStatePath = path.join(skillDir, ".runx", "profile.json");
+  if (existsSync(profileStatePath)) {
+    const stateText = await readFile(profileStatePath, "utf8");
+    const state = JSON.parse(stateText) as { readonly profile?: { readonly document?: string } };
+    const document = state.profile?.document;
+    if (typeof document === "string") {
+      const { text: rewrittenDocument, didRewrite } = rewriteSiblingSkillRefs(document, owner, lockBySiblingName);
+      if (didRewrite) {
+        const nextState = {
+          ...state,
+          profile: { ...(state.profile ?? {}), document: rewrittenDocument },
+        };
+        await writeFile(profileStatePath, `${JSON.stringify(nextState, null, 2)}\n`);
+      }
+    }
+  }
 }
 
 async function searchBundledSkills(query: string): Promise<readonly SkillSearchResult[]> {

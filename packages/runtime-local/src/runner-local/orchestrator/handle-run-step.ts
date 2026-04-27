@@ -60,6 +60,7 @@ export async function handleRunStepPlan(
     registryStore: options.registryStore,
     skillCacheDir: options.skillCacheDir,
     toolCatalogAdapters: options.toolCatalogAdapters,
+    officialSkillResolver: options.officialSkillResolver,
   });
   const stepSkillPath = resolvedStep.skillPath;
   const stepSkill = resolvedStep.skill;
