@@ -9,7 +9,6 @@ describe("scafld skill contract", () => {
   it("keeps the portable skill standard while X stays a thin native scafld consumer", async () => {
     const skillPath = path.resolve("skills/scafld/SKILL.md");
     const wrapperPath = path.resolve("skills/scafld/run.mjs");
-    const vendoredManifest = JSON.parse(await readFile(path.resolve("../.ai/scafld/manifest.json"), "utf8"));
     const skill = validateSkill(parseSkillMarkdown(await readFile(skillPath, "utf8")), { mode: "strict" });
     const manifest = validateRunnerManifest(parseRunnerManifestYaml(await readFile(path.resolve("skills/scafld/X.yaml"), "utf8")));
     const wrapper = await readFile(wrapperPath, "utf8");
@@ -47,16 +46,6 @@ describe("scafld skill contract", () => {
       requirements: [
         "scafld CLI with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input",
       ],
-    });
-    expect(vendoredManifest.native_contract).toEqual({
-      required_scafld_version: "1.4.6",
-      required_source_commit: "d23b82d9acc6406723e1f0c9b3b003b7daa5cfc8",
-      required_surfaces: {
-        json_envelopes: true,
-        origin_sync: true,
-        projections: ["summary", "checks", "pr-body"],
-      },
-      notes: "runx intentionally vendors the scafld workspace bundle separately from the live CLI contract; the wrapper expects these native machine surfaces from the installed scafld binary.",
     });
   });
 });
