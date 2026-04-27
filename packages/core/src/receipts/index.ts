@@ -395,6 +395,8 @@ export async function listVerifiedLocalReceipts(
 }
 
 export function buildLocalReceipt(options: BuildLocalReceiptOptions, keyPair: LocalKeyPair): LocalSkillReceipt {
+  assertNonEmptyReceiptIdentity(options.skillName, "skillName", options.sourceType);
+  assertNonEmptyReceiptIdentity(options.sourceType, "sourceType", options.skillName);
   const unsignedBase = {
     schema_version: "runx.receipt.v1" as const,
     kind: "skill_execution" as const,
@@ -441,6 +443,7 @@ export function buildLocalGraphReceipt(
   options: BuildLocalGraphReceiptOptions,
   keyPair: LocalKeyPair,
 ): LocalGraphReceipt {
+  assertNonEmptyReceiptIdentity(options.graphName, "graphName", options.graphId);
   const normalizedSteps = options.steps.map((step, index) => ({
     ...step,
     governance: validateGraphReceiptGovernance(step.governance, `steps[${index}].governance`),
@@ -568,6 +571,17 @@ export function validateScopeAdmission(
 function assertLocalReceiptId(id: string): void {
   if (!/^(rx|gx)_[A-Za-z0-9_-]+$/.test(id)) {
     throw new Error(`Invalid receipt id '${id}'.`);
+  }
+}
+
+function assertNonEmptyReceiptIdentity(
+  value: string | null | undefined,
+  fieldName: string,
+  context: string | null | undefined,
+): asserts value is string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    const ctx = typeof context === "string" && context.trim().length > 0 ? ` (context: ${context})` : "";
+    throw new Error(`Receipt ${fieldName} must be a non-empty string${ctx}.`);
   }
 }
 

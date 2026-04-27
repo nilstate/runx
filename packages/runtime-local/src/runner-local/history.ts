@@ -400,7 +400,7 @@ async function summarizeLocalReceipt(
       kind: receipt.kind,
       status: receipt.status,
       verification,
-      name: receipt.skill_name,
+      name: resolveSummaryName(receipt.skill_name, receipt.id),
       sourceType: receipt.source_type,
       startedAt: receipt.started_at,
       completedAt: receipt.completed_at,
@@ -419,7 +419,7 @@ async function summarizeLocalReceipt(
     kind: receipt.kind,
     status: receipt.status,
     verification,
-    name: receipt.graph_name,
+    name: resolveSummaryName(receipt.graph_name, receipt.id),
     startedAt: receipt.started_at,
     completedAt: receipt.completed_at,
     actors,
@@ -430,6 +430,13 @@ async function summarizeLocalReceipt(
     lineage,
     runnerProvider,
   };
+}
+
+function resolveSummaryName(field: string | null | undefined, fallbackId: string): string {
+  if (typeof field === "string" && field.trim().length > 0) {
+    return field;
+  }
+  return fallbackId;
 }
 
 function extractReceiptActors(receipt: LocalReceipt): readonly string[] | undefined {
