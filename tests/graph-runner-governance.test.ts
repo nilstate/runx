@@ -4,9 +4,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { createA2aAdapter } from "../packages/adapters/src/a2a/index.js";
 import { createDefaultLocalSkillRuntime } from "@runxhq/adapters/runtime";
+import { createA2aFixtureTransport } from "@runxhq/runtime-local/harness";
 import type { SkillAdapter } from "@runxhq/core/executor";
-import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
+import { runLocalGraph, type Caller } from "@runxhq/runtime-local";
 
 const caller: Caller = {
   resolve: async () => undefined,
@@ -82,6 +84,7 @@ steps:
         receiptDir: path.join(tempDir, "receipts"),
         runxHome: path.join(tempDir, "home"),
         env: process.env,
+        adapters: [createA2aAdapter({ transport: createA2aFixtureTransport() })],
       });
       await writeFile(
         graphPath,

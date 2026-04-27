@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 describe("skill quality profile runtime", () => {
   it("injects Quality Profile into agent envelopes and pins its hash in receipts", async () => {

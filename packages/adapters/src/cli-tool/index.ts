@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 
-import { cleanupLocalProcessSandbox, prepareLocalProcessSandbox } from "@runxhq/core/policy";
+import { cleanupLocalProcessSandbox, prepareLocalProcessSandbox } from "@runxhq/runtime-local";
 
 export type CliToolInputMode = "args" | "stdin" | "none";
 
@@ -24,6 +24,7 @@ export interface CliToolSandbox {
   readonly envAllowlist?: readonly string[];
   readonly network?: boolean;
   readonly writablePaths?: readonly string[];
+  readonly requireEnforcement?: boolean;
   readonly approvedEscalation?: boolean;
 }
 
@@ -152,19 +153,21 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
       }
     }
 
-    child.stdout.on("data", (chunk: Buffer) => {
-      if (stdoutBytes < outputLimitBytes) {
-        stdoutChunks.push(chunk);
-        stdoutBytes += chunk.length;
-      }
-    });
+	    child.stdout.on("data", (chunk: Buffer) => {
+	      const remaining = outputLimitBytes - stdoutBytes;
+	      if (remaining <= 0) return;
+	      const captured = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
+	      stdoutChunks.push(captured);
+	      stdoutBytes += captured.length;
+	    });
 
-    child.stderr.on("data", (chunk: Buffer) => {
-      if (stderrBytes < outputLimitBytes) {
-        stderrChunks.push(chunk);
-        stderrBytes += chunk.length;
-      }
-    });
+	    child.stderr.on("data", (chunk: Buffer) => {
+	      const remaining = outputLimitBytes - stderrBytes;
+	      if (remaining <= 0) return;
+	      const captured = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
+	      stderrChunks.push(captured);
+	      stderrBytes += captured.length;
+	    });
 
     child.on("error", (error) => {
       spawnError = error;
@@ -282,16 +285,11 @@ function stringifyInput(value: unknown): string {
 }
 
 function truncateToBytes(buf: Buffer, limit: number): string {
-  if (buf.length <= limit) return buf.toString("utf8");
+  if (buf.length < limit) return buf.toString("utf8");
 
-  const decoder = new TextDecoder("utf8", { fatal: true });
-  const minimumEnd = Math.max(0, limit - 3);
-  for (let end = limit; end >= minimumEnd; end -= 1) {
-    try {
-      return decoder.decode(buf.subarray(0, end));
-    } catch {
-      continue;
-    }
+  let text = buf.subarray(0, limit).toString("utf8");
+  while (text.length > 0 && (text.endsWith("\uFFFD") || Buffer.byteLength(text, "utf8") > limit)) {
+    text = text.slice(0, -1);
   }
-  return "";
+  return text;
 }

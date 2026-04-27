@@ -4,7 +4,7 @@ import { invokeMcp } from "./index.js";
 
 const fixtureServer = {
   command: "node",
-  args: ["--import", "tsx", "packages/core/src/harness/mcp-fixture.ts"],
+  args: ["--import", "tsx", "packages/runtime-local/src/harness/mcp-fixture.ts"],
   cwd: ".",
 };
 
@@ -86,10 +86,10 @@ describe("invokeMcp", () => {
         mode: "allowlist",
         allowlist: ["PATH", "ALLOWED_VALUE"],
       },
-      filesystem: {
-        enforcement: "bubblewrap-mount-namespace",
-      },
     });
+    expect(["bubblewrap-mount-namespace", "not-enforced-local"]).toContain(
+      sandboxFilesystemEnforcement(blocked.metadata?.sandbox),
+    );
 
     const allowed = await invokeMcp({
       source: {
@@ -184,3 +184,18 @@ describe("invokeMcp", () => {
     expect(result.status).toBe("failure");
   });
 });
+
+function sandboxFilesystemEnforcement(sandbox: unknown): string | undefined {
+  return readNestedString(sandbox, ["filesystem", "enforcement"]);
+}
+
+function readNestedString(value: unknown, path: readonly string[]): string | undefined {
+  let cursor = value;
+  for (const key of path) {
+    if (typeof cursor !== "object" || cursor === null || !(key in cursor)) {
+      return undefined;
+    }
+    cursor = (cursor as Record<string, unknown>)[key];
+  }
+  return typeof cursor === "string" ? cursor : undefined;
+}

@@ -3,7 +3,7 @@ import type {
   HostBridge,
   HostRunOptions,
   HostRunResult,
-} from "@runxhq/core/sdk";
+} from "@runxhq/runtime-local/sdk";
 
 export interface OpenAIHostResponse {
   readonly role: "tool";

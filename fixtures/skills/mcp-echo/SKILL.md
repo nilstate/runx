@@ -8,7 +8,7 @@ source:
     args:
       - --import
       - tsx
-      - packages/core/src/harness/mcp-fixture.ts
+      - packages/runtime-local/src/harness/mcp-fixture.ts
     cwd: ../../..
   tool: echo
   arguments:

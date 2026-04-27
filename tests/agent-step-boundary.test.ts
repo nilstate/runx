@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createHarnessHookAdapter } from "@runxhq/core/harness";
+import { createHarnessHookAdapter } from "@runxhq/runtime-local/harness";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,

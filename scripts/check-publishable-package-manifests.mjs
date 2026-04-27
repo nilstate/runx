@@ -9,6 +9,7 @@ const packageNames = [
   "contracts",
   "core",
   "create-skill",
+  "runtime-local",
 ];
 const dependencySections = [
   "dependencies",

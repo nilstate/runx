@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { runHarnessTarget } from "@runxhq/core/harness";
+import { runHarnessTarget } from "@runxhq/runtime-local/harness";
 import { parseSkillMarkdown, parseRunnerManifestYaml, validateRunnerManifest, validateSkill } from "@runxhq/core/parser";
 
 const officialSkillPackages = [

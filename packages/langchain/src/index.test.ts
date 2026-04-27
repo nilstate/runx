@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { tool } from "@langchain/core/tools";
 
-import type { RunLocalSkillResult } from "@runxhq/core/runner-local";
+import type { RunLocalSkillResult } from "@runxhq/runtime-local";
 
 import { createLangChainToolCatalogAdapter, createRunxLangChainTool } from "./index.js";
 

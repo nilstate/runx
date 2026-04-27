@@ -24,7 +24,7 @@ import {
 import {
   ensureOfficialSkillCached,
   type OfficialSkillLockEntry,
-} from "@runxhq/core/runner-local";
+} from "@runxhq/runtime-local";
 
 import { ensureRunxInstallState } from "./runx-state.js";
 

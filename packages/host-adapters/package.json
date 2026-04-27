@@ -18,6 +18,6 @@
     }
   },
   "dependencies": {
-    "@runxhq/core": "workspace:^0.1.4"
+    "@runxhq/runtime-local": "workspace:^0.1.0"
   }
 }

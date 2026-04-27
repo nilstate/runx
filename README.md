@@ -66,6 +66,23 @@ tools, approvals, and required human inputs keep their existing local behavior.
 The global link points at `oss/packages/cli` in this checkout. Rebuild with
 `pnpm --dir oss build`; do not reinstall.
 
+### Local Sandbox Enforcement
+
+`cli-tool` skills declare sandbox intent in `SKILL.md`: profile, cwd policy,
+env allowlist, network intent, and writable paths. Receipts record both the
+declared policy and the actual local enforcement mode.
+
+On Linux with `bubblewrap` (`bwrap`) available, non-unrestricted profiles run
+under a mount/network namespace and receipts show `bubblewrap` enforcement. On
+macOS or Linux without `bwrap`, the same profiles can run in a
+`declared-policy-only` mode for local development: runx still applies admission,
+cwd, env, and writable-path checks, but the receipt marks filesystem and network
+isolation as `not-enforced-local`.
+
+Set `sandbox.require_enforcement: true` in a skill, or
+`RUNX_SANDBOX_REQUIRE_ENFORCEMENT=true` in the environment, when a run must fail
+unless OS-level sandbox enforcement is available.
+
 ## Capability Packs
 
 Runx is the generic execution engine. Product workflows stay outside the runx

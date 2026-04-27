@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../packages/cli/src/index.js";
 import type { MarketplaceAdapter, SkillSearchResult } from "@runxhq/core/marketplaces";
 import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
-import { installLocalSkill } from "@runxhq/core/runner-local";
+import { installLocalSkill } from "@runxhq/runtime-local";
 
 describe("skill-add", () => {
   it("installs a registry skill as pinned markdown with provenance", async () => {

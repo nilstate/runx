@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import { createDefaultSkillAdapters } from "../packages/adapters/src/index.js";
 import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
-import { runHarnessTarget } from "@runxhq/core/harness";
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runHarnessTarget } from "@runxhq/runtime-local/harness";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 describe("reflect-digest skill", () => {
   it("passes the inline harness suite", async () => {

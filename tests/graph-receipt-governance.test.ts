@@ -4,7 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { runLocalGraph, type Caller } from "@runxhq/runtime-local";
 
 const caller: Caller = {
   resolve: async () => undefined,
@@ -43,6 +44,7 @@ steps:
           grant_id: "grant_repo",
           scopes: ["repo:*"],
         },
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("success");
@@ -113,6 +115,7 @@ steps:
           grant_id: "grant_repo",
           scopes: ["repo:read"],
         },
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("policy_denied");

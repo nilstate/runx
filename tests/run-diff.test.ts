@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { appendLedgerEntries, createArtifactEnvelope } from "@runxhq/core/artifacts";
 import { writeLocalReceipt } from "@runxhq/core/receipts";
-import { diffLocalRuns } from "@runxhq/core/runner-local";
+import { diffLocalRuns } from "@runxhq/runtime-local";
 import { runCli } from "../packages/cli/src/index.js";
 
 describe("run diff", () => {

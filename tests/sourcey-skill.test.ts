@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 
 async function createSourceyRuntime(root: string, env: NodeJS.ProcessEnv = process.env) {

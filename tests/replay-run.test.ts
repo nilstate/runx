@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { inspectLocalReceipt, readLocalReplaySeed } from "@runxhq/core/runner-local";
+import { inspectLocalReceipt, readLocalReplaySeed } from "@runxhq/runtime-local";
 import { runCli } from "../packages/cli/src/index.js";
 
 describe("run replay", () => {

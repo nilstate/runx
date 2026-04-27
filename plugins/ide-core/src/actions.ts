@@ -1,5 +1,5 @@
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { runHarness, type HarnessRunResult } from "@runxhq/core/harness";
+import { runHarness, type HarnessRunResult } from "@runxhq/runtime-local/harness";
 import {
   createRunxSdk,
   createStructuredCaller,
@@ -11,7 +11,7 @@ import {
   type RunxSdkOptions,
   type SearchSkillsOptions,
   type StructuredCaller,
-} from "@runxhq/core/sdk";
+} from "@runxhq/runtime-local/sdk";
 
 export interface IdeActionCoreOptions extends RunxSdkOptions {
   readonly sdk?: RunxSdk;

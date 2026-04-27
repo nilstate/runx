@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { runLocalSkill } from "@runxhq/core/runner-local";
+import { runLocalSkill } from "@runxhq/runtime-local";
 
 import { createAgentRuntimeLoader, createNonInteractiveCaller } from "../packages/cli/src/callers.js";
 

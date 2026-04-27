@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createRunxSdk, createHostBridge } from "@runxhq/core/sdk";
+import { createRunxSdk, createHostBridge } from "@runxhq/runtime-local/sdk";
 import { createOpenAiHostAdapter } from "@runxhq/host-adapters";
 
 const cleanups: Array<() => Promise<void>> = [];

@@ -147,6 +147,7 @@ runx:
     env_allowlist:
       - PATH
     network: false
+    require_enforcement: true
     writable_paths:
       - "{{output_path}}"
 ---
@@ -160,11 +161,13 @@ Sandboxed.
       envAllowlist: ["PATH"],
       network: false,
       writablePaths: ["{{output_path}}"],
+      requireEnforcement: true,
       raw: {
         profile: "workspace-write",
         cwd_policy: "workspace",
         env_allowlist: ["PATH"],
         network: false,
+        require_enforcement: true,
         writable_paths: ["{{output_path}}"],
       },
     });

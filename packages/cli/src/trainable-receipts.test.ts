@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { createArtifactEnvelope, appendLedgerEntries } from "@runxhq/core/artifacts";
 import { runCli } from "./index.js";
 import { writeLocalReceipt, writeReceiptOutcomeResolution } from "@runxhq/core/receipts";
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 import type { SkillAdapter } from "@runxhq/core/executor";
 import { TRAINING_SCHEMA_REFS } from "./trainable-receipts.js";
 

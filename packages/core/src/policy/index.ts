@@ -23,6 +23,7 @@ export interface LocalAdmissionSandbox {
   readonly envAllowlist?: readonly string[];
   readonly network?: boolean;
   readonly writablePaths?: readonly string[];
+  readonly requireEnforcement?: boolean;
 }
 
 export interface LocalAdmissionOptions {
@@ -360,12 +361,6 @@ export {
   type SandboxDeclaration,
   type SandboxProfile,
 } from "./sandbox.js";
-export {
-  cleanupLocalProcessSandbox,
-  prepareLocalProcessSandbox,
-  type LocalProcessSandboxOptions,
-  type LocalProcessSandboxResult,
-} from "./process-sandbox.js";
 export {
   DEFAULT_PUBLIC_WORK_POLICY,
   evaluatePublicCommentOpportunity,

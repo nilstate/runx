@@ -4,9 +4,10 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runHarness } from "@runxhq/core/harness";
-import { createStructuredCaller } from "@runxhq/core/sdk";
-import { runLocalSkill } from "@runxhq/core/runner-local";
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { runHarness } from "@runxhq/runtime-local/harness";
+import { createStructuredCaller } from "@runxhq/runtime-local/sdk";
+import { runLocalSkill } from "@runxhq/runtime-local";
 
 describe("caller approval boundary", () => {
   it("lets SDK callers supply approval decisions programmatically", async () => {
@@ -25,6 +26,7 @@ describe("caller approval boundary", () => {
         receiptDir: path.join(tempDir, "receipts"),
         runxHome: path.join(tempDir, "home"),
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("success");
@@ -68,7 +70,7 @@ expect:
 `,
       );
 
-      const result = await runHarness(fixturePath);
+      const result = await runHarness(fixturePath, { adapters: createDefaultSkillAdapters() });
       expect(result.status).toBe("success");
       expect(result.trace.resolutions).toHaveLength(1);
       expect(result.trace.resolutions[0]).toMatchObject({
@@ -112,7 +114,7 @@ expect:
 `,
       );
 
-      const result = await runHarness(fixturePath);
+      const result = await runHarness(fixturePath, { adapters: createDefaultSkillAdapters() });
       expect(result.status).toBe("policy_denied");
       expect(result.receipt?.kind).toBe("skill_execution");
       if (result.receipt?.kind !== "skill_execution") {

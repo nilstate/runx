@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createStructuredCaller } from "@runxhq/core/sdk";
+import { createStructuredCaller } from "@runxhq/runtime-local/sdk";
 import { createHostHarness } from "./host-protocol-test-utils.js";
 
 const cleanups: Array<() => Promise<void>> = [];

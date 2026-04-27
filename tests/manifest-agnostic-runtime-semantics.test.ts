@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { latestVerifiedReceiptOutcomeResolution, writeReceiptOutcomeResolution } from "@runxhq/core/receipts";
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 const caller: Caller = {
   resolve: async () => undefined,

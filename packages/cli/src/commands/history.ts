@@ -6,7 +6,7 @@ import {
   readLocalReplaySeed,
   type LocalReceiptSummary,
   type RunSummaryDiff,
-} from "@runxhq/core/runner-local";
+} from "@runxhq/runtime-local";
 
 import { renderKeyValue, relativeTime, shortId, statusIcon, theme } from "../ui.js";
 

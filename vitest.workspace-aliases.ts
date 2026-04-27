@@ -52,4 +52,12 @@ export const workspaceAliases: readonly WorkspaceAlias[] = [
     find: /^@runxhq\/host-adapters$/,
     replacement: workspacePath("packages/host-adapters/src/index.ts"),
   },
+  {
+    find: /^@runxhq\/runtime-local$/,
+    replacement: workspacePath("packages/runtime-local/src/index.ts"),
+  },
+  {
+    find: /^@runxhq\/runtime-local\/(.+)$/,
+    replacement: workspacePath("packages/runtime-local/src/$1/index.ts"),
+  },
 ];

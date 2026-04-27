@@ -50,6 +50,7 @@
     "@runxhq/authoring": "workspace:^0.1.3",
     "@runxhq/contracts": "workspace:^0.2.3",
     "@runxhq/core": "workspace:^0.1.4",
+    "@runxhq/runtime-local": "workspace:^0.1.0",
     "yaml": "^2.8.3"
   }
 }

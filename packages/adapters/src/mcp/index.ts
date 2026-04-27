@@ -5,7 +5,7 @@ import {
   mapMcpArguments,
   McpSandboxDeniedError,
   stringifyMcpToolResult,
-} from "@runxhq/core/mcp";
+} from "@runxhq/runtime-local/mcp";
 
 export const mcpAdapterPackage = "@runxhq/adapters/mcp";
 

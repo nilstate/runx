@@ -5,7 +5,7 @@ import path from "node:path";
 import { mkdtemp, readFile } from "node:fs/promises";
 
 import { createDefaultLocalSkillRuntime } from "@runxhq/adapters";
-import { runLocalSkill } from "@runxhq/core/runner-local";
+import { runLocalSkill } from "@runxhq/runtime-local";
 import {
   fetchGitHubIssueThread,
   firstNonEmptyString,

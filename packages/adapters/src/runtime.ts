@@ -4,7 +4,7 @@ import path from "node:path";
 
 import type { ResolutionRequest, ResolutionResponse } from "@runxhq/core/executor";
 import type { SkillAdapter } from "@runxhq/core/executor";
-import type { Caller, ExecutionEvent } from "@runxhq/core/runner-local";
+import type { Caller, ExecutionEvent } from "@runxhq/runtime-local";
 
 import { executeManagedAgentResolution, loadManagedAgentConfig } from "./agent/index.js";
 import { resolveDefaultSkillAdapters } from "./index.js";

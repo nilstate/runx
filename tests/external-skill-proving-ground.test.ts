@@ -12,8 +12,8 @@ import {
   type RunnerHarnessCase,
   type SkillRunnerManifest,
 } from "@runxhq/core/parser";
-import { runLocalSkill } from "@runxhq/core/runner-local";
-import { createStructuredCaller } from "@runxhq/core/sdk";
+import { runLocalSkill } from "@runxhq/runtime-local";
+import { createStructuredCaller } from "@runxhq/runtime-local/sdk";
 
 interface ProvingGroundExpectation {
   readonly requestId: string;

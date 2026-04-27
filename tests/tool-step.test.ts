@@ -6,7 +6,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { parseGraphYaml, validateGraph } from "@runxhq/core/parser";
-import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
+import { runLocalGraph, type Caller } from "@runxhq/runtime-local";
 
 describe("tool steps", () => {
   it("resolves builtin tool manifests and carries allowed_tools into agent steps", async () => {

@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { runHarness, runHarnessTarget } from "@runxhq/core/harness";
+import { runHarness, runHarnessTarget } from "@runxhq/runtime-local/harness";
 import type { SkillSearchResult } from "@runxhq/core/marketplaces";
 import type { ResolutionRequest } from "@runxhq/core/executor";
-import type { ExecutionEvent, RunLocalSkillResult } from "@runxhq/core/runner-local";
-import type { ToolCatalogSearchResult, ToolInspectResult } from "@runxhq/core/tool-catalogs";
+import type { ExecutionEvent, RunLocalSkillResult } from "@runxhq/runtime-local";
+import type { ToolCatalogSearchResult, ToolInspectResult } from "@runxhq/runtime-local/tool-catalogs";
 
 import type { CliIo, ParsedArgs } from "./index.js";
 import { flattenConfig, type ConfigResult } from "./commands/config.js";

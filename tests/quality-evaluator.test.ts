@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { evaluateArtifactQuality } from "@runxhq/core/harness";
+import { evaluateArtifactQuality } from "@runxhq/runtime-local/harness";
 import { parseSkillMarkdown, validateSkill } from "@runxhq/core/parser";
 
 interface BadArtifactFixture {

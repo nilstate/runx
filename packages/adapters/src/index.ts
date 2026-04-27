@@ -1,6 +1,5 @@
 import type { SkillAdapter } from "@runxhq/core/executor";
 
-import { createA2aAdapter, createFixtureA2aTransport } from "./a2a/index.js";
 import { createCatalogAdapter } from "./catalog/index.js";
 import {
   createManagedAgentAdapter,
@@ -24,7 +23,6 @@ export function createDefaultSkillAdapters(): readonly SkillAdapter[] {
     createCatalogAdapter(),
     createCliToolAdapter(),
     createMcpAdapter(),
-    createA2aAdapter({ transport: createFixtureA2aTransport() }),
   ];
 }
 

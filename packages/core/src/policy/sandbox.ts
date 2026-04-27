@@ -6,6 +6,7 @@ export interface SandboxDeclaration {
   readonly envAllowlist?: readonly string[];
   readonly network?: boolean;
   readonly writablePaths?: readonly string[];
+  readonly requireEnforcement?: boolean;
 }
 
 export type SandboxAdmissionDecision =
@@ -29,6 +30,7 @@ export function normalizeSandboxDeclaration(sandbox: SandboxDeclaration | undefi
     envAllowlist: sandbox?.envAllowlist,
     network: sandbox?.network ?? sandbox?.profile === "network",
     writablePaths: sandbox?.writablePaths ?? [],
+    requireEnforcement: sandbox?.requireEnforcement ?? false,
   };
 }
 
@@ -38,6 +40,7 @@ export interface RequiredSandboxDeclaration {
   readonly envAllowlist?: readonly string[];
   readonly network: boolean;
   readonly writablePaths: readonly string[];
+  readonly requireEnforcement: boolean;
 }
 
 export function sandboxRequiresApproval(sandbox: SandboxDeclaration | undefined): boolean {

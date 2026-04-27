@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const commands = [
+  ["pnpm", ["boundary:check"]],
   ["pnpm", ["typecheck"]],
   ["node", ["scripts/build-workspace.mjs"]],
   ["node", ["scripts/check-publishable-package-manifests.mjs"]],

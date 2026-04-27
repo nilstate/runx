@@ -195,6 +195,9 @@ describe("@runxhq/contracts", () => {
     expect(schemas).toHaveProperty("RunDiffEnvelope", {
       $ref: "../../spec/hosted/run-diff.response.schema.json",
     });
+    expect(schemas.RunApproveLegacyRequest).toMatchObject({
+      required: ["request_id", "approved"],
+    });
     expect(schemas).toHaveProperty("PublicSkillDetailEnvelope");
     expect(schemas).toHaveProperty("KnowledgeEntryEnvelope");
     expect(schemas).toHaveProperty("ApprovalRouteSnapshot");

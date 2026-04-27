@@ -4,7 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { createDefaultSkillAdapters } from "@runxhq/adapters";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 describe("approval receipt metadata", () => {
   it("records approved gates in successful skill receipts", async () => {
@@ -19,6 +20,7 @@ describe("approval receipt metadata", () => {
         receiptDir,
         runxHome: path.join(tempDir, "home"),
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("success");
@@ -50,6 +52,7 @@ describe("approval receipt metadata", () => {
         receiptDir,
         runxHome: path.join(tempDir, "home"),
         env: process.env,
+        adapters: createDefaultSkillAdapters(),
       });
 
       expect(result.status).toBe("policy_denied");

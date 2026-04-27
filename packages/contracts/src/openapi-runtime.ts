@@ -399,6 +399,7 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
         request_id: { type: "string" },
         approved: { type: "boolean" },
       },
+      required: ["request_id", "approved"],
       additionalProperties: false,
     },
     RunRecordedEnvelope: {

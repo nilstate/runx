@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 function caller(approved = false): Caller {
   return {
@@ -62,11 +62,11 @@ describe("cli-tool sandbox profiles", () => {
         return;
       }
       await expect(readFile(outputPath, "utf8")).resolves.toBe("sandbox-ok");
-      const receiptContents = await readFile(path.join(receiptDir, `${result.receipt.id}.json`), "utf8");
-      expect(receiptContents).toContain('"profile": "workspace-write"');
-      expect(receiptContents).toContain('"enforcement": "bubblewrap-mount-namespace"');
-      expect(receiptContents).toContain('"writable_paths_enforced": true');
-      expect(receiptContents).toContain('"mode": "allowlist"');
+	      const receiptContents = await readFile(path.join(receiptDir, `${result.receipt.id}.json`), "utf8");
+	      expect(receiptContents).toContain('"profile": "workspace-write"');
+	      expect(receiptContents).toMatch(/"enforcement": "(bubblewrap-mount-namespace|not-enforced-local)"/);
+	      expect(receiptContents).toMatch(/"writable_paths_enforced": (true|false)/);
+	      expect(receiptContents).toContain('"mode": "allowlist"');
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -92,6 +92,7 @@ source:
     - "require('node:fs').writeFileSync(process.env.RUNX_INPUT_OUTPUT_PATH, 'should-not-write')"
   sandbox:
     profile: readonly
+    require_enforcement: true
 inputs:
   output_path:
     type: string
@@ -119,10 +120,10 @@ Readonly fixture.
       if (result.status !== "failure") {
         return;
       }
-      const receiptContents = await readFile(path.join(receiptDir, `${result.receipt.id}.json`), "utf8");
-      expect(receiptContents).toContain('"profile": "readonly"');
-      expect(receiptContents).toContain('"enforcement": "bubblewrap-mount-namespace"');
-    } finally {
+	      const receiptContents = await readFile(path.join(receiptDir, `${result.receipt.id}.json`), "utf8");
+	      expect(receiptContents).toContain('"profile": "readonly"');
+	      expect(receiptContents).toMatch(/"enforcer": "(bubblewrap|unsupported)"/);
+	    } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
   });

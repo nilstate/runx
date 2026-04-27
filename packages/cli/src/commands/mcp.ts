@@ -12,9 +12,9 @@ import {
   readPendingSkillPath,
   runLocalSkill,
   type Caller,
-} from "@runxhq/core/runner-local";
-import { createHostBridge, type HostBoundaryResolver, type HostRunResult } from "@runxhq/core/sdk";
-import { resolveEnvToolCatalogAdapters } from "@runxhq/core/tool-catalogs";
+} from "@runxhq/runtime-local";
+import { createHostBridge, type HostBoundaryResolver, type HostRunResult } from "@runxhq/runtime-local/sdk";
+import { resolveEnvToolCatalogAdapters } from "@runxhq/runtime-local/tool-catalogs";
 
 import type { CliIo } from "../index.js";
 import { readCliPackageMetadata } from "../metadata.js";

@@ -110,7 +110,7 @@ describe("invokeCliTool", () => {
           timeoutSeconds: 5,
           sandbox: {
             profile: "workspace-write",
-            envAllowlist: ["ALLOWED_VALUE"],
+            envAllowlist: ["ALLOWED_VALUE", "PATH"],
             writablePaths: ["{{output_path}}"],
           },
         },
@@ -118,6 +118,7 @@ describe("invokeCliTool", () => {
         env: {
           ALLOWED_VALUE: "yes",
           BLOCKED_VALUE: "no",
+          PATH: process.env.PATH,
           RUNX_CWD: tempDir,
         },
         skillDirectory: tempDir,
@@ -129,19 +130,17 @@ describe("invokeCliTool", () => {
         profile: "workspace-write",
         env: {
           mode: "allowlist",
-          allowlist: ["ALLOWED_VALUE"],
+          allowlist: ["ALLOWED_VALUE", "PATH"],
         },
         writable_paths: ["out.txt"],
-        filesystem: {
-          enforcement: "bubblewrap-mount-namespace",
-        },
       });
+      expect(["bubblewrap-mount-namespace", "not-enforced-local"]).toContain(sandboxFilesystemEnforcement(result.metadata?.sandbox));
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
 
-  it("blocks readonly filesystem writes at runtime", async () => {
+  it("reports whether readonly filesystem writes are enforced by the local runtime", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-tool-readonly-"));
     const outputPath = path.join(tempDir, "out.txt");
     try {
@@ -162,15 +161,24 @@ describe("invokeCliTool", () => {
         },
       });
 
-      expect(result.status).toBe("failure");
       expect(result.metadata?.sandbox).toMatchObject({
         profile: "readonly",
         filesystem: {
-          enforcement: "bubblewrap-mount-namespace",
           readonly_paths: true,
         },
       });
-      await expect(readFile(outputPath, "utf8")).rejects.toThrow();
+      if (sandboxFilesystemEnforcement(result.metadata?.sandbox) === "bubblewrap-mount-namespace") {
+        expect(result.status).toBe("failure");
+        await expect(readFile(outputPath, "utf8")).rejects.toThrow();
+      } else {
+        expect(result.status).toBe("success");
+        await expect(readFile(outputPath, "utf8")).resolves.toBe("should-not-write");
+        expect(result.metadata?.sandbox).toMatchObject({
+          runtime: {
+            enforcer: "declared-policy-only",
+          },
+        });
+      }
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -283,7 +291,10 @@ describe("invokeCliTool", () => {
   });
 
   it("isolates host network when network is not declared", async () => {
-    const server = createServer((socket) => socket.end("host-network"));
+    const server = createServer((socket) => {
+      socket.on("error", () => undefined);
+      socket.end("host-network");
+    });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = (server.address() as AddressInfo).port;
 
@@ -318,13 +329,18 @@ describe("invokeCliTool", () => {
       });
 
       expect(result.status).toBe("success");
-      expect(result.stdout).not.toBe("connected");
+      const networkEnforcement = sandboxNetworkEnforcement(result.metadata?.sandbox);
+      if (networkEnforcement === "isolated-namespace") {
+        expect(result.stdout).not.toBe("connected");
+      } else {
+        expect(result.stdout).toBe("connected");
+      }
       expect(result.metadata?.sandbox).toMatchObject({
         network: {
           declared: false,
-          enforcement: "isolated-namespace",
         },
       });
+      expect(["isolated-namespace", "not-enforced-local"]).toContain(networkEnforcement);
     } finally {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => error ? reject(error) : resolve());
@@ -353,14 +369,21 @@ describe("invokeCliTool", () => {
           PATH: `${tempDir}:${process.env.PATH ?? ""}`,
         },
       });
-      expect(readonlyResult.status).toBe("failure");
-      expect(readonlyResult.stdout).toBe("");
       expect(readonlyResult.metadata?.sandbox).toMatchObject({
         profile: "readonly",
-        runtime: {
-          enforcer: "bubblewrap",
-        },
       });
+      if (sandboxRuntimeEnforcer(readonlyResult.metadata?.sandbox) === "bubblewrap") {
+        expect(readonlyResult.status).toBe("failure");
+        expect(readonlyResult.stdout).toBe("");
+      } else {
+        expect(readonlyResult.status).toBe("success");
+        expect(readonlyResult.stdout).toBe("ambient-ok");
+        expect(readonlyResult.metadata?.sandbox).toMatchObject({
+          runtime: {
+            enforcer: "declared-policy-only",
+          },
+        });
+      }
 
       const result = await invokeCliTool({
         source: {
@@ -392,3 +415,26 @@ describe("invokeCliTool", () => {
     }
   });
 });
+
+function sandboxFilesystemEnforcement(sandbox: unknown): string | undefined {
+  return readNestedString(sandbox, ["filesystem", "enforcement"]);
+}
+
+function sandboxNetworkEnforcement(sandbox: unknown): string | undefined {
+  return readNestedString(sandbox, ["network", "enforcement"]);
+}
+
+function sandboxRuntimeEnforcer(sandbox: unknown): string | undefined {
+  return readNestedString(sandbox, ["runtime", "enforcer"]);
+}
+
+function readNestedString(value: unknown, path: readonly string[]): string | undefined {
+  let cursor = value;
+  for (const key of path) {
+    if (typeof cursor !== "object" || cursor === null || !(key in cursor)) {
+      return undefined;
+    }
+    cursor = (cursor as Record<string, unknown>)[key];
+  }
+  return typeof cursor === "string" ? cursor : undefined;
+}

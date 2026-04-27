@@ -1,5 +1,5 @@
 import type { AdapterInvokeRequest, AdapterInvokeResult, SkillAdapter } from "@runxhq/core/executor";
-import { resolveCatalogTool } from "@runxhq/core/tool-catalogs";
+import { resolveCatalogTool } from "@runxhq/runtime-local/tool-catalogs";
 
 export const catalogAdapterPackage = "@runxhq/adapters/catalog";
 

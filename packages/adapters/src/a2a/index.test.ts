@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createA2aFixtureTransport } from "@runxhq/core/harness";
+import { createA2aFixtureTransport } from "@runxhq/runtime-local/harness";
 
 import { createA2aAdapter, invokeA2a, type A2aTransport } from "./index.js";
 
@@ -18,8 +18,20 @@ const source = {
 describe("invokeA2a", () => {
   it("throws when created without a transport", () => {
     expect(() => createA2aAdapter()).toThrow(
-      "A2A adapter requires a transport. Pass a transport or use createFixtureA2aTransport() for tests.",
+      "A2A adapter requires an explicit transport. Use createFixtureA2aTransport() only in tests or harnesses.",
     );
+  });
+
+  it("returns a clear failure when invoked without a transport", async () => {
+    const result = await invokeA2a({
+      source,
+      inputs: { message: "hi" },
+      skillDirectory: process.cwd(),
+      env: process.env,
+    });
+
+    expect(result.status).toBe("failure");
+    expect(result.errorMessage).toBe("A2A adapter requires an explicit transport.");
   });
 
   it("submits an A2A task through the fixture transport", async () => {

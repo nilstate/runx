@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 import { fetchGitHubIssueThread } from "../tools/thread/github_adapter.mjs";
 
 const scafldBin = process.env.SCAFLD_BIN ?? "/home/kam/dev/scafld/cli/scafld";

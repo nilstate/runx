@@ -71,6 +71,7 @@ export interface SkillSandbox {
   readonly envAllowlist?: readonly string[];
   readonly network?: boolean;
   readonly writablePaths: readonly string[];
+  readonly requireEnforcement?: boolean;
   readonly approvedEscalation?: boolean;
   readonly raw: Record<string, unknown>;
 }
@@ -586,6 +587,7 @@ function validateSandbox(value: unknown): SkillSandbox | undefined {
     envAllowlist: optionalStringArray(record.env_allowlist, "sandbox.env_allowlist"),
     network: optionalBoolean(record.network, "sandbox.network"),
     writablePaths: optionalStringArray(record.writable_paths, "sandbox.writable_paths") ?? [],
+    requireEnforcement: optionalBoolean(record.require_enforcement, "sandbox.require_enforcement"),
     raw: record,
   };
 }

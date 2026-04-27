@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { inspectLocalGraph, runLocalGraph, type Caller } from "@runxhq/core/runner-local";
+import { inspectLocalGraph, runLocalGraph, type Caller } from "@runxhq/runtime-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,

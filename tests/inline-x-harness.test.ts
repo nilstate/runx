@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { runHarnessTarget } from "@runxhq/core/harness";
+import { runHarnessTarget } from "@runxhq/runtime-local/harness";
 
 describe("inline x harness", () => {
   it("runs the evolve inline harness suite successfully", async () => {

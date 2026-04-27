@@ -10,11 +10,11 @@ import {
   HttpCachedRegistryStore,
   ingestSkillMarkdown,
 } from "@runxhq/core/registry";
-import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
+import { runLocalGraph, type Caller } from "@runxhq/runtime-local";
 import {
   isRegistryRef,
   parseRegistryRef,
-} from "@runxhq/core/runner-local";
+} from "@runxhq/runtime-local";
 
 const caller: Caller = {
   resolve: async () => undefined,

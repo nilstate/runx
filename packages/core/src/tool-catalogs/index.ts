@@ -6,7 +6,6 @@ import {
   type SkillSource,
   type ValidatedTool,
 } from "../parser/index.js";
-import { createFixtureMcpToolCatalogAdapter } from "./fixture.js";
 
 export const toolCatalogsPackage = "@runxhq/core/tool-catalogs";
 
@@ -112,20 +111,6 @@ export async function searchToolCatalogAdapters(
 ): Promise<readonly ToolCatalogSearchResult[]> {
   const results = await Promise.all(adapters.map((adapter) => adapter.search(query, options)));
   return results.flat().slice(0, options.limit ?? 20);
-}
-
-export function resolveEnvToolCatalogAdapters(
-  env: NodeJS.ProcessEnv = process.env,
-  source?: string,
-): readonly ToolCatalogAdapter[] {
-  const normalizedSource = source?.trim().toLowerCase();
-  if (
-    env.RUNX_ENABLE_FIXTURE_TOOL_CATALOG === "1"
-    && (!normalizedSource || normalizedSource === "catalog" || normalizedSource === "fixture-mcp")
-  ) {
-    return [createFixtureMcpToolCatalogAdapter()];
-  }
-  return [];
 }
 
 export async function resolveCatalogTool(
@@ -318,6 +303,3 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
     ? value as Record<string, unknown>
     : undefined;
 }
-
-export { createMcpToolCatalogAdapter } from "./mcp.js";
-export { createFixtureMcpToolCatalogAdapter } from "./fixture.js";

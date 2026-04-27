@@ -4,47 +4,48 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runCli } from "../packages/cli/src/index.js";
+import { createA2aAdapter } from "../packages/adapters/src/a2a/index.js";
+import { createDefaultSkillAdapters } from "../packages/adapters/src/index.js";
+import { createA2aFixtureTransport } from "@runxhq/runtime-local/harness";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
+
+const nonInteractiveCaller: Caller = {
+  resolve: async () => undefined,
+  report: async () => undefined,
+};
 
 describe("A2A skill runner", () => {
   it("runs a standard skill through a materialized A2A binding and writes sanitized receipt metadata", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-a2a-skill-"));
     const receiptDir = path.join(tempDir, "receipts");
-    const stdout = createMemoryStream();
-    const stderr = createMemoryStream();
 
     try {
-      const exitCode = await runCli(
-        [
-          "skill",
-          "fixtures/skills/a2a-echo/SKILL.md",
-          "--runner",
-          "fixture-a2a",
-          "--message",
-          "hi",
-          "--receipt-dir",
-          receiptDir,
-          "--json",
-        ],
-        { stdin: process.stdin, stdout, stderr },
-        {
+      const result = await runLocalSkill({
+        skillPath: path.resolve("fixtures/skills/a2a-echo"),
+        runner: "fixture-a2a",
+        inputs: { message: "hi" },
+        caller: nonInteractiveCaller,
+        receiptDir,
+        runxHome: path.join(tempDir, "home"),
+        env: {
           ...process.env,
           RUNX_CWD: process.cwd(),
         },
-      );
+        adapters: [
+          ...createDefaultSkillAdapters(),
+          createA2aAdapter({ transport: createA2aFixtureTransport() }),
+        ],
+      });
 
-      expect(exitCode).toBe(0);
-      expect(stderr.contents()).toBe("");
-      const result = JSON.parse(stdout.contents()) as {
-        execution: { stdout: string };
-        receipt: {
-          id: string;
-          source_type: string;
-          metadata?: Record<string, unknown>;
-        };
-      };
-
+      expect(result.status).toBe("success");
+      if (result.status !== "success") {
+        return;
+      }
       expect(result.execution.stdout).toBe("hi");
+      expect(result.receipt.kind).toBe("skill_execution");
+      if (result.receipt.kind !== "skill_execution") {
+        return;
+      }
       expect(result.receipt.source_type).toBe("a2a");
       expect(result.receipt.metadata).toMatchObject({
         a2a: {
@@ -70,14 +71,3 @@ describe("A2A skill runner", () => {
     }
   });
 });
-
-function createMemoryStream(): NodeJS.WriteStream & { contents: () => string } {
-  let contents = "";
-  return {
-    write(chunk: unknown) {
-      contents += String(chunk);
-      return true;
-    },
-    contents: () => contents,
-  } as NodeJS.WriteStream & { contents: () => string };
-}

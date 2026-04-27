@@ -63,6 +63,7 @@ export {
 } from "./http-cached-store.js";
 export {
   buildPublisherAttestations,
+  defaultRegistryPublisher,
   deriveTrustSignals,
   deriveEngagementScore,
   tierWeight,

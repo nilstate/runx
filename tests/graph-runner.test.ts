@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { readLedgerEntries } from "@runxhq/core/artifacts";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
 import { runCli } from "../packages/cli/src/index.js";
-import { inspectLocalGraph, runLocalGraph, runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { inspectLocalGraph, runLocalGraph, runLocalSkill, type Caller } from "@runxhq/runtime-local";
 import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 
 const nonInteractiveCaller: Caller = {

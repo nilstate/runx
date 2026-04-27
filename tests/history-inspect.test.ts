@@ -8,7 +8,7 @@ import { runCli } from "../packages/cli/src/index.js";
 import { appendLedgerEntries, createArtifactEnvelope } from "@runxhq/core/artifacts";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
 import { writeLocalReceipt } from "@runxhq/core/receipts";
-import { inspectLocalReceipt, listLocalHistory } from "@runxhq/core/runner-local";
+import { inspectLocalReceipt, listLocalHistory } from "@runxhq/runtime-local";
 
 describe("history, inspect, and knowledge CLI", () => {
   it("uses receipt files for history/inspect and knowledge for project projections", async () => {

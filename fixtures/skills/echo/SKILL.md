@@ -8,6 +8,9 @@ source:
     - -e
     - "process.stdout.write(process.env.RUNX_INPUT_MESSAGE ?? '')"
   timeout_seconds: 10
+  sandbox:
+    profile: readonly
+    cwd_policy: skill-directory
 inputs:
   message:
     type: string

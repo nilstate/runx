@@ -39,7 +39,7 @@ export interface CreateA2aAdapterOptions {
 
 export function createA2aAdapter(options: CreateA2aAdapterOptions = {}): A2aAdapter {
   if (!options.transport) {
-    throw new Error("A2A adapter requires a transport. Pass a transport or use createFixtureA2aTransport() for tests.");
+    throw new Error("A2A adapter requires an explicit transport. Use createFixtureA2aTransport() only in tests or harnesses.");
   }
   return {
     type: "a2a",
@@ -60,7 +60,10 @@ export async function invokeA2a(
     return failure("A2A source requires agent_card_url and task metadata.", started);
   }
 
-  const transport = options.transport!;
+  const transport = options.transport;
+  if (!transport) {
+    return failure("A2A adapter requires an explicit transport.", started);
+  }
   const timeoutMs = Math.max(0.05, source.timeoutSeconds ?? 60) * 1000;
   const message = request.resolvedInputs
     ? mapResolvedArguments(source.arguments, request.resolvedInputs, request.inputs)

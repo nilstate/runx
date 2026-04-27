@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { SkillAdapter } from "@runxhq/core/executor";
-import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
+import { runLocalGraph, type Caller } from "@runxhq/runtime-local";
 
 const nonInteractiveCaller: Caller = {
   resolve: async () => undefined,

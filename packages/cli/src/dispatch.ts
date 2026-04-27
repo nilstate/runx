@@ -11,11 +11,11 @@ import {
   resolveRunxRegistryTarget,
   resolveSkillInstallRoot,
 } from "@runxhq/core/config";
-import { runHarnessTarget, validatePublishHarness } from "@runxhq/core/harness";
+import { runHarnessTarget, validatePublishHarness } from "@runxhq/runtime-local/harness";
 import { createFixtureMarketplaceAdapter } from "@runxhq/core/marketplaces";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
-import { createRunxSdk } from "@runxhq/core/sdk";
-import { resolveEnvToolCatalogAdapters, searchToolCatalogAdapters } from "@runxhq/core/tool-catalogs";
+import { createRunxSdk } from "@runxhq/runtime-local/sdk";
+import { resolveEnvToolCatalogAdapters, searchToolCatalogAdapters } from "@runxhq/runtime-local/tool-catalogs";
 import {
   createDefaultHttpCachedRegistryStore,
   createFileRegistryStore,
@@ -31,7 +31,7 @@ import {
   type Caller,
   type RunLineageMetadata,
   type RunLocalSkillResult,
-} from "@runxhq/core/runner-local";
+} from "@runxhq/runtime-local";
 
 import type { CliIo, CliServices, ParsedArgs } from "./index.js";
 import { createAgentRuntimeLoader, createNonInteractiveCaller } from "./callers.js";

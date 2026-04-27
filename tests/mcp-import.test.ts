@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import { parseGraphYaml, validateGraph } from "@runxhq/core/parser";
-import { runLocalGraph, type Caller } from "@runxhq/core/runner-local";
-import { createFixtureMcpToolCatalogAdapter } from "@runxhq/core/tool-catalogs";
+import { runLocalGraph, type Caller } from "@runxhq/runtime-local";
+import { createFixtureMcpToolCatalogAdapter } from "@runxhq/runtime-local/tool-catalogs";
 
 const noOpCaller: Caller = {
   resolve: async () => undefined,

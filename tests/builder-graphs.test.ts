@@ -6,7 +6,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { parseSkillMarkdown, validateSkill } from "@runxhq/core/parser";
-import { runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 const builderSkillPaths = [
   "skills/work-plan",

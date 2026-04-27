@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
 import { createFixtureMarketplaceAdapter, type MarketplaceAdapter, type SkillSearchResult } from "@runxhq/core/marketplaces";
 import { createFileRegistryStore, ingestSkillMarkdown } from "@runxhq/core/registry";
-import { installLocalSkill, runLocalSkill, type Caller } from "@runxhq/core/runner-local";
+import { installLocalSkill, runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 const caller: Caller = {
   resolve: async (request) =>

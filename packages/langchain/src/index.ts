@@ -3,9 +3,9 @@ import {
   type ToolCatalogAdapter,
   type ToolCatalogResolvedTool,
   type ToolCatalogSearchResult,
-} from "@runxhq/core/tool-catalogs";
-import { createRunxSdk, type RunSkillOptions, type RunxSdk, type RunxSdkOptions } from "@runxhq/core/sdk";
-import type { RunLocalSkillResult } from "@runxhq/core/runner-local";
+} from "@runxhq/runtime-local/tool-catalogs";
+import { createRunxSdk, type RunSkillOptions, type RunxSdk, type RunxSdkOptions } from "@runxhq/runtime-local/sdk";
+import type { RunLocalSkillResult } from "@runxhq/runtime-local";
 import { tool, type StructuredToolInterface } from "@langchain/core/tools";
 import { zodToJsonSchema } from "zod-to-json-schema";
 

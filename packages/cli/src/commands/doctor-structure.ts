@@ -24,7 +24,7 @@ const DOCTOR_FILE_BUDGETS: readonly DoctorFileBudget[] = [
     maxLines: 950,
   },
   {
-    path: "packages/core/src/runner-local/index.ts",
+    path: "packages/runtime-local/src/runner-local/index.ts",
     maxLines: 2000,
   },
 ] as const;

@@ -21,7 +21,7 @@ import {
   type SkillAdapter,
 } from "@runxhq/core/executor";
 import type { SkillInput } from "@runxhq/core/parser";
-import { resolveToolExecutionTarget, runValidatedSkill } from "@runxhq/core/runner-local";
+import { resolveToolExecutionTarget, runValidatedSkill } from "@runxhq/runtime-local";
 
 import { createA2aAdapter, createFixtureA2aTransport } from "../a2a/index.js";
 import { createCliToolAdapter } from "../cli-tool/index.js";

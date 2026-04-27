@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createDefaultSkillAdapters } from "@runxhq/adapters";
-import { createRunxSdk, createStructuredCaller } from "@runxhq/core/sdk";
+import { createRunxSdk, createStructuredCaller } from "@runxhq/runtime-local/sdk";
 
 describe("SDK imported tools", () => {
   it("discovers and executes imported fixture MCP tools", async () => {

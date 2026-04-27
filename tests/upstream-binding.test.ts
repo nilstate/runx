@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runHarnessTarget } from "@runxhq/core/harness";
+import { runHarnessTarget } from "@runxhq/runtime-local/harness";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
 describe("upstream bindings", () => {

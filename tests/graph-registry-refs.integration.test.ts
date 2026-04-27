@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { createFileRegistryStore } from "@runxhq/core/registry";
-import { materializeRegistrySkill } from "@runxhq/core/runner-local";
+import { materializeRegistrySkill } from "@runxhq/runtime-local";
 import { parseSkillMarkdown, validateSkill } from "@runxhq/core/parser";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
