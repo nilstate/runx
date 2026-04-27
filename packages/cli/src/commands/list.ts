@@ -74,7 +74,11 @@ async function discoverListItems(root: string, requestedKind: RunxListRequestedK
     items.push(...await discoverToolListItems(root));
   }
   if (requestedKind === "all" || requestedKind === "skills" || requestedKind === "graphs") {
-    items.push(...(await discoverSkillAndGraphListItems(root)).filter((item) => requestedKind === "all" || `${item.kind}s` === requestedKind));
+    items.push(...(await discoverSkillAndGraphListItems(root)).filter((item) => {
+      if (requestedKind === "all") return true;
+      if (requestedKind === "skills") return item.kind === "skill" || item.kind === "graph";
+      return item.kind === "graph";
+    }));
   }
   if (requestedKind === "all" || requestedKind === "packets") {
     items.push(...await discoverPacketListItems(root));
