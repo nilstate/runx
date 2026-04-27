@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -125,11 +125,10 @@ describe("sourcey preflight", () => {
     const outputDir = path.join(tempDir, "docs");
 
     try {
-      await writeSourceyStub(sourceyStub, envCapturePath);
+      await writeSourceyStub(sourceyStub, { captureEnv: true });
       const runtime = await createSourceyRuntime(tempDir, {
         ...process.env,
         RUNX_CWD: process.cwd(),
-        SOURCEY_STUB_ENV_PATH: envCapturePath,
       });
 
       const result = await runLocalSkill({
@@ -173,7 +172,6 @@ describe("sourcey preflight", () => {
       const runtime = await createSourceyRuntime(tempDir, {
         ...process.env,
         RUNX_CWD: process.cwd(),
-        SOURCEY_STUB_INVOCATION_PATH: invocationPath,
       });
 
       const result = await runLocalSkill({
@@ -196,7 +194,8 @@ describe("sourcey preflight", () => {
 
       expect(result.status).toBe("success");
       const invocation = JSON.parse(await readFile(invocationPath, "utf8")) as { cwd: string; argv: string[] };
-      expect(invocation.cwd).toBe(docsDir);
+      // Compare via realpath to normalize macOS /var -> /private/var symlinks.
+      expect(await realpath(invocation.cwd)).toBe(await realpath(docsDir));
       expect(invocation.argv).toEqual(["build", "-o", outputDir, "--quiet"]);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -296,23 +295,28 @@ function unwrapPacketData(value: unknown): unknown {
   return current;
 }
 
-async function writeSourceyStub(stubPath: string, envCapturePath?: string): Promise<void> {
+async function writeSourceyStub(stubPath: string, options: { captureEnv?: boolean } | string = {}): Promise<void> {
+  // Backwards-compat shim: prior signature took `envCapturePath: string`.
+  // We now derive paths from the stub's own directory so they survive
+  // the sandbox env-allowlist that strips test-only env vars.
+  const captureEnv = typeof options === "string" ? true : options.captureEnv === true;
   const lines = [
     'import { mkdirSync, writeFileSync } from "node:fs";',
-    'import { join } from "node:path";',
-    'if (process.env.SOURCEY_STUB_INVOCATION_PATH) {',
-    '  writeFileSync(process.env.SOURCEY_STUB_INVOCATION_PATH, JSON.stringify({ cwd: process.cwd(), argv: process.argv.slice(2) }));',
-    '}',
+    'import { fileURLToPath } from "node:url";',
+    'import { dirname, join } from "node:path";',
+    '',
+    'const __dirname = dirname(fileURLToPath(import.meta.url));',
+    'writeFileSync(join(__dirname, "sourcey-invocation.json"), JSON.stringify({ cwd: process.cwd(), argv: process.argv.slice(2) }));',
     'const outputFlag = process.argv.indexOf("-o");',
     'const outputDir = outputFlag === -1 ? "dist" : process.argv[outputFlag + 1];',
     'mkdirSync(outputDir, { recursive: true });',
     'writeFileSync(join(outputDir, "index.html"), "<!doctype html><title>Sourcey Fixture</title>");',
   ];
 
-  if (envCapturePath) {
+  if (captureEnv) {
     lines.push(
       'const leaked = Object.keys(process.env).filter((key) => key === "RUNX_INPUTS_JSON" || key.startsWith("RUNX_INPUT_"));',
-      'writeFileSync(process.env.SOURCEY_STUB_ENV_PATH, JSON.stringify(leaked));',
+      'writeFileSync(join(__dirname, "sourcey-env.json"), JSON.stringify(leaked));',
     );
   }
 

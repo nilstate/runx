@@ -16,6 +16,9 @@ describe("scafld skill wrapper", () => {
   it("sanitizes runx input env and forwards native validate JSON", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-skill-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
+    // Derived from the stub's own location so it survives the sandbox
+    // env-allowlist (which strips test-only env vars before subprocess
+    // invocation).
     const tracePath = path.join(tempDir, "validate-trace.json");
 
     try {
@@ -23,9 +26,12 @@ describe("scafld skill wrapper", () => {
         fakeScafld,
         `#!/usr/bin/env node
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
-writeFileSync(process.env.FAKE_SCAFLD_TRACE, JSON.stringify({
+writeFileSync(join(__dirname, \`\${argv[0] || "unknown"}-trace.json\`), JSON.stringify({
   argv,
   leakedEnv: Object.keys(process.env)
     .filter((key) => key === "RUNX_INPUTS_JSON" || key.startsWith("RUNX_INPUT_"))
@@ -64,7 +70,6 @@ process.exit(1);
         runxHome: path.join(tempDir, "home"),
         env: {
           ...process.env,
-          FAKE_SCAFLD_TRACE: tracePath,
           RUNX_INPUTS_JSON: '{"secret":"do-not-forward"}',
           RUNX_INPUT_SECRET: "do-not-forward",
         },
@@ -103,10 +108,13 @@ process.exit(1);
         fakeScafld,
         `#!/usr/bin/env node
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const command = argv[0] || "";
-const tracePath = command === "review" ? process.env.FAKE_SCAFLD_REVIEW_TRACE : process.env.FAKE_SCAFLD_COMPLETE_TRACE;
+const tracePath = join(__dirname, \`\${command}-trace.json\`);
 writeFileSync(tracePath, JSON.stringify({
   argv,
   leakedEnv: Object.keys(process.env)
@@ -171,10 +179,7 @@ process.exit(1);
         adapters: createDefaultSkillAdapters(),
         receiptDir: path.join(tempDir, "receipts-review"),
         runxHome: path.join(tempDir, "home-review"),
-        env: {
-          ...process.env,
-          FAKE_SCAFLD_REVIEW_TRACE: reviewTracePath,
-        },
+        env: process.env,
       });
 
       expect(reviewResult.status).toBe("success");
@@ -214,10 +219,7 @@ process.exit(1);
         adapters: createDefaultSkillAdapters(),
         receiptDir: path.join(tempDir, "receipts-complete"),
         runxHome: path.join(tempDir, "home-complete"),
-        env: {
-          ...process.env,
-          FAKE_SCAFLD_COMPLETE_TRACE: completeTracePath,
-        },
+        env: process.env,
       });
 
       expect(completeResult.status).toBe("success");
