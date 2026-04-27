@@ -6,12 +6,12 @@ const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url))
 
 const sourceExtensions = new Set([".ts", ".tsx", ".mts", ".cts"]);
 const ignoredDirectoryNames = new Set(["node_modules", "dist", ".build", "coverage"]);
-const legacyCoreRuntimeSubpaths = new Set([
+const legacyCoreRuntimeSubpaths = [
   "@runxhq/core/runner-local",
   "@runxhq/core/harness",
   "@runxhq/core/sdk",
   "@runxhq/core/mcp",
-]);
+];
 const forbiddenCoreRuntimeDirs = ["runner-local", "harness", "sdk", "mcp"];
 const forbiddenPureNodeImports = new Set([
   "fs",
@@ -101,7 +101,7 @@ async function checkSourceFile(filePath) {
   const packageSource = getPackageSource(rel);
 
   for (const specifier of specifiers) {
-    if (legacyCoreRuntimeSubpaths.has(specifier)) {
+    if (legacyCoreRuntimeSubpaths.some((prefix) => specifier === prefix || specifier.startsWith(`${prefix}/`))) {
       findings.push(`${rel} imports removed ${specifier}; use @runxhq/runtime-local public paths.`);
     }
 
@@ -128,21 +128,21 @@ function checkCoreImport(rel, domain, specifier) {
     if (forbiddenPureNodeImports.has(specifier)) {
       findings.push(`${rel} imports ${specifier}; ${domain} must remain pure and deterministic.`);
     }
-    if (specifier.includes("executor") || specifier.includes("tool-catalogs")) {
+    if (specifierTargetsDomain(rel, specifier, "executor") || specifierTargetsDomain(rel, specifier, "tool-catalogs")) {
       findings.push(`${rel} imports ${specifier}; ${domain} cannot depend on execution or catalog boundaries.`);
     }
   }
 
   if (domain === "executor") {
-    if (specifier.includes("receipts")) {
+    if (specifierTargetsDomain(rel, specifier, "receipts")) {
       findings.push(`${rel} imports ${specifier}; executor returns observations but must not write or own receipts.`);
     }
-    if (specifier.includes("adapters")) {
+    if (specifierTargetsDomain(rel, specifier, "adapters")) {
       findings.push(`${rel} imports ${specifier}; executor must stay protocol-agnostic and avoid concrete adapters.`);
     }
   }
 
-  if (domain === "parser" && specifier.includes("adapters")) {
+  if (domain === "parser" && specifierTargetsDomain(rel, specifier, "adapters")) {
     findings.push(`${rel} imports ${specifier}; parser cannot depend on concrete adapters.`);
   }
 }
@@ -167,6 +167,20 @@ function getPackageSource(rel) {
   };
 }
 
+function specifierTargetsDomain(rel, specifier, domain) {
+  if (specifier === `@runxhq/core/${domain}` || specifier.startsWith(`@runxhq/core/${domain}/`)) {
+    return true;
+  }
+  if (specifier === `@runxhq/${domain}` || specifier.startsWith(`@runxhq/${domain}/`)) {
+    return true;
+  }
+  if (!specifier.startsWith(".")) {
+    return false;
+  }
+  const target = toPosix(path.normalize(path.join(path.dirname(rel), specifier)));
+  return target.split("/").includes(domain);
+}
+
 function isCloudSpecifier(specifier) {
   return specifier === "cloud" || specifier.startsWith("cloud/") || specifier.includes("/cloud/");
 }
@@ -185,11 +199,15 @@ async function walk(directory, files) {
       }
       continue;
     }
-    if (!entry.isFile() || !sourceExtensions.has(path.extname(entry.name)) || entry.name.endsWith(".test.ts")) {
+    if (!entry.isFile() || !sourceExtensions.has(path.extname(entry.name)) || isTestFile(entry.name)) {
       continue;
     }
     files.push(path.join(directory, entry.name));
   }
+}
+
+function isTestFile(fileName) {
+  return /\.(test|spec)\.(ts|tsx|mts|cts)$/.test(fileName);
 }
 
 function toPosix(input) {
