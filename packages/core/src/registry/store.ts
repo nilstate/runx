@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { isRecord } from "../util/types.js";
@@ -144,16 +144,12 @@ export class FileRegistryStore implements RegistryStore {
 
   async listVersions(skillId: string): Promise<readonly RegistrySkillVersion[]> {
     const skillDir = this.skillDir(skillId);
-    let files: string[];
-    try {
-      files = await readdir(skillDir);
-    } catch {
-      return [];
-    }
+    const files = await safeReaddir(skillDir);
 
     const versions = await Promise.all(
       files
         .filter((file) => file.endsWith(".json"))
+        .slice()
         .sort()
         .map(async (file) => normalizeRegistrySkillVersion(JSON.parse(await readFile(path.join(skillDir, file), "utf8")))),
     );
@@ -161,12 +157,7 @@ export class FileRegistryStore implements RegistryStore {
   }
 
   async listSkills(): Promise<readonly RegistrySkill[]> {
-    let owners: string[];
-    try {
-      owners = await readdir(this.root);
-    } catch {
-      return [];
-    }
+    const owners = await safeReaddir(this.root);
 
     const skills: RegistrySkill[] = [];
     for (const owner of owners) {

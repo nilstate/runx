@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { hashStable, hashString, stableStringify } from "../util/hash.js";
+import { isNotFound } from "../util/types.js";
 
 export { hashStable, hashString, stableStringify };
 
@@ -249,11 +250,14 @@ export async function appendLedgerEntries(options: LedgerAppendOptions): Promise
 
 export async function readLedgerEntries(receiptDir: string, runId: string): Promise<readonly ArtifactEnvelope[]> {
   const ledgerPath = resolveLedgerPath(receiptDir, runId);
-  let contents = "";
+  let contents: string;
   try {
     contents = await readFile(ledgerPath, "utf8");
-  } catch {
-    return [];
+  } catch (error) {
+    if (isNotFound(error)) {
+      return [];
+    }
+    throw error;
   }
   return contents
     .split(/\r?\n/)
