@@ -114,11 +114,15 @@ export function hydrateGraphFromLedger(options: {
     const stepFields = reconstructStepFields(stepArtifacts, stepSkill.artifacts);
     const receiptId = receiptLinksForStep(stepArtifacts, receiptLinks)[0];
     if (event.data.kind === "step_started") {
-      state = transitionSequentialGraph(state, {
-        type: "start_step",
-        stepId: graphStep.id,
-        at: entryTimestamp(event),
-      });
+      // Orphan step_started: the latest event for this step is
+      // step_started with no terminal event (succeeded/failed/waiting)
+      // following. The only process that could have written this entry
+      // has by definition exited (we are now in a fresh hydration
+      // pass), so the step was interrupted before completing.
+      // Skip the running transition; the next plan re-admits and
+      // re-runs the step cleanly. Concurrent runs against the same
+      // gx_id are not a supported pattern and do not need to be
+      // protected here.
       break;
     }
     if (event.data.kind === "step_succeeded") {

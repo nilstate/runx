@@ -156,7 +156,8 @@ export async function runCli(
       ? await readCallerInputFile(resolvePathFromUserInput(parsed.answersPath, env))
       : { answers: {} };
     const agentRuntimeLoader = createAgentRuntimeLoader(env);
-    const caller = parsed.nonInteractive
+    const nonInteractive = parsed.nonInteractive || parsed.json;
+    const caller = nonInteractive
       ? createNonInteractiveCaller(callerInput.answers, callerInput.approvals, agentRuntimeLoader)
       : createInteractiveCaller(io, callerInput.answers, callerInput.approvals, { reportEvents: !parsed.json }, env, agentRuntimeLoader);
     return await dispatchCli(parsed, io, env, caller, services);

@@ -68,6 +68,16 @@ export async function readCallerInputFile(answersPath: string): Promise<CallerIn
       answers: parsed,
     };
   }
+  const extraTopLevelKeys = Object.keys(parsed).filter(
+    (key) => key !== "answers" && key !== "approvals",
+  );
+  if (extraTopLevelKeys.length > 0) {
+    throw new Error(
+      `--answers file mixes top-level keys [${extraTopLevelKeys.join(", ")}] with the nested 'answers'/'approvals' shape. ` +
+        "Use either the flat shape (top-level keys = answers, no 'approvals') " +
+        "or the nested shape ({ answers: {...}, approvals: {...} }), not both.",
+    );
+  }
   if (parsed.answers !== undefined && !isRecord(parsed.answers)) {
     throw new Error("--answers answers field must be an object.");
   }
