@@ -1,6 +1,7 @@
 import { parseRegistrySkillRef } from "./resolve.js";
 import { normalizeRegistrySearchResult, type RegistrySearchResult } from "./search.js";
 import type { ToolCatalogSearchResult, ToolInspectResult } from "../executor/index.js";
+import { fetchWithTimeout } from "../util/http.js";
 import {
   validateRegistryAttestations,
   validateRegistryPublisher,
@@ -17,18 +18,24 @@ export interface AcquireRegistrySkillOptions {
   readonly version?: string;
   readonly fetchImpl?: typeof fetch;
   readonly channel?: string;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export interface SearchRemoteRegistryOptions {
   readonly baseUrl: string;
   readonly limit?: number;
   readonly fetchImpl?: typeof fetch;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export interface ReadRemoteRegistrySkillOptions {
   readonly baseUrl: string;
   readonly version?: string;
   readonly fetchImpl?: typeof fetch;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export interface SearchRemoteToolsOptions {
@@ -36,12 +43,16 @@ export interface SearchRemoteToolsOptions {
   readonly limit?: number;
   readonly source?: string;
   readonly fetchImpl?: typeof fetch;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export interface ReadRemoteToolOptions {
   readonly baseUrl: string;
   readonly source?: string;
   readonly fetchImpl?: typeof fetch;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export interface RemoteRegistrySkillDetail {
@@ -69,6 +80,8 @@ export interface ResolveRemoteRegistryRefOptions {
   readonly baseUrl: string;
   readonly version?: string;
   readonly fetchImpl?: typeof fetch;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export interface AcquiredRegistrySkill {
@@ -98,7 +111,13 @@ export async function searchRemoteRegistry(
     params.set("q", query.trim());
   }
   params.set("limit", String(options.limit ?? 20));
-  const response = await fetchImpl(`${options.baseUrl.replace(/\/$/, "")}/v1/skills?${params.toString()}`);
+  const response = await fetchWithTimeout({
+    fetchImpl,
+    url: `${options.baseUrl.replace(/\/$/, "")}/v1/skills?${params.toString()}`,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    description: `Registry search for '${query}'`,
+  });
   if (!response.ok) {
     throw new Error(`Registry search failed for '${query}': HTTP ${response.status}`);
   }
@@ -172,7 +191,13 @@ export async function searchRemoteTools(
     params.set("source", options.source.trim());
   }
   params.set("limit", String(options.limit ?? 20));
-  const response = await fetchImpl(`${options.baseUrl.replace(/\/$/, "")}/v1/tools?${params.toString()}`);
+  const response = await fetchWithTimeout({
+    fetchImpl,
+    url: `${options.baseUrl.replace(/\/$/, "")}/v1/tools?${params.toString()}`,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    description: `Remote tool search for '${query}'`,
+  });
   if (!response.ok) {
     throw new Error(`Remote tool search failed for '${query}': HTTP ${response.status}`);
   }
@@ -196,9 +221,13 @@ export async function readRemoteTool(
     params.set("source", options.source.trim());
   }
   const query = params.toString();
-  const response = await fetchImpl(
-    `${options.baseUrl.replace(/\/$/, "")}/v1/tools/${encodeURIComponent(ref)}${query ? `?${query}` : ""}`,
-  );
+  const response = await fetchWithTimeout({
+    fetchImpl,
+    url: `${options.baseUrl.replace(/\/$/, "")}/v1/tools/${encodeURIComponent(ref)}${query ? `?${query}` : ""}`,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    description: `Remote tool read for ${ref}`,
+  });
   if (response.status === 404) {
     return undefined;
   }
@@ -222,9 +251,13 @@ export async function readRemoteRegistrySkill(
   const [owner, name] = splitRegistrySkillId(skillId);
   const fetchImpl = requireFetch(options.fetchImpl);
   const suffix = options.version ? `${name}@${options.version}` : name;
-  const response = await fetchImpl(
-    `${options.baseUrl.replace(/\/$/, "")}/v1/skills/${encodeURIComponent(owner)}/${encodeURIComponent(suffix)}`,
-  );
+  const response = await fetchWithTimeout({
+    fetchImpl,
+    url: `${options.baseUrl.replace(/\/$/, "")}/v1/skills/${encodeURIComponent(owner)}/${encodeURIComponent(suffix)}`,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    description: `Registry read for ${skillId}`,
+  });
   if (response.status === 404) {
     return undefined;
   }
@@ -314,6 +347,8 @@ export async function resolveRemoteRegistryRef(
     baseUrl: options.baseUrl,
     limit: 100,
     fetchImpl: options.fetchImpl,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
   })).filter((candidate) => candidate.name === parsed.skillId.trim().toLowerCase());
   if (matches.length === 0) {
     return undefined;
@@ -334,9 +369,10 @@ export async function acquireRegistrySkill(
   const [owner, name] = splitRegistrySkillId(skillId);
   const fetchImpl = requireFetch(options.fetchImpl);
 
-  const response = await fetchImpl(
-    `${options.baseUrl.replace(/\/$/, "")}/v1/skills/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/acquire`,
-    {
+  const response = await fetchWithTimeout({
+    fetchImpl,
+    url: `${options.baseUrl.replace(/\/$/, "")}/v1/skills/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/acquire`,
+    init: {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -347,7 +383,10 @@ export async function acquireRegistrySkill(
         channel: options.channel ?? "cli",
       }),
     },
-  );
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    description: `Registry acquire for ${skillId}`,
+  });
 
   if (!response.ok) {
     throw new Error(`Registry acquire failed for ${skillId}: HTTP ${response.status}`);

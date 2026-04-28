@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "@runxhq/core/util";
+
 export interface UrlAddIndexedListing {
   readonly owner: string;
   readonly name: string;
@@ -56,15 +58,24 @@ export interface UrlAddOptions {
   readonly ref?: string;
   readonly apiBaseUrl: string;
   readonly fetcher?: (url: string, init?: RequestInit) => Promise<Response>;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
 }
 
 export async function publishUrlSkill(options: UrlAddOptions): Promise<UrlAddIndexResult> {
   const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
   const endpoint = `${options.apiBaseUrl.replace(/\/$/, "")}/v1/index`;
-  const response = await fetcher(endpoint, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ repo_url: options.repoUrl, ref: options.ref }),
+  const response = await fetchWithTimeout({
+    fetchImpl: fetcher as typeof fetch,
+    url: endpoint,
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ repo_url: options.repoUrl, ref: options.ref }),
+    },
+    signal: options.signal,
+    timeoutMs: options.timeoutMs,
+    description: "runx-api index",
   });
   const text = await response.text();
   if (!response.ok) {

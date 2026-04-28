@@ -17,6 +17,7 @@ export interface HttpCachedRegistryStoreOptions {
   readonly fetchImpl?: typeof fetch;
   readonly channel?: string;
   readonly now?: () => Date;
+  readonly timeoutMs?: number;
 }
 
 export class HttpCachedRegistryStore implements RegistryStore {
@@ -35,6 +36,7 @@ export class HttpCachedRegistryStore implements RegistryStore {
       version,
       fetchImpl: this.options.fetchImpl,
       channel: this.options.channel,
+      timeoutMs: this.options.timeoutMs,
     });
     if (!acquired) {
       return cached;
@@ -67,6 +69,7 @@ export function createDefaultHttpCachedRegistryStore(options: {
   readonly installationId: string;
   readonly fetchImpl?: typeof fetch;
   readonly channel?: string;
+  readonly timeoutMs?: number;
 }): RegistryStore {
   return new HttpCachedRegistryStore({
     remoteBaseUrl: options.remoteBaseUrl,
@@ -74,6 +77,7 @@ export function createDefaultHttpCachedRegistryStore(options: {
     cache: new FileRegistryStore(options.cacheRoot),
     fetchImpl: options.fetchImpl,
     channel: options.channel,
+    timeoutMs: options.timeoutMs,
   });
 }
 
@@ -111,6 +115,7 @@ async function safeAcquire(args: {
   version?: string;
   fetchImpl?: typeof fetch;
   channel?: string;
+  timeoutMs?: number;
 }): Promise<AcquiredRegistrySkill | undefined> {
   try {
     return await acquireRegistrySkill(args.skillId, {
@@ -119,6 +124,7 @@ async function safeAcquire(args: {
       version: args.version,
       fetchImpl: args.fetchImpl,
       channel: args.channel,
+      timeoutMs: args.timeoutMs,
     });
   } catch (error) {
     const message = errorMessage(error);
