@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -13,8 +13,10 @@ import {
   type QualityProfileContext,
 } from "@runxhq/core/executor";
 import { type ValidatedSkill } from "@runxhq/core/parser";
+import { isPlainRecord, pathExists } from "@runxhq/core/util";
 import { hashStable, hashString, listLocalReceipts, type LocalReceipt } from "@runxhq/core/receipts";
 
+import { mergeMetadata } from "./runner-helpers.js";
 import type { MaterializedContextEdge } from "./index.js";
 
 const MAX_HISTORICAL_AGENT_ARTIFACTS = 12;
@@ -386,36 +388,4 @@ function receiptSkillName(receipt: LocalReceipt): string | undefined {
   return receipt.skill_name;
 }
 
-async function pathExists(candidatePath: string): Promise<boolean> {
-  try {
-    await stat(candidatePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
-function mergeMetadata(
-  ...metadata: readonly (Readonly<Record<string, unknown>> | undefined)[]
-): Readonly<Record<string, unknown>> | undefined {
-  const merged = metadata
-    .filter((item): item is Readonly<Record<string, unknown>> => Boolean(item))
-    .reduce<Record<string, unknown>>((accumulator, item) => mergeRecord(accumulator, item), {});
-  if (Object.keys(merged).length === 0) {
-    return undefined;
-  }
-  return merged;
-}
-
-function mergeRecord(left: Readonly<Record<string, unknown>>, right: Readonly<Record<string, unknown>>): Record<string, unknown> {
-  const merged: Record<string, unknown> = { ...left };
-  for (const [key, value] of Object.entries(right)) {
-    const existing = merged[key];
-    merged[key] = isPlainRecord(existing) && isPlainRecord(value) ? mergeRecord(existing, value) : value;
-  }
-  return merged;
-}
-
-function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}

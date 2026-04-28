@@ -8,6 +8,7 @@ import type {
   SkillAdapter,
 } from "@runxhq/core/executor";
 import { validateOutputContract } from "@runxhq/core/executor";
+import { isPlainRecord } from "@runxhq/core/util";
 
 import type { Caller } from "./index.js";
 
@@ -302,8 +303,4 @@ function parseConfiguredToolRoots(env: NodeJS.ProcessEnv | undefined): readonly 
     .map((value) => value.trim())
     .filter((value) => value.length > 0)
     .map((value) => path.resolve(value));
-}
-
-function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

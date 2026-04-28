@@ -3,6 +3,7 @@ import { validateResolutionRequest, type ResolutionRequest } from "@runxhq/core/
 import type { ExecutionGraph, GraphStep } from "@runxhq/core/parser";
 import type { GraphReceiptSyncPoint } from "@runxhq/core/receipts";
 import type { FanoutSyncDecision } from "@runxhq/core/state-machine";
+import { isRecord } from "@runxhq/core/util";
 
 export interface PendingFanoutGate {
   readonly gateKey: string;
@@ -137,10 +138,6 @@ function parseGraphReceiptSyncPoint(value: unknown): GraphReceiptSyncPoint | und
     branch_receipts: stringArray(value.branch_receipts),
     gate: isRecord(value.gate) ? value.gate : undefined,
   };
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function stringValue(value: unknown): string | undefined {

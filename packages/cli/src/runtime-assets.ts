@@ -1,6 +1,8 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { pathExists } from "@runxhq/core/util";
 
 const CLI_PACKAGE_NAME = "@runxhq/cli";
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -51,11 +53,3 @@ async function findPackageRoot(start: string): Promise<string | undefined> {
   }
 }
 
-async function pathExists(candidate: string): Promise<boolean> {
-  try {
-    await stat(candidate);
-    return true;
-  } catch {
-    return false;
-  }
-}

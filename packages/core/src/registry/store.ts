@@ -1,6 +1,15 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { isRecord } from "../util/types.js";
+import { safeReadDirNames as safeReaddir } from "../util/fs.js";
+import {
+  optionalBoolean,
+  optionalString as optionalNonEmptyString,
+  requireBoolean,
+  requireString as requireNonEmptyString,
+} from "../util/validators.js";
+
 export type RegistryTrustTier = "first_party" | "verified" | "community";
 export type RegistryPublisherKind = "organization" | "user" | "team" | "service" | "publisher";
 export type RegistryAttestationKind = "source" | "publisher" | "verification";
@@ -230,11 +239,11 @@ export function buildSkillId(owner: string, name: string): string {
 }
 
 export function splitSkillId(skillId: string): readonly [string, string] {
-  const separator = skillId.indexOf("/");
-  if (separator <= 0 || separator === skillId.length - 1) {
+  const parts = skillId.split("/");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
     throw new Error(`Invalid registry skill id '${skillId}'. Expected '<owner>/<name>'.`);
   }
-  return [skillId.slice(0, separator), skillId.slice(separator + 1)];
+  return [parts[0], parts[1]];
 }
 
 export function slugify(value: string): string {
@@ -257,13 +266,6 @@ function decodePart(value: string): string {
   return decodeURIComponent(value);
 }
 
-async function safeReaddir(dir: string): Promise<readonly string[]> {
-  try {
-    return await readdir(dir);
-  } catch {
-    return [];
-  }
-}
 
 export function validateRegistryPublisher(value: unknown, label = "publisher"): RegistryPublisher {
   if (!isRecord(value)) {
@@ -447,34 +449,4 @@ function normalizeStringArray(value: unknown, label: string): readonly string[] 
   return value.map((entry, index) => requireNonEmptyString(entry, `${label}[${index}]`));
 }
 
-function requireNonEmptyString(value: unknown, label: string): string {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`${label} must be a non-empty string.`);
-  }
-  return value;
-}
 
-function optionalNonEmptyString(value: unknown, label: string): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  return requireNonEmptyString(value, label);
-}
-
-function requireBoolean(value: unknown, label: string): boolean {
-  if (typeof value !== "boolean") {
-    throw new Error(`${label} must be a boolean.`);
-  }
-  return value;
-}
-
-function optionalBoolean(value: unknown, label: string): boolean | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  return requireBoolean(value, label);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}

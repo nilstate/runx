@@ -1,3 +1,5 @@
+import { isRecord } from "@runxhq/core/util";
+
 interface JsonRpcRequest {
   readonly jsonrpc: "2.0";
   readonly id?: number;
@@ -190,8 +192,4 @@ function respondError(id: number, code: number, message: string): void {
 function write(message: unknown): void {
   const body = JSON.stringify(message);
   process.stdout.write(`Content-Length: ${Buffer.byteLength(body, "utf8")}\r\n\r\n${body}`);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

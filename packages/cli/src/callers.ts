@@ -2,6 +2,7 @@ import { createInterface } from "node:readline/promises";
 import { readFile } from "node:fs/promises";
 
 import type { Question, ResolutionRequest, ResolutionResponse } from "@runxhq/core/executor";
+import { isRecord } from "@runxhq/core/util";
 import type { Caller } from "@runxhq/runtime-local";
 
 import type { CliAgentRuntime } from "./agent-runtime.js";
@@ -265,8 +266,4 @@ function validateCallerApprovals(value: unknown): boolean | Readonly<Record<stri
       return [key, approval];
     }),
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -1,5 +1,7 @@
 import { parseDocument } from "yaml";
 
+import { isRecord } from "../util/types.js";
+
 export interface RawGraphIR {
   readonly document: Record<string, unknown>;
 }
@@ -594,6 +596,3 @@ function requiredConflictAction(value: unknown, field: string): FanoutConflictAc
   throw new GraphValidationError(`${field} must be pause or escalate.`);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}

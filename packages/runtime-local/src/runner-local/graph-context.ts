@@ -1,5 +1,6 @@
 import type { ArtifactEnvelope } from "@runxhq/core/artifacts";
 import type { ExecutionGraph, GraphStep } from "@runxhq/core/parser";
+import { isRecord } from "@runxhq/core/util";
 
 export interface GraphStepOutput {
   readonly status: "success" | "failure";
@@ -94,10 +95,6 @@ function isArtifactEnvelopeValue(value: unknown): value is ArtifactEnvelope {
     && typeof (value as { meta?: { artifact_id?: unknown; run_id?: unknown } }).meta?.artifact_id === "string"
     && typeof (value as { meta?: { artifact_id?: unknown; run_id?: unknown } }).meta?.run_id === "string"
     && "data" in value;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function unwrapPacketPayload(value: Record<string, unknown>): Record<string, unknown> | undefined {

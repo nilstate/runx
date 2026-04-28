@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { hashStable, isNodeError } from "@runxhq/core/util";
+
 import { readCliDependencyVersion, readCliPackageMetadata } from "./metadata.js";
 
 const toolkitVersion = readCliDependencyVersion("@runxhq/authoring");
@@ -353,7 +355,7 @@ async function write(root: string, relativePath: string, contents: string): Prom
 }
 
 function sha256Stable(value: unknown): string {
-  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
+  return `sha256:${hashStable(value)}`;
 }
 
 function sha256ToolSourceContents(files: Readonly<Record<string, string>>): string {
@@ -370,17 +372,3 @@ function sha256ToolSourceContents(files: Readonly<Record<string, string>>): stri
   return `sha256:${hash.digest("hex")}`;
 }
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().filter((key) => record[key] !== undefined).map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
-}

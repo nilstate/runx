@@ -11,6 +11,8 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { isNodeError, isNotFound } from "../util/types.js";
+
 export interface LocalKeyPair {
   readonly privateKey: KeyObject;
   readonly publicKey: KeyObject;
@@ -101,21 +103,7 @@ export function verifyPayloadString(payload: string, signature: LocalSignature, 
   return verify(null, Buffer.from(payload), publicKey, Buffer.from(signature.value, "base64url"));
 }
 
-export function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
-  }
-
-  const record = value as Record<string, unknown>;
-  const entries = Object.entries(record)
-    .filter(([, entryValue]) => entryValue !== undefined)
-    .sort(([left], [right]) => left.localeCompare(right));
-  return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableStringify(entryValue)}`).join(",")}}`;
-}
+export { stableStringify } from "../util/hash.js";
 
 function keyPairFromPem(privatePem: string, publicPem: string): LocalKeyPair {
   const privateKey = createPrivateKey(privatePem);
@@ -156,14 +144,6 @@ async function tryLoadKeyPair(privatePath: string, publicPath: string, retries =
       `runx signing key unreadable at ${privatePath}: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
-}
-
-function isNotFound(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
 export function defaultRunxHome(): string {

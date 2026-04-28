@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { hashString } from "@runxhq/core/util";
 
 export interface A2aFixtureTask {
   readonly id: string;
@@ -47,8 +47,4 @@ export function createA2aFixtureTransport(): A2aFixtureTransport {
       return task;
     },
   };
-}
-
-function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
 }

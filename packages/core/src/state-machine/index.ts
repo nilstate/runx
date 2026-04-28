@@ -1,3 +1,5 @@
+import { isRecord } from "../util/types.js";
+
 export const stateMachinePackage = "@runxhq/core/state-machine";
 
 export type StepStatus = "pending" | "admitted" | "running" | "succeeded" | "failed";
@@ -663,6 +665,3 @@ function stableValue(value: unknown): string {
   return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableValue(entryValue)}`).join(",")}}`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}

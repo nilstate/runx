@@ -2,6 +2,9 @@ export const policyPackage = "@runxhq/core/policy";
 
 import path from "node:path";
 
+import { isRecord } from "../util/types.js";
+import { unique } from "../util/array.js";
+
 import { admitSandbox } from "./sandbox.js";
 
 export interface LocalAdmissionSkill {
@@ -344,13 +347,6 @@ function scopeAllows(grantedScope: string, requestedScope: string): boolean {
   return false;
 }
 
-function unique(values: readonly string[]): readonly string[] {
-  return Array.from(new Set(values));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 export {
   admitSandbox,

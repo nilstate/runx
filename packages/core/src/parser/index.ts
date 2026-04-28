@@ -1,7 +1,8 @@
 import { parseDocument } from "yaml";
 
 import { validateGraphDocument, type ExecutionGraph } from "./graph.js";
-import type { ExecutionSemantics } from "../receipts/index.js";
+import { GOVERNED_DISPOSITIONS, type ExecutionSemantics } from "../receipts/index.js";
+import { isRecord } from "../util/types.js";
 
 export const parserPackage = "@runxhq/core/parser";
 
@@ -689,9 +690,9 @@ function optionalDisposition(value: unknown, field: string): ExecutionSemantics[
   if (disposition === undefined) {
     return undefined;
   }
-  if (!["completed", "needs_resolution", "policy_denied", "approval_required", "observing", "escalated"].includes(disposition)) {
+  if (!GOVERNED_DISPOSITIONS.includes(disposition as (typeof GOVERNED_DISPOSITIONS)[number])) {
     throw new SkillValidationError(
-      `${field} must be one of completed, needs_resolution, policy_denied, approval_required, observing, or escalated.`,
+      `${field} must be one of ${GOVERNED_DISPOSITIONS.join(", ")}.`,
     );
   }
   return disposition as ExecutionSemantics["disposition"];
@@ -1022,9 +1023,6 @@ function optionalCwdPolicy(value: unknown): SkillSandbox["cwdPolicy"] {
   throw new SkillValidationError("sandbox.cwd_policy must be skill-directory, workspace, or custom.");
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 export * from "./graph.js";
 export * from "./install.js";

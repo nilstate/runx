@@ -10,6 +10,7 @@ import {
   type VerifiedReceiptOutcomeResolution,
 } from "@runxhq/core/receipts";
 import type { OutcomeState } from "@runxhq/core/receipts";
+import { isRecord } from "@runxhq/core/util";
 
 export const TRAINING_SCHEMA_REFS = {
   trainable_receipt_row: "https://runx.ai/spec/training/trainable-receipt-row.schema.json",
@@ -182,8 +183,4 @@ function runnerProvenance(receipt: LocalReceipt): TrainableReceiptRow["runner_pr
     model: typeof runner?.model === "string" ? runner.model : undefined,
     prompt_version: typeof runner?.prompt_version === "string" ? runner.prompt_version : undefined,
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

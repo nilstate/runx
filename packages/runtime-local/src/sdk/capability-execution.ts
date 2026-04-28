@@ -1,13 +1,12 @@
 export const capabilityExecutionSdkPackage = "@runxhq/runtime-local/sdk/capability-execution";
 
-import { createHash } from "node:crypto";
-
 import {
   validateCapabilityExecutionContract,
   type CapabilityExecutionActorContract,
   type CapabilityExecutionContract,
   type CapabilityExecutionTransportContract,
 } from "@runxhq/contracts";
+import { hashStable, isRecord } from "@runxhq/core/util";
 
 type JsonRecord = Readonly<Record<string, unknown>>;
 
@@ -65,7 +64,7 @@ export function deriveCapabilityExecutionIntentKey(options: {
   readonly threadRef?: string;
   readonly inputOverrides?: JsonRecord;
 }): string {
-  return withSha256Prefix(hashStableJson({
+  return withSha256Prefix(hashStable({
     capability_ref: options.capabilityRef,
     runner: options.runner,
     thread_ref: normalizeNonEmptyString(options.threadRef),
@@ -81,14 +80,14 @@ export function deriveCapabilityExecutionTriggerKey(options: {
   if (!triggerRef) {
     return undefined;
   }
-  return withSha256Prefix(hashStableJson({
+  return withSha256Prefix(hashStable({
     transport_kind: options.transportKind,
     trigger_ref: triggerRef,
   }));
 }
 
 export function deriveCapabilityExecutionContentHash(inputOverrides?: JsonRecord): string {
-  return withSha256Prefix(hashStableJson(normalizeCapabilityExecutionRecord(inputOverrides) ?? {}));
+  return withSha256Prefix(hashStable(normalizeCapabilityExecutionRecord(inputOverrides) ?? {}));
 }
 
 export function normalizeCapabilityExecutionRecord(value: unknown): JsonRecord | undefined {
@@ -160,23 +159,6 @@ function normalizeUnknown(value: unknown): unknown {
   return normalized;
 }
 
-function hashStableJson(value: unknown): string {
-  return createHash("sha256").update(stableStringify(value)).digest("hex");
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  const entries = Object.entries(record)
-    .filter(([, entry]) => entry !== undefined)
-    .sort(([left], [right]) => left.localeCompare(right));
-  return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`).join(",")}}`;
-}
 
 function withSha256Prefix(hash: string): string {
   return `sha256:${hash}`;
@@ -184,10 +166,6 @@ function withSha256Prefix(hash: string): string {
 
 function normalizeNonEmptyString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function pruneUndefined<T>(value: T): T {

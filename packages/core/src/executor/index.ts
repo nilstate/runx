@@ -32,6 +32,7 @@ import {
   type ResolutionResponseContract,
 } from "@runxhq/contracts";
 import type { SkillInput, ValidatedSkill, ValidatedTool } from "../parser/index.js";
+import { asRecord } from "../util/types.js";
 
 export const CONTROL_SCHEMA_REFS = {
   output_contract: RUNX_CONTROL_SCHEMA_REFS.output_contract,
@@ -366,6 +367,3 @@ export function validateCredentialEnvelope(
   return validateCredentialEnvelopeContract(value, label);
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
-}

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { asRecord, hashString } from "@runxhq/core/util";
 
 import { createFixtureMcpToolCatalogAdapter } from "./fixture.js";
 import {
@@ -235,12 +235,3 @@ function normalizeCatalogRef(ref: string): string {
   return ref.trim().toLowerCase();
 }
 
-function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}

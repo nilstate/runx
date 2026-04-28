@@ -1,8 +1,11 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { safeReadDir } from "@runxhq/core/util";
+
 import { discoverToolDirectories } from "../tool.js";
 
+export { safeReadDir };
 
 export async function discoverFixturePaths(unitPath: string, root: string): Promise<readonly string[]> {
   const statPath = existsSync(unitPath) ? unitPath : root;
@@ -26,11 +29,3 @@ export async function discoverFixturePaths(unitPath: string, root: string): Prom
   return paths.sort();
 }
 
-export async function safeReadDir(directory: string): Promise<readonly import("node:fs").Dirent[]> {
-  try {
-    const { readdir } = await import("node:fs/promises");
-    return await readdir(directory, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-}

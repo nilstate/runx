@@ -1,7 +1,8 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createHash } from "node:crypto";
 
 import type { SandboxDeclaration } from "@runxhq/core/policy";
+import { asRecord, hashString } from "@runxhq/core/util";
+
 import { cleanupLocalProcessSandbox, prepareLocalProcessSandbox } from "../runner-local/process-sandbox.js";
 
 export const mcpRuntimeLocalPackage = "@runxhq/runtime-local/mcp";
@@ -381,12 +382,6 @@ function terminate(child: ChildProcessWithoutNullStreams): void {
   }, 100).unref();
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
-
 function stringifyMcpInput(value: unknown): string {
   if (value === undefined || value === null) {
     return "";
@@ -395,8 +390,4 @@ function stringifyMcpInput(value: unknown): string {
     return value;
   }
   return JSON.stringify(value);
-}
-
-function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
 }

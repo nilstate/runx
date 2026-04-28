@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { isNotFound } from "@runxhq/core/util";
+
 export interface RunxProjectState {
   readonly version: 1;
   readonly project_id: string;
@@ -84,8 +86,4 @@ async function readJsonFile<T>(filePath: string): Promise<T | undefined> {
 async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
-}
-
-function isNotFound(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }

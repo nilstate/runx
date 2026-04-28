@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { isNotFound } from "../util/types.js";
+
 export type OutcomeState = "pending" | "complete" | "expired";
 
 import {
@@ -187,7 +189,7 @@ function uniqueOutcomeResolutionId(): string {
   return `or_${crypto.randomUUID().replace(/-/g, "")}`;
 }
 
-function assertReceiptLikeId(id: string): void {
+export function assertReceiptLikeId(id: string): void {
   if (!/^(rx|gx)_[A-Za-z0-9_-]+$/.test(id)) {
     throw new Error(`Invalid receipt id '${id}'.`);
   }
@@ -197,10 +199,6 @@ function assertOutcomeResolutionId(id: string): void {
   if (!/^or_[A-Za-z0-9_-]+$/.test(id)) {
     throw new Error(`Invalid outcome resolution id '${id}'.`);
   }
-}
-
-function isNotFound(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
 async function verifyReceiptOutcomeResolutionFromLocalKey(

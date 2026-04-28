@@ -5,6 +5,7 @@ import path from "node:path";
 import { parseDocument } from "yaml";
 
 import { resolveLocalSkillProfile } from "@runxhq/core/config";
+import { isRecord } from "@runxhq/core/util";
 import {
   parseSkillMarkdown,
   parseRunnerManifestYaml,
@@ -562,8 +563,4 @@ function optionalReceiptKind(value: unknown, field: string): HarnessReceiptExpec
     return value;
   }
   throw new Error(`${field} must be skill_execution or graph_execution.`);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

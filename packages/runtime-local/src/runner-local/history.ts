@@ -13,6 +13,7 @@ import {
   type LocalReceipt,
   type ReceiptVerification,
 } from "@runxhq/core/receipts";
+import { isNotFound, isRecord } from "@runxhq/core/util";
 import { defaultReceiptDir } from "./receipt-paths.js";
 import { readPendingRunState, type PendingRunState } from "./inputs.js";
 
@@ -359,7 +360,7 @@ async function listPendingRunSummaries(
   try {
     entries = await readdir(ledgersDir);
   } catch (error) {
-    if (isNotFoundError(error)) return [];
+    if (isNotFound(error)) return [];
     throw error;
   }
   const candidates = entries
@@ -388,10 +389,6 @@ function buildPausedRunSummary(runId: string, pending: PendingRunState): PausedR
   };
 }
 
-function isNotFoundError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as NodeJS.ErrnoException).code === "ENOENT";
-}
-
 export async function inspectLocalRun(options: InspectLocalRunOptions): Promise<InspectLocalRunResult> {
   const receiptDir = options.receiptDir ?? defaultReceiptDir(options.env);
   const runxHome = options.runxHome ?? options.env?.RUNX_HOME;
@@ -404,7 +401,7 @@ export async function inspectLocalRun(options: InspectLocalRunOptions): Promise<
       summary: await summarizeLocalReceipt(receipt, verification, receiptDir),
     };
   } catch (error) {
-    if (!isNotFoundError(error)) throw error;
+    if (!isNotFound(error)) throw error;
     const pending = await readPendingRunState(receiptDir, options.referenceId);
     if (!pending) throw error;
     return {
@@ -730,10 +727,6 @@ function compactFieldDiff(
 
 function stableDiffValue(value: unknown): string {
   return JSON.stringify(value ?? null);
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function readNestedString(value: Readonly<Record<string, unknown>>, path: readonly string[]): string | undefined {

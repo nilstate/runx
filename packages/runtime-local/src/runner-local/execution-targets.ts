@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveLocalSkillProfile } from "@runxhq/core/config";
+import { pathExists } from "@runxhq/core/util";
 import {
   extractSkillQualityProfile,
   parseGraphYaml,
@@ -508,14 +509,6 @@ async function isDirectory(candidatePath: string): Promise<boolean> {
   }
 }
 
-async function pathExists(candidatePath: string): Promise<boolean> {
-  try {
-    await stat(candidatePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function composeInlineStepBody(skillBody: string | undefined, step: GraphStep): string {
   const parts = [

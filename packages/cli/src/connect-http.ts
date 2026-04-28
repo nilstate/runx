@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 
+import { isRecord } from "@runxhq/core/util";
+
 export interface HttpConnectGrant {
   readonly grant_id: string;
   readonly principal_id?: string;
@@ -260,6 +262,3 @@ function safeJson(raw: string): unknown {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}

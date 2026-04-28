@@ -6,6 +6,7 @@ import {
 } from "@runxhq/runtime-local/tool-catalogs";
 import { createRunxSdk, type RunSkillOptions, type RunxSdk, type RunxSdkOptions } from "@runxhq/runtime-local/sdk";
 import type { RunLocalSkillResult } from "@runxhq/runtime-local";
+import { isRecord } from "@runxhq/core/util";
 import { tool, type StructuredToolInterface } from "@langchain/core/tools";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
@@ -266,10 +267,6 @@ function toInputRecord(input: unknown): Readonly<Record<string, unknown>> {
     return { input };
   }
   return { value: input };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function hasGetTools(

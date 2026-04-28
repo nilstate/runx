@@ -1,12 +1,8 @@
 import path from "node:path";
 
-export function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { asRecord, isPlainRecord as isRecord } from "@runxhq/core/util";
 
-export function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return isRecord(value) ? value : undefined;
-}
+export { asRecord, isRecord };
 
 export function isString(value: unknown): value is string {
   return typeof value === "string";

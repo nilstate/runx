@@ -1,8 +1,11 @@
 export const artifactsPackage = "@runxhq/core/artifacts";
 
-import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { hashStable, hashString, stableStringify } from "../util/hash.js";
+
+export { hashStable, hashString, stableStringify };
 
 export interface ArtifactContract {
   readonly emits?: readonly string[];
@@ -261,32 +264,6 @@ export async function readLedgerEntries(receiptDir: string, runId: string): Prom
 
 export function resolveLedgerPath(receiptDir: string, runId: string): string {
   return path.join(receiptDir, "ledgers", `${runId}.jsonl`);
-}
-
-export function hashStable(value: unknown): string {
-  return hashString(stableStringify(value));
-}
-
-export function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-export function stableStringify(value: unknown): string {
-  return JSON.stringify(sortValue(value));
-}
-
-function sortValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => sortValue(item));
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, nested]) => [key, sortValue(nested)]),
-    );
-  }
-  return value;
 }
 
 function materializeNamedArtifacts(options: {

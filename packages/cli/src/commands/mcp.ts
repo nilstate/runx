@@ -7,6 +7,7 @@ import {
   type SkillInput,
 } from "@runxhq/core/parser";
 import type { RegistryStore } from "@runxhq/core/registry";
+import { asRecord } from "@runxhq/core/util";
 import {
   resolveSkillRunner,
   readPendingSkillPath,
@@ -533,12 +534,6 @@ function errorResponse(
   };
 }
 
-function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return undefined;
-  }
-  return value as Readonly<Record<string, unknown>>;
-}
 
 function requiredString(value: unknown, label: string): string {
   if (typeof value !== "string" || value.length === 0) {

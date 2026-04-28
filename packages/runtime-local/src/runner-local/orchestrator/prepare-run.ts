@@ -17,8 +17,8 @@ import { normalizeExecutionSemantics } from "../execution-semantics.js";
 import {
   defaultLocalGraphGrant,
   mergeMetadata,
-  unique,
 } from "../runner-helpers.js";
+import { unique } from "@runxhq/core/util";
 import { type GraphStepOutput } from "../graph-context.js";
 import type { GraphStepRun, RunLocalGraphOptions } from "../index.js";
 

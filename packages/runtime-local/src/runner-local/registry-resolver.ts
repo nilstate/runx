@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -8,6 +8,7 @@ import {
   type RegistrySkillResolution,
   type RegistryStore,
 } from "@runxhq/core/registry";
+import { readOptionalFile } from "@runxhq/core/util";
 
 export interface ParsedRegistryRef {
   readonly kind: "registry";
@@ -142,13 +143,3 @@ function cachePathFor(cacheDir: string, resolution: RegistrySkillResolution): st
   return path.join(cacheDir, owner, name, resolution.version, digestSlug);
 }
 
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch (error) {
-    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT") {
-      return undefined;
-    }
-    throw error;
-  }
-}

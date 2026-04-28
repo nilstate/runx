@@ -8,6 +8,8 @@ import {
   type SkillRunnerManifest,
   type ValidatedSkill,
 } from "../parser/index.js";
+import { isRecord } from "../util/types.js";
+import { unique } from "../util/array.js";
 
 import { buildSkillId, type RegistrySkillVersion, type RegistrySourceMetadata, type RegistryStore } from "./store.js";
 import {
@@ -216,10 +218,4 @@ function recordField(value: unknown, field: string): unknown {
   return isRecord(value) ? value[field] : undefined;
 }
 
-function unique(values: readonly string[]): readonly string[] {
-  return Array.from(new Set(values));
-}
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}

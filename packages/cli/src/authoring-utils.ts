@@ -1,7 +1,10 @@
-import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { hashStable, isRecord as isPlainRecord, safeReadDir, stableStringify } from "@runxhq/core/util";
+
+export { isPlainRecord, safeReadDir, stableStringify };
 
 export interface LocalPacketIndexResult {
   readonly packets: readonly {
@@ -152,14 +155,6 @@ export async function expandLocalGlob(root: string, glob: string): Promise<reado
   return files.sort();
 }
 
-export async function safeReadDir(directory: string) {
-  try {
-    return await readdir(directory, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-}
-
 export async function countYamlFiles(directory: string): Promise<number> {
   return (await safeReadDir(directory)).filter((entry) => entry.isFile() && /\.ya?ml$/i.test(entry.name)).length;
 }
@@ -193,23 +188,9 @@ export async function writeJsonFile(filePath: string, value: unknown): Promise<v
 }
 
 export function sha256Stable(value: unknown): string {
-  return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
+  return `sha256:${hashStable(value)}`;
 }
 
-export function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().filter((key) => record[key] !== undefined).map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
-}
-
-export function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 export function deepEqual(left: unknown, right: unknown): boolean {
   return stableStringify(left) === stableStringify(right);

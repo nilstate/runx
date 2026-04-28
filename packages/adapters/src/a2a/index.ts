@@ -1,6 +1,5 @@
-import { createHash } from "node:crypto";
-
 import type { AdapterInvokeRequest, AdapterInvokeResult, SkillAdapter } from "@runxhq/core/executor";
+import { hashStable, hashString } from "@runxhq/core/util";
 
 export const a2aAdapterPackage = "@runxhq/adapters/a2a";
 
@@ -259,23 +258,3 @@ function stringifyInput(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
-function hashStable(value: unknown): string {
-  return hashString(stableStringify(value));
-}
-
-function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
-  }
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, entryValue]) => entryValue !== undefined)
-    .sort(([left], [right]) => left.localeCompare(right));
-  return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableStringify(entryValue)}`).join(",")}}`;
-}

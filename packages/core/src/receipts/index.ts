@@ -7,9 +7,14 @@ import {
   validateScopeAdmissionContract,
   type ScopeAdmissionContract,
 } from "@runxhq/contracts";
-import crypto, { createHash, type KeyObject } from "node:crypto";
+import crypto, { type KeyObject } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { isNotFound } from "../util/types.js";
+import { hashStable, hashString, stableStringify } from "../util/hash.js";
+
+export { hashStable, hashString, stableStringify };
 
 export const CONTROL_SCHEMA_REFS = {
   scope_admission: RUNX_CONTROL_SCHEMA_REFS.scope_admission,
@@ -21,10 +26,10 @@ import {
   loadOrCreateLocalKey,
   localIssuer,
   signPayloadString,
-  stableStringify,
   verifyPayloadString,
   type LocalKeyPair,
 } from "./local-signing.js";
+import { assertReceiptLikeId } from "./outcome-resolution.js";
 import type { OutcomeState, ReceiptOutcome } from "./outcome-resolution.js";
 
 export interface ReceiptExecution {
@@ -85,13 +90,16 @@ export interface RunnerReceiptMetadata {
   };
 }
 
-export type GovernedDisposition =
-  | "completed"
-  | "needs_resolution"
-  | "policy_denied"
-  | "approval_required"
-  | "observing"
-  | "escalated";
+export const GOVERNED_DISPOSITIONS = [
+  "completed",
+  "needs_resolution",
+  "policy_denied",
+  "approval_required",
+  "observing",
+  "escalated",
+] as const;
+
+export type GovernedDisposition = (typeof GOVERNED_DISPOSITIONS)[number];
 
 export interface ReceiptSurfaceRef {
   readonly type: string;
@@ -336,7 +344,7 @@ export async function writeLocalGraphReceipt(options: WriteLocalGraphReceiptOpti
 }
 
 export async function readLocalReceipt(receiptDir: string, id: string): Promise<LocalReceipt> {
-  assertLocalReceiptId(id);
+  assertReceiptLikeId(id);
   const contents = await readFile(path.join(receiptDir, `${id}.json`), "utf8");
   return JSON.parse(contents) as LocalReceipt;
 }
@@ -517,14 +525,6 @@ async function verifyLocalReceiptFromLocalKey(receipt: LocalReceipt, runxHome: s
   }
 }
 
-export function hashStable(value: unknown): string {
-  return hashString(stableStringify(value));
-}
-
-export function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
 export function uniqueReceiptId(prefix: "rx" | "gx"): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
 }
@@ -568,11 +568,6 @@ export function validateScopeAdmission(
   };
 }
 
-function assertLocalReceiptId(id: string): void {
-  if (!/^(rx|gx)_[A-Za-z0-9_-]+$/.test(id)) {
-    throw new Error(`Invalid receipt id '${id}'.`);
-  }
-}
 
 function assertNonEmptyReceiptIdentity(
   value: string | null | undefined,
@@ -607,8 +602,4 @@ function isSecretKey(key: string): boolean {
 
 function receiptTimestamp(receipt: LocalReceipt): string {
   return receipt.completed_at ?? receipt.started_at ?? "";
-}
-
-function isNotFound(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }

@@ -3,6 +3,9 @@ import os from "node:os";
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { isNodeError, isRecord } from "../util/types.js";
+import { readOptionalFile } from "../util/fs.js";
 import { fileURLToPath } from "node:url";
 
 import { parseRunnerManifestYaml, parseSkillMarkdown, validateRunnerManifest } from "../parser/index.js";
@@ -420,14 +423,6 @@ export function isRemoteRegistryUrl(value: string | undefined): value is string 
   return typeof value === "string" && /^https?:\/\//.test(value);
 }
 
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch {
-    return undefined;
-  }
-}
-
 async function readProfileState(
   skillDirectory: string,
   skillName: string,
@@ -572,13 +567,6 @@ function resolveBindingLocator(
   return undefined;
 }
 
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function configKeyReadError(keyPath: string, cause?: unknown): Error {
   const suffix = cause instanceof Error && cause.message ? `: ${cause.message}` : "";

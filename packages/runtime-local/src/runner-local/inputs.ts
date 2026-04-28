@@ -5,6 +5,7 @@ import { readLedgerEntries } from "@runxhq/core/artifacts";
 import { validateResolutionRequest, type Question, type ResolutionRequest } from "@runxhq/core/executor";
 import { validateOutboxEntry, validateThread } from "@runxhq/core/knowledge";
 import type { SkillInput, ValidatedSkill } from "@runxhq/core/parser";
+import { isPlainRecord, isRecord } from "@runxhq/core/util";
 
 import { defaultReceiptDir } from "./receipt-paths.js";
 import type { RunLocalSkillOptions } from "./index.js";
@@ -304,10 +305,6 @@ function assignDefined(target: Record<string, unknown>, value: Readonly<Record<s
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function parseRecordedRequests(value: unknown, label: string): readonly ResolutionRequest[] | undefined {
   if (value === undefined) {
     return undefined;
@@ -329,10 +326,6 @@ function normalizeResolutionKinds(value: unknown): readonly ResolutionRequest["k
   return normalizeStringArray(value).filter(
     (entry): entry is ResolutionRequest["kind"] => entry === "input" || entry === "approval" || entry === "cognitive_work",
   );
-}
-
-function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isInputUnsetDirective(value: unknown): value is Readonly<Record<string, unknown>> {

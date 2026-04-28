@@ -1,3 +1,5 @@
+import { isRecord } from "@runxhq/core/util";
+
 import { createHttpConnectService } from "../connect-http.js";
 import { renderKeyValue, statusIcon, theme } from "../ui.js";
 
@@ -150,8 +152,4 @@ function parseOptionalInt(value: string | undefined): number | undefined {
   }
   const parsed = Number.parseInt(value, 10);
   return Number.isNaN(parsed) ? undefined : parsed;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

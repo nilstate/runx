@@ -6,6 +6,7 @@ import { resolveRunxKnowledgeDir } from "@runxhq/core/config";
 import type { GraphStep, ValidatedSkill } from "@runxhq/core/parser";
 import type { GraphScopeGrant } from "@runxhq/core/policy";
 import { hashStable, type LocalReceipt } from "@runxhq/core/receipts";
+import { isPlainRecord, isRecord } from "@runxhq/core/util";
 
 export interface RetryReceiptContext {
   readonly attempt: number;
@@ -31,10 +32,6 @@ export async function indexReceiptIfEnabled(
     receiptPath: path.join(receiptDir, `${receipt.id}.json`),
     project: resolveKnowledgeProject(options.env),
   });
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function isDomainArtifactEnvelope(entry: ArtifactEnvelope): boolean {
@@ -118,10 +115,6 @@ export function buildRetryReceiptContext(
   };
 }
 
-export function unique(values: readonly string[]): readonly string[] {
-  return Array.from(new Set(values));
-}
-
 export function mergeMetadata(
   ...metadata: readonly (Readonly<Record<string, unknown>> | undefined)[]
 ): Readonly<Record<string, unknown>> | undefined {
@@ -179,8 +172,4 @@ function mergeRecord(left: Readonly<Record<string, unknown>>, right: Readonly<Re
     merged[key] = isPlainRecord(existing) && isPlainRecord(value) ? mergeRecord(existing, value) : value;
   }
   return merged;
-}
-
-function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

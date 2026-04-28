@@ -1,11 +1,11 @@
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { acquireRegistrySkill, type AcquiredRegistrySkill } from "@runxhq/core/registry";
-import { buildPublisherAttestations, defaultRegistryPublisher } from "@runxhq/core/registry";
+import { buildPublisherAttestations, defaultRegistryPublisher, splitSkillId } from "@runxhq/core/registry";
+import { hashString, readOptionalFile } from "@runxhq/core/util";
 
 export interface OfficialSkillLockEntry {
   readonly skill_id: string;
@@ -87,18 +87,6 @@ export function officialSkillCachePath(cacheRoot: string, entry: OfficialSkillLo
 }
 
 let cachedCliSkillsRoot: string | undefined | null;
-
-function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function splitSkillId(skillId: string): readonly [string, string] {
-  const parts = skillId.split("/");
-  if (parts.length !== 2 || !parts[0] || !parts[1]) {
-    throw new Error(`Invalid official skill id '${skillId}'. Expected '<owner>/<name>'.`);
-  }
-  return [parts[0], parts[1]];
-}
 
 function ownerFromSkillId(skillId: string): string {
   return splitSkillId(skillId)[0];
@@ -182,17 +170,6 @@ function resolveCliSkillsRoot(): string | undefined {
   }
   cachedCliSkillsRoot = null;
   return undefined;
-}
-
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return undefined;
-    }
-    throw error;
-  }
 }
 
 async function readProfileDocumentState(skillPath: string): Promise<string | undefined> {
