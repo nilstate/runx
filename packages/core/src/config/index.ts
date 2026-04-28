@@ -249,21 +249,21 @@ export async function resolveLocalSkillProfile(
   const targetStat = await stat(resolvedPath);
   const skillDirectory = targetStat.isDirectory() ? resolvedPath : path.dirname(resolvedPath);
 
-  const profileState = await readProfileState(skillDirectory, skillName);
-  if (profileState) {
-    return {
-      profileDocument: profileState.profileDocument,
-      profileSourcePath: profileState.profileSourcePath,
-      source: "profile-state",
-    };
-  }
-
   const checkedInProfile = await readSkillProfile(skillDirectory, skillName);
   if (checkedInProfile) {
     return {
       profileDocument: checkedInProfile.profileDocument,
       profileSourcePath: checkedInProfile.profileSourcePath,
       source: "skill-profile",
+    };
+  }
+
+  const profileState = await readProfileState(skillDirectory, skillName);
+  if (profileState) {
+    return {
+      profileDocument: profileState.profileDocument,
+      profileSourcePath: profileState.profileSourcePath,
+      source: "profile-state",
     };
   }
 

@@ -267,8 +267,7 @@ runners:
       bind_current:
         type: boolean
         required: false
-        default: true
-        description: "When true, bind the current branch instead of creating or switching."
+        description: "When true, bind the current branch instead of creating or switching. Default behavior defers to `scafld branch`, which creates a new branch named after `task_id`."
       draft_spec_path:
         type: string
         required: false
