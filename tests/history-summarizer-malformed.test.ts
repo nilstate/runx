@@ -84,8 +84,8 @@ describe("receipt writer enforces non-empty identity", () => {
   });
 });
 
-describe("history summarizer falls back when receipt identity is missing", () => {
-  it("returns receipt.id as name for a skill_execution receipt with skill_name: null", async () => {
+describe("history listings skip receipts that fail schema validation", () => {
+  it("filters out a skill_execution receipt with skill_name: null and warns to stderr", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-history-malformed-"));
     const receiptDir = path.join(tempDir, "receipts");
     await mkdir(receiptDir, { recursive: true });
@@ -114,16 +114,26 @@ describe("history summarizer falls back when receipt identity is missing", () =>
     try {
       await writeFile(path.join(receiptDir, `${malformedId}.json`), JSON.stringify(malformed));
 
-      const result = await listLocalHistory({ receiptDir });
-      expect(result.receipts).toHaveLength(1);
-      expect(result.receipts[0]?.name).toBe(malformedId);
-      expect(result.receipts[0]?.id).toBe(malformedId);
+      const stderrChunks: string[] = [];
+      const originalWrite = process.stderr.write.bind(process.stderr);
+      process.stderr.write = ((chunk: string | Uint8Array) => {
+        stderrChunks.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString());
+        return true;
+      }) as typeof process.stderr.write;
+      try {
+        const result = await listLocalHistory({ receiptDir });
+        expect(result.receipts).toHaveLength(0);
+      } finally {
+        process.stderr.write = originalWrite;
+      }
+      expect(stderrChunks.join("")).toContain(malformedId);
+      expect(stderrChunks.join("")).toMatch(/skipping receipt/);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
 
-  it("returns receipt.id as name for a graph_execution receipt missing graph_name", async () => {
+  it("filters out a graph_execution receipt missing graph_name and warns to stderr", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-history-malformed-graph-"));
     const receiptDir = path.join(tempDir, "receipts");
     await mkdir(receiptDir, { recursive: true });
@@ -149,10 +159,20 @@ describe("history summarizer falls back when receipt identity is missing", () =>
     try {
       await writeFile(path.join(receiptDir, `${malformedId}.json`), JSON.stringify(malformed));
 
-      const result = await listLocalHistory({ receiptDir });
-      expect(result.receipts).toHaveLength(1);
-      expect(result.receipts[0]?.name).toBe(malformedId);
-      expect(result.receipts[0]?.kind).toBe("graph_execution");
+      const stderrChunks: string[] = [];
+      const originalWrite = process.stderr.write.bind(process.stderr);
+      process.stderr.write = ((chunk: string | Uint8Array) => {
+        stderrChunks.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString());
+        return true;
+      }) as typeof process.stderr.write;
+      try {
+        const result = await listLocalHistory({ receiptDir });
+        expect(result.receipts).toHaveLength(0);
+      } finally {
+        process.stderr.write = originalWrite;
+      }
+      expect(stderrChunks.join("")).toContain(malformedId);
+      expect(stderrChunks.join("")).toMatch(/skipping receipt/);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

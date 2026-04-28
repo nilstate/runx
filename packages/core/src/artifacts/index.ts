@@ -3,8 +3,10 @@ export const artifactsPackage = "@runxhq/core/artifacts";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { validateArtifactEnvelopeContract } from "@runxhq/contracts";
+
 import { hashStable, hashString, stableStringify } from "../util/hash.js";
-import { isNotFound } from "../util/types.js";
+import { errorMessage, isNotFound } from "../util/types.js";
 
 export { hashStable, hashString, stableStringify };
 
@@ -259,11 +261,25 @@ export async function readLedgerEntries(receiptDir: string, runId: string): Prom
     }
     throw error;
   }
-  return contents
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => JSON.parse(line) as ArtifactEnvelope);
+  const lines = contents.split(/\r?\n/);
+  const entries: ArtifactEnvelope[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (line.length === 0) {
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(line);
+    } catch (error) {
+      throw new Error(
+        `${ledgerPath}:${index + 1} is not valid JSON: ${errorMessage(error)}`,
+        { cause: error },
+      );
+    }
+    entries.push(validateArtifactEnvelopeContract(parsed, `${ledgerPath}:${index + 1}`) as ArtifactEnvelope);
+  }
+  return entries;
 }
 
 export function resolveLedgerPath(receiptDir: string, runId: string): string {

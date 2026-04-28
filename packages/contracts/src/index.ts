@@ -140,6 +140,32 @@ export {
 } from "./schemas/receipt.js";
 
 export {
+  localReceiptSchema,
+  localSkillReceiptSchema,
+  localGraphReceiptSchema,
+  localReceiptSchemaVersion,
+  localReceiptDispositions,
+  localOutcomeStates,
+  validateLocalReceiptContract,
+  validateLocalSkillReceiptContract,
+  validateLocalGraphReceiptContract,
+  type LocalReceiptContract,
+  type LocalSkillReceiptContract,
+  type LocalGraphReceiptContract,
+} from "./schemas/local-receipt.js";
+
+export {
+  outcomeResolutionSchema,
+  outcomeResolutionSchemaVersion,
+  validateOutcomeResolutionContract,
+  type OutcomeResolutionContract,
+} from "./schemas/outcome-resolution.js";
+
+export {
+  validateArtifactEnvelopeContract,
+} from "./schemas/artifact.js";
+
+export {
   fixtureV1Schema,
   type FixtureContract,
 } from "./schemas/fixture.js";

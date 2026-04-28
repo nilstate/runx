@@ -4,6 +4,7 @@ export * from "./outcome-resolution.js";
 
 import {
   RUNX_CONTROL_SCHEMA_REFS,
+  validateLocalReceiptContract,
   validateScopeAdmissionContract,
   type ScopeAdmissionContract,
 } from "@runxhq/contracts";
@@ -350,8 +351,9 @@ export async function writeLocalGraphReceipt(options: WriteLocalGraphReceiptOpti
  */
 export async function readLocalReceipt(receiptDir: string, id: string): Promise<LocalReceipt> {
   assertReceiptLikeId(id);
-  const contents = await readFile(path.join(receiptDir, `${id}.json`), "utf8");
-  return JSON.parse(contents) as LocalReceipt;
+  const receiptPath = path.join(receiptDir, `${id}.json`);
+  const contents = await readFile(receiptPath, "utf8");
+  return parseLocalReceiptContents(contents, receiptPath);
 }
 
 export async function readVerifiedLocalReceipt(
@@ -382,12 +384,36 @@ export async function listLocalReceipts(receiptDir: string): Promise<readonly Lo
     throw error;
   }
 
-  const receipts = await Promise.all(
+  const settled = await Promise.all(
     entries
       .filter((entry) => /^(rx|gx)_[A-Za-z0-9_-]+\.json$/.test(entry))
-      .map(async (entry) => JSON.parse(await readFile(path.join(receiptDir, entry), "utf8")) as LocalReceipt),
+      .map(async (entry) => {
+        const receiptPath = path.join(receiptDir, entry);
+        try {
+          return parseLocalReceiptContents(await readFile(receiptPath, "utf8"), receiptPath);
+        } catch (error) {
+          process.stderr.write(
+            `warning: skipping receipt at ${receiptPath}: ${error instanceof Error ? error.message : String(error)}\n`,
+          );
+          return undefined;
+        }
+      }),
   );
+  const receipts = settled.filter((entry): entry is LocalReceipt => entry !== undefined);
   return receipts.sort((left, right) => receiptTimestamp(right).localeCompare(receiptTimestamp(left)));
+}
+
+function parseLocalReceiptContents(contents: string, receiptPath: string): LocalReceipt {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(contents);
+  } catch (error) {
+    throw new Error(
+      `${receiptPath} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+  return validateLocalReceiptContract(parsed, receiptPath) as LocalReceipt;
 }
 
 export async function listVerifiedLocalReceipts(
@@ -404,11 +430,24 @@ export async function listVerifiedLocalReceipts(
     throw error;
   }
 
-  const receipts = await Promise.all(
+  // Listings are tolerant: a single corrupt or legacy-shape receipt must not
+  // poison the whole list. Single-receipt reads (`readVerifiedLocalReceipt`)
+  // remain strict; callers asking for a specific id still get a clear error.
+  const settled = await Promise.all(
     entries
       .filter((entry) => /^(rx|gx)_[A-Za-z0-9_-]+\.json$/.test(entry))
-      .map(async (entry) => readVerifiedLocalReceipt(receiptDir, entry.slice(0, -".json".length), runxHome)),
+      .map(async (entry) => {
+        try {
+          return await readVerifiedLocalReceipt(receiptDir, entry.slice(0, -".json".length), runxHome);
+        } catch (error) {
+          process.stderr.write(
+            `warning: skipping receipt at ${path.join(receiptDir, entry)}: ${error instanceof Error ? error.message : String(error)}\n`,
+          );
+          return undefined;
+        }
+      }),
   );
+  const receipts = settled.filter((entry): entry is VerifiedLocalReceipt => entry !== undefined);
   return receipts.sort((left, right) => receiptTimestamp(right.receipt).localeCompare(receiptTimestamp(left.receipt)));
 }
 

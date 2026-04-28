@@ -2,7 +2,9 @@ import crypto from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { isNotFound } from "../util/types.js";
+import { validateOutcomeResolutionContract } from "@runxhq/contracts";
+
+import { errorMessage, isNotFound } from "../util/types.js";
 
 export type OutcomeState = "pending" | "complete" | "expired";
 
@@ -77,8 +79,15 @@ async function readReceiptOutcomeResolution(
   resolutionId: string,
 ): Promise<ReceiptOutcomeResolution> {
   assertOutcomeResolutionId(resolutionId);
-  const contents = await readFile(path.join(outcomeResolutionDirectory(receiptDir), `${resolutionId}.json`), "utf8");
-  return JSON.parse(contents) as ReceiptOutcomeResolution;
+  const resolutionPath = path.join(outcomeResolutionDirectory(receiptDir), `${resolutionId}.json`);
+  const contents = await readFile(resolutionPath, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(contents);
+  } catch (error) {
+    throw new Error(`${resolutionPath} is not valid JSON: ${errorMessage(error)}`, { cause: error });
+  }
+  return validateOutcomeResolutionContract(parsed, resolutionPath) as ReceiptOutcomeResolution;
 }
 
 export async function readVerifiedReceiptOutcomeResolution(
