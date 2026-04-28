@@ -21,8 +21,13 @@ function resolveFixtureRuntime(): {
   readonly baseDirectory: string;
   readonly server: McpServerDefinition;
 } {
-  let current = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
-  while (true) {
+  // Prefer the workspace source harness over any compiled dist when both are
+  // reachable. A concurrent `pnpm build` (e.g. from cli-package.test.ts) can
+  // rewrite the dist mid-spawn; the source path is stable. We make two passes
+  // up from import.meta.url: first looking for the workspace source, then
+  // (only if no workspace exists) falling back to the packaged build.
+  const start = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
+  for (let current = start; ; current = path.dirname(current)) {
     const workspaceHarness = path.join(current, "packages", "runtime-local", "src", "harness", "mcp-fixture.ts");
     if (fs.existsSync(workspaceHarness)) {
       return {
@@ -38,6 +43,11 @@ function resolveFixtureRuntime(): {
         },
       };
     }
+    if (path.dirname(current) === current) {
+      break;
+    }
+  }
+  for (let current = start; ; current = path.dirname(current)) {
     const packagedHarness = path.join(current, "dist", "src", "harness", "mcp-fixture.js");
     if (fs.existsSync(packagedHarness)) {
       return {
@@ -49,10 +59,9 @@ function resolveFixtureRuntime(): {
         },
       };
     }
-    const parent = path.dirname(current);
-    if (parent === current) {
-      throw new Error("Could not locate the runx workspace root for the fixture MCP catalog.");
+    if (path.dirname(current) === current) {
+      break;
     }
-    current = parent;
   }
+  throw new Error("Could not locate the runx workspace root for the fixture MCP catalog.");
 }

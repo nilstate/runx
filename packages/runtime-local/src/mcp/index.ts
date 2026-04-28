@@ -253,6 +253,7 @@ function parseMcpToolsList(value: unknown): readonly McpToolDescriptor[] {
 class StdioJsonRpcClient {
   private nextId = 1;
   private stdout = Buffer.alloc(0);
+  private stderr = Buffer.alloc(0);
   private readonly pending = new Map<number, PendingRequest>();
 
   constructor(private readonly child: ChildProcessWithoutNullStreams) {
@@ -264,11 +265,22 @@ class StdioJsonRpcClient {
       }
       this.parseAvailableMessages();
     });
+    this.child.stderr.on("data", (chunk: Buffer) => {
+      const remaining = maxMcpMessageBytes - this.stderr.length;
+      if (remaining <= 0) return;
+      this.stderr = Buffer.concat([this.stderr, chunk.length > remaining ? chunk.subarray(0, remaining) : chunk]);
+    });
     this.child.on("error", (error) => {
       this.rejectAll(error);
     });
-    this.child.on("close", () => {
-      this.rejectAll(new Error("MCP server exited before responding."));
+    this.child.on("close", (exitCode, exitSignal) => {
+      const stderrText = this.stderr.toString("utf8").trim();
+      const detail = [
+        `exit code ${exitCode ?? "null"}`,
+        exitSignal ? `signal ${exitSignal}` : undefined,
+        stderrText ? `stderr: ${stderrText.slice(0, 1024)}` : undefined,
+      ].filter(Boolean).join(", ");
+      this.rejectAll(new Error(`MCP server exited before responding (${detail}).`));
     });
   }
 

@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -103,18 +103,22 @@ async function finalizePackage(directory) {
 }
 
 async function writeDevDist({ directory, dist, compiledPackageRoot, compiledEntry, executable, syncCliAssets: shouldSyncCliAssets }) {
-  await rm(dist, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
-  await mkdir(dist, { recursive: true });
-  await copyIntoDist(compiledPackageRoot, dist);
-  await stripSourceMaps(dist);
-  await writeEntryWrapper({
+  await buildDistAtomically({
     dist,
-    compiledEntry,
-    executable,
+    populate: async (staging) => {
+      const stagingEntry = path.join(staging, path.relative(dist, compiledEntry));
+      await copyIntoDist(compiledPackageRoot, staging);
+      await stripSourceMaps(staging);
+      await writeEntryWrapper({
+        dist: staging,
+        compiledEntry: stagingEntry,
+        executable,
+      });
+      if (executable) {
+        await chmod(path.join(staging, "index.js"), 0o755);
+      }
+    },
   });
-  if (executable) {
-    await chmod(path.join(dist, "index.js"), 0o755);
-  }
   if (shouldSyncCliAssets) {
     await syncCliAssets(directory);
   }
@@ -123,20 +127,64 @@ async function writeDevDist({ directory, dist, compiledPackageRoot, compiledEntr
 async function writePackDist({ directory, dist, compiledPackageRoot, compiledEntry, executable, syncCliAssets: shouldSyncCliAssets }) {
   // Publish mode: produce package-local dist trees that can be packed
   // without .build/runtime and without bundling sibling packages.
-  await rm(dist, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
-  await mkdir(dist, { recursive: true });
-  await copyIntoDist(compiledPackageRoot, dist);
-  await stripSourceMaps(dist);
-  await writeEntryWrapper({
+  await buildDistAtomically({
     dist,
-    compiledEntry,
-    executable,
+    populate: async (staging) => {
+      const stagingEntry = path.join(staging, path.relative(dist, compiledEntry));
+      await copyIntoDist(compiledPackageRoot, staging);
+      await stripSourceMaps(staging);
+      await writeEntryWrapper({
+        dist: staging,
+        compiledEntry: stagingEntry,
+        executable,
+      });
+      if (executable) {
+        await chmod(path.join(staging, "index.js"), 0o755);
+      }
+    },
   });
-  if (executable) {
-    await chmod(path.join(dist, "index.js"), 0o755);
-  }
   if (shouldSyncCliAssets) {
     await syncCliAssets(directory);
+  }
+}
+
+/**
+ * Populate `dist` via a staging directory then atomic-rename it into place,
+ * so concurrent readers (e.g. test workers spawning child processes that
+ * import compiled files) never observe a half-built dist tree.
+ */
+async function buildDistAtomically({ dist, populate }) {
+  const staging = `${dist}.staging-${process.pid}-${Date.now()}`;
+  const previous = `${dist}.previous-${process.pid}-${Date.now()}`;
+  await rm(staging, { recursive: true, force: true });
+  await mkdir(staging, { recursive: true });
+  try {
+    await populate(staging);
+  } catch (error) {
+    await rm(staging, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+  let renamedAway = false;
+  try {
+    await rename(dist, previous);
+    renamedAway = true;
+  } catch (error) {
+    if (!error || error.code !== "ENOENT") {
+      await rm(staging, { recursive: true, force: true }).catch(() => {});
+      throw error;
+    }
+  }
+  try {
+    await rename(staging, dist);
+  } catch (error) {
+    if (renamedAway) {
+      await rename(previous, dist).catch(() => {});
+    }
+    await rm(staging, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+  if (renamedAway) {
+    await rm(previous, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }).catch(() => {});
   }
 }
 
