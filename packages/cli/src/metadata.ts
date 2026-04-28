@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isRecord } from "@runxhq/core/util";
+
 export const cliPackageName = "@runxhq/cli";
 
 interface CliPackageManifest {
@@ -51,8 +53,8 @@ function findCliPackageRoot(startDir: string): string {
   for (;;) {
     const manifestPath = path.join(current, "package.json");
     if (existsSync(manifestPath)) {
-      const raw = JSON.parse(readFileSync(manifestPath, "utf8")) as CliPackageManifest;
-      if (raw.name === cliPackageName) {
+      const raw = parseManifest(manifestPath);
+      if (raw && raw.name === cliPackageName) {
         return current;
       }
     }
@@ -66,7 +68,16 @@ function findCliPackageRoot(startDir: string): string {
 
 function readCliPackageManifest(packageRoot: string): CliPackageManifest {
   const packageJsonPath = path.join(packageRoot, "package.json");
-  return JSON.parse(readFileSync(packageJsonPath, "utf8")) as CliPackageManifest;
+  const manifest = parseManifest(packageJsonPath);
+  if (!manifest) {
+    throw new Error(`${packageJsonPath} must contain a JSON object.`);
+  }
+  return manifest;
+}
+
+function parseManifest(packageJsonPath: string): CliPackageManifest | undefined {
+  const parsed: unknown = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  return isRecord(parsed) ? (parsed as CliPackageManifest) : undefined;
 }
 
 function normalizePackageName(value: string | undefined): string {
