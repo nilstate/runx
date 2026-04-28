@@ -166,6 +166,16 @@ export {
 } from "./schemas/artifact.js";
 
 export {
+  hostedReceiptManifestSchema,
+  hostedReceiptIndexEntrySchema,
+  hostedArtifactIndexEntrySchema,
+  validateHostedReceiptManifestContract,
+  type HostedReceiptManifestContract,
+  type HostedReceiptIndexEntryContract,
+  type HostedArtifactIndexEntryContract,
+} from "./schemas/hosted-receipt-manifest.js";
+
+export {
   fixtureV1Schema,
   type FixtureContract,
 } from "./schemas/fixture.js";
