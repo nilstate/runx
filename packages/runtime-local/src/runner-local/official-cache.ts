@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { acquireRegistrySkill, type AcquiredRegistrySkill } from "@runxhq/core/registry";
 import { buildPublisherAttestations, defaultRegistryPublisher, splitSkillId } from "@runxhq/core/registry";
-import { hashString, readOptionalFile } from "@runxhq/core/util";
+import { asRecord, hashString, readOptionalFile } from "@runxhq/core/util";
 
 export interface OfficialSkillLockEntry {
   readonly skill_id: string;
@@ -177,12 +177,9 @@ async function readProfileDocumentState(skillPath: string): Promise<string | und
   if (!state) {
     return undefined;
   }
-  const parsed = JSON.parse(state) as {
-    readonly profile?: {
-      readonly document?: string;
-    };
-  };
-  return typeof parsed.profile?.document === "string" ? parsed.profile.document : undefined;
+  const parsed = asRecord(JSON.parse(state));
+  const profile = asRecord(parsed?.profile);
+  return typeof profile?.document === "string" ? profile.document : undefined;
 }
 
 async function writeProfileState(skillPath: string, acquisition: AcquiredRegistrySkill): Promise<void> {

@@ -28,6 +28,8 @@ import {
   type ParsedRegistryRef,
 } from "@runxhq/runtime-local";
 
+import { asRecord } from "@runxhq/core/util";
+
 import { ensureRunxInstallState } from "./runx-state.js";
 
 let cachedBundledSkillsDir: string | undefined | null = null;
@@ -179,14 +181,15 @@ async function rewriteOfficialSkillSiblingRefs(skillDir: string, ownerSkillId: s
   const profileStatePath = path.join(skillDir, ".runx", "profile.json");
   if (existsSync(profileStatePath)) {
     const stateText = await readFile(profileStatePath, "utf8");
-    const state = JSON.parse(stateText) as { readonly profile?: { readonly document?: string } };
-    const document = state.profile?.document;
-    if (typeof document === "string") {
+    const state = asRecord(JSON.parse(stateText));
+    const profile = asRecord(state?.profile);
+    const document = profile?.document;
+    if (state && typeof document === "string") {
       const { text: rewrittenDocument, didRewrite } = rewriteSiblingSkillRefs(document, owner, lockBySiblingName);
       if (didRewrite) {
         const nextState = {
           ...state,
-          profile: { ...(state.profile ?? {}), document: rewrittenDocument },
+          profile: { ...(profile ?? {}), document: rewrittenDocument },
         };
         await writeFile(profileStatePath, `${JSON.stringify(nextState, null, 2)}\n`);
       }
