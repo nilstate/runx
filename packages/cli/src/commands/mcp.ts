@@ -437,6 +437,8 @@ function assertUniqueToolNames(tools: readonly Pick<McpToolDefinition, "name">[]
   }
 }
 
+const maxJsonRpcMessageBytes = 4 * 1024 * 1024;
+
 async function serveJsonRpc(
   io: CliIo,
   handleRequest: (request: JsonRpcRequest) => Promise<Readonly<Record<string, unknown>> | undefined>,
@@ -445,6 +447,11 @@ async function serveJsonRpc(
   await new Promise<void>((resolve, reject) => {
     const onData = (chunk: Buffer | string): void => {
       input = Buffer.concat([input, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
+      if (input.length > maxJsonRpcMessageBytes) {
+        cleanup();
+        reject(new Error(`MCP request exceeded ${maxJsonRpcMessageBytes}-byte size limit.`));
+        return;
+      }
       parseAvailableMessages();
     };
     const onEnd = (): void => {
@@ -479,6 +486,11 @@ async function serveJsonRpc(
         }
 
         const contentLength = Number(match[1]);
+        if (!Number.isFinite(contentLength) || contentLength < 0 || contentLength > maxJsonRpcMessageBytes) {
+          cleanup();
+          reject(new Error(`MCP request declared Content-Length ${match[1]}, exceeding ${maxJsonRpcMessageBytes}-byte limit.`));
+          return;
+        }
         const bodyStart = headerEnd + 4;
         const bodyEnd = bodyStart + contentLength;
         if (input.length < bodyEnd) {
