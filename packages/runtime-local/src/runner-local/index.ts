@@ -78,7 +78,6 @@ import {
 } from "@runxhq/core/policy";
 import {
   uniqueReceiptId,
-  removeLocalReceipt,
   writeLocalReceipt,
   type ExecutionSemantics,
   type GovernedDisposition,
@@ -949,6 +948,7 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
     entries: skillLedgerEntries,
   });
 
+  await appendPreparedLedgerEntries(ledgerPlan);
   const receipt = await writeLocalReceipt({
     receiptId: runId,
     receiptDir,
@@ -986,12 +986,6 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
     surfaceRefs: executionSemantics.surfaceRefs,
     evidenceRefs: executionSemantics.evidenceRefs,
   });
-  try {
-    await appendPreparedLedgerEntries(ledgerPlan);
-  } catch (error) {
-    await removeLocalReceipt(receiptDir, receipt.id);
-    throw error;
-  }
   try {
     await indexReceiptIfEnabled(receipt, receiptDir, options);
   } catch (error) {

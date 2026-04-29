@@ -256,22 +256,6 @@ export async function appendGraphStepFailureLedgerEntry(options: {
   });
 }
 
-export async function appendGraphCompletedLedgerEntry(options: {
-  readonly receiptDir: string;
-  readonly runId: string;
-  readonly topLevelSkillName: string;
-  readonly receiptId: string;
-  readonly stepCount: number;
-  readonly status: "success" | "failure";
-  readonly createdAt: string;
-}): Promise<void> {
-  await appendLedgerEntries({
-    receiptDir: options.receiptDir,
-    runId: options.runId,
-    entries: [buildGraphCompletedLedgerEntry(options)],
-  });
-}
-
 export function buildGraphCompletedLedgerEntry(options: {
   readonly runId: string;
   readonly topLevelSkillName: string;

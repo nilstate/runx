@@ -1,10 +1,15 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { readLedgerEntries, resolveLedgerPath } from "@runxhq/core/artifacts";
+import {
+  appendLedgerEntries,
+  createRunEventEntry,
+  readLedgerEntries,
+  resolveLedgerPath,
+} from "@runxhq/core/artifacts";
 import { readVerifiedLocalReceipt } from "@runxhq/core/receipts";
 
 async function withReceiptDir<T>(label: string, fn: (receiptDir: string) => Promise<T>): Promise<T> {
@@ -106,16 +111,12 @@ describe("readLedgerEntries validates each line", () => {
   it("rejects a malformed ledger line and surfaces the path with line number", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-ledger-shape-"));
     const receiptDir = path.join(tempDir, "receipts");
-    const ledgerDir = path.join(receiptDir, "ledgers");
-    await mkdir(ledgerDir, { recursive: true });
     const runId = "run_test_validate_ledger";
     const ledgerPath = resolveLedgerPath(receiptDir, runId);
     try {
-      const lines = [
-        JSON.stringify(validArtifactEnvelope),
-        JSON.stringify({ ...validArtifactEnvelope, version: "2" }),
-      ];
-      await writeFile(ledgerPath, `${lines.join("\n")}\n`);
+      await appendValidLedgerEntry(receiptDir, runId);
+      const existing = await readFile(ledgerPath, "utf8");
+      await writeFile(ledgerPath, `${existing}${JSON.stringify({ ...validArtifactEnvelope, version: "2" })}\n`);
       await expect(readLedgerEntries(receiptDir, runId)).rejects.toThrow(`${ledgerPath}:2`);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -125,19 +126,31 @@ describe("readLedgerEntries validates each line", () => {
   it("rejects invalid JSON on a ledger line with line number", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-ledger-badjson-"));
     const receiptDir = path.join(tempDir, "receipts");
-    const ledgerDir = path.join(receiptDir, "ledgers");
-    await mkdir(ledgerDir, { recursive: true });
     const runId = "run_test_badjson_ledger";
     const ledgerPath = resolveLedgerPath(receiptDir, runId);
     try {
-      const lines = [
-        JSON.stringify(validArtifactEnvelope),
-        "{ this is not json",
-      ];
-      await writeFile(ledgerPath, `${lines.join("\n")}\n`);
+      await appendValidLedgerEntry(receiptDir, runId);
+      const existing = await readFile(ledgerPath, "utf8");
+      await writeFile(ledgerPath, `${existing}{ this is not json\n`);
       await expect(readLedgerEntries(receiptDir, runId)).rejects.toThrow(`${ledgerPath}:2 is not valid JSON`);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
 });
+
+async function appendValidLedgerEntry(receiptDir: string, runId: string): Promise<void> {
+  await appendLedgerEntries({
+    receiptDir,
+    runId,
+    entries: [
+      createRunEventEntry({
+        runId,
+        producer: { skill: "evolve", runner: "evolve" },
+        kind: "run_started",
+        status: "started",
+        createdAt: "2026-04-28T07:00:00Z",
+      }),
+    ],
+  });
+}

@@ -1,10 +1,12 @@
-import { removeLocalReceipt, writeLocalGraphReceipt } from "@runxhq/core/receipts";
+import { writeLocalGraphReceipt } from "@runxhq/core/receipts";
 import {
   appendPreparedLedgerEntries,
   createLedgerAnchorMetadata,
+  inspectLedger,
   prepareLedgerAppend,
+  type ArtifactEnvelope,
 } from "@runxhq/core/artifacts";
-import { errorMessage } from "@runxhq/core/util";
+import { errorMessage, isRecord } from "@runxhq/core/util";
 
 import { buildGraphCompletedLedgerEntry } from "../graph-ledger.js";
 import { graphProducerSkillName } from "../graph-reporting.js";
@@ -17,30 +19,54 @@ import { projectReflectIfEnabled } from "../reflect.js";
 import type { RunLocalGraphOptions, RunLocalGraphResult } from "../index.js";
 import type { RunContext } from "./run-context.js";
 
-export async function finalizeRun(ctx: RunContext, options: RunLocalGraphOptions): Promise<RunLocalGraphResult> {
+export type FinalizeRunContext = Pick<
+  RunContext,
+  | "executionSemantics"
+  | "finalError"
+  | "finalOutput"
+  | "graph"
+  | "graphId"
+  | "inheritedReceiptMetadata"
+  | "involvedAgentMediatedWork"
+  | "receiptDir"
+  | "startedAt"
+  | "startedAtMs"
+  | "state"
+  | "stepRuns"
+  | "syncPoints"
+  | "terminalReceiptMetadata"
+>;
+
+export async function finalizeRun(ctx: FinalizeRunContext, options: RunLocalGraphOptions): Promise<RunLocalGraphResult> {
   const completedAt = new Date().toISOString();
   const graphEscalated = ctx.state.status === "escalated";
+  const terminalStatus = ctx.state.status === "succeeded" ? "success" : "failure";
   const topLevelSkillName = graphProducerSkillName(options.skillEnvironment?.name, ctx.graph.name);
   const completedLedgerEntry = buildGraphCompletedLedgerEntry({
     runId: ctx.graphId,
     topLevelSkillName,
     receiptId: ctx.graphId,
     stepCount: ctx.stepRuns.length,
-    status: ctx.state.status === "succeeded" ? "success" : "failure",
+    status: terminalStatus,
     createdAt: completedAt,
   });
+  const existingLedger = await inspectLedger(ctx.receiptDir, ctx.graphId);
+  const terminalAlreadyCommitted = existingLedger.entries.some((entry) =>
+    isMatchingGraphCompletedLedgerEntry(entry, ctx.graphId, terminalStatus),
+  );
   const ledgerPlan = await prepareLedgerAppend({
     receiptDir: ctx.receiptDir,
     runId: ctx.graphId,
-    entries: [completedLedgerEntry],
+    entries: terminalAlreadyCommitted ? [] : [completedLedgerEntry],
   });
+  await appendPreparedLedgerEntries(ledgerPlan);
   const receipt = await writeLocalGraphReceipt({
     receiptDir: ctx.receiptDir,
     runxHome: options.runxHome ?? options.env?.RUNX_HOME,
     graphId: ctx.graphId,
     graphName: ctx.graph.name,
     owner: ctx.graph.owner,
-    status: ctx.state.status === "succeeded" ? "success" : "failure",
+    status: terminalStatus,
     inputs: options.inputs ?? {},
     output: ctx.finalOutput,
     steps: ctx.stepRuns.map(toGraphReceiptStep),
@@ -61,12 +87,6 @@ export async function finalizeRun(ctx: RunContext, options: RunLocalGraphOptions
       createLedgerAnchorMetadata(ledgerPlan.anchor),
     ),
   });
-  try {
-    await appendPreparedLedgerEntries(ledgerPlan);
-  } catch (error) {
-    await removeLocalReceipt(ctx.receiptDir, receipt.id);
-    throw error;
-  }
   try {
     await indexReceiptIfEnabled(receipt, ctx.receiptDir, options);
   } catch (error) {
@@ -101,4 +121,18 @@ export async function finalizeRun(ctx: RunContext, options: RunLocalGraphOptions
     output: ctx.finalOutput,
     errorMessage: ctx.finalError,
   };
+}
+
+function isMatchingGraphCompletedLedgerEntry(
+  entry: ArtifactEnvelope,
+  graphId: string,
+  status: "success" | "failure",
+): boolean {
+  if (entry.type !== "run_event" || entry.meta.run_id !== graphId || entry.meta.step_id !== null) {
+    return false;
+  }
+  const detail = isRecord(entry.data.detail) ? entry.data.detail : undefined;
+  return entry.data.kind === "graph_completed"
+    && entry.data.status === status
+    && detail?.receipt_id === graphId;
 }

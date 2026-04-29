@@ -46,27 +46,22 @@ describe("ledger tamper evidence", () => {
         verification: {
           status: "valid",
           entryCount: 2,
-          chainedEntryCount: 2,
-          legacyEntryCount: 0,
         },
       });
     });
   });
 
-  it("keeps existing unchained ledgers readable and reports them as legacy", async () => {
-    await withReceiptDir("legacy", async (receiptDir) => {
-      const runId = "rx_legacy000000000000000000000a";
-      const entry = artifact(runId, "legacy");
+  it("rejects raw artifact envelopes as invalid ledger records", async () => {
+    await withReceiptDir("raw-envelope", async (receiptDir) => {
+      const runId = "rx_raw00000000000000000000000a";
+      const entry = artifact(runId, "raw");
       await mkdir(path.dirname(resolveLedgerPath(receiptDir, runId)), { recursive: true });
       await writeFile(resolveLedgerPath(receiptDir, runId), `${JSON.stringify(entry)}\n`);
 
-      await expect(readLedgerEntries(receiptDir, runId)).resolves.toEqual([entry]);
+      await expect(readLedgerEntries(receiptDir, runId)).rejects.toThrow(`${resolveLedgerPath(receiptDir, runId)}:1`);
       await expect(inspectLedger(receiptDir, runId)).resolves.toMatchObject({
         verification: {
-          status: "legacy",
-          entryCount: 1,
-          chainedEntryCount: 0,
-          legacyEntryCount: 1,
+          status: "invalid",
         },
       });
     });
@@ -91,7 +86,6 @@ describe("ledger tamper evidence", () => {
         verification: {
           status: "valid",
           entryCount: 2,
-          chainedEntryCount: 2,
         },
       });
     });
@@ -131,12 +125,9 @@ describe("ledger tamper evidence", () => {
         .map((line) => JSON.stringify((JSON.parse(line) as { entry: unknown }).entry));
       await writeFile(ledgerPath, `${strippedLines.join("\n")}\n`);
 
-      await expect(inspectLedger(receiptDir, runId, plan.anchor)).resolves.toMatchObject({
-        verification: {
-          status: "invalid",
-          reason: "ledger anchor chained entry count mismatch",
-        },
-      });
+      const inspection = await inspectLedger(receiptDir, runId, plan.anchor);
+      expect(inspection.verification.status).toBe("invalid");
+      expect(inspection.verification.reason).toContain(`${ledgerPath}:1`);
     });
   });
 
@@ -151,6 +142,33 @@ describe("ledger tamper evidence", () => {
       await expect(inspectLedger(receiptDir, runId)).resolves.toMatchObject({
         verification: { status: "valid" },
       });
+    });
+  });
+
+  it("recovers stale append lock markers before writing", async () => {
+    await withReceiptDir("stale-lock", async (receiptDir) => {
+      const runId = "rx_stalelock00000000000000000a";
+      const ledgerPath = resolveLedgerPath(receiptDir, runId);
+      await mkdir(path.dirname(ledgerPath), { recursive: true });
+      await writeFile(`${ledgerPath}.lock`, "999999999\n");
+
+      await appendLedgerEntries({ receiptDir, runId, entries: [artifact(runId, "after-stale-lock")] });
+
+      await expect(readFile(`${ledgerPath}.lock`, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(inspectLedger(receiptDir, runId)).resolves.toMatchObject({
+        verification: { status: "valid", entryCount: 1 },
+      });
+    });
+  });
+
+  it("rechecks empty prepared appends against the live ledger", async () => {
+    await withReceiptDir("empty-recheck", async (receiptDir) => {
+      const runId = "rx_emptyrecheck000000000000000a";
+      await appendLedgerEntries({ receiptDir, runId, entries: [artifact(runId, "first")] });
+      const plan = await prepareLedgerAppend({ receiptDir, runId, entries: [] });
+      await appendLedgerEntries({ receiptDir, runId, entries: [artifact(runId, "second")] });
+
+      await expect(appendPreparedLedgerEntries(plan)).rejects.toThrow("ledger changed while append was being prepared");
     });
   });
 

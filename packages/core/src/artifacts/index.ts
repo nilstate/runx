@@ -1,6 +1,6 @@
 export const artifactsPackage = "@runxhq/core/artifacts";
 
-import { mkdir, open, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -61,24 +61,25 @@ export interface LedgerRecord {
 
 export interface ParsedLedgerRecord {
   readonly line: number;
-  readonly legacy: boolean;
   readonly entry: ArtifactEnvelope;
-  readonly chain?: LedgerChainContract;
+  readonly chain: LedgerChainContract;
 }
 
 export const ledgerAnchorVersion = "runx.ledger.anchor.v1" as const;
+const ledgerAnchorKeys = new Set(["version", "run_id", "entry_count", "head_hash", "algorithm", "canonicalization"]);
+const ledgerAppendLockMaxAttempts = 200;
+const ledgerAppendLockRetryDelayMs = 10;
 
 export interface LedgerAnchor {
   readonly version: typeof ledgerAnchorVersion;
   readonly run_id: string;
   readonly entry_count: number;
-  readonly chained_entry_count: number;
   readonly head_hash: string | null;
   readonly algorithm: typeof ledgerHashAlgorithm;
   readonly canonicalization: typeof ledgerCanonicalization;
 }
 
-export type LedgerVerificationStatus = "missing" | "legacy" | "valid" | "invalid";
+export type LedgerVerificationStatus = "missing" | "valid" | "invalid";
 
 export interface LedgerVerification {
   readonly status: LedgerVerificationStatus;
@@ -86,8 +87,6 @@ export interface LedgerVerification {
   readonly runId: string;
   readonly ledgerPath: string;
   readonly entryCount: number;
-  readonly chainedEntryCount: number;
-  readonly legacyEntryCount: number;
   readonly headHash: string | null;
 }
 
@@ -336,7 +335,6 @@ export async function prepareLedgerAppend(options: LedgerAppendOptions): Promise
       version: ledgerAnchorVersion,
       run_id: options.runId,
       entry_count: index,
-      chained_entry_count: inspection.verification.chainedEntryCount + records.length,
       head_hash: previousHash,
       algorithm: ledgerHashAlgorithm,
       canonicalization: ledgerCanonicalization,
@@ -359,28 +357,93 @@ function assertSystemLedgerEntryRunId(entry: ArtifactEnvelope, runId: string, in
 
 async function withLedgerAppendLock<T>(ledgerPath: string, fn: () => Promise<T>): Promise<T> {
   const lockPath = `${ledgerPath}.lock`;
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  for (let attempt = 0; attempt < ledgerAppendLockMaxAttempts; attempt += 1) {
     let handle: Awaited<ReturnType<typeof open>> | undefined;
+    let operationError: unknown;
     try {
       handle = await open(lockPath, "wx");
       await handle.writeFile(`${process.pid}\n`);
       return await fn();
     } catch (error) {
+      operationError = error;
       if (handle) {
         throw error;
       }
       if (!isAlreadyExists(error)) {
         throw error;
       }
-      await sleep(10);
+      if (await removeStaleLedgerAppendLock(lockPath)) {
+        continue;
+      }
+      await sleep(ledgerAppendLockRetryDelayMs);
     } finally {
       if (handle) {
-        await handle.close();
-        await rm(lockPath, { force: true });
+        try {
+          await releaseLedgerAppendLock(handle, lockPath);
+        } catch (error) {
+          if (operationError === undefined) {
+            throw error;
+          }
+        }
       }
     }
   }
   throw new Error(`Cannot append to ledger ${ledgerPath}: timed out waiting for append lock.`);
+}
+
+async function releaseLedgerAppendLock(handle: Awaited<ReturnType<typeof open>>, lockPath: string): Promise<void> {
+  let closeError: unknown;
+  try {
+    await handle.close();
+  } catch (error) {
+    closeError = error;
+  }
+  await rm(lockPath, { force: true });
+  if (closeError !== undefined) {
+    throw closeError;
+  }
+}
+
+async function removeStaleLedgerAppendLock(lockPath: string): Promise<boolean> {
+  let contents: string;
+  try {
+    contents = await readFile(lockPath, "utf8");
+  } catch (error) {
+    if (isNotFound(error)) {
+      return true;
+    }
+    throw error;
+  }
+  const pid = Number.parseInt(contents.trim(), 10);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    await rm(lockPath, { force: true });
+    return true;
+  }
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    if (isNoSuchProcess(error)) {
+      const current = await readLedgerAppendLockMarker(lockPath);
+      if (current !== contents) {
+        return current === undefined;
+      }
+      await rm(lockPath, { force: true });
+      return true;
+    }
+    return false;
+  }
+}
+
+async function readLedgerAppendLockMarker(lockPath: string): Promise<string | undefined> {
+  try {
+    return await readFile(lockPath, "utf8");
+  } catch (error) {
+    if (isNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 function isAlreadyExists(error: unknown): boolean {
@@ -392,15 +455,21 @@ function isAlreadyExists(error: unknown): boolean {
   );
 }
 
+function isNoSuchProcess(error: unknown): boolean {
+  return Boolean(
+    error
+      && typeof error === "object"
+      && "code" in error
+      && (error as { readonly code?: unknown }).code === "ESRCH",
+  );
+}
+
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function appendPreparedLedgerEntries(plan: PreparedLedgerAppend): Promise<string> {
   await mkdir(path.dirname(plan.ledgerPath), { recursive: true });
-  if (plan.records.length === 0) {
-    return plan.ledgerPath;
-  }
 
   await withLedgerAppendLock(plan.ledgerPath, async () => {
     const current = await inspectLedger(plan.receiptDir, plan.runId);
@@ -414,10 +483,33 @@ export async function appendPreparedLedgerEntries(plan: PreparedLedgerAppend): P
       throw new Error(`Cannot append to ledger ${plan.ledgerPath}: ledger changed while append was being prepared.`);
     }
 
-    const contents = plan.records.map((record) => JSON.stringify(record)).join("\n");
-    await writeFile(plan.ledgerPath, `${contents}\n`, { flag: "a" });
+    if (plan.records.length > 0) {
+      await appendLedgerRecords(plan.ledgerPath, plan.records);
+    }
   });
   return plan.ledgerPath;
+}
+
+async function appendLedgerRecords(ledgerPath: string, records: readonly LedgerRecord[]): Promise<void> {
+  const handle = await open(ledgerPath, "a");
+  let operationError: unknown;
+  try {
+    for (const record of records) {
+      await handle.writeFile(`${JSON.stringify(record)}\n`);
+    }
+    await handle.sync();
+  } catch (error) {
+    operationError = error;
+    throw error;
+  } finally {
+    try {
+      await handle.close();
+    } catch (error) {
+      if (operationError === undefined) {
+        throw error;
+      }
+    }
+  }
 }
 
 export async function readLedgerEntries(receiptDir: string, runId: string): Promise<readonly ArtifactEnvelope[]> {
@@ -476,8 +568,6 @@ export async function inspectLedger(optionsReceiptDir: string, runId: string, ex
           runId,
           ledgerPath,
           entryCount: 0,
-          chainedEntryCount: 0,
-          legacyEntryCount: 0,
           headHash: null,
         }, expectedAnchor),
       };
@@ -491,8 +581,6 @@ export async function inspectLedger(optionsReceiptDir: string, runId: string, ex
         runId,
         ledgerPath,
         entryCount: 0,
-        chainedEntryCount: 0,
-        legacyEntryCount: 0,
         headHash: null,
       },
     };
@@ -543,9 +631,7 @@ export function parseLedgerAnchorMetadata(metadata: unknown): LedgerAnchor | und
     || !Number.isInteger(candidate.entry_count)
     || typeof candidate.entry_count !== "number"
     || candidate.entry_count < 0
-    || !Number.isInteger(candidate.chained_entry_count)
-    || typeof candidate.chained_entry_count !== "number"
-    || candidate.chained_entry_count < 0
+    || Object.keys(candidate).some((key) => !ledgerAnchorKeys.has(key))
     || !(typeof candidate.head_hash === "string" || candidate.head_hash === null)
   ) {
     return undefined;
@@ -554,7 +640,6 @@ export function parseLedgerAnchorMetadata(metadata: unknown): LedgerAnchor | und
     version: ledgerAnchorVersion,
     run_id: candidate.run_id,
     entry_count: candidate.entry_count,
-    chained_entry_count: candidate.chained_entry_count,
     head_hash: candidate.head_hash,
     algorithm: ledgerHashAlgorithm,
     canonicalization: ledgerCanonicalization,
@@ -562,29 +647,12 @@ export function parseLedgerAnchorMetadata(metadata: unknown): LedgerAnchor | und
 }
 
 function parseLedgerRecord(value: unknown, label: string, line: number): ParsedLedgerRecord {
-  if (isLedgerRecordCandidate(value)) {
-    const record = validateLedgerRecordContract(value, label);
-    return {
-      line,
-      legacy: false,
-      chain: record.chain,
-      entry: record.entry as ArtifactEnvelope,
-    };
-  }
+  const record = validateLedgerRecordContract(value, label);
   return {
     line,
-    legacy: true,
-    entry: validateArtifactEnvelopeContract(value, label) as ArtifactEnvelope,
+    chain: record.chain,
+    entry: record.entry as ArtifactEnvelope,
   };
-}
-
-function isLedgerRecordCandidate(value: unknown): boolean {
-  return Boolean(
-    value
-      && typeof value === "object"
-      && !Array.isArray(value)
-      && (value as Record<string, unknown>).schema_version === ledgerRecordSchemaVersion,
-  );
 }
 
 function verifyParsedLedgerRecords(
@@ -593,39 +661,28 @@ function verifyParsedLedgerRecords(
   runId: string,
 ): LedgerVerification {
   let previousHash: string | null = null;
-  let chainedEntryCount = 0;
-  let legacyEntryCount = 0;
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index]!;
     const expected = createLedgerChain(index, previousHash, record.entry);
-    if (record.chain) {
-      chainedEntryCount += 1;
-      const reason = compareLedgerChain(record.chain, expected, record.line);
-      if (reason) {
-        return {
-          status: "invalid",
-          reason,
-          runId,
-          ledgerPath,
-          entryCount: records.length,
-          chainedEntryCount,
-          legacyEntryCount,
-          headHash: previousHash,
-        };
-      }
-    } else {
-      legacyEntryCount += 1;
+    const reason = compareLedgerChain(record.chain, expected, record.line);
+    if (reason) {
+      return {
+        status: "invalid",
+        reason,
+        runId,
+        ledgerPath,
+        entryCount: records.length,
+        headHash: previousHash,
+      };
     }
     previousHash = expected.entry_hash;
   }
 
   return {
-    status: records.length === 0 ? "missing" : chainedEntryCount === 0 ? "legacy" : "valid",
+    status: records.length === 0 ? "missing" : "valid",
     runId,
     ledgerPath,
     entryCount: records.length,
-    chainedEntryCount,
-    legacyEntryCount,
     headHash: previousHash,
   };
 }
@@ -675,9 +732,6 @@ function applyExpectedLedgerAnchor(
   }
   if (expectedAnchor.entry_count > verification.entryCount) {
     return markLedgerInvalid(verification, "ledger anchor entry count mismatch");
-  }
-  if (expectedAnchor.chained_entry_count > verification.chainedEntryCount) {
-    return markLedgerInvalid(verification, "ledger anchor chained entry count mismatch");
   }
   if (expectedAnchor.head_hash !== hashLedgerRecordPrefix(records, expectedAnchor.entry_count)) {
     return markLedgerInvalid(verification, "ledger anchor head hash mismatch");
