@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/ledger-entry/v1.json",
+  "x-runx-schema": "runx.ledger.entry.v1",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema_version",
+    "chain",
+    "entry"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "runx.ledger.entry.v1",
+      "type": "string"
+    },
+    "chain": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "version",
+        "algorithm",
+        "canonicalization",
+        "index",
+        "previous_hash",
+        "entry_hash"
+      ],
+      "properties": {
+        "version": {
+          "const": "runx.ledger.chain.v1",
+          "type": "string"
+        },
+        "algorithm": {
+          "const": "sha256",
+          "type": "string"
+        },
+        "canonicalization": {
+          "const": "runx.stable-json.v1",
+          "type": "string"
+        },
+        "index": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "previous_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "entry_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "entry": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "type",
+        "version",
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "const": "1",
+          "type": "string"
+        },
+        "data": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {}
+          }
+        },
+        "meta": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "artifact_id",
+            "run_id",
+            "step_id",
+            "producer",
+            "created_at",
+            "hash",
+            "size_bytes",
+            "parent_artifact_id",
+            "receipt_id",
+            "redacted"
+          ],
+          "properties": {
+            "artifact_id": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "run_id": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "step_id": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "producer": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "skill",
+                "runner"
+              ],
+              "properties": {
+                "skill": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "runner": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            },
+            "created_at": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "hash": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "size_bytes": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "parent_artifact_id": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "receipt_id": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "redacted": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }
+}

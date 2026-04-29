@@ -20,48 +20,62 @@ export async function appendSkillLedgerEntries(options: {
   readonly includeRunStarted?: boolean;
   readonly runStartedDetail?: Readonly<Record<string, unknown>>;
 }): Promise<void> {
+  await appendLedgerEntries({
+    receiptDir: options.receiptDir,
+    runId: options.runId,
+    entries: buildSkillLedgerEntries(options),
+  });
+}
+
+export function buildSkillLedgerEntries(options: {
+  readonly runId: string;
+  readonly skill: ValidatedSkill;
+  readonly startedAt: string;
+  readonly completedAt: string;
+  readonly status: "success" | "failure";
+  readonly artifactEnvelopes: readonly ArtifactEnvelope[];
+  readonly receiptId: string;
+  readonly includeRunStarted?: boolean;
+  readonly runStartedDetail?: Readonly<Record<string, unknown>>;
+}): readonly ArtifactEnvelope[] {
   const producer = {
     skill: options.skill.name,
     runner: options.skill.source.type,
   };
-  await appendLedgerEntries({
-    receiptDir: options.receiptDir,
-    runId: options.runId,
-    entries: [
-      ...(options.includeRunStarted === false
-        ? []
-        : [
-            createRunEventEntry({
-              runId: options.runId,
-              producer,
-              kind: "run_started",
-              status: "started",
-              createdAt: options.startedAt,
-              detail: options.runStartedDetail,
-            }),
-          ]),
-      ...options.artifactEnvelopes,
-      ...options.artifactEnvelopes.map((envelope) =>
-        createReceiptLinkEntry({
-          runId: options.runId,
-          producer,
-          artifactId: envelope.meta.artifact_id,
-          receiptId: options.receiptId,
-          createdAt: options.completedAt,
-        }),
-      ),
-      createRunEventEntry({
+  return [
+    ...(options.includeRunStarted === false
+      ? []
+      : [
+          createRunEventEntry({
+            runId: options.runId,
+            producer,
+            kind: "run_started",
+            status: "started",
+            createdAt: options.startedAt,
+            detail: options.runStartedDetail,
+          }),
+        ]),
+    ...options.artifactEnvelopes,
+    ...options.artifactEnvelopes.map((envelope) =>
+      createReceiptLinkEntry({
         runId: options.runId,
         producer,
-        kind: "run_completed",
-        status: options.status,
+        artifactId: envelope.meta.artifact_id,
+        receiptId: options.receiptId,
         createdAt: options.completedAt,
-        detail: {
-          receipt_id: options.receiptId,
-        },
       }),
-    ],
-  });
+    ),
+    createRunEventEntry({
+      runId: options.runId,
+      producer,
+      kind: "run_completed",
+      status: options.status,
+      createdAt: options.completedAt,
+      detail: {
+        receipt_id: options.receiptId,
+      },
+    }),
+  ];
 }
 
 export async function appendPendingSkillLedgerEntries(options: {
@@ -254,21 +268,30 @@ export async function appendGraphCompletedLedgerEntry(options: {
   await appendLedgerEntries({
     receiptDir: options.receiptDir,
     runId: options.runId,
-    entries: [
-      createRunEventEntry({
-        runId: options.runId,
-        producer: {
-          skill: options.topLevelSkillName,
-          runner: "graph",
-        },
-        kind: "graph_completed",
-        status: options.status,
-        detail: {
-          receipt_id: options.receiptId,
-          step_count: options.stepCount,
-        },
-        createdAt: options.createdAt,
-      }),
-    ],
+    entries: [buildGraphCompletedLedgerEntry(options)],
+  });
+}
+
+export function buildGraphCompletedLedgerEntry(options: {
+  readonly runId: string;
+  readonly topLevelSkillName: string;
+  readonly receiptId: string;
+  readonly stepCount: number;
+  readonly status: "success" | "failure";
+  readonly createdAt: string;
+}): ArtifactEnvelope {
+  return createRunEventEntry({
+    runId: options.runId,
+    producer: {
+      skill: options.topLevelSkillName,
+      runner: "graph",
+    },
+    kind: "graph_completed",
+    status: options.status,
+    detail: {
+      receipt_id: options.receiptId,
+      step_count: options.stepCount,
+    },
+    createdAt: options.createdAt,
   });
 }

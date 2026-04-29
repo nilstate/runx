@@ -9,7 +9,7 @@ import {
   type ScopeAdmissionContract,
 } from "@runxhq/contracts";
 import crypto, { type KeyObject } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { isNotFound } from "../util/types.js";
@@ -354,6 +354,11 @@ export async function readLocalReceipt(receiptDir: string, id: string): Promise<
   const receiptPath = path.join(receiptDir, `${id}.json`);
   const contents = await readFile(receiptPath, "utf8");
   return parseLocalReceiptContents(contents, receiptPath);
+}
+
+export async function removeLocalReceipt(receiptDir: string, id: string): Promise<void> {
+  assertReceiptLikeId(id);
+  await rm(path.join(receiptDir, `${id}.json`), { force: true });
 }
 
 export async function readVerifiedLocalReceipt(

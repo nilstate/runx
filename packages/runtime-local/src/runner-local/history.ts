@@ -2,7 +2,10 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  inspectLedger,
+  parseLedgerAnchorMetadata,
   type ArtifactEnvelope,
+  type LedgerVerification,
   SYSTEM_ARTIFACT_TYPES,
   readLedgerEntries,
 } from "@runxhq/core/artifacts";
@@ -13,7 +16,7 @@ import {
   type LocalReceipt,
   type ReceiptVerification,
 } from "@runxhq/core/receipts";
-import { isNotFound, isRecord } from "@runxhq/core/util";
+import { errorMessage, isNotFound, isRecord } from "@runxhq/core/util";
 import { defaultReceiptDir } from "./receipt-paths.js";
 import { readPendingRunState, type PendingRunState } from "./inputs.js";
 
@@ -34,6 +37,7 @@ export interface InspectLocalReceiptOptions {
 export interface InspectLocalReceiptResult {
   readonly receipt: LocalReceipt;
   readonly verification: ReceiptVerification;
+  readonly ledgerVerification: LedgerVerification;
   readonly summary: LocalReceiptSummary;
 }
 
@@ -48,6 +52,7 @@ export type InspectLocalRunStateResult =
       readonly runId: string;
       readonly receipt: LocalReceipt;
       readonly verification: ReceiptVerification;
+      readonly ledgerVerification: LedgerVerification;
       readonly summary: LocalReceiptSummary;
     };
 
@@ -100,12 +105,14 @@ export interface ComparableRunSummary {
   readonly approval?: RunApprovalSummary;
   readonly lineage?: RunLineageSummary;
   readonly error?: string;
+  readonly ledgerVerification?: LedgerVerification;
 }
 
 export interface LocalReceiptSummary extends ComparableRunSummary {
   readonly kind: LocalReceipt["kind"];
   readonly status: LocalReceipt["status"];
   readonly verification: ReceiptVerification;
+  readonly ledgerVerification: LedgerVerification;
 }
 
 export interface PausedRunSummary extends ComparableRunSummary {
@@ -114,6 +121,7 @@ export interface PausedRunSummary extends ComparableRunSummary {
   readonly selectedRunner?: string;
   readonly stepIds: readonly string[];
   readonly stepLabels: readonly string[];
+  readonly ledgerVerification?: LedgerVerification;
 }
 
 export interface InspectLocalRunOptions {
@@ -128,6 +136,7 @@ export type InspectLocalRunResult =
       readonly kind: "terminal";
       readonly receipt: LocalReceipt;
       readonly verification: ReceiptVerification;
+      readonly ledgerVerification: LedgerVerification;
       readonly summary: LocalReceiptSummary;
     }
   | {
@@ -248,10 +257,12 @@ export async function inspectLocalReceipt(options: InspectLocalReceiptOptions): 
     options.receiptId,
     options.runxHome ?? options.env?.RUNX_HOME,
   );
+  const summary = await summarizeLocalReceipt(receipt, verification, receiptDir);
   return {
     receipt,
     verification,
-    summary: await summarizeLocalReceipt(receipt, verification, receiptDir),
+    ledgerVerification: summary.ledgerVerification,
+    summary,
   };
 }
 
@@ -262,7 +273,7 @@ export async function inspectLocalRunState(options: {
   readonly env?: NodeJS.ProcessEnv;
 }): Promise<InspectLocalRunStateResult> {
   const receiptDir = options.receiptDir ?? defaultReceiptDir(options.env);
-  const pending = await readPendingRunState(receiptDir, options.referenceId);
+  const pending = await tryReadPendingRunState(receiptDir, options.referenceId);
   if (pending) {
     return {
       status: "paused",
@@ -272,12 +283,20 @@ export async function inspectLocalRunState(options: {
   }
 
   const resolved = await resolveLocalRunReference(options.referenceId, receiptDir, options.runxHome ?? options.env?.RUNX_HOME);
+  const summary = await summarizeLocalReceipt(
+    resolved.receipt,
+    resolved.verification,
+    receiptDir,
+    resolved.ledgerEntries,
+    resolved.runId,
+  );
   return {
     status: "terminal",
     runId: resolved.runId,
     receipt: resolved.receipt,
     verification: resolved.verification,
-    summary: await summarizeLocalReceipt(resolved.receipt, resolved.verification, receiptDir, resolved.ledgerEntries),
+    ledgerVerification: summary.ledgerVerification,
+    summary,
   };
 }
 
@@ -370,14 +389,42 @@ async function listPendingRunSummaries(
 
   const summaries: PausedRunSummary[] = [];
   for (const id of candidates) {
+    const ledgerVerification = (await inspectLedger(receiptDir, id)).verification;
+    if (ledgerVerification.status === "invalid") {
+      summaries.push({
+        id,
+        name: id,
+        kind: id.startsWith("gx_") ? "graph_execution" : "skill_execution",
+        status: "paused",
+        stepIds: [],
+        stepLabels: [],
+        ledgerVerification,
+      });
+      continue;
+    }
     const pending = await readPendingRunState(receiptDir, id);
     if (!pending) continue;
-    summaries.push(buildPausedRunSummary(id, pending));
+    summaries.push(buildPausedRunSummary(id, pending, ledgerVerification));
   }
   return summaries;
 }
 
-function buildPausedRunSummary(runId: string, pending: PendingRunState): PausedRunSummary {
+async function tryReadPendingRunState(receiptDir: string, runId: string): Promise<PendingRunState | undefined> {
+  try {
+    return await readPendingRunState(receiptDir, runId);
+  } catch (error) {
+    if (errorMessage(error).includes("failed verification")) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+function buildPausedRunSummary(
+  runId: string,
+  pending: PendingRunState,
+  ledgerVerification?: LedgerVerification,
+): PausedRunSummary {
   return {
     id: runId,
     name: pending.skillName && pending.skillName.trim().length > 0 ? pending.skillName : runId,
@@ -386,6 +433,7 @@ function buildPausedRunSummary(runId: string, pending: PendingRunState): PausedR
     selectedRunner: pending.selectedRunner,
     stepIds: pending.stepIds,
     stepLabels: pending.stepLabels,
+    ledgerVerification,
   };
 }
 
@@ -394,21 +442,46 @@ export async function inspectLocalRun(options: InspectLocalRunOptions): Promise<
   const runxHome = options.runxHome ?? options.env?.RUNX_HOME;
   try {
     const { receipt, verification } = await readVerifiedLocalReceipt(receiptDir, options.referenceId, runxHome);
+    const summary = await summarizeLocalReceipt(receipt, verification, receiptDir);
     return {
       kind: "terminal",
       receipt,
       verification,
-      summary: await summarizeLocalReceipt(receipt, verification, receiptDir),
+      ledgerVerification: summary.ledgerVerification,
+      summary,
     };
   } catch (error) {
     if (!isNotFound(error)) throw error;
+    const ledgerVerification = (await inspectLedger(receiptDir, options.referenceId)).verification;
+    if (ledgerVerification.status === "invalid") {
+      return {
+        kind: "paused",
+        runId: options.referenceId,
+        pending: {
+          inputs: {},
+          requestIds: [],
+          resolutionKinds: [],
+          stepIds: [],
+          stepLabels: [],
+        },
+        summary: {
+          id: options.referenceId,
+          name: options.referenceId,
+          kind: options.referenceId.startsWith("gx_") ? "graph_execution" : "skill_execution",
+          status: "paused",
+          stepIds: [],
+          stepLabels: [],
+          ledgerVerification,
+        },
+      };
+    }
     const pending = await readPendingRunState(receiptDir, options.referenceId);
     if (!pending) throw error;
     return {
       kind: "paused",
       runId: options.referenceId,
       pending,
-      summary: buildPausedRunSummary(options.referenceId, pending),
+      summary: buildPausedRunSummary(options.referenceId, pending, ledgerVerification),
     };
   }
 }
@@ -451,8 +524,8 @@ export async function diffLocalRuns(options: DiffLocalRunsOptions): Promise<RunS
     resolveLocalRunReference(options.right, receiptDir, runxHome),
   ]);
   return diffRunSummaries(
-    await summarizeLocalReceipt(left.receipt, left.verification, receiptDir, left.ledgerEntries),
-    await summarizeLocalReceipt(right.receipt, right.verification, receiptDir, right.ledgerEntries),
+    await summarizeLocalReceipt(left.receipt, left.verification, receiptDir, left.ledgerEntries, left.runId),
+    await summarizeLocalReceipt(right.receipt, right.verification, receiptDir, right.ledgerEntries, right.runId),
   );
 }
 
@@ -486,8 +559,16 @@ async function summarizeLocalReceipt(
   verification: ReceiptVerification,
   receiptDir: string,
   preloadedLedgerEntries?: readonly ArtifactEnvelope[],
+  ledgerRunId = receipt.id,
 ): Promise<LocalReceiptSummary> {
-  const ledgerEntries = preloadedLedgerEntries ?? await readLedgerEntries(receiptDir, receipt.id);
+  const ledgerInspection = await inspectLedger(
+    receiptDir,
+    ledgerRunId,
+    parseLedgerAnchorMetadata(receipt.metadata),
+  );
+  const ledgerEntries = ledgerInspection.verification.status === "invalid"
+    ? (preloadedLedgerEntries ?? [])
+    : ledgerInspection.entries;
   const actors = extractReceiptActors(receipt);
   const artifactTypes = extractReceiptArtifactTypes(receipt, ledgerEntries);
   const metadata = isRecord(receipt.metadata) ? receipt.metadata : undefined;
@@ -511,6 +592,7 @@ async function summarizeLocalReceipt(
       approval,
       lineage,
       runnerProvider,
+      ledgerVerification: ledgerInspection.verification,
     };
   }
 
@@ -529,6 +611,7 @@ async function summarizeLocalReceipt(
     approval,
     lineage,
     runnerProvider,
+    ledgerVerification: ledgerInspection.verification,
   };
 }
 
@@ -657,7 +740,7 @@ async function tryReadLocalReceipt(
 }
 
 async function findReceiptIdForRunId(receiptDir: string, runId: string): Promise<string | undefined> {
-  const ledgerEntries = await readLedgerEntries(receiptDir, runId);
+  const ledgerEntries = (await inspectLedger(receiptDir, runId)).entries;
   for (let index = ledgerEntries.length - 1; index >= 0; index -= 1) {
     const entry = ledgerEntries[index]!;
     if (entry.type !== "run_event") {

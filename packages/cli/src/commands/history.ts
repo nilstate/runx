@@ -122,6 +122,7 @@ export function renderReceiptInspection(summary: LocalReceiptSummary, env: NodeJ
   if (summary.approval?.decision) rows.push(["approval", `${summary.approval.decision}${summary.approval.gateType ? ` · ${summary.approval.gateType}` : ""}`]);
   if (summary.lineage) rows.push(["lineage", `${summary.lineage.kind} of ${summary.lineage.sourceRunId}`]);
   if (summary.verification) rows.push(["verify", `${summary.verification.status}${summary.verification.reason ? ` (${summary.verification.reason})` : ""}`]);
+  if (summary.ledgerVerification) rows.push(["ledger", `${summary.ledgerVerification.status}${summary.ledgerVerification.reason ? ` (${summary.ledgerVerification.reason})` : ""}`]);
   rows.push(["history", "runx history"]);
   rows.push(["replay", `runx replay ${summary.id}`]);
   rows.push(["json", `runx inspect ${summary.id} --json`]);
@@ -164,9 +165,9 @@ export function renderHistory(
     const when = receipt.startedAt ? relativeTime(receipt.startedAt, now) : "";
     const source = receipt.sourceType ?? receipt.kind;
     const id = shortId(receipt.id);
-    const verification = receipt.verification?.status ?? "unknown";
+    const verification = formatHistoryVerification(receipt);
     lines.push(
-      `  ${icon}  ${t.bold}${name}${t.reset}  ${t.dim}${source.padEnd(16)}${t.reset}  ${t.dim}${verification.padEnd(10)}${t.reset}  ${t.dim}${when.padEnd(10)}${t.reset}  ${t.dim}${id}${t.reset}`,
+      `  ${icon}  ${t.bold}${name}${t.reset}  ${t.dim}${source.padEnd(16)}${t.reset}  ${t.dim}${verification.padEnd(16)}${t.reset}  ${t.dim}${when.padEnd(10)}${t.reset}  ${t.dim}${id}${t.reset}`,
     );
   }
   lines.push("");
@@ -192,6 +193,7 @@ export function renderPausedRunInspection(
   if (summary.selectedRunner) rows.push(["runner", summary.selectedRunner]);
   if (summary.stepIds.length > 0) rows.push(["step", summary.stepIds.join(", ")]);
   if (summary.stepLabels.length > 0) rows.push(["label", summary.stepLabels.join(", ")]);
+  if (summary.ledgerVerification) rows.push(["ledger", `${summary.ledgerVerification.status}${summary.ledgerVerification.reason ? ` (${summary.ledgerVerification.reason})` : ""}`]);
   rows.push(["resume", `runx resume ${summary.id}`]);
   rows.push(["json", `runx inspect ${summary.id} --json`]);
   return renderKeyValue(summary.name, "paused", rows, t);
@@ -227,6 +229,12 @@ function parseDateFilter(value: string | undefined, flag: string): number | unde
     throw new Error(`invalid date for ${flag}: ${value}`);
   }
   return ms;
+}
+
+function formatHistoryVerification(receipt: LocalReceiptSummary): string {
+  const signature = receipt.verification?.status ?? "unknown";
+  const ledger = receipt.ledgerVerification?.status ?? "unknown";
+  return `${signature}/${ledger}`;
 }
 
 function formatDeltaValue(value: unknown): string {

@@ -23,9 +23,14 @@ export { runLocalGraph };
 
 import { readFile } from "node:fs/promises";
 
-import { materializeArtifacts } from "@runxhq/core/artifacts";
+import {
+  appendPreparedLedgerEntries,
+  createLedgerAnchorMetadata,
+  materializeArtifacts,
+  prepareLedgerAppend,
+} from "@runxhq/core/artifacts";
 import { errorMessage } from "@runxhq/core/util";
-import { appendPendingSkillLedgerEntries, appendSkillLedgerEntries } from "./graph-ledger.js";
+import { appendPendingSkillLedgerEntries, buildSkillLedgerEntries } from "./graph-ledger.js";
 import {
   createCallerAgentAdapter,
   createCallerAgentStepAdapter,
@@ -73,6 +78,7 @@ import {
 } from "@runxhq/core/policy";
 import {
   uniqueReceiptId,
+  removeLocalReceipt,
   writeLocalReceipt,
   type ExecutionSemantics,
   type GovernedDisposition,
@@ -913,10 +919,39 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
     },
     createdAt: completedAt,
   });
+  const receiptDir = options.receiptDir ?? defaultReceiptDir(options.env);
+  const skillLedgerEntries = buildSkillLedgerEntries({
+    runId,
+    skill,
+    startedAt,
+    completedAt,
+    status: execution.status,
+    artifactEnvelopes: artifactResult.envelopes,
+    receiptId: runId,
+    includeRunStarted: !options.resumeFromRunId,
+    runStartedDetail: {
+      skill_path: options.requestedSkillPath,
+      resolved_path: options.skillPathForMissingContext ?? options.requestedSkillPath,
+      selected_runner: options.selectedRunnerName,
+      inputs: options.inputs,
+      lineage: options.lineage
+        ? {
+            kind: options.lineage.kind,
+            source_run_id: options.lineage.sourceRunId,
+            source_receipt_id: options.lineage.sourceReceiptId,
+          }
+        : undefined,
+    },
+  });
+  const ledgerPlan = await prepareLedgerAppend({
+    receiptDir,
+    runId,
+    entries: skillLedgerEntries,
+  });
 
   const receipt = await writeLocalReceipt({
     receiptId: runId,
-    receiptDir: options.receiptDir ?? defaultReceiptDir(options.env),
+    receiptDir,
     runxHome: options.runxHome ?? options.env?.RUNX_HOME,
     skillName: skill.name,
     sourceType: skill.source.type,
@@ -936,6 +971,7 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
         preparedAgentContext.receiptMetadata,
         sandboxApproval ? approvalReceiptMetadata(sandboxApproval) : undefined,
         inheritedReceiptMetadata,
+        createLedgerAnchorMetadata(ledgerPlan.anchor),
       ),
     },
     startedAt,
@@ -950,32 +986,14 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
     surfaceRefs: executionSemantics.surfaceRefs,
     evidenceRefs: executionSemantics.evidenceRefs,
   });
-  await appendSkillLedgerEntries({
-    receiptDir: options.receiptDir ?? defaultReceiptDir(options.env),
-    runId,
-    skill,
-    startedAt,
-    completedAt,
-    status: execution.status,
-    artifactEnvelopes: artifactResult.envelopes,
-    receiptId: receipt.id,
-    includeRunStarted: !options.resumeFromRunId,
-    runStartedDetail: {
-      skill_path: options.requestedSkillPath,
-      resolved_path: options.skillPathForMissingContext ?? options.requestedSkillPath,
-      selected_runner: options.selectedRunnerName,
-      inputs: options.inputs,
-      lineage: options.lineage
-        ? {
-            kind: options.lineage.kind,
-            source_run_id: options.lineage.sourceRunId,
-            source_receipt_id: options.lineage.sourceReceiptId,
-          }
-        : undefined,
-    },
-  });
   try {
-    await indexReceiptIfEnabled(receipt, options.receiptDir ?? defaultReceiptDir(options.env), options);
+    await appendPreparedLedgerEntries(ledgerPlan);
+  } catch (error) {
+    await removeLocalReceipt(receiptDir, receipt.id);
+    throw error;
+  }
+  try {
+    await indexReceiptIfEnabled(receipt, receiptDir, options);
   } catch (error) {
     await options.caller.report({
       type: "warning",

@@ -31,10 +31,39 @@ describe("CLI inspect/history receipt verification", () => {
       expect(verifiedInspectExit).toBe(0);
       expect(JSON.parse(verifiedInspectStdout.contents())).toMatchObject({
         verification: { status: "verified" },
+        ledgerVerification: { status: "valid" },
         summary: {
           verification: { status: "verified" },
+          ledgerVerification: { status: "valid" },
         },
       });
+
+      const ledgerPath = path.join(receiptDir, "ledgers", `${runReport.receipt.id}.jsonl`);
+      const ledgerContents = await readFile(ledgerPath, "utf8");
+      const ledgerLines = ledgerContents.trim().split("\n");
+      await writeFile(ledgerPath, `${ledgerLines.slice(0, -1).join("\n")}\n`);
+
+      const invalidLedgerInspectStdout = createMemoryStream();
+      const invalidLedgerInspectExit = await runCli(
+        ["inspect", runReport.receipt.id, "--receipt-dir", receiptDir, "--json"],
+        { stdin: process.stdin, stdout: invalidLedgerInspectStdout, stderr: createMemoryStream() },
+        { ...process.env, RUNX_HOME: runxHome },
+      );
+      expect(invalidLedgerInspectExit).toBe(0);
+      expect(JSON.parse(invalidLedgerInspectStdout.contents())).toMatchObject({
+        verification: { status: "verified" },
+        ledgerVerification: {
+          status: "invalid",
+          reason: "ledger anchor entry count mismatch",
+        },
+        summary: {
+          ledgerVerification: {
+            status: "invalid",
+            reason: "ledger anchor entry count mismatch",
+          },
+        },
+      });
+      await writeFile(ledgerPath, ledgerContents);
 
       const receiptPath = path.join(receiptDir, `${runReport.receipt.id}.json`);
       const contents = await readFile(receiptPath, "utf8");
@@ -54,6 +83,7 @@ describe("CLI inspect/history receipt verification", () => {
             id: runReport.receipt.id,
             status: "failure",
             verification: { status: "invalid", reason: "signature_mismatch" },
+            ledgerVerification: { status: "valid" },
           },
         ],
       });

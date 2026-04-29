@@ -166,6 +166,18 @@ export {
 } from "./schemas/artifact.js";
 
 export {
+  ledgerRecordSchemaVersion,
+  ledgerChainSchemaVersion,
+  ledgerHashAlgorithm,
+  ledgerCanonicalization,
+  ledgerChainSchema,
+  ledgerRecordSchema,
+  validateLedgerRecordContract,
+  type LedgerChainContract,
+  type LedgerRecordContract,
+} from "./schemas/ledger.js";
+
+export {
   hostedReceiptManifestSchema,
   hostedReceiptIndexEntrySchema,
   hostedArtifactIndexEntrySchema,
@@ -229,6 +241,7 @@ import { fixtureV1Schema } from "./schemas/fixture.js";
 import { toolManifestV1Schema } from "./schemas/tool-manifest.js";
 import { packetIndexV1Schema } from "./schemas/packet-index.js";
 import { capabilityExecutionV1Schema } from "./schemas/capability-execution.js";
+import { ledgerRecordSchema } from "./schemas/ledger.js";
 import { handoffSignalV1Schema, handoffStateV1Schema, suppressionRecordV1Schema } from "./schemas/handoff.js";
 
 export const runxContractSchemas = {
@@ -250,6 +263,7 @@ export const runxContractSchemas = {
   toolManifest: toolManifestV1Schema,
   packetIndex: packetIndexV1Schema,
   capabilityExecution: capabilityExecutionV1Schema,
+  ledgerEntry: ledgerRecordSchema,
   handoffSignal: handoffSignalV1Schema,
   handoffState: handoffStateV1Schema,
   suppressionRecord: suppressionRecordV1Schema,
@@ -279,6 +293,7 @@ export const runxGeneratedSchemaArtifacts = {
   "tool-manifest.schema.json": toolManifestV1Schema,
   "packet-index.schema.json": packetIndexV1Schema,
   "capability-execution.schema.json": capabilityExecutionV1Schema,
+  "ledger-entry.schema.json": ledgerRecordSchema,
   "handoff-signal.schema.json": handoffSignalV1Schema,
   "handoff-state.schema.json": handoffStateV1Schema,
   "suppression-record.schema.json": suppressionRecordV1Schema,

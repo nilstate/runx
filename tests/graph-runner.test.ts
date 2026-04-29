@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { readLedgerEntries } from "@runxhq/core/artifacts";
 import { createFileKnowledgeStore } from "@runxhq/core/knowledge";
 import { runCli } from "../packages/cli/src/index.js";
-import { inspectLocalGraph, runLocalGraph, runLocalSkill, type Caller } from "@runxhq/runtime-local";
+import { inspectLocalGraph, inspectLocalReceipt, runLocalGraph, runLocalSkill, type Caller } from "@runxhq/runtime-local";
 import { createDefaultLocalSkillRuntime } from "../packages/adapters/src/runtime.js";
 
 const nonInteractiveCaller: Caller = {
@@ -304,6 +304,13 @@ steps:
           (entry) => entry.type === "run_event" && entry.data.kind === "reflect_projected",
         ),
       ).toBe(true);
+      await expect(inspectLocalReceipt({
+        receiptDir,
+        runxHome,
+        receiptId: autoResult.receipt.id,
+      })).resolves.toMatchObject({
+        ledgerVerification: { status: "valid" },
+      });
 
       const alwaysResult = await runLocalSkill({
         skillPath: skillDir,
@@ -340,6 +347,13 @@ steps:
           (entry) => entry.type === "run_event" && entry.data.kind === "reflect_projected",
         ),
       ).toBe(true);
+      await expect(inspectLocalReceipt({
+        receiptDir,
+        runxHome,
+        receiptId: alwaysResult.receipt.id,
+      })).resolves.toMatchObject({
+        ledgerVerification: { status: "valid" },
+      });
 
       const neverResult = await runLocalSkill({
         skillPath: skillDir,

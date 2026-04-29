@@ -1,9 +1,17 @@
 export const artifactsPackage = "@runxhq/core/artifacts";
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { validateArtifactEnvelopeContract } from "@runxhq/contracts";
+import {
+  ledgerCanonicalization,
+  ledgerChainSchemaVersion,
+  ledgerHashAlgorithm,
+  ledgerRecordSchemaVersion,
+  validateArtifactEnvelopeContract,
+  validateLedgerRecordContract,
+} from "@runxhq/contracts";
+import type { LedgerChainContract } from "@runxhq/contracts";
 
 import { hashStable, hashString, stableStringify } from "../util/hash.js";
 import { errorMessage, isNotFound } from "../util/types.js";
@@ -43,6 +51,60 @@ export interface LedgerAppendOptions {
   readonly receiptDir: string;
   readonly runId: string;
   readonly entries: readonly ArtifactEnvelope[];
+}
+
+export interface LedgerRecord {
+  readonly schema_version: typeof ledgerRecordSchemaVersion;
+  readonly chain: LedgerChainContract;
+  readonly entry: ArtifactEnvelope;
+}
+
+export interface ParsedLedgerRecord {
+  readonly line: number;
+  readonly legacy: boolean;
+  readonly entry: ArtifactEnvelope;
+  readonly chain?: LedgerChainContract;
+}
+
+export const ledgerAnchorVersion = "runx.ledger.anchor.v1" as const;
+
+export interface LedgerAnchor {
+  readonly version: typeof ledgerAnchorVersion;
+  readonly run_id: string;
+  readonly entry_count: number;
+  readonly chained_entry_count: number;
+  readonly head_hash: string | null;
+  readonly algorithm: typeof ledgerHashAlgorithm;
+  readonly canonicalization: typeof ledgerCanonicalization;
+}
+
+export type LedgerVerificationStatus = "missing" | "legacy" | "valid" | "invalid";
+
+export interface LedgerVerification {
+  readonly status: LedgerVerificationStatus;
+  readonly reason?: string;
+  readonly runId: string;
+  readonly ledgerPath: string;
+  readonly entryCount: number;
+  readonly chainedEntryCount: number;
+  readonly legacyEntryCount: number;
+  readonly headHash: string | null;
+}
+
+export interface LedgerInspection {
+  readonly records: readonly ParsedLedgerRecord[];
+  readonly entries: readonly ArtifactEnvelope[];
+  readonly verification: LedgerVerification;
+}
+
+export interface PreparedLedgerAppend {
+  readonly receiptDir: string;
+  readonly runId: string;
+  readonly ledgerPath: string;
+  readonly records: readonly LedgerRecord[];
+  readonly anchor: LedgerAnchor;
+  readonly expectedEntryCount: number;
+  readonly expectedHeadHash: string | null;
 }
 
 export interface ArtifactProducer {
@@ -240,17 +302,133 @@ export function createReceiptLinkEntry(options: {
 }
 
 export async function appendLedgerEntries(options: LedgerAppendOptions): Promise<string> {
+  return await appendPreparedLedgerEntries(await prepareLedgerAppend(options));
+}
+
+export async function prepareLedgerAppend(options: LedgerAppendOptions): Promise<PreparedLedgerAppend> {
   const ledgerPath = resolveLedgerPath(options.receiptDir, options.runId);
-  await mkdir(path.dirname(ledgerPath), { recursive: true });
-  const contents = options.entries.map((entry) => JSON.stringify(entry)).join("\n");
-  if (contents.length === 0) {
-    return ledgerPath;
+  const inspection = await inspectLedger(options.receiptDir, options.runId);
+  if (inspection.verification.status === "invalid") {
+    throw new Error(`Cannot append to invalid ledger ${ledgerPath}: ${inspection.verification.reason ?? "invalid_chain"}`);
   }
-  await writeFile(ledgerPath, `${contents}\n`, { flag: "a" });
-  return ledgerPath;
+
+  let previousHash = inspection.verification.headHash;
+  let index = inspection.verification.entryCount;
+  const records = options.entries.map((entry) => {
+    const validated = validateArtifactEnvelopeContract(entry, `ledger append entry ${index}`) as ArtifactEnvelope;
+    assertSystemLedgerEntryRunId(validated, options.runId, index);
+    const chain = createLedgerChain(index, previousHash, validated);
+    previousHash = chain.entry_hash;
+    index += 1;
+    return {
+      schema_version: ledgerRecordSchemaVersion,
+      chain,
+      entry: validated,
+    } satisfies LedgerRecord;
+  });
+
+  return {
+    receiptDir: options.receiptDir,
+    runId: options.runId,
+    ledgerPath,
+    records,
+    anchor: {
+      version: ledgerAnchorVersion,
+      run_id: options.runId,
+      entry_count: index,
+      chained_entry_count: inspection.verification.chainedEntryCount + records.length,
+      head_hash: previousHash,
+      algorithm: ledgerHashAlgorithm,
+      canonicalization: ledgerCanonicalization,
+    },
+    expectedEntryCount: inspection.verification.entryCount,
+    expectedHeadHash: inspection.verification.headHash,
+  };
+}
+
+function assertSystemLedgerEntryRunId(entry: ArtifactEnvelope, runId: string, index: number): void {
+  if (entry.type === null || !SYSTEM_ARTIFACT_TYPES.has(entry.type)) {
+    return;
+  }
+  if (entry.meta.run_id !== runId) {
+    throw new Error(
+      `ledger append entry ${index} has run_id ${entry.meta.run_id}; expected ${runId} for ${entry.type} ledger event.`,
+    );
+  }
+}
+
+async function withLedgerAppendLock<T>(ledgerPath: string, fn: () => Promise<T>): Promise<T> {
+  const lockPath = `${ledgerPath}.lock`;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    let handle: Awaited<ReturnType<typeof open>> | undefined;
+    try {
+      handle = await open(lockPath, "wx");
+      await handle.writeFile(`${process.pid}\n`);
+      return await fn();
+    } catch (error) {
+      if (handle) {
+        throw error;
+      }
+      if (!isAlreadyExists(error)) {
+        throw error;
+      }
+      await sleep(10);
+    } finally {
+      if (handle) {
+        await handle.close();
+        await rm(lockPath, { force: true });
+      }
+    }
+  }
+  throw new Error(`Cannot append to ledger ${ledgerPath}: timed out waiting for append lock.`);
+}
+
+function isAlreadyExists(error: unknown): boolean {
+  return Boolean(
+    error
+      && typeof error === "object"
+      && "code" in error
+      && (error as { readonly code?: unknown }).code === "EEXIST",
+  );
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function appendPreparedLedgerEntries(plan: PreparedLedgerAppend): Promise<string> {
+  await mkdir(path.dirname(plan.ledgerPath), { recursive: true });
+  if (plan.records.length === 0) {
+    return plan.ledgerPath;
+  }
+
+  await withLedgerAppendLock(plan.ledgerPath, async () => {
+    const current = await inspectLedger(plan.receiptDir, plan.runId);
+    if (current.verification.status === "invalid") {
+      throw new Error(`Cannot append to invalid ledger ${plan.ledgerPath}: ${current.verification.reason ?? "invalid_chain"}`);
+    }
+    if (
+      current.verification.entryCount !== plan.expectedEntryCount
+      || current.verification.headHash !== plan.expectedHeadHash
+    ) {
+      throw new Error(`Cannot append to ledger ${plan.ledgerPath}: ledger changed while append was being prepared.`);
+    }
+
+    const contents = plan.records.map((record) => JSON.stringify(record)).join("\n");
+    await writeFile(plan.ledgerPath, `${contents}\n`, { flag: "a" });
+  });
+  return plan.ledgerPath;
 }
 
 export async function readLedgerEntries(receiptDir: string, runId: string): Promise<readonly ArtifactEnvelope[]> {
+  const inspection = await inspectLedger(receiptDir, runId);
+  if (inspection.verification.status === "invalid") {
+    throw new Error(`Ledger ${inspection.verification.ledgerPath} failed verification: ${inspection.verification.reason ?? "invalid_chain"}`);
+  }
+  return inspection.entries;
+}
+
+export async function readLedgerRecords(receiptDir: string, runId: string): Promise<readonly ParsedLedgerRecord[]> {
   const ledgerPath = resolveLedgerPath(receiptDir, runId);
   let contents: string;
   try {
@@ -262,7 +440,7 @@ export async function readLedgerEntries(receiptDir: string, runId: string): Prom
     throw error;
   }
   const lines = contents.split(/\r?\n/);
-  const entries: ArtifactEnvelope[] = [];
+  const records: ParsedLedgerRecord[] = [];
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index].trim();
     if (line.length === 0) {
@@ -277,13 +455,278 @@ export async function readLedgerEntries(receiptDir: string, runId: string): Prom
         { cause: error },
       );
     }
-    entries.push(validateArtifactEnvelopeContract(parsed, `${ledgerPath}:${index + 1}`) as ArtifactEnvelope);
+    records.push(parseLedgerRecord(parsed, `${ledgerPath}:${index + 1}`, index + 1));
   }
-  return entries;
+  return records;
+}
+
+export async function inspectLedger(optionsReceiptDir: string, runId: string, expectedAnchor?: LedgerAnchor): Promise<LedgerInspection> {
+  const ledgerPath = resolveLedgerPath(optionsReceiptDir, runId);
+  let records: readonly ParsedLedgerRecord[];
+  try {
+    records = await readLedgerRecords(optionsReceiptDir, runId);
+  } catch (error) {
+    if (isNotFound(error)) {
+      return {
+        records: [],
+        entries: [],
+        verification: applyExpectedLedgerAnchor({
+          status: "missing",
+          reason: undefined,
+          runId,
+          ledgerPath,
+          entryCount: 0,
+          chainedEntryCount: 0,
+          legacyEntryCount: 0,
+          headHash: null,
+        }, expectedAnchor),
+      };
+    }
+    return {
+      records: [],
+      entries: [],
+      verification: {
+        status: "invalid",
+        reason: errorMessage(error),
+        runId,
+        ledgerPath,
+        entryCount: 0,
+        chainedEntryCount: 0,
+        legacyEntryCount: 0,
+        headHash: null,
+      },
+    };
+  }
+
+  const verification = applyExpectedLedgerAnchor(
+    verifyParsedLedgerRecords(records, ledgerPath, runId),
+    expectedAnchor,
+    records,
+  );
+  return {
+    records,
+    entries: records.map((record) => record.entry),
+    verification,
+  };
 }
 
 export function resolveLedgerPath(receiptDir: string, runId: string): string {
   return path.join(receiptDir, "ledgers", `${runId}.jsonl`);
+}
+
+export function createLedgerAnchorMetadata(anchor: LedgerAnchor): Readonly<Record<string, unknown>> {
+  return {
+    runx: {
+      ledger: anchor,
+    },
+  };
+}
+
+export function parseLedgerAnchorMetadata(metadata: unknown): LedgerAnchor | undefined {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return undefined;
+  }
+  const runx = (metadata as Record<string, unknown>).runx;
+  if (!runx || typeof runx !== "object" || Array.isArray(runx)) {
+    return undefined;
+  }
+  const ledger = (runx as Record<string, unknown>).ledger;
+  if (!ledger || typeof ledger !== "object" || Array.isArray(ledger)) {
+    return undefined;
+  }
+  const candidate = ledger as Record<string, unknown>;
+  if (
+    candidate.version !== ledgerAnchorVersion
+    || candidate.algorithm !== ledgerHashAlgorithm
+    || candidate.canonicalization !== ledgerCanonicalization
+    || typeof candidate.run_id !== "string"
+    || !Number.isInteger(candidate.entry_count)
+    || typeof candidate.entry_count !== "number"
+    || candidate.entry_count < 0
+    || !Number.isInteger(candidate.chained_entry_count)
+    || typeof candidate.chained_entry_count !== "number"
+    || candidate.chained_entry_count < 0
+    || !(typeof candidate.head_hash === "string" || candidate.head_hash === null)
+  ) {
+    return undefined;
+  }
+  return {
+    version: ledgerAnchorVersion,
+    run_id: candidate.run_id,
+    entry_count: candidate.entry_count,
+    chained_entry_count: candidate.chained_entry_count,
+    head_hash: candidate.head_hash,
+    algorithm: ledgerHashAlgorithm,
+    canonicalization: ledgerCanonicalization,
+  };
+}
+
+function parseLedgerRecord(value: unknown, label: string, line: number): ParsedLedgerRecord {
+  if (isLedgerRecordCandidate(value)) {
+    const record = validateLedgerRecordContract(value, label);
+    return {
+      line,
+      legacy: false,
+      chain: record.chain,
+      entry: record.entry as ArtifactEnvelope,
+    };
+  }
+  return {
+    line,
+    legacy: true,
+    entry: validateArtifactEnvelopeContract(value, label) as ArtifactEnvelope,
+  };
+}
+
+function isLedgerRecordCandidate(value: unknown): boolean {
+  return Boolean(
+    value
+      && typeof value === "object"
+      && !Array.isArray(value)
+      && (value as Record<string, unknown>).schema_version === ledgerRecordSchemaVersion,
+  );
+}
+
+function verifyParsedLedgerRecords(
+  records: readonly ParsedLedgerRecord[],
+  ledgerPath: string,
+  runId: string,
+): LedgerVerification {
+  let previousHash: string | null = null;
+  let chainedEntryCount = 0;
+  let legacyEntryCount = 0;
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index]!;
+    const expected = createLedgerChain(index, previousHash, record.entry);
+    if (record.chain) {
+      chainedEntryCount += 1;
+      const reason = compareLedgerChain(record.chain, expected, record.line);
+      if (reason) {
+        return {
+          status: "invalid",
+          reason,
+          runId,
+          ledgerPath,
+          entryCount: records.length,
+          chainedEntryCount,
+          legacyEntryCount,
+          headHash: previousHash,
+        };
+      }
+    } else {
+      legacyEntryCount += 1;
+    }
+    previousHash = expected.entry_hash;
+  }
+
+  return {
+    status: records.length === 0 ? "missing" : chainedEntryCount === 0 ? "legacy" : "valid",
+    runId,
+    ledgerPath,
+    entryCount: records.length,
+    chainedEntryCount,
+    legacyEntryCount,
+    headHash: previousHash,
+  };
+}
+
+function compareLedgerChain(
+  actual: LedgerChainContract,
+  expected: LedgerChainContract,
+  line: number,
+): string | undefined {
+  if (actual.version !== expected.version) {
+    return `line ${line} chain version mismatch`;
+  }
+  if (actual.algorithm !== expected.algorithm) {
+    return `line ${line} chain algorithm mismatch`;
+  }
+  if (actual.canonicalization !== expected.canonicalization) {
+    return `line ${line} chain canonicalization mismatch`;
+  }
+  if (actual.index !== expected.index) {
+    return `line ${line} chain index mismatch`;
+  }
+  if (actual.previous_hash !== expected.previous_hash) {
+    return `line ${line} previous hash mismatch`;
+  }
+  if (actual.entry_hash !== expected.entry_hash) {
+    return `line ${line} entry hash mismatch`;
+  }
+  return undefined;
+}
+
+function applyExpectedLedgerAnchor(
+  verification: LedgerVerification,
+  expectedAnchor: LedgerAnchor | undefined,
+  records: readonly ParsedLedgerRecord[] = [],
+): LedgerVerification {
+  if (!expectedAnchor || verification.status === "invalid") {
+    return verification;
+  }
+  if (expectedAnchor.version !== ledgerAnchorVersion) {
+    return markLedgerInvalid(verification, "ledger anchor version mismatch");
+  }
+  if (expectedAnchor.algorithm !== ledgerHashAlgorithm || expectedAnchor.canonicalization !== ledgerCanonicalization) {
+    return markLedgerInvalid(verification, "ledger anchor hash parameters mismatch");
+  }
+  if (expectedAnchor.run_id !== verification.runId) {
+    return markLedgerInvalid(verification, "ledger anchor run id mismatch");
+  }
+  if (expectedAnchor.entry_count > verification.entryCount) {
+    return markLedgerInvalid(verification, "ledger anchor entry count mismatch");
+  }
+  if (expectedAnchor.chained_entry_count > verification.chainedEntryCount) {
+    return markLedgerInvalid(verification, "ledger anchor chained entry count mismatch");
+  }
+  if (expectedAnchor.head_hash !== hashLedgerRecordPrefix(records, expectedAnchor.entry_count)) {
+    return markLedgerInvalid(verification, "ledger anchor head hash mismatch");
+  }
+  return verification;
+}
+
+function markLedgerInvalid(verification: LedgerVerification, reason: string): LedgerVerification {
+  return {
+    ...verification,
+    status: "invalid",
+    reason,
+  };
+}
+
+function createLedgerChain(
+  index: number,
+  previousHash: string | null,
+  entry: ArtifactEnvelope,
+): LedgerChainContract {
+  return {
+    version: ledgerChainSchemaVersion,
+    algorithm: ledgerHashAlgorithm,
+    canonicalization: ledgerCanonicalization,
+    index,
+    previous_hash: previousHash,
+    entry_hash: hashLedgerChainEntry(index, previousHash, entry),
+  };
+}
+
+function hashLedgerChainEntry(index: number, previousHash: string | null, entry: ArtifactEnvelope): string {
+  return hashStable({
+    version: "runx.ledger.chain-payload.v1",
+    index,
+    previous_hash: previousHash,
+    entry,
+  });
+}
+
+function hashLedgerRecordPrefix(records: readonly ParsedLedgerRecord[], entryCount: number): string | null {
+  let previousHash: string | null = null;
+  for (let index = 0; index < entryCount; index += 1) {
+    const record = records[index];
+    if (!record) {
+      return null;
+    }
+    previousHash = hashLedgerChainEntry(index, previousHash, record.entry);
+  }
+  return previousHash;
 }
 
 function materializeNamedArtifacts(options: {
