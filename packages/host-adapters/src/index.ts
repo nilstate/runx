@@ -139,5 +139,11 @@ function summarizeHostResult(result: HostRunResult): string {
       return `${result.skillName} escalated. Inspect receipt ${result.receiptId}.`;
     case "failed":
       return `${result.skillName} failed. Inspect receipt ${result.receiptId ?? "n/a"}.`;
+    default:
+      return assertNever(result);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled host run result: ${JSON.stringify(value)}`);
 }

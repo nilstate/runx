@@ -1,6 +1,7 @@
 export const artifactsPackage = "@runxhq/core/artifacts";
 
-import { mkdir, open, readFile, rm } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, open, readFile, rm, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -51,6 +52,17 @@ export interface LedgerAppendOptions {
   readonly receiptDir: string;
   readonly runId: string;
   readonly entries: readonly ArtifactEnvelope[];
+  readonly appendLock?: LedgerAppendLockOptions;
+}
+
+export interface LedgerAppendLockOptions {
+  readonly maxAttempts?: number;
+  readonly retryDelayMs?: number;
+}
+
+export interface ResolvedLedgerAppendLockOptions {
+  readonly maxAttempts: number;
+  readonly retryDelayMs: number;
 }
 
 export interface LedgerRecord {
@@ -67,8 +79,11 @@ export interface ParsedLedgerRecord {
 
 export const ledgerAnchorVersion = "runx.ledger.anchor.v1" as const;
 const ledgerAnchorKeys = new Set(["version", "run_id", "entry_count", "head_hash", "algorithm", "canonicalization"]);
-const ledgerAppendLockMaxAttempts = 200;
-const ledgerAppendLockRetryDelayMs = 10;
+const ledgerAppendLockMarkerVersion = "runx.ledger.append-lock.v1";
+const defaultLedgerAppendLockOptions: ResolvedLedgerAppendLockOptions = {
+  maxAttempts: 200,
+  retryDelayMs: 10,
+};
 
 export interface LedgerAnchor {
   readonly version: typeof ledgerAnchorVersion;
@@ -104,6 +119,7 @@ export interface PreparedLedgerAppend {
   readonly anchor: LedgerAnchor;
   readonly expectedEntryCount: number;
   readonly expectedHeadHash: string | null;
+  readonly appendLock: ResolvedLedgerAppendLockOptions;
 }
 
 export interface ArtifactProducer {
@@ -306,6 +322,7 @@ export async function appendLedgerEntries(options: LedgerAppendOptions): Promise
 
 export async function prepareLedgerAppend(options: LedgerAppendOptions): Promise<PreparedLedgerAppend> {
   const ledgerPath = resolveLedgerPath(options.receiptDir, options.runId);
+  const appendLock = normalizeLedgerAppendLockOptions(options.appendLock);
   const inspection = await inspectLedger(options.receiptDir, options.runId);
   if (inspection.verification.status === "invalid") {
     throw new Error(`Cannot append to invalid ledger ${ledgerPath}: ${inspection.verification.reason ?? "invalid_chain"}`);
@@ -341,6 +358,7 @@ export async function prepareLedgerAppend(options: LedgerAppendOptions): Promise
     },
     expectedEntryCount: inspection.verification.entryCount,
     expectedHeadHash: inspection.verification.headHash,
+    appendLock,
   };
 }
 
@@ -355,14 +373,57 @@ function assertSystemLedgerEntryRunId(entry: ArtifactEnvelope, runId: string, in
   }
 }
 
-async function withLedgerAppendLock<T>(ledgerPath: string, fn: () => Promise<T>): Promise<T> {
+function normalizeLedgerAppendLockOptions(options: LedgerAppendLockOptions | undefined): ResolvedLedgerAppendLockOptions {
+  return {
+    maxAttempts: normalizePositiveInteger(
+      options?.maxAttempts,
+      "appendLock.maxAttempts",
+      defaultLedgerAppendLockOptions.maxAttempts,
+    ),
+    retryDelayMs: normalizeNonNegativeNumber(
+      options?.retryDelayMs,
+      "appendLock.retryDelayMs",
+      defaultLedgerAppendLockOptions.retryDelayMs,
+    ),
+  };
+}
+
+function normalizePositiveInteger(value: number | undefined, label: string, fallback: number): number {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive integer.`);
+  }
+  return value;
+}
+
+function normalizeNonNegativeNumber(value: number | undefined, label: string, fallback: number): number {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative number.`);
+  }
+  return value;
+}
+
+async function withLedgerAppendLock<T>(
+  ledgerPath: string,
+  options: ResolvedLedgerAppendLockOptions,
+  fn: () => Promise<T>,
+): Promise<T> {
   const lockPath = `${ledgerPath}.lock`;
-  for (let attempt = 0; attempt < ledgerAppendLockMaxAttempts; attempt += 1) {
-    let handle: Awaited<ReturnType<typeof open>> | undefined;
+  for (let attempt = 0; attempt < options.maxAttempts; attempt += 1) {
+    let handle: FileHandle | undefined;
+    let marker: string | undefined;
+    let markerWritten = false;
     let operationError: unknown;
     try {
+      marker = createLedgerAppendLockMarker();
       handle = await open(lockPath, "wx");
-      await handle.writeFile(`${process.pid}\n`);
+      await handle.writeFile(marker);
+      markerWritten = true;
       return await fn();
     } catch (error) {
       operationError = error;
@@ -375,11 +436,11 @@ async function withLedgerAppendLock<T>(ledgerPath: string, fn: () => Promise<T>)
       if (await removeStaleLedgerAppendLock(lockPath)) {
         continue;
       }
-      await sleep(ledgerAppendLockRetryDelayMs);
+      await sleep(options.retryDelayMs);
     } finally {
       if (handle) {
         try {
-          await releaseLedgerAppendLock(handle, lockPath);
+          await releaseLedgerAppendLock(handle, lockPath, marker, markerWritten);
         } catch (error) {
           if (operationError === undefined) {
             throw error;
@@ -388,50 +449,91 @@ async function withLedgerAppendLock<T>(ledgerPath: string, fn: () => Promise<T>)
       }
     }
   }
-  throw new Error(`Cannot append to ledger ${ledgerPath}: timed out waiting for append lock.`);
+  throw new Error(`Cannot append to ledger ${ledgerPath}: timed out waiting for append lock after ${options.maxAttempts} attempts.`);
 }
 
-async function releaseLedgerAppendLock(handle: Awaited<ReturnType<typeof open>>, lockPath: string): Promise<void> {
+function createLedgerAppendLockMarker(): string {
+  return `${JSON.stringify({
+    version: ledgerAppendLockMarkerVersion,
+    pid: process.pid,
+    token: randomUUID(),
+    created_at: new Date().toISOString(),
+  })}\n`;
+}
+
+async function releaseLedgerAppendLock(
+  handle: FileHandle,
+  lockPath: string,
+  marker: string | undefined,
+  markerWritten: boolean,
+): Promise<void> {
   let closeError: unknown;
   try {
     await handle.close();
   } catch (error) {
     closeError = error;
   }
-  await rm(lockPath, { force: true });
+  if (markerWritten && marker) {
+    await removeLedgerAppendLockIfMarkerMatches(lockPath, marker);
+  } else {
+    await rm(lockPath, { force: true });
+  }
   if (closeError !== undefined) {
     throw closeError;
   }
 }
 
 async function removeStaleLedgerAppendLock(lockPath: string): Promise<boolean> {
-  let contents: string;
-  try {
-    contents = await readFile(lockPath, "utf8");
-  } catch (error) {
-    if (isNotFound(error)) {
+  return await withLedgerAppendLockRecovery(lockPath, async () => {
+    const contents = await readLedgerAppendLockMarker(lockPath);
+    if (contents === undefined) {
       return true;
+    }
+    const marker = parseLedgerAppendLockMarker(contents);
+    if (!marker) {
+      return await removeLedgerAppendLockIfMarkerMatches(lockPath, contents);
+    }
+    try {
+      process.kill(marker.pid, 0);
+      return false;
+    } catch (error) {
+      if (isNoSuchProcess(error)) {
+        return await removeLedgerAppendLockIfMarkerMatches(lockPath, contents);
+      }
+      return false;
+    }
+  });
+}
+
+async function withLedgerAppendLockRecovery(lockPath: string, fn: () => Promise<boolean>): Promise<boolean> {
+  const recoveryLockPath = `${lockPath}.recovery`;
+  let handle: FileHandle | undefined;
+  try {
+    handle = await open(recoveryLockPath, "wx");
+    await handle.writeFile(createLedgerAppendLockMarker());
+    return await fn();
+  } catch (error) {
+    if (!handle && isAlreadyExists(error)) {
+      return false;
     }
     throw error;
-  }
-  const pid = Number.parseInt(contents.trim(), 10);
-  if (!Number.isInteger(pid) || pid <= 0) {
-    await rm(lockPath, { force: true });
-    return true;
-  }
-  try {
-    process.kill(pid, 0);
-    return false;
-  } catch (error) {
-    if (isNoSuchProcess(error)) {
-      const current = await readLedgerAppendLockMarker(lockPath);
-      if (current !== contents) {
-        return current === undefined;
-      }
-      await rm(lockPath, { force: true });
-      return true;
+  } finally {
+    if (handle) {
+      await releaseLedgerAppendRecoveryLock(handle, recoveryLockPath);
     }
-    return false;
+  }
+}
+
+async function releaseLedgerAppendRecoveryLock(handle: FileHandle, recoveryLockPath: string): Promise<void> {
+  let closeError: unknown;
+  try {
+    await handle.close();
+  } catch (error) {
+    closeError = error;
+  }
+  await rm(recoveryLockPath, { force: true });
+  if (closeError !== undefined) {
+    throw closeError;
   }
 }
 
@@ -444,6 +546,45 @@ async function readLedgerAppendLockMarker(lockPath: string): Promise<string | un
     }
     throw error;
   }
+}
+
+async function removeLedgerAppendLockIfMarkerMatches(lockPath: string, expectedMarker: string): Promise<boolean> {
+  const current = await readLedgerAppendLockMarker(lockPath);
+  if (current === undefined) {
+    return true;
+  }
+  if (current !== expectedMarker) {
+    return false;
+  }
+  await rm(lockPath, { force: true });
+  return true;
+}
+
+function parseLedgerAppendLockMarker(contents: string): { readonly pid: number } | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(contents);
+  } catch {
+    return undefined;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return undefined;
+  }
+  const record = parsed as Record<string, unknown>;
+  if (
+    record.version !== ledgerAppendLockMarkerVersion
+    || !Number.isInteger(record.pid)
+    || typeof record.pid !== "number"
+    || record.pid <= 0
+    || typeof record.token !== "string"
+    || record.token.length === 0
+    || typeof record.created_at !== "string"
+  ) {
+    return undefined;
+  }
+  return {
+    pid: record.pid,
+  };
 }
 
 function isAlreadyExists(error: unknown): boolean {
@@ -471,7 +612,7 @@ async function sleep(ms: number): Promise<void> {
 export async function appendPreparedLedgerEntries(plan: PreparedLedgerAppend): Promise<string> {
   await mkdir(path.dirname(plan.ledgerPath), { recursive: true });
 
-  await withLedgerAppendLock(plan.ledgerPath, async () => {
+  await withLedgerAppendLock(plan.ledgerPath, plan.appendLock, async () => {
     const current = await inspectLedger(plan.receiptDir, plan.runId);
     if (current.verification.status === "invalid") {
       throw new Error(`Cannot append to invalid ledger ${plan.ledgerPath}: ${current.verification.reason ?? "invalid_chain"}`);

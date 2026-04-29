@@ -108,7 +108,7 @@ async function invokeManagedAgentAdapter(
   request: AdapterInvokeRequest,
   sourceType: "agent" | "agent-step",
 ): Promise<AdapterInvokeResult> {
-  const startedAt = Date.now();
+  const started = performance.now();
   const env = request.env ?? process.env;
   const work = buildManagedAgentWorkRequest(request, sourceType);
 
@@ -137,7 +137,7 @@ async function invokeManagedAgentAdapter(
         stderr: "",
         exitCode: null,
         signal: null,
-        durationMs: Date.now() - startedAt,
+        durationMs: Math.round(performance.now() - started),
         request: execution.request,
         metadata: nativeAgentMetadata(sourceType, request, config, execution, "paused"),
       };
@@ -151,7 +151,7 @@ async function invokeManagedAgentAdapter(
       stderr: "",
       exitCode: 0,
       signal: null,
-      durationMs: Date.now() - startedAt,
+      durationMs: Math.round(performance.now() - started),
       metadata: nativeAgentMetadata(sourceType, request, config, execution, "success"),
     };
   } catch (error) {
@@ -161,7 +161,7 @@ async function invokeManagedAgentAdapter(
       stderr: "",
       exitCode: null,
       signal: null,
-      durationMs: Date.now() - startedAt,
+      durationMs: Math.round(performance.now() - started),
       errorMessage: errorMessage(error),
       metadata: nativeAgentMetadata(sourceType, request, config, undefined, "failure"),
     };

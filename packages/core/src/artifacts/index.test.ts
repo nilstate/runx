@@ -150,7 +150,7 @@ describe("ledger tamper evidence", () => {
       const runId = "rx_stalelock00000000000000000a";
       const ledgerPath = resolveLedgerPath(receiptDir, runId);
       await mkdir(path.dirname(ledgerPath), { recursive: true });
-      await writeFile(`${ledgerPath}.lock`, "999999999\n");
+      await writeFile(`${ledgerPath}.lock`, ledgerLockMarker(999999999));
 
       await appendLedgerEntries({ receiptDir, runId, entries: [artifact(runId, "after-stale-lock")] });
 
@@ -158,6 +158,25 @@ describe("ledger tamper evidence", () => {
       await expect(inspectLedger(receiptDir, runId)).resolves.toMatchObject({
         verification: { status: "valid", entryCount: 1 },
       });
+    });
+  });
+
+  it("honors explicit append lock retry budgets", async () => {
+    await withReceiptDir("lock-budget", async (receiptDir) => {
+      const runId = "rx_lockbudget000000000000000a";
+      const ledgerPath = resolveLedgerPath(receiptDir, runId);
+      await mkdir(path.dirname(ledgerPath), { recursive: true });
+      await writeFile(`${ledgerPath}.lock`, ledgerLockMarker(process.pid));
+
+      await expect(appendLedgerEntries({
+        receiptDir,
+        runId,
+        entries: [artifact(runId, "blocked")],
+        appendLock: {
+          maxAttempts: 1,
+          retryDelayMs: 0,
+        },
+      })).rejects.toThrow("timed out waiting for append lock after 1 attempts");
     });
   });
 
@@ -224,4 +243,13 @@ function artifact(runId: string, label: string) {
     producer: { skill: "ledger-test", runner: "vitest" },
     createdAt: `2026-04-29T00:00:0${label.length % 10}.000Z`,
   });
+}
+
+function ledgerLockMarker(pid: number): string {
+  return `${JSON.stringify({
+    version: "runx.ledger.append-lock.v1",
+    pid,
+    token: `test-${pid}`,
+    created_at: "2026-04-29T00:00:00.000Z",
+  })}\n`;
 }

@@ -51,9 +51,15 @@ export async function finalizeRun(ctx: FinalizeRunContext, options: RunLocalGrap
     createdAt: completedAt,
   });
   const existingLedger = await inspectLedger(ctx.receiptDir, ctx.graphId);
-  const terminalAlreadyCommitted = existingLedger.entries.some((entry) =>
-    isMatchingGraphCompletedLedgerEntry(entry, ctx.graphId, terminalStatus),
-  );
+  const existingTerminalStatus = existingLedger.entries
+    .map((entry) => graphCompletedLedgerStatus(entry, ctx.graphId))
+    .find((status): status is "success" | "failure" => status !== undefined);
+  if (existingTerminalStatus && existingTerminalStatus !== terminalStatus) {
+    throw new Error(
+      `Graph ${ctx.graphId} already has terminal ledger status ${existingTerminalStatus}; cannot finalize as ${terminalStatus}.`,
+    );
+  }
+  const terminalAlreadyCommitted = existingTerminalStatus === terminalStatus;
   const ledgerPlan = await prepareLedgerAppend({
     receiptDir: ctx.receiptDir,
     runId: ctx.graphId,
@@ -123,16 +129,18 @@ export async function finalizeRun(ctx: FinalizeRunContext, options: RunLocalGrap
   };
 }
 
-function isMatchingGraphCompletedLedgerEntry(
+function graphCompletedLedgerStatus(
   entry: ArtifactEnvelope,
   graphId: string,
-  status: "success" | "failure",
-): boolean {
+): "success" | "failure" | undefined {
   if (entry.type !== "run_event" || entry.meta.run_id !== graphId || entry.meta.step_id !== null) {
-    return false;
+    return undefined;
   }
   const detail = isRecord(entry.data.detail) ? entry.data.detail : undefined;
-  return entry.data.kind === "graph_completed"
-    && entry.data.status === status
-    && detail?.receipt_id === graphId;
+  if (entry.data.kind !== "graph_completed" || detail?.receipt_id !== graphId) {
+    return undefined;
+  }
+  return entry.data.status === "success" || entry.data.status === "failure"
+    ? entry.data.status
+    : undefined;
 }

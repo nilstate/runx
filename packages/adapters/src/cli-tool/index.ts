@@ -153,21 +153,21 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
       }
     }
 
-	    child.stdout.on("data", (chunk: Buffer) => {
-	      const remaining = outputLimitBytes - stdoutBytes;
-	      if (remaining <= 0) return;
-	      const captured = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
-	      stdoutChunks.push(captured);
-	      stdoutBytes += captured.length;
-	    });
+    child.stdout.on("data", (chunk: Buffer) => {
+      const remaining = outputLimitBytes - stdoutBytes;
+      if (remaining <= 0) return;
+      const captured = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
+      stdoutChunks.push(captured);
+      stdoutBytes += captured.length;
+    });
 
-	    child.stderr.on("data", (chunk: Buffer) => {
-	      const remaining = outputLimitBytes - stderrBytes;
-	      if (remaining <= 0) return;
-	      const captured = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
-	      stderrChunks.push(captured);
-	      stderrBytes += captured.length;
-	    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      const remaining = outputLimitBytes - stderrBytes;
+      if (remaining <= 0) return;
+      const captured = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
+      stderrChunks.push(captured);
+      stderrBytes += captured.length;
+    });
 
     child.on("error", (error) => {
       spawnError = error;
@@ -217,12 +217,23 @@ function signalChildProcessTree(pid: number | undefined, signal: NodeJS.Signals,
     try {
       process.kill(-pid, signal);
       return;
-    } catch {
-      // Fall back to the direct child below. The process may have exited
-      // between scheduling the signal and sending it.
+    } catch (error) {
+      if (!isNoSuchProcess(error)) {
+        child.kill(signal);
+        return;
+      }
     }
   }
   child.kill(signal);
+}
+
+function isNoSuchProcess(error: unknown): boolean {
+  return Boolean(
+    error
+      && typeof error === "object"
+      && "code" in error
+      && (error as { readonly code?: unknown }).code === "ESRCH",
+  );
 }
 
 function buildChildEnv(

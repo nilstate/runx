@@ -99,6 +99,32 @@ describe("invokeA2a", () => {
     expect(canceled).toEqual(["a2a_hanging"]);
   });
 
+  it("reports sanitized cancellation failures in metadata", async () => {
+    const transport: A2aTransport = {
+      sendMessage: async () => ({ id: "a2a_hanging", status: "working" }),
+      getTask: async () => ({ id: "a2a_hanging", status: "working" }),
+      cancelTask: async () => {
+        throw new Error("super-secret-cancel-token");
+      },
+    };
+
+    const result = await invokeA2a(
+      {
+        source: { ...source, timeoutSeconds: 0.05 },
+        inputs: { message: "hi" },
+        skillDirectory: process.cwd(),
+        env: process.env,
+      },
+      { transport },
+    );
+
+    expect(result.status).toBe("failure");
+    expect(result.metadata?.a2a).toMatchObject({
+      cancel_error: "A2A task cancellation failed.",
+    });
+    expect(JSON.stringify(result)).not.toContain("super-secret-cancel-token");
+  });
+
   it("returns failure for missing A2A metadata", async () => {
     const result = await invokeA2a({
       source: {

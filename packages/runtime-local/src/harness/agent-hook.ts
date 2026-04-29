@@ -23,7 +23,7 @@ export function createHarnessHookAdapter(options: HarnessHookAdapterOptions = {}
       }
 
       const handler = options.handlers?.[hook] ?? defaultHandler;
-      const startedAt = Date.now();
+      const started = performance.now();
       const result = await handler(request);
       const status = result.status ?? "success";
       const output = result.output ?? {};
@@ -35,7 +35,7 @@ export function createHarnessHookAdapter(options: HarnessHookAdapterOptions = {}
         stderr: status === "failure" ? result.errorMessage ?? "harness hook failed" : "",
         exitCode: status === "success" ? 0 : 1,
         signal: null,
-        durationMs: Date.now() - startedAt,
+        durationMs: Math.round(performance.now() - started),
         errorMessage: result.errorMessage,
         metadata: {
           agent_hook: {

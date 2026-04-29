@@ -99,10 +99,19 @@ export async function invokeA2a(
       metadata: metadataFor(source, completed, message),
     };
   } catch (error) {
+    let cancelError: string | undefined;
     if (taskId && options.transport?.cancelTask) {
-      await options.transport.cancelTask({ agentCardUrl, taskId }).catch(() => undefined);
+      try {
+        await options.transport.cancelTask({ agentCardUrl, taskId });
+      } catch (cancelFailure) {
+        cancelError = sanitizeCancelError(cancelFailure);
+      }
     }
-    return failure(sanitizeError(error), started, metadataFor(source, taskId ? { id: taskId, status: "failed" } : undefined, message));
+    return failure(
+      sanitizeError(error),
+      started,
+      metadataFor(source, taskId ? { id: taskId, status: "failed" } : undefined, message, cancelError),
+    );
   }
 }
 
@@ -193,6 +202,7 @@ function metadataFor(
   source: AdapterInvokeRequest["source"],
   task?: A2aTask,
   message?: Readonly<Record<string, unknown>>,
+  cancelError?: string,
 ): Readonly<Record<string, unknown>> {
   return {
     a2a: {
@@ -203,6 +213,7 @@ function metadataFor(
       task_status: task?.status,
       message_hash: message ? hashStable(message) : undefined,
       output_hash: task?.output !== undefined ? hashStable(task.output) : undefined,
+      cancel_error: cancelError,
     },
   };
 }
@@ -251,10 +262,16 @@ function sanitizeError(error: unknown): string {
   return "A2A adapter failed.";
 }
 
+function sanitizeCancelError(error: unknown): string {
+  if (error instanceof Error && error.message.includes("timed out")) {
+    return error.message;
+  }
+  return "A2A task cancellation failed.";
+}
+
 function stringifyInput(value: unknown): string {
   if (value === undefined || value === null) {
     return "";
   }
   return typeof value === "string" ? value : JSON.stringify(value);
 }
-

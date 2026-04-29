@@ -23,7 +23,7 @@ export function createCallerAgentStepAdapter(caller: Caller): SkillAdapter {
   return {
     type: "agent-step",
     invoke: async (request) => {
-      const startedAt = Date.now();
+      const started = performance.now();
       const mediationRequest = buildAgentStepRequest(request);
       const resolutionRequest: ResolutionRequest = {
         id: mediationRequest.id,
@@ -44,7 +44,7 @@ export function createCallerAgentStepAdapter(caller: Caller): SkillAdapter {
           stderr: "",
           exitCode: null,
           signal: null,
-          durationMs: Date.now() - startedAt,
+          durationMs: Math.round(performance.now() - started),
           request: resolutionRequest,
           metadata: {
             agent_hook: {
@@ -70,7 +70,7 @@ export function createCallerAgentStepAdapter(caller: Caller): SkillAdapter {
         stderr: "",
         exitCode: 0,
         signal: null,
-        durationMs: Date.now() - startedAt,
+        durationMs: Math.round(performance.now() - started),
         metadata: {
           agent_hook: {
             source_type: "agent-step",
@@ -89,7 +89,7 @@ export function createCallerAgentAdapter(caller: Caller): SkillAdapter {
   return {
     type: "agent",
     invoke: async (request) => {
-      const startedAt = Date.now();
+      const started = performance.now();
       const mediationRequest = buildAgentRunnerRequest(request);
       const resolutionRequest: ResolutionRequest = {
         id: mediationRequest.id,
@@ -110,7 +110,7 @@ export function createCallerAgentAdapter(caller: Caller): SkillAdapter {
           stderr: "",
           exitCode: null,
           signal: null,
-          durationMs: Date.now() - startedAt,
+          durationMs: Math.round(performance.now() - started),
           request: resolutionRequest,
           metadata: {
             agent_runner: {
@@ -134,7 +134,7 @@ export function createCallerAgentAdapter(caller: Caller): SkillAdapter {
         stderr: "",
         exitCode: 0,
         signal: null,
-        durationMs: Date.now() - startedAt,
+        durationMs: Math.round(performance.now() - started),
         metadata: {
           agent_runner: {
             skill: mediationRequest.envelope.skill,
@@ -151,7 +151,7 @@ export function createCallerApprovalAdapter(caller: Caller): SkillAdapter {
   return {
     type: "approval",
     invoke: async (request) => {
-      const startedAt = Date.now();
+      const started = performance.now();
       const gate = buildApprovalGate(request);
       const resolutionRequest: ResolutionRequest = {
         id: gate.id,
@@ -172,7 +172,7 @@ export function createCallerApprovalAdapter(caller: Caller): SkillAdapter {
           stderr: "",
           exitCode: null,
           signal: null,
-          durationMs: Date.now() - startedAt,
+          durationMs: Math.round(performance.now() - started),
           request: resolutionRequest,
           metadata: {
             approval: {
@@ -202,7 +202,7 @@ export function createCallerApprovalAdapter(caller: Caller): SkillAdapter {
         stderr: "",
         exitCode: 0,
         signal: null,
-        durationMs: Date.now() - startedAt,
+        durationMs: Math.round(performance.now() - started),
         metadata: {
           approval: {
             gate_id: gate.id,

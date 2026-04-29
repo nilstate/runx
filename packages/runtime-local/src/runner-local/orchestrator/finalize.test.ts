@@ -83,6 +83,43 @@ describe("finalizeRun ledger ordering", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("rejects retries that would change the committed terminal ledger status", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-finalize-status-mismatch-"));
+    const receiptDir = path.join(tempDir, "receipts");
+    const runxHome = path.join(tempDir, "home");
+    const graphId = "gx_statusmismatch0000000000a";
+
+    try {
+      await appendLedgerEntries({
+        receiptDir,
+        runId: graphId,
+        entries: [
+          buildGraphCompletedLedgerEntry({
+            runId: graphId,
+            topLevelSkillName: "finalize-order",
+            receiptId: graphId,
+            stepCount: 0,
+            status: "failure",
+            createdAt: "2026-04-29T00:00:01.000Z",
+          }),
+        ],
+      });
+
+      await expect(finalizeRun(
+        minimalRunContext({ graphId, receiptDir }),
+        minimalGraphOptions({ runxHome }),
+      )).rejects.toThrow(`Graph ${graphId} already has terminal ledger status failure; cannot finalize as success.`);
+
+      const terminalEntries = (await readLedgerEntries(receiptDir, graphId)).filter((entry) =>
+        entry.type === "run_event" && entry.data.kind === "graph_completed",
+      );
+      expect(terminalEntries).toHaveLength(1);
+      expect(terminalEntries[0]?.data.status).toBe("failure");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 function minimalGraphOptions(options: { readonly runxHome: string }): RunLocalGraphOptions {
