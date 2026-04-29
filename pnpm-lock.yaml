@@ -23,6 +23,9 @@ importers:
       '@runxhq/host-adapters':
         specifier: workspace:^0.1.0
         version: link:packages/host-adapters
+      '@runxhq/runtime-local':
+        specifier: workspace:^0.1.0
+        version: link:packages/runtime-local
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.49
@@ -50,6 +53,9 @@ importers:
       '@runxhq/core':
         specifier: workspace:^0.1.4
         version: link:../core
+      '@runxhq/runtime-local':
+        specifier: workspace:^0.1.0
+        version: link:../runtime-local
 
   packages/authoring:
     dependencies:
@@ -71,6 +77,9 @@ importers:
       '@runxhq/core':
         specifier: workspace:^0.1.4
         version: link:../core
+      '@runxhq/runtime-local':
+        specifier: workspace:^0.1.0
+        version: link:../runtime-local
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
@@ -98,9 +107,9 @@ importers:
 
   packages/host-adapters:
     dependencies:
-      '@runxhq/core':
-        specifier: workspace:^0.1.4
-        version: link:../core
+      '@runxhq/runtime-local':
+        specifier: workspace:^0.1.0
+        version: link:../runtime-local
 
   packages/langchain:
     dependencies:
@@ -110,12 +119,27 @@ importers:
       '@runxhq/core':
         specifier: workspace:^0.1.4
         version: link:../core
+      '@runxhq/runtime-local':
+        specifier: workspace:^0.1.0
+        version: link:../runtime-local
       zod:
         specifier: ^4.1.12
         version: 4.3.6
       zod-to-json-schema:
         specifier: ^3.24.6
         version: 3.25.2(zod@4.3.6)
+
+  packages/runtime-local:
+    dependencies:
+      '@runxhq/contracts':
+        specifier: workspace:^0.2.3
+        version: link:../contracts
+      '@runxhq/core':
+        specifier: workspace:^0.1.4
+        version: link:../core
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
 
   plugins/antigravity:
     dependencies:
