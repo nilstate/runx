@@ -1,4 +1,5 @@
 import type { AdapterInvokeRequest, AdapterInvokeResult, SkillAdapter } from "@runxhq/core/executor";
+import { errorMessage } from "@runxhq/core/util";
 import { resolveCatalogTool } from "@runxhq/runtime-local/tool-catalogs";
 
 export const catalogAdapterPackage = "@runxhq/adapters/catalog";
@@ -51,7 +52,7 @@ export async function invokeCatalog(request: AdapterInvokeRequest): Promise<Adap
       metadata: result.metadata,
     };
   } catch (error) {
-    return failure(error instanceof Error ? error.message : "Catalog adapter failed.", started);
+    return failure(errorMessage(error), started);
   }
 }
 

@@ -109,7 +109,7 @@ export function defineTool<
         process.stderr.write(
           `${JSON.stringify({
             error: {
-              message: error instanceof Error ? error.message : String(error),
+              message: errorMessage(error),
             },
           })}\n`,
         );
@@ -510,4 +510,8 @@ function isToolFailure(value: unknown): value is ToolFailure {
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function errorMessage(value: unknown): string {
+  return value instanceof Error ? value.message : String(value);
 }

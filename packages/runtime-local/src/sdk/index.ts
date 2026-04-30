@@ -17,7 +17,7 @@ import {
   resolveRunxRegistryTarget,
   resolveSkillInstallRoot,
 } from "@runxhq/core/config";
-import { isNotFound, isRecord } from "@runxhq/core/util";
+import { errorMessage, isNotFound, isRecord } from "@runxhq/core/util";
 import {
   createFixtureMarketplaceAdapter,
   searchMarketplaceAdapters,
@@ -344,7 +344,7 @@ export class RunxSdk {
         },
       });
     } catch (error) {
-      localError = error instanceof Error ? error : new Error(String(error));
+      localError = error instanceof Error ? error : new Error(errorMessage(error));
     }
 
     const registryTarget = this.registryTarget();

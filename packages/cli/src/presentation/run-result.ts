@@ -168,7 +168,9 @@ function renderRunSuccess(
     if (isRecord(parsed)) {
       parsedOutput = parsed;
     }
-  } catch {}
+  } catch {
+    // Success output is often plain text; only use JSON metadata when it parses cleanly.
+  }
   if (result.skill.name === "sourcey" && parsedOutput) {
     const outputDir = typeof parsedOutput.output_dir === "string" ? parsedOutput.output_dir : undefined;
     const indexPath = typeof parsedOutput.index_path === "string" ? parsedOutput.index_path : undefined;
@@ -311,4 +313,3 @@ function truncateMultiline(text: string, maxLines = 8): string {
   if (lines.length <= maxLines) return lines.join("\n");
   return `${lines.slice(0, maxLines).join("\n")}\n…`;
 }
-

@@ -6,6 +6,7 @@ import {
   type SequentialGraphPlan,
   type SequentialGraphState,
 } from "@runxhq/core/state-machine";
+import { errorMessage } from "@runxhq/core/util";
 
 import { resolveOutputPath, type GraphStepOutput } from "./graph-context.js";
 import { buildInlineGraphStepSkill } from "./execution-targets.js";
@@ -26,7 +27,7 @@ export function admitGraphTransition(
     } catch (error) {
       return {
         status: "deny",
-        reason: error instanceof Error ? error.message : `unable to resolve policy field '${gate.field}'`,
+        reason: errorMessage(error),
       };
     }
     if (gate.equals !== undefined && !isDeepEqual(value, gate.equals)) {

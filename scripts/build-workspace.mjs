@@ -308,7 +308,7 @@ async function replaceTreeAtomically(target, populate) {
   try {
     await populate(staging);
   } catch (error) {
-    await rm(staging, { recursive: true, force: true }).catch(() => {});
+    await bestEffortCleanup(rm(staging, { recursive: true, force: true }), `remove staging tree ${staging}`);
     throw error;
   }
   let renamedAway = false;
@@ -317,7 +317,7 @@ async function replaceTreeAtomically(target, populate) {
     renamedAway = true;
   } catch (error) {
     if (!error || error.code !== "ENOENT") {
-      await rm(staging, { recursive: true, force: true }).catch(() => {});
+      await bestEffortCleanup(rm(staging, { recursive: true, force: true }), `remove staging tree ${staging}`);
       throw error;
     }
   }
@@ -325,13 +325,26 @@ async function replaceTreeAtomically(target, populate) {
     await rename(staging, target);
   } catch (error) {
     if (renamedAway) {
-      await rename(previous, target).catch(() => {});
+      await bestEffortCleanup(rename(previous, target), `restore previous tree ${previous}`);
     }
-    await rm(staging, { recursive: true, force: true }).catch(() => {});
+    await bestEffortCleanup(rm(staging, { recursive: true, force: true }), `remove staging tree ${staging}`);
     throw error;
   }
   if (renamedAway) {
-    await rm(previous, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }).catch(() => {});
+    await bestEffortCleanup(
+      rm(previous, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }),
+      `remove previous tree ${previous}`,
+    );
+  }
+}
+
+async function bestEffortCleanup(operation, action) {
+  try {
+    await operation;
+  } catch (error) {
+    if (process.env.RUNX_BUILD_DEBUG_CLEANUP === "1") {
+      process.stderr.write(`warning: failed to ${action}: ${errorMessage(error)}\n`);
+    }
   }
 }
 
@@ -399,9 +412,16 @@ async function exists(filePath) {
   try {
     await stat(filePath);
     return true;
-  } catch {
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code !== "ENOENT") {
+      throw error;
+    }
     return false;
   }
+}
+
+function errorMessage(value) {
+  return value instanceof Error ? value.message : String(value);
 }
 
 function toPosix(value) {

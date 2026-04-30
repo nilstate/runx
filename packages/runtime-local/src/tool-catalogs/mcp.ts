@@ -1,3 +1,5 @@
+import { errorMessage } from "@runxhq/core/util";
+
 import {
   createMcpExecutionMetadata,
   invokeMcpTool,
@@ -108,7 +110,7 @@ function importedToolFromMcpDescriptor(
           }),
         } as const;
       } catch (error) {
-        const message = error instanceof Error ? error.message : `Failed to invoke imported MCP tool '${listed.name}'.`;
+        const message = errorMessage(error);
         return {
           status: "failure",
           stdout: "",

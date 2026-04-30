@@ -6,7 +6,7 @@ import {
 } from "@runxhq/runtime-local/tool-catalogs";
 import { createRunxSdk, type RunSkillOptions, type RunxSdk, type RunxSdkOptions } from "@runxhq/runtime-local/sdk";
 import type { RunLocalSkillResult } from "@runxhq/runtime-local";
-import { isRecord } from "@runxhq/core/util";
+import { errorMessage, isRecord } from "@runxhq/core/util";
 import { tool, type StructuredToolInterface } from "@langchain/core/tools";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
@@ -180,7 +180,7 @@ function importedToolFromLangChain(
           },
         } as const;
       } catch (error) {
-        const message = error instanceof Error ? error.message : `LangChain tool '${langChainTool.name}' failed.`;
+        const message = errorMessage(error);
         return {
           status: "failure",
           stdout: "",

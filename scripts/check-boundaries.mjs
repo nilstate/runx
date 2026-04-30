@@ -136,7 +136,7 @@ async function checkPackageExports() {
 async function checkForbiddenCoreRuntimeDirectories() {
   for (const directoryName of forbiddenCoreRuntimeDirs) {
     const directoryPath = path.join(workspaceRoot, "packages", "core", "src", directoryName);
-    const entry = await stat(directoryPath).catch(() => undefined);
+    const entry = await statIfExists(directoryPath);
     if (entry?.isDirectory()) {
       findings.push(`packages/core/src/${directoryName} still exists; runtime-local owns this boundary.`);
     }
@@ -298,9 +298,7 @@ async function readPackageManifest(packageName) {
     return packageManifestCache.get(packageName);
   }
   const manifestPath = path.join(workspaceRoot, "packages", packageName, "package.json");
-  const manifest = await readFile(manifestPath, "utf8")
-    .then((contents) => JSON.parse(contents))
-    .catch(() => undefined);
+  const manifest = await readJsonIfExists(manifestPath);
   packageManifestCache.set(packageName, manifest);
   return manifest;
 }
@@ -342,6 +340,34 @@ async function walk(directory, files) {
     }
     files.push(path.join(directory, entry.name));
   }
+}
+
+async function statIfExists(filePath) {
+  try {
+    return await stat(filePath);
+  } catch (error) {
+    if (isNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+async function readJsonIfExists(filePath) {
+  let contents;
+  try {
+    contents = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (isNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+  return JSON.parse(contents);
+}
+
+function isNotFound(error) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
 }
 
 function isTestFile(fileName) {

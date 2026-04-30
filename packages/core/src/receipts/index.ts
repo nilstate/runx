@@ -12,7 +12,7 @@ import crypto, { type KeyObject } from "node:crypto";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { isNotFound } from "../util/types.js";
+import { errorMessage, isNotFound } from "../util/types.js";
 import { hashStable, hashString, stableStringify } from "../util/hash.js";
 
 export { hashStable, hashString, stableStringify };
@@ -398,7 +398,7 @@ export async function listLocalReceipts(receiptDir: string): Promise<readonly Lo
           return parseLocalReceiptContents(await readFile(receiptPath, "utf8"), receiptPath);
         } catch (error) {
           process.stderr.write(
-            `warning: skipping receipt at ${receiptPath}: ${error instanceof Error ? error.message : String(error)}\n`,
+            `warning: skipping receipt at ${receiptPath}: ${errorMessage(error)}\n`,
           );
           return undefined;
         }
@@ -414,7 +414,7 @@ function parseLocalReceiptContents(contents: string, receiptPath: string): Local
     parsed = JSON.parse(contents);
   } catch (error) {
     throw new Error(
-      `${receiptPath} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      `${receiptPath} is not valid JSON: ${errorMessage(error)}`,
       { cause: error },
     );
   }
@@ -446,7 +446,7 @@ export async function listVerifiedLocalReceipts(
           return await readVerifiedLocalReceipt(receiptDir, entry.slice(0, -".json".length), runxHome);
         } catch (error) {
           process.stderr.write(
-            `warning: skipping receipt at ${path.join(receiptDir, entry)}: ${error instanceof Error ? error.message : String(error)}\n`,
+            `warning: skipping receipt at ${path.join(receiptDir, entry)}: ${errorMessage(error)}\n`,
           );
           return undefined;
         }

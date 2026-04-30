@@ -65,11 +65,22 @@ try {
     "tools/docs/echo/src/index.ts",
   ]) {
     const requiredPath = path.join(targetDir, required);
-    const entry = await stat(requiredPath).catch(() => undefined);
+    const entry = await statIfExists(requiredPath);
     if (!entry?.isFile()) {
       throw new Error(`create-skill smoke run did not produce ${required}`);
     }
   }
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
+}
+
+async function statIfExists(filePath) {
+  try {
+    return await stat(filePath);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return undefined;
+    }
+    throw error;
+  }
 }
