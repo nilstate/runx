@@ -3,7 +3,6 @@ import {
   JSON_SCHEMA_DRAFT_2020_12,
   RUNX_CONTROL_SCHEMA_REFS,
   type DeepReadonly,
-  asUnknownRecord,
   unknownRecordSchema,
   validateContractSchema,
 } from "../internal.js";
@@ -93,18 +92,9 @@ export const agentContextEnvelopeSchema = Type.Object(
 
 export type AgentContextEnvelopeContract = DeepReadonly<Static<typeof agentContextEnvelopeSchema>>;
 
-function rejectLegacyVoiceGrammar(value: unknown, label: string): void {
-  const envelope = asUnknownRecord(value);
-  const context = asUnknownRecord(envelope?.context);
-  if (context?.voice_grammar !== undefined) {
-    throw new Error(`${label}.context.voice_grammar is no longer supported; use voice_profile (${RUNX_CONTROL_SCHEMA_REFS.agent_context_envelope}).`);
-  }
-}
-
 export function validateAgentContextEnvelopeContract(
   value: unknown,
   label = "agent_context_envelope",
 ): AgentContextEnvelopeContract {
-  rejectLegacyVoiceGrammar(value, label);
   return validateContractSchema(agentContextEnvelopeSchema, value, label);
 }

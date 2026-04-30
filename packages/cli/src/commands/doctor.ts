@@ -128,11 +128,10 @@ async function discoverToolDoctorDiagnostics(root: string): Promise<readonly Doc
             expected_manifest: toProjectPath(root, path.join(toolDir, "manifest.json")),
           },
           repairs: [{
-            id: "migrate_to_define_tool",
-            kind: "run_command",
+            id: "replace_removed_tool_manifest",
+            kind: "manual",
             confidence: "high",
             risk: "medium",
-            command: `runx tool migrate ${toProjectPath(root, toolDir)}`,
             requires_human_review: true,
           }],
         }));
@@ -740,7 +739,7 @@ const DOCTOR_DIAGNOSTIC_EXPLANATIONS: Readonly<Record<string, {
     title: "tool.yaml is no longer supported",
     severity: "error",
     explanation: "Runx v1 resolves tools from manifest.json generated or normalized by the authoring pipeline. A remaining tool.yaml means there are two potential sources of truth.",
-    repair: "Run runx tool migrate <tool-dir>, review the generated manifest.json and run.mjs, then re-run runx doctor.",
+    repair: "Remove tool.yaml, author manifest.json plus src/index.ts as the source of truth, then run runx tool build <tool-dir>.",
   },
   "runx.tool.manifest.invalid": {
     title: "Tool manifest is invalid",

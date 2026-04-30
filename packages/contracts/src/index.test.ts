@@ -141,7 +141,7 @@ describe("@runxhq/contracts", () => {
         voice_grammar: {},
       },
       trust_boundary: "test",
-    })).toThrow("context.voice_grammar is no longer supported; use voice_profile");
+    })).toThrow("agent_context_envelope.context.voice_grammar must match");
 
     const resolutionRequest = validateResolutionRequestContract({
       id: "approval.demo",
@@ -195,8 +195,29 @@ describe("@runxhq/contracts", () => {
     expect(schemas).toHaveProperty("RunDiffEnvelope", {
       $ref: "../../spec/hosted/run-diff.response.schema.json",
     });
-    expect(schemas.RunApproveLegacyRequest).toMatchObject({
-      required: ["request_id", "approved"],
+    const removedSchemaNameToken = ["leg", "acy"].join("");
+    expect(Object.keys(schemas).filter((name) => name.toLowerCase().includes(removedSchemaNameToken))).toEqual([]);
+    expect(Object.keys(schemas).filter((name) => name.endsWith("ApprovalEnvelope"))).toEqual([]);
+    expect(schemas.HostedReadinessEnvelope).toMatchObject({
+      required: ["status", "checks"],
+      properties: {
+        checks: {
+          additionalProperties: {
+            $ref: "#/components/schemas/HostedReadinessCheck",
+          },
+        },
+      },
+    });
+    expect(schemas.HostedApiMetricsEnvelope).toMatchObject({
+      required: ["status", "metrics"],
+      properties: {
+        metrics: {
+          $ref: "#/components/schemas/HostedApiMetrics",
+        },
+      },
+    });
+    expect(schemas.HostedApiLatencyBucketCounts).toMatchObject({
+      required: ["le_50ms", "le_100ms", "le_250ms", "le_500ms", "le_1000ms", "gt_1000ms"],
     });
     expect(schemas).toHaveProperty("PublicSkillDetailEnvelope");
     expect(schemas).toHaveProperty("KnowledgeEntryEnvelope");

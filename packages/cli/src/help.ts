@@ -60,7 +60,7 @@ export function writeUsage(stream: Writable, env: NodeJS.ProcessEnv = process.en
       "  runx mcp serve <skill-ref> [<skill-ref> ...]",
       "  runx tool search <query> [--source fixture-mcp] [--json]",
       "  runx tool inspect <ref> [--source fixture-mcp] [--json]",
-      "  runx tool build|migrate <tool-dir>|--all [--json]",
+      "  runx tool build <tool-dir>|--all [--json]",
       "",
       "Core Flow:",
       "  runx search docs",

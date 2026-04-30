@@ -90,7 +90,6 @@ import { handleMcpServeCommand } from "./commands/mcp.js";
 import { handleNewCommand } from "./commands/new.js";
 import {
   handleToolBuildCommand,
-  handleToolMigrateCommand,
   renderToolCommandResult,
   type ToolCommandArgs,
 } from "./commands/tool.js";
@@ -155,15 +154,13 @@ export async function dispatchCli(
     return result.status === "success" ? 0 : 1;
   }
 
-  if (parsed.command === "tool" && (parsed.toolAction === "build" || parsed.toolAction === "migrate")) {
+  if (parsed.command === "tool" && parsed.toolAction === "build") {
     const toolArgs: ToolCommandArgs = {
       toolAction: parsed.toolAction,
       toolPath: parsed.toolPath,
       toolAll: parsed.toolAll,
     };
-    const result = toolArgs.toolAction === "build"
-      ? await handleToolBuildCommand(toolArgs, env)
-      : await handleToolMigrateCommand(toolArgs, env);
+    const result = await handleToolBuildCommand(toolArgs, env);
     if (parsed.json) {
       io.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     } else {

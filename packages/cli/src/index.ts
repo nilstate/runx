@@ -42,7 +42,7 @@ export interface ParsedArgs {
   readonly doctorFix: boolean;
   readonly doctorExplainId?: string;
   readonly doctorListDiagnostics: boolean;
-  readonly toolAction?: "build" | "migrate" | "search" | "inspect";
+  readonly toolAction?: "build" | "search" | "inspect";
   readonly toolPath?: string;
   readonly toolRef?: string;
   readonly toolAll: boolean;
@@ -357,8 +357,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     doctorFix: isDoctor && truthyFlag(inputs.fix),
     doctorExplainId: isDoctor && typeof inputs.explain === "string" && inputs.explain !== "true" ? inputs.explain : undefined,
     doctorListDiagnostics: isDoctor && truthyFlag(inputs.listDiagnostics ?? inputs["list-diagnostics"]),
-    toolAction: isTool && (positionals[0] === "build" || positionals[0] === "migrate" || positionals[0] === "search" || positionals[0] === "inspect") ? positionals[0] : undefined,
-    toolPath: isTool && (positionals[0] === "build" || positionals[0] === "migrate") ? positionals[1] : undefined,
+    toolAction: isTool && (positionals[0] === "build" || positionals[0] === "search" || positionals[0] === "inspect") ? positionals[0] : undefined,
+    toolPath: isTool && positionals[0] === "build" ? positionals[1] : undefined,
     toolRef: isToolInspect ? toolSearchPositionals.join(" ") || undefined : undefined,
     toolAll: isTool && truthyFlag(inputs.all),
     devPath: isDev ? positionals[0] : undefined,

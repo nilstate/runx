@@ -22,7 +22,7 @@ describe("agent context envelope", () => {
         },
       },
       trust_boundary: "test",
-    })).toThrow("context.voice_grammar is no longer supported; use voice_profile");
+    })).toThrow("agent_context_envelope.context.voice_grammar must match");
   });
 
   it("accepts execution_location metadata for surfaced cognitive work", () => {

@@ -20,14 +20,13 @@ import {
 } from "../authoring-utils.js";
 import { readCliDependencyVersion } from "../metadata.js";
 import { statusIcon, theme } from "../ui.js";
-import { parse as parseYaml } from "yaml";
 
 const require = createRequire(import.meta.url);
 const tscPath = require.resolve("typescript/bin/tsc");
 const toolkitVersion = readCliDependencyVersion("@runxhq/authoring");
 
 export interface ToolCommandArgs {
-  readonly toolAction?: "build" | "migrate";
+  readonly toolAction?: "build";
   readonly toolPath?: string;
   readonly toolAll: boolean;
 }
@@ -40,16 +39,6 @@ export interface ToolBuildReport {
     readonly manifest: string;
     readonly source_hash: string;
     readonly schema_hash: string;
-  }[];
-  readonly errors: readonly string[];
-}
-
-export interface ToolMigrateReport {
-  readonly schema: "runx.tool.migrate.v1";
-  readonly status: "success" | "failure";
-  readonly migrated: readonly {
-    readonly path: string;
-    readonly manifest: string;
   }[];
   readonly errors: readonly string[];
 }
@@ -83,50 +72,12 @@ export async function handleToolBuildCommand(parsed: ToolCommandArgs, env: NodeJ
   };
 }
 
-export async function handleToolMigrateCommand(parsed: ToolCommandArgs, env: NodeJS.ProcessEnv): Promise<ToolMigrateReport> {
-  const root = resolveRunxWorkspaceBase(env);
-  await ensureAuthoringRuntimeFresh(root);
-  const toolDirs = parsed.toolAll
-    ? await discoverLegacyToolDirectories(root)
-    : [resolvePathFromUserInput(parsed.toolPath ?? "", env)];
-  const migrated: {
-    readonly path: string;
-    readonly manifest: string;
-  }[] = [];
-  const errors: string[] = [];
-  for (const toolDir of toolDirs) {
-    try {
-      const yamlPath = path.join(toolDir, "tool.yaml");
-      const manifestPath = path.join(toolDir, "manifest.json");
-      const raw = parseYaml(await readFile(yamlPath, "utf8")) as unknown;
-      if (!isPlainRecord(raw)) {
-        throw new Error("tool.yaml must parse to an object.");
-      }
-      await writeJsonFile(manifestPath, raw);
-      await rm(yamlPath, { force: true });
-      await buildToolManifest(root, toolDir);
-      migrated.push({
-        path: toProjectPath(root, toolDir),
-        manifest: toProjectPath(root, manifestPath),
-      });
-    } catch (error) {
-      errors.push(`${toProjectPath(root, toolDir)}: ${errorMessage(error)}`);
-    }
-  }
-  return {
-    schema: "runx.tool.migrate.v1",
-    status: errors.length > 0 ? "failure" : "success",
-    migrated,
-    errors,
-  };
-}
-
-export function renderToolCommandResult(result: ToolBuildReport | ToolMigrateReport, env: NodeJS.ProcessEnv = process.env): string {
+export function renderToolCommandResult(result: ToolBuildReport, env: NodeJS.ProcessEnv = process.env): string {
   const t = theme(process.stdout, env);
-  const count = "built" in result ? result.built.length : result.migrated.length;
+  const count = result.built.length;
   const lines = [
     "",
-    `  ${statusIcon(result.status, t)}  ${t.bold}${"built" in result ? "tool build" : "tool migrate"}${t.reset}  ${t.dim}${count} tool(s)${t.reset}`,
+    `  ${statusIcon(result.status, t)}  ${t.bold}tool build${t.reset}  ${t.dim}${count} tool(s)${t.reset}`,
   ];
   for (const error of result.errors) {
     lines.push(`  ${t.red}${error}${t.reset}`);
@@ -376,10 +327,6 @@ export async function discoverToolDirectories(root: string): Promise<readonly st
     }
   }
   return directories.sort();
-}
-
-async function discoverLegacyToolDirectories(root: string): Promise<readonly string[]> {
-  return (await discoverToolDirectories(root)).filter((toolDir) => existsSync(path.join(toolDir, "tool.yaml")));
 }
 
 export function resolveToolDirFromRef(root: string, ref: string): string | undefined {

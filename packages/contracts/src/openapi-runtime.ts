@@ -23,6 +23,134 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
       required: ["error"],
       additionalProperties: true,
     },
+    HostedReadinessCheck: {
+      type: "object",
+      properties: {
+        status: { type: "string", enum: ["ok", "not_ready", "disabled"] },
+        error: { type: "string" },
+      },
+      required: ["status"],
+      additionalProperties: true,
+    },
+    HostedReadinessEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "ok" },
+        checks: {
+          type: "object",
+          additionalProperties: openApiSchemaRef("HostedReadinessCheck"),
+        },
+      },
+      required: ["status", "checks"],
+      additionalProperties: false,
+    },
+    HostedReadinessErrorEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "not_ready" },
+        error: { type: "string" },
+        checks: {
+          type: "object",
+          additionalProperties: openApiSchemaRef("HostedReadinessCheck"),
+        },
+      },
+      required: ["status", "error", "checks"],
+      additionalProperties: false,
+    },
+    HostedApiLatencyBucketCounts: {
+      type: "object",
+      properties: {
+        le_50ms: { type: "integer", minimum: 0 },
+        le_100ms: { type: "integer", minimum: 0 },
+        le_250ms: { type: "integer", minimum: 0 },
+        le_500ms: { type: "integer", minimum: 0 },
+        le_1000ms: { type: "integer", minimum: 0 },
+        gt_1000ms: { type: "integer", minimum: 0 },
+      },
+      required: ["le_50ms", "le_100ms", "le_250ms", "le_500ms", "le_1000ms", "gt_1000ms"],
+      additionalProperties: false,
+    },
+    HostedApiLatencyMetrics: {
+      type: "object",
+      properties: {
+        total: { type: "number", minimum: 0 },
+        average: { type: "number", minimum: 0 },
+        max: { type: "number", minimum: 0 },
+        buckets: openApiSchemaRef("HostedApiLatencyBucketCounts"),
+      },
+      required: ["total", "average", "max", "buckets"],
+      additionalProperties: false,
+    },
+    HostedApiRouteMetrics: {
+      type: "object",
+      properties: {
+        method: { type: "string" },
+        route: { type: "string" },
+        requests_total: { type: "integer", minimum: 0 },
+        error_responses_total: { type: "integer", minimum: 0 },
+        client_error_responses_total: { type: "integer", minimum: 0 },
+        server_error_responses_total: { type: "integer", minimum: 0 },
+        latency_ms: openApiSchemaRef("HostedApiLatencyMetrics"),
+        status_counts: {
+          type: "object",
+          additionalProperties: { type: "integer", minimum: 0 },
+        },
+      },
+      required: [
+        "method",
+        "route",
+        "requests_total",
+        "error_responses_total",
+        "client_error_responses_total",
+        "server_error_responses_total",
+        "latency_ms",
+        "status_counts",
+      ],
+      additionalProperties: false,
+    },
+    HostedApiMetrics: {
+      type: "object",
+      properties: {
+        started_at: { type: "string", format: "date-time" },
+        updated_at: { type: "string", format: "date-time" },
+        in_flight_requests: { type: "integer", minimum: 0 },
+        requests_total: { type: "integer", minimum: 0 },
+        error_responses_total: { type: "integer", minimum: 0 },
+        client_error_responses_total: { type: "integer", minimum: 0 },
+        server_error_responses_total: { type: "integer", minimum: 0 },
+        latency_ms: openApiSchemaRef("HostedApiLatencyMetrics"),
+        status_counts: {
+          type: "object",
+          additionalProperties: { type: "integer", minimum: 0 },
+        },
+        routes: {
+          type: "array",
+          items: openApiSchemaRef("HostedApiRouteMetrics"),
+        },
+      },
+      required: [
+        "started_at",
+        "updated_at",
+        "in_flight_requests",
+        "requests_total",
+        "error_responses_total",
+        "client_error_responses_total",
+        "server_error_responses_total",
+        "latency_ms",
+        "status_counts",
+        "routes",
+      ],
+      additionalProperties: false,
+    },
+    HostedApiMetricsEnvelope: {
+      type: "object",
+      properties: {
+        status: { type: "string", const: "success" },
+        metrics: openApiSchemaRef("HostedApiMetrics"),
+      },
+      required: ["status", "metrics"],
+      additionalProperties: false,
+    },
     PrincipalSummary: {
       type: "object",
       properties: {
@@ -384,24 +512,6 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
     RunRequestSummary: protocolArtifactRef("hosted/run-request-summary.schema.json"),
     RunRequestsEnvelope: protocolArtifactRef("hosted/run-requests.response.schema.json"),
     RunRequestResponseRequest: protocolArtifactRef("hosted/run-request-response.request.schema.json"),
-    RunResolveLegacyRequest: {
-      type: "object",
-      properties: {
-        request_id: { type: "string" },
-        payload: {},
-      },
-      required: ["request_id"],
-      additionalProperties: false,
-    },
-    RunApproveLegacyRequest: {
-      type: "object",
-      properties: {
-        request_id: { type: "string" },
-        approved: { type: "boolean" },
-      },
-      required: ["request_id", "approved"],
-      additionalProperties: false,
-    },
     RunRecordedEnvelope: {
       type: "object",
       properties: {
@@ -409,16 +519,6 @@ export function buildHostedOpenApiRuntimeSchemas(): Readonly<Record<string, unkn
         run: openApiSchemaRef("HostedRunSummary"),
       },
       required: ["status", "run"],
-      additionalProperties: false,
-    },
-    RunApprovalEnvelope: {
-      type: "object",
-      properties: {
-        status: { type: "string", const: "recorded" },
-        approved: { type: "boolean" },
-        run: openApiSchemaRef("HostedRunSummary"),
-      },
-      required: ["status", "approved", "run"],
       additionalProperties: false,
     },
     PolicyApprovalRouteRecipient: {

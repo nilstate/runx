@@ -1349,7 +1349,7 @@ source:
       expect.objectContaining({
         id: "runx.tool.manifest.removed_format",
         instance_id: expect.stringMatching(/^sha256:/),
-        repairs: [expect.objectContaining({ id: "migrate_to_define_tool", risk: "medium" })],
+        repairs: [expect.objectContaining({ id: "replace_removed_tool_manifest", kind: "manual", risk: "medium" })],
       }),
     ]);
   });
