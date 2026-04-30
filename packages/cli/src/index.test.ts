@@ -73,7 +73,7 @@ Return the provided task id.
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const exitCode = await runCli(
-      [skillDir, "--task-id", "abc-123", "--answers", answersPath, "--non-interactive", "--json"],
+      ["skill", skillDir, "--task-id", "abc-123", "--answers", answersPath, "--non-interactive", "--json"],
       { stdin: process.stdin, stdout, stderr },
       { ...process.env, RUNX_CWD: process.cwd() },
     );
@@ -190,7 +190,7 @@ runners:
     const firstStdout = createMemoryStream();
     const firstStderr = createMemoryStream();
     const firstExitCode = await runCli(
-      [wrapperDir, "--task-id", "abc-123", "--receipt-dir", receiptDir, "--non-interactive", "--json"],
+      ["skill", wrapperDir, "--task-id", "abc-123", "--receipt-dir", receiptDir, "--non-interactive", "--json"],
       { stdin: process.stdin, stdout: firstStdout, stderr: firstStderr },
       { ...process.env, RUNX_CWD: process.cwd() },
     );
@@ -225,15 +225,15 @@ runners:
     });
   });
 
-  it("treats top-level commands outside the builtin set as skill invocations", () => {
+  it("does not treat arbitrary top-level commands as skill invocations", () => {
     const parsed = parseArgs(["sourcey", "--project", "."]);
 
     expect(parsed.command).toBe("sourcey");
-    expect(parsed.skillPath).toBe("sourcey");
+    expect(parsed.skillPath).toBeUndefined();
     expect(parsed.inputs).toEqual({ project: "." });
   });
 
-  it("resolves top-level skill names to local workspace skill packages before any official fallback", () => {
+  it("resolves workspace skill package names before any official fallback", () => {
     expect(resolveSkillReference("issue-to-pr", { ...process.env, RUNX_CWD: process.cwd() })).toBe(
       path.resolve("skills/issue-to-pr"),
     );
@@ -314,7 +314,7 @@ runners:
     expect(stdout.contents()).not.toContain("request   agent_step");
   });
 
-  it("supports top-level skill invocation aliases", async () => {
+  it("rejects top-level skill invocation", async () => {
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const fakeBinDir = await createFakeAgentBin(["claude", "codex"]);
@@ -325,10 +325,10 @@ runners:
       { ...process.env, RUNX_CWD: process.cwd(), PATH: fakeBinDir },
     );
 
-    expect(exitCode).toBe(2);
-    expect(stderr.contents()).toBe("");
-    expect(stdout.contents()).toContain("planning docs site");
-    expect(stdout.contents()).toContain("runx resume");
+    expect(exitCode).toBe(64);
+    expect(stdout.contents()).toBe("");
+    expect(stderr.contents()).toContain("Usage:");
+    expect(stderr.contents()).toContain("runx skill <skill-ref|skill-dir|SKILL.md>");
   });
 
   it("uses the current directory automatically for project-root questions", async () => {
@@ -588,7 +588,7 @@ Read note.txt and produce a grounded summary.
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const exitCode = await runCli(
-      [skillDir, "--repo-root", tempDir, "--non-interactive", "--json"],
+      ["skill", skillDir, "--repo-root", tempDir, "--non-interactive", "--json"],
       { stdin: process.stdin, stdout, stderr },
       env,
     );
@@ -746,7 +746,7 @@ process.stdout.write(JSON.stringify({
     const firstStdout = createMemoryStream();
     const firstStderr = createMemoryStream();
     const firstExit = await runCli(
-      [skillDir, "--receipt-dir", receiptDir, "--non-interactive", "--json"],
+      ["skill", skillDir, "--receipt-dir", receiptDir, "--non-interactive", "--json"],
       { stdin: process.stdin, stdout: firstStdout, stderr: firstStderr },
       env,
     );
@@ -831,7 +831,7 @@ Answer the prompt directly.
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const exitCode = await runCli(
-      [skillDir, "--prompt", "hello", "--non-interactive", "--json"],
+      ["skill", skillDir, "--prompt", "hello", "--non-interactive", "--json"],
       { stdin: process.stdin, stdout, stderr },
       env,
     );
@@ -1010,7 +1010,7 @@ Answer the prompt directly.
     expect(stderr.contents()).toBe("");
     expect(stdout.contents()).toContain("Core Flow:");
     expect(stdout.contents()).toContain("runx search docs");
-    expect(stdout.contents()).toContain("runx <skill> --project .");
+    expect(stdout.contents()).toContain("runx skill <skill-ref> --project .");
     expect(stdout.contents()).toContain("runx evolve");
     expect(stdout.contents()).toContain("runx inspect <receipt-id>");
     expect(stdout.contents()).toContain("runx export-receipts --trainable");
@@ -1156,7 +1156,7 @@ Answer the prompt directly.
     const stderr = createMemoryStream();
 
     const firstExit = await runCli(
-      ["sourcey", "--json"],
+      ["skill", "sourcey", "--json"],
       { stdin: process.stdin, stdout, stderr },
       { ...process.env, RUNX_CWD: process.cwd(), RUNX_RECEIPT_DIR: tempDir },
     );

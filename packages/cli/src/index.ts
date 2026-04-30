@@ -255,7 +255,6 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   const isMcp = command === "mcp";
   const isList = command === "list";
   const isExportReceipts = command === "export-receipts";
-  const isTopLevelSkillInvoke = Boolean(command) && !builtinRootCommands.has(command);
   const searchPositionals = positionals.slice(adminOffset);
   const toolSearchPositionals = isTool ? positionals.slice(1) : [];
   const addPositionals = positionals.slice(adminOffset);
@@ -395,11 +394,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     historySince: command === "history" && typeof inputs.since === "string" ? inputs.since : undefined,
     historyUntil: command === "history" && typeof inputs.until === "string" ? inputs.until : undefined,
     skillPath:
-      isTopLevelSkillInvoke
-        ? command
-        : command === "skill" && !isSkillSearch && !isSkillAdd && !isSkillPublish && !isSkillInspect
-          ? positionals[0]
-          : undefined,
+      command === "skill" && !isSkillSearch && !isSkillAdd && !isSkillPublish && !isSkillInspect
+        ? positionals[0]
+        : undefined,
     harnessPath: command === "harness" ? positionals[0] : undefined,
     evolveObjective: command === "evolve" ? positionals.join(" ") || undefined : undefined,
     inputs: effectiveInputs,

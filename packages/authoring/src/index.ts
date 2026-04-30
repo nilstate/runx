@@ -470,7 +470,6 @@ export function resolveRepoRoot(
   return path.resolve(
     String(
       inputs.repo_root
-        || inputs.project
         || inputs.fixture
         || env.RUNX_CWD
         || process.cwd(),

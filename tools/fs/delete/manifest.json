@@ -18,12 +18,7 @@
     "repo_root": {
       "type": "string",
       "required": false,
-      "description": "Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory."
-    },
-    "project": {
-      "type": "string",
-      "required": false,
-      "description": "Optional alias for repo_root used by local harnesses."
+      "description": "Repository or workspace root; defaults to fixture, RUNX_CWD, or the current working directory."
     },
     "fixture": {
       "type": "string",
@@ -49,7 +44,7 @@
       "./run.mjs"
     ]
   },
-  "source_hash": "sha256:39d97f3289ff7a707cceca4759be47c9418b03afe9b697a2e605eac8ae5454b1",
-  "schema_hash": "sha256:e6d013dce0706948008c648229c61be152fa77821fafbdb9b9f8793a8a21898c",
+  "source_hash": "sha256:a0f60596de375253aeb481a2a5fb6085c3bfc5efc50b67ae940bd60831be7d94",
+  "schema_hash": "sha256:4fd4ea27e441c630614444056d370fb6c7c0d4283cb9f7443ab474a3ae81ebc7",
   "toolkit_version": "0.1.3"
 }

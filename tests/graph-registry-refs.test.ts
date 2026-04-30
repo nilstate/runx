@@ -400,8 +400,8 @@ steps:
     }
   });
 
-  it("still accepts filesystem-relative skill refs", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-graph-registry-compat-"));
+  it("accepts filesystem-relative skill refs", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-graph-registry-fs-"));
 
     try {
       const skillDir = path.join(tempDir, "skills", "echo");
@@ -412,7 +412,7 @@ steps:
       const graphPath = path.join(tempDir, "graph.yaml");
       await writeFile(
         graphPath,
-        `name: graph-registry-fs-compat
+        `name: graph-registry-fs
 steps:
   - id: echo
     skill: ./skills/echo

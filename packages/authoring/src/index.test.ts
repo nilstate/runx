@@ -140,6 +140,9 @@ describe("@runxhq/authoring", () => {
     expect(resolveRepoRoot({ repo_root: "repo" }, { RUNX_CWD: "/tmp/project" } as NodeJS.ProcessEnv)).toBe(
       path.resolve("repo"),
     );
+    expect(resolveRepoRoot({ project: "repo" }, { RUNX_CWD: "/tmp/project" } as NodeJS.ProcessEnv)).toBe(
+      "/tmp/project",
+    );
     expect(() => resolveInsideRepo("/tmp/repo", "../escape")).toThrow(/escapes repo_root/);
   });
 

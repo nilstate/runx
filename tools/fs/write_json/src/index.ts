@@ -17,8 +17,7 @@ export default defineTool({
     path: stringInput({ description: "Path to the output file relative to repo_root." }),
     data: rawInput({ description: "JSON-compatible value to serialize." }),
     indent: rawInput({ optional: true, description: "Optional indentation width. Defaults to 2." }),
-    repo_root: stringInput({ optional: true, description: "Repository or workspace root; defaults to fixture, project, RUNX_CWD, or the current working directory." }),
-    project: stringInput({ optional: true, description: "Optional alias for repo_root used by local harnesses." }),
+    repo_root: stringInput({ optional: true, description: "Repository or workspace root; defaults to fixture, RUNX_CWD, or the current working directory." }),
     fixture: stringInput({ optional: true, description: "Optional fixture workspace root used during dev and harness execution." }),
   },
   output: {
