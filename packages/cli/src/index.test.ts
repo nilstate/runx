@@ -1359,6 +1359,7 @@ source:
     tempDirs.push(tempDir);
     await mkdir(path.join(tempDir, "skills", "graph"), { recursive: true });
     await mkdir(path.join(tempDir, "dist", "packets"), { recursive: true });
+    await mkdir(path.join(tempDir, "tools", "demo", "profile", "fixtures"), { recursive: true });
     await writeFile(
       path.join(tempDir, "package.json"),
       `${JSON.stringify({
@@ -1370,6 +1371,33 @@ source:
         },
       }, null, 2)}\n`,
     );
+    await writeFile(
+      path.join(tempDir, "tools", "demo", "profile", "manifest.json"),
+      `${JSON.stringify({
+        schema: "runx.tool.manifest.v1",
+        name: "demo.profile",
+        description: "Emit a demo profile packet.",
+        source: {
+          type: "cli-tool",
+          command: "node",
+          args: ["./run.mjs"],
+        },
+        output: {
+          packet: "packet-graph.profile.v1",
+          wrap_as: "profile_packet",
+        },
+        runx: {
+          artifacts: {
+            wrap_as: "profile_packet",
+          },
+        },
+        runtime: {
+          command: "node",
+          args: ["./run.mjs"],
+        },
+      }, null, 2)}\n`,
+    );
+    await writeFile(path.join(tempDir, "tools", "demo", "profile", "fixtures", "basic.yaml"), "target:\n  kind: tool\n");
     await writeFile(
       path.join(tempDir, "dist", "packets", "profile.v1.schema.json"),
       `${JSON.stringify({
@@ -1411,6 +1439,8 @@ runners:
               profile_packet: profile
             packets:
               profile_packet: packet-graph.profile.v1
+        - id: tool-produce
+          tool: demo.profile
         - id: consume
           run:
             type: agent-step
@@ -1420,6 +1450,7 @@ runners:
               ok: string
           context:
             brand_name: produce.profile_packet.data.profile.name
+            tool_brand_name: tool-produce.profile_packet.data.data.profile.name
 harness:
   cases:
     - name: graph-smoke

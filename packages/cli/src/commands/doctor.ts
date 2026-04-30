@@ -33,6 +33,7 @@ export interface DoctorCommandArgs {
 
 interface StepOutputDeclaration {
   readonly packet?: string;
+  readonly packetDataShape: "payload" | "packet";
 }
 
 export async function handleDoctorCommand(parsed: DoctorCommandArgs, env: NodeJS.ProcessEnv): Promise<DoctorReport> {
@@ -428,7 +429,8 @@ async function validateGraphContextReferences(
           }));
           continue;
         }
-        const packetId = producerOutputs[emitName]?.packet;
+        const producerOutput = producerOutputs[emitName];
+        const packetId = producerOutput?.packet;
         if (!packetId) {
           const warningKey = `${edge.fromStep}.${emitName}`;
           if (!warnedMissingSchema.has(warningKey)) {
@@ -446,7 +448,33 @@ async function validateGraphContextReferences(
           }
           continue;
         }
-        const packetCheck = await validatePacketPath(root, packetId, packetPath);
+        const packetPayloadPath = readPacketPayloadPath(producerOutput, packetPath);
+        if (packetPayloadPath.status === "packet_payload_skipped") {
+          diagnostics.push(createDoctorDiagnostic({
+            id: "runx.graph.context.packet_payload_skipped",
+            severity: "error",
+            title: "Graph context skipped packet payload envelope",
+            message: `${step.id}.${edge.input} must reference ${edge.fromStep}.${emitName}.data.data before packet payload fields.`,
+            target: { kind: "graph", ref: graph.name, step: step.id },
+            location: { path: toProjectPath(root, profilePath), json_pointer: `/runners/${runner.name}/graph/steps/${step.id}/context/${edge.input}` },
+            evidence: {
+              reference: `${edge.fromStep}.${edge.output}`,
+              expected_prefix: `${edge.fromStep}.${emitName}.data.data`,
+            },
+            repairs: [{
+              id: "insert_packet_data_segment",
+              kind: "edit_yaml",
+              confidence: "high",
+              risk: "low",
+              path: toProjectPath(root, profilePath),
+              requires_human_review: false,
+            }],
+          }));
+          continue;
+        }
+        const packetCheck = packetPayloadPath.validate
+          ? await validatePacketPath(root, packetId, packetPayloadPath.path)
+          : { status: "ok" as const };
         if (packetCheck.status === "missing_packet") {
           diagnostics.push(createDoctorDiagnostic({
             id: "runx.packet.ref.missing",
@@ -501,14 +529,17 @@ async function loadStepOutputDeclarations(
         ? raw.runx.artifacts.wrap_as
         : undefined;
     if (wrapAs) {
-      return { [wrapAs]: { packet } };
+      return { [wrapAs]: { packet, packetDataShape: "packet" } };
     }
     const namedEmits = isPlainRecord(output.named_emits) ? output.named_emits : undefined;
     if (namedEmits) {
       const outputPackets = isPlainRecord(output.outputs) ? output.outputs : {};
       return Object.fromEntries(Object.keys(namedEmits).map((name) => {
         const declared = outputPackets[name];
-        return [name, { packet: readPacketRef(isPlainRecord(declared) ? declared.packet : undefined) ?? packet }];
+        return [name, {
+          packet: readPacketRef(isPlainRecord(declared) ? declared.packet : undefined) ?? packet,
+          packetDataShape: "packet",
+        }];
       }));
     }
     return {};
@@ -549,6 +580,7 @@ function outputDeclarationsFromArtifacts(
           readPacketRef(isPlainRecord(output) ? output.packet : undefined)
           ?? readPacketRef(artifactMetadata.packet)
           ?? readPacketRef(artifactPackets[artifacts.wrapAs]),
+        packetDataShape: "payload",
       },
     };
   }
@@ -560,11 +592,29 @@ function outputDeclarationsFromArtifacts(
           packet:
             readPacketRef(isPlainRecord(outputs[name]) ? outputs[name].packet : undefined)
             ?? readPacketRef(artifactPackets[name]),
+          packetDataShape: "payload",
         },
       ]),
     );
   }
   return {};
+}
+
+function readPacketPayloadPath(
+  declaration: StepOutputDeclaration,
+  packetPath: readonly string[],
+): { readonly status: "ok"; readonly path: readonly string[]; readonly validate: boolean } | { readonly status: "packet_payload_skipped" } {
+  if (declaration.packetDataShape === "payload") {
+    return { status: "ok", path: packetPath, validate: true };
+  }
+  if (packetPath.length === 0) {
+    return { status: "ok", path: [], validate: false };
+  }
+  const [head, ...rest] = packetPath;
+  if (head !== "data") {
+    return { status: "packet_payload_skipped" };
+  }
+  return { status: "ok", path: rest, validate: true };
 }
 
 function resolveNestedSkillProfilePath(skillDir: string, ref: string): string | undefined {
@@ -751,6 +801,12 @@ const DOCTOR_DIAGNOSTIC_EXPLANATIONS: Readonly<Record<string, {
     severity: "error",
     explanation: "A graph context reference points at a producer output path that does not exist according to the producer packet schema.",
     repair: "Use the producer step id, emitted output name, mandatory data segment, and a valid property inside the packet.",
+  },
+  "runx.graph.context.packet_payload_skipped": {
+    title: "Graph context skipped packet payload envelope",
+    severity: "error",
+    explanation: "A tool packet context reference reached into the artifact envelope but did not explicitly enter the packet payload.",
+    repair: "Update the graph context reference from <step>.<output>.data.<field> to <step>.<output>.data.data.<field>.",
   },
   "runx.graph.context.schema_missing": {
     title: "Graph context producer has no packet schema",
