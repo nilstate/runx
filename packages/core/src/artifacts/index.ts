@@ -348,14 +348,7 @@ export async function prepareLedgerAppend(options: LedgerAppendOptions): Promise
     runId: options.runId,
     ledgerPath,
     records,
-    anchor: {
-      version: ledgerAnchorVersion,
-      run_id: options.runId,
-      entry_count: index,
-      head_hash: previousHash,
-      algorithm: ledgerHashAlgorithm,
-      canonicalization: ledgerCanonicalization,
-    },
+    anchor: createLedgerAnchor(options.runId, index, previousHash),
     expectedEntryCount: inspection.verification.entryCount,
     expectedHeadHash: inspection.verification.headHash,
     appendLock,
@@ -624,11 +617,78 @@ export async function appendPreparedLedgerEntries(plan: PreparedLedgerAppend): P
       throw new Error(`Cannot append to ledger ${plan.ledgerPath}: ledger changed while append was being prepared.`);
     }
 
+    const finalHead = validatePreparedLedgerRecords(
+      plan,
+      current.verification.entryCount,
+      current.verification.headHash,
+    );
+    assertLedgerAnchorMatches(
+      plan.anchor,
+      createLedgerAnchor(plan.runId, finalHead.entryCount, finalHead.headHash),
+      plan.ledgerPath,
+    );
+
     if (plan.records.length > 0) {
       await appendLedgerRecords(plan.ledgerPath, plan.records);
     }
+
+    const final = await inspectLedger(plan.receiptDir, plan.runId);
+    if (final.verification.status === "invalid") {
+      throw new Error(`Ledger ${plan.ledgerPath} failed verification after append: ${final.verification.reason ?? "invalid_chain"}`);
+    }
+    if (
+      final.verification.entryCount !== finalHead.entryCount
+      || final.verification.headHash !== finalHead.headHash
+    ) {
+      throw new Error(`Ledger ${plan.ledgerPath} changed during append.`);
+    }
   });
   return plan.ledgerPath;
+}
+
+function validatePreparedLedgerRecords(
+  plan: PreparedLedgerAppend,
+  startIndex: number,
+  startHeadHash: string | null,
+): { readonly entryCount: number; readonly headHash: string | null } {
+  let previousHash = startHeadHash;
+  let index = startIndex;
+  for (let offset = 0; offset < plan.records.length; offset += 1) {
+    const record = validateLedgerRecordContract(
+      plan.records[offset],
+      `prepared ledger record ${offset}`,
+    ) as LedgerRecord;
+    assertSystemLedgerEntryRunId(record.entry, plan.runId, index);
+    const expected = createLedgerChain(index, previousHash, record.entry);
+    const reason = compareLedgerChain(record.chain, expected, offset);
+    if (reason) {
+      throw new Error(`Cannot append to ledger ${plan.ledgerPath}: prepared ledger record ${offset} ${reason.replace(/^line \d+ /, "")}`);
+    }
+    previousHash = expected.entry_hash;
+    index += 1;
+  }
+  return {
+    entryCount: index,
+    headHash: previousHash,
+  };
+}
+
+function assertLedgerAnchorMatches(actual: LedgerAnchor, expected: LedgerAnchor, ledgerPath: string): void {
+  if (actual.version !== expected.version) {
+    throw new Error(`Cannot append to ledger ${ledgerPath}: prepared ledger anchor version mismatch.`);
+  }
+  if (actual.algorithm !== expected.algorithm || actual.canonicalization !== expected.canonicalization) {
+    throw new Error(`Cannot append to ledger ${ledgerPath}: prepared ledger anchor hash parameters mismatch.`);
+  }
+  if (actual.run_id !== expected.run_id) {
+    throw new Error(`Cannot append to ledger ${ledgerPath}: prepared ledger anchor run id mismatch.`);
+  }
+  if (actual.entry_count !== expected.entry_count) {
+    throw new Error(`Cannot append to ledger ${ledgerPath}: prepared ledger anchor entry count mismatch.`);
+  }
+  if (actual.head_hash !== expected.head_hash) {
+    throw new Error(`Cannot append to ledger ${ledgerPath}: prepared ledger anchor head hash mismatch.`);
+  }
 }
 
 async function appendLedgerRecords(ledgerPath: string, records: readonly LedgerRecord[]): Promise<void> {
@@ -748,6 +808,17 @@ export function createLedgerAnchorMetadata(anchor: LedgerAnchor): Readonly<Recor
     runx: {
       ledger: anchor,
     },
+  };
+}
+
+function createLedgerAnchor(runId: string, entryCount: number, headHash: string | null): LedgerAnchor {
+  return {
+    version: ledgerAnchorVersion,
+    run_id: runId,
+    entry_count: entryCount,
+    head_hash: headHash,
+    algorithm: ledgerHashAlgorithm,
+    canonicalization: ledgerCanonicalization,
   };
 }
 

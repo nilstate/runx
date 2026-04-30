@@ -191,6 +191,67 @@ describe("ledger tamper evidence", () => {
     });
   });
 
+  it("rejects tampered prepared append records before writing", async () => {
+    await withReceiptDir("prepared-record", async (receiptDir) => {
+      const runId = "rx_preparedtamper000000000000a";
+      const plan = await prepareLedgerAppend({
+        receiptDir,
+        runId,
+        entries: [artifact(runId, "first")],
+      });
+      const tampered = {
+        ...plan,
+        records: [
+          {
+            ...plan.records[0]!,
+            chain: {
+              ...plan.records[0]!.chain,
+              entry_hash: "0".repeat(64),
+            },
+          },
+        ],
+      } as typeof plan;
+
+      await expect(appendPreparedLedgerEntries(tampered)).rejects.toThrow(
+        "prepared ledger record 0 entry hash mismatch",
+      );
+      await expect(inspectLedger(receiptDir, runId)).resolves.toMatchObject({
+        verification: {
+          status: "missing",
+          entryCount: 0,
+        },
+      });
+    });
+  });
+
+  it("rejects prepared append anchors that do not match their records", async () => {
+    await withReceiptDir("prepared-anchor", async (receiptDir) => {
+      const runId = "rx_preparedanchor000000000000a";
+      const plan = await prepareLedgerAppend({
+        receiptDir,
+        runId,
+        entries: [artifact(runId, "first")],
+      });
+      const tampered = {
+        ...plan,
+        anchor: {
+          ...plan.anchor,
+          head_hash: "0".repeat(64),
+        },
+      } as typeof plan;
+
+      await expect(appendPreparedLedgerEntries(tampered)).rejects.toThrow(
+        "prepared ledger anchor head hash mismatch",
+      );
+      await expect(inspectLedger(receiptDir, runId)).resolves.toMatchObject({
+        verification: {
+          status: "missing",
+          entryCount: 0,
+        },
+      });
+    });
+  });
+
   it("detects modified and reordered chained entries", async () => {
     await withReceiptDir("tamper", async (receiptDir) => {
       const runId = "rx_tamper00000000000000000000a";
