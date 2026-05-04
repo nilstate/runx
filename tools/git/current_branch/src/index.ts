@@ -1,13 +1,13 @@
 import { spawnSync } from "node:child_process";
-import path from "node:path";
 
-import { defineTool, stringInput } from "@runxhq/authoring";
+import { defineTool, resolveRepoRoot, stringInput } from "@runxhq/authoring";
 
 export default defineTool({
   name: "git.current_branch",
   description: "Read the current git branch or detached HEAD reference for a repository root.",
   inputs: {
     repo_root: stringInput({ optional: true, description: "Repository root to inspect. Defaults to RUNX_CWD or the current working directory." }),
+    fixture: stringInput({ optional: true, description: "Optional fixture workspace root used during dev and harness execution." }),
   },
   output: {
     packet: "runx.git.branch.v1",
@@ -15,7 +15,7 @@ export default defineTool({
   },
   scopes: ["git.read"],
   run({ inputs, env }) {
-    const repoRoot = path.resolve(inputs.repo_root || env.RUNX_CWD || process.cwd());
+    const repoRoot = resolveRepoRoot(inputs, env);
     const branch = spawnSync("git", ["-C", repoRoot, "symbolic-ref", "--short", "HEAD"], {
       encoding: "utf8",
       shell: false,

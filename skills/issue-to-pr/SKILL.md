@@ -1,198 +1,111 @@
 ---
 name: issue-to-pr
-description: Govern a scafld-backed issue-to-PR lane with a visible reviewer boundary.
+description: Govern a scafld-backed issue-to-PR lane with native scafld review and handoff surfaces.
 ---
 
 # Issue to PR
 
-Drive a bounded thread-driven change lane through the full scafld lifecycle under
-runx governance, from spec creation through authored fix, explicit review, and
-projection-ready PR surfaces.
+Drive one bounded thread-driven change through the scafld 2.1 lifecycle and
+package the result as a provider-agnostic draft pull-request packet.
 
 The graph separates cognition from mutation. Agent phases author the scafld
-spec, the bounded repo change bundle, and the review contents. Deterministic
-`fs.write` and `fs.write_bundle` phases are the only places files are written
-to disk. The `scafld` skill remains the workflow kernel: it creates the spec,
-binds the branch, reports sync and status, opens the review, completes the
-task, renders the final summary/check/PR-body surfaces, and hands those native
-surfaces to one packaging step that emits a draft pull-request packet plus a
-`pull_request` outbox entry.
+markdown spec and the bounded repo change bundle. Deterministic `fs.write` and
+`fs.write_bundle` phases are the only places files are written to disk. scafld
+owns the workflow kernel: `plan`, `validate`, `approve`, `build`, `status`,
+`review`, `complete`, and `handoff`. runx owns the explicit authoring
+boundaries, deterministic writes, receipts, and final outbox packaging.
 
-The adversarial review is reviewer-mediated. runx opens the review round via
-`scafld review --json`, which returns the native review file path, required
-sections, and adversarial prompt. A reviewer (human, controlling agent, or
-peer agent) fills the three adversarial sections, `regression_hunt`,
-`convention_check`, and `dark_patterns`, then writes the completed review
-markdown back through a deterministic file-write step before `scafld complete`
-validates and archives the spec.
-
-The graph does not control who authors the spec, the fix, or the review. It
-provides the governed handoff boundaries. The caller decides. That is the point
-of the lane: it should feel like the engineering system, not an extra system.
-The branch, spec, review, receipt, and PR surfaces stay visible as first-class
-artifacts instead of being collapsed into a shadow runx-only object model.
+Branch creation and provider PR mutation are outside scafld. The caller or
+adapter prepares the branch, then this lane reads the current branch and uses it
+when packaging the draft PR. The final `thread.push_outbox` step is the only
+provider push boundary.
 
 ## Lifecycle
 
-The graph runs: `scafld new` -> author spec -> write spec -> validate ->
-approve -> start -> `scafld branch` -> author fix bundle -> write fix bundle ->
-exec -> `scafld status` -> audit -> review-open -> reviewer boundary -> write
-review -> complete -> `scafld summary` -> `scafld checks` ->
-`scafld pr-body` -> package draft PR outbox -> adapter `push`. The branch step
-records the origin binding and sync facts that later status/review/projection
-surfaces keep visible; there is no separate runx-owned sync object. The checks
-phase is captured as native JSON even when the projection itself reports
-failure, so the lane can package the real engineering state instead of
-aborting before the PR packet exists. The packaging step does not reconstruct
-workflow state. It packages the native scafld outputs into a provider-agnostic
-PR draft contract, then a single thread push step can push that outbox
-entry upstream and return refreshed thread when the adapter supports
-it. When the adapter is GitHub-backed, the lane forwards the repo workspace
-path into that push step so the boundary can push the branch, open or refresh
-the draft PR, and then rehydrate the issue thread. Each step gets only the
-scopes it needs. See the execution profile (`X.yaml`) for the full step graph.
+The graph runs:
 
-The lane assumes the repo already has an initialized scafld workspace. It does
-not run `scafld init` or `scafld update` inside the bounded change flow,
-because bootstrap or managed-bundle refresh widens scope before the task branch
-is even bound.
+`scafld plan` -> author markdown spec -> write spec -> read spec -> validate ->
+approve -> read approved spec -> read declared files -> author fix bundle ->
+write fix bundle -> build -> status -> read current branch -> review ->
+complete -> final status -> handoff -> package draft PR outbox -> adapter push.
 
-The important contract shape is:
-
-- scafld owns workflow state such as spec paths, branch binding, sync status,
-  review file paths, and projection output.
-- runx owns governance around those state transitions: explicit authoring
-  boundaries, deterministic writes, approvals, and receipts.
-- Agent steps author content, not shadow workflow objects. The lane consumes
-  native scafld fields like `state.file`, `result.transition.to`,
-  `result.review_file`, and projection markdown directly.
-- The lane now ends with a structured `draft_pull_request` packet and
-  `outbox_entry`, not just markdown. That closes the contract gap between
-  scafld-native engineering state and the eventual provider `push` step.
-- runx runtime artifacts such as receipt directories and `RUNX_HOME` should
-  live outside the governed repo, or under ignored paths, so scafld audit and
-  review gates only reason about declared engineering changes.
+There are no compatibility projection steps. `scafld handoff` is the human
+handoff surface, `scafld build` is the validation/check surface, and
+`scafld review` is the native review boundary.
 
 ## Quality Profile
 
 - Purpose: turn one bounded thread-driven change into a visible, reviewable
-  draft PR through native scafld surfaces.
-- Audience: maintainers reviewing the issue, spec, code change, adversarial
-  review, and draft PR.
-- Artifact contract: scafld spec, authored change bundle, review artifact,
-  checks, PR body, draft pull request packet, outbox entry, and receipt trail.
-- Evidence bar: every spec objective, file impact, acceptance check, and PR
+  draft PR through native scafld 2.1 surfaces.
+- Audience: maintainers reviewing the issue, spec, code change, native review,
+  handoff, and draft PR.
+- Artifact contract: markdown scafld spec, authored change bundle, build
+  result, review result, completed status, handoff markdown, draft PR packet,
+  outbox entry, and receipt trail.
+- Evidence bar: every spec objective, file impact, validation command, and PR
   claim must trace to the thread, repo snapshot, scafld state, or actual
   working-tree change.
-- Voice bar: engineering-system prose. No generic fix summaries, no hidden
-  workflow objects, and no PR body that overstates what changed.
-- Strategic bar: use this lane only when the change is bounded enough for one
-  governed PR; otherwise return planning or review handoff.
-- Stop conditions: return `needs_resolution` or stop at review when scope,
-  validation, reviewer evidence, or push authorization is missing.
+- Stop conditions: return `needs_resolution` when authoring evidence is
+  missing; return a blocked fix bundle when declared file context is
+  insufficient.
 
-## Structured Output
+## Spec Authoring Contract
 
-On success, the lane now emits two coupled PR outputs and, when supported, a
-provider push result:
+The `issue-to-pr-author-spec` boundary must emit a full scafld 2.0 markdown
+document, not YAML and not a reduced project brief.
 
-- `draft_pull_request`: provider-agnostic PR draft state derived from native
-  scafld `summary`, `checks`, `pr-body`, branch binding, and completion data.
-- `outbox_entry`: a `pull_request` outbox entry suitable for later adapter
-  `push`.
-- `push`: adapter push status plus refreshed `thread` when the current
-  thread adapter supports push.
+The document must preserve front matter with:
 
-If the caller already provides `outbox_entry`, or if `thread` already
-contains a `pull_request` entry, the lane refreshes that entry instead of
-minting a parallel one. When `thread.adapter` is backed by a push-capable
-runtime adapter, the lane then pushes that refreshed outbox entry upstream and
-returns the rehydrated provider state directly.
+- `spec_version: '2.0'`
+- `task_id`
+- `created`
+- `updated`
+- `status`
+- `harden_status`
+- `size`
+- `risk_level`
 
-Post-handoff signal capture is deliberately outside this lane. `issue-to-pr`
-owns packaging, visible approval boundaries, and adapter push. Once the
-handoff has crossed that boundary, generic `handoff_signal`,
-`handoff_state`, and `suppression_record` contracts own response reduction and
-send/suppression gating. Sourcey docs PRs, future skill-upstream lanes, and
-outreach flows should consume those generic handoff helpers instead of adding
-product-specific signal state to this skill.
+The body must include the standard scafld 2 sections: Current State, Summary,
+Context, Objectives, Scope, Dependencies, Assumptions, Touchpoints, Risks,
+Acceptance, at least one Phase section, Rollback, Review, Self Eval,
+Deviations, Metadata, Origin, Harden Rounds, and Planning Log.
 
-## Spec authoring contract
+All changed-file declarations must use concrete repo-relative paths in
+backticks under Context / Files impacted and Phase / Changes. Do not declare
+scafld-managed control-plane artifacts under `.scafld/specs`,
+`.scafld/reviews`, `.scafld/runs`, or old `.ai` governance paths as repo-change
+scope.
 
-The `issue-to-pr-author-spec` boundary must emit a full scafld `spec_version:
-"1.1"` YAML document, not a reduced project brief.
-
-That means the authored spec must include:
-
-- `spec_version`, `task_id`, `created`, `updated`, `status`
-- `task.title`, `task.summary`, `task.size`, `task.risk_level`
-- `task.context` with grounded file impact and relevant invariants
-- `task.objectives`
-- `task.touchpoints`
-- `task.acceptance.definition_of_done`
-- `task.acceptance.validation`
-- `planning_log`
-- at least one `phases[]` entry with `objective`, `changes[]`,
-  `acceptance_criteria[]`, and `status`
-- `rollback.strategy` and `rollback.commands`
-
-All changed-file declarations must use concrete repo-relative paths. The spec
-must never use prose placeholders like "the relevant docs file" inside
-`files_impacted`, `changes[].file`, or rollback commands.
-
-Do not declare scafld-managed control-plane artifacts under `.ai/specs/`,
-`.ai/reviews/`, or `.ai/logs/` as repo-change scope. The lane creates and
-updates those lifecycle files, but scafld excludes them from scope auditing, so
-declaring them in `phases[].changes[].file` produces false `missing` results.
-
-The safest reference shape is the one already used by the passing
-`tests/issue-to-pr-graph.test.ts` fixture: `task.summary`, `task.size`,
-`task.risk_level`, `task.acceptance.validation`, and phase-level
-`acceptance_criteria` should be present explicitly, while the declared change
-set stays limited to the real repo files under test.
-
-Acceptance criteria must be executable in the current workspace state produced
-by the lane before any commit exists. Do not depend on git history or revision
-ranges such as `HEAD~1`, merge-base comparisons, or prior commits being
-available. Prefer checks against the working tree or directly against the
-declared changed files.
-
-For file-scope assertions, prefer exact path filters or current-tree checks
-such as `git diff --name-only -- <path>` or `git status --short -- <path>`
-over history-dependent diffs. For content assertions, target the changed file
-directly and anchor on the exact expected text so the check cannot accidentally
-match work titles, spec prose, or other unrelated strings elsewhere in the
-repo.
+Validation commands must run against the current workspace state after the fix
+bundle is written. Do not depend on git history ranges such as `HEAD~1` or
+merge-base comparisons.
 
 ## Inputs
 
-- `task_id`: scafld task id (default: `issue-to-pr-fixture`).
-- `thread_title`: canonical thread title passed into the lane.
+- `task_id`: scafld task id.
+- `thread_title`: canonical title and default spec title.
 - `thread_body`: full thread body or request text when available.
-- `thread_locator` (optional): canonical locator for the bounded thread.
-- `thread` (optional): portable thread for the current work
-  thread. To close the provider loop in one run, provide a push-capable
-  adapter descriptor such as `adapter.type: file` plus `adapter.adapter_ref`,
-  or `adapter.type: github` plus a GitHub issue adapter ref like
-  `owner/repo#issue/123`.
-- `outbox_entry` (optional): current outbox entry when the lane is refreshing
-  a draft change, thread, or other adapter-owned target.
-- `target_repo`: intended repo slug for repo-local dispatchers.
-- `repo_snapshot`: bounded structured snapshot of the target repo, when the
-  supervisor or worker can inspect the real workspace before yielding the
-  authoring boundary.
-- `repo_snapshot_path`: optional path to a fuller repo snapshot artifact when
-  the inline snapshot was intentionally compacted for prompt size.
-- `repo_context`: optional textual summary of the target repo shape, notable
-  files, and likely validation hooks.
-- `size`: `micro`, `small`, `medium`, or `large` (default: `micro`).
-- `risk`: `low`, `medium`, or `high` (default: `low`).
-- `phase`: optional scafld execution phase.
-- `name`: optional branch name forwarded to `scafld branch`.
-- `base`: optional base ref forwarded to `scafld branch` and `scafld audit`.
-- `bind_current`: when true, bind the current branch instead of creating or
-  switching.
-- `fixture`: workspace root containing `.ai/`. When the thread adapter
-  pushes a real GitHub PR, this must point at the repo checkout whose branch
-  should be published.
+- `thread_locator`: canonical locator for the bounded thread.
+- `thread`: portable thread for the current work item.
+- `outbox_entry`: existing pull-request outbox entry when refreshing a draft.
+- `target_repo`: intended repository slug for PR packaging.
+- `repo_snapshot`: compact structured snapshot of the target repo.
+- `repo_snapshot_path`: optional path to a fuller repo snapshot artifact.
+- `repo_context`: textual summary of repo shape and validation hooks.
+- `size`: scafld size, default `micro`.
+- `risk`: scafld risk, default `low`.
+- `base`: base ref for PR packaging, default `main`.
+- `fixture`: workspace root containing `.scafld`.
 - `scafld_bin`: explicit scafld executable path.
+- `provider`, `provider_command`, `provider_binary`, `model`: optional native
+  scafld review provider overrides.
+
+## Structured Output
+
+On success, the lane emits:
+
+- `draft_pull_request`: provider-agnostic PR draft state derived from scafld
+  handoff, build, review, completion, status, and current git branch.
+- `outbox_entry`: a `pull_request` outbox entry suitable for adapter push.
+- `push`: adapter push result plus refreshed `thread` when the adapter supports
+  push.

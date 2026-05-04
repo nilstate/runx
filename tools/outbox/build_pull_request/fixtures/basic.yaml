@@ -8,38 +8,25 @@ inputs:
   thread_title: Improve docs
   thread_locator: issue://fixture/123
   target_repo: acme/widgets
-  summary_projection:
-    markdown: |
-      Summary of the completed fixture work.
-    model:
-      title: Improve docs
-      origin:
-        git:
-          branch: docs/fixture
-          base_ref: main
-        repo:
-          remote: origin
-          remote_url: https://github.com/acme/widgets.git
-        source:
-          system: github
-          kind: issue
-          id: "123"
-  checks_projection:
-    check:
-      status: success
-  pr_body_projection:
-    markdown: |
-      ## Summary
-      Fixture PR body.
-    model:
-      origin: {}
+  handoff_markdown: |
+    # Handoff: Improve docs
+
+    Status: completed
+    Next: none
+  build_result:
+    Status: review
+    Passed: 1
+    Failed: 0
+  review_result:
+    Verdict: pass
   completion_result:
-    archive_path: .ai/specs/task-fixture.yml
-    blocking_count: 0
-    non_blocking_count: 0
-  completion_state:
-    status: completed
-    review_verdict: pass
+    Status: completed
+    Title: Improve docs
+    Review:
+      Verdict: pass
+  current_branch:
+    branch: docs/fixture
+  base: main
 expect:
   status: success
   outputs:

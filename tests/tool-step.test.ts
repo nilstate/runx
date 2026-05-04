@@ -373,31 +373,30 @@ steps:
   it("reads spec-declared file contents before bounded fix authoring", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-read-declared-files-"));
     const receiptDir = path.join(tempDir, "receipts");
-    const specPath = path.join(tempDir, ".ai", "specs", "active", "task.yaml");
+    const specPath = path.join(tempDir, ".scafld", "specs", "drafts", "task.md");
     await mkdir(path.dirname(specPath), { recursive: true });
     await mkdir(path.join(tempDir, "docs"), { recursive: true });
     await writeFile(path.join(tempDir, "docs", "flows.md"), "live flow\n");
     await writeFile(
       specPath,
-      `spec_version: "1.1"
-task_id: "task"
-task:
-  title: "Fixture"
-  summary: "Read declared files"
-  size: "micro"
-  risk_level: "low"
-  context:
-    files_impacted:
-      - "docs/flows.md"
-phases:
-  - id: "phase1"
-    name: "Fixture"
-    objective: "Read the declared file set"
-    changes:
-      - file: ".ai/specs/in_progress/task.yaml"
-        action: "update"
-      - file: "docs/flows.md"
-        action: "update"
+      `---
+spec_version: '2.0'
+task_id: task
+status: draft
+---
+
+# Fixture
+
+## Context
+
+Files impacted:
+- \`docs/flows.md\`
+
+## Phase 1: Fixture
+
+Changes:
+- \`.scafld/specs/drafts/task.md\` (all, exclusive) - Governance file should be classified.
+- \`docs/flows.md\` (all, exclusive) - Read the declared file set.
 `,
     );
 
@@ -408,7 +407,7 @@ steps:
   - id: read_spec
     tool: fs.read
     inputs:
-      path: .ai/specs/active/task.yaml
+      path: .scafld/specs/drafts/task.md
       repo_root: ${JSON.stringify(tempDir)}
   - id: load_declared
     tool: spec.read_declared_files
@@ -459,17 +458,17 @@ steps:
       });
       expect(declaredContext.files).toEqual([
         {
-          path: ".ai/specs/in_progress/task.yaml",
-          exists: false,
+          path: ".scafld/specs/drafts/task.md",
+          exists: true,
           kind: "governance_artifact",
-          declared_in: ["phases[].changes[].file"],
-          contents: null,
+          declared_in: ["phase.changes"],
+          contents: expect.stringContaining("spec_version: '2.0'"),
         },
         {
           path: "docs/flows.md",
           exists: true,
           kind: "repo_file",
-          declared_in: ["phases[].changes[].file", "task.context.files_impacted"],
+          declared_in: ["context.files_impacted", "phase.changes"],
           contents: "live flow\n",
         },
       ]);

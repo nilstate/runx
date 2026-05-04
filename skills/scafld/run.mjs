@@ -15,25 +15,21 @@ const taskId = String(inputs.task_id || "");
 const command = String(inputs.command || "");
 const jsonCommands = new Set([
   "init",
-  "new",
+  "plan",
+  "harden",
   "approve",
-  "start",
   "status",
   "validate",
   "exec",
-  "audit",
   "review",
   "complete",
   "fail",
   "cancel",
+  "list",
   "report",
-  "branch",
-  "sync",
-  "summary",
-  "checks",
-  "pr-body",
+  "build",
 ]);
-const commandsWithoutTaskId = new Set(["init", "report"]);
+const commandsWithoutTaskId = new Set(["init", "list", "report"]);
 
 if (!command) {
   throw new Error("command is required.");
@@ -45,66 +41,70 @@ if (!commandsWithoutTaskId.has(command) && !taskId) {
 const args = [];
 switch (command) {
   case "init":
+  case "list":
   case "report":
     args.push(command);
     break;
-  case "new":
-    args.push("new", taskId);
+  case "plan":
+    args.push("plan", taskId);
+    if (inputs.title) {
+      args.push("--title", String(inputs.title));
+    }
+    if (inputs.summary) {
+      args.push("--summary", String(inputs.summary));
+    } else if (inputs.thread_body) {
+      args.push("--summary", String(inputs.thread_body));
+    }
     if (inputs.thread_title) {
-      args.push("-t", String(inputs.thread_title));
+      args.push("--title", String(inputs.thread_title));
     }
     if (inputs.size) {
-      args.push("-s", String(inputs.size));
+      args.push("--size", String(inputs.size));
     }
     if (inputs.risk) {
-      args.push("-r", String(inputs.risk));
+      args.push("--risk", String(inputs.risk));
+    }
+    if (inputs.acceptance_command) {
+      args.push("--command", String(inputs.acceptance_command));
+    }
+    break;
+  case "harden":
+    args.push("harden", taskId);
+    if (truthy(inputs.mark_passed ?? inputs.markPassed)) {
+      args.push("--mark-passed");
     }
     break;
   case "approve":
-  case "start":
   case "status":
-  case "review":
   case "validate":
-  case "sync":
-  case "summary":
-  case "checks":
-  case "pr-body":
   case "fail":
   case "cancel":
+  case "build":
     args.push(command, taskId);
+    break;
+  case "review":
+    args.push("review", taskId);
+    if (inputs.provider) {
+      args.push("--provider", String(inputs.provider));
+    }
+    if (inputs.provider_command) {
+      args.push("--provider-command", String(inputs.provider_command));
+    }
+    if (inputs.provider_binary) {
+      args.push("--provider-binary", String(inputs.provider_binary));
+    }
+    if (inputs.model) {
+      args.push("--model", String(inputs.model));
+    }
     break;
   case "complete":
     args.push("complete", taskId);
-    if (truthy(inputs.human_reviewed ?? inputs.humanReviewed)) {
-      args.push("--human-reviewed");
-    }
-    if (inputs.reason) {
-      args.push("--reason", String(inputs.reason));
-    }
-    break;
-  case "audit":
-    args.push("audit", taskId);
-    if (inputs.base) {
-      args.push("--base", String(inputs.base));
-    }
     break;
   case "exec":
     args.push("exec", taskId);
-    if (inputs.phase) {
-      args.push("--phase", String(inputs.phase));
-    }
     break;
-  case "branch":
-    args.push("branch", taskId);
-    if (inputs.name) {
-      args.push("--name", String(inputs.name));
-    }
-    if (inputs.base) {
-      args.push("--base", String(inputs.base));
-    }
-    if (truthy(inputs.bind_current ?? inputs.bindCurrent)) {
-      args.push("--bind-current");
-    }
+  case "handoff":
+    args.push("handoff", taskId);
     break;
   default:
     throw new Error(`Unsupported scafld command: ${command}`);

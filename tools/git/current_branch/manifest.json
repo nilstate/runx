@@ -14,6 +14,11 @@
       "type": "string",
       "required": false,
       "description": "Repository root to inspect. Defaults to RUNX_CWD or the current working directory."
+    },
+    "fixture": {
+      "type": "string",
+      "required": false,
+      "description": "Optional fixture workspace root used during dev and harness execution."
     }
   },
   "output": {
@@ -34,7 +39,7 @@
       "./run.mjs"
     ]
   },
-  "source_hash": "sha256:597965b845b2efeacc2ae2695cf1d24e5afa0281240af6ca37a6021298823896",
-  "schema_hash": "sha256:d2e6728b47f6270607ae6baaffca20e8ae7947043dfdc8158d70363dc1b75df4",
+  "source_hash": "sha256:15b78b453c0bce16808c5c99a37ee0b46f6c4687dc77f6a4368cf25a5f27f453",
+  "schema_hash": "sha256:a54e760f5567542e6570f6cce6ef36db11af6151d29516673f841e1cbad21eb5",
   "toolkit_version": "0.1.3"
 }

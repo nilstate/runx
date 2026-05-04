@@ -9,9 +9,9 @@ import {
 
 export default defineTool({
   name: "spec.read_declared_files",
-  description: "Read the current contents of files declared in a scafld spec before bounded fix authoring.",
+  description: "Read the current contents of files declared in a scafld 2 markdown spec before bounded fix authoring.",
   inputs: {
-    spec_contents: stringInput({ description: "Raw scafld spec contents to inspect for declared file paths." }),
+    spec_contents: stringInput({ description: "Raw scafld 2 markdown spec contents to inspect for declared file paths." }),
     repo_root: stringInput({ optional: true, description: "Repository root used to resolve declared file paths." }),
     fixture: stringInput({ optional: true, description: "Optional fixture workspace root used during dev and harness execution." }),
   },
@@ -39,34 +39,58 @@ function runReadDeclaredFiles({ inputs, env }) {
   }
 
   const lines = specContents.split(/\r?\n/);
-  let filesImpactedIndent = null;
+  let section = "";
+  let inFilesImpacted = false;
+  let inPhaseChanges = false;
+
   for (const line of lines) {
     const trimmed = line.trim();
-    if (filesImpactedIndent !== null) {
-      if (trimmed.length === 0) {
-        continue;
-      }
-      const currentIndent = indentation(line);
-      if (currentIndent <= filesImpactedIndent) {
-        filesImpactedIndent = null;
-      } else {
-        const listMatch = line.match(/^\s*-\s*(.+?)\s*$/);
-        if (listMatch) {
-          rememberPath(listMatch[1], "task.context.files_impacted");
-        }
-        continue;
-      }
-    }
 
-    const filesImpactedMatch = line.match(/^(\s*)files_impacted:\s*$/);
-    if (filesImpactedMatch) {
-      filesImpactedIndent = filesImpactedMatch[1].length;
+    const sectionMatch = line.match(/^##\s+(.+?)\s*$/);
+    if (sectionMatch) {
+      section = sectionMatch[1].trim();
+      inFilesImpacted = false;
+      inPhaseChanges = false;
       continue;
     }
 
-    const phaseChangeMatch = line.match(/^\s*-\s*file:\s*(.+?)\s*$/);
-    if (phaseChangeMatch) {
-      rememberPath(phaseChangeMatch[1], "phases[].changes[].file");
+    if (section === "Context" && /^Files impacted:\s*$/i.test(trimmed)) {
+      inFilesImpacted = true;
+      continue;
+    }
+
+    if (/^Phase\s+\d+:/i.test(section) && /^Changes:\s*$/i.test(trimmed)) {
+      inPhaseChanges = true;
+      continue;
+    }
+
+    if (inFilesImpacted) {
+      if (trimmed.length === 0) {
+        continue;
+      }
+      if (isContextLabel(trimmed)) {
+        inFilesImpacted = false;
+        continue;
+      }
+      const listPath = markdownListPath(line);
+      if (listPath) {
+        rememberPath(listPath, "context.files_impacted");
+      }
+      continue;
+    }
+
+    if (inPhaseChanges) {
+      if (trimmed.length === 0) {
+        continue;
+      }
+      if (/^[A-Z][A-Za-z ]+:\s*$/.test(trimmed)) {
+        inPhaseChanges = false;
+        continue;
+      }
+      const listPath = markdownListPath(line);
+      if (listPath) {
+        rememberPath(listPath, "phase.changes");
+      }
     }
   }
 
@@ -79,8 +103,7 @@ function runReadDeclaredFiles({ inputs, env }) {
         path: relativePath,
         exists,
         kind:
-          relativePath.startsWith(".ai/specs/") ||
-          relativePath.startsWith(".ai/reviews/")
+          relativePath.startsWith(".scafld/")
             ? "governance_artifact"
             : "repo_file",
         declared_in: [...declaredIn].sort(),
@@ -106,7 +129,25 @@ function stripQuotes(value) {
   return trimmed;
 }
 
-function indentation(line) {
-  const match = String(line).match(/^(\s*)/);
-  return match ? match[1].length : 0;
+function markdownListPath(line) {
+  const listMatch = line.match(/^\s*-\s*(.+?)\s*$/);
+  if (!listMatch) {
+    return undefined;
+  }
+  const value = listMatch[1].trim();
+  if (/^none\.?$/i.test(value)) {
+    return undefined;
+  }
+  const backtickMatch = value.match(/`([^`]+)`/);
+  if (backtickMatch) {
+    return backtickMatch[1].trim();
+  }
+  return value
+    .replace(/\s+\([^)]+\).*$/u, "")
+    .replace(/\s+-\s+.*$/u, "")
+    .trim();
+}
+
+function isContextLabel(value) {
+  return /^(CWD|Packages|Files impacted|Invariants|Related docs):\s*/i.test(value);
 }

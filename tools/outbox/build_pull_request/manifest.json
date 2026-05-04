@@ -40,35 +40,40 @@
       "required": false,
       "description": "Intended repository slug when the caller already knows it."
     },
-    "summary_projection": {
-      "type": "json",
+    "handoff_markdown": {
+      "type": "string",
       "required": true,
-      "description": "Native scafld summary result payload from `scafld summary --json`."
+      "description": "Native markdown emitted by `scafld handoff`."
     },
-    "checks_projection": {
+    "build_result": {
       "type": "json",
       "required": true,
-      "description": "Native scafld checks result payload from `scafld checks --json`."
+      "description": "Native scafld build result payload."
     },
-    "pr_body_projection": {
+    "review_result": {
       "type": "json",
       "required": true,
-      "description": "Native scafld pr-body result payload from `scafld pr-body --json`."
+      "description": "Native scafld review result payload."
     },
     "completion_result": {
       "type": "json",
       "required": true,
       "description": "Native scafld complete result payload."
     },
-    "completion_state": {
-      "type": "json",
-      "required": false,
-      "description": "Native scafld complete state payload."
-    },
     "status_snapshot": {
       "type": "json",
       "required": false,
-      "description": "Native scafld status result payload for sync and origin facts."
+      "description": "Native scafld status result payload."
+    },
+    "current_branch": {
+      "type": "json",
+      "required": false,
+      "description": "Current git branch packet from git.current_branch."
+    },
+    "base": {
+      "type": "string",
+      "required": false,
+      "description": "Base ref for the draft pull request."
     }
   },
   "output": {
@@ -102,7 +107,7 @@
       "./run.mjs"
     ]
   },
-  "source_hash": "sha256:a5a5a360a509af8e7f5afa4a702dff6de2e15a0a0a2f25fa7d61e3051aa13099",
-  "schema_hash": "sha256:6898a9225f0d7c3287134a7ddc9e12faa89d6406995d979a4ffb2c7f6e0b302b",
+  "source_hash": "sha256:18c9e25158e824d269368f22c9aafeff604667841057cc38ca0308a0758c8989",
+  "schema_hash": "sha256:95627cd42b0d2a02ff911eed72031ed40f1aece79043ac81518c3d41ddda2085",
   "toolkit_version": "0.1.3"
 }

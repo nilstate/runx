@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -8,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { runCli } from "../packages/cli/src/index.js";
 
-const scafldBin = process.env.SCAFLD_BIN ?? "/home/kam/dev/scafld/cli/scafld";
+const scafldBin = process.env.SCAFLD_BIN ?? "scafld";
 
 describe("recognizable work lanes", () => {
   it("runs request-triage through the local CLI with a bounded next-lane packet", async () => {
@@ -75,7 +74,8 @@ describe("recognizable work lanes", () => {
 
       const exitCode = await runCli(
         [
-          "request-triage",
+          "skill",
+          "skills/request-triage",
           "--thread-title",
           "README should point users to issue-to-pr",
           "--thread-body",
@@ -115,7 +115,7 @@ describe("recognizable work lanes", () => {
     }
   });
 
-  it.skipIf(!existsSync(scafldBin))("runs issue-to-pr through the local CLI and pauses at the explicit reviewer boundary", async () => {
+  it.skipIf(!hasScafld())("runs issue-to-pr through the local CLI and packages a draft pull request", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-cli-"));
     const runtimeDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-cli-runtime-"));
     const answersPath = path.join(runtimeDir, "answers.json");
@@ -178,10 +178,8 @@ describe("recognizable work lanes", () => {
           "micro",
           "--risk",
           "low",
-          "--phase",
-          "phase1",
-          "--draft-spec-path",
-          `.ai/specs/drafts/${taskId}.yaml`,
+          "--provider",
+          "local",
           "--scafld-bin",
           scafldBin,
           "--answers",
@@ -195,22 +193,30 @@ describe("recognizable work lanes", () => {
         { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: runxHome },
       );
 
-      expect(exitCode).toBe(2);
+      expect(exitCode).toBe(0);
       expect(stderr.contents()).toBe("");
       expect(JSON.parse(stdout.contents())).toMatchObject({
-        status: "needs_resolution",
-        skill: "issue-to-pr",
-        requests: [{ id: "agent_step.issue-to-pr-review.output" }],
+        status: "success",
+        skill: {
+          name: "issue-to-pr",
+        },
+        execution: {
+          stdout: expect.stringContaining("\"draft_pull_request\""),
+        },
       });
       await expect(readFile(path.join(tempDir, "app.txt"), "utf8")).resolves.toBe("fixed\n");
       await expect(readFile(path.join(tempDir, "notes.md"), "utf8")).resolves.toBe("governed\n");
-      await expect(readFile(path.join(tempDir, ".ai", "reviews", `${taskId}.md`), "utf8")).resolves.toContain("### Metadata");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
       await rm(runtimeDir, { recursive: true, force: true });
     }
   }, 90_000);
 });
+
+function hasScafld(): boolean {
+  const result = spawnSync(scafldBin, ["--version"], { encoding: "utf8" });
+  return result.status === 0;
+}
 
 function createMemoryStream(): NodeJS.WriteStream & { contents: () => string } {
   let contents = "";
@@ -243,82 +249,200 @@ function runChecked(command: string, args: readonly string[], cwd: string): void
 }
 
 function buildIssueToPrSpec(taskId: string): string {
-  return `spec_version: "1.1"
-task_id: "${taskId}"
-created: "2026-04-10T00:00:00Z"
-updated: "2026-04-10T00:00:00Z"
-status: "draft"
+  return `---
+spec_version: '2.0'
+task_id: ${taskId}
+created: '2026-05-04T00:00:00Z'
+updated: '2026-05-04T00:00:00Z'
+status: draft
+harden_status: not_run
+size: micro
+risk_level: low
+---
 
-task:
-  title: "Fixture issue to PR"
-  summary: "Apply one bounded fixture fix and archive the completed review."
-  size: "micro"
-  risk_level: "low"
-  context:
-    packages:
-      - "fixture"
-    invariants:
-      - "bounded_scope"
-  objectives:
-    - "Replace the fixture app contents with the fixed output."
-    - "Update the companion notes file so the bounded fixture change stays consistent."
-  touchpoints:
-    - area: "fixture"
-      description: "Update the tracked fixture files and keep the scafld spec declared."
-  acceptance:
-    definition_of_done:
-      - id: "dod1"
-        description: "app.txt contains the fixed output"
-        status: "pending"
-      - id: "dod2"
-        description: "notes.md contains the governed output"
-        status: "pending"
-    validation:
-      - id: "v1"
-        type: "test"
-        description: "app.txt contains the fixed output"
-        command: "grep -q '^fixed$' app.txt"
-        expected: "exit code 0"
-      - id: "v2"
-        type: "test"
-        description: "notes.md contains the governed output"
-        command: "grep -q '^governed$' notes.md"
-        expected: "exit code 0"
+# Fixture thread-driven change
 
-planning_log:
-  - timestamp: "2026-04-10T00:00:00Z"
-    actor: "test"
-    summary: "Fixture spec authored by the issue-to-pr lane"
+## Current State
 
-phases:
-  - id: "phase1"
-    name: "Apply fixture fix"
-    objective: "Write the bounded file change and validate it"
-    changes:
-      - file: "app.txt"
-        action: "update"
-        content_spec: |
-          Replace the fixture contents with the fixed output.
-      - file: "notes.md"
-        action: "update"
-        content_spec: |
-          Keep the companion notes file aligned with the bounded fixture fix.
-    acceptance_criteria:
-      - id: "ac1_1"
-        type: "test"
-        description: "app.txt contains the fixed output"
-        command: "grep -q '^fixed$' app.txt"
-        expected: "exit code 0"
-      - id: "ac1_2"
-        type: "test"
-        description: "notes.md contains the governed output"
-        command: "grep -q '^governed$' notes.md"
-        expected: "exit code 0"
-    status: "pending"
+Status: draft
+Current phase: none
+Next: none
+Reason: none
+Blockers: none
+Allowed follow-up command: none
+Latest runner update: none
+Review gate: not_started
 
-rollback:
-  strategy: "per_phase"
-  commands:
-    phase1: "git checkout HEAD -- app.txt notes.md"
+## Summary
+
+Apply one bounded fixture fix and complete native review.
+
+## Context
+
+CWD: \`. \`
+
+Packages:
+- fixture
+
+Files impacted:
+- \`app.txt\`
+- \`notes.md\`
+
+Invariants:
+- bounded_scope
+
+Related docs:
+- none
+
+## Objectives
+
+- Replace the fixture app contents with the fixed output.
+- Update the companion notes file so the bounded fixture change stays consistent.
+
+## Scope
+
+- \`app.txt\`
+- \`notes.md\`
+
+## Dependencies
+
+- None.
+
+## Assumptions
+
+- None.
+
+## Touchpoints
+
+- Fixture text files.
+
+## Risks
+
+- None.
+
+## Acceptance
+
+Profile: standard
+
+Definition of done:
+- [ ] \`dod1\` app.txt contains the fixed output.
+- [ ] \`dod2\` notes.md contains the governed output.
+
+Validation:
+- [ ] \`v1\` test - app.txt contains the fixed output.
+  - Command: \`grep -q '^fixed$' app.txt\`
+  - Expected kind: \`exit_code_zero\`
+  - Timeout seconds: none
+  - Result: none
+  - Status: pending
+  - Evidence: none
+  - Source event: none
+  - Last attempt: none
+  - Checked at: none
+- [ ] \`v2\` test - notes.md contains the governed output.
+  - Command: \`grep -q '^governed$' notes.md\`
+  - Expected kind: \`exit_code_zero\`
+  - Timeout seconds: none
+  - Result: none
+  - Status: pending
+  - Evidence: none
+  - Source event: none
+  - Last attempt: none
+  - Checked at: none
+
+## Phase 1: Apply fixture fix
+
+Goal: Write the bounded file change and validate it.
+
+Status: pending
+Dependencies: none
+
+Changes:
+- \`app.txt\` (all, exclusive) - Replace the fixture contents with the fixed output.
+- \`notes.md\` (all, exclusive) - Keep the companion notes file aligned with the bounded fixture fix.
+
+Acceptance:
+- [ ] \`ac1_1\` test - app.txt contains the fixed output.
+  - Command: \`grep -q '^fixed$' app.txt\`
+  - Expected kind: \`exit_code_zero\`
+  - Timeout seconds: none
+  - Result: none
+  - Status: pending
+  - Evidence: none
+  - Source event: none
+  - Last attempt: none
+  - Checked at: none
+- [ ] \`ac1_2\` test - notes.md contains the governed output.
+  - Command: \`grep -q '^governed$' notes.md\`
+  - Expected kind: \`exit_code_zero\`
+  - Timeout seconds: none
+  - Result: none
+  - Status: pending
+  - Evidence: none
+  - Source event: none
+  - Last attempt: none
+  - Checked at: none
+
+## Rollback
+
+Strategy: per_phase
+
+Commands:
+- \`git checkout HEAD -- app.txt notes.md\`
+
+## Review
+
+Status: not_started
+Verdict: none
+
+Findings:
+- none
+
+Passes:
+- none
+
+## Self Eval
+
+Status: not_started
+
+Notes:
+none
+
+Improvements:
+- none
+
+## Deviations
+
+- none
+
+## Metadata
+
+Tags:
+- fixture
+
+## Origin
+
+Source:
+- runx-test
+
+Repo:
+- none
+
+Git:
+- none
+
+Sync:
+- none
+
+Supersession:
+- none
+
+## Harden Rounds
+
+- none
+
+## Planning Log
+
+- none
 `;
 }

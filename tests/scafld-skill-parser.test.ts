@@ -25,23 +25,26 @@ describe("scafld skill contract", () => {
     expect(wrapper).toContain("const result = spawnSync(scafld, args");
     expect(wrapper).toContain('args.push("--json")');
     expect(wrapper).toContain("const command = String(inputs.command || \"\");");
-    expect(wrapper).toContain('"summary"');
-    expect(wrapper).toContain('"checks"');
-    expect(wrapper).toContain('"pr-body"');
+    expect(wrapper).toContain('"plan"');
+    expect(wrapper).toContain('"harden"');
+    expect(wrapper).toContain('"build"');
+    expect(wrapper).toContain('"handoff"');
+    expect(wrapper).not.toContain('"new"');
+    expect(wrapper).not.toContain('"branch"');
+    expect(wrapper).not.toContain('"checks"');
+    expect(wrapper).not.toContain('"pr-body"');
     expect(wrapper).not.toContain("normalizeStructuredOutput");
     expect(wrapper).not.toContain("buildStatusReport");
     expect(wrapper).not.toContain("buildReviewReport");
     expect(wrapper).not.toContain("buildCompleteReport");
     expect(wrapper).not.toContain("env: process.env");
     expect(runner?.source.timeoutSeconds).toBe(300);
-    expect(agentRunner?.source.type).toBe("agent");
-    expect(agentRunner?.inputs.review_file.required).toBe(true);
-    expect(agentRunner?.inputs.review_prompt.required).toBe(true);
+    expect(agentRunner).toBeUndefined();
     expect(runner?.inputs.command.required).toBe(true);
     expect(runner?.inputs.task_id.required).toBe(false);
-    expect(runner?.inputs.base.required).toBe(false);
-    expect(runner?.inputs.name.required).toBe(false);
-    expect(runner?.inputs.bind_current.required).toBe(false);
+    expect(runner?.inputs.acceptance_command.required).toBe(false);
+    expect(runner?.inputs.provider.required).toBe(false);
+    expect(runner?.inputs.mark_passed.required).toBe(false);
     expect(runner?.runtime).toEqual({
       requirements: [
         "scafld CLI with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input",

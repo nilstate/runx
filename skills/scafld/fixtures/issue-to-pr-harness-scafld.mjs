@@ -1,54 +1,32 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const argv = process.argv.slice(2);
 const command = argv[0] || "";
 const taskId = argv[1] || "";
 const cwd = process.cwd();
-
-const draftSpecPath = path.join(cwd, ".ai", "specs", "drafts", `${taskId}.yaml`);
-const activeSpecPath = path.join(cwd, ".ai", "specs", "active", `${taskId}.yaml`);
-const reviewPath = path.join(cwd, ".ai", "reviews", `${taskId}.md`);
+const specPath = path.join(cwd, ".scafld", "specs", "drafts", `${taskId}.md`);
 
 switch (command) {
   case "init":
-    mkdirSync(path.join(cwd, ".ai", "specs", "drafts"), { recursive: true });
-    mkdirSync(path.join(cwd, ".ai", "specs", "active"), { recursive: true });
-    mkdirSync(path.join(cwd, ".ai", "reviews"), { recursive: true });
-    emit({
-      ok: true,
-      command,
-      warnings: [],
-      state: { status: "ready" },
-      result: { initialized: true },
-      error: null,
-    });
+    mkdirSync(path.join(cwd, ".scafld", "specs", "drafts"), { recursive: true });
+    emit({ ok: true, command, result: { Root: cwd, Created: [] } });
     break;
-  case "new":
-    ensure(taskId, "task_id is required for new");
-    mkdirSync(path.dirname(draftSpecPath), { recursive: true });
-    if (!existsSync(draftSpecPath)) {
-      writeFileSync(
-        draftSpecPath,
-        [
-          'spec_version: "1.1"',
-          `task_id: "${taskId}"`,
-          'status: "draft"',
-          'task:',
-          '  title: "Harness draft"',
-          '  summary: "Harness draft emitted by the issue-to-pr fake native scafld"',
-        ].join("\n"),
-      );
+  case "plan":
+    ensure(taskId, "task_id is required for plan");
+    mkdirSync(path.dirname(specPath), { recursive: true });
+    if (!existsSync(specPath)) {
+      writeFileSync(specPath, renderSpec({ status: "draft" }));
     }
     emit({
       ok: true,
       command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "draft", file: relativeToCwd(draftSpecPath) },
-      result: { valid: true, file: relativeToCwd(draftSpecPath), errors: [] },
-      error: null,
+      result: {
+        TaskID: taskId,
+        Path: relativeToCwd(specPath),
+        Status: "draft",
+      },
     });
     break;
   case "validate":
@@ -56,87 +34,40 @@ switch (command) {
     emit({
       ok: true,
       command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "draft" },
-      result: { valid: true, file: relativeToCwd(draftSpecPath), errors: [] },
-      error: null,
+      result: {
+        TaskID: taskId,
+        Path: relativeToCwd(specPath),
+        Valid: true,
+        Errors: null,
+      },
     });
     break;
   case "approve":
     ensure(taskId, "task_id is required for approve");
-    ensure(existsSync(draftSpecPath), "draft spec missing");
-    mkdirSync(path.dirname(activeSpecPath), { recursive: true });
-    copyFileSync(draftSpecPath, activeSpecPath);
+    ensure(existsSync(specPath), "draft spec missing");
+    replaceStatus("approved");
     emit({
       ok: true,
       command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "approved", file: relativeToCwd(activeSpecPath) },
       result: {
-        transition: {
-          from: relativeToCwd(draftSpecPath),
-          to: relativeToCwd(activeSpecPath),
-        },
+        TaskID: taskId,
+        Status: "approved",
+        Path: relativeToCwd(specPath),
       },
-      error: null,
     });
     break;
-  case "start":
-    ensure(taskId, "task_id is required for start");
-    ensure(existsSync(activeSpecPath), "active spec missing");
+  case "build":
+    ensure(taskId, "task_id is required for build");
+    replaceStatus("review");
     emit({
       ok: true,
       command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "in_progress", file: relativeToCwd(activeSpecPath) },
       result: {
-        transition: {
-          from: relativeToCwd(draftSpecPath),
-          to: relativeToCwd(activeSpecPath),
-        },
+        TaskID: taskId,
+        Status: "review",
+        Passed: 1,
+        Failed: 0,
       },
-      error: null,
-    });
-    break;
-  case "branch":
-    ensure(taskId, "task_id is required for branch");
-    emit({
-      ok: true,
-      command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "in_progress" },
-      result: {
-        origin: {
-          git: {
-            branch: taskId,
-            base_ref: "main",
-          },
-        },
-        sync: {
-          status: "in_sync",
-          reasons: [],
-        },
-      },
-      error: null,
-    });
-    break;
-  case "exec":
-    ensure(taskId, "task_id is required for exec");
-    emit({
-      ok: true,
-      command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "in_progress" },
-      result: {
-        executed: true,
-        phase: readFlagValue("--phase"),
-      },
-      error: null,
     });
     break;
   case "status":
@@ -144,94 +75,49 @@ switch (command) {
     emit({
       ok: true,
       command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "in_progress" },
       result: {
-        status: "in_progress",
-        file: relativeToCwd(activeSpecPath),
-        sync: {
-          status: "in_sync",
-          reasons: [],
-        },
-        review_state: {
-          verdict: "pending",
-          round_status: "pending",
-        },
+        TaskID: taskId,
+        Status: currentStatus(),
+        Title: readTitle(),
+        Next: currentStatus() === "completed" ? "none" : "scafld review " + taskId,
+        SessionOK: true,
       },
-      error: null,
-    });
-    break;
-  case "audit":
-    ensure(taskId, "task_id is required for audit");
-    emit({
-      ok: true,
-      command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "in_progress" },
-      result: {
-        status: "pass",
-        issues: [],
-      },
-      error: null,
     });
     break;
   case "review":
     ensure(taskId, "task_id is required for review");
-    mkdirSync(path.dirname(reviewPath), { recursive: true });
-    if (!existsSync(reviewPath)) {
-      writeFileSync(
-        reviewPath,
-        [
-          `# Review: ${taskId}`,
-          "",
-          "## Spec",
-          "",
-          "## Review 1 - 2026-04-22T00:00:00Z",
-          "",
-          "### Metadata",
-          "{}",
-          "",
-          "### Pass Results",
-          "{}",
-          "",
-          "### Regression Hunt",
-          "None.",
-          "",
-          "### Convention Check",
-          "None.",
-          "",
-          "### Dark Patterns",
-          "None.",
-          "",
-          "### Blocking",
-          "None.",
-          "",
-          "### Non-blocking",
-          "None.",
-          "",
-          "### Verdict",
-          "pending",
-          "",
-        ].join("\n"),
-      );
-    }
     emit({
       ok: true,
       command,
-      task_id: taskId,
-      warnings: [],
-      state: { status: "in_progress" },
       result: {
-        review_file: relativeToCwd(reviewPath),
-        review_round: 1,
-        automated_passes: [],
-        required_sections: ["Regression Hunt", "Convention Check", "Dark Patterns"],
-        review_prompt: "ADVERSARIAL REVIEW\n\nReview the bounded change set.",
+        TaskID: taskId,
+        Verdict: "pass",
+        Findings: null,
       },
-      error: null,
     });
+    break;
+  case "complete":
+    ensure(taskId, "task_id is required for complete");
+    replaceStatus("completed");
+    emit({
+      ok: true,
+      command,
+      result: {
+        Version: "2.0",
+        TaskID: taskId,
+        Title: readTitle(),
+        Summary: "Harness summary",
+        Status: "completed",
+        Review: {
+          Status: "completed",
+          Verdict: "pass",
+        },
+      },
+    });
+    break;
+  case "handoff":
+    ensure(taskId, "task_id is required for handoff");
+    process.stdout.write(`# Handoff: ${readTitle()}\n\nStatus: ${currentStatus()}\nNext: none\n`);
     break;
   default:
     process.stderr.write(`unsupported command: ${command}\n`);
@@ -248,14 +134,189 @@ function emit(payload) {
   process.stdout.write(`${JSON.stringify(payload)}\n`);
 }
 
-function relativeToCwd(targetPath) {
-  return path.relative(cwd, targetPath);
+function currentStatus() {
+  if (!existsSync(specPath)) {
+    return "draft";
+  }
+  const match = readFileSync(specPath, "utf8").match(/^status:\s*([^\n]+)$/m);
+  return match?.[1]?.trim().replace(/^['"]|['"]$/g, "") || "draft";
 }
 
-function readFlagValue(flag) {
-  const index = argv.indexOf(flag);
-  if (index === -1) {
-    return undefined;
+function readTitle() {
+  if (!existsSync(specPath)) {
+    return "Harness Task";
   }
-  return argv[index + 1] || undefined;
+  const match = readFileSync(specPath, "utf8").match(/^#\s+(.+)$/m);
+  return match?.[1]?.trim() || "Harness Task";
+}
+
+function replaceStatus(status) {
+  const contents = existsSync(specPath) ? readFileSync(specPath, "utf8") : renderSpec({ status });
+  writeFileSync(specPath, contents.replace(/^status:\s*.+$/m, `status: ${status}`));
+}
+
+function renderSpec({ status }) {
+  return `---
+spec_version: '2.0'
+task_id: ${taskId}
+created: '2026-05-04T00:00:00Z'
+updated: '2026-05-04T00:00:00Z'
+status: ${status}
+harden_status: not_run
+size: micro
+risk_level: low
+---
+
+# Harness Task
+
+## Current State
+
+Status: ${status}
+Current phase: none
+Next: none
+Reason: none
+Blockers: none
+Allowed follow-up command: none
+Latest runner update: none
+Review gate: not_started
+
+## Summary
+
+Harness summary
+
+## Context
+
+CWD: \`. \`
+
+Packages:
+- fixture
+
+Files impacted:
+- \`README.md\`
+
+Invariants:
+- bounded_scope
+
+Related docs:
+- none
+
+## Objectives
+
+- Update README.md.
+
+## Scope
+
+- \`README.md\`
+
+## Dependencies
+
+- None.
+
+## Assumptions
+
+- None.
+
+## Touchpoints
+
+- README.md
+
+## Risks
+
+- None.
+
+## Acceptance
+
+Profile: standard
+
+Definition of done:
+- [ ] \`dod1\` README.md contains fixture guidance.
+
+Validation:
+- [ ] \`v1\` test - README contains fixture guidance.
+  - Command: \`test -f README.md\`
+  - Expected kind: \`exit_code_zero\`
+  - Status: pending
+
+## Phase 1: Update README
+
+Goal: Update README.md.
+
+Status: pending
+Dependencies: none
+
+Changes:
+- \`README.md\` (all, exclusive) - Update README.md.
+
+Acceptance:
+- [ ] \`ac1_1\` test - README exists.
+  - Command: \`test -f README.md\`
+  - Expected kind: \`exit_code_zero\`
+  - Status: pending
+
+## Rollback
+
+Strategy: per_phase
+
+Commands:
+- none
+
+## Review
+
+Status: not_started
+Verdict: none
+
+Findings:
+- none
+
+Passes:
+- none
+
+## Self Eval
+
+Status: not_started
+
+Notes:
+none
+
+Improvements:
+- none
+
+## Deviations
+
+- none
+
+## Metadata
+
+Tags:
+- fixture
+
+## Origin
+
+Source:
+- harness
+
+Repo:
+- none
+
+Git:
+- none
+
+Sync:
+- none
+
+Supersession:
+- none
+
+## Harden Rounds
+
+- none
+
+## Planning Log
+
+- none
+`;
+}
+
+function relativeToCwd(targetPath) {
+  return path.relative(cwd, targetPath);
 }

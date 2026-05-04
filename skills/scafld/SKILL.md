@@ -1,6 +1,6 @@
 ---
 name: scafld
-description: Run existing scafld lifecycle commands under runx governance.
+description: Run existing scafld v2 lifecycle commands under runx governance.
 ---
 
 # scafld
@@ -8,19 +8,19 @@ description: Run existing scafld lifecycle commands under runx governance.
 Use this skill when runx needs to govern an existing scafld lifecycle or
 projection command.
 
-The skill does not replace scafld. It calls the scafld CLI with explicit argv,
-requires native `--json` output for supported commands, records the runx
-receipt for the hop, and lets the graph define which command is allowed at each
-step.
+The skill does not replace scafld. It calls the scafld v2 CLI with explicit
+argv, requires native JSON output for machine-readable commands, records the
+runx receipt for the hop, and lets the graph define which command is allowed at
+each step.
 
 ## Quality Profile
 
 - Purpose: expose native scafld lifecycle commands through governed runx steps
   without hiding scafld state.
-- Audience: maintainers and graphs that need spec, review, branch, status,
-  checks, and PR-body surfaces to stay native and inspectable.
-- Artifact contract: native scafld JSON payload, receipt metadata, and any
-  projected markdown or check surface requested by the command.
+- Audience: maintainers and graphs that need spec, harden, build, review,
+  status, and handoff surfaces to stay native and inspectable.
+- Artifact contract: native scafld JSON payload, receipt metadata, and handoff
+  Markdown when requested by the native command.
 - Evidence bar: forward scafld fields as-is. Do not reconstruct lifecycle state
   from prose or invent missing spec/review data.
 - Voice bar: operational wrapper language only. The wrapper should not become a
@@ -28,152 +28,78 @@ step.
 - Strategic bar: keep the engineering system visible while runx governs
   boundaries, scopes, approvals, and receipts.
 - Stop conditions: fail or return the native scafld gate reason when validation,
-  audit, review, or completion blocks. Do not smooth over lifecycle failures.
+  build, review, or completion blocks. Do not smooth over lifecycle failures.
 
 ## Lifecycle
 
-scafld manages code-change work through a linear lifecycle:
+scafld v2 manages code-change work through a linear lifecycle:
 
+```text
+draft -> approved -> active -> review -> completed/failed/cancelled
 ```
-draft → approved → in_progress → completed/failed/cancelled
-```
 
-Each status maps to a directory under `.ai/specs/`:
-- `drafts/` — draft and under_review specs
-- `approved/` — approved specs ready to start
-- `active/` — in-progress specs being executed
-- `archive/YYYY-MM/` — completed, failed, or cancelled specs
+Specs are Markdown files under `.scafld/specs/`:
 
-The lifecycle commands, in typical order:
+- `drafts/` - draft specs
+- `approved/` - approved specs ready to build
+- `active/` - active or review-stage specs
+- `archive/YYYY-MM/` - completed, failed, or cancelled specs
 
-1. **`init`** — bootstrap a scafld workspace. Creates the `.ai/` directory
-   tree with config, schemas, prompts, and spec directories. Run once per
-   repo.
+The supported native commands are:
 
-2. **`new <task-id>`** — create a new spec in `drafts/`. The task-id must
-   be kebab-case. Flags: `-t` title, `-s` size (micro/small/medium/large),
-   `-r` risk (low/medium/high). Creates `.ai/specs/drafts/<task-id>.yaml`
-   with TODO placeholders that must be filled before approval.
+1. `init` - bootstrap a scafld workspace.
+2. `plan <task-id>` - create `.scafld/specs/drafts/<task-id>.md`.
+3. `harden <task-id>` - open a hardening round before approval.
+4. `harden <task-id> --mark-passed` - close the current hardening round.
+5. `validate <task-id>` - validate the Markdown spec shape.
+6. `approve <task-id>` - move a draft into the approved lane.
+7. `build <task-id>` - activate approved work, run acceptance, and write evidence.
+8. `exec <task-id>` - run the execution path for the current task.
+9. `review <task-id>` - run scafld's native adversarial review gate.
+10. `complete <task-id>` - archive reviewed work after the native gate passes.
+11. `status <task-id>` - inspect native task state.
+12. `list` - list native task specs.
+13. `report` - aggregate native run/spec metrics.
+14. `handoff <task-id>` - render model-facing Markdown transport.
+15. `fail <task-id>` and `cancel <task-id>` - archive incomplete work.
 
-3. **`validate <task-id>`** — validate the spec against the JSON schema.
-   Checks required fields, valid enums, non-empty phases, and that TODO
-   placeholders have been replaced. runx forwards the native JSON payload from
-   `scafld validate --json` directly.
+Branch creation, issue updates, PR creation, and CI publication are wrapper
+responsibilities. scafld owns the local lifecycle, spec projection, session
+evidence, and review gate.
 
-4. **`approve <task-id>`** — validate then move the spec from `drafts/`
-   to `approved/`. Sets status to `approved`.
+## Spec Shape
 
-5. **`start <task-id>`** — move the spec from `approved/` to `active/`.
-   Sets status to `in_progress`.
+The spec file (`.scafld/specs/.../<task-id>.md`) is Markdown with YAML front
+matter:
 
-6. **`exec <task-id>`** — run acceptance criteria commands from the spec.
-   For each criterion with a `command` field, executes the shell command,
-   checks the result against `expected`, and records pass/fail back into
-   the spec YAML. Flags: `--phase` to run only one phase, `--resume` to
-   skip already-passed criteria. Default timeout 600s per criterion,
-   overridable with `timeout_seconds` on each criterion.
-
-7. **`audit <task-id>`** — compare declared file changes in the spec
-   against actual `git diff`. Reports scope creep (undeclared changes)
-   and missing changes (declared but not present). Exits 1 on any
-   undeclared files. Flag: `--base` to set git base ref (default HEAD~1).
-
-8. **`review <task-id>`** — open a review round. Runs automated passes
-   first (spec_compliance re-runs acceptance criteria, scope_drift runs
-   audit). If automated passes fail, exits 1 with instructions to fix.
-   On success, creates `.ai/reviews/<task-id>.md` with a Review Artifact
-   v3 template and returns a native JSON review handoff payload including
-   `review_file`, `review_prompt`, `automated_passes`, and
-   `required_sections`.
-
-9. **`complete <task-id>`** — finalize the review and archive the spec.
-   Validates that the review artifact exists, all adversarial sections
-   are filled, verdict is not fail/incomplete, and pass results are
-   consistent. On success, writes a `review:` block into the spec and
-   moves it to `archive/YYYY-MM/` with status `completed`. On failure,
-   exits 1 with the gate reason. runx forwards the native completion JSON as-is.
-   Override path: `--human-reviewed --reason "..."` allows completing with an
-   override (requires interactive terminal confirmation).
-
-10. **`status <task-id>`** — show spec status, phase progress, review
-    state, origin binding, and sync facts. runx forwards the native
-    `scafld status --json` payload directly.
-
-11. **`fail <task-id>`** — move an in-progress spec to archive with
-    status `failed`.
-
-12. **`cancel <task-id>`** — move a spec to archive with status
-    `cancelled`.
-
-13. **`branch <task-id>`** — bind the task to a working branch and record the
-    native origin metadata.
-
-14. **`sync <task-id>`** — compare recorded origin metadata to the live git
-    workspace and emit native drift details.
-
-15. **`summary <task-id>`**, **`checks <task-id>`**, and
-    **`pr-body <task-id>`** — project the same spec/review/origin state onto
-    markdown and CI/check surfaces without wrapper-side reconstruction.
-
-## Review handoff
-
-The `review` command opens the review round and returns the review file
-path and adversarial prompt. The actual review is **reviewer-mediated**: the
-graph routes it through the caller boundary so the reviewer may be a human,
-the controlling agent, or a peer agent. The `agent` runner on this skill
-receives `task_id`, `review_file`, and `review_prompt` and must fill the
-three adversarial sections in the review artifact before `complete` runs.
-
-After filling, the reviewer must update the review metadata: set
-`round_status` to `completed`, set each adversarial pass result to
-`pass`/`fail`/`pass_with_issues`, fill blocking/non-blocking findings,
-and set the verdict line to `pass`, `fail`, or `pass_with_issues`.
-
-## Spec YAML structure
-
-The spec file (`.ai/specs/.../<task-id>.yaml`) contains:
-
-- `spec_version`: "1.1"
-- `task_id`, `status`, `created`, `updated`
-- `task`: title, summary, size, risk_level, context (packages, invariants,
-  files_impacted, cwd), objectives, touchpoints, acceptance (definition_of_done,
-  validation)
-- `phases[]`: id (phase1, phase2, ...), name, objective, changes[] (file,
-  action, content_spec), acceptance_criteria[] (id, type, description,
-  command, expected, cwd, timeout_seconds)
-- `rollback`: strategy (per_phase/atomic/manual), commands
-- `planning_log`: timestamped entries
+- `spec_version: "2.0"`
+- `task_id`, `created`, `updated`, `status`, `harden_status`
+- `size`, `risk_level`
+- `# Title`, plus sections such as `## Summary`, `## Objectives`,
+  `## Scope`, `## Acceptance`, `## Phase N: ...`, `## Review`, and
+  `## Planning Log`
+- executable acceptance criteria use `Command` and `Expected kind`
 
 ## Inputs
 
-- `command` (required): scafld command to run. Accepts: `init`, `new`,
-  `approve`, `start`, `exec`, `audit`, `review`, `complete`,
-  `validate`, `status`, `fail`, `cancel`, `report`, `branch`, `sync`,
-  `summary`, `checks`, `pr-body`.
-- `task_id`: scafld task id (required for all commands except `init`).
-- `fixture`: workspace root containing `.ai/`; used as scafld working directory.
-- `title`: title for `new` command (`-t` flag).
-- `size`: size for `new` command (`-s` flag): micro, small, medium, large.
-- `risk`: risk for `new` command (`-r` flag): low, medium, high.
-- `phase`: phase for `exec` command (`--phase` flag).
-- `base`: base ref for `audit --base` or `branch --base`.
-- `name`: branch name for `branch --name`.
-- `bind_current`: boolean flag for `branch --bind-current`.
-- `scafld_bin`: explicit scafld executable path. Defaults to `SCAFLD_BIN`
-  env var or `scafld` on PATH.
+- `command` (required): one of `init`, `plan`, `harden`, `validate`,
+  `approve`, `build`, `exec`, `review`, `complete`, `fail`, `cancel`,
+  `status`, `list`, `report`, or `handoff`.
+- `task_id`: scafld task id. Required for all commands except `init`, `list`,
+  and `report`.
+- `fixture`: workspace root containing `.scafld/`; used as scafld working
+  directory.
+- `title`, `summary`, `size`, `risk`, `acceptance_command`: forwarded to
+  `plan`.
+- `mark_passed`: forwarded to `harden --mark-passed`.
+- `provider`, `provider_command`, `provider_binary`, `model`: forwarded to
+  `review`.
+- `scafld_bin`: explicit scafld executable path. Defaults to `SCAFLD_BIN` or
+  `scafld` on PATH.
 
-## Structured output
+## Structured Output
 
-runx does not rebuild scafld state locally anymore. For commands with native
-JSON contracts, the wrapper forwards the scafld payload directly after argv/env
-sanitization. That includes lifecycle commands plus the origin/sync/projection
-surfaces (`branch`, `sync`, `summary`, `checks`, `pr-body`).
-
-## Vendored manifest policy
-
-The workspace bundle under `.ai/scafld/` is vendored on purpose, but it is not
-the live runtime contract by itself. The installed scafld binary must satisfy
-the native contract recorded in `.ai/scafld/manifest.json`, including the
-required scafld version and required projection/origin surfaces. That keeps the
-vendored assets auditable while preserving a thin runtime boundary between runx
-and scafld.
+runx does not rebuild scafld state locally. For commands with native JSON
+contracts, the wrapper forwards the scafld payload directly after argv/env
+sanitization. `handoff` is the exception: it forwards native Markdown because
+handoff is model transport, not lifecycle state.

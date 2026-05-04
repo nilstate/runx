@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { realpathSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 export { Type as t, type Static, type TSchema } from "@sinclair/typebox";
@@ -479,10 +479,35 @@ export function resolveRepoRoot(
 
 export function resolveInsideRepo(repoRoot: string, targetPath: string): string {
   const resolvedPath = path.resolve(repoRoot, targetPath);
-  if (!resolvedPath.startsWith(`${repoRoot}${path.sep}`) && resolvedPath !== repoRoot) {
+  const realRepoRoot = realpathOrResolved(repoRoot);
+  const realParent = realExistingAncestor(path.dirname(resolvedPath));
+  if (!realParent.startsWith(`${realRepoRoot}${path.sep}`) && realParent !== realRepoRoot) {
     throw new Error(`path escapes repo_root: ${targetPath}`);
   }
   return resolvedPath;
+}
+
+function realpathOrResolved(targetPath: string): string {
+  try {
+    return realpathSync.native(targetPath);
+  } catch {
+    return path.resolve(targetPath);
+  }
+}
+
+function realExistingAncestor(targetPath: string): string {
+  let current = path.resolve(targetPath);
+  while (true) {
+    try {
+      return realpathSync.native(current);
+    } catch (error) {
+      const parent = path.dirname(current);
+      if (parent === current) {
+        throw error;
+      }
+      current = parent;
+    }
+  }
 }
 
 function finalizeOutput<Output>(

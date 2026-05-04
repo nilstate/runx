@@ -1,54 +1,25 @@
 skill: scafld
-version: "0.1.1"
+version: "0.2.0"
 
 catalog:
   kind: skill
   audience: public
   visibility: public
 
-
 harness:
   cases:
-    - name: scafld-review-boundary-yields-fresh-caller-request
-      runner: agent
+    - name: scafld-plan-json
+      runner: scafld-cli
       inputs:
+        command: plan
         task_id: proving-ground-scafld
-        review_file: .ai/reviews/proving-ground-scafld.md
-        review_prompt: |
-          ADVERSARIAL REVIEW
-
-          Review the bounded change set and return a pass/fail verdict with concrete findings.
+        fixture: .
+        title: Proving ground scafld
+        scafld_bin: ./fixtures/scafld-v2-harness.mjs
       expect:
-        status: needs_resolution
-
-    - name: scafld-agent-needs-required-inputs
-      runner: agent
-      inputs: {}
-      expect:
-        status: needs_resolution
-
+        status: success
 
 runners:
-  agent:
-    type: agent
-    inputs:
-      task_id:
-        type: string
-        required: true
-        description: "scafld task id whose review artifact must be filled."
-      review_file:
-        type: string
-        required: true
-        description: "Review artifact path emitted by scafld review --json."
-      review_prompt:
-        type: string
-        required: true
-        description: "Adversarial review prompt emitted by scafld review --json."
-      instruction:
-        type: string
-        required: false
-        description: "Caller-facing review handoff instructions."
-
   scafld-cli:
     default: true
     type: cli-tool
@@ -61,7 +32,7 @@ runners:
       command:
         type: string
         required: true
-        description: "Native scafld command to run: init, new, approve, start, exec, audit, review, complete, validate, status, fail, cancel, report, branch, sync, summary, checks, or pr-body."
+        description: "Native scafld command to run: init, plan, harden, validate, approve, build, exec, review, complete, fail, cancel, status, list, report, or handoff."
       task_id:
         type: string
         required: false
@@ -69,51 +40,55 @@ runners:
       fixture:
         type: string
         required: false
-        description: "Workspace root containing `.ai/`; used as the scafld working directory."
+        description: "Workspace root containing `.scafld/`; used as the scafld working directory."
       title:
         type: string
         required: false
-        description: "Direct title passed to `scafld new`."
+        description: "Direct title passed to `scafld plan`."
+      summary:
+        type: string
+        required: false
+        description: "Direct summary passed to `scafld plan`."
       thread_title:
         type: string
         required: false
-        description: "Canonical thread title accepted by composite wrappers that call `scafld new`."
+        description: "Canonical thread title accepted by composite wrappers that call `scafld plan`."
       size:
         type: string
         required: false
-        description: "Size passed to `scafld new`."
+        description: "Size passed to `scafld plan`."
       risk:
         type: string
         required: false
-        description: "Risk passed to `scafld new`."
-      phase:
+        description: "Risk passed to `scafld plan`."
+      acceptance_command:
         type: string
         required: false
-        description: "Optional phase passed to `scafld exec --phase`."
-      base:
-        type: string
-        required: false
-        description: "Optional base ref for `scafld audit --base` or `scafld branch --base`."
-      name:
-        type: string
-        required: false
-        description: "Optional branch name passed to `scafld branch --name`."
-      bind_current:
+        description: "Acceptance command passed to `scafld plan --command`."
+      mark_passed:
         type: boolean
         required: false
-        description: "When true, pass `--bind-current` to `scafld branch`."
+        description: "When true, pass `--mark-passed` to `scafld harden`."
+      provider:
+        type: string
+        required: false
+        description: "Review provider passed to `scafld review --provider`."
+      provider_command:
+        type: string
+        required: false
+        description: "Review command passed to `scafld review --provider-command`."
+      provider_binary:
+        type: string
+        required: false
+        description: "Review provider binary passed to `scafld review --provider-binary`."
+      model:
+        type: string
+        required: false
+        description: "Review model passed to `scafld review --model`."
       scafld_bin:
         type: string
         required: false
         description: "Explicit scafld executable path; defaults to SCAFLD_BIN or scafld on PATH."
-      human_reviewed:
-        type: boolean
-        required: false
-        description: "When true, pass --human-reviewed to scafld complete."
-      reason:
-        type: string
-        required: false
-        description: "Required with human_reviewed; forwarded to scafld complete --reason."
     runtime:
       requirements:
         - "scafld CLI with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input"

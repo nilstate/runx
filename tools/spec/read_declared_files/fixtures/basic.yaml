@@ -10,13 +10,15 @@ workspace:
 inputs:
   repo_root: $RUNX_FIXTURE_ROOT
   spec_contents: |
-    task:
-      context:
-        files_impacted:
-          - src/index.ts
-    phases:
-      - changes:
-          - file: src/index.ts
+    ## Context
+
+    Files impacted:
+    - `src/index.ts`
+
+    ## Phase 1: Fixture
+
+    Changes:
+    - `src/index.ts` (all, exclusive) - Update fixture source.
 expect:
   status: success
   output:

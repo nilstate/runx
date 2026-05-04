@@ -17,12 +17,13 @@ export default defineTool({
     thread: recordInput({ optional: true, description: "Optional hydrated thread that may already carry a pull_request outbox entry." }),
     outbox_entry: recordInput({ optional: true, description: "Optional current pull_request outbox entry when refreshing an existing draft." }),
     target_repo: stringInput({ optional: true, description: "Intended repository slug when the caller already knows it." }),
-    summary_projection: recordInput({ description: "Native scafld summary result payload from `scafld summary --json`." }),
-    checks_projection: recordInput({ description: "Native scafld checks result payload from `scafld checks --json`." }),
-    pr_body_projection: recordInput({ description: "Native scafld pr-body result payload from `scafld pr-body --json`." }),
+    handoff_markdown: stringInput({ description: "Native markdown emitted by `scafld handoff`." }),
+    build_result: recordInput({ description: "Native scafld build result payload." }),
+    review_result: recordInput({ description: "Native scafld review result payload." }),
     completion_result: recordInput({ description: "Native scafld complete result payload." }),
-    completion_state: recordInput({ optional: true, description: "Native scafld complete state payload." }),
-    status_snapshot: recordInput({ optional: true, description: "Native scafld status result payload for sync and origin facts." }),
+    status_snapshot: recordInput({ optional: true, description: "Native scafld status result payload." }),
+    current_branch: recordInput({ optional: true, description: "Current git branch packet from git.current_branch." }),
+    base: stringInput({ optional: true, description: "Base ref for the draft pull request." }),
   },
   output: {
     named_emits: {
@@ -44,50 +45,15 @@ export default defineTool({
 
 function runBuildPullRequest({ inputs }) {
   const taskId = inputs.task_id;
-  const summaryProjection = inputs.summary_projection;
-  const checksProjection = inputs.checks_projection;
-  const prBodyProjection = inputs.pr_body_projection;
-  const completionResult = inputs.completion_result;
-  const completionState = optionalRecord(inputs.completion_state);
-  const statusSnapshot = optionalRecord(inputs.status_snapshot);
+  const handoffMarkdown = inputs.handoff_markdown;
+  const buildResult = unwrapRecord(inputs.build_result) ?? {};
+  const reviewResult = unwrapRecord(inputs.review_result) ?? {};
+  const completionResult = unwrapRecord(inputs.completion_result) ?? {};
+  const statusSnapshot = unwrapRecord(inputs.status_snapshot);
+  const currentBranch = unwrapRecord(inputs.current_branch);
   const thread = optionalRecord(inputs.thread);
   const explicitOutboxEntry = optionalRecord(inputs.outbox_entry);
 
-  const summaryModel = optionalRecord(summaryProjection.model);
-  const prBodyModel = optionalRecord(prBodyProjection.model);
-  const summaryOrigin = optionalRecord(summaryModel?.origin) ?? {};
-  const prBodyOrigin = optionalRecord(prBodyModel?.origin) ?? {};
-  const origin = {
-    ...summaryOrigin,
-    ...prBodyOrigin,
-    git: {
-      ...(optionalRecord(summaryOrigin.git) ?? {}),
-      ...(optionalRecord(prBodyOrigin.git) ?? {}),
-    },
-    repo: {
-      ...(optionalRecord(summaryOrigin.repo) ?? {}),
-      ...(optionalRecord(prBodyOrigin.repo) ?? {}),
-    },
-    source: {
-      ...(optionalRecord(summaryOrigin.source) ?? {}),
-      ...(optionalRecord(prBodyOrigin.source) ?? {}),
-    },
-  };
-  const model = {
-    ...(summaryModel ?? {}),
-    ...(prBodyModel ?? {}),
-    origin,
-  };
-  const originGit = optionalRecord(origin.git) ?? {};
-  const originRepo = optionalRecord(origin.repo) ?? {};
-  const originSource = optionalRecord(origin.source) ?? {};
-  const check = optionalRecord(checksProjection.check) ?? {};
-  const sync =
-    optionalRecord(statusSnapshot?.sync) ?? optionalRecord(model.sync) ?? {};
-  const reviewState =
-    optionalRecord(statusSnapshot?.review_state) ??
-    optionalRecord(model.review) ??
-    {};
   const threadContext = thread ?? {};
 
   const existingOutboxEntry =
@@ -101,7 +67,8 @@ function runBuildPullRequest({ inputs }) {
   );
 
   const title = firstNonEmptyString(
-    model.title,
+    completionResult.Title,
+    statusSnapshot?.Title,
     inputs.thread_title,
     threadContext.title,
     taskId,
@@ -109,27 +76,27 @@ function runBuildPullRequest({ inputs }) {
 
   const targetRepo = firstNonEmptyString(
     inputs.target_repo,
-    parseRepoSlug(firstNonEmptyString(originRepo.remote_url)),
-    originRepo.remote_url,
-    originRepo.remote,
+    parseRepoSlug(firstNonEmptyString(threadContext.canonical_uri)),
   );
 
   const action = existingOutboxEntry ? "refresh" : "create";
   const reviewVerdict = firstNonEmptyString(
-    completionState?.review_verdict,
-    reviewState.verdict,
-    reviewState.round_status,
+    reviewResult.Verdict,
+    optionalRecord(completionResult.Review)?.Verdict,
+    optionalRecord(completionResult.Review)?.Status,
   );
-  const specPath = firstNonEmptyString(
-    completionResult.archive_path,
-    statusSnapshot?.file,
-  );
-  const reviewFile = firstNonEmptyString(completionResult.review_file);
+  const check = buildCheck(buildResult);
   const checkStatus = firstNonEmptyString(check.status);
-  const syncStatus = firstNonEmptyString(sync.status);
+  const syncStatus = firstNonEmptyString(statusSnapshot?.SessionOK === false ? "degraded" : "ok");
   const pushReady =
-    firstNonEmptyString(completionState?.status, "unknown") === "completed" &&
-    checkStatus !== "failure";
+    firstNonEmptyString(completionResult.Status, statusSnapshot?.Status) === "completed" &&
+    checkStatus === "success" &&
+    !isFailingReview(reviewVerdict);
+  const branch = firstNonEmptyString(
+    currentBranch?.branch,
+    inputs.branch,
+  );
+  const base = firstNonEmptyString(inputs.base);
 
   const draftPullRequest = prune({
     schema_version: "runx.pull-request-draft.v1",
@@ -148,42 +115,31 @@ function runBuildPullRequest({ inputs }) {
     }),
     target: prune({
       repo: targetRepo,
-      branch: firstNonEmptyString(originGit.branch),
-      base: firstNonEmptyString(originGit.base_ref),
-      remote: firstNonEmptyString(originRepo.remote),
-      remote_url: firstNonEmptyString(originRepo.remote_url),
-    }),
-    source: prune({
-      system: firstNonEmptyString(originSource.system),
-      kind: firstNonEmptyString(originSource.kind),
-      id: firstNonEmptyString(originSource.id),
-      title: firstNonEmptyString(originSource.title),
-      url: firstNonEmptyString(originSource.url),
+      branch,
+      base,
+      remote: "origin",
     }),
     pull_request: {
       title,
       body_markdown:
-        firstNonEmptyText(prBodyProjection.markdown) ?? `# ${title}\n`,
+        firstNonEmptyText(handoffMarkdown) ?? `# ${title}\n`,
       is_draft: true,
     },
     engineering_summary_markdown:
-      firstNonEmptyText(summaryProjection.markdown) ?? "",
+      firstNonEmptyText(handoffMarkdown) ?? "",
     checks: Object.keys(check).length > 0 ? check : undefined,
     governance: prune({
       status: firstNonEmptyString(
-        completionState?.status,
+        completionResult.Status,
         statusSnapshot?.status,
+        statusSnapshot?.Status,
       ),
       review_verdict: reviewVerdict,
-      blocking_count: numberOrUndefined(completionResult.blocking_count),
-      non_blocking_count: numberOrUndefined(
-        completionResult.non_blocking_count,
-      ),
+      blocking_count: numberOrUndefined(reviewResult.BlockingCount),
+      non_blocking_count: numberOrUndefined(reviewResult.NonBlockingCount),
       sync_status: syncStatus,
-      sync_reasons: stringArray(sync.reasons),
-      spec_path: specPath,
-      review_file: reviewFile,
-      review_round: numberOrUndefined(completionResult.review_round),
+      build_passed: numberOrUndefined(buildResult.Passed),
+      build_failed: numberOrUndefined(buildResult.Failed),
     }),
   });
 
@@ -212,8 +168,6 @@ function runBuildPullRequest({ inputs }) {
       review_verdict: reviewVerdict,
       check_status: checkStatus,
       sync_status: syncStatus,
-      spec_path: specPath,
-      review_file: reviewFile,
       push_ready: pushReady,
     }),
   });
@@ -226,6 +180,35 @@ function runBuildPullRequest({ inputs }) {
 
 function optionalRecord(value) {
   return isRecord(value) ? value : undefined;
+}
+
+function unwrapRecord(value) {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  if (isRecord(value.data)) {
+    return value.data;
+  }
+  return value;
+}
+
+function buildCheck(buildResult) {
+  const passed = numberOrUndefined(buildResult.Passed);
+  const failed = numberOrUndefined(buildResult.Failed);
+  const status = failed !== undefined
+    ? failed === 0 ? "success" : "failure"
+    : firstNonEmptyString(buildResult.Status);
+  return prune({
+    status,
+    summary: status ? `scafld build ${status}` : undefined,
+    passed,
+    failed,
+  });
+}
+
+function isFailingReview(value) {
+  const verdict = firstNonEmptyString(value);
+  return verdict === "fail" || verdict === "blocked" || verdict === "failure";
 }
 
 function firstNonEmptyText(...values) {

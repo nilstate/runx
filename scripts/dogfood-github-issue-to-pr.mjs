@@ -21,7 +21,7 @@ const branchName = firstNonEmptyString(args.branch, taskId);
 const scafldBin = firstNonEmptyString(
   args.scafld_bin,
   process.env.SCAFLD_BIN,
-  "/home/kam/dev/scafld/cli/scafld",
+  "scafld",
 );
 const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), `runx-github-issue-to-pr-${taskId}-`));
 const runtime = await createDefaultLocalSkillRuntime({
@@ -42,7 +42,6 @@ const result = await runLocalSkill({
   inputs: {
     fixture: workspace,
     task_id: taskId,
-    name: branchName,
     thread_title: firstNonEmptyString(before.title, `Issue #${issueRef.issue_number}`),
     thread_body: firstIssueBody(before),
     thread_locator: issueRef.thread_locator,

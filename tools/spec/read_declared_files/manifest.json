@@ -1,7 +1,7 @@
 {
   "schema": "runx.tool.manifest.v1",
   "name": "spec.read_declared_files",
-  "description": "Read the current contents of files declared in a scafld spec before bounded fix authoring.",
+  "description": "Read the current contents of files declared in a scafld 2 markdown spec before bounded fix authoring.",
   "source": {
     "type": "cli-tool",
     "command": "node",
@@ -13,7 +13,7 @@
     "spec_contents": {
       "type": "string",
       "required": true,
-      "description": "Raw scafld spec contents to inspect for declared file paths."
+      "description": "Raw scafld 2 markdown spec contents to inspect for declared file paths."
     },
     "repo_root": {
       "type": "string",
@@ -44,7 +44,7 @@
       "./run.mjs"
     ]
   },
-  "source_hash": "sha256:066d3ac3ebbfd62e7a92ecc4fb87283672ab212a7b5b9e73ea223a7203fe3c08",
-  "schema_hash": "sha256:fdc484586979e2d461117eb1b4355f7ece6a13baa6dabf4f7af8bf2b5764d342",
+  "source_hash": "sha256:8089c006459651388d3c2b8bb567abf0b05e994ad02413f2241521313b7e5f6f",
+  "schema_hash": "sha256:881919ff6af36be1585b7ee46d0068082beebbdd3e100261d7b7be2fb37bb6a7",
   "toolkit_version": "0.1.3"
 }

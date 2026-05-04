@@ -191,15 +191,6 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     },
   },
   {
-    skillName: "scafld",
-    runner: "agent",
-    expectation: {
-      requestId: "agent.scafld.output",
-      inputKeys: ["task_id", "review_file", "review_prompt"],
-      sourceType: "agent",
-    },
-  },
-  {
     skillName: "prior-art",
     expectation: {
       requestId: "agent_step.prior-art.output",
@@ -276,8 +267,7 @@ const customScenarios: readonly CustomProvingGroundScenario[] = [
           target_repo: "runxhq/runx",
           size: "micro",
           risk: "low",
-          phase: "phase1",
-          draft_spec_path: ".ai/specs/drafts/issue-to-pr-proving-ground.yaml",
+          base: "main",
           scafld_bin: lane.scafldBin,
         },
         env: lane.env,
@@ -294,8 +284,7 @@ const customScenarios: readonly CustomProvingGroundScenario[] = [
         "target_repo",
         "size",
         "risk",
-        "phase",
-        "draft_spec_path",
+        "base",
         "scafld_bin",
       ],
       allowedTools: ["fs.read", "git.status"],
@@ -461,40 +450,33 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const [, , command, taskId] = process.argv;
-if (command === "init") {
-  const aiDir = path.join(process.cwd(), ".ai");
-  fs.mkdirSync(path.join(aiDir, "specs", "drafts"), { recursive: true });
-  process.stdout.write(JSON.stringify({
-    command: "init",
-    state: { status: "ready" },
-    result: { initialized: true }
-  }));
-  process.exit(0);
-}
-
-if (command !== "new") {
-  process.stderr.write("fake scafld only supports init and new for proving-ground tests\\n");
+if (command !== "plan") {
+  process.stderr.write("fake scafld only supports plan for proving-ground tests\\n");
   process.exit(1);
 }
 
-const draftDir = path.join(process.cwd(), ".ai", "specs", "drafts");
+const draftDir = path.join(process.cwd(), ".scafld", "specs", "drafts");
 fs.mkdirSync(draftDir, { recursive: true });
 fs.writeFileSync(
-  path.join(draftDir, \`\${taskId}.yaml\`),
+  path.join(draftDir, \`\${taskId}.md\`),
   [
-    'spec_version: "1.1"',
-    \`task_id: "\${taskId}"\`,
-    'status: "draft"',
-    'task:',
-    '  title: "Proving Ground Fixture"',
-    '  summary: "Draft spec created by the fake scafld proving-ground stub"',
+    "---",
+    "spec_version: '2.0'",
+    \`task_id: \${taskId}\`,
+    "status: draft",
+    "---",
+    "",
+    "# Proving Ground Fixture",
   ].join("\\n"),
 );
 process.stdout.write(JSON.stringify({
-  command: "new",
-  task_id: taskId,
-  state: { status: "draft", file: \`.ai/specs/drafts/\${taskId}.yaml\` },
-  result: { valid: true, file: \`.ai/specs/drafts/\${taskId}.yaml\`, errors: [] }
+  ok: true,
+  command: "plan",
+  result: {
+    TaskID: taskId,
+    Path: \`.scafld/specs/drafts/\${taskId}.md\`,
+    Status: "draft"
+  }
 }));
 `,
     { mode: 0o755 },

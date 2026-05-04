@@ -6,45 +6,42 @@ Canonical reference for AI coding agents working with this codebase. Agent-agnos
 
 **Key files:**
 
-- `.ai/config.yaml` - Validation rules, rubric weights, safety controls, profiles
-- `.ai/prompts/plan.md` - Planning mode prompt
-- `.ai/prompts/exec.md` - Execution mode prompt
-- `.ai/schemas/spec.json` - Spec validation schema
+- `.scafld/config.yaml` - Validation rules, rubric weights, safety controls, profiles
+- `.scafld/prompts/plan.md` - Planning mode prompt
+- `.scafld/prompts/exec.md` - Execution mode prompt
+- `.scafld/core/schemas/spec.json` - Spec validation schema
 - `CONVENTIONS.md` - Coding standards and patterns
 
 ---
 
 ## How scafld Works
 
-Spec-driven development: every non-trivial task becomes a machine-readable YAML specification before any code changes happen.
+Spec-driven development: every non-trivial task becomes a machine-readable markdown specification before any code changes happen.
 
-1. **Plan** - Analyze task, explore codebase, generate spec in `.ai/specs/drafts/`
+1. **Plan** - Analyze task, explore codebase, generate spec in `.scafld/specs/drafts/`
 2. **Review** - Human reviews and approves the spec
-3. **Execute** - Agent executes approved spec phase-by-phase with validation
-4. **Archive** - Completed specs move to `.ai/specs/archive/YYYY-MM/`
+3. **Build** - Agent executes approved spec with validation
+4. **Complete** - Completed specs are marked through the scafld lifecycle
 
 The spec is the contract. Operate autonomously within its bounds; pause for approval on deviations.
 
-For detailed planning instructions, read `.ai/prompts/plan.md`. For execution, read `.ai/prompts/exec.md`.
+For detailed planning instructions, read `.scafld/prompts/plan.md`. For execution, read `.scafld/prompts/exec.md`.
 
 ---
 
 ## Spec Status Lifecycle
 
 ```text
-draft → under_review → approved → in_progress → review → completed
-  ↓                                    ↓           ↓
-(edit)                             (blocked)     failed
-                                      ↓           ↑
-                                  (resume)    fix + re-review
+draft → approved → review → completed
+  ↓         ↓          ↓
+(edit)   failed    cancelled
 ```
 
 Valid transitions:
 
-- `draft` → `under_review` → `approved` → `in_progress` → `completed`
-- `in_progress` → `failed` → `cancelled`
-- `in_progress` can stay `in_progress` if blocked (explain in logs)
-- `under_review` → `draft` (changes requested)
+- `draft` → `approved` → `review` → `completed`
+- active work can move to `failed` or `cancelled`
+- blocked work must be recorded in the spec state and handoff
 
 ---
 
@@ -85,27 +82,27 @@ No test fixtures, mocks, or conditional test-only logic in production code. Test
 ### Planning Mode
 
 - **When:** Starting a new task, exploring requirements
-- **Actions:** Search, read, analyze (NO code changes outside `.ai/specs/`)
-- **Output:** YAML spec in `.ai/specs/drafts/` with status `draft`
-- **Prompt:** Read `.ai/prompts/plan.md` before entering this mode
+- **Actions:** Search, read, analyze (NO code changes outside `.scafld/specs/`)
+- **Output:** Markdown spec in `.scafld/specs/drafts/` with status `draft`
+- **Prompt:** Read `.scafld/prompts/plan.md` before entering this mode
 
 ### Execution Mode
 
 - **When:** Spec has status `approved`
-- **Actions:** Apply changes phase-by-phase, run acceptance criteria, log to `.ai/logs/`
+- **Actions:** Apply changes, run acceptance criteria, record scafld build evidence
 - **Output:** Code changes, validation results, updated spec
-- **Prompt:** Read `.ai/prompts/exec.md` before entering this mode
+- **Prompt:** Read `.scafld/prompts/exec.md` before entering this mode
 - **Autonomy:** Execute all phases without pausing unless blocked, deviating from spec, or hitting a destructive action not covered by spec
 
 For trivial changes (typos, single-line fixes), skip the spec workflow and work directly.
 
 ### Review Mode
 
-- **When:** All phases complete, before `scafld complete`
-- **Actions:** Run `scafld review`, then adversarial code review (ideally in a fresh session) and update the latest Review Artifact v3 round with reviewer provenance, `round_status`, and per-pass `pass_results`
-- **Output:** Findings written to `.ai/reviews/{task-id}.md`, verdict recorded in spec
-- **Prompt:** Read `.ai/prompts/review.md` before entering this mode
-- **Mandate:** Find problems, not confirm success. A review that finds zero issues is suspicious. The configured built-in passes are `spec_compliance`, `scope_drift`, `regression_hunt`, `convention_check`, and `dark_patterns`. `scafld complete` only bypasses a blocked gate through the audited `--human-reviewed --reason` path. Local CLI checks improve workflow integrity, but stronger guarantees still need CI or merge gate enforcement, review artifacts bound to the reviewed diff or commit, and out-of-band approval or an external reviewer.
+- **When:** Build has passed and status is `review`
+- **Actions:** Run `scafld review`, then `scafld complete` only after the native review gate passes
+- **Output:** Review verdict recorded in the spec and available through `scafld status` / `scafld handoff`
+- **Prompt:** Read `.scafld/prompts/review.md` before entering this mode
+- **Mandate:** Find problems, not confirm success. A review that finds zero issues still needs grounded evidence from the changed files, validation commands, and spec scope.
 
 ---
 
@@ -177,33 +174,31 @@ Only commit when explicitly asked by the user.
 
 | Path | Purpose |
 | ---- | ------- |
-| `.ai/config.yaml` | Validation, rubric, safety, profiles |
-| `.ai/prompts/plan.md` | Planning mode instructions |
-| `.ai/prompts/exec.md` | Execution mode instructions |
-| `.ai/prompts/review.md` | Adversarial review mode instructions |
-| `.ai/schemas/spec.json` | Spec JSON schema |
-| `.ai/specs/` | Task specs by status (drafts/approved/active/archive) |
-| `.ai/reviews/` | Review findings per spec (gitignored, accumulates rounds) |
-| `.ai/logs/` | Execution logs (ReAct traces) |
+| `.scafld/config.yaml` | Validation, rubric, safety, profiles |
+| `.scafld/prompts/plan.md` | Planning mode instructions |
+| `.scafld/prompts/exec.md` | Execution mode instructions |
+| `.scafld/prompts/review.md` | Adversarial review mode instructions |
+| `.scafld/core/schemas/spec.json` | Spec JSON schema |
+| `.scafld/specs/` | Task specs by lifecycle status |
+| `.scafld/reviews/` | Review outputs when provider artifacts are written |
+| `.scafld/runs/` | Build/review session state |
 | `CONVENTIONS.md` | Coding standards |
 
 ### Spec Lifecycle
 
 ```bash
 # CLI (manages status, validation, file moves)
-scafld new <task-id>             # scaffold a spec in drafts/
+scafld plan <task-id>            # scaffold a markdown spec in drafts/
 scafld list                      # show all specs
 scafld status <task-id>          # show details + phase progress
 scafld validate <task-id>        # check against schema
-scafld approve <task-id>         # drafts/ -> approved/
-scafld start <task-id>           # approved/ -> active/
-scafld exec <task-id>            # run acceptance criteria, record results
-scafld audit <task-id>           # compare spec changes vs git diff
-scafld diff <task-id>            # show git history for spec
-scafld review <task-id>          # run configured automated passes + scaffold Review Artifact v3
-scafld complete <task-id>        # read review, record verdict, archive (requires review)
-scafld complete <task-id> --human-reviewed --reason "manual audit"  # exceptional audited override for a blocked review gate
-scafld fail <task-id>            # active/ -> archive/ (failed)
-scafld cancel <task-id>          # active/ -> archive/ (cancelled)
+scafld approve <task-id>         # approve the draft spec
+scafld build <task-id>           # run validation and move to review when checks pass
+scafld exec <task-id>            # execute configured task actions when used
+scafld review <task-id>          # run native review provider
+scafld complete <task-id>        # record review verdict and complete the task
+scafld handoff <task-id>         # render markdown handoff
+scafld fail <task-id>            # mark failed
+scafld cancel <task-id>          # mark cancelled
 scafld report                    # aggregate stats across all specs
 ```
