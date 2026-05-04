@@ -41,7 +41,7 @@ if (argv[0] === "validate") {
   process.stdout.write(JSON.stringify({
     ok: true,
     command: "validate",
-    result: { TaskID: "fixture-task", Valid: true, Errors: null },
+    result: { task_id: "fixture-task", valid: true, errors: null },
   }) + "\\n");
   process.exit(0);
 }
@@ -78,7 +78,7 @@ process.exit(1);
       expect(JSON.parse(result.execution.stdout)).toEqual({
         ok: true,
         command: "validate",
-        result: { TaskID: "fixture-task", Valid: true, Errors: null },
+        result: { task_id: "fixture-task", valid: true, errors: null },
       });
       expect(JSON.parse(await readFile(tracePath, "utf8"))).toEqual({
         argv: ["validate", "fixture-task", "--json"],
@@ -118,10 +118,10 @@ if (command === "review") {
     ok: true,
     command: "review",
     result: {
-      TaskID: "fixture-task",
-      Status: "review",
-      Verdict: "pass",
-      Findings: [],
+      task_id: "fixture-task",
+      status: "review",
+      verdict: "pass",
+      findings: [],
     },
   }) + "\\n");
   process.exit(0);
@@ -131,9 +131,9 @@ if (command === "complete") {
     ok: true,
     command: "complete",
     result: {
-      TaskID: "fixture-task",
-      Status: "completed",
-      Path: ".scafld/specs/archive/2026-05/fixture-task.md",
+      task_id: "fixture-task",
+      status: "completed",
+      path: ".scafld/specs/archive/2026-05/fixture-task.md",
     },
   }) + "\\n");
   process.exit(0);
@@ -168,10 +168,10 @@ process.exit(1);
         ok: true,
         command: "review",
         result: {
-          TaskID: "fixture-task",
-          Status: "review",
-          Verdict: "pass",
-          Findings: [],
+          task_id: "fixture-task",
+          status: "review",
+          verdict: "pass",
+          findings: [],
         },
       });
       expect(JSON.parse(await readFile(reviewTracePath, "utf8"))).toEqual({
@@ -203,9 +203,9 @@ process.exit(1);
         ok: true,
         command: "complete",
         result: {
-          TaskID: "fixture-task",
-          Status: "completed",
-          Path: ".scafld/specs/archive/2026-05/fixture-task.md",
+          task_id: "fixture-task",
+          status: "completed",
+          path: ".scafld/specs/archive/2026-05/fixture-task.md",
         },
       });
       expect(JSON.parse(await readFile(completeTracePath, "utf8"))).toEqual({
@@ -232,7 +232,7 @@ if ((argv[0] || "") === "validate") {
   process.stdout.write(JSON.stringify({
     ok: true,
     command: "validate",
-    result: { TaskID: "fixture-task", Valid: true, Errors: null },
+    result: { task_id: "fixture-task", valid: true, errors: null },
   }) + "\\n");
   process.exit(0);
 }
@@ -266,7 +266,7 @@ process.exit(1);
       expect(JSON.parse(result.execution.stdout)).toMatchObject({
         ok: true,
         command: "validate",
-        result: { TaskID: "fixture-task" },
+        result: { task_id: "fixture-task" },
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });

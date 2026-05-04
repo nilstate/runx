@@ -299,11 +299,11 @@ runners:
         status: governed
         rationale: >
           This graph keeps cognition and mutation separate while treating
-          scafld 2.1 as the workflow kernel. Agent phases author the markdown
+          scafld 2.2 as the workflow kernel. Agent phases author the markdown
           spec and bounded fix bundle. Deterministic fs.write phases perform
           mutations. Native scafld plan, validate, approve, build, review,
           complete, status, and handoff surfaces stay visible instead of being
-          re-created by compatibility projection steps.
+          re-created by translation projection steps.
       steps:
         - id: scafld-plan
           label: open task lane
@@ -346,7 +346,7 @@ runners:
             - fs.read
             - git.status
           context:
-            spec_path: scafld-plan.result.Path
+            spec_path: scafld-plan.result.path
             scafld_plan: scafld-plan.result
         - id: write-spec
           label: write markdown spec
@@ -355,7 +355,7 @@ runners:
             - fs.write
           mutation: true
           context:
-            path: scafld-plan.result.Path
+            path: scafld-plan.result.path
             contents: author-spec.spec_contents
         - id: read-draft-spec
           label: read draft spec
@@ -363,7 +363,7 @@ runners:
           scopes:
             - fs.read
           context:
-            path: scafld-plan.result.Path
+            path: scafld-plan.result.path
         - id: scafld-validate
           label: validate spec
           skill: ../scafld
@@ -385,7 +385,7 @@ runners:
           scopes:
             - fs.read
           context:
-            path: scafld-approve.result.Path
+            path: scafld-approve.result.path
         - id: read-declared-files
           label: read declared files
           tool: spec.read_declared_files
@@ -416,7 +416,7 @@ runners:
             - fs.read
             - git.status
           context:
-            spec_path: scafld-approve.result.Path
+            spec_path: scafld-approve.result.path
             spec_file: read-approved-spec.file_read.data.data
             spec_contents: read-approved-spec.file_read.data.data.contents
             declared_file_context: read-declared-files.declared_file_context.data

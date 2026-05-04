@@ -63,7 +63,7 @@ describe("scafld issue-to-PR skill contract", () => {
         task: "issue-to-pr-author-spec",
       },
       context: {
-        spec_path: "scafld-plan.result.Path",
+        spec_path: "scafld-plan.result.path",
       },
     });
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("scafld 2.0 markdown spec");
@@ -71,14 +71,14 @@ describe("scafld issue-to-PR skill contract", () => {
     expect(graph.steps.find((step) => step.id === "write-spec")).toMatchObject({
       tool: "fs.write",
       context: {
-        path: "scafld-plan.result.Path",
+        path: "scafld-plan.result.path",
         contents: "author-spec.spec_contents",
       },
     });
     expect(graph.steps.find((step) => step.id === "read-approved-spec")).toMatchObject({
       tool: "fs.read",
       context: {
-        path: "scafld-approve.result.Path",
+        path: "scafld-approve.result.path",
       },
     });
     expect(graph.steps.find((step) => step.id === "author-fix")).toMatchObject({
@@ -87,7 +87,7 @@ describe("scafld issue-to-PR skill contract", () => {
         task: "issue-to-pr-apply-fix",
       },
       context: {
-        spec_path: "scafld-approve.result.Path",
+        spec_path: "scafld-approve.result.path",
         declared_file_context: "read-declared-files.declared_file_context.data",
       },
     });

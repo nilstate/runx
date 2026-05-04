@@ -23,9 +23,9 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Path: relativeToCwd(specPath),
-        Status: "draft",
+        task_id: taskId,
+        path: relativeToCwd(specPath),
+        status: "draft",
       },
     });
     break;
@@ -35,10 +35,10 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Path: relativeToCwd(specPath),
-        Valid: true,
-        Errors: null,
+        task_id: taskId,
+        path: relativeToCwd(specPath),
+        valid: true,
+        errors: null,
       },
     });
     break;
@@ -50,9 +50,9 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Status: "approved",
-        Path: relativeToCwd(specPath),
+        task_id: taskId,
+        status: "approved",
+        path: relativeToCwd(specPath),
       },
     });
     break;
@@ -63,10 +63,10 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Status: "review",
-        Passed: 1,
-        Failed: 0,
+        task_id: taskId,
+        status: "review",
+        passed: 1,
+        failed: 0,
       },
     });
     break;
@@ -76,11 +76,11 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Status: currentStatus(),
-        Title: readTitle(),
-        Next: currentStatus() === "completed" ? "none" : "scafld review " + taskId,
-        SessionOK: true,
+        task_id: taskId,
+        status: currentStatus(),
+        title: readTitle(),
+        next: currentStatus() === "completed" ? "none" : "scafld review " + taskId,
+        session_ok: true,
       },
     });
     break;
@@ -90,9 +90,9 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Verdict: "pass",
-        Findings: null,
+        task_id: taskId,
+        verdict: "pass",
+        findings: null,
       },
     });
     break;
@@ -103,14 +103,14 @@ switch (command) {
       ok: true,
       command,
       result: {
-        Version: "2.0",
-        TaskID: taskId,
-        Title: readTitle(),
-        Summary: "Harness summary",
-        Status: "completed",
-        Review: {
-          Status: "completed",
-          Verdict: "pass",
+        spec_version: "2.0",
+        task_id: taskId,
+        title: readTitle(),
+        summary: "Harness summary",
+        status: "completed",
+        review: {
+          status: "completed",
+          verdict: "pass",
         },
       },
     });

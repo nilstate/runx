@@ -17,9 +17,9 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Path: relativeToCwd(draftPath),
-        Status: "draft",
+        task_id: taskId,
+        path: relativeToCwd(draftPath),
+        status: "draft",
       },
     });
     break;
@@ -29,11 +29,11 @@ switch (command) {
       ok: true,
       command,
       result: {
-        TaskID: taskId,
-        Status: "draft",
-        Title: taskId,
-        Next: `scafld approve ${taskId}`,
-        SessionOK: false,
+        task_id: taskId,
+        status: "draft",
+        title: taskId,
+        next: `scafld approve ${taskId}`,
+        session_ok: false,
       },
     });
     break;

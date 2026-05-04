@@ -14,20 +14,20 @@ describe("outbox.build_pull_request tool", () => {
       target_repo: "example/repo",
       handoff_markdown: "# Handoff: Fix fixture behavior\n\nStatus: completed\nNext: none\n",
       build_result: {
-        Status: "review",
-        Passed: 2,
-        Failed: 0,
+        status: "review",
+        passed: 2,
+        failed: 0,
       },
       review_result: {
-        Verdict: "pass_with_issues",
-        BlockingCount: 0,
-        NonBlockingCount: 1,
+        verdict: "pass_with_issues",
+        blocking_count: 0,
+        non_blocking_count: 1,
       },
       completion_result: {
-        Status: "completed",
-        Title: "Fix fixture behavior",
-        Review: {
-          Verdict: "pass_with_issues",
+        status: "completed",
+        title: "Fix fixture behavior",
+        review: {
+          verdict: "pass_with_issues",
         },
       },
       current_branch: {
@@ -35,8 +35,8 @@ describe("outbox.build_pull_request tool", () => {
       },
       base: "main",
       status_snapshot: {
-        Status: "completed",
-        SessionOK: true,
+        status: "completed",
+        session_ok: true,
       },
     });
 
@@ -91,17 +91,17 @@ describe("outbox.build_pull_request tool", () => {
       target_repo: "example/repo",
       handoff_markdown: "# Handoff: Refresh fixture behavior\n\nStatus: completed\nNext: none\n",
       build_result: {
-        Passed: 1,
-        Failed: 0,
+        passed: 1,
+        failed: 0,
       },
       review_result: {
-        Verdict: "pass",
+        verdict: "pass",
       },
       completion_result: {
-        Status: "completed",
-        Title: "Refresh fixture behavior",
-        Review: {
-          Verdict: "pass",
+        status: "completed",
+        title: "Refresh fixture behavior",
+        review: {
+          verdict: "pass",
         },
       },
       current_branch: {

@@ -14,16 +14,16 @@ inputs:
     Status: completed
     Next: none
   build_result:
-    Status: review
-    Passed: 1
-    Failed: 0
+    status: review
+    passed: 1
+    failed: 0
   review_result:
-    Verdict: pass
+    verdict: pass
   completion_result:
-    Status: completed
-    Title: Improve docs
-    Review:
-      Verdict: pass
+    status: completed
+    title: Improve docs
+    review:
+      verdict: pass
   current_branch:
     branch: docs/fixture
   base: main

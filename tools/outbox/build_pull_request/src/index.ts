@@ -67,8 +67,8 @@ function runBuildPullRequest({ inputs }) {
   );
 
   const title = firstNonEmptyString(
-    completionResult.Title,
-    statusSnapshot?.Title,
+    completionResult.title,
+    statusSnapshot?.title,
     inputs.thread_title,
     threadContext.title,
     taskId,
@@ -81,15 +81,15 @@ function runBuildPullRequest({ inputs }) {
 
   const action = existingOutboxEntry ? "refresh" : "create";
   const reviewVerdict = firstNonEmptyString(
-    reviewResult.Verdict,
-    optionalRecord(completionResult.Review)?.Verdict,
-    optionalRecord(completionResult.Review)?.Status,
+    reviewResult.verdict,
+    optionalRecord(completionResult.review)?.verdict,
+    optionalRecord(completionResult.review)?.status,
   );
   const check = buildCheck(buildResult);
   const checkStatus = firstNonEmptyString(check.status);
-  const syncStatus = firstNonEmptyString(statusSnapshot?.SessionOK === false ? "degraded" : "ok");
+  const syncStatus = firstNonEmptyString(statusSnapshot?.session_ok === false ? "degraded" : "ok");
   const pushReady =
-    firstNonEmptyString(completionResult.Status, statusSnapshot?.Status) === "completed" &&
+    firstNonEmptyString(completionResult.status, statusSnapshot?.status) === "completed" &&
     checkStatus === "success" &&
     !isFailingReview(reviewVerdict);
   const branch = firstNonEmptyString(
@@ -130,16 +130,15 @@ function runBuildPullRequest({ inputs }) {
     checks: Object.keys(check).length > 0 ? check : undefined,
     governance: prune({
       status: firstNonEmptyString(
-        completionResult.Status,
+        completionResult.status,
         statusSnapshot?.status,
-        statusSnapshot?.Status,
       ),
       review_verdict: reviewVerdict,
-      blocking_count: numberOrUndefined(reviewResult.BlockingCount),
-      non_blocking_count: numberOrUndefined(reviewResult.NonBlockingCount),
+      blocking_count: reviewFindingCount(reviewResult, "blocking"),
+      non_blocking_count: reviewFindingCount(reviewResult, "non_blocking"),
       sync_status: syncStatus,
-      build_passed: numberOrUndefined(buildResult.Passed),
-      build_failed: numberOrUndefined(buildResult.Failed),
+      build_passed: numberOrUndefined(buildResult.passed),
+      build_failed: numberOrUndefined(buildResult.failed),
     }),
   });
 
@@ -193,17 +192,30 @@ function unwrapRecord(value) {
 }
 
 function buildCheck(buildResult) {
-  const passed = numberOrUndefined(buildResult.Passed);
-  const failed = numberOrUndefined(buildResult.Failed);
+  const passed = numberOrUndefined(buildResult.passed);
+  const failed = numberOrUndefined(buildResult.failed);
   const status = failed !== undefined
     ? failed === 0 ? "success" : "failure"
-    : firstNonEmptyString(buildResult.Status);
+    : firstNonEmptyString(buildResult.status);
   return prune({
     status,
     summary: status ? `scafld build ${status}` : undefined,
     passed,
     failed,
   });
+}
+
+function reviewFindingCount(reviewResult, severity) {
+  const explicit = numberOrUndefined(reviewResult[`${severity}_count`]);
+  if (explicit !== undefined) {
+    return explicit;
+  }
+  if (!Array.isArray(reviewResult.findings)) {
+    return undefined;
+  }
+  return reviewResult.findings
+    .filter((finding) => isRecord(finding) && finding.severity === severity)
+    .length;
 }
 
 function isFailingReview(value) {

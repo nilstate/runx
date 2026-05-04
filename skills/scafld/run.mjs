@@ -70,7 +70,7 @@ switch (command) {
     break;
   case "harden":
     args.push("harden", taskId);
-    if (truthy(inputs.mark_passed ?? inputs.markPassed)) {
+    if (truthy(inputs.mark_passed)) {
       args.push("--mark-passed");
     }
     break;

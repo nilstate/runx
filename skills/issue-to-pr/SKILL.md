@@ -5,7 +5,7 @@ description: Govern a scafld-backed issue-to-PR lane with native scafld review a
 
 # Issue to PR
 
-Drive one bounded thread-driven change through the scafld 2.1 lifecycle and
+Drive one bounded thread-driven change through the scafld 2.2 lifecycle and
 package the result as a provider-agnostic draft pull-request packet.
 
 The graph separates cognition from mutation. Agent phases author the scafld
@@ -29,14 +29,14 @@ approve -> read approved spec -> read declared files -> author fix bundle ->
 write fix bundle -> build -> status -> read current branch -> review ->
 complete -> final status -> handoff -> package draft PR outbox -> adapter push.
 
-There are no compatibility projection steps. `scafld handoff` is the human
-handoff surface, `scafld build` is the validation/check surface, and
-`scafld review` is the native review boundary.
+There are no translation projection steps. `scafld handoff` is the human handoff
+surface, `scafld build` is the validation/check surface, and `scafld review` is
+the native review boundary.
 
 ## Quality Profile
 
 - Purpose: turn one bounded thread-driven change into a visible, reviewable
-  draft PR through native scafld 2.1 surfaces.
+  draft PR through native scafld 2.2 surfaces.
 - Audience: maintainers reviewing the issue, spec, code change, native review,
   handoff, and draft PR.
 - Artifact contract: markdown scafld spec, authored change bundle, build

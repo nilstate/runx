@@ -473,9 +473,9 @@ process.stdout.write(JSON.stringify({
   ok: true,
   command: "plan",
   result: {
-    TaskID: taskId,
-    Path: \`.scafld/specs/drafts/\${taskId}.md\`,
-    Status: "draft"
+    task_id: taskId,
+    path: \`.scafld/specs/drafts/\${taskId}.md\`,
+    status: "draft"
   }
 }));
 `,
