@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "prompts": {
+    "exec.md": "ac2f4491c39e23057b4d2dfb92e364cc91215dc8023a207ac939bb8d90a7468c",
+    "harden.md": "a3503ba00fe2106d1e501306c68c58ed8596d2776cc2784e329f6f9788cc3959",
+    "plan.md": "a59765751bb9ee8baacbd02e686bb0143dc2e8cb7bc6ea0dad8eb9e092de9396",
+    "recovery.md": "b9155b3bef695338e91954fd50aadf4fbab933daf76dd927a817b0a5703025d6",
+    "review.md": "653d1098b68906cb7c3034992a851d5e559a91ad60cb757baa69d3366c7ce332"
+  }
+}
