@@ -327,11 +327,12 @@ runners:
             thread, outbox_entry, target_repo, repo_snapshot,
             repo_snapshot_path, and repo_context to keep the spec grounded in
             the actual request and repository. Preserve the front matter shape:
-            spec_version '2.0', task_id, created, updated, status, harden_status,
-            size, and risk_level. The body must include Current State, Summary,
-            Context, Objectives, Scope, Dependencies, Assumptions, Touchpoints,
-            Risks, Acceptance, at least one Phase section, Rollback, Review,
-            Self Eval, Deviations, Metadata, Origin, Harden Rounds, and
+            spec_version '2.0', task_id, created, updated, status: draft,
+            harden_status: not_run, size, and risk_level. The body must include
+            Current State, Summary, Context, Objectives, Scope, Dependencies,
+            Assumptions, Touchpoints, Risks, Acceptance, at least one Phase
+            section, Rollback, Review, Self Eval, Deviations, Metadata, Origin,
+            Harden Rounds, and
             Planning Log. Declare changed repo files in Context / Files
             impacted and Phase / Changes using concrete repo-relative paths in
             backticks. Do not declare scafld-managed control-plane artifacts
