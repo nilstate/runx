@@ -19,9 +19,38 @@ import {
   pushGitHubPullRequest,
 } from "../../github_adapter.mjs";
 
+const githubPublishEnvAllowlist = [
+  "PATH",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "GH_TOKEN",
+  "GITHUB_TOKEN",
+  "RUNX_GITHUB_TOKEN",
+  "RUNX_GIT_AUTHOR_NAME",
+  "RUNX_GIT_AUTHOR_EMAIL",
+  "GIT_AUTHOR_NAME",
+  "GIT_AUTHOR_EMAIL",
+  "GIT_COMMITTER_NAME",
+  "GIT_COMMITTER_EMAIL",
+  "GITHUB_ACTIONS",
+];
+
 export default defineTool({
   name: "thread.push_outbox",
   description: "Push an outbox entry through the current thread adapter and return the refreshed thread.",
+  source: {
+    type: "cli-tool",
+    command: "node",
+    args: ["./run.mjs"],
+    sandbox: {
+      profile: "workspace-write",
+      cwd_policy: "workspace",
+      env_allowlist: githubPublishEnvAllowlist,
+      network: true,
+      writable_paths: ["{{workspace_path}}", "{{fixture}}"],
+    },
+  },
   inputs: {
     thread: recordInput({ optional: true, description: "Current hydrated thread for the bounded provider surface." }),
     outbox_entry: artifact({ description: "Outbox entry to push through the thread adapter." }),

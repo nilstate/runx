@@ -82,7 +82,8 @@ export async function invokeCliTool(request: CliToolInvokeRequest): Promise<CliT
   const resolved = request.resolvedInputs ?? {};
   const args = (request.source.args ?? []).map((arg) => resolveArg(arg, resolved, request.inputs));
   const writablePaths = (request.source.sandbox?.writablePaths ?? []).map((writablePath) =>
-    resolveArg(writablePath, resolved, request.inputs));
+    resolveArg(writablePath, resolved, request.inputs))
+    .filter((writablePath) => writablePath.trim().length > 0);
   const sandbox = prepareLocalProcessSandbox({
     sandbox: request.source.sandbox,
     skillDirectory: request.skillDirectory,

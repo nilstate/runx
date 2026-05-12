@@ -8,6 +8,24 @@ import { describe, expect, it } from "vitest";
 const toolPath = path.resolve("tools/thread/push_outbox/run.mjs");
 
 describe("thread.push_outbox tool", () => {
+  it("declares GitHub publish environment for sandboxed execution", async () => {
+    const manifest = JSON.parse(await readFile(path.resolve("tools/thread/push_outbox/manifest.json"), "utf8"));
+    expect(manifest.source.sandbox).toMatchObject({
+      profile: "workspace-write",
+      network: true,
+      writable_paths: ["{{workspace_path}}", "{{fixture}}"],
+    });
+    expect(manifest.source.sandbox.env_allowlist).toEqual(expect.arrayContaining([
+      "GH_TOKEN",
+      "GITHUB_TOKEN",
+      "RUNX_GITHUB_TOKEN",
+      "RUNX_GIT_AUTHOR_NAME",
+      "RUNX_GIT_AUTHOR_EMAIL",
+    ]));
+    expect(manifest.source.sandbox.env_allowlist).not.toContain("HOME");
+    expect(manifest.source.sandbox.env_allowlist).not.toContain("RUNX_GH_BIN");
+  });
+
   it("skips cleanly when thread is not present", () => {
     const result = runTool({
       outbox_entry: {
