@@ -60,9 +60,10 @@ The document must preserve front matter with:
 - `task_id`
 - `created`: ISO-8601 timestamp
 - `updated`: ISO-8601 timestamp
+- `title`: non-empty task title, normally `thread_title`
 - `status: draft`
 - `harden_status: not_run`
-- `size`
+- `size`: one of `small`, `medium`, or `large`
 - `risk_level`
 
 The body must include the standard scafld 2 sections: Current State, Summary,
@@ -92,7 +93,7 @@ merge-base comparisons.
 - `repo_snapshot`: compact structured snapshot of the target repo.
 - `repo_snapshot_path`: optional path to a fuller repo snapshot artifact.
 - `repo_context`: textual summary of repo shape and validation hooks.
-- `size`: scafld size, default `micro`.
+- `size`: scafld size, default `small`.
 - `risk`: scafld risk, default `low`.
 - `base`: base ref for PR packaging, default `main`.
 - `fixture`: workspace root containing `.scafld`.

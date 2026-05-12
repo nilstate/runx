@@ -14,7 +14,7 @@ harness:
         thread_title: Fixture smoke test
         thread_body: Minimal thread body for the harness.
         thread_locator: local://fixtures/issue-to-pr-smoke
-        size: micro
+        size: small
         risk: low
         scafld_bin: ./fixtures/issue-to-pr-harness-scafld.mjs
       expect:
@@ -26,7 +26,7 @@ harness:
         thread_title: Fix-boundary harness reach
         thread_body: Canned markdown spec lets the graph progress to the fix authoring boundary.
         thread_locator: local://fixtures/issue-to-pr-reach-fix
-        size: micro
+        size: small
         risk: low
         scafld_bin: ./fixtures/issue-to-pr-harness-scafld.mjs
       caller:
@@ -38,9 +38,10 @@ harness:
               task_id: issue-to-pr-reach-fix
               created: '2026-05-04T00:00:00Z'
               updated: '2026-05-04T00:00:00Z'
+              title: Fix-boundary harness reach
               status: draft
               harden_status: not_run
-              size: micro
+              size: small
               risk_level: low
               ---
 
@@ -256,7 +257,7 @@ runners:
       size:
         type: string
         required: false
-        default: "micro"
+        default: "small"
         description: "Size passed to scafld plan."
       risk:
         type: string
@@ -328,7 +329,8 @@ runners:
             repo_snapshot_path, and repo_context to keep the spec grounded in
             the actual request and repository. Preserve the front matter shape:
             spec_version '2.0', task_id, created, updated, status: draft,
-            harden_status: not_run, size, and risk_level. The body must include
+            title: non-empty thread title, harden_status: not_run, size as one
+            of small, medium, or large, and risk_level. The body must include
             Current State, Summary, Context, Objectives, Scope, Dependencies,
             Assumptions, Touchpoints, Risks, Acceptance, at least one Phase
             section, Rollback, Review, Self Eval, Deviations, Metadata, Origin,
