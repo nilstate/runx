@@ -31,6 +31,7 @@ switch (command) {
     break;
   case "validate":
     ensure(taskId, "task_id is required for validate");
+    validateSpec();
     emit({
       ok: true,
       command,
@@ -153,6 +154,27 @@ function readTitle() {
 function replaceStatus(status) {
   const contents = existsSync(specPath) ? readFileSync(specPath, "utf8") : renderSpec({ status });
   writeFileSync(specPath, contents.replace(/^status:\s*.+$/m, `status: ${status}`));
+}
+
+function validateSpec() {
+  const contents = existsSync(specPath) ? readFileSync(specPath, "utf8") : "";
+  const errors = [];
+  if (!/^#\s+\S+/m.test(contents)) {
+    errors.push("title is required");
+  }
+  if (errors.length === 0) {
+    return;
+  }
+  emit({
+    ok: false,
+    command,
+    error: {
+      code: "validation_failed",
+      message: errors.join("; "),
+      exit_code: 3,
+    },
+  });
+  process.exit(3);
 }
 
 function renderSpec({ status }) {
