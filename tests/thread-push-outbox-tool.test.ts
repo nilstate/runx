@@ -359,6 +359,111 @@ describe("thread.push_outbox tool", () => {
     }
   }, 15_000);
 
+  it("falls back from GH_TOKEN to GITHUB_TOKEN for direct REST pull request creation", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-rest-token-tool-"));
+    const workspace = path.join(tempDir, "workspace");
+    const remote = path.join(tempDir, "remote.git");
+    const fakeBin = path.join(tempDir, "bin");
+    const fakeGh = path.join(fakeBin, "gh");
+    const fakeCurl = path.join(fakeBin, "curl");
+    const fakeState = path.join(tempDir, "fake-gh-state.json");
+
+    try {
+      await mkdir(fakeBin, { recursive: true });
+      await initGitHubWorkspace(workspace, remote, "issue-rest-token");
+      await writeFile(
+        fakeState,
+        `${JSON.stringify({
+          issue: {
+            number: 123,
+            title: "Fix fixture behavior",
+            body: "The issue body for the fixture.",
+            url: "https://github.com/example/repo/issues/123",
+            state: "OPEN",
+            createdAt: "2026-04-22T00:00:00Z",
+            updatedAt: "2026-04-22T00:00:00Z",
+            author: {
+              login: "auscaster",
+            },
+            comments: [],
+            labels: [],
+            closedByPullRequestsReferences: [],
+          },
+          pulls: [],
+          nextPullNumber: 77,
+          nextCommentId: 1000,
+          curlTokens: [],
+        }, null, 2)}\n`,
+      );
+      await writeFakeGhScript(fakeGh);
+      await writeFakeCurlScript(fakeCurl);
+
+      const result = runTool({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "pull_request:issue-rest-token",
+          kind: "pull_request",
+          title: "Fix fixture behavior",
+          status: "proposed",
+          thread_locator: "github://example/repo/issues/123",
+        },
+        draft_pull_request: {
+          schema_version: "runx.pull-request-draft.v1",
+          action: "create",
+          push_ready: true,
+          task_id: "issue-rest-token",
+          target: {
+            repo: "example/repo",
+            branch: "issue-rest-token",
+            base: "main",
+            remote: "origin",
+          },
+          pull_request: {
+            title: "Fix fixture behavior",
+            body_markdown: "# Fix fixture behavior\n\nBody.\n",
+            is_draft: true,
+          },
+        },
+        workspace_path: workspace,
+        next_status: "draft",
+      }, {
+        GH_TOKEN: "bad-token",
+        GITHUB_TOKEN: "good-token",
+        PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}`,
+        RUNX_FAKE_GH_STATE: fakeState,
+        RUNX_GH_BIN: undefined,
+      });
+
+      expect(result.push.status).toBe("pushed");
+      expect(result.push.pull_request.url).toBe("https://github.com/example/repo/pull/77");
+      expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        curlTokens: ["bad-token", "good-token"],
+        pulls: [
+          {
+            number: 77,
+            headRefName: "issue-rest-token",
+            baseRefName: "main",
+          },
+        ],
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
   it("sets a default Git commit identity before committing uncommitted GitHub pull request changes", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-identity-tool-"));
     const workspace = path.join(tempDir, "workspace");
@@ -1284,6 +1389,72 @@ function readField(argv, key) {
     const value = argv[index + 1] || "";
     if (value.startsWith(\`\${key}=\`)) {
       return value.slice(key.length + 1);
+    }
+  }
+  return "";
+}
+`,
+    { mode: 0o755 },
+  );
+}
+
+async function writeFakeCurlScript(scriptPath: string): Promise<void> {
+  await writeFile(
+    scriptPath,
+    `#!/usr/bin/env node
+import { readFileSync, writeFileSync } from "node:fs";
+
+const args = process.argv.slice(2);
+const statePath = process.env.RUNX_FAKE_GH_STATE;
+if (!statePath) {
+  throw new Error("RUNX_FAKE_GH_STATE is required.");
+}
+
+const state = JSON.parse(readFileSync(statePath, "utf8"));
+const authHeader = readHeader(args, "Authorization");
+const token = authHeader.replace(/^Bearer\\s+/, "");
+state.curlTokens = [...(state.curlTokens || []), token];
+
+if (token === "bad-token") {
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.stderr.write("bad token cannot create pull requests\\n");
+  process.exit(22);
+}
+
+const repo = (readFlag(args, "--url").match(/\\/repos\\/([^/]+\\/[^/]+)\\/pulls$/) || [])[1];
+const payload = JSON.parse(readFileSync(0, "utf8"));
+const number = state.nextPullNumber++;
+const pull = {
+  number,
+  repo,
+  title: payload.title,
+  body: payload.body,
+  url: \`https://github.com/\${repo}/pull/\${number}\`,
+  html_url: \`https://github.com/\${repo}/pull/\${number}\`,
+  state: "OPEN",
+  isDraft: payload.draft === true,
+  headRefName: payload.head,
+  baseRefName: payload.base,
+  updatedAt: "2026-04-22T01:00:00Z",
+};
+state.pulls.push(pull);
+writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+process.stdout.write(JSON.stringify(pull));
+
+function readFlag(argv, flag) {
+  const index = argv.indexOf(flag);
+  return index >= 0 ? argv[index + 1] : "";
+}
+
+function readHeader(argv, headerName) {
+  for (let index = 0; index < argv.length - 1; index += 1) {
+    if (argv[index] !== "--header") {
+      continue;
+    }
+    const value = argv[index + 1] || "";
+    const prefix = \`\${headerName}:\`;
+    if (value.startsWith(prefix)) {
+      return value.slice(prefix.length).trim();
     }
   }
   return "";
