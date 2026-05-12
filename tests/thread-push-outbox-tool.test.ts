@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -354,6 +354,112 @@ describe("thread.push_outbox tool", () => {
           },
         ],
       });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  it("sets a default Git commit identity before committing uncommitted GitHub pull request changes", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-identity-tool-"));
+    const workspace = path.join(tempDir, "workspace");
+    const remote = path.join(tempDir, "remote.git");
+    const fakeGh = path.join(tempDir, "fake-gh.mjs");
+    const fakeState = path.join(tempDir, "fake-gh-state.json");
+    const home = path.join(tempDir, "home");
+    const xdgConfigHome = path.join(tempDir, "xdg");
+
+    try {
+      await mkdir(home, { recursive: true });
+      await mkdir(xdgConfigHome, { recursive: true });
+      await initGitHubWorkspace(workspace, remote, "issue-identity");
+      runChecked("git", ["-C", workspace, "config", "--unset", "user.email"], path.dirname(workspace));
+      runChecked("git", ["-C", workspace, "config", "--unset", "user.name"], path.dirname(workspace));
+      await writeFile(path.join(workspace, "identity.md"), "queued\n");
+      await writeFile(
+        fakeState,
+        `${JSON.stringify({
+          issue: {
+            number: 123,
+            title: "Fix fixture behavior",
+            body: "The issue body for the fixture.",
+            url: "https://github.com/example/repo/issues/123",
+            state: "OPEN",
+            createdAt: "2026-04-22T00:00:00Z",
+            updatedAt: "2026-04-22T00:00:00Z",
+            author: {
+              login: "auscaster",
+            },
+            comments: [],
+            labels: [],
+            closedByPullRequestsReferences: [],
+          },
+          pulls: [],
+          nextPullNumber: 77,
+          nextCommentId: 1000,
+        }, null, 2)}\n`,
+      );
+      await writeFakeGhScript(fakeGh);
+
+      const result = runTool({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "pull_request:issue-identity",
+          kind: "pull_request",
+          title: "Fix fixture behavior",
+          status: "proposed",
+          thread_locator: "github://example/repo/issues/123",
+        },
+        draft_pull_request: {
+          schema_version: "runx.pull-request-draft.v1",
+          action: "create",
+          push_ready: true,
+          task_id: "issue-identity",
+          target: {
+            repo: "example/repo",
+            branch: "issue-identity",
+            base: "main",
+            remote: "origin",
+          },
+          pull_request: {
+            title: "Fix fixture behavior",
+            body_markdown: "# Fix fixture behavior\n\nBody.\n",
+            is_draft: true,
+          },
+        },
+        workspace_path: workspace,
+        next_status: "draft",
+      }, {
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_AUTHOR_EMAIL: undefined,
+        GIT_AUTHOR_NAME: undefined,
+        GIT_COMMITTER_EMAIL: undefined,
+        GIT_COMMITTER_NAME: undefined,
+        EMAIL: undefined,
+        GITHUB_ACTIONS: "true",
+        HOME: home,
+        RUNX_GH_BIN: fakeGh,
+        RUNX_FAKE_GH_STATE: fakeState,
+        XDG_CONFIG_HOME: xdgConfigHome,
+      });
+
+      expect(result.push.status).toBe("pushed");
+      expect(runChecked("git", ["-C", workspace, "log", "-1", "--format=%an <%ae>"], path.dirname(workspace)).trim())
+        .toBe("github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>");
+      expect(runChecked("git", ["--git-dir", remote, "branch", "--list", "issue-identity"], tempDir)).toContain("issue-identity");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -738,14 +844,21 @@ describe("thread.push_outbox tool", () => {
 });
 
 function runTool(inputs: Readonly<Record<string, unknown>>, envOverrides: NodeJS.ProcessEnv = {}) {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ...envOverrides,
+    RUNX_INPUTS_JSON: JSON.stringify(inputs),
+  };
+  for (const [key, value] of Object.entries(envOverrides)) {
+    if (value === undefined) {
+      delete env[key];
+    }
+  }
+
   const result = spawnSync("node", [toolPath], {
     cwd: path.resolve("."),
     encoding: "utf8",
-    env: {
-      ...process.env,
-      ...envOverrides,
-      RUNX_INPUTS_JSON: JSON.stringify(inputs),
-    },
+    env,
   });
   expect(result.status).toBe(0);
   if (result.status !== 0) {

@@ -453,6 +453,7 @@ export function pushGitHubPullRequest({
       cwd: workspacePath,
       env,
     });
+    ensureGitCommitIdentity(workspacePath, env);
     runCommand("git", ["commit", "-m", commitMessage], {
       cwd: workspacePath,
       env,
@@ -872,6 +873,55 @@ function repoHasUncommittedChanges(workspacePath, env) {
     cwd: workspacePath,
     env,
   }).trim().length > 0;
+}
+
+function ensureGitCommitIdentity(workspacePath, env) {
+  const configuredName = readGitConfig(workspacePath, "user.name", env);
+  const configuredEmail = readGitConfig(workspacePath, "user.email", env);
+
+  if (!configuredName) {
+    runCommand("git", ["config", "user.name", defaultGitUserName(env)], {
+      cwd: workspacePath,
+      env,
+    });
+  }
+
+  if (!configuredEmail) {
+    runCommand("git", ["config", "user.email", defaultGitUserEmail(env)], {
+      cwd: workspacePath,
+      env,
+    });
+  }
+}
+
+function readGitConfig(workspacePath, key, env) {
+  const result = spawnSync("git", ["config", "--local", "--get", key], {
+    cwd: workspacePath,
+    env: env ?? process.env,
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    return undefined;
+  }
+  return firstNonEmptyString(result.stdout.trim());
+}
+
+function defaultGitUserName(env) {
+  return firstNonEmptyString(
+    env?.RUNX_GIT_AUTHOR_NAME,
+    env?.GIT_AUTHOR_NAME,
+    env?.GITHUB_ACTIONS === "true" ? "github-actions[bot]" : undefined,
+    "runx",
+  );
+}
+
+function defaultGitUserEmail(env) {
+  return firstNonEmptyString(
+    env?.RUNX_GIT_AUTHOR_EMAIL,
+    env?.GIT_AUTHOR_EMAIL,
+    env?.GITHUB_ACTIONS === "true" ? "41898282+github-actions[bot]@users.noreply.github.com" : undefined,
+    "runx@example.invalid",
+  );
 }
 
 function runCommand(command, args, options) {
