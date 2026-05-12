@@ -32,7 +32,7 @@ runners:
       command:
         type: string
         required: true
-        description: "Native scafld command to run: init, plan, harden, validate, approve, build, exec, review, complete, fail, cancel, status, list, report, or handoff."
+        description: "scafld command to run: init, plan, harden, validate, approve, build, build_to_review, exec, review, complete, fail, cancel, status, list, report, or handoff."
       task_id:
         type: string
         required: false
@@ -69,6 +69,10 @@ runners:
         type: boolean
         required: false
         description: "When true, pass `--mark-passed` to `scafld harden`."
+      max_builds:
+        type: string
+        required: false
+        description: "Maximum native `scafld build` advances for `build_to_review`; defaults to 12."
       provider:
         type: string
         required: false

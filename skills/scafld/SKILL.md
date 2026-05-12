@@ -45,7 +45,7 @@ Specs are Markdown files under `.scafld/specs/`:
 - `active/` - active or review-stage specs
 - `archive/YYYY-MM/` - completed, failed, or cancelled specs
 
-The supported native commands are:
+The supported commands are:
 
 1. `init` - bootstrap a scafld workspace.
 2. `plan <task-id>` - create `.scafld/specs/drafts/<task-id>.md`.
@@ -54,14 +54,17 @@ The supported native commands are:
 5. `validate <task-id>` - validate the Markdown spec shape.
 6. `approve <task-id>` - move a draft into the approved lane.
 7. `build <task-id>` - activate approved work, run acceptance, and write evidence.
-8. `exec <task-id>` - run the execution path for the current task.
-9. `review <task-id>` - run scafld's native adversarial review gate.
-10. `complete <task-id>` - archive reviewed work after the native gate passes.
-11. `status <task-id>` - inspect native task state.
-12. `list` - list native task specs.
-13. `report` - aggregate native run/spec metrics.
-14. `handoff <task-id>` - render model-facing Markdown transport.
-15. `fail <task-id>` and `cancel <task-id>` - archive incomplete work.
+8. `build_to_review <task-id>` - repeatedly run native `scafld build
+   <task-id> --json` until scafld reports status `review`, stopping on the
+   first native build failure or blocker.
+9. `exec <task-id>` - run the execution path for the current task.
+10. `review <task-id>` - run scafld's native adversarial review gate.
+11. `complete <task-id>` - archive reviewed work after the native gate passes.
+12. `status <task-id>` - inspect native task state.
+13. `list` - list native task specs.
+14. `report` - aggregate native run/spec metrics.
+15. `handoff <task-id>` - render model-facing Markdown transport.
+16. `fail <task-id>` and `cancel <task-id>` - archive incomplete work.
 
 Branch creation, issue updates, PR creation, and CI publication are wrapper
 responsibilities. scafld owns the local lifecycle, spec projection, session
@@ -83,7 +86,7 @@ matter:
 ## Inputs
 
 - `command` (required): one of `init`, `plan`, `harden`, `validate`,
-  `approve`, `build`, `exec`, `review`, `complete`, `fail`, `cancel`,
+  `approve`, `build`, `build_to_review`, `exec`, `review`, `complete`, `fail`, `cancel`,
   `status`, `list`, `report`, or `handoff`.
 - `task_id`: scafld task id. Required for all commands except `init`, `list`,
   and `report`.
@@ -94,6 +97,8 @@ matter:
 - `mark_passed`: forwarded to `harden --mark-passed`.
 - `provider`, `provider_command`, `provider_binary`, `model`: forwarded to
   `review`.
+- `max_builds`: optional cap for `build_to_review`; defaults to 12 native
+  build advances.
 - `scafld_bin`: explicit scafld executable path. Defaults to `SCAFLD_BIN` or
   `scafld` on PATH.
 
@@ -101,5 +106,7 @@ matter:
 
 runx does not rebuild scafld state locally. For commands with native JSON
 contracts, the wrapper forwards the scafld payload directly after argv/env
-sanitization. `handoff` is the exception: it forwards native Markdown because
-handoff is model transport, not lifecycle state.
+sanitization. `build_to_review` is a bounded lifecycle driver over native
+`scafld build` outputs, not a local state reconstruction. `handoff` is the
+exception: it forwards native Markdown because handoff is model transport, not
+lifecycle state.

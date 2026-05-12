@@ -26,8 +26,9 @@ The graph runs:
 
 `scafld plan` -> author markdown spec -> write spec -> read spec -> validate ->
 approve -> read approved spec -> read declared files -> author fix bundle ->
-write fix bundle -> build -> status -> read current branch -> review ->
-complete -> final status -> handoff -> package draft PR outbox -> adapter push.
+write fix bundle -> build to review -> status -> read current branch -> review
+-> complete -> final status -> handoff -> package draft PR outbox -> adapter
+push.
 
 There are no translation projection steps. `scafld handoff` is the human handoff
 surface, `scafld build` is the validation/check surface, and `scafld review` is
@@ -40,8 +41,8 @@ the native review boundary.
 - Audience: maintainers reviewing the issue, spec, code change, native review,
   handoff, and draft PR.
 - Artifact contract: markdown scafld spec, authored change bundle, build
-  result, review result, completed status, handoff markdown, draft PR packet,
-  outbox entry, and receipt trail.
+  build-to-review result, review result, completed status, handoff markdown,
+  draft PR packet, outbox entry, and receipt trail.
 - Evidence bar: every spec objective, file impact, validation command, and PR
   claim must trace to the thread, repo snapshot, scafld state, or actual
   working-tree change.

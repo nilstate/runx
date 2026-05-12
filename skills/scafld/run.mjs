@@ -29,6 +29,7 @@ const jsonCommands = new Set([
   "list",
   "report",
   "build",
+  "build_to_review",
 ]);
 const commandsWithoutTaskId = new Set(["init", "list", "report"]);
 
@@ -83,6 +84,8 @@ switch (command) {
   case "build":
     args.push(command, taskId);
     break;
+  case "build_to_review":
+    break;
   case "review":
     args.push("review", taskId);
     if (inputs.provider) {
@@ -124,6 +127,23 @@ for (const key of Object.keys(env)) {
 }
 if (path.isAbsolute(scafld) || scafld.includes(path.sep)) {
   env.PATH = `${path.dirname(scafld)}${path.delimiter}${env.PATH || "/usr/local/bin:/usr/bin:/bin"}`;
+}
+
+if (command === "build_to_review") {
+  const advanced = buildToReview({
+    scafld,
+    taskId,
+    cwd,
+    env,
+    maxBuilds: positiveInteger(inputs.max_builds, 12),
+  });
+  if (advanced.stdout) {
+    process.stdout.write(advanced.stdout);
+  }
+  if (advanced.stderr) {
+    process.stderr.write(advanced.stderr);
+  }
+  process.exit(advanced.exitCode);
 }
 
 const result = spawnSync(scafld, args, {
@@ -195,6 +215,112 @@ function resolveBinary(candidate) {
     return candidate;
   }
   return path.isAbsolute(candidate) ? candidate : path.resolve(scriptDirectory, candidate);
+}
+
+function buildToReview({ scafld, taskId, cwd, env, maxBuilds }) {
+  const builds = [];
+  let passed = 0;
+  let failed = 0;
+
+  for (let attempt = 1; attempt <= maxBuilds; attempt += 1) {
+    const result = spawnSync(scafld, ["build", taskId, "--json"], {
+      cwd,
+      env,
+      encoding: "utf8",
+      shell: false,
+    });
+    if (result.error) {
+      return {
+        exitCode: 1,
+        stderr: `${result.error.message}\n`,
+      };
+    }
+
+    const stdout = result.stdout ?? "";
+    const stderr = result.stderr ?? "";
+    let structured = null;
+    try {
+      structured = parseJsonPayload("build", stdout);
+    } catch (error) {
+      return {
+        exitCode: result.status === 0 ? 1 : result.status ?? 1,
+        stderr: `${stderr}${error.message}\n`,
+      };
+    }
+
+    const payload = unwrapScafldResult(structured);
+    builds.push(payload);
+    passed += Number.isFinite(payload.passed) ? payload.passed : 0;
+    failed += Number.isFinite(payload.failed) ? payload.failed : 0;
+
+    const exitCode = result.status ?? 1;
+    if (exitCode !== 0) {
+      return {
+        exitCode,
+        stdout: `${JSON.stringify(structured)}\n`,
+        stderr,
+      };
+    }
+
+    if (payload.status === "review") {
+      return {
+        exitCode: 0,
+        stdout: `${JSON.stringify({
+          ok: true,
+          command: "build_to_review",
+          result: {
+            task_id: payload.task_id || taskId,
+            status: payload.status,
+            phase: payload.phase,
+            passed,
+            failed,
+            next: payload.next,
+            iterations: builds.length,
+            builds,
+            last: payload,
+          },
+        })}\n`,
+        stderr,
+      };
+    }
+  }
+
+  return {
+    exitCode: 1,
+    stdout: `${JSON.stringify({
+      ok: false,
+      command: "build_to_review",
+      error: {
+        code: "runtime_error",
+        message: `scafld build_to_review exceeded ${maxBuilds} build attempts before status review`,
+        exit_code: 1,
+      },
+      result: {
+        task_id: taskId,
+        status: builds.at(-1)?.status || "unknown",
+        passed,
+        failed,
+        iterations: builds.length,
+        builds,
+        last: builds.at(-1),
+      },
+    })}\n`,
+  };
+}
+
+function unwrapScafldResult(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    if (value.result && typeof value.result === "object" && !Array.isArray(value.result)) {
+      return value.result;
+    }
+    return value;
+  }
+  return {};
+}
+
+function positiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function parseJsonPayload(commandName, rawStdout) {

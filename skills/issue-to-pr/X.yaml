@@ -463,13 +463,13 @@ runners:
           context:
             files: author-fix.fix_bundle.data.files
         - id: scafld-build
-          label: build task
+          label: build to review
           skill: ../scafld
           scopes:
             - scafld:build
           mutation: true
           inputs:
-            command: build
+            command: build_to_review
         - id: scafld-status
           label: inspect review state
           skill: ../scafld

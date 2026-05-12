@@ -28,6 +28,7 @@ describe("scafld skill contract", () => {
     expect(wrapper).toContain('"plan"');
     expect(wrapper).toContain('"harden"');
     expect(wrapper).toContain('"build"');
+    expect(wrapper).toContain('"build_to_review"');
     expect(wrapper).toContain('"handoff"');
     expect(wrapper).not.toContain('"new"');
     expect(wrapper).not.toContain('"branch"');
@@ -45,6 +46,7 @@ describe("scafld skill contract", () => {
     expect(runner?.inputs.acceptance_command.required).toBe(false);
     expect(runner?.inputs.provider.required).toBe(false);
     expect(runner?.inputs.mark_passed.required).toBe(false);
+    expect(runner?.inputs.max_builds.required).toBe(false);
     expect(runner?.runtime).toEqual({
       requirements: [
         "scafld CLI with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input",
