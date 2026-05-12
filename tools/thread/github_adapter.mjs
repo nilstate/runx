@@ -512,10 +512,10 @@ export function pushGitHubPullRequest({
       args.push("--base", base);
     }
     try {
-      pullRequestRef = runCommand(resolveGhBinary(env), args, {
-        cwd: workspacePath,
+      pullRequestRef = runGitHubPullRequestCreate(args, {
+        workspacePath,
         env,
-      }).trim();
+      });
     } catch (error) {
       const fallback = findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env);
       if (!fallback || !String(error?.message ?? error).match(/pull request.*(already exists|exists)|already.*pull request/i)) {
@@ -904,6 +904,35 @@ function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env) {
     firstNonEmptyString(pull.headRefName) === branch
     && String(pull.state ?? "").toUpperCase() === "OPEN"
   );
+}
+
+function runGitHubPullRequestCreate(args, { workspacePath, env }) {
+  let lastError;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      return runCommand(resolveGhBinary(env), args, {
+        cwd: workspacePath,
+        env,
+      }).trim();
+    } catch (error) {
+      lastError = error;
+      const message = String(error?.message ?? error);
+      if (!isTransientGitHubPullRequestCreateError(message) || attempt === 3) {
+        throw error;
+      }
+      sleepSync(2000 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+function isTransientGitHubPullRequestCreateError(message) {
+  return /Head sha can't be blank|Base sha can't be blank|Head repository can't be blank|No commits between|not all refs are readable/i
+    .test(String(message));
+}
+
+function sleepSync(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
 
 function runGhJson(args, options) {
