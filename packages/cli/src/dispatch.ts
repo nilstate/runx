@@ -94,7 +94,7 @@ import {
   type ToolCommandArgs,
 } from "./commands/tool.js";
 import { ensureRunxInstallState } from "./runx-state.js";
-import { resolveBundledCliVoiceProfilePath } from "./runtime-assets.js";
+import { resolveBundledCliToolRoots, resolveBundledCliVoiceProfilePath } from "./runtime-assets.js";
 import { createOfficialSkillResolver, resolveRunnableSkillReference, runSkillSearch } from "./skill-refs.js";
 import { streamTrainableReceipts } from "./trainable-receipts.js";
 
@@ -572,14 +572,15 @@ async function executeLocalSkillCommand(options: {
   readonly env: NodeJS.ProcessEnv;
   readonly lineage?: RunLineageMetadata;
 }): Promise<RunLocalSkillResult> {
-  const adapters = await resolveDefaultSkillAdapters(options.env);
-  const resolvedReceiptDir = options.parsed.receiptDir ? resolvePathFromUserInput(options.parsed.receiptDir, options.env) : undefined;
+  const env = await withBundledCliToolRoots(options.env);
+  const adapters = await resolveDefaultSkillAdapters(env);
+  const resolvedReceiptDir = options.parsed.receiptDir ? resolvePathFromUserInput(options.parsed.receiptDir, env) : undefined;
   const hydratedLineage =
     options.lineage
     ?? (
       options.parsed.resumeReceiptId
         ? (await readPendingRunState(
-          resolvedReceiptDir ?? resolveDefaultReceiptDir(options.env),
+          resolvedReceiptDir ?? resolveDefaultReceiptDir(env),
           options.parsed.resumeReceiptId,
         ))?.lineage
         : undefined
@@ -587,19 +588,40 @@ async function executeLocalSkillCommand(options: {
   return await runLocalSkill({
     skillPath: options.skillPath,
     inputs: options.inputs,
-    answersPath: options.parsed.answersPath ? resolvePathFromUserInput(options.parsed.answersPath, options.env) : undefined,
+    answersPath: options.parsed.answersPath ? resolvePathFromUserInput(options.parsed.answersPath, env) : undefined,
     caller: options.caller,
-    env: options.env,
+    env,
     receiptDir: resolvedReceiptDir,
     runner: options.parsed.runner,
     resumeFromRunId: options.parsed.resumeReceiptId,
-    registryStore: await resolveRegistryStoreForGraphs(options.env),
-    officialSkillResolver: createOfficialSkillResolver(options.env),
+    registryStore: await resolveRegistryStoreForGraphs(env),
+    officialSkillResolver: createOfficialSkillResolver(env),
     adapters,
-    toolCatalogAdapters: resolveEnvToolCatalogAdapters(options.env),
+    toolCatalogAdapters: resolveEnvToolCatalogAdapters(env),
     voiceProfilePath: await resolveBundledCliVoiceProfilePath(),
     lineage: hydratedLineage,
   });
+}
+
+async function withBundledCliToolRoots(env: NodeJS.ProcessEnv): Promise<NodeJS.ProcessEnv> {
+  const bundledRoots = await resolveBundledCliToolRoots();
+  if (bundledRoots.length === 0) {
+    return env;
+  }
+  const configuredRoots = String(env.RUNX_TOOL_ROOTS ?? "")
+    .split(path.delimiter)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const merged = [...configuredRoots];
+  for (const root of bundledRoots) {
+    if (!merged.includes(root)) {
+      merged.push(root);
+    }
+  }
+  return {
+    ...env,
+    RUNX_TOOL_ROOTS: merged.join(path.delimiter),
+  };
 }
 
 function resolveKnowledgeDir(env: NodeJS.ProcessEnv): string {
