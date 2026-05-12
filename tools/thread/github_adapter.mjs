@@ -933,27 +933,40 @@ function runGitHubPullRequestCreate({ repoSlug, branch, base, title, body, works
   let lastError;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
-      const restCreated = runGitHubPullRequestCreateRest({
-        repoSlug,
-        branch,
-        base,
-        title,
-        body,
-        env,
-      });
+      let restError;
+      let restCreated;
+      try {
+        restCreated = runGitHubPullRequestCreateRest({
+          repoSlug,
+          branch,
+          base,
+          title,
+          body,
+          env,
+        });
+      } catch (error) {
+        restError = error;
+      }
       if (restCreated) {
         return restCreated;
       }
-      return runCommand(resolveGhBinary(env), buildGitHubPullRequestCreateArgs({
-        repoSlug,
-        branch,
-        base,
-        title,
-        body,
-      }), {
-        cwd: workspacePath,
-        env,
-      }).trim();
+      try {
+        return runCommand(resolveGhBinary(env), buildGitHubPullRequestCreateArgs({
+          repoSlug,
+          branch,
+          base,
+          title,
+          body,
+        }), {
+          cwd: workspacePath,
+          env,
+        }).trim();
+      } catch (error) {
+        if (restError) {
+          throw new Error(`${error.message}\nREST create failed first:\n${restError.message}`);
+        }
+        throw error;
+      }
     } catch (error) {
       lastError = error;
       if (attempt === 3) {
@@ -969,8 +982,8 @@ function runGitHubPullRequestCreateRest({ repoSlug, branch, base, title, body, e
   if (firstNonEmptyString(env?.RUNX_GH_BIN)) {
     return undefined;
   }
-  const token = firstNonEmptyString(env?.GH_TOKEN, env?.GITHUB_TOKEN);
-  if (!token) {
+  const tokens = githubTokenCandidates(env);
+  if (tokens.length === 0) {
     return undefined;
   }
   const payload = JSON.stringify(prune({
@@ -980,36 +993,60 @@ function runGitHubPullRequestCreateRest({ repoSlug, branch, base, title, body, e
     body,
     draft: true,
   }));
-  const result = spawnSync("curl", [
-    "--fail-with-body",
-    "--silent",
-    "--show-error",
-    "--request",
-    "POST",
-    "--url",
-    `https://api.github.com/repos/${repoSlug}/pulls`,
-    "--header",
-    "Accept: application/vnd.github+json",
-    "--header",
-    "X-GitHub-Api-Version: 2022-11-28",
-    "--header",
-    `Authorization: Bearer ${token}`,
-    "--data-binary",
-    "@-",
-  ], {
-    input: payload,
-    env: env ?? process.env,
-    encoding: "utf8",
-  });
-  if (result.status !== 0) {
-    throw new Error(`command failed: curl GitHub pull request create\n${result.stderr || result.stdout || "unknown failure"}`);
+  const failures = [];
+  for (const token of tokens) {
+    const result = spawnSync("curl", [
+      "--fail-with-body",
+      "--silent",
+      "--show-error",
+      "--request",
+      "POST",
+      "--url",
+      `https://api.github.com/repos/${repoSlug}/pulls`,
+      "--header",
+      "Accept: application/vnd.github+json",
+      "--header",
+      "X-GitHub-Api-Version: 2022-11-28",
+      "--header",
+      `Authorization: Bearer ${token.value}`,
+      "--data-binary",
+      "@-",
+    ], {
+      input: payload,
+      env: env ?? process.env,
+      encoding: "utf8",
+    });
+    if (result.status !== 0) {
+      failures.push(`${token.name}: ${result.stderr || result.stdout || "unknown failure"}`);
+      continue;
+    }
+    const parsed = JSON.parse(result.stdout);
+    const url = firstNonEmptyString(parsed.html_url, parsed.url);
+    if (!url) {
+      throw new Error("GitHub pull request create response did not include html_url.");
+    }
+    return url;
   }
-  const parsed = JSON.parse(result.stdout);
-  const url = firstNonEmptyString(parsed.html_url, parsed.url);
-  if (!url) {
-    throw new Error("GitHub pull request create response did not include html_url.");
+  throw new Error(`command failed: curl GitHub pull request create\n${failures.join("\n")}`);
+}
+
+function githubTokenCandidates(env) {
+  const candidates = [
+    ["GH_TOKEN", env?.GH_TOKEN],
+    ["GITHUB_TOKEN", env?.GITHUB_TOKEN],
+    ["RUNX_GITHUB_TOKEN", env?.RUNX_GITHUB_TOKEN],
+  ];
+  const seen = new Set();
+  const tokens = [];
+  for (const [name, value] of candidates) {
+    const token = firstNonEmptyString(value);
+    if (!token || seen.has(token)) {
+      continue;
+    }
+    seen.add(token);
+    tokens.push({ name, value: token });
   }
-  return url;
+  return tokens;
 }
 
 function buildGitHubPullRequestCreateArgs({ repoSlug, branch, base, title, body }) {
