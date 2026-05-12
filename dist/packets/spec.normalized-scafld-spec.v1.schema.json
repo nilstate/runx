@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/spec/normalized-scafld-spec/v1.json",
+  "x-runx-packet-id": "runx.spec.normalized_scafld_spec.v1",
+  "type": "object",
+  "properties": {
+    "contents": { "type": "string" },
+    "frontmatter": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "changed": { "type": "boolean" },
+    "repairs": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["contents", "frontmatter", "changed", "repairs"],
+  "additionalProperties": true
+}
