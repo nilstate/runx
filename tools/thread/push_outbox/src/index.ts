@@ -45,7 +45,7 @@ export default defineTool({
     args: ["./run.mjs"],
     sandbox: {
       profile: "workspace-write",
-      cwd_policy: "workspace",
+      cwd_policy: "skill-directory",
       env_allowlist: githubPublishEnvAllowlist,
       network: true,
       writable_paths: ["{{workspace_path}}", "{{fixture}}"],

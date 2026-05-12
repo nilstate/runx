@@ -93,6 +93,10 @@ runners:
         type: string
         required: false
         description: "Explicit scafld executable path; defaults to SCAFLD_BIN or scafld on PATH."
+      scafld_min_version:
+        type: string
+        required: false
+        description: "Minimum accepted scafld version for this runner; defaults to 2.4.0."
     runtime:
       requirements:
-        - "scafld CLI with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input"
+        - "scafld CLI 2.4.0 or newer with native JSON contracts available on PATH, via SCAFLD_BIN, or through explicit scafld_bin input"

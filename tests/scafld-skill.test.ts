@@ -31,6 +31,10 @@ import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
+if (argv[0] === "--version") {
+  process.stdout.write("2.4.0\\n");
+  process.exit(0);
+}
 writeFileSync(join(__dirname, \`\${argv[0] || "unknown"}-trace.json\`), JSON.stringify({
   argv,
   leakedEnv: Object.keys(process.env)
@@ -89,6 +93,60 @@ process.exit(1);
     }
   });
 
+  it("fails closed when the resolved scafld is older than 2.4.0", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-old-version-"));
+    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
+
+    try {
+      await writeFile(
+        fakeScafld,
+        `#!/usr/bin/env node
+const argv = process.argv.slice(2);
+if (argv[0] === "--version") {
+  process.stdout.write("2.3.12\\n");
+  process.exit(0);
+}
+if ((argv[0] || "") === "validate") {
+  process.stdout.write(JSON.stringify({
+    ok: true,
+    command: "validate",
+    result: { task_id: "fixture-task", valid: true, errors: null },
+  }) + "\\n");
+  process.exit(0);
+}
+process.stderr.write(\`unsupported command: \${argv[0] || ""}\\n\`);
+process.exit(1);
+`,
+        { mode: 0o755 },
+      );
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/scafld"),
+        runner: "scafld-cli",
+        inputs: {
+          command: "validate",
+          task_id: "fixture-task",
+          fixture: tempDir,
+          scafld_bin: fakeScafld,
+        },
+        caller,
+        adapters: createDefaultSkillAdapters(),
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
+        env: process.env,
+      });
+
+      expect(result.status).toBe("failure");
+      if (result.status !== "failure") {
+        return;
+      }
+      expect(result.execution.stderr).toContain("scafld 2.4.0 or newer is required");
+      expect(result.execution.stderr).toContain("2.3.12");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("forwards native review and complete payloads without local reconstruction", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-native-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
@@ -106,6 +164,10 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const command = argv[0] || "";
+if (command === "--version") {
+  process.stdout.write("2.4.0\\n");
+  process.exit(0);
+}
 const tracePath = join(__dirname, \`\${command}-trace.json\`);
 writeFileSync(tracePath, JSON.stringify({
   argv,
@@ -114,6 +176,8 @@ writeFileSync(tracePath, JSON.stringify({
     .sort(),
 }));
 if (command === "review") {
+  process.stdout.write("scafld review[command] started node reviewer.mjs\\n");
+  process.stdout.write("scafld review[command] completed exit=0 elapsed=4ms last_output=0s\\n");
   process.stdout.write(JSON.stringify({
     ok: true,
     command: "review",
@@ -228,6 +292,10 @@ process.exit(1);
         fakeScafld,
         `#!/usr/bin/env node
 const argv = process.argv.slice(2);
+if (argv[0] === "--version") {
+  process.stdout.write("2.4.0\\n");
+  process.exit(0);
+}
 if ((argv[0] || "") === "validate") {
   process.stdout.write(JSON.stringify({
     ok: true,
@@ -282,6 +350,10 @@ process.exit(1);
         fakeScafld,
         `#!/usr/bin/env node
 const argv = process.argv.slice(2);
+if (argv[0] === "--version") {
+  process.stdout.write("2.4.0\\n");
+  process.exit(0);
+}
 if ((argv[0] || "") === "validate") {
   process.stdout.write(JSON.stringify({
     ok: true,
@@ -342,6 +414,10 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const countPath = join(__dirname, "build-count.txt");
 const argv = process.argv.slice(2);
+if (argv[0] === "--version") {
+  process.stdout.write("2.4.0\\n");
+  process.exit(0);
+}
 if ((argv[0] || "") === "build") {
   const count = existsSync(countPath) ? Number(readFileSync(countPath, "utf8")) + 1 : 1;
   writeFileSync(countPath, String(count));
@@ -438,6 +514,10 @@ process.exit(1);
         fakeScafld,
         `#!/usr/bin/env node
 const argv = process.argv.slice(2);
+if (argv[0] === "--version") {
+  process.stdout.write("2.4.0\\n");
+  process.exit(0);
+}
 if ((argv[0] || "") === "build") {
   process.stdout.write(JSON.stringify({
     ok: false,

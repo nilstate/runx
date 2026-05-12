@@ -85,7 +85,7 @@ describe("issue-to-PR composite skill", () => {
     });
   });
 
-  it.skipIf(!hasScafld())("completes the canonical issue-to-pr lane through scafld 2.2 build, review, complete, and handoff", async () => {
+  it.skipIf(!hasScafld())("completes the canonical issue-to-pr lane through scafld 2.4 build, review, complete, and handoff", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-issue-to-pr-skill-"));
     const runtime = await createExternalRuntime("runx-issue-to-pr-runtime-");
     const taskId = "issue-to-pr-skill-fixture";
@@ -122,7 +122,7 @@ describe("issue-to-PR composite skill", () => {
         },
         caller,
         adapters: runtime.adapters,
-        env: runtime.env,
+        env: { ...runtime.env, RUNX_CWD: tempDir },
         receiptDir: runtime.paths.receiptDir,
         runxHome: runtime.paths.runxHome,
       });
@@ -252,7 +252,7 @@ describe("issue-to-PR composite skill", () => {
         },
         caller: blockedCaller,
         adapters: runtime.adapters,
-        env: runtime.env,
+        env: { ...runtime.env, RUNX_CWD: tempDir },
         receiptDir: runtime.paths.receiptDir,
         runxHome: runtime.paths.runxHome,
       });
