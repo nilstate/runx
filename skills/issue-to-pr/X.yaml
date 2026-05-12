@@ -277,7 +277,7 @@ runners:
       provider:
         type: string
         required: false
-        description: "Optional scafld review provider, such as local, claude, or codex."
+        description: "Optional scafld review provider, such as command, claude, or codex."
       provider_command:
         type: string
         required: false
@@ -341,7 +341,11 @@ runners:
             Do not depend on git history ranges such as HEAD~1. If a required
             file path cannot be grounded from the thread or repository evidence,
             keep the scope narrow and state the assumption instead of inventing
-            a file.
+            a file. When the approved lane is documentation or process work,
+            prefer existing documentation surfaces from repo_snapshot.existing_files
+            or repo_context, and declare at least one non-governance repo file;
+            issue-to-pr is a PR lane, so an approved spec must not leave the
+            repo-change scope empty.
           allowed_tools:
             - fs.read
             - git.status
@@ -414,11 +418,20 @@ runners:
             approved spec contents, current thread context, and
             declared_file_context. Review declared_file_context.files before
             deciding what to edit. fix_bundle.files must be an array of
-            { path, contents } entries covering every tracked repo file needed
-            to satisfy the approved spec. Do not widen scope. Do not hand-edit
-            scafld lifecycle files. If the declared context is insufficient,
-            return fix_bundle.status: blocked with a reason and files: []
-            instead of guessing.
+            { path, contents } entries covering every repo file needed to satisfy
+            the approved spec. For documentation or process changes, the
+            approved spec, thread, repo_snapshot, repo_context, and current
+            declared file contents are sufficient when they identify a narrow
+            edit; do not return an empty bundle when one scoped docs edit is
+            possible. If a declared file has exists: false and the approved spec
+            intentionally creates it, write the new file when the desired
+            contents are inferable from the spec and thread. Do not widen scope.
+            Do not hand-edit scafld lifecycle files. Return
+            fix_bundle.status: blocked with a reason and files: [] only when no
+            concrete repo-relative target is declared, a required existing file
+            cannot be read, or the requested behavior cannot be inferred without
+            inventing requirements; name the missing evidence and path in the
+            reason because an empty bundle is a terminal policy denial.
           allowed_tools:
             - fs.read
             - git.status

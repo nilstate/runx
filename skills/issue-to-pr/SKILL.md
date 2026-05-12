@@ -46,8 +46,9 @@ the native review boundary.
   claim must trace to the thread, repo snapshot, scafld state, or actual
   working-tree change.
 - Stop conditions: return `needs_resolution` when authoring evidence is
-  missing; return a blocked fix bundle when declared file context is
-  insufficient.
+  missing; return a blocked fix bundle only when no concrete repo-relative
+  target is declared, a required existing file cannot be read, or the requested
+  behavior cannot be inferred without inventing requirements.
 
 ## Spec Authoring Contract
 
@@ -81,9 +82,33 @@ scafld-managed control-plane artifacts under `.scafld/specs`,
 `.scafld/reviews`, `.scafld/runs`, or old `.ai` governance paths as repo-change
 scope.
 
+Documentation and process requests still need a concrete repo file. Prefer
+existing docs surfaces supplied by `repo_snapshot.existing_files` or
+`repo_context`, and declare at least one non-governance repo file for an
+approved `issue-to-pr` lane. Do not leave the repo-change scope empty after the
+triage layer has approved a PR.
+
 Validation commands must run against the current workspace state after the fix
 bundle is written. Do not depend on git history ranges such as `HEAD~1` or
 merge-base comparisons.
+
+## Fix Authoring Contract
+
+The `issue-to-pr-apply-fix` boundary must emit a bounded `fix_bundle` with
+`files: [{ path, contents }]` for every repo file needed to satisfy the approved
+spec. For documentation or process changes, the approved spec, source thread,
+repo snapshot, repo context, and declared file contents are sufficient when they
+identify a narrow edit.
+
+If a declared file has `exists: false` and the approved spec intentionally
+creates it, write the new file when the desired contents are inferable from the
+spec and thread. Do not block solely because the file has no prior contents.
+
+Return `fix_bundle.status: blocked` with `files: []` only when no concrete
+repo-relative target is declared, a required existing file cannot be read, or
+the requested behavior cannot be inferred. The blocked reason must name the
+missing evidence and path because an empty file bundle is a terminal policy
+denial before `write-fix`.
 
 ## Inputs
 
