@@ -939,6 +939,9 @@ describe("thread.push_outbox tool", () => {
           ],
           nextPullNumber: 113,
           nextCommentId: 1000,
+          failPrListTokens: ["bad-token"],
+          failPrMutationTokens: ["bad-token"],
+          failPrViewTokens: ["bad-token"],
         }, null, 2)}\n`,
       );
       await writeFakeGhScript(fakeGh);
@@ -985,6 +988,8 @@ describe("thread.push_outbox tool", () => {
         workspace_path: workspace,
         next_status: "draft",
       }, {
+        GH_TOKEN: "bad-token",
+        GITHUB_TOKEN: "good-token",
         RUNX_GH_BIN: fakeGh,
         RUNX_FAKE_GH_STATE: fakeState,
       });
@@ -1004,6 +1009,9 @@ describe("thread.push_outbox tool", () => {
         },
       });
       expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        ghListTokens: ["bad-token", "good-token", "bad-token", "good-token"],
+        ghMutationTokens: ["bad-token", "good-token", "bad-token", "good-token"],
+        ghViewTokens: ["bad-token", "good-token"],
         nextPullNumber: 113,
         pulls: [
           {
@@ -1635,6 +1643,13 @@ if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls$/.test(args[1] || "")) 
 }
 
 if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls\\/\\d+$/.test(args[1] || "")) {
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  state.ghMutationTokens = [...(state.ghMutationTokens || []), token];
+  if ((state.failPrMutationTokens || []).includes(token)) {
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write(\`token \${token} cannot update pull requests\\n\`);
+    process.exit(1);
+  }
   const pull = findPull(state.pulls, (args[1] || "").split("/").pop());
   pull.title = readField(args, "title") || pull.title;
   pull.body = readField(args, "body") || pull.body;
@@ -1646,10 +1661,18 @@ if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls\\/\\d+$/.test(args[1] |
 }
 
 if (args[0] === "pr" && args[1] === "list") {
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  state.ghListTokens = [...(state.ghListTokens || []), token];
+  if ((state.failPrListTokens || []).includes(token)) {
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write(\`token \${token} cannot list pull requests\\n\`);
+    process.exit(1);
+  }
   if (state.failPrList && args.includes("--head")) {
     process.stderr.write("preflight lookup failed\\n");
     process.exit(1);
   }
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
   process.stdout.write(JSON.stringify(state.pulls));
   process.exit(0);
 }
@@ -1680,6 +1703,13 @@ if (args[0] === "pr" && args[1] === "create") {
 }
 
 if (args[0] === "pr" && args[1] === "edit") {
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  state.ghMutationTokens = [...(state.ghMutationTokens || []), token];
+  if ((state.failPrMutationTokens || []).includes(token)) {
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write(\`token \${token} cannot edit pull requests\\n\`);
+    process.exit(1);
+  }
   const ref = args[2];
   const pull = findPull(state.pulls, ref);
   pull.title = readFlag(args, "--title");
@@ -1691,6 +1721,13 @@ if (args[0] === "pr" && args[1] === "edit") {
 }
 
 if (args[0] === "pr" && args[1] === "reopen") {
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  state.ghMutationTokens = [...(state.ghMutationTokens || []), token];
+  if ((state.failPrMutationTokens || []).includes(token)) {
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write(\`token \${token} cannot reopen pull requests\\n\`);
+    process.exit(1);
+  }
   const pull = findPull(state.pulls, args[2]);
   pull.state = "OPEN";
   pull.updatedAt = "2026-04-22T01:00:00Z";
@@ -1699,7 +1736,15 @@ if (args[0] === "pr" && args[1] === "reopen") {
 }
 
 if (args[0] === "pr" && args[1] === "view") {
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  state.ghViewTokens = [...(state.ghViewTokens || []), token];
+  if ((state.failPrViewTokens || []).includes(token)) {
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write(\`token \${token} cannot view pull requests\\n\`);
+    process.exit(1);
+  }
   const pull = findPull(state.pulls, args[2]);
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
   process.stdout.write(JSON.stringify(pull));
   process.exit(0);
 }
