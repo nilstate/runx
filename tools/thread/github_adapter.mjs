@@ -382,7 +382,7 @@ export function fetchGitHubIssueThread({ adapterRef, env, cwd }) {
     "--comments",
     "--json",
     "author,body,closedByPullRequestsReferences,comments,createdAt,labels,number,state,title,updatedAt,url",
-  ], { env, cwd });
+  ], { env, cwd }, { tokenFallback: true });
   const pullRequests = dedupeGitHubPullRequests([
     ...normalizeGitHubPullRequestArray(issue.closedByPullRequestsReferences),
     ...normalizeGitHubPullRequestArray(runGhJson([
@@ -396,7 +396,7 @@ export function fetchGitHubIssueThread({ adapterRef, env, cwd }) {
       gitHubIssueSearchQuery(issueRef),
       "--json",
       "baseRefName,headRefName,isDraft,number,state,title,updatedAt,url",
-    ], { env, cwd })),
+    ], { env, cwd }, { tokenFallback: true })),
   ]);
   return hydrateGitHubIssueThread({
     adapterRef: issueRef.adapter_ref,
@@ -528,7 +528,7 @@ export function pushGitHubPullRequest({
   ], {
     cwd: workspacePath,
     env,
-  });
+  }, { tokenFallback: true });
   const refreshedEntry = mapGitHubPullRequestToOutboxEntry(
     {
       ...pullRequestView,
@@ -607,7 +607,7 @@ export function pushGitHubMessage({
     ], {
       cwd: workspacePath ?? process.cwd(),
       env,
-    });
+    }, { tokenFallback: true });
   } else {
     runCommand(resolveGhBinary(env), [
       "api",
@@ -888,7 +888,7 @@ function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env, optio
     ], {
       cwd: workspacePath,
       env,
-    });
+    }, { tokenFallback: true });
   } catch {
     return undefined;
   }
@@ -923,7 +923,7 @@ function reopenGitHubPullRequestIfClosed({ repoSlug, pullRequest, workspacePath,
   if (!pullRequestRef) {
     throw new Error("GitHub pull request reference is required to reopen a closed branch match.");
   }
-  runCommand(resolveGhBinary(env), [
+  runGhCommand([
     "pr",
     "reopen",
     pullRequestRef,
@@ -932,7 +932,7 @@ function reopenGitHubPullRequestIfClosed({ repoSlug, pullRequest, workspacePath,
   ], {
     cwd: workspacePath,
     env,
-  });
+  }, { tokenFallback: true });
 }
 
 function gitHubPullRequestOpenScore(pullRequest) {
@@ -956,10 +956,10 @@ function editGitHubPullRequest({ repoSlug, pullRequestRef, title, body, base, wo
     if (base) {
       args.push("--base", base);
     }
-    runCommand(resolveGhBinary(env), args, {
+    runGhCommand(args, {
       cwd: workspacePath,
       env,
-    });
+    }, { tokenFallback: true });
     return;
   }
 
@@ -976,10 +976,10 @@ function editGitHubPullRequest({ repoSlug, pullRequestRef, title, body, base, wo
   if (base) {
     args.push("-f", `base=${base}`);
   }
-  runCommand(resolveGhBinary(env), args, {
+  runGhCommand(args, {
     cwd: workspacePath,
     env,
-  });
+  }, { tokenFallback: true });
 }
 
 function runGitHubPullRequestCreate({ repoSlug, branch, base, title, body, workspacePath, env }) {
@@ -1115,11 +1115,7 @@ function runGitHubPullRequestCreateGh({ repoSlug, branch, base, title, body, wor
   }
   const failures = [];
   for (const token of tokens) {
-    const candidateEnv = {
-      ...(env ?? process.env),
-      GH_TOKEN: token.value,
-      GITHUB_TOKEN: token.value,
-    };
+    const candidateEnv = githubTokenCandidateEnv(env, token.value);
     try {
       return runCommand(resolveGhBinary(candidateEnv), args, {
         cwd: workspacePath,
@@ -1158,11 +1154,7 @@ function runGitHubPullRequestCreateCli({ repoSlug, branch, base, title, body, wo
   }
   const failures = [];
   for (const token of tokens) {
-    const candidateEnv = {
-      ...(env ?? process.env),
-      GH_TOKEN: token.value,
-      GITHUB_TOKEN: token.value,
-    };
+    const candidateEnv = githubTokenCandidateEnv(env, token.value);
     try {
       return runCommand(resolveGhBinary(candidateEnv), args, {
         cwd: workspacePath,
@@ -1221,8 +1213,39 @@ function sleepSync(milliseconds) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
 
-function runGhJson(args, options) {
-  return JSON.parse(runCommand(resolveGhBinary(options?.env), args, options));
+function runGhJson(args, options, runOptions = {}) {
+  return JSON.parse(runGhCommand(args, options, runOptions));
+}
+
+function runGhCommand(args, options, runOptions = {}) {
+  if (runOptions.tokenFallback !== true) {
+    return runCommand(resolveGhBinary(options?.env), args, options);
+  }
+  const tokens = githubTokenCandidates(options?.env);
+  if (tokens.length === 0) {
+    return runCommand(resolveGhBinary(options?.env), args, options);
+  }
+  const failures = [];
+  for (const token of tokens) {
+    const candidateEnv = githubTokenCandidateEnv(options?.env, token.value);
+    try {
+      return runCommand(resolveGhBinary(candidateEnv), args, {
+        ...options,
+        env: candidateEnv,
+      });
+    } catch (error) {
+      failures.push(`${token.name}: ${error.message}`);
+    }
+  }
+  throw new Error(`command failed: gh ${args.join(" ")}\n${failures.join("\n")}`);
+}
+
+function githubTokenCandidateEnv(env, token) {
+  return {
+    ...(env ?? process.env),
+    GH_TOKEN: token,
+    GITHUB_TOKEN: token,
+  };
 }
 
 function repoHasUncommittedChanges(workspacePath, env) {
