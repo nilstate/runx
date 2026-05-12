@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../packages/cli/src/index.js";
 
 const scafldBin = process.env.SCAFLD_BIN ?? "scafld";
+const passingReviewCommand = `printf '{"verdict":"pass","mode":"discover","summary":"fixture clean","findings":[],"attack_log":[{"target":"diff","attack":"fixture","result":"clean"}],"budget":{"actual_attack_angles":1}}'`;
 
 describe("recognizable work lanes", () => {
   it("runs request-triage through the local CLI with a bounded next-lane packet", async () => {
@@ -179,7 +180,9 @@ describe("recognizable work lanes", () => {
           "--risk",
           "low",
           "--provider",
-          "local",
+          "command",
+          "--provider-command",
+          passingReviewCommand,
           "--scafld-bin",
           scafldBin,
           "--answers",

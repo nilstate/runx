@@ -22,6 +22,7 @@ describe("scafld issue-to-PR skill contract", () => {
     expect(graph.steps.map((step) => step.id)).toEqual([
       "scafld-plan",
       "author-spec",
+      "normalize-spec",
       "write-spec",
       "read-draft-spec",
       "scafld-validate",
@@ -68,11 +69,18 @@ describe("scafld issue-to-PR skill contract", () => {
     });
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("scafld 2.0 markdown spec");
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Files impacted");
+    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo-change scope empty");
+    expect(graph.steps.find((step) => step.id === "normalize-spec")).toMatchObject({
+      tool: "spec.normalize_scafld_frontmatter",
+      context: {
+        spec_contents: "author-spec.spec_contents",
+      },
+    });
     expect(graph.steps.find((step) => step.id === "write-spec")).toMatchObject({
       tool: "fs.write",
       context: {
         path: "scafld-plan.result.path",
-        contents: "author-spec.spec_contents",
+        contents: "normalize-spec.normalized_spec.data.data.contents",
       },
     });
     expect(graph.steps.find((step) => step.id === "read-approved-spec")).toMatchObject({
@@ -92,6 +100,7 @@ describe("scafld issue-to-PR skill contract", () => {
       },
     });
     expect(graph.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.status: blocked");
+    expect(graph.steps.find((step) => step.id === "author-fix")?.instructions).toContain("one scoped docs edit is possible");
     expect(graph.steps.find((step) => step.id === "read-current-branch")).toMatchObject({
       tool: "git.current_branch",
     });

@@ -10,6 +10,7 @@ import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/pa
 import { runLocalSkill, type Caller } from "@runxhq/runtime-local";
 
 const scafldBin = process.env.SCAFLD_BIN ?? "scafld";
+const passingReviewCommand = `printf '{"verdict":"pass","mode":"discover","summary":"fixture clean","findings":[],"attack_log":[{"target":"diff","attack":"fixture","result":"clean"}],"budget":{"actual_attack_angles":1}}'`;
 const caller: Caller = {
   resolve: async () => undefined,
   report: () => undefined,
@@ -31,6 +32,7 @@ describe("issue-to-PR composite skill", () => {
     expect(graph.steps.map((step) => step.id)).toEqual([
       "scafld-plan",
       "author-spec",
+      "normalize-spec",
       "write-spec",
       "read-draft-spec",
       "scafld-validate",
@@ -61,7 +63,12 @@ describe("issue-to-PR composite skill", () => {
       "handoff",
     ]);
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("scafld 2.0 markdown spec");
+    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo-change scope empty");
     expect(graph.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.status: blocked");
+    expect(graph.steps.find((step) => step.id === "author-fix")?.instructions).toContain("one scoped docs edit is possible");
+    expect(graph.steps.find((step) => step.id === "normalize-spec")).toMatchObject({
+      tool: "spec.normalize_scafld_frontmatter",
+    });
     expect(graph.steps.find((step) => step.id === "package-pull-request")).toMatchObject({
       tool: "outbox.build_pull_request",
       context: {
@@ -109,7 +116,8 @@ describe("issue-to-PR composite skill", () => {
           size: "micro",
           risk: "low",
           base: "main",
-          provider: "local",
+          provider: "command",
+          provider_command: passingReviewCommand,
           scafld_bin: scafldBin,
         },
         caller,
@@ -171,6 +179,7 @@ describe("issue-to-PR composite skill", () => {
       expect(result.receipt.steps.map((step) => [step.step_id, step.status])).toEqual([
         ["scafld-plan", "success"],
         ["author-spec", "success"],
+        ["normalize-spec", "success"],
         ["write-spec", "success"],
         ["read-draft-spec", "success"],
         ["scafld-validate", "success"],
