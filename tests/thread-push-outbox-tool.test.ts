@@ -1152,7 +1152,7 @@ if (args[0] === "issue" && args[1] === "comment") {
 }
 
 if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/issues\\/comments\\/\\d+$/.test(args[1] || "")) {
-  const body = readFlag(args, "-f")?.replace(/^body=/, "");
+  const body = readField(args, "body");
   const commentId = (args[1] || "").split("/").pop();
   const comment = state.issue.comments.find((candidate) => String(candidate.id) === String(commentId));
   if (!comment) {
@@ -1166,6 +1166,48 @@ if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/issues\\/comments\\/\\d+$/.te
   process.exit(0);
 }
 
+if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls$/.test(args[1] || "")) {
+  if ((state.failPrCreateCount ?? 0) > 0) {
+    state.failPrCreateCount -= 1;
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write("GraphQL: Head sha can't be blank, Head repository can't be blank, No commits between example:main and example:issue-list-failure, not all refs are readable\\n");
+    process.exit(1);
+  }
+  const repo = (args[1] || "").replace(/^repos\\//, "").replace(/\\/pulls$/, "");
+  const head = readField(args, "head");
+  const base = readField(args, "base");
+  const title = readField(args, "title");
+  const body = readField(args, "body");
+  const number = state.nextPullNumber++;
+  const pull = {
+    number,
+    repo,
+    title,
+    body,
+    url: \`https://github.com/\${repo}/pull/\${number}\`,
+    state: "OPEN",
+    isDraft: readField(args, "draft") === "true",
+    headRefName: head,
+    baseRefName: base,
+    updatedAt: "2026-04-22T01:00:00Z",
+  };
+  state.pulls.push(pull);
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.stdout.write(args.includes("--jq") ? \`\${pull.url}\\n\` : JSON.stringify(pull));
+  process.exit(0);
+}
+
+if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls\\/\\d+$/.test(args[1] || "")) {
+  const pull = findPull(state.pulls, (args[1] || "").split("/").pop());
+  pull.title = readField(args, "title") || pull.title;
+  pull.body = readField(args, "body") || pull.body;
+  pull.baseRefName = readField(args, "base") || pull.baseRefName;
+  pull.updatedAt = "2026-04-22T01:00:00Z";
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.stdout.write(JSON.stringify(pull));
+  process.exit(0);
+}
+
 if (args[0] === "pr" && args[1] === "list") {
   if (state.failPrList && args.includes("--head")) {
     process.stderr.write("preflight lookup failed\\n");
@@ -1176,12 +1218,6 @@ if (args[0] === "pr" && args[1] === "list") {
 }
 
 if (args[0] === "pr" && args[1] === "create") {
-  if ((state.failPrCreateCount ?? 0) > 0) {
-    state.failPrCreateCount -= 1;
-    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
-    process.stderr.write("GraphQL: Head sha can't be blank, Head repository can't be blank, No commits between example:main and example:issue-list-failure, not all refs are readable\\n");
-    process.exit(1);
-  }
   const repo = readFlag(args, "--repo");
   const head = readFlag(args, "--head");
   const base = readFlag(args, "--base");
@@ -1237,6 +1273,19 @@ function findPull(pulls, ref) {
 function readFlag(argv, flag) {
   const index = argv.indexOf(flag);
   return index >= 0 ? argv[index + 1] : "";
+}
+
+function readField(argv, key) {
+  for (let index = 0; index < argv.length - 1; index += 1) {
+    if (argv[index] !== "-f" && argv[index] !== "-F") {
+      continue;
+    }
+    const value = argv[index + 1] || "";
+    if (value.startsWith(\`\${key}=\`)) {
+      return value.slice(key.length + 1);
+    }
+  }
+  return "";
 }
 `,
     { mode: 0o755 },
