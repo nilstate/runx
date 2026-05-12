@@ -1140,8 +1140,8 @@ function runGitHubPullRequestCreateCli({ repoSlug, branch, base, title, body, wo
     branch,
     "--title",
     title,
-    "--body",
-    body,
+    "--body-file",
+    "-",
     "--draft",
   ];
   if (base) {
@@ -1152,6 +1152,7 @@ function runGitHubPullRequestCreateCli({ repoSlug, branch, base, title, body, wo
     return runCommand(resolveGhBinary(env), args, {
       cwd: workspacePath,
       env,
+      input: body,
     }).trim();
   }
   const failures = [];
@@ -1161,6 +1162,7 @@ function runGitHubPullRequestCreateCli({ repoSlug, branch, base, title, body, wo
       return runCommand(resolveGhBinary(candidateEnv), args, {
         cwd: workspacePath,
         env: candidateEnv,
+        input: body,
       }).trim();
     } catch (error) {
       failures.push(`${token.name}: ${error.message}`);
@@ -1352,6 +1354,7 @@ function runCommand(command, args, options) {
   const result = spawnSync(command, args, {
     cwd: options?.cwd,
     env: options?.env ?? process.env,
+    input: options?.input,
     encoding: "utf8",
   });
   if (result.status !== 0) {

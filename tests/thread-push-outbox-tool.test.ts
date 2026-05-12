@@ -649,15 +649,19 @@ describe("thread.push_outbox tool", () => {
 
       expect(result.push.status).toBe("pushed");
       expect(result.push.pull_request.url).toBe("https://github.com/example/repo/pull/77");
-      expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+      const state = JSON.parse(await readFile(fakeState, "utf8"));
+      expect(state).toMatchObject({
         pulls: [
           {
             number: 77,
             headRefName: "issue-pr-create",
             baseRefName: "main",
+            body: expect.stringContaining("Body."),
           },
         ],
       });
+      expect(state.lastPrCreateArgs).toContain("--body-file");
+      expect(state.lastPrCreateArgs).not.toContain("--body");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -1819,8 +1823,9 @@ if (args[0] === "pr" && args[1] === "create") {
   const head = readFlag(args, "--head");
   const base = readFlag(args, "--base");
   const title = readFlag(args, "--title");
-  const body = readFlag(args, "--body");
+  const body = readFlag(args, "--body") || readBodyFile(args, "--body-file");
   const number = state.nextPullNumber++;
+  state.lastPrCreateArgs = args;
   const pull = {
     number,
     repo,
@@ -1913,6 +1918,17 @@ function readField(argv, key) {
     }
   }
   return "";
+}
+
+function readBodyFile(argv, flag) {
+  const value = readFlag(argv, flag);
+  if (!value) {
+    return "";
+  }
+  if (value === "-") {
+    return readFileSync(0, "utf8");
+  }
+  return readFileSync(value, "utf8");
 }
 `,
     { mode: 0o755 },
