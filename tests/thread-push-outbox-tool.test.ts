@@ -623,6 +623,7 @@ describe("thread.push_outbox tool", () => {
           nextCommentId: 1000,
           failPrList: true,
           failPrCreateCount: 1,
+          failPrCreateMessage: "gh: Validation Failed (HTTP 422)\n{\"message\":\"Validation Failed\",\"errors\":[{\"resource\":\"PullRequest\",\"field\":\"head\",\"code\":\"invalid\"}],\"status\":\"422\"}\n",
         }, null, 2)}\n`,
       );
       await writeFakeGhScript(fakeGh);
@@ -1170,7 +1171,7 @@ if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls$/.test(args[1] || "")) 
   if ((state.failPrCreateCount ?? 0) > 0) {
     state.failPrCreateCount -= 1;
     writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
-    process.stderr.write("GraphQL: Head sha can't be blank, Head repository can't be blank, No commits between example:main and example:issue-list-failure, not all refs are readable\\n");
+    process.stderr.write(state.failPrCreateMessage || "GraphQL: Head sha can't be blank, Head repository can't be blank, No commits between example:main and example:issue-list-failure, not all refs are readable\\n");
     process.exit(1);
   }
   const repo = (args[1] || "").replace(/^repos\\//, "").replace(/\\/pulls$/, "");
