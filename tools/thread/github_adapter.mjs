@@ -1003,6 +1003,7 @@ function runGitHubPullRequestCreate({ repoSlug, branch, base, title, body, works
       if (restCreated) {
         return restCreated;
       }
+      let apiError;
       try {
         return runGitHubPullRequestCreateGh({
           repoSlug,
@@ -1014,10 +1015,25 @@ function runGitHubPullRequestCreate({ repoSlug, branch, base, title, body, works
           env,
         });
       } catch (error) {
-        if (restError) {
-          throw new Error(`${error.message}\nREST create failed first:\n${restError.message}`);
-        }
-        throw error;
+        apiError = error;
+      }
+      try {
+        return runGitHubPullRequestCreateCli({
+          repoSlug,
+          branch,
+          base,
+          title,
+          body,
+          workspacePath,
+          env,
+        });
+      } catch (error) {
+        throw new Error([
+          error.message,
+          "gh api create failed first:",
+          apiError.message,
+          restError ? `REST create failed first:\n${restError.message}` : undefined,
+        ].filter(Boolean).join("\n"));
       }
     } catch (error) {
       lastError = error;
@@ -1114,6 +1130,49 @@ function runGitHubPullRequestCreateGh({ repoSlug, branch, base, title, body, wor
     }
   }
   throw new Error(`command failed: gh GitHub pull request create\n${failures.join("\n")}`);
+}
+
+function runGitHubPullRequestCreateCli({ repoSlug, branch, base, title, body, workspacePath, env }) {
+  const args = [
+    "pr",
+    "create",
+    "--repo",
+    repoSlug,
+    "--head",
+    branch,
+    "--title",
+    title,
+    "--body",
+    body,
+    "--draft",
+  ];
+  if (base) {
+    args.push("--base", base);
+  }
+  const tokens = githubTokenCandidates(env);
+  if (tokens.length === 0) {
+    return runCommand(resolveGhBinary(env), args, {
+      cwd: workspacePath,
+      env,
+    }).trim();
+  }
+  const failures = [];
+  for (const token of tokens) {
+    const candidateEnv = {
+      ...(env ?? process.env),
+      GH_TOKEN: token.value,
+      GITHUB_TOKEN: token.value,
+    };
+    try {
+      return runCommand(resolveGhBinary(candidateEnv), args, {
+        cwd: workspacePath,
+        env: candidateEnv,
+      }).trim();
+    } catch (error) {
+      failures.push(`${token.name}: ${error.message}`);
+    }
+  }
+  throw new Error(`command failed: gh pr create\n${failures.join("\n")}`);
 }
 
 function githubTokenCandidates(env) {
