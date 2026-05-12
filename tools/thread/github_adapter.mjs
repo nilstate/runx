@@ -1004,16 +1004,15 @@ function runGitHubPullRequestCreate({ repoSlug, branch, base, title, body, works
         return restCreated;
       }
       try {
-        return runCommand(resolveGhBinary(env), buildGitHubPullRequestCreateArgs({
+        return runGitHubPullRequestCreateGh({
           repoSlug,
           branch,
           base,
           title,
           body,
-        }), {
-          cwd: workspacePath,
+          workspacePath,
           env,
-        }).trim();
+        });
       } catch (error) {
         if (restError) {
           throw new Error(`${error.message}\nREST create failed first:\n${restError.message}`);
@@ -1081,6 +1080,40 @@ function runGitHubPullRequestCreateRest({ repoSlug, branch, base, title, body, e
     return url;
   }
   throw new Error(`command failed: curl GitHub pull request create\n${failures.join("\n")}`);
+}
+
+function runGitHubPullRequestCreateGh({ repoSlug, branch, base, title, body, workspacePath, env }) {
+  const args = buildGitHubPullRequestCreateArgs({
+    repoSlug,
+    branch,
+    base,
+    title,
+    body,
+  });
+  const tokens = githubTokenCandidates(env);
+  if (tokens.length === 0) {
+    return runCommand(resolveGhBinary(env), args, {
+      cwd: workspacePath,
+      env,
+    }).trim();
+  }
+  const failures = [];
+  for (const token of tokens) {
+    const candidateEnv = {
+      ...(env ?? process.env),
+      GH_TOKEN: token.value,
+      GITHUB_TOKEN: token.value,
+    };
+    try {
+      return runCommand(resolveGhBinary(candidateEnv), args, {
+        cwd: workspacePath,
+        env: candidateEnv,
+      }).trim();
+    } catch (error) {
+      failures.push(`${token.name}: ${error.message}`);
+    }
+  }
+  throw new Error(`command failed: gh GitHub pull request create\n${failures.join("\n")}`);
 }
 
 function githubTokenCandidates(env) {
