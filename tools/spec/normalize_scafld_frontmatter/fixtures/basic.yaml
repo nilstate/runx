@@ -28,6 +28,24 @@ expect:
   output:
     matches_packet: runx.spec.normalized_scafld_spec.v1
     subset:
+      contents: |
+        ---
+        spec_version: '2.0'
+        task_id: issue-91-docs
+        created: "2026-05-12T00:00:00Z"
+        updated: "2026-05-12T00:00:00Z"
+        title: Dogfood checklist docs
+        status: draft
+        harden_status: not_run
+        size: small
+        risk_level: low
+        ---
+
+        # Dogfood checklist docs
+
+        ## Current State
+
+        A generated spec omitted title.
       frontmatter:
         task_id: issue-91-docs
         title: Dogfood checklist docs

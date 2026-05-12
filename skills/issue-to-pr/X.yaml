@@ -38,14 +38,11 @@ harness:
               task_id: issue-to-pr-reach-fix
               created: '2026-05-04T00:00:00Z'
               updated: '2026-05-04T00:00:00Z'
-              title: Fix-boundary harness reach
               status: draft
               harden_status: not_run
               size: small
               risk_level: low
               ---
-
-              # Fix Boundary Harness
 
               ## Current State
 

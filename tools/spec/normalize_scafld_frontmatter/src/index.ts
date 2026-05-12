@@ -55,12 +55,17 @@ function runNormalizeScafldFrontmatter({ inputs }) {
     }
   }
 
+  const body = ensureTitleHeading(parsed.body, title);
+  if (body !== parsed.body.replace(/^\s+/, "")) {
+    repairs.push("title_heading");
+  }
+
   const contents = [
     "---",
     ...Object.entries(required).map(([key, value]) => `${key}: ${quoteYamlIfNeeded(value)}`),
     "---",
     "",
-    parsed.body.replace(/^\s+/, ""),
+    body,
   ].join("\n").replace(/\n*$/u, "\n");
 
   return {
@@ -120,6 +125,27 @@ function firstNonEmpty(...values: unknown[]): string | undefined {
     }
   }
   return undefined;
+}
+
+function ensureTitleHeading(body: string, title: string): string {
+  const trimmed = body.replace(/^\s+/, "");
+  const lines = trimmed.split("\n");
+  let inFence = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    if (line.startsWith("```")) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    if (line.startsWith("# ")) {
+      lines[index] = `# ${title}`;
+      return lines.join("\n").replace(/^\n+/, "");
+    }
+  }
+  return [`# ${title}`, "", trimmed].join("\n").replace(/\n*$/u, "\n");
 }
 
 function stripYamlQuotes(value: string): string {
