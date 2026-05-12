@@ -273,6 +273,60 @@ process.exit(1);
     }
   });
 
+  it("loads spilled runx inputs from RUNX_INPUTS_PATH", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-input-path-"));
+    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
+
+    try {
+      await writeFile(
+        fakeScafld,
+        `#!/usr/bin/env node
+const argv = process.argv.slice(2);
+if ((argv[0] || "") === "validate") {
+  process.stdout.write(JSON.stringify({
+    ok: true,
+    command: "validate",
+    result: { task_id: "fixture-task", valid: true, errors: null },
+  }) + "\\n");
+  process.exit(0);
+}
+process.stderr.write(\`unsupported command: \${argv[0] || ""}\\n\`);
+process.exit(1);
+`,
+        { mode: 0o755 },
+      );
+
+      const result = await runLocalSkill({
+        skillPath: path.resolve("skills/scafld"),
+        runner: "scafld-cli",
+        inputs: {
+          command: "validate",
+          task_id: "fixture-task",
+          fixture: tempDir,
+          scafld_bin: fakeScafld,
+          large_context: "x".repeat(64 * 1024),
+        },
+        caller,
+        adapters: createDefaultSkillAdapters(),
+        receiptDir: path.join(tempDir, "receipts"),
+        runxHome: path.join(tempDir, "home"),
+        env: process.env,
+      });
+
+      expect(result.status).toBe("success");
+      if (result.status !== "success") {
+        return;
+      }
+      expect(JSON.parse(result.execution.stdout)).toMatchObject({
+        ok: true,
+        command: "validate",
+        result: { task_id: "fixture-task" },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("preserves native non-zero failures instead of normalizing them away", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-failure-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");

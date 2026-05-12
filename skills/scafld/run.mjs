@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+const inputs = loadInputs();
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const scafld = resolveBinary(String(inputs.scafld_bin || process.env.SCAFLD_BIN || "scafld"));
 const cwd = path.resolve(String(
@@ -32,7 +33,7 @@ const jsonCommands = new Set([
 const commandsWithoutTaskId = new Set(["init", "list", "report"]);
 
 if (!command) {
-  throw new Error("command is required.");
+  throw new Error("scafld command is required. Pass the `command` input through runx.");
 }
 if (!commandsWithoutTaskId.has(command) && !taskId) {
   throw new Error("task_id is required.");
@@ -174,6 +175,16 @@ function truthy(value) {
     return false;
   }
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+}
+
+function loadInputs() {
+  if (process.env.RUNX_INPUTS_JSON) {
+    return JSON.parse(process.env.RUNX_INPUTS_JSON);
+  }
+  if (process.env.RUNX_INPUTS_PATH) {
+    return JSON.parse(readFileSync(process.env.RUNX_INPUTS_PATH, "utf8"));
+  }
+  return {};
 }
 
 function resolveBinary(candidate) {

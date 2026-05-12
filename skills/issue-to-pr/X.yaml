@@ -338,12 +338,16 @@ runners:
             under .scafld/specs, .scafld/reviews, .scafld/runs, or old .ai
             governance paths as repo-change scope. Validation commands must be
             executable in the current workspace after the fix bundle is written.
-            Do not depend on git history ranges such as HEAD~1. If a required
-            file path cannot be grounded from the thread or repository evidence,
-            keep the scope narrow and state the assumption instead of inventing
-            a file. When the approved lane is documentation or process work,
-            prefer existing documentation surfaces from repo_snapshot.existing_files
-            or repo_context, and declare at least one non-governance repo file;
+            Do not depend on git history ranges such as HEAD~1. When validation
+            commands are included, use direct repo-local checks such as tests,
+            lint, build, or file-content commands. Do not use runx skill runner
+            internals or skills/scafld/run.mjs as validation commands; scafld
+            is already the lifecycle runner around this graph. If a required file
+            path cannot be grounded from the thread or repository evidence, keep
+            the scope narrow and state the assumption instead of inventing a file.
+            When the approved lane is documentation or process work, prefer
+            existing documentation surfaces from repo_snapshot.existing_files or
+            repo_context, and declare at least one non-governance repo file;
             issue-to-pr is a PR lane, so an approved spec must not leave the
             repo-change scope empty.
           allowed_tools:

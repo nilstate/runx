@@ -467,7 +467,13 @@ export function pushGitHubPullRequest({
 
   const existingNumber = parseGitHubPullRequestNumber(outbox.locator)
     ?? parseGitHubPullRequestNumber(optionalRecord(outbox.metadata)?.number);
+  const existingByBranch = existingNumber
+    ? undefined
+    : findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env);
   let pullRequestRef = existingNumber;
+  if (!pullRequestRef && existingByBranch) {
+    pullRequestRef = firstNonEmptyString(existingByBranch.url, existingByBranch.number);
+  }
 
   if (pullRequestRef) {
     const args = [
@@ -505,10 +511,18 @@ export function pushGitHubPullRequest({
     if (base) {
       args.push("--base", base);
     }
-    pullRequestRef = runCommand(resolveGhBinary(env), args, {
-      cwd: workspacePath,
-      env,
-    }).trim();
+    try {
+      pullRequestRef = runCommand(resolveGhBinary(env), args, {
+        cwd: workspacePath,
+        env,
+      }).trim();
+    } catch (error) {
+      const fallback = findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env);
+      if (!fallback || !String(error?.message ?? error).match(/pull request.*(already exists|exists)|already.*pull request/i)) {
+        throw error;
+      }
+      pullRequestRef = firstNonEmptyString(fallback.url, fallback.number);
+    }
   }
 
   const pullRequestView = runGhJson([
@@ -862,6 +876,29 @@ function buildGitHubCommitMessage(draftPullRequest, title, outboxEntry) {
     return existingTitle;
   }
   return `chore(issue-to-pr): apply ${firstNonEmptyString(draftPullRequest.task_id, existingTitle, "runx-change")}`;
+}
+
+function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env) {
+  const pulls = runGhJson([
+    "pr",
+    "list",
+    "--repo",
+    repoSlug,
+    "--head",
+    branch,
+    "--state",
+    "open",
+    "--json",
+    "baseRefName,headRefName,isDraft,number,state,title,updatedAt,url",
+  ], {
+    cwd: workspacePath,
+    env,
+  });
+  const candidates = Array.isArray(pulls) ? pulls.filter(isRecord) : [];
+  return candidates.find((pull) =>
+    firstNonEmptyString(pull.headRefName) === branch
+    && String(pull.state ?? "").toUpperCase() === "OPEN"
+  );
 }
 
 function runGhJson(args, options) {
