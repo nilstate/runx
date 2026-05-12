@@ -6,6 +6,14 @@ import {
 const validSizes = new Set(["small", "medium", "large"]);
 const validRisks = new Set(["low", "medium", "high"]);
 
+interface NormalizeScafldInputs {
+  readonly spec_contents?: string;
+  readonly task_id?: string;
+  readonly thread_title?: string;
+  readonly size?: string;
+  readonly risk?: string;
+}
+
 export default defineTool({
   name: "spec.normalize_scafld_frontmatter",
   description: "Normalize scafld 2 markdown frontmatter before writing an agent-authored spec.",
@@ -24,7 +32,7 @@ export default defineTool({
   run: runNormalizeScafldFrontmatter,
 });
 
-function runNormalizeScafldFrontmatter({ inputs }) {
+function runNormalizeScafldFrontmatter({ inputs }: { readonly inputs: NormalizeScafldInputs }) {
   const original = String(inputs.spec_contents ?? "");
   const parsed = parseFrontmatter(original);
   const existing = parsed.frontmatter;
@@ -55,7 +63,7 @@ function runNormalizeScafldFrontmatter({ inputs }) {
     }
   }
 
-  const body = ensureTitleHeading(parsed.body, title);
+  const body = ensureSingleTitleHeading(parsed.body, title);
   if (body !== parsed.body.replace(/^\s+/, "")) {
     repairs.push("title_heading");
   }
@@ -127,25 +135,24 @@ function firstNonEmpty(...values: unknown[]): string | undefined {
   return undefined;
 }
 
-function ensureTitleHeading(body: string, title: string): string {
+function ensureSingleTitleHeading(body: string, title: string): string {
   const trimmed = body.replace(/^\s+/, "");
   const lines = trimmed.split("\n");
   let inFence = false;
+  const bodyWithoutTitles: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
     if (line.startsWith("```")) {
       inFence = !inFence;
+      bodyWithoutTitles.push(line);
       continue;
     }
-    if (inFence) {
+    if (!inFence && line.startsWith("# ")) {
       continue;
     }
-    if (line.startsWith("# ")) {
-      lines[index] = `# ${title}`;
-      return lines.join("\n").replace(/^\n+/, "");
-    }
+    bodyWithoutTitles.push(line);
   }
-  return [`# ${title}`, "", trimmed].join("\n").replace(/\n*$/u, "\n");
+  return [`# ${title}`, "", bodyWithoutTitles.join("\n").replace(/^\n+/, "")].join("\n").replace(/\n*$/u, "\n");
 }
 
 function stripYamlQuotes(value: string): string {
