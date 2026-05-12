@@ -879,21 +879,26 @@ function buildGitHubCommitMessage(draftPullRequest, title, outboxEntry) {
 }
 
 function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env) {
-  const pulls = runGhJson([
-    "pr",
-    "list",
-    "--repo",
-    repoSlug,
-    "--head",
-    branch,
-    "--state",
-    "open",
-    "--json",
-    "baseRefName,headRefName,isDraft,number,state,title,updatedAt,url",
-  ], {
-    cwd: workspacePath,
-    env,
-  });
+  let pulls;
+  try {
+    pulls = runGhJson([
+      "pr",
+      "list",
+      "--repo",
+      repoSlug,
+      "--head",
+      branch,
+      "--state",
+      "open",
+      "--json",
+      "baseRefName,headRefName,isDraft,number,state,title,updatedAt,url",
+    ], {
+      cwd: workspacePath,
+      env,
+    });
+  } catch {
+    return undefined;
+  }
   const candidates = Array.isArray(pulls) ? pulls.filter(isRecord) : [];
   return candidates.find((pull) =>
     firstNonEmptyString(pull.headRefName) === branch
