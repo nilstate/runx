@@ -476,43 +476,23 @@ export function pushGitHubPullRequest({
   }
 
   if (pullRequestRef) {
-    const args = [
-      "pr",
-      "edit",
-      pullRequestRef,
-      "--repo",
+    editGitHubPullRequest({
       repoSlug,
-      "--title",
+      pullRequestRef,
       title,
-      "--body",
       body,
-    ];
-    if (base) {
-      args.push("--base", base);
-    }
-    runCommand(resolveGhBinary(env), args, {
-      cwd: workspacePath,
+      base,
+      workspacePath,
       env,
     });
   } else {
-    const args = [
-      "pr",
-      "create",
-      "--repo",
-      repoSlug,
-      "--head",
-      branch,
-      "--title",
-      title,
-      "--body",
-      body,
-      "--draft",
-    ];
-    if (base) {
-      args.push("--base", base);
-    }
     try {
-      pullRequestRef = runGitHubPullRequestCreate(args, {
+      pullRequestRef = runGitHubPullRequestCreate({
+        repoSlug,
+        branch,
+        base,
+        title,
+        body,
         workspacePath,
         env,
       });
@@ -906,11 +886,60 @@ function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env) {
   );
 }
 
-function runGitHubPullRequestCreate(args, { workspacePath, env }) {
+function editGitHubPullRequest({ repoSlug, pullRequestRef, title, body, base, workspacePath, env }) {
+  const number = parseGitHubPullRequestNumber(pullRequestRef);
+  if (!number) {
+    const args = [
+      "pr",
+      "edit",
+      pullRequestRef,
+      "--repo",
+      repoSlug,
+      "--title",
+      title,
+      "--body",
+      body,
+    ];
+    if (base) {
+      args.push("--base", base);
+    }
+    runCommand(resolveGhBinary(env), args, {
+      cwd: workspacePath,
+      env,
+    });
+    return;
+  }
+
+  const args = [
+    "api",
+    `repos/${repoSlug}/pulls/${number}`,
+    "--method",
+    "PATCH",
+    "-f",
+    `title=${title}`,
+    "-f",
+    `body=${body}`,
+  ];
+  if (base) {
+    args.push("-f", `base=${base}`);
+  }
+  runCommand(resolveGhBinary(env), args, {
+    cwd: workspacePath,
+    env,
+  });
+}
+
+function runGitHubPullRequestCreate({ repoSlug, branch, base, title, body, workspacePath, env }) {
   let lastError;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
-      return runCommand(resolveGhBinary(env), args, {
+      return runCommand(resolveGhBinary(env), buildGitHubPullRequestCreateArgs({
+        repoSlug,
+        branch,
+        base,
+        title,
+        body,
+      }), {
         cwd: workspacePath,
         env,
       }).trim();
@@ -924,6 +953,27 @@ function runGitHubPullRequestCreate(args, { workspacePath, env }) {
     }
   }
   throw lastError;
+}
+
+function buildGitHubPullRequestCreateArgs({ repoSlug, branch, base, title, body }) {
+  const args = [
+    "api",
+    `repos/${repoSlug}/pulls`,
+    "-f",
+    `title=${title}`,
+    "-f",
+    `head=${branch}`,
+    "-f",
+    `body=${body}`,
+    "-F",
+    "draft=true",
+    "--jq",
+    ".html_url",
+  ];
+  if (base) {
+    args.push("-f", `base=${base}`);
+  }
+  return args;
 }
 
 function isTransientGitHubPullRequestCreateError(message) {
