@@ -498,7 +498,7 @@ export function pushGitHubPullRequest({
       });
     } catch (error) {
       const fallback = findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env);
-      if (!fallback || !String(error?.message ?? error).match(/pull request.*(already exists|exists)|already.*pull request/i)) {
+      if (!fallback) {
         throw error;
       }
       pullRequestRef = firstNonEmptyString(fallback.url, fallback.number);
@@ -977,7 +977,7 @@ function buildGitHubPullRequestCreateArgs({ repoSlug, branch, base, title, body 
 }
 
 function isTransientGitHubPullRequestCreateError(message) {
-  return /Head sha can't be blank|Base sha can't be blank|Head repository can't be blank|No commits between|not all refs are readable/i
+  return /Head sha can't be blank|Base sha can't be blank|Head repository can't be blank|No commits between|not all refs are readable|Validation Failed/i
     .test(String(message));
 }
 

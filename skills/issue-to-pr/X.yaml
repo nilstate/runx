@@ -427,9 +427,14 @@ runners:
             approved spec, thread, repo_snapshot, repo_context, and current
             declared file contents are sufficient when they identify a narrow
             edit; do not return an empty bundle when one scoped docs edit is
-            possible. If a declared file has exists: false and the approved spec
-            intentionally creates it, write the new file when the desired
-            contents are inferable from the spec and thread. Do not widen scope.
+            possible. For any existing file, contents must be the complete
+            current file with the smallest necessary edit applied; preserve
+            unrelated sections, headings, prose, tables, links, setup
+            instructions, and ordering exactly. Never replace an existing file
+            with only the new section or a shortened summary. If a declared file
+            has exists: false and the approved spec intentionally creates it,
+            write the new file when the desired contents are inferable from the
+            spec and thread. Do not widen scope.
             Do not hand-edit scafld lifecycle files. Return
             fix_bundle.status: blocked with a reason and files: [] only when no
             concrete repo-relative target is declared, a required existing file
