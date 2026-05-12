@@ -1,0 +1,35 @@
+name: spec-normalize-scafld-frontmatter-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: spec.normalize_scafld_frontmatter
+inputs:
+  task_id: issue-91-docs
+  thread_title: Dogfood checklist docs
+  size: small
+  risk: low
+  spec_contents: |
+    ---
+    spec_version: '2.0'
+    task_id: issue-91-docs
+    created: 2026-05-12T00:00:00Z
+    updated: 2026-05-12T00:00:00Z
+    status: draft
+    harden_status: not_run
+    size: micro
+    risk_level: low
+    ---
+
+    ## Current State
+
+    A generated spec omitted title.
+expect:
+  status: success
+  output:
+    matches_packet: runx.spec.normalized_scafld_spec.v1
+    subset:
+      frontmatter:
+        task_id: issue-91-docs
+        title: Dogfood checklist docs
+        size: small
+      changed: true

@@ -351,6 +351,13 @@ runners:
           context:
             spec_path: scafld-plan.result.path
             scafld_plan: scafld-plan.result
+        - id: normalize-spec
+          label: normalize scafld frontmatter
+          tool: spec.normalize_scafld_frontmatter
+          scopes:
+            - spec.normalize_scafld_frontmatter
+          context:
+            spec_contents: author-spec.spec_contents
         - id: write-spec
           label: write markdown spec
           tool: fs.write
@@ -359,7 +366,7 @@ runners:
           mutation: true
           context:
             path: scafld-plan.result.path
-            contents: author-spec.spec_contents
+            contents: normalize-spec.normalized_spec.data.contents
         - id: read-draft-spec
           label: read draft spec
           tool: fs.read

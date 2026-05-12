@@ -41,8 +41,8 @@
   },
   {
     "skill_id": "runx/issue-to-pr",
-    "version": "sha-2a10bed3ed7c",
-    "digest": "52d8f07ead5d6db296688fa77cfcdf2a3746d3ee56d90e7b7ed171d4b73cca04"
+    "version": "sha-58e00c1966bc",
+    "digest": "c71eaaf9ed7132b9e37ca1cd02b52a032ef3d306449459d0825e3eb97cd05c49"
   },
   {
     "skill_id": "runx/issue-triage",
