@@ -71,6 +71,10 @@ Context, Objectives, Scope, Dependencies, Assumptions, Touchpoints, Risks,
 Acceptance, at least one Phase section, Rollback, Review, Self Eval,
 Deviations, Metadata, Origin, Harden Rounds, and Planning Log.
 
+The graph normalizes the front matter before writing the spec so current scafld
+schema fields such as `title` and size stay deterministic even if the authoring
+boundary omits or stales them.
+
 All changed-file declarations must use concrete repo-relative paths in
 backticks under Context / Files impacted and Phase / Changes. Do not declare
 scafld-managed control-plane artifacts under `.scafld/specs`,

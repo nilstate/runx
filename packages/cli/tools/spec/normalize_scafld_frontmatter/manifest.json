@@ -1,0 +1,60 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "spec.normalize_scafld_frontmatter",
+  "description": "Normalize scafld 2 markdown frontmatter before writing an agent-authored spec.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "spec_contents": {
+      "type": "string",
+      "required": true,
+      "description": "Agent-authored scafld markdown spec contents."
+    },
+    "task_id": {
+      "type": "string",
+      "required": false,
+      "description": "Expected scafld task id."
+    },
+    "thread_title": {
+      "type": "string",
+      "required": false,
+      "description": "Expected non-empty scafld title."
+    },
+    "size": {
+      "type": "string",
+      "required": false,
+      "description": "Expected scafld size: small, medium, or large."
+    },
+    "risk": {
+      "type": "string",
+      "required": false,
+      "description": "Expected scafld risk: low, medium, or high."
+    }
+  },
+  "output": {
+    "packet": "runx.spec.normalized_scafld_spec.v1",
+    "wrap_as": "normalized_spec"
+  },
+  "scopes": [
+    "spec.normalize_scafld_frontmatter"
+  ],
+  "runx": {
+    "artifacts": {
+      "wrap_as": "normalized_spec"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "source_hash": "sha256:5194f1cbe85fcab7e9dae67f494e175ef6cea251e64ab71dc9bcea3c739d4141",
+  "schema_hash": "sha256:5572fff6a0dfb3f3965e2f6f91b62b5957cd1df6f5d4c568102b8f3a74dab389",
+  "toolkit_version": "0.1.3"
+}
