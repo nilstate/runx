@@ -591,7 +591,7 @@ describe("thread.push_outbox tool", () => {
     }
   }, 15_000);
 
-  it("creates a GitHub pull request when the optional head lookup fails", async () => {
+  it("creates a GitHub pull request when optional GitHub PR setup calls need retry", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-list-failure-tool-"));
     const workspace = path.join(tempDir, "workspace");
     const remote = path.join(tempDir, "remote.git");
@@ -622,6 +622,7 @@ describe("thread.push_outbox tool", () => {
           nextPullNumber: 77,
           nextCommentId: 1000,
           failPrList: true,
+          failPrCreateCount: 1,
         }, null, 2)}\n`,
       );
       await writeFakeGhScript(fakeGh);
@@ -1175,6 +1176,12 @@ if (args[0] === "pr" && args[1] === "list") {
 }
 
 if (args[0] === "pr" && args[1] === "create") {
+  if ((state.failPrCreateCount ?? 0) > 0) {
+    state.failPrCreateCount -= 1;
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write("GraphQL: Head sha can't be blank, Head repository can't be blank, No commits between example:main and example:issue-list-failure, not all refs are readable\\n");
+    process.exit(1);
+  }
   const repo = readFlag(args, "--repo");
   const head = readFlag(args, "--head");
   const base = readFlag(args, "--base");
