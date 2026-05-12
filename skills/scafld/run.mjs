@@ -6,6 +6,7 @@ import path from "node:path";
 const inputs = loadInputs();
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const scafld = resolveBinary(String(inputs.scafld_bin || process.env.SCAFLD_BIN || "scafld"));
+const minimumScafldVersion = String(inputs.scafld_min_version || "2.4.0");
 const cwd = path.resolve(String(
   inputs.fixture
     || inputs.cwd
@@ -127,6 +128,13 @@ for (const key of Object.keys(env)) {
 }
 if (path.isAbsolute(scafld) || scafld.includes(path.sep)) {
   env.PATH = `${path.dirname(scafld)}${path.delimiter}${env.PATH || "/usr/local/bin:/usr/bin:/bin"}`;
+}
+
+try {
+  ensureScafldVersion({ scafld, cwd, env, minimum: minimumScafldVersion });
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
 }
 
 if (command === "build_to_review") {
@@ -323,6 +331,52 @@ function positiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function ensureScafldVersion({ scafld, cwd, env, minimum }) {
+  const result = spawnSync(scafld, ["--version"], {
+    cwd,
+    env,
+    encoding: "utf8",
+    shell: false,
+  });
+  if (result.error) {
+    throw new Error(`could not resolve scafld ${minimum} or newer: ${result.error.message}`);
+  }
+  const exitCode = result.status ?? 1;
+  const rawVersion = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+  if (exitCode !== 0) {
+    throw new Error(`scafld --version failed with exit ${exitCode}: ${rawVersion}`);
+  }
+
+  const actual = parseSemver(rawVersion);
+  const required = parseSemver(minimum);
+  if (!required) {
+    throw new Error(`invalid required scafld version: ${minimum}`);
+  }
+  if (!actual || compareSemver(actual, required) < 0) {
+    throw new Error(
+      `scafld ${minimum} or newer is required by this runx runner; ` +
+      `resolved ${scafld} reported ${rawVersion || "no version"}`,
+    );
+  }
+}
+
+function parseSemver(value) {
+  const match = String(value).match(/\bv?(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?\b/);
+  if (!match) {
+    return null;
+  }
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function compareSemver(left, right) {
+  for (let index = 0; index < 3; index += 1) {
+    if (left[index] !== right[index]) {
+      return left[index] > right[index] ? 1 : -1;
+    }
+  }
+  return 0;
+}
+
 function parseJsonPayload(commandName, rawStdout) {
   const trimmed = rawStdout.trim();
   if (!trimmed) {
@@ -331,6 +385,18 @@ function parseJsonPayload(commandName, rawStdout) {
   try {
     return JSON.parse(trimmed);
   } catch (error) {
+    const jsonLine = trimmed
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .reverse()
+      .find((line) => line.startsWith("{") && line.endsWith("}"));
+    if (jsonLine) {
+      try {
+        return JSON.parse(jsonLine);
+      } catch (lineError) {
+        // Continue to the contract error below with the original output preview.
+      }
+    }
     const preview = trimmed.length > 240 ? `${trimmed.slice(0, 240)}...` : trimmed;
     throw new Error(
       `scafld ${commandName} did not emit valid JSON. ` +

@@ -12,6 +12,7 @@ describe("thread.push_outbox tool", () => {
     const manifest = JSON.parse(await readFile(path.resolve("tools/thread/push_outbox/manifest.json"), "utf8"));
     expect(manifest.source.sandbox).toMatchObject({
       profile: "workspace-write",
+      cwd_policy: "skill-directory",
       network: true,
       writable_paths: ["{{workspace_path}}", "{{fixture}}"],
     });

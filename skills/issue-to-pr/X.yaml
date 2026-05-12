@@ -297,7 +297,7 @@ runners:
         status: governed
         rationale: >
           This graph keeps cognition and mutation separate while treating
-          scafld 2.2 as the workflow kernel. Agent phases author the markdown
+          scafld 2.4 as the workflow kernel. Agent phases author the markdown
           spec and bounded fix bundle. Deterministic fs.write phases perform
           mutations. Native scafld plan, validate, approve, build, review,
           complete, status, and handoff surfaces stay visible instead of being

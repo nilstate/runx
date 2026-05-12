@@ -8,7 +8,7 @@ description: Run existing scafld v2 lifecycle commands under runx governance.
 Use this skill when runx needs to govern an existing scafld lifecycle or
 projection command.
 
-The skill does not replace scafld. It calls the scafld v2 CLI with explicit
+The skill does not replace scafld. It calls the scafld 2.4.0+ CLI with explicit
 argv, requires native JSON output for machine-readable commands, records the
 runx receipt for the hop, and lets the graph define which command is allowed at
 each step.
@@ -101,12 +101,16 @@ matter:
   build advances.
 - `scafld_bin`: explicit scafld executable path. Defaults to `SCAFLD_BIN` or
   `scafld` on PATH.
+- `scafld_min_version`: optional minimum accepted scafld version; defaults to
+  `2.4.0`.
 
 ## Structured Output
 
 runx does not rebuild scafld state locally. For commands with native JSON
 contracts, the wrapper forwards the scafld payload directly after argv/env
-sanitization. `build_to_review` is a bounded lifecycle driver over native
-`scafld build` outputs, not a local state reconstruction. `handoff` is the
-exception: it forwards native Markdown because handoff is model transport, not
-lifecycle state.
+sanitization. scafld 2.4.0 command providers may print provider progress before
+the final JSON envelope; the runner extracts and forwards that native envelope.
+`build_to_review` is a bounded lifecycle driver over native `scafld build`
+outputs, not a local state reconstruction. `handoff` is the exception: it
+forwards native Markdown because handoff is model transport, not lifecycle
+state.

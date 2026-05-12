@@ -10,7 +10,7 @@
     ],
     "sandbox": {
       "profile": "workspace-write",
-      "cwd_policy": "workspace",
+      "cwd_policy": "skill-directory",
       "env_allowlist": [
         "PATH",
         "TMPDIR",
@@ -78,7 +78,7 @@
       "./run.mjs"
     ]
   },
-  "source_hash": "sha256:2b78bf392f47be293c8c43228d75ef2d96c9aab062273ab77e25986f5e3827fa",
+  "source_hash": "sha256:1aa977f48e96d2b5ef8ed4ea808d7bde1b39d69ffe906981f38c48b43648d12e",
   "schema_hash": "sha256:5c9657a19edc8d729e5bd37d6ef4f7912f0f060b1fc719bd822b85cc2fddf5dc",
   "toolkit_version": "0.1.3"
 }
