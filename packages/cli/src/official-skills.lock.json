@@ -41,8 +41,8 @@
   },
   {
     "skill_id": "runx/issue-to-pr",
-    "version": "sha-80b66f9d966d",
-    "digest": "316cb1dca2fd937b85d7835614a39e058d8af4e86d0ef52d79dc6e7cc8fd18da"
+    "version": "sha-794e28b7e05f",
+    "digest": "9a8ffe8acd19c3c5270539fc50d5358c498130a45ca102cb5b4ae9c43c18f295"
   },
   {
     "skill_id": "runx/issue-triage",
@@ -91,8 +91,8 @@
   },
   {
     "skill_id": "runx/scafld",
-    "version": "sha-19f8fb31f4d0",
-    "digest": "1f72a893584cf674fb060c2190e96c339f4704bfa4c85c929a83990e1a0076b3"
+    "version": "sha-c05d20e151b5",
+    "digest": "148db9da65d217e8cbb4bbad8d663e087d74e1fc35c8e110cf843add461044c0"
   },
   {
     "skill_id": "runx/skill-lab",

@@ -55,7 +55,7 @@ describe("issue-to-PR composite skill", () => {
       "plan",
       "validate",
       "approve",
-      "build",
+      "build_to_review",
       "status",
       "review",
       "complete",

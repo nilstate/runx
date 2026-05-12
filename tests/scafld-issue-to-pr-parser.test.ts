@@ -47,7 +47,7 @@ describe("scafld issue-to-PR skill contract", () => {
       "scafld-plan": "plan",
       "scafld-validate": "validate",
       "scafld-approve": "approve",
-      "scafld-build": "build",
+      "scafld-build": "build_to_review",
       "scafld-status": "status",
       "scafld-review": "review",
       "scafld-complete": "complete",
