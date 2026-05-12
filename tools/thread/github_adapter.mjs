@@ -469,10 +469,16 @@ export function pushGitHubPullRequest({
     ?? parseGitHubPullRequestNumber(optionalRecord(outbox.metadata)?.number);
   const existingByBranch = existingNumber
     ? undefined
-    : findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env);
+    : findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env, { state: "all" });
   let pullRequestRef = existingNumber;
   if (!pullRequestRef && existingByBranch) {
     pullRequestRef = firstNonEmptyString(existingByBranch.url, existingByBranch.number);
+    reopenGitHubPullRequestIfClosed({
+      repoSlug,
+      pullRequest: existingByBranch,
+      workspacePath,
+      env,
+    });
   }
 
   if (pullRequestRef) {
@@ -497,11 +503,17 @@ export function pushGitHubPullRequest({
         env,
       });
     } catch (error) {
-      const fallback = findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env);
+      const fallback = findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env, { state: "all" });
       if (!fallback) {
         throw error;
       }
       pullRequestRef = firstNonEmptyString(fallback.url, fallback.number);
+      reopenGitHubPullRequestIfClosed({
+        repoSlug,
+        pullRequest: fallback,
+        workspacePath,
+        env,
+      });
     }
   }
 
@@ -858,7 +870,8 @@ function buildGitHubCommitMessage(draftPullRequest, title, outboxEntry) {
   return `chore(issue-to-pr): apply ${firstNonEmptyString(draftPullRequest.task_id, existingTitle, "runx-change")}`;
 }
 
-function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env) {
+function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env, options = {}) {
+  const state = firstNonEmptyString(options.state, "open");
   let pulls;
   try {
     pulls = runGhJson([
@@ -869,9 +882,9 @@ function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env) {
       "--head",
       branch,
       "--state",
-      "open",
+      state,
       "--json",
-      "baseRefName,headRefName,isDraft,number,state,title,updatedAt,url",
+      "baseRefName,headRefName,isDraft,mergedAt,number,state,title,updatedAt,url",
     ], {
       cwd: workspacePath,
       env,
@@ -880,10 +893,50 @@ function findGitHubPullRequestByHead(repoSlug, branch, workspacePath, env) {
     return undefined;
   }
   const candidates = Array.isArray(pulls) ? pulls.filter(isRecord) : [];
-  return candidates.find((pull) =>
-    firstNonEmptyString(pull.headRefName) === branch
-    && String(pull.state ?? "").toUpperCase() === "OPEN"
-  );
+  return candidates
+    .filter((pull) =>
+      firstNonEmptyString(pull.headRefName) === branch
+      && !firstNonEmptyString(pull.mergedAt)
+      && (
+        state === "all"
+        || String(pull.state ?? "").toUpperCase() === String(state).toUpperCase()
+      )
+    )
+    .sort((left, right) => {
+      const stateScore = gitHubPullRequestOpenScore(right) - gitHubPullRequestOpenScore(left);
+      if (stateScore !== 0) {
+        return stateScore;
+      }
+      return String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? ""));
+    })[0];
+}
+
+function reopenGitHubPullRequestIfClosed({ repoSlug, pullRequest, workspacePath, env }) {
+  const state = String(pullRequest?.state ?? "").toUpperCase();
+  if (state !== "CLOSED") {
+    return;
+  }
+  if (firstNonEmptyString(pullRequest?.mergedAt)) {
+    throw new Error(`GitHub pull request ${firstNonEmptyString(pullRequest.number, pullRequest.url)} is merged and cannot be reopened.`);
+  }
+  const pullRequestRef = firstNonEmptyString(pullRequest.url, pullRequest.number);
+  if (!pullRequestRef) {
+    throw new Error("GitHub pull request reference is required to reopen a closed branch match.");
+  }
+  runCommand(resolveGhBinary(env), [
+    "pr",
+    "reopen",
+    pullRequestRef,
+    "--repo",
+    repoSlug,
+  ], {
+    cwd: workspacePath,
+    env,
+  });
+}
+
+function gitHubPullRequestOpenScore(pullRequest) {
+  return String(pullRequest?.state ?? "").toUpperCase() === "OPEN" ? 2 : 1;
 }
 
 function editGitHubPullRequest({ repoSlug, pullRequestRef, title, body, base, workspacePath, env }) {

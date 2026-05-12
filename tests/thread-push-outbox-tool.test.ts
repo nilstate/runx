@@ -696,6 +696,131 @@ describe("thread.push_outbox tool", () => {
     }
   }, 15_000);
 
+  it("reopens and updates a closed unmerged GitHub pull request with the same head branch", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-reopen-tool-"));
+    const workspace = path.join(tempDir, "workspace");
+    const remote = path.join(tempDir, "remote.git");
+    const fakeGh = path.join(tempDir, "fake-gh.mjs");
+    const fakeState = path.join(tempDir, "fake-gh-state.json");
+
+    try {
+      await initGitHubWorkspace(workspace, remote, "issue-closed");
+      await writeFile(
+        fakeState,
+        `${JSON.stringify({
+          issue: {
+            number: 123,
+            title: "Fix fixture behavior",
+            body: "The issue body for the fixture.",
+            url: "https://github.com/example/repo/issues/123",
+            state: "OPEN",
+            createdAt: "2026-04-22T00:00:00Z",
+            updatedAt: "2026-04-22T00:00:00Z",
+            author: {
+              login: "auscaster",
+            },
+            comments: [],
+            labels: [],
+            closedByPullRequestsReferences: [],
+          },
+          pulls: [
+            {
+              number: 112,
+              repo: "example/repo",
+              title: "Old title",
+              body: "Old body.",
+              url: "https://github.com/example/repo/pull/112",
+              state: "CLOSED",
+              isDraft: true,
+              headRefName: "issue-closed",
+              baseRefName: "main",
+              mergedAt: null,
+              updatedAt: "2026-04-22T00:30:00Z",
+            },
+          ],
+          nextPullNumber: 113,
+          nextCommentId: 1000,
+        }, null, 2)}\n`,
+      );
+      await writeFakeGhScript(fakeGh);
+
+      const result = runTool({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "pull_request:issue-closed",
+          kind: "pull_request",
+          title: "Fix fixture behavior",
+          status: "proposed",
+          thread_locator: "github://example/repo/issues/123",
+        },
+        draft_pull_request: {
+          schema_version: "runx.pull-request-draft.v1",
+          action: "create",
+          push_ready: true,
+          task_id: "issue-closed",
+          target: {
+            repo: "example/repo",
+            branch: "issue-closed",
+            base: "main",
+            remote: "origin",
+          },
+          pull_request: {
+            title: "Fix fixture behavior",
+            body_markdown: "# Fix fixture behavior\n\nUpdated body.\n",
+            is_draft: true,
+          },
+        },
+        workspace_path: workspace,
+        next_status: "draft",
+      }, {
+        RUNX_GH_BIN: fakeGh,
+        RUNX_FAKE_GH_STATE: fakeState,
+      });
+
+      expect(result).toMatchObject({
+        outbox_entry: {
+          entry_id: "pr-112",
+          locator: "https://github.com/example/repo/pull/112",
+          status: "draft",
+        },
+        push: {
+          status: "pushed",
+          pull_request: {
+            number: "112",
+            url: "https://github.com/example/repo/pull/112",
+          },
+        },
+      });
+      expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        nextPullNumber: 113,
+        pulls: [
+          {
+            number: 112,
+            title: "Fix fixture behavior",
+            body: expect.stringContaining("Updated body."),
+            state: "OPEN",
+            headRefName: "issue-closed",
+          },
+        ],
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
   it("creates a GitHub pull request when optional GitHub PR setup calls need retry", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-list-failure-tool-"));
     const workspace = path.join(tempDir, "workspace");
@@ -1354,6 +1479,14 @@ if (args[0] === "pr" && args[1] === "edit") {
   pull.title = readFlag(args, "--title");
   pull.body = readFlag(args, "--body");
   pull.baseRefName = readFlag(args, "--base") || pull.baseRefName;
+  pull.updatedAt = "2026-04-22T01:00:00Z";
+  writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+  process.exit(0);
+}
+
+if (args[0] === "pr" && args[1] === "reopen") {
+  const pull = findPull(state.pulls, args[2]);
+  pull.state = "OPEN";
   pull.updatedAt = "2026-04-22T01:00:00Z";
   writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
   process.exit(0);
