@@ -945,8 +945,7 @@ function runGitHubPullRequestCreate({ repoSlug, branch, base, title, body, works
       }).trim();
     } catch (error) {
       lastError = error;
-      const message = String(error?.message ?? error);
-      if (!isTransientGitHubPullRequestCreateError(message) || attempt === 3) {
+      if (attempt === 3) {
         throw error;
       }
       sleepSync(2000 * (attempt + 1));
@@ -959,6 +958,8 @@ function buildGitHubPullRequestCreateArgs({ repoSlug, branch, base, title, body 
   const args = [
     "api",
     `repos/${repoSlug}/pulls`,
+    "--method",
+    "POST",
     "-f",
     `title=${title}`,
     "-f",
@@ -974,11 +975,6 @@ function buildGitHubPullRequestCreateArgs({ repoSlug, branch, base, title, body 
     args.push("-f", `base=${base}`);
   }
   return args;
-}
-
-function isTransientGitHubPullRequestCreateError(message) {
-  return /Head sha can't be blank|Base sha can't be blank|Head repository can't be blank|No commits between|not all refs are readable|Validation Failed/i
-    .test(String(message));
 }
 
 function sleepSync(milliseconds) {
