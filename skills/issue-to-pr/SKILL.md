@@ -58,10 +58,10 @@ The document must preserve front matter with:
 
 - `spec_version: '2.0'`
 - `task_id`
-- `created`
-- `updated`
-- `status`
-- `harden_status`
+- `created`: ISO-8601 timestamp
+- `updated`: ISO-8601 timestamp
+- `status: draft`
+- `harden_status: not_run`
 - `size`
 - `risk_level`
 
