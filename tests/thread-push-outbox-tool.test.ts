@@ -464,6 +464,107 @@ describe("thread.push_outbox tool", () => {
     }
   }, 15_000);
 
+  it("falls back from GH_TOKEN to GITHUB_TOKEN for gh api pull request creation", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-token-tool-"));
+    const workspace = path.join(tempDir, "workspace");
+    const remote = path.join(tempDir, "remote.git");
+    const fakeGh = path.join(tempDir, "fake-gh.mjs");
+    const fakeState = path.join(tempDir, "fake-gh-state.json");
+
+    try {
+      await initGitHubWorkspace(workspace, remote, "issue-gh-token");
+      await writeFile(
+        fakeState,
+        `${JSON.stringify({
+          issue: {
+            number: 123,
+            title: "Fix fixture behavior",
+            body: "The issue body for the fixture.",
+            url: "https://github.com/example/repo/issues/123",
+            state: "OPEN",
+            createdAt: "2026-04-22T00:00:00Z",
+            updatedAt: "2026-04-22T00:00:00Z",
+            author: {
+              login: "auscaster",
+            },
+            comments: [],
+            labels: [],
+            closedByPullRequestsReferences: [],
+          },
+          pulls: [],
+          nextPullNumber: 77,
+          nextCommentId: 1000,
+          ghTokens: [],
+          failPrCreateTokens: ["bad-token"],
+        }, null, 2)}\n`,
+      );
+      await writeFakeGhScript(fakeGh);
+
+      const result = runTool({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "pull_request:issue-gh-token",
+          kind: "pull_request",
+          title: "Fix fixture behavior",
+          status: "proposed",
+          thread_locator: "github://example/repo/issues/123",
+        },
+        draft_pull_request: {
+          schema_version: "runx.pull-request-draft.v1",
+          action: "create",
+          push_ready: true,
+          task_id: "issue-gh-token",
+          target: {
+            repo: "example/repo",
+            branch: "issue-gh-token",
+            base: "main",
+            remote: "origin",
+          },
+          pull_request: {
+            title: "Fix fixture behavior",
+            body_markdown: "# Fix fixture behavior\n\nBody.\n",
+            is_draft: true,
+          },
+        },
+        workspace_path: workspace,
+        next_status: "draft",
+      }, {
+        GH_TOKEN: "bad-token",
+        GITHUB_TOKEN: "good-token",
+        RUNX_GH_BIN: fakeGh,
+        RUNX_FAKE_GH_STATE: fakeState,
+      });
+
+      expect(result.push.status).toBe("pushed");
+      expect(result.push.pull_request.url).toBe("https://github.com/example/repo/pull/77");
+      expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        ghTokens: ["bad-token", "good-token"],
+        pulls: [
+          {
+            number: 77,
+            headRefName: "issue-gh-token",
+            baseRefName: "main",
+          },
+        ],
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
   it("sets a default Git commit identity before committing uncommitted GitHub pull request changes", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-identity-tool-"));
     const workspace = path.join(tempDir, "workspace");
@@ -1398,6 +1499,13 @@ if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/issues\\/comments\\/\\d+$/.te
 }
 
 if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls$/.test(args[1] || "")) {
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
+  state.ghTokens = [...(state.ghTokens || []), token];
+  if ((state.failPrCreateTokens || []).includes(token)) {
+    writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
+    process.stderr.write(\`token \${token} cannot create pull requests\\n\`);
+    process.exit(1);
+  }
   if ((state.failPrCreateCount ?? 0) > 0) {
     state.failPrCreateCount -= 1;
     writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
