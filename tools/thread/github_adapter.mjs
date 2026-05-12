@@ -460,8 +460,10 @@ export function pushGitHubPullRequest({
     });
   }
 
-  runCommand("git", ["push", "--set-upstream", remote, branch], {
-    cwd: workspacePath,
+  pushGitHubBranch({
+    workspacePath,
+    remote,
+    branch,
     env,
   });
 
@@ -1302,6 +1304,48 @@ function defaultGitUserEmail(env) {
     env?.GITHUB_ACTIONS === "true" ? "41898282+github-actions[bot]@users.noreply.github.com" : undefined,
     "runx@example.invalid",
   );
+}
+
+function pushGitHubBranch({ workspacePath, remote, branch, env }) {
+  try {
+    runCommand("git", ["push", "--set-upstream", remote, branch], {
+      cwd: workspacePath,
+      env,
+    });
+    return;
+  } catch (error) {
+    if (!isRunxGeneratedBranch(branch)) {
+      throw error;
+    }
+    const remoteSha = readRemoteBranchSha({ workspacePath, remote, branch, env });
+    if (!remoteSha) {
+      throw error;
+    }
+    runCommand("git", [
+      "push",
+      "--set-upstream",
+      `--force-with-lease=refs/heads/${branch}:${remoteSha}`,
+      remote,
+      branch,
+    ], {
+      cwd: workspacePath,
+      env,
+    });
+  }
+}
+
+function readRemoteBranchSha({ workspacePath, remote, branch, env }) {
+  const stdout = runCommand("git", ["ls-remote", "--heads", remote, `refs/heads/${branch}`], {
+    cwd: workspacePath,
+    env,
+  });
+  const line = stdout.split(/\r?\n/).find((entry) => entry.trim().length > 0);
+  const sha = line?.split(/\s+/)[0];
+  return /^[0-9a-f]{40}$/i.test(sha ?? "") ? sha : undefined;
+}
+
+function isRunxGeneratedBranch(branch) {
+  return typeof branch === "string" && branch.startsWith("runx/");
 }
 
 function runCommand(command, args, options) {
