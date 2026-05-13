@@ -116,5 +116,5 @@ not bypass it.
 - `release-publish` — the destructive phase task. Only reachable inside
   the graph; requires the approved brief in context.
 
-These are agent-step task contracts carried by the skill package and its
+These are agent-task task contracts carried by the skill package and its
 `X.yaml` graph definition. They are not a separate registered task catalog.

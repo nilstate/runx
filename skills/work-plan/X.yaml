@@ -33,7 +33,7 @@ harness:
             - One bounded governed content plan is produced.
       caller:
         answers:
-          agent_step.work-plan.output:
+          agent_task.work-plan.output:
             change_set:
               change_set_id: change_set_ecosystem_brief
               thread_locator: objective://ecosystem-brief
@@ -119,7 +119,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: work-plan
-          source_type: agent-step
+          source_type: agent-task
     - name: work-plan-phased-workspace-plan
       inputs:
         objective: Roll out abandoned cart recovery across api, app, and mcp
@@ -154,7 +154,7 @@ harness:
             - Integration checks verify api, app, and mcp remain aligned.
       caller:
         answers:
-          agent_step.work-plan.output:
+          agent_task.work-plan.output:
             change_set:
               change_set_id: change_set_abandoned_cart_982
               thread_locator: support://request/982
@@ -277,7 +277,7 @@ harness:
             required_skills:
               - name: issue-to-pr
                 exists: true
-              - name: request-triage
+              - name: intake
                 exists: true
             open_questions:
               - Should rollout remain behind an explicit feature flag for the first release?
@@ -287,12 +287,12 @@ harness:
           kind: skill_execution
           status: success
           skill_name: work-plan
-          source_type: agent-step
+          source_type: agent-task
 
 runners:
   work-plan-agent:
     default: true
-    type: agent-step
+    type: agent-task
     agent: builder
     task: work-plan
     outputs:
@@ -325,4 +325,4 @@ runners:
       change_set:
         type: object
         required: false
-        description: "Optional parent change set from request-triage or a workspace supervisor."
+        description: "Optional parent change set from intake or a workspace supervisor."

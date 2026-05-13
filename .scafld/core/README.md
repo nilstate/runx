@@ -22,7 +22,7 @@ plan -> harden -> approve -> build -> review -> complete
   config.local.yaml
   prompts/
     plan.md
-    exec.md
+    build.md
     recovery.md
     review.md
     harden.md
@@ -46,8 +46,13 @@ Prompt ownership:
 - `.scafld/prompts/*` is the active template layer
 - `.scafld/core/prompts/*` is the managed reset copy
 
+`scafld config` writes `.scafld/config.proposed.yaml` with evidence-backed
+config suggestions. It does not mutate `.scafld/config.yaml`.
+
 `scafld update` refreshes default project prompt copies when they are still
-known defaults. Customized project prompts are skipped.
+known defaults. Customized project prompts are skipped. It also refreshes root
+agent docs and renders generated `.scafld/config.yaml` into the current strict
+runtime shape.
 
 ## Handoffs
 
@@ -65,8 +70,8 @@ When the workspace includes them, prefer:
 - `.scafld/core/scripts/scafld-claude-review.sh <task-id>`
 
 They resolve the current scafld handoff first, then pass it to the external
-agent runtime. That keeps handoff consumption as the default path instead of a
-manual convention.
+agent runtime. That keeps phase handoff consumption as the default path instead
+of a manual convention.
 
 ## Adversarial Review
 
@@ -74,7 +79,7 @@ Challenge fires at `review`.
 
 That means:
 
-- one accepted review packet per review run, recorded in session
+- one accepted review dossier per review run, recorded in session
 - one completion gate that matters
 - findings are visible in `review`, `status`, `handoff`, and the spec
 - diagnostics are transport evidence, not the primary finding surface
@@ -85,6 +90,11 @@ That means:
 
 - `first_attempt_pass_rate`
 - `recovery_convergence_rate`
+- `review_pass_rate`
+- `review_dossier_coverage`
+- `review_findings_total`
+- `review_open_blockers_total`
+- `review_attack_angles_total`
 - `challenge_override_rate`
 
 Use `scafld report` to inspect workspace-wide task state.

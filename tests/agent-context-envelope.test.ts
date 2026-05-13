@@ -36,7 +36,7 @@ describe("agent context envelope", () => {
       }
 
       const request = result.requests[0];
-      expect(request?.id).toBe("agent_step.evolve-plan.output");
+      expect(request?.id).toBe("agent_task.evolve-plan.output");
       expect(request?.kind).toBe("cognitive_work");
       expect(request?.kind === "cognitive_work" ? request.work.envelope.run_id : undefined).toBe(result.runId);
       expect(request?.kind === "cognitive_work" ? request.work.envelope.step_id : undefined).toBe("plan");
@@ -74,7 +74,7 @@ describe("agent context envelope", () => {
 
     const completionCaller: Caller = {
       resolve: async (request) => {
-        if (request.kind === "cognitive_work" && request.id === "agent_step.evolve-plan.output") {
+        if (request.kind === "cognitive_work" && request.id === "agent_task.evolve-plan.output") {
           return {
             actor: "agent",
             payload: {
@@ -161,7 +161,7 @@ describe("agent context envelope", () => {
 
     const completionCaller: Caller = {
       resolve: async (request) => {
-        if (request.kind === "cognitive_work" && request.id === "agent_step.evolve-plan.output") {
+        if (request.kind === "cognitive_work" && request.id === "agent_task.evolve-plan.output") {
           return {
             actor: "agent",
             payload: {

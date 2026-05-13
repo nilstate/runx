@@ -368,11 +368,22 @@ function selectMatchingOutboxEntry(threadValue, pushedEntry) {
   const outbox = Array.isArray(threadValue?.outbox)
     ? threadValue.outbox.filter(isRecord)
     : [];
+  const pushedKind = firstNonEmptyString(pushedEntry.kind);
+  const pushedReceiptId = firstNonEmptyString(optionalRecord(pushedEntry.metadata)?.outbox_receipt_id);
   return outbox.find(
-    (candidate) =>
-      candidate.entry_id === pushedEntry.entry_id ||
-      (firstNonEmptyString(pushedEntry.locator) &&
-        candidate.locator === pushedEntry.locator),
+    (candidate) => {
+      if (firstNonEmptyString(pushedEntry.locator) && candidate.locator === pushedEntry.locator) {
+        return true;
+      }
+      if (candidate.entry_id !== pushedEntry.entry_id) {
+        return false;
+      }
+      if (pushedKind !== "message") {
+        return true;
+      }
+      const candidateReceiptId = firstNonEmptyString(optionalRecord(candidate.metadata)?.outbox_receipt_id);
+      return Boolean(pushedReceiptId && candidateReceiptId === pushedReceiptId);
+    },
   );
 }
 

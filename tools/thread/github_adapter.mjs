@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 
 export function isRecord(value) {
@@ -110,6 +111,10 @@ export function gitHubOutboxEntryMarker(entryId) {
   return `<!-- runx-outbox-entry: ${normalized} -->`;
 }
 
+export function gitHubOutboxEnvelopeMarker() {
+  return "<!-- runx-outbox-envelope: v1 -->";
+}
+
 export function gitHubOutboxMetadataMarker(metadata) {
   const persisted = normalizeGitHubPersistedOutboxMetadata(metadata);
   if (!persisted) {
@@ -120,31 +125,112 @@ export function gitHubOutboxMetadataMarker(metadata) {
 }
 
 export function parseGitHubOutboxEntryMarker(value) {
-  const text = firstNonEmptyText(value);
-  if (!text) {
-    return undefined;
-  }
-  const match = text.match(/<!--\s*runx-outbox-entry:\s*([^>\n]+?)\s*-->/i);
-  return firstNonEmptyString(match?.[1]);
+  return parseGitHubOutboxEnvelope(value)?.entry_id;
 }
 
 export function ensureGitHubOutboxEntryMarker(bodyMarkdown, entryId) {
-  const body = firstNonEmptyText(bodyMarkdown) ?? "";
+  const body = stripTrailingGitHubOutboxEnvelope(firstNonEmptyText(bodyMarkdown) ?? "", {
+    requireReceipt: false,
+  }) ?? "";
   const marker = gitHubOutboxEntryMarker(entryId);
-  if (body.includes(marker)) {
-    return body;
-  }
+  const envelope = [
+    gitHubOutboxEnvelopeMarker(),
+    marker,
+  ].join("\n");
   const trimmed = body.trimEnd();
-  return trimmed.length > 0 ? `${trimmed}\n\n${marker}\n` : `${marker}\n`;
+  return trimmed.length > 0 ? `${trimmed}\n\n${envelope}\n` : `${envelope}\n`;
 }
 
 export function parseGitHubOutboxMetadataMarker(value) {
+  return parseGitHubOutboxEnvelope(value)?.metadata;
+}
+
+export function ensureGitHubOutboxMetadataMarker(bodyMarkdown, metadata) {
+  const parsedEnvelope = parseGitHubOutboxEnvelope(bodyMarkdown);
+  const marker = gitHubOutboxMetadataMarker(metadata);
+  const body = stripTrailingGitHubOutboxEnvelope(firstNonEmptyText(bodyMarkdown) ?? "", {
+    requireReceipt: false,
+  }) ?? "";
+  const envelope = [
+    gitHubOutboxEnvelopeMarker(),
+    parsedEnvelope?.entry_id ? gitHubOutboxEntryMarker(parsedEnvelope.entry_id) : undefined,
+    marker,
+  ].filter(Boolean).join("\n");
+  if (!envelope) {
+    return body;
+  }
+  const trimmed = body.trimEnd();
+  return trimmed.length > 0 ? `${trimmed}\n\n${envelope}\n` : `${envelope}\n`;
+}
+
+export function stripGitHubOutboxEntryMarker(value) {
+  return stripTrailingGitHubOutboxEnvelope(value, { requireReceipt: true });
+}
+
+export function parseGitHubOutboxEnvelope(value) {
   const text = firstNonEmptyText(value);
   if (!text) {
     return undefined;
   }
-  const match = text.match(/<!--\s*runx-outbox-metadata:\s*([^>\n]+?)\s*-->/i);
-  const encoded = firstNonEmptyString(match?.[1]);
+  const marker = gitHubOutboxEnvelopeMarker();
+  const start = text.lastIndexOf(marker);
+  if (start < 0) {
+    return undefined;
+  }
+  const envelopeText = text.slice(start).trim();
+  const parsed = parseGitHubOutboxEnvelopeBlock(envelopeText);
+  return parsed
+    ? {
+        ...parsed,
+        start,
+        end: text.length,
+      }
+    : undefined;
+}
+
+function stripTrailingGitHubOutboxEnvelope(value, options = {}) {
+  const text = firstNonEmptyText(value);
+  if (!text) {
+    return undefined;
+  }
+  const envelope = parseGitHubOutboxEnvelope(text);
+  const shouldStrip = envelope && (!options.requireReceipt || gitHubOutboxEnvelopeHasReceipt(envelope));
+  const stripped = shouldStrip ? text.slice(0, envelope.start) : text;
+  const normalized = stripped.replace(/\n{3,}/g, "\n\n").trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function parseGitHubOutboxEnvelopeBlock(value) {
+  const lines = value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+  if (lines[0] !== gitHubOutboxEnvelopeMarker()) {
+    return undefined;
+  }
+  let entryId;
+  let metadata;
+  for (const line of lines.slice(1)) {
+    const entryMatch = line.match(/^<!--\s*runx-outbox-entry:\s*([^>\n]+?)\s*-->$/i);
+    if (entryMatch) {
+      entryId = firstNonEmptyString(entryMatch[1]);
+      continue;
+    }
+    const metadataMatch = line.match(/^<!--\s*runx-outbox-metadata:\s*([^>\n]+?)\s*-->$/i);
+    if (metadataMatch) {
+      metadata = parseGitHubOutboxMetadataValue(metadataMatch[1]);
+      continue;
+    }
+    return undefined;
+  }
+  if (!entryId && !metadata) {
+    return undefined;
+  }
+  return prune({
+    entry_id: entryId,
+    metadata,
+  });
+}
+
+function parseGitHubOutboxMetadataValue(value) {
+  const encoded = firstNonEmptyString(value);
   if (!encoded) {
     return undefined;
   }
@@ -156,28 +242,9 @@ export function parseGitHubOutboxMetadataMarker(value) {
   }
 }
 
-export function ensureGitHubOutboxMetadataMarker(bodyMarkdown, metadata) {
-  const marker = gitHubOutboxMetadataMarker(metadata);
-  if (!marker) {
-    return firstNonEmptyText(bodyMarkdown) ?? "";
-  }
-  const body = (firstNonEmptyText(bodyMarkdown) ?? "")
-    .replace(/<!--\s*runx-outbox-metadata:\s*([^>\n]+?)\s*-->\s*/gi, "")
-    .trimEnd();
-  return body.length > 0 ? `${body}\n\n${marker}\n` : `${marker}\n`;
-}
-
-export function stripGitHubOutboxEntryMarker(value) {
-  const text = firstNonEmptyText(value);
-  if (!text) {
-    return undefined;
-  }
-  const stripped = text
-    .replace(/<!--\s*runx-outbox-entry:\s*([^>\n]+?)\s*-->\s*/gi, "")
-    .replace(/<!--\s*runx-outbox-metadata:\s*([^>\n]+?)\s*-->\s*/gi, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  return stripped.length > 0 ? stripped : undefined;
+function gitHubOutboxEnvelopeHasReceipt(envelope) {
+  const metadata = optionalRecord(envelope?.metadata);
+  return Boolean(envelope?.entry_id && firstNonEmptyString(metadata?.outbox_receipt_id));
 }
 
 export function parseGitHubPullRequestNumber(value) {
@@ -297,7 +364,10 @@ export function hydrateGitHubIssueThread({ adapterRef, issue, pullRequests }) {
       `${entries.length + 1}`,
     );
     const recordedAt = firstNonEmptyString(comment.createdAt, comment.updatedAt, updatedAt) ?? updatedAt;
-    const outboxEntryId = parseGitHubOutboxEntryMarker(comment.body);
+    const outboxEnvelope = parseGitHubOutboxEnvelope(comment.body);
+    const outboxEntryId = gitHubOutboxEnvelopeHasReceipt(outboxEnvelope)
+      ? outboxEnvelope.entry_id
+      : undefined;
     const commentBody = stripGitHubOutboxEntryMarker(firstNonEmptyText(comment.body));
     entries.push(prune({
       entry_id: `comment-${commentId}`,
@@ -569,6 +639,11 @@ export function pushGitHubMessage({
   );
   const existingEntry = selectExistingGitHubMessageOutboxEntry(state, outbox);
   const existingMetadata = optionalRecord(existingEntry?.metadata) ?? {};
+  const outboxReceiptId = firstNonEmptyString(
+    metadata.outbox_receipt_id,
+    existingMetadata.outbox_receipt_id,
+    randomUUID(),
+  );
   const repoSlug = firstNonEmptyString(optionalRecord(state.metadata)?.repo, issueRef.repo_slug);
   const bodyMarkdown = firstNonEmptyText(metadata.body_markdown, metadata.body);
   const commentId = firstNonEmptyString(
@@ -595,7 +670,10 @@ export function pushGitHubMessage({
     throw new Error("outbox_entry.metadata.body_markdown is required for GitHub message push.");
   }
 
-  const commentMetadata = normalizeGitHubPersistedOutboxMetadata(metadata);
+  const commentMetadata = normalizeGitHubPersistedOutboxMetadata({
+    ...metadata,
+    outbox_receipt_id: outboxReceiptId,
+  });
   const commentBodyWithMetadata = ensureGitHubOutboxMetadataMarker(commentBody, commentMetadata);
   if (shouldPublish) {
     runCommand(resolveGhBinary(env), [
@@ -636,6 +714,7 @@ export function pushGitHubMessage({
         channel: firstNonEmptyString(metadata.channel, "github_issue_comment"),
         body_markdown: bodyMarkdown,
         comment_id: commentId,
+        outbox_receipt_id: outboxReceiptId,
         pushed_at: new Date().toISOString(),
       }),
     }),
@@ -648,6 +727,8 @@ export function pushGitHubMessage({
 
 function selectExistingGitHubMessageOutboxEntry(thread, outboxEntry) {
   const existingOutbox = Array.isArray(thread.outbox) ? thread.outbox.filter(isRecord) : [];
+  const requestedMetadata = optionalRecord(outboxEntry.metadata) ?? {};
+  const requestedReceiptId = firstNonEmptyString(requestedMetadata.outbox_receipt_id);
   const matches = existingOutbox
     .filter((entry) => firstNonEmptyString(entry.kind) === "message")
     .filter((entry) => {
@@ -657,7 +738,10 @@ function selectExistingGitHubMessageOutboxEntry(thread, outboxEntry) {
       if (sameLocator) {
         return true;
       }
+      const candidateReceiptId = firstNonEmptyString(optionalRecord(entry.metadata)?.outbox_receipt_id);
       const sameEntryId =
+        requestedReceiptId &&
+        candidateReceiptId === requestedReceiptId &&
         firstNonEmptyString(outboxEntry.entry_id) &&
         firstNonEmptyString(entry.entry_id) === firstNonEmptyString(outboxEntry.entry_id);
       return Boolean(sameEntryId);
@@ -706,7 +790,16 @@ function gitHubMessageOutboxMatchScore(candidate, outboxEntry) {
   }
   const candidateEntryId = firstNonEmptyString(candidate.entry_id);
   const requestedEntryId = firstNonEmptyString(outboxEntry.entry_id);
-  if (candidateEntryId && requestedEntryId && candidateEntryId === requestedEntryId) {
+  const candidateReceiptId = firstNonEmptyString(optionalRecord(candidate.metadata)?.outbox_receipt_id);
+  const requestedReceiptId = firstNonEmptyString(optionalRecord(outboxEntry.metadata)?.outbox_receipt_id);
+  if (
+    candidateEntryId &&
+    requestedEntryId &&
+    candidateEntryId === requestedEntryId &&
+    candidateReceiptId &&
+    requestedReceiptId &&
+    candidateReceiptId === requestedReceiptId
+  ) {
     return 2;
   }
   return 1;

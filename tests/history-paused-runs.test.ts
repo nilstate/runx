@@ -28,12 +28,12 @@ const writePausedLedger = async (receiptDir: string, runId: string, skillName: s
         kind: "step_waiting_resolution",
         status: "waiting",
         detail: {
-          request_ids: ["agent_step.test-step.output"],
+          request_ids: ["agent_task.test-step.output"],
           resolution_kinds: ["cognitive_work"],
           step_ids: ["discover"],
           step_labels: ["inspect repo"],
           inputs: {},
-          selected_runner: "agent-step",
+          selected_runner: "agent-task",
         },
         createdAt: created,
       }),
@@ -58,7 +58,7 @@ describe("paused runs surface in history and inspect", () => {
         name: "sourcey",
         status: "paused",
         kind: "graph_execution",
-        selectedRunner: "agent-step",
+        selectedRunner: "agent-task",
         stepIds: ["discover"],
         stepLabels: ["inspect repo"],
       });

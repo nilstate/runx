@@ -30,7 +30,7 @@ describe("run diff", () => {
         runxHome,
         receiptId: "rx_diff_right_0001",
         skillName: "sourcey",
-        sourceType: "agent-step",
+        sourceType: "agent-task",
         artifactType: "review_note",
         runnerProvider: "anthropic",
         approvalDecision: "approved",
@@ -51,7 +51,7 @@ describe("run diff", () => {
         fields: {
           source_type: {
             left: "cli-tool",
-            right: "agent-step",
+            right: "agent-task",
           },
           runner_provider: {
             left: "openai",

@@ -24,7 +24,7 @@ harness:
         test_constraints: Keep the report grounded in repo-visible evidence and local harness receipts.
       caller:
         answers:
-          agent_step.review-skill.output:
+          agent_task.review-skill.output:
             capability_profile:
               summary: Bounded docs generation with approval and verification steps.
             trust_assessment:
@@ -37,7 +37,7 @@ harness:
             recommendation_report:
               recommendation: publish_trust_audit
               rationale: Strong enough for evaluators once the docs are aligned.
-          agent_step.draft-content-draft.output:
+          agent_task.draft-content-draft.output:
             content_brief:
               angle: trust audit
             draft:
@@ -46,7 +46,7 @@ harness:
               - confirm trust-tier language
             distribution_notes:
               primary_channel: trust-audit
-          agent_step.draft-content-package.output:
+          agent_task.draft-content-package.output:
             publish_packet:
               channel: trust-audit
               headline: Sourcey trust audit

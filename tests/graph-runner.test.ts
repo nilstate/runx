@@ -192,7 +192,7 @@ describe("local governed graph runner", () => {
 owner: runx
 steps:
   - id: review
-    skill: ${JSON.stringify(path.resolve("fixtures/skills/agent-step"))}
+    skill: ${JSON.stringify(path.resolve("fixtures/skills/agent-task"))}
     inputs:
       prompt: review this
 `,
@@ -234,7 +234,7 @@ steps:
         if (request.kind !== "cognitive_work") {
           return undefined;
         }
-        if (request.id === "agent_step.reflectable-auto.output") {
+        if (request.id === "agent_task.reflectable-auto.output") {
           return {
             actor: "agent",
             payload: {
@@ -242,7 +242,7 @@ steps:
             },
           };
         }
-        if (request.id === "agent_step.reflectable-never.output") {
+        if (request.id === "agent_task.reflectable-never.output") {
           return {
             actor: "agent",
             payload: {
@@ -399,7 +399,7 @@ Reflectable test fixture.
     `skill: reflectable
 runners:
   auto-review:
-    type: agent-step
+    type: agent-task
     agent: reviewer
     task: reflectable-auto
     outputs:
@@ -418,7 +418,7 @@ runners:
       post_run:
         reflect: always
   never-review:
-    type: agent-step
+    type: agent-task
     agent: reviewer
     task: reflectable-never
     outputs:

@@ -3,7 +3,6 @@
 # Purpose: Machine-readable control file for AI coding agents
 
 version: "1.0"
-
 # Status lifecycle: See specs/README.md for canonical state machine and transitions
 
 # =============================================================================
@@ -13,22 +12,18 @@ invariants:
   # CUSTOMIZE: Replace these with your project's architectural invariants.
   # These names are referenced in specs (context.invariants) and enforced during execution.
   canonical:
-    - domain_boundaries      # Respect layer separation
-    - error_envelope         # Consistent error format
-    - no_legacy_code         # No dual-reads, dual-writes, or runtime fallbacks
-    - no_test_logic_in_production  # Keep test-only code in test files
-    - public_api_stable      # Public APIs require approval to change
-    - config_from_env        # Configuration from environment, never hardcoded
-
+    domain_boundaries: ""
+    error_envelope: ""
+    no_legacy_code: ""
+    no_test_logic_in_production: ""
+    public_api_stable: ""
+    config_from_env: ""
   # Code quality policies
   no_legacy_code: true
   no_test_logic_in_production: true
-
   # Change control
-  public_api_changes: require_approval  # schemas, migrations, HTTP/event shapes
-
+  public_api_changes: require_approval # schemas, migrations, HTTP/event shapes
   # See also: ../CONVENTIONS.md for detailed coding standards
-
 # =============================================================================
 # MODES (planning vs execution)
 # =============================================================================
@@ -36,36 +31,28 @@ modes:
   planning:
     # Output: generate .scafld/specs/{task-id}.md
     output_format: spec_file
-
     # Requirements for a valid plan
     require_task_outline: true
     require_touchpoints: true
     require_acceptance_checklist: true
-
     # Quality gate
     self_eval_threshold: 7
-
     # ReAct behavior
     exploration_depth: thorough
     show_reasoning: true
-
   execution:
     # Input: load approved .scafld/specs/{task-id}.md
     input_format: spec_file
     require_approval: true
-
     # Checkpoint frequency
     checkpoint_frequency: per_phase
-
     # Quality controls
     self_review: mandatory
     rollback_on_fail: true
     strict_spec_adherence: true
-
     # Output style
     progress_format: concise
     show_reasoning: true
-
 # =============================================================================
 # LLM RUNTIME
 # =============================================================================
@@ -75,15 +62,13 @@ llm:
     budget_tokens: 12000
   recovery:
     max_attempts: 1
-
 # =============================================================================
 # HARDEN
 # =============================================================================
 # Optional pre-approval interrogation phase. Operator-driven: `scafld approve`
 # does NOT gate on harden status. Only non-gating knobs live here.
 harden:
-  max_questions_per_round: 8   # cap per `scafld harden` invocation; not a target
-
+  max_questions_per_round: 8 # cap per `scafld harden` invocation; not a target
 # =============================================================================
 # VALIDATION PIPELINES
 # =============================================================================
@@ -98,53 +83,44 @@ validation:
       type: command
       command: "echo 'Replace with your compile/build check command'"
       required: true
-
     - id: targeted_tests
       type: command
       command: "echo 'Replace with your test command, e.g.: npm test -- {spec_pattern}'"
       required: true
-
     - id: boundary_check
       type: command
       command: "echo 'Replace with your boundary/integration check, e.g.: cross-module dependency scan'"
       description: "Verify no cross-module side effects (used by strict profile)"
       required: true
-
     - id: acceptance_item_check
       type: spec_validation
       description: "Verify all phase acceptance_criteria pass"
       required: true
-
   # Run once before commit (comprehensive)
   pre_commit:
     - id: full_test_suite
       type: command
       command: "echo 'Replace with your full test suite command'"
       required: true
-
     - id: linter_suite
       type: command
       command: "echo 'Replace with your linter command'"
-      required: false  # warn only
-
+      required: false # warn only
     - id: typecheck
       type: command
       command: "echo 'Replace with your typecheck command'"
       required: true
-
     - id: security_scan
       type: command
       command: "rg -i '(password|secret|api[_-]?key)\\s*=\\s*[\"']\\w' --type-add 'code:*.{js,ts,py,rb,go,java}' --type code"
       description: "Detect hardcoded secrets"
       required: true
       expected_kind: "no_matches"
-
     - id: perf_eval
       type: self_evaluation
       description: "AI scores its work against rubric"
       threshold: 7
       required: true
-
   # Validation profiles map task risk/size to concrete per_phase + pre_commit steps.
   # EXEC agents should prefer `task.acceptance.validation_profile` when present;
   # otherwise derive a profile from `task.risk_level`:
@@ -163,7 +139,6 @@ validation:
     strict:
       per_phase: ["compile_check", "targeted_tests", "boundary_check", "acceptance_item_check"]
       pre_commit: ["full_test_suite", "linter_suite", "typecheck", "security_scan", "perf_eval"]
-
 # =============================================================================
 # SELF-EVALUATION RUBRIC
 # =============================================================================
@@ -172,25 +147,19 @@ rubric:
   completeness:
     weight: 3
     description: "0=partial, 1=meets ask, 2=edge cases, 3=edge cases + conventions"
-
   architecture_fidelity:
     weight: 3
     description: "0=unclear, 1=respects boundaries, 2=uses patterns, 3=improves separation"
-
   spec_alignment:
     weight: 2
     description: "0=not checked, 1=aligned, 2=proposed improvements"
-
   validation_depth:
     weight: 2
     description: "0=missing, 1=targeted, 2=targeted + broader checks"
-
   # Minimum acceptable score
   threshold: 7
-
   # Action on low score
   on_below_threshold: "perform_second_pass"
-
 # =============================================================================
 # ADVERSARIAL REVIEW
 # =============================================================================
@@ -219,7 +188,6 @@ review:
     claude:
       model: "claude-opus-4-7"
       # binary: "claude"
-
   # Review focus included in the external challenger's prompt.
   # Ordering is explicit; scafld sorts by `order`, not mapping insertion luck.
   automated_passes:
@@ -231,7 +199,6 @@ review:
       order: 20
       title: "Scope Drift"
       description: "Compare spec scope vs current workspace changes and flag undeclared changes"
-
   adversarial_passes:
     regression_hunt:
       order: 30
@@ -245,27 +212,22 @@ review:
       order: 50
       title: "Dark Patterns"
       description: "Hunt for subtle bugs, hardcodes, races, and safety gaps"
-
 # =============================================================================
 # REACT PATTERN (reasoning + acting)
 # =============================================================================
 react:
   enabled: true
-
   # Cycle structure
   cycle:
     - thought: "Analyze the task/phase objective"
     - action: "Search codebase, read files, or apply changes"
     - observation: "Capture results, check outputs"
     - thought: "Evaluate success, decide next step"
-
   # Reasoning visibility
   log_thoughts: true
-
   # Iteration limits
   max_cycles_per_phase: 10
   max_cycles_planning: 20
-
 # =============================================================================
 # TECH STACK CONTEXT (customize for your project)
 # =============================================================================
@@ -274,15 +236,12 @@ tech_stack:
   backend:
     language: "Your language (e.g., Python 3.11, Ruby 3.2, Go 1.21)"
     framework: "Your framework (e.g., Django, Rails, FastAPI)"
-
   frontend:
     framework: "Your framework (e.g., React, Vue, Next.js)"
     typescript_version: "5.x"
-
   shared:
     error_format: "Your error format (e.g., Problem+JSON RFC 7807)"
     api_spec: "Your API spec format (e.g., OpenAPI 3.1)"
-
 # =============================================================================
 # REPO LAYOUT (customize for your project)
 # =============================================================================
@@ -291,7 +250,6 @@ repo_layout:
   backend: "backend/"
   frontend: "frontend/"
   specs: ".scafld/specs/"
-
 # =============================================================================
 # COMMUNICATION STYLE
 # =============================================================================
@@ -301,18 +259,15 @@ communication:
     format: concise
     include_reasoning: false
     include_acceptance_status: true
-
   # When blocked
   blocking_issues:
     format: structured
     require_recommendation: true
-
   # Final summary
   completion:
     include_perf_eval: true
     include_deviations: true
     include_next_actions: true
-
 # =============================================================================
 # SAFETY & SECURITY
 # =============================================================================
@@ -323,24 +278,20 @@ safety:
     - public_api_changes
     - data_deletion
     - production_deployments
-
   # Automatic checks
   prevent:
     - hardcoded_secrets
     - unbounded_queries
     - sql_injection_patterns
     - xss_vulnerabilities
-
 # =============================================================================
 # EXPERIMENTAL FEATURES
 # =============================================================================
 experimental:
   # Auto-generate acceptance criteria from natural language
   auto_acceptance_criteria: true
-
   # Self-healing: auto-fix failed acceptance criteria (1 retry)
   self_healing: true
   max_healing_attempts: 1
-
   # Parallel phase execution (if phases are independent)
   parallel_execution: false

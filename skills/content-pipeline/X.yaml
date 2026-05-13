@@ -20,7 +20,7 @@ harness:
           - sourcey
       caller:
         answers:
-          agent_step.research.output:
+          agent_task.research.output:
             research_brief:
               objective: Publish a brief on why package-style skills matter.
               scope: package standard and governed execution
@@ -35,7 +35,7 @@ harness:
               - option: Lead with enforcement and proving-ground improvements.
                 rationale: Strongest proof point in the repo.
             risks: []
-          agent_step.draft-content-draft.output:
+          agent_task.draft-content-draft.output:
             content_brief:
               angle: show the standard through concrete repo changes
             draft:
@@ -44,7 +44,7 @@ harness:
               - verify all path examples
             distribution_notes:
               primary_channel: blog
-          agent_step.draft-content-package.output:
+          agent_task.draft-content-package.output:
             publish_packet:
               channel: blog
               headline: Package-style skills are now enforced in runx

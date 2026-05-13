@@ -28,9 +28,9 @@ export function buildManagedRuntimeInstructions(request: CognitiveResolutionRequ
 
 export function buildManagedAgentWorkRequest(
   request: AdapterInvokeRequest,
-  sourceType: "agent" | "agent-step",
+  sourceType: "agent" | "agent-task",
 ): AgentWorkRequest {
-  const skillName = request.skillName ?? (sourceType === "agent-step" ? "agent-step" : "skill");
+  const skillName = request.skillName ?? (sourceType === "agent-task" ? "agent-task" : "skill");
   const expectedOutputs = validateOutputContract(request.source.outputs, "source.outputs");
   const base = {
     run_id: request.runId ?? "rx_pending",
@@ -50,10 +50,10 @@ export function buildManagedAgentWorkRequest(
     ...(expectedOutputs ? { expected_outputs: expectedOutputs } : {}),
   } as const;
 
-  if (sourceType === "agent-step") {
+  if (sourceType === "agent-task") {
     return {
-      id: `agent_step.${normalizeRequestId(request.source.task ?? skillName)}.output`,
-      source_type: "agent-step",
+      id: `agent_task.${normalizeRequestId(request.source.task ?? skillName)}.output`,
+      source_type: "agent-task",
       agent: request.source.agent,
       task: request.source.task,
       envelope: base,
@@ -81,16 +81,16 @@ export function buildExecutionLocation(request: AdapterInvokeRequest): {
 }
 
 export function nativeAgentMetadata(
-  sourceType: "agent" | "agent-step",
+  sourceType: "agent" | "agent-task",
   request: AdapterInvokeRequest,
   config: ManagedAgentConfig,
   execution?: ManagedAgentExecutionTelemetry,
   status: "success" | "failure" | "paused" = execution ? "success" : "failure",
 ): Readonly<Record<string, unknown>> {
-  if (sourceType === "agent-step") {
+  if (sourceType === "agent-task") {
     return {
-      agent_hook: {
-        source_type: "agent-step",
+      agent_task: {
+        source_type: "agent-task",
         agent: request.source.agent,
         task: request.source.task,
         route: "native",

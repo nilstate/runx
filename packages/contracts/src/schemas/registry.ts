@@ -116,7 +116,7 @@ export const reviewReceiptOutputSchema = Type.Object(
     $schema: JSON_SCHEMA_DRAFT_2020_12,
     $id: RUNX_AUXILIARY_SCHEMA_IDS.reviewReceiptOutput,
     title: "runx review-receipt output",
-    description: "Output contract for the review-receipt skill. Produced by the agent-step reviewer and consumed by write-harness downstream of improve-skill.",
+    description: "Output contract for the review-receipt skill. Produced by the agent-task reviewer and consumed by write-harness downstream of improve-skill.",
     additionalProperties: true,
   },
 );

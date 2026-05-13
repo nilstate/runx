@@ -95,7 +95,7 @@ describe("sourcey skill", () => {
               },
             };
           }
-          throw new Error(`Unexpected agent step ${request.work.envelope.skill}`);
+          throw new Error(`Unexpected agent task ${request.work.envelope.skill}`);
         },
         report: () => undefined,
       };
@@ -338,7 +338,7 @@ describe("sourcey skill", () => {
             },
           };
         }
-        throw new Error(`Unexpected agent step ${request.work.envelope.skill}`);
+        throw new Error(`Unexpected agent task ${request.work.envelope.skill}`);
       },
       report: () => undefined,
     };

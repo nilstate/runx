@@ -20,7 +20,7 @@ describe("skill quality profile runtime", () => {
         `---
 name: quality-skill
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: quality-skill
 ---

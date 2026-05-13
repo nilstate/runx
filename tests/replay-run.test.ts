@@ -124,7 +124,7 @@ describe("run replay", () => {
 name: child-task
 description: Temporary delegated fixture that echoes a task id through an agent boundary.
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: child-task
   outputs:
@@ -195,7 +195,7 @@ runners:
         `${JSON.stringify(
           {
             answers: {
-              "agent_step.child-task.output": {
+              "agent_task.child-task.output": {
                 echoed_task: "abc-123",
               },
             },

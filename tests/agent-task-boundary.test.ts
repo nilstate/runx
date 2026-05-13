@@ -13,10 +13,10 @@ const nonInteractiveCaller: Caller = {
   report: () => undefined,
 };
 
-describe("agent-step and harness-hook boundary", () => {
-  it("yields agent context by default for explicit agent-step skills", async () => {
+describe("agent-task and harness-hook boundary", () => {
+  it("yields agent context by default for explicit agent-task skills", async () => {
     const result = await runLocalSkill({
-      skillPath: path.resolve("fixtures/skills/agent-step"),
+      skillPath: path.resolve("fixtures/skills/agent-task"),
       inputs: { prompt: "review this" },
       caller: nonInteractiveCaller,
       env: process.env,
@@ -28,21 +28,21 @@ describe("agent-step and harness-hook boundary", () => {
     }
     expect(result.requests).toMatchObject([
       {
-        id: "agent_step.review-boundary.output",
+        id: "agent_task.review-boundary.output",
         kind: "cognitive_work",
         work: {
-          source_type: "agent-step",
+          source_type: "agent-task",
           task: "review-boundary",
         },
       },
     ]);
   });
 
-  it("runs an explicit agent-step when a structured agent result is supplied", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-agent-step-"));
+  it("runs an explicit agent-task when a structured agent result is supplied", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-agent-task-"));
     const caller: Caller = {
       resolve: async (request) =>
-        request.kind === "cognitive_work" && request.id === "agent_step.review-boundary.output"
+        request.kind === "cognitive_work" && request.id === "agent_task.review-boundary.output"
           ? {
               actor: "agent",
               payload: {
@@ -56,7 +56,7 @@ describe("agent-step and harness-hook boundary", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/agent-step"),
+        skillPath: path.resolve("fixtures/skills/agent-task"),
         inputs: { prompt: "review this" },
         caller,
         env: process.env,
@@ -77,8 +77,8 @@ describe("agent-step and harness-hook boundary", () => {
         return;
       }
       expect(result.receipt.metadata).toMatchObject({
-        agent_hook: {
-          source_type: "agent-step",
+        agent_task: {
+          source_type: "agent-task",
           agent: "codex",
           task: "review-boundary",
           route: "provided",
@@ -91,7 +91,7 @@ describe("agent-step and harness-hook boundary", () => {
   });
 
   it("runs an explicit harness-hook through an injected adapter and receipts the boundary", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-agent-step-boundary-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-agent-task-boundary-"));
 
     try {
       const result = await runLocalSkill({
@@ -120,7 +120,7 @@ describe("agent-step and harness-hook boundary", () => {
         return;
       }
       expect(result.receipt.metadata).toMatchObject({
-        agent_hook: {
+        agent_task: {
           source_type: "harness-hook",
           hook: "review-receipt",
           status: "success",
@@ -145,7 +145,7 @@ describe("agent-step and harness-hook boundary", () => {
 
     expect(graph.steps.filter((step) => step.skill).every((step) => step.skill === "../scafld")).toBe(true);
     expect(graph.steps.some((step) => step.tool === "fs.write")).toBe(true);
-    expect(graph.steps.some((step) => step.run?.type === "agent-step")).toBe(true);
+    expect(graph.steps.some((step) => step.run?.type === "agent-task")).toBe(true);
     expect(graph.steps.some((step) => /fixture-agent|helper-script|\.mjs$/.test(step.skill ?? ""))).toBe(false);
   });
 

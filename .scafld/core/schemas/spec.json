@@ -159,10 +159,17 @@
       "properties": {
         "status": {"type": "string"},
         "verdict": {"type": "string", "enum": ["pass", "fail", "none", ""]},
+        "mode": {"type": "string", "enum": ["discover", "verify", ""]},
+        "summary": {"type": "string"},
         "findings": {
           "type": "array",
           "items": {"$ref": "#/definitions/review_finding"}
-        }
+        },
+        "attack_log": {
+          "type": "array",
+          "items": {"type": "object"}
+        },
+        "budget": {"type": "object"}
       }
     },
     "review_finding": {
@@ -170,7 +177,8 @@
       "additionalProperties": false,
       "properties": {
         "id": {"type": "string"},
-        "severity": {"type": "string", "enum": ["blocking", "non_blocking"]},
+        "severity": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
+        "blocks_completion": {"type": "boolean"},
         "summary": {"type": "string"}
       }
     },

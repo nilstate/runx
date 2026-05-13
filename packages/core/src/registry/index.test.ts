@@ -107,7 +107,7 @@ Portable skill markdown without runx-specific frontmatter.
 runners:
   default:
     default: true
-    type: agent-step
+    type: agent-task
     agent: operator
     task: upstream-tagged
     runx:
@@ -139,7 +139,7 @@ Profile-sensitive versioning fixture.
 runners:
   default:
     default: true
-    type: agent-step
+    type: agent-task
     agent: alpha
     task: profiled-skill
 `;
@@ -147,7 +147,7 @@ runners:
 runners:
   default:
     default: true
-    type: agent-step
+    type: agent-task
     agent: beta
     task: profiled-skill
 `;
@@ -184,7 +184,7 @@ Portable skill markdown without runx-specific frontmatter.
 runners:
   default:
     default: true
-    type: agent-step
+    type: agent-task
     agent: operator
     task: upstream-tagged
     runx:

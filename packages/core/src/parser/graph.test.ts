@@ -71,7 +71,7 @@ steps:
         repo_profile: repo_profile
   - id: plan
     run:
-      type: agent-step
+      type: agent-task
       agent: builder
       task: plan
     instructions: use the parent skill environment
@@ -90,7 +90,7 @@ steps:
     expect(graph.steps[1]).toMatchObject({
       id: "plan",
       run: {
-        type: "agent-step",
+        type: "agent-task",
         agent: "builder",
         task: "plan",
       },
@@ -98,7 +98,7 @@ steps:
     });
   });
 
-  it("validates tool steps and allowed tool declarations for agent steps", () => {
+  it("validates tool steps and allowed tool declarations for agent tasks", () => {
     const graph = validateGraph(
       parseGraphYaml(`
 name: tool-aware
@@ -109,7 +109,7 @@ steps:
       path: README.md
   - id: plan
     run:
-      type: agent-step
+      type: agent-task
       agent: builder
       task: plan
     allowed_tools:

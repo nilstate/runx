@@ -21,7 +21,7 @@ harness:
           - scafld
       caller:
         answers:
-          agent_step.research.output:
+          agent_task.research.output:
             research_brief:
               objective: Identify the most important signal for runx evaluators this week.
               scope: OSS repo quality and evaluator expectations
@@ -36,7 +36,7 @@ harness:
               - option: Lead with enforcement and proving-ground gaps closed in the repo.
                 rationale: Most concrete proof point available now.
             risks: []
-          agent_step.draft-content-draft.output:
+          agent_task.draft-content-draft.output:
             content_brief:
               angle: evaluator-oriented daily brief
             draft:
@@ -45,7 +45,7 @@ harness:
               - verify every repo claim
             distribution_notes:
               primary_channel: brief
-          agent_step.draft-content-package.output:
+          agent_task.draft-content-package.output:
             publish_packet:
               channel: brief
               headline: "Today's signal: runx tightened its skill surface"

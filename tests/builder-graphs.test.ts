@@ -16,7 +16,7 @@ const builderSkillPaths = [
 ];
 
 describe("builder-graph skills", () => {
-  it("uses portable agent-step contracts instead of repo-local helper scripts", async () => {
+  it("uses portable agent-task contracts instead of repo-local helper scripts", async () => {
     for (const skillPath of builderSkillPaths) {
       const skill = validateSkill(parseSkillMarkdown(await readFile(path.resolve(skillPath, "SKILL.md"), "utf8")));
 
@@ -150,14 +150,14 @@ function createBuilderCaller(): Caller {
       request.kind === "cognitive_work"
         ? {
             actor: "agent",
-            payload: answerForAgentStep(request.id),
+            payload: answerForAgentTask(request.id),
           }
         : undefined,
     report: () => undefined,
   };
 }
 
-function answerForAgentStep(questionId: string): unknown {
+function answerForAgentTask(questionId: string): unknown {
   if (questionId.includes("work-plan")) {
     return {
       objective_summary: "Build a governed runx skill",
@@ -169,7 +169,7 @@ function answerForAgentStep(questionId: string): unknown {
 
   if (questionId.includes("prior-art")) {
     return {
-      findings: ["Use portable skills and explicit agent-step boundaries."],
+      findings: ["Use portable skills and explicit agent-task boundaries."],
       catalog_fit: {
         adjacent_skills: ["research", "draft-content"],
         why_new: "The existing catalog has primitives, but the governed first-party proposal still needs a bounded composed surface.",

@@ -216,11 +216,11 @@ describe("issue-to-PR composite skill", () => {
           ? {
               actor: "agent",
               payload:
-                request.id === "agent_step.issue-to-pr-author-spec.output"
+                request.id === "agent_task.issue-to-pr-author-spec.output"
                   ? {
                       spec_contents: buildIssueToPrSpec(taskId),
                     }
-                  : request.id === "agent_step.issue-to-pr-apply-fix.output"
+                  : request.id === "agent_task.issue-to-pr-apply-fix.output"
                     ? {
                         fix_bundle: {
                           status: "blocked",
@@ -301,12 +301,12 @@ function answerForIssueToPrStep(
   taskId: string,
   request: Parameters<Caller["resolve"]>[0],
 ): Readonly<Record<string, unknown>> | undefined {
-  if (request.id === "agent_step.issue-to-pr-author-spec.output") {
+  if (request.id === "agent_task.issue-to-pr-author-spec.output") {
     return {
       spec_contents: buildIssueToPrSpec(taskId),
     };
   }
-  if (request.id === "agent_step.issue-to-pr-apply-fix.output") {
+  if (request.id === "agent_task.issue-to-pr-apply-fix.output") {
     return {
       fix_bundle: {
         summary: "Apply the bounded fixture fix declared in the spec across both tracked files.",

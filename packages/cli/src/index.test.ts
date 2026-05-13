@@ -42,7 +42,7 @@ describe("parseArgs", () => {
 name: task-boundary
 description: Temporary fixture that echoes a task id through an agent boundary.
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: task-boundary
   outputs:
@@ -60,7 +60,7 @@ Return the provided task id.
       `${JSON.stringify(
         {
           answers: {
-            "agent_step.task-boundary.output": {
+            "agent_task.task-boundary.output": {
               echoed_task: "abc-123",
             },
           },
@@ -106,7 +106,7 @@ Return the provided task id.
 name: child-task
 description: Temporary delegated fixture that echoes a task id through an agent boundary.
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: child-task
   outputs:
@@ -177,7 +177,7 @@ runners:
       `${JSON.stringify(
         {
           answers: {
-            "agent_step.child-task.output": {
+            "agent_task.child-task.output": {
               echoed_task: "abc-123",
             },
           },
@@ -202,7 +202,7 @@ runners:
       status: "needs_resolution",
       requests: [
         {
-          id: "agent_step.child-task.output",
+          id: "agent_task.child-task.output",
         },
       ],
     });
@@ -283,7 +283,7 @@ runners:
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const exitCode = await runCli(
-      ["skill", "fixtures/skills/agent-step", "--answers", "/tmp/runx-missing-answers.json"],
+      ["skill", "fixtures/skills/agent-task", "--answers", "/tmp/runx-missing-answers.json"],
       { stdin: process.stdin, stdout, stderr },
       { ...process.env, RUNX_CWD: process.cwd() },
     );
@@ -311,7 +311,7 @@ runners:
     expect(stdout.contents()).toContain("Detected here: Claude Code, Codex");
     expect(stdout.contents()).toContain("inspect this repo and draft one bounded docs plan");
     expect(stdout.contents()).not.toContain("Resolution requested");
-    expect(stdout.contents()).not.toContain("request   agent_step");
+    expect(stdout.contents()).not.toContain("request   agent_task");
   });
 
   it("rejects top-level skill invocation", async () => {
@@ -411,7 +411,7 @@ runners:
     expect(stdout.contents()).not.toContain("sk-secret-test");
   });
 
-  it("auto-resolves structured agent-step runs through the configured OpenAI managed adapter", async () => {
+  it("auto-resolves structured agent-task runs through the configured OpenAI managed adapter", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-agent-"));
     tempDirs.push(tempDir);
     const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: process.cwd() };
@@ -443,7 +443,7 @@ runners:
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const exitCode = await runCli(
-      ["skill", "fixtures/skills/agent-step", "--prompt", "review this", "--non-interactive", "--json"],
+      ["skill", "fixtures/skills/agent-task", "--prompt", "review this", "--non-interactive", "--json"],
       { stdin: process.stdin, stdout, stderr },
       env,
     );
@@ -453,15 +453,15 @@ runners:
     const result = JSON.parse(stdout.contents()) as {
       status: string;
       execution: { stdout: string };
-      receipt: { metadata?: { agent_hook?: { route?: string } } };
+      receipt: { metadata?: { agent_task?: { route?: string } } };
     };
     expect(result.status).toBe("success");
     expect(JSON.parse(result.execution.stdout)).toEqual({ verdict: "pass" });
-    expect(result.receipt.metadata?.agent_hook?.route).toBe("native");
+    expect(result.receipt.metadata?.agent_task?.route).toBe("native");
     expect(requestCount).toBe(1);
   });
 
-  it("auto-resolves structured agent-step runs through the configured Anthropic managed adapter", async () => {
+  it("auto-resolves structured agent-task runs through the configured Anthropic managed adapter", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cli-auto-agent-anthropic-"));
     tempDirs.push(tempDir);
     const env = { ...process.env, RUNX_HOME: path.join(tempDir, ".runx"), RUNX_CWD: process.cwd() };
@@ -494,7 +494,7 @@ runners:
     const stdout = createMemoryStream();
     const stderr = createMemoryStream();
     const exitCode = await runCli(
-      ["skill", "fixtures/skills/agent-step", "--prompt", "review this", "--non-interactive", "--json"],
+      ["skill", "fixtures/skills/agent-task", "--prompt", "review this", "--non-interactive", "--json"],
       { stdin: process.stdin, stdout, stderr },
       env,
     );
@@ -504,11 +504,11 @@ runners:
     const result = JSON.parse(stdout.contents()) as {
       status: string;
       execution: { stdout: string };
-      receipt: { metadata?: { agent_hook?: { route?: string } } };
+      receipt: { metadata?: { agent_task?: { route?: string } } };
     };
     expect(result.status).toBe("success");
     expect(JSON.parse(result.execution.stdout)).toEqual({ verdict: "pass" });
-    expect(result.receipt.metadata?.agent_hook?.route).toBe("native");
+    expect(result.receipt.metadata?.agent_task?.route).toBe("native");
     expect(requestCount).toBe(1);
   });
 
@@ -528,7 +528,7 @@ runners:
 name: file-summary
 description: Summarize a file using the automatic CLI runtime.
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: summarize-file
   outputs:
@@ -600,7 +600,7 @@ Read note.txt and produce a grounded summary.
       receipt: {
         id: string;
         metadata?: {
-          agent_hook?: {
+          agent_task?: {
             tool_executions?: Array<{
               tool?: string;
               status?: string;
@@ -610,7 +610,7 @@ Read note.txt and produce a grounded summary.
       };
     };
     expect(JSON.parse(result.execution.stdout)).toEqual({ summary: "grounded from fs.read" });
-    const toolExecutions = result.receipt.metadata?.agent_hook?.tool_executions ?? [];
+    const toolExecutions = result.receipt.metadata?.agent_task?.tool_executions ?? [];
     expect(toolExecutions).toHaveLength(1);
     expect(toolExecutions[0]).toMatchObject({
       tool: "fs.read",
@@ -651,7 +651,7 @@ Read note.txt and produce a grounded summary.
 name: file-summary
 description: Resolve a required nested tool input through managed pause and resume.
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: summarize-label
   outputs:
@@ -1429,7 +1429,7 @@ runners:
       steps:
         - id: produce
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: produce
             outputs:
@@ -1443,7 +1443,7 @@ runners:
           tool: demo.profile
         - id: consume
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: consume
             outputs:
@@ -1457,10 +1457,10 @@ harness:
       inputs: {}
       caller:
         answers:
-          agent_step.produce.output:
+          agent_task.produce.output:
             profile:
               name: Acme
-          agent_step.consume.output:
+          agent_task.consume.output:
             ok: yes
       expect:
         status: success

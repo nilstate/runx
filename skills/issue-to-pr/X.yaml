@@ -31,7 +31,7 @@ harness:
         scafld_bin: ./fixtures/issue-to-pr-harness-scafld.mjs
       caller:
         answers:
-          agent_step.issue-to-pr-author-spec.output:
+          agent_task.issue-to-pr-author-spec.output:
             spec_contents: |
               ---
               spec_version: '2.0'
@@ -314,7 +314,7 @@ runners:
         - id: author-spec
           label: draft markdown spec
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: issue-to-pr-author-spec
             outputs:
@@ -411,7 +411,7 @@ runners:
         - id: author-fix
           label: draft fix
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: issue-to-pr-apply-fix
             outputs:

@@ -10,7 +10,7 @@ export {
   type OfficialSkillResolver,
 } from "./execution-targets.js";
 export { readPendingRunState, readPendingSkillPath } from "./inputs.js";
-export { createCallerAgentAdapter, createCallerAgentStepAdapter, createCallerApprovalAdapter } from "./caller-adapters.js";
+export { createCallerAgentAdapter, createCallerAgentTaskAdapter, createCallerApprovalAdapter } from "./caller-adapters.js";
 export {
   cleanupLocalProcessSandbox,
   prepareLocalProcessSandbox,
@@ -33,7 +33,7 @@ import { errorMessage } from "@runxhq/core/util";
 import { appendPendingSkillLedgerEntries, buildSkillLedgerEntries } from "./graph-ledger.js";
 import {
   createCallerAgentAdapter,
-  createCallerAgentStepAdapter,
+  createCallerAgentTaskAdapter,
   createCallerApprovalAdapter,
 } from "./caller-adapters.js";
 import {
@@ -864,7 +864,7 @@ export async function runValidatedSkill(options: RunValidatedSkillOptions): Prom
     adapters: [
       ...(options.adapters ?? []),
       createCallerAgentAdapter(options.caller),
-      createCallerAgentStepAdapter(options.caller),
+      createCallerAgentTaskAdapter(options.caller),
       createCallerApprovalAdapter(options.caller),
     ],
     env: options.env,

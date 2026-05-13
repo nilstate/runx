@@ -49,7 +49,7 @@ describe("evolve skill", () => {
       };
       expect(firstReport).toMatchObject({
         status: "needs_resolution",
-        requests: [{ id: "agent_step.evolve-introspect.output", kind: "cognitive_work" }],
+        requests: [{ id: "agent_task.evolve-introspect.output", kind: "cognitive_work" }],
       });
       expect(firstReport.requests[0]?.work?.envelope.inputs.repo_profile.root).toBe(process.cwd());
       stdout.clear();
@@ -59,7 +59,7 @@ describe("evolve skill", () => {
         `${JSON.stringify(
           {
             answers: {
-              "agent_step.evolve-introspect.output": {
+              "agent_task.evolve-introspect.output": {
                 opportunity_report: {
                   summary: "Documentation and release hygiene are the highest-leverage gaps.",
                   opportunities: [
@@ -166,7 +166,7 @@ describe("evolve skill", () => {
       };
       expect(firstReport).toMatchObject({
         status: "needs_resolution",
-        requests: [{ id: "agent_step.evolve-plan.output", kind: "cognitive_work" }],
+        requests: [{ id: "agent_task.evolve-plan.output", kind: "cognitive_work" }],
       });
       stdout.clear();
 
@@ -175,7 +175,7 @@ describe("evolve skill", () => {
         `${JSON.stringify(
           {
             answers: {
-              "agent_step.evolve-plan.output": {
+              "agent_task.evolve-plan.output": {
                 objective_brief: {
                   objective: "add release notes",
                   target_type: "repo",

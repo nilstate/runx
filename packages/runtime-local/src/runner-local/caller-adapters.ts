@@ -19,12 +19,12 @@ async function resolveCallerRequest(
   return await caller.resolve(request);
 }
 
-export function createCallerAgentStepAdapter(caller: Caller): SkillAdapter {
+export function createCallerAgentTaskAdapter(caller: Caller): SkillAdapter {
   return {
-    type: "agent-step",
+    type: "agent-task",
     invoke: async (request) => {
       const started = performance.now();
-      const mediationRequest = buildAgentStepRequest(request);
+      const mediationRequest = buildAgentTaskRequest(request);
       const resolutionRequest: ResolutionRequest = {
         id: mediationRequest.id,
         kind: "cognitive_work",
@@ -47,8 +47,8 @@ export function createCallerAgentStepAdapter(caller: Caller): SkillAdapter {
           durationMs: Math.round(performance.now() - started),
           request: resolutionRequest,
           metadata: {
-            agent_hook: {
-              source_type: "agent-step",
+            agent_task: {
+              source_type: "agent-task",
               agent: request.source.agent,
               task: request.source.task,
               route: "yielded",
@@ -72,8 +72,8 @@ export function createCallerAgentStepAdapter(caller: Caller): SkillAdapter {
         signal: null,
         durationMs: Math.round(performance.now() - started),
         metadata: {
-          agent_hook: {
-            source_type: "agent-step",
+          agent_task: {
+            source_type: "agent-task",
             agent: request.source.agent,
             task: request.source.task,
             route: "provided",
@@ -221,12 +221,12 @@ function normalizeQuestionId(value: string): string {
   return value.replace(/[^a-zA-Z0-9_.-]+/g, "_");
 }
 
-function buildAgentStepRequest(request: Parameters<SkillAdapter["invoke"]>[0]): AgentWorkRequest {
-  const skillName = request.skillName ?? "agent-step";
+function buildAgentTaskRequest(request: Parameters<SkillAdapter["invoke"]>[0]): AgentWorkRequest {
+  const skillName = request.skillName ?? "agent-task";
   const expectedOutputs = validateOutputContract(request.source.outputs, "source.outputs");
   return {
-    id: `agent_step.${normalizeQuestionId(request.source.task ?? skillName)}.output`,
-    source_type: "agent-step",
+    id: `agent_task.${normalizeQuestionId(request.source.task ?? skillName)}.output`,
+    source_type: "agent-task",
     agent: request.source.agent,
     task: request.source.task,
     envelope: {

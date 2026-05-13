@@ -11,8 +11,8 @@ const scafldBin = process.env.SCAFLD_BIN ?? "scafld";
 const passingReviewCommand = `printf '{"verdict":"pass","mode":"discover","summary":"fixture clean","findings":[],"attack_log":[{"target":"diff","attack":"fixture","result":"clean"}],"budget":{"actual_attack_angles":1}}'`;
 
 describe("recognizable work lanes", () => {
-  it("runs request-triage through the local CLI with a bounded next-lane packet", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-request-triage-cli-"));
+  it("runs intake through the local CLI with a bounded next-lane packet", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-intake-cli-"));
     const answersPath = path.join(tempDir, "answers.json");
     const receiptDir = path.join(tempDir, "receipts");
     const stdout = createMemoryStream();
@@ -24,7 +24,7 @@ describe("recognizable work lanes", () => {
         `${JSON.stringify(
           {
             answers: {
-              "agent_step.request-triage.output": {
+              "agent_task.intake.output": {
                 triage_report: {
                   category: "docs",
                   severity: "low",
@@ -39,7 +39,7 @@ describe("recognizable work lanes", () => {
                     thread_title: "README should point users to issue-to-pr",
                     thread_body: "The public docs should present issue-to-pr as the canonical command.",
                     thread_locator: "github://example/repo/issues/101",
-                    size: "micro",
+                    size: "small",
                     risk: "low",
                   },
                 },
@@ -76,7 +76,7 @@ describe("recognizable work lanes", () => {
       const exitCode = await runCli(
         [
           "skill",
-          "skills/request-triage",
+          "skills/intake",
           "--thread-title",
           "README should point users to issue-to-pr",
           "--thread-body",
@@ -96,12 +96,12 @@ describe("recognizable work lanes", () => {
         { ...process.env, RUNX_CWD: process.cwd() },
       );
 
-      expect(exitCode).toBe(0);
+      expect(exitCode, `${stderr.contents()}\n${stdout.contents()}`).toBe(0);
       expect(stderr.contents()).toBe("");
       expect(JSON.parse(stdout.contents())).toMatchObject({
         status: "success",
         skill: {
-          name: "request-triage",
+          name: "intake",
         },
         execution: {
           stdout: expect.stringContaining("\"recommended_lane\":\"issue-to-pr\""),
@@ -134,10 +134,10 @@ describe("recognizable work lanes", () => {
         `${JSON.stringify(
           {
             answers: {
-              "agent_step.issue-to-pr-author-spec.output": {
+              "agent_task.issue-to-pr-author-spec.output": {
                 spec_contents: buildIssueToPrSpec(taskId),
               },
-              "agent_step.issue-to-pr-apply-fix.output": {
+              "agent_task.issue-to-pr-apply-fix.output": {
                 fix_bundle: {
                   summary: "Apply the bounded fixture fix across the tracked docs fixture files.",
                   files: [
@@ -176,7 +176,7 @@ describe("recognizable work lanes", () => {
           "--target-repo",
           "fixtures/repo",
           "--size",
-          "micro",
+          "small",
           "--risk",
           "low",
           "--provider",
@@ -193,10 +193,10 @@ describe("recognizable work lanes", () => {
           "--json",
         ],
         { stdin: process.stdin, stdout, stderr },
-        { ...process.env, RUNX_CWD: process.cwd(), RUNX_HOME: runxHome },
+        { ...process.env, RUNX_CWD: tempDir, RUNX_HOME: runxHome },
       );
 
-      expect(exitCode).toBe(0);
+      expect(exitCode, `${stderr.contents()}\n${stdout.contents()}`).toBe(0);
       expect(stderr.contents()).toBe("");
       expect(JSON.parse(stdout.contents())).toMatchObject({
         status: "success",
@@ -259,7 +259,7 @@ created: '2026-05-04T00:00:00Z'
 updated: '2026-05-04T00:00:00Z'
 status: draft
 harden_status: not_run
-size: micro
+size: small
 risk_level: low
 ---
 

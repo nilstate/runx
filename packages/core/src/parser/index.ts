@@ -529,9 +529,9 @@ function validateSource(source: Record<string, unknown>, runx: Record<string, un
       ? requiredString(source.agent_card_url, "source.agent_card_url")
       : optionalString(source.agent_card_url, "source.agent_card_url");
   const a2aAgentIdentity = optionalString(source.agent_identity, "source.agent_identity");
-  const agent = type === "agent-step" ? requiredString(source.agent, "source.agent") : optionalString(source.agent, "source.agent");
+  const agent = type === "agent-task" ? requiredString(source.agent, "source.agent") : optionalString(source.agent, "source.agent");
   const task =
-    type === "agent-step" || type === "a2a"
+    type === "agent-task" || type === "a2a"
       ? requiredString(source.task, "source.task")
       : optionalString(source.task, "source.task");
   const hook =
@@ -540,7 +540,7 @@ function validateSource(source: Record<string, unknown>, runx: Record<string, un
   const graph = type === "graph" ? validateGraphSource(source.graph) : undefined;
   const sandbox = validateSandbox(source.sandbox ?? runx?.sandbox);
 
-  if ((type === "agent-step" || type === "harness-hook") && (source.command !== undefined || source.args !== undefined)) {
+  if ((type === "agent-task" || type === "harness-hook") && (source.command !== undefined || source.args !== undefined)) {
     throw new SkillValidationError(`${type} sources must not declare source.command or source.args.`);
   }
 

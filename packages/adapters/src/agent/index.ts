@@ -77,10 +77,10 @@ export function createManagedAgentAdapter(config: ManagedAgentConfig): SkillAdap
   };
 }
 
-export function createManagedAgentStepAdapter(config: ManagedAgentConfig): SkillAdapter {
+export function createManagedAgentTaskAdapter(config: ManagedAgentConfig): SkillAdapter {
   return {
-    type: "agent-step",
-    invoke: async (request) => await invokeManagedAgentAdapter(config, request, "agent-step"),
+    type: "agent-task",
+    invoke: async (request) => await invokeManagedAgentAdapter(config, request, "agent-task"),
   };
 }
 
@@ -106,7 +106,7 @@ export async function executeManagedAgentResolution(
 async function invokeManagedAgentAdapter(
   config: ManagedAgentConfig,
   request: AdapterInvokeRequest,
-  sourceType: "agent" | "agent-step",
+  sourceType: "agent" | "agent-task",
 ): Promise<AdapterInvokeResult> {
   const started = performance.now();
   const env = request.env ?? process.env;

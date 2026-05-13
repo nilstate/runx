@@ -30,6 +30,12 @@ scafld update
 
 For real review: `scafld review <task-id> --provider {codex|claude|command}`.
 `--provider local` is smoke-test only and cannot satisfy `complete`.
+Only an operator may use `scafld review <task-id> --human-reviewed --reason ...`.
+
+## Source Checkout
+
+Inside the scafld repo, use `./bin/scafld` or `go run ./cmd/scafld`. Do not use
+a copied compiled binary; stale binaries can report old lifecycle state.
 
 ## Lifecycle
 
@@ -38,12 +44,13 @@ plan -> harden -> approve -> build -> review -> complete
 ```
 
 Hardening attacks the draft. Review attacks the result.
+Build opens one phase at a time. After implementing the opened phase, run
+`scafld build <task-id>` again to record evidence and advance.
 
 ## Do Not
 
 - Edit outside declared scope, objectives, or invariants.
 - Reconstruct lifecycle state by scraping Markdown. Use `status --json`.
-- Use legacy `.ai/` scafld files. `.scafld/` is the only active protocol home.
 - Mutate `.scafld/core/` by hand. Use `scafld update`.
 - Run `--provider local` for real review.
 - Cite files, commands, or review findings you have not verified.

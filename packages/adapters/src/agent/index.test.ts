@@ -26,7 +26,7 @@ describe("managed agent adapters", () => {
         apiKey: "sk-test-secret",
       });
       await expect(resolveDefaultSkillAdapters(env)).resolves.toSatisfy((adapters: readonly { type: string }[]) =>
-        adapters.map((adapter) => adapter.type).join(",") === "agent,agent-step,catalog,cli-tool,mcp");
+        adapters.map((adapter) => adapter.type).join(",") === "agent,agent-task,catalog,cli-tool,mcp");
       expect(formatManagedAgentLabel({
         provider: "openai",
         model: "gpt-test",

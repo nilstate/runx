@@ -10,7 +10,7 @@ import { parseGraphYaml, validateGraph } from "@runxhq/core/parser";
 import { runLocalGraph, type Caller } from "@runxhq/runtime-local";
 
 describe("tool steps", () => {
-  it("resolves builtin tool manifests and carries allowed_tools into agent steps", async () => {
+  it("resolves builtin tool manifests and carries allowed_tools into agent tasks", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-tool-step-"));
     const receiptDir = path.join(tempDir, "receipts");
     const notePath = path.join(tempDir, "note.txt");
@@ -27,7 +27,7 @@ steps:
       repo_root: ${JSON.stringify(tempDir)}
   - id: plan
     run:
-      type: agent-step
+      type: agent-task
       agent: builder
       task: summarize-note
       outputs:
@@ -86,9 +86,9 @@ steps:
         return;
       }
 
-      expect(result.steps.map((step) => step.skill)).toEqual(["fs.read", "run:agent-step"]);
+      expect(result.steps.map((step) => step.skill)).toEqual(["fs.read", "run:agent-task"]);
       expect(result.steps[0]?.runner).toBe("tool");
-      expect(result.steps[1]?.runner).toBe("agent-step");
+      expect(result.steps[1]?.runner).toBe("agent-task");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

@@ -34,7 +34,7 @@ describe("reflect-digest skill", () => {
     });
     const caller: Caller = {
       resolve: async (request) => {
-        if (request.kind !== "cognitive_work" || request.id !== "agent_step.reflect-digest.output") {
+        if (request.kind !== "cognitive_work" || request.id !== "agent_task.reflect-digest.output") {
           return undefined;
         }
         const groupedReflections = Array.isArray(request.work.envelope.inputs.grouped_reflections)

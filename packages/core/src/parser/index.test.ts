@@ -240,12 +240,12 @@ Echo through MCP.
     expect(skill.source.arguments?.message).toBe("{{message}}");
   });
 
-  it("validates explicit agent-step source metadata", () => {
+  it("validates explicit agent-task source metadata", () => {
     const skill = validateSkill(
       parseSkillMarkdown(`---
 name: work-plan
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: work-plan
   outputs:
@@ -260,7 +260,7 @@ Decompose the objective.
     );
 
     expect(skill.source).toMatchObject({
-      type: "agent-step",
+      type: "agent-task",
       agent: "codex",
       task: "work-plan",
       outputs: { draft_spec: "string" },
@@ -499,7 +499,7 @@ runx:
       validateToolManifest(
         parseToolManifestYaml(`name: bad.tool
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: think
 `),
@@ -644,7 +644,7 @@ runners:
       parseRunnerManifestYaml(`skill: reflectable
 runners:
   default:
-    type: agent-step
+    type: agent-task
     agent: reviewer
     task: reflectable
     runx:
@@ -666,7 +666,7 @@ runners:
         parseRunnerManifestYaml(`skill: reflectable
 runners:
   default:
-    type: agent-step
+    type: agent-task
     agent: reviewer
     task: reflectable
     runx:

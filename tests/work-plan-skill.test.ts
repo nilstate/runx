@@ -7,15 +7,15 @@ import { runHarnessTarget } from "@runxhq/runtime-local/harness";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
 describe("work-plan official skill", () => {
-  it("ships as an explicit agent-step boundary with phased workspace-plan outputs", async () => {
+  it("ships as an explicit agent-task boundary with phased workspace-plan outputs", async () => {
     const manifest = validateRunnerManifest(
       parseRunnerManifestYaml(await readFile(path.resolve("skills/work-plan/X.yaml"), "utf8")),
     );
     const runner = manifest.runners["work-plan-agent"];
 
-    expect(runner?.source.type).toBe("agent-step");
-    if (!runner || runner.source.type !== "agent-step") {
-      throw new Error("work-plan runner must declare an agent-step source.");
+    expect(runner?.source.type).toBe("agent-task");
+    if (!runner || runner.source.type !== "agent-task") {
+      throw new Error("work-plan runner must declare an agent-task source.");
     }
 
     expect(runner.source.task).toBe("work-plan");

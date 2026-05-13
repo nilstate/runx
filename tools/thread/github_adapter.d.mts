@@ -26,12 +26,22 @@ export function parseGitHubIssueRef(...values: readonly unknown[]): GitHubIssueR
 export function ensureGitHubIssueReference(bodyMarkdown: string | undefined, issueRef: GitHubIssueRef): string;
 export function gitHubIssueSearchQuery(issueRef: GitHubIssueRef): string;
 export function gitHubOutboxEntryMarker(entryId: string): string;
+export function gitHubOutboxEnvelopeMarker(): string;
 export function gitHubOutboxMetadataMarker(metadata: Record<string, unknown> | undefined): string | undefined;
+export function parseGitHubOutboxEntryMarker(value: string | undefined): string | undefined;
 export function parseGitHubOutboxMetadataMarker(value: string | undefined): Record<string, unknown> | undefined;
+export function ensureGitHubOutboxEntryMarker(bodyMarkdown: string | undefined, entryId: string): string;
 export function ensureGitHubOutboxMetadataMarker(
   bodyMarkdown: string | undefined,
   metadata: Record<string, unknown> | undefined,
 ): string;
+export function stripGitHubOutboxEntryMarker(value: string | undefined): string | undefined;
+export function parseGitHubOutboxEnvelope(value: string | undefined): {
+  readonly entry_id?: string;
+  readonly metadata?: Record<string, unknown>;
+  readonly start: number;
+  readonly end: number;
+} | undefined;
 export function hydrateGitHubIssueThread(options: {
   readonly adapterRef: string;
   readonly issue: unknown;

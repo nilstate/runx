@@ -23,7 +23,7 @@ harness:
               confidence: verified
       caller:
         answers:
-          agent_step.write-harness.output:
+          agent_task.write-harness.output:
             skill_spec:
               name: content-pipeline
               description: Govern research and drafting before packaging a publishable bundle.
@@ -68,7 +68,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: write-harness
-          source_type: agent-step
+          source_type: agent-task
     - name: write-harness-turns-review-into-regression-fixtures
       inputs:
         objective: Improve design-skill structured context handling
@@ -79,7 +79,7 @@ harness:
               change: swap stdout edges for artifact data edges
       caller:
         answers:
-          agent_step.write-harness.output:
+          agent_task.write-harness.output:
             skill_spec:
               name: design-skill
             pain_points:
@@ -112,7 +112,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: write-harness
-          source_type: agent-step
+          source_type: agent-task
 
     - name: write-harness-honors-pass-verdict
       inputs:
@@ -123,12 +123,12 @@ harness:
           improvement_proposals: []
       caller:
         answers:
-          agent_step.write-harness.output:
+          agent_task.write-harness.output:
             skill_spec:
               name: write-harness
               note: No change. Upstream review.verdict was pass.
             execution_plan:
-              runner: agent-step
+              runner: agent-task
               note: No change.
             harness_fixture:
               - name: write-harness-pass-verdict-regression
@@ -147,12 +147,12 @@ harness:
           kind: skill_execution
           status: success
           skill_name: write-harness
-          source_type: agent-step
+          source_type: agent-task
 
 runners:
   write-harness-agent:
     default: true
-    type: agent-step
+    type: agent-task
     agent: builder
     task: write-harness
     outputs:

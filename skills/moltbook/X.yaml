@@ -24,7 +24,7 @@ harness:
               freshness: current
       caller:
         answers:
-          agent_step.moltbook-scan.output:
+          agent_task.moltbook-scan.output:
             opportunity_report:
               topic: package-standard enforcement
               rationale: It explains a visible product discipline change with immediate operator value.
@@ -45,7 +45,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: moltbook
-          source_type: agent-step
+          source_type: agent-task
     - name: moltbook-post-packet
       runner: post
       inputs:
@@ -57,7 +57,7 @@ harness:
         approval_note: Keep the final post factual and avoid launch-theater language.
       caller:
         answers:
-          agent_step.moltbook-post.output:
+          agent_task.moltbook-post.output:
             post_payload:
               channel: moltbook
               body: runx now enforces package-style skills so every official flow is package-rooted, harnessed, and inspectable.
@@ -73,7 +73,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: moltbook
-          source_type: agent-step
+          source_type: agent-task
 
 runners:
   agent:
@@ -81,7 +81,7 @@ runners:
 
   scan:
     default: true
-    type: agent-step
+    type: agent-task
     agent: researcher
     task: moltbook-scan
     outputs:
@@ -107,7 +107,7 @@ runners:
         description: "Structured list of candidate signals, threads, or prompts."
 
   post:
-    type: agent-step
+    type: agent-task
     agent: builder
     task: moltbook-post
     outputs:

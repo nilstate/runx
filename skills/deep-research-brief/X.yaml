@@ -20,7 +20,7 @@ harness:
           - sourcey
       caller:
         answers:
-          agent_step.research.output:
+          agent_task.research.output:
             research_brief:
               objective: Should runx prioritize the deep-research-brief lane before broader assistant bundles?
               scope: OSS AI tooling, workflow demand signals, first-party seed leverage
@@ -40,7 +40,7 @@ harness:
                 likelihood: medium
                 impact: medium
                 mitigation: keep the deliverable decision-oriented and approval-gated.
-          agent_step.draft-content-draft.output:
+          agent_task.draft-content-draft.output:
             content_brief:
               angle: decision memo for maintainers evaluating the next first-party seed
               audience: operators
@@ -59,7 +59,7 @@ harness:
               primary_channel: brief
               follow_ups:
                 - cut a shorter public summary after approval
-          agent_step.draft-content-package.output:
+          agent_task.draft-content-package.output:
             publish_packet:
               channel: brief
               headline: Deep research should be the first LangChain-grounded seed
