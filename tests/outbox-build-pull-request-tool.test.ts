@@ -12,7 +12,42 @@ describe("outbox.build_pull_request tool", () => {
       thread_title: "Fix fixture behavior",
       thread_locator: "github://example/repo/issues/123",
       target_repo: "example/repo",
-      handoff_markdown: "# Handoff: Fix fixture behavior\n\nStatus: completed\nNext: none\n",
+      handoff_markdown: [
+        "# Handoff: Fix fixture behavior",
+        "",
+        "Status: completed",
+        "Next: none",
+        "",
+        "## Summary",
+        "Fixes the fixture behavior reported in the source issue.",
+        "",
+        "## Context",
+        "The source issue reports a bounded fixture regression in the public workflow.",
+        "receipt_id: rx_hidden",
+        "",
+        "## Scope",
+        "- Update the fixture behavior implementation.",
+        "- Preserve the existing public contract.",
+        "",
+        "## Validation",
+        "- Targeted test passed.",
+        "",
+        "## Acceptance",
+        "- Source event: entry-8",
+        "- Last attempt: entry-9",
+        "- Checked at: 2026-05-14T00:00:00Z",
+        "- Workflow acceptance passed.",
+        "```",
+        "private log output should not appear",
+        "```",
+        "",
+        "## Review",
+        "Review found one non-blocking follow-up.",
+        "",
+        "## Rollback",
+        "Revert the fixture behavior change.",
+        "",
+      ].join("\n"),
       build_result: {
         status: "review",
         passed: 2,
@@ -71,7 +106,7 @@ describe("outbox.build_pull_request tool", () => {
         body_markdown: expect.stringContaining("## Human Merge Gate"),
         is_draft: true,
       },
-      engineering_summary_markdown: "# Handoff: Fix fixture behavior\n\nStatus: completed\nNext: none\n",
+      engineering_summary_markdown: expect.stringContaining("# Handoff: Fix fixture behavior"),
       governance: {
         review_verdict: "pass_with_issues",
         blocking_count: 0,
@@ -85,10 +120,26 @@ describe("outbox.build_pull_request tool", () => {
       },
     });
     expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Review Packet");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Source Context");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("bounded fixture regression");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Scope");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Preserve the existing public contract");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Validation");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Targeted test passed");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Workflow acceptance passed");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Review Context");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Review found one non-blocking follow-up");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Rollback");
     expect(result.draft_pull_request.pull_request.body_markdown).toContain("Target: `example/repo`");
     expect(result.draft_pull_request.pull_request.body_markdown).toContain("Branch: `fixture-task` -> `main`");
     expect(result.draft_pull_request.pull_request.body_markdown).toContain("Review: `pass_with_issues`");
     expect(result.draft_pull_request.pull_request.body_markdown).toContain("Merge manually");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("rx_hidden");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("Source event");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("Last attempt");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("Checked at");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("entry-9");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("private log output");
     expect(result.draft_pull_request.pull_request.body_markdown).not.toBe(result.draft_pull_request.engineering_summary_markdown);
   });
 
