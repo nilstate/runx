@@ -175,11 +175,18 @@ if (jsonCommands.has(command)) {
   try {
     structured = parseJsonPayload(command, stdout);
   } catch (error) {
-    if (stderr) {
-      process.stderr.write(stderr);
+    if (command === "review" && exitCode === 0) {
+      structured = reviewStatusFallback({ scafld, taskId, cwd, env });
     }
-    console.error(error.message);
-    process.exit(exitCode === 0 ? 1 : exitCode);
+    if (structured !== null) {
+      // Continue with the recovered native status envelope below.
+    } else {
+      if (stderr) {
+        process.stderr.write(stderr);
+      }
+      console.error(error.message);
+      process.exit(exitCode === 0 ? 1 : exitCode);
+    }
   }
 }
 
@@ -324,6 +331,42 @@ function unwrapScafldResult(value) {
     return value;
   }
   return {};
+}
+
+function reviewStatusFallback({ scafld, taskId, cwd, env }) {
+  const result = spawnSync(scafld, ["status", taskId, "--json"], {
+    cwd,
+    env,
+    encoding: "utf8",
+    shell: false,
+  });
+  if (result.error || (result.status ?? 1) !== 0) {
+    return null;
+  }
+
+  let statusPayload;
+  try {
+    statusPayload = parseJsonPayload("status", result.stdout ?? "");
+  } catch {
+    return null;
+  }
+
+  const statusResult = unwrapScafldResult(statusPayload);
+  const review = statusResult.review && typeof statusResult.review === "object" && !Array.isArray(statusResult.review)
+    ? statusResult.review
+    : {};
+  return {
+    ok: true,
+    command: "review",
+    result: {
+      task_id: statusResult.task_id || taskId,
+      status: statusResult.status,
+      verdict: review.verdict || review.status,
+      findings: Array.isArray(review.findings) ? review.findings : [],
+      review,
+      recovered_from_status: true,
+    },
+  };
 }
 
 function positiveInteger(value, fallback) {
