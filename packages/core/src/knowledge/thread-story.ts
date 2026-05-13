@@ -81,6 +81,7 @@ export interface BuildThreadMilestoneNotificationTextOptions {
 export interface BuildThreadPullRequestReviewerPacketMarkdownOptions {
   readonly title?: string;
   readonly summary?: string;
+  readonly sourceContext?: readonly string[];
   readonly source?: ThreadStoryLink;
   readonly issue?: ThreadStoryLink;
   readonly pullRequest?: ThreadStoryLink;
@@ -89,8 +90,12 @@ export interface BuildThreadPullRequestReviewerPacketMarkdownOptions {
   readonly base?: string;
   readonly status?: string;
   readonly reviewVerdict?: string;
+  readonly scope?: readonly string[];
   readonly checks?: readonly string[];
+  readonly validation?: readonly string[];
+  readonly reviewContext?: readonly string[];
   readonly risks?: readonly string[];
+  readonly rollback?: string;
   readonly handoffReference?: string;
   readonly nextAction?: string;
   readonly maxChars?: number;
@@ -242,8 +247,17 @@ export function buildThreadPullRequestReviewerPacketMarkdown(
     ]),
   ];
 
+  appendBullets(lines, "Source Context", options.sourceContext, maxChars);
+  appendBullets(lines, "Scope", options.scope, maxChars);
   appendBullets(lines, "Checks", options.checks, maxChars);
+  appendBullets(lines, "Validation", options.validation, maxChars);
+  appendBullets(lines, "Review Context", options.reviewContext, maxChars);
   appendBullets(lines, "Risks", options.risks, maxChars);
+
+  const rollback = sanitizeThreadStoryText(options.rollback, maxChars);
+  if (rollback) {
+    lines.push("", "## Rollback", rollback);
+  }
 
   lines.push(
     "",

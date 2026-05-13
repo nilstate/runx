@@ -102,6 +102,7 @@ function runBuildPullRequest({ inputs }) {
   const reviewerPacketMarkdown = buildThreadPullRequestReviewerPacketMarkdown({
     title,
     summary: summarizeHandoff(handoffText, title),
+    sourceContext: buildHandoffSectionLines(handoffText, ["Context", "Current State", "Origin"], 6),
     source: threadLocator
       ? {
           label: "Source thread",
@@ -116,8 +117,12 @@ function runBuildPullRequest({ inputs }) {
       statusSnapshot?.status,
     ),
     reviewVerdict,
+    scope: buildHandoffSectionLines(handoffText, ["Objectives", "Scope", "Touchpoints"], 8),
     checks: buildReviewPacketChecks(check),
+    validation: buildReviewPacketValidation(handoffText, check),
+    reviewContext: buildReviewPacketReviewContext(reviewResult, handoffText),
     risks: buildReviewPacketRisks(reviewResult),
+    rollback: extractMarkdownSection(handoffText, "Rollback"),
     handoffReference: "Full native scafld handoff is retained in `engineering_summary_markdown` on this draft pull-request packet.",
     nextAction: "Review the implementation, validation, and source thread. Merge manually only when the human gate is satisfied.",
   });
@@ -247,6 +252,23 @@ function buildReviewPacketChecks(check) {
   return lines;
 }
 
+function buildReviewPacketValidation(handoffMarkdown, check) {
+  const lines = [
+    firstNonEmptyString(check.summary),
+    ...buildHandoffSectionLines(handoffMarkdown, ["Validation", "Acceptance"], 8),
+  ];
+  return uniqueStrings(lines);
+}
+
+function buildReviewPacketReviewContext(reviewResult, handoffMarkdown) {
+  const lines = [
+    firstNonEmptyString(reviewResult.summary),
+    ...buildHandoffSectionLines(handoffMarkdown, ["Review", "Self Eval", "Deviations"], 8),
+    ...reviewFindingSummaries(reviewResult, 6),
+  ];
+  return uniqueStrings(lines);
+}
+
 function buildReviewPacketRisks(reviewResult) {
   const blocking = reviewFindingCount(reviewResult, "blocking");
   const nonBlocking = reviewFindingCount(reviewResult, "non_blocking");
@@ -256,6 +278,88 @@ function buildReviewPacketRisks(reviewResult) {
   }
   if (nonBlocking !== undefined) {
     lines.push(`${nonBlocking} non-blocking review finding${nonBlocking === 1 ? "" : "s"}`);
+  }
+  return lines;
+}
+
+function reviewFindingSummaries(reviewResult, maxFindings) {
+  if (!Array.isArray(reviewResult.findings)) {
+    return [];
+  }
+  return reviewResult.findings
+    .filter(isRecord)
+    .slice(0, maxFindings)
+    .map((finding) => {
+      const summary = firstNonEmptyString(finding.summary, finding.title, finding.id);
+      if (!summary) {
+        return undefined;
+      }
+      const status = finding.blocks_completion === true ? "blocking" : "non-blocking";
+      return `${status}: ${summary}`;
+    })
+    .filter((line) => Boolean(line));
+}
+
+function buildHandoffSectionLines(markdown, headings, maxLines) {
+  const lines = [];
+  for (const heading of headings) {
+    const section = extractMarkdownSection(markdown, heading);
+    if (!section) {
+      continue;
+    }
+    for (const line of sectionToVisibleLines(section)) {
+      lines.push(line);
+      if (lines.length >= maxLines) {
+        return lines;
+      }
+    }
+  }
+  return lines;
+}
+
+function sectionToVisibleLines(section) {
+  const lines = [];
+  let inFence = false;
+  for (const rawLine of String(section).split(/\r?\n/)) {
+    const rawTrimmed = rawLine.trim();
+    if (/^(```|~~~)/.test(rawTrimmed)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    const line = rawLine
+      .replace(/^[-*]\s+/, "")
+      .replace(/^\d+\.\s+/, "")
+      .replace(/^>\s?/, "")
+      .trim();
+    if (isVisibleHandoffLine(line)) {
+      lines.push(line);
+    }
+  }
+  return lines;
+}
+
+function isVisibleHandoffLine(line) {
+  return line.length > 0
+    && !/^(source event|session event|ledger event|last attempt|checked at|run id|run_id)\s*:/i.test(line)
+    && !/\bentry-\d+\b/i.test(line)
+    && !/\breceipt(?:_id)?\b\s*[:=]/i.test(line)
+    && !/\brx_[a-z0-9_]+/i.test(line)
+    && !/\bgx_[a-z0-9_]+/i.test(line);
+}
+
+function uniqueStrings(values) {
+  const seen = new Set();
+  const lines = [];
+  for (const value of values) {
+    const text = firstNonEmptyText(value);
+    if (!text || seen.has(text)) {
+      continue;
+    }
+    seen.add(text);
+    lines.push(text);
   }
   return lines;
 }

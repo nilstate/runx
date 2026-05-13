@@ -31,8 +31,9 @@ surface:
   current state, source/issue/PR links, triage result, validation summary, risks,
   and next human action.
 - PR reviewer packet: the PR body is the handoff surface for code review. It
-  should summarize the source, target repo/branch/base, checks, review verdict,
-  risks, retained handoff evidence, and final human merge gate.
+  should be comprehensive but bounded: source context, AI/scafld reasoning,
+  target repo/branch/base, scope, checks, validation, review verdict/findings,
+  risks, rollback, retained handoff evidence, and final human merge gate.
 - Notification stream: Slack, chat, email, or ticket updates should be concise
   milestone notifications only: triaging, PR ready for human review,
   merged/closed, or human-action-required blockers/errors.
@@ -43,12 +44,14 @@ Core knowledge helpers provide the generic markdown/text shapes:
 `buildThreadStoryMessageOutboxEntry`. Product wrappers decide where to publish
 those projections and which provider-specific managed key to use.
 
-Do not put machine control state, receipt IDs, full issue snapshots, or exact PR
-body dumps in visible prose. User-controlled issue, Sentry, Slack, or review
-snippets must be bounded and sanitized before inclusion. Provider mutation still
-goes through `thread.push_outbox`, which adds the provider-specific managed
-control envelope. The envelope is a correlation receipt, not authorization;
-human merge permissions and provider identity remain the security boundary.
+Do not put machine control state, receipt IDs, raw logs, or exact PR body dumps
+in visible prose. Do include the meaty reasoning a reviewer needs, but pull it
+into named sections and cap extracted snippets. User-controlled issue, Sentry,
+Slack, or review snippets must be bounded and sanitized before inclusion.
+Provider mutation still goes through `thread.push_outbox`, which adds the
+provider-specific managed control envelope. The envelope is a correlation
+receipt, not authorization; human merge permissions and provider identity remain
+the security boundary.
 
 ## Lifecycle
 

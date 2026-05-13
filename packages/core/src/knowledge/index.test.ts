@@ -454,17 +454,34 @@ describe("thread contract", () => {
         label: "Issue #123",
         uri: "https://github.com/nitrosend/nitrosend/issues/123",
       },
+      sourceContext: [
+        "Source issue reports campaign analytics 500s for account exports.",
+        "The issue includes a Sentry link and Slack support thread.",
+      ],
       targetRepo: "nitrosend/nitrosend",
       branch: "runx/campaign-analytics-500",
       base: "main",
       status: "completed",
       reviewVerdict: "pass",
+      scope: ["api/app/controllers/campaigns_controller.rb"],
       checks: ["scafld build success", "2 passed / 0 failed"],
+      validation: ["request spec covers the failing endpoint"],
+      reviewContext: ["AI reasoning: one controller guard fixes the reported failure."],
+      rollback: "Revert the controller guard.",
       handoffReference: "Full scafld handoff is retained in engineering_summary_markdown.",
     });
 
     expect(body).toContain("# Fix campaign analytics 500");
     expect(body).toContain("## Review Packet");
+    expect(body).toContain("## Source Context");
+    expect(body).toContain("Sentry link and Slack support thread");
+    expect(body).toContain("## Scope");
+    expect(body).toContain("api/app/controllers/campaigns_controller.rb");
+    expect(body).toContain("## Validation");
+    expect(body).toContain("request spec covers the failing endpoint");
+    expect(body).toContain("## Review Context");
+    expect(body).toContain("one controller guard fixes the reported failure");
+    expect(body).toContain("## Rollback");
     expect(body).toContain("Target: `nitrosend/nitrosend`");
     expect(body).toContain("Review: `pass`");
     expect(body).toContain("## Human Merge Gate");
