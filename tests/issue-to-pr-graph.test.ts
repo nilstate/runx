@@ -162,9 +162,10 @@ describe("issue-to-PR composite skill", () => {
           },
           pull_request: {
             title: "Fixture thread-driven change",
-            body_markdown: expect.stringContaining("# Handoff: Fixture thread-driven change"),
+            body_markdown: expect.stringContaining("## Human Merge Gate"),
             is_draft: true,
           },
+          engineering_summary_markdown: expect.stringContaining("# Handoff: Fixture thread-driven change"),
           governance: {
             status: "completed",
             review_verdict: "pass",

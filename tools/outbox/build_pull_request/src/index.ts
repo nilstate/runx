@@ -6,6 +6,7 @@ import {
   recordInput,
   stringInput,
 } from "@runxhq/authoring";
+import { buildThreadPullRequestReviewerPacketMarkdown } from "@runxhq/core/knowledge";
 
 export default defineTool({
   name: "outbox.build_pull_request",
@@ -97,6 +98,29 @@ function runBuildPullRequest({ inputs }) {
     inputs.branch,
   );
   const base = firstNonEmptyString(inputs.base);
+  const handoffText = firstNonEmptyText(handoffMarkdown);
+  const reviewerPacketMarkdown = buildThreadPullRequestReviewerPacketMarkdown({
+    title,
+    summary: summarizeHandoff(handoffText, title),
+    source: threadLocator
+      ? {
+          label: "Source thread",
+          uri: firstNonEmptyString(threadContext.canonical_uri, threadLocator),
+        }
+      : undefined,
+    targetRepo,
+    branch,
+    base,
+    status: firstNonEmptyString(
+      completionResult.status,
+      statusSnapshot?.status,
+    ),
+    reviewVerdict,
+    checks: buildReviewPacketChecks(check),
+    risks: buildReviewPacketRisks(reviewResult),
+    handoffReference: "Full native scafld handoff is retained in `engineering_summary_markdown` on this draft pull-request packet.",
+    nextAction: "Review the implementation, validation, and source thread. Merge manually only when the human gate is satisfied.",
+  });
 
   const draftPullRequest = prune({
     schema_version: "runx.pull-request-draft.v1",
@@ -121,12 +145,11 @@ function runBuildPullRequest({ inputs }) {
     }),
     pull_request: {
       title,
-      body_markdown:
-        firstNonEmptyText(handoffMarkdown) ?? `# ${title}\n`,
+      body_markdown: reviewerPacketMarkdown,
       is_draft: true,
     },
     engineering_summary_markdown:
-      firstNonEmptyText(handoffMarkdown) ?? "",
+      handoffText ?? "",
     checks: Object.keys(check).length > 0 ? check : undefined,
     governance: prune({
       status: firstNonEmptyString(
@@ -177,6 +200,66 @@ function runBuildPullRequest({ inputs }) {
   };
 }
 
+function summarizeHandoff(handoffMarkdown, fallbackTitle) {
+  const summarySection = extractMarkdownSection(handoffMarkdown, "Summary");
+  if (summarySection) {
+    return summarySection;
+  }
+  const firstParagraph = firstNonEmptyText(
+    ...String(handoffMarkdown ?? "")
+      .split(/\n{2,}/)
+      .map((paragraph) => paragraph
+        .split(/\r?\n/)
+        .filter((line) => {
+          const trimmed = line.trim();
+          return trimmed.length > 0
+            && !trimmed.startsWith("#")
+            && !/^status:/i.test(trimmed)
+            && !/^next:/i.test(trimmed);
+        })
+        .join("\n")
+        .trim()),
+  );
+  return firstParagraph ?? `Runx prepared a governed change for ${fallbackTitle}.`;
+}
+
+function extractMarkdownSection(markdown, heading) {
+  const text = firstNonEmptyText(markdown);
+  if (!text) {
+    return undefined;
+  }
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^#{2,6}\\s+${escapedHeading}\\s*\\n([\\s\\S]*?)(?=\\n#{1,6}\\s+|$)`, "im");
+  const match = text.match(pattern);
+  return firstNonEmptyText(match?.[1]);
+}
+
+function buildReviewPacketChecks(check) {
+  const lines = [];
+  if (firstNonEmptyString(check.status)) {
+    lines.push(`scafld build ${check.status}`);
+  }
+  const passed = numberOrUndefined(check.passed);
+  const failed = numberOrUndefined(check.failed);
+  if (passed !== undefined || failed !== undefined) {
+    lines.push(`${passed ?? 0} passed / ${failed ?? 0} failed`);
+  }
+  return lines;
+}
+
+function buildReviewPacketRisks(reviewResult) {
+  const blocking = reviewFindingCount(reviewResult, "blocking");
+  const nonBlocking = reviewFindingCount(reviewResult, "non_blocking");
+  const lines = [];
+  if (blocking !== undefined) {
+    lines.push(`${blocking} blocking review finding${blocking === 1 ? "" : "s"}`);
+  }
+  if (nonBlocking !== undefined) {
+    lines.push(`${nonBlocking} non-blocking review finding${nonBlocking === 1 ? "" : "s"}`);
+  }
+  return lines;
+}
+
 function optionalRecord(value) {
   return isRecord(value) ? value : undefined;
 }
@@ -213,6 +296,16 @@ function reviewFindingCount(reviewResult, severity) {
   if (!Array.isArray(reviewResult.findings)) {
     return undefined;
   }
+  if (severity === "blocking") {
+    return reviewResult.findings
+      .filter((finding) => isRecord(finding) && (finding.blocks_completion === true || finding.severity === "blocking"))
+      .length;
+  }
+  if (severity === "non_blocking") {
+    return reviewResult.findings
+      .filter((finding) => isRecord(finding) && (finding.blocks_completion === false || finding.severity === "non_blocking"))
+      .length;
+  }
   return reviewResult.findings
     .filter((finding) => isRecord(finding) && finding.severity === severity)
     .length;
@@ -236,16 +329,6 @@ function numberOrUndefined(value) {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
-}
-
-function stringArray(value) {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const items = value.filter(
-    (entry) => typeof entry === "string" && entry.trim().length > 0,
-  );
-  return items.length > 0 ? items : undefined;
 }
 
 function normalizePullRequestOutbox(value) {

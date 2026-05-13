@@ -68,9 +68,10 @@ describe("outbox.build_pull_request tool", () => {
       },
       pull_request: {
         title: "Fix fixture behavior",
-        body_markdown: "# Handoff: Fix fixture behavior\n\nStatus: completed\nNext: none\n",
+        body_markdown: expect.stringContaining("## Human Merge Gate"),
         is_draft: true,
       },
+      engineering_summary_markdown: "# Handoff: Fix fixture behavior\n\nStatus: completed\nNext: none\n",
       governance: {
         review_verdict: "pass_with_issues",
         blocking_count: 0,
@@ -83,6 +84,12 @@ describe("outbox.build_pull_request tool", () => {
         thread_locator: "github://example/repo/issues/123",
       },
     });
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Review Packet");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Target: `example/repo`");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Branch: `fixture-task` -> `main`");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Review: `pass_with_issues`");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Merge manually");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toBe(result.draft_pull_request.engineering_summary_markdown);
   });
 
   it("refreshes an existing pull_request outbox entry from thread", () => {
@@ -152,6 +159,50 @@ describe("outbox.build_pull_request tool", () => {
         thread_locator: "github://example/repo/issues/123",
       },
     });
+  });
+
+  it("counts native scafld review findings by blocks_completion", () => {
+    const result = runTool({
+      task_id: "fixture-task",
+      thread_title: "Fix fixture behavior",
+      thread_locator: "github://example/repo/issues/123",
+      target_repo: "example/repo",
+      handoff_markdown: "# Handoff: Fix fixture behavior\n\n## Summary\nFix fixture behavior.\n",
+      build_result: {
+        passed: 2,
+        failed: 0,
+      },
+      review_result: {
+        verdict: "pass_with_issues",
+        findings: [
+          {
+            id: "blocking",
+            severity: "high",
+            blocks_completion: true,
+          },
+          {
+            id: "non-blocking",
+            severity: "medium",
+            blocks_completion: false,
+          },
+        ],
+      },
+      completion_result: {
+        status: "completed",
+        title: "Fix fixture behavior",
+      },
+      current_branch: {
+        branch: "fixture-task",
+      },
+      base: "main",
+    });
+
+    expect(result.draft_pull_request.governance).toMatchObject({
+      blocking_count: 1,
+      non_blocking_count: 1,
+    });
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("1 blocking review finding");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("1 non-blocking review finding");
   });
 });
 
