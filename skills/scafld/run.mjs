@@ -171,7 +171,7 @@ const stderr = result.stderr ?? "";
 const exitCode = result.status ?? 1;
 
 let structured = null;
-let recoveredScafldFailureSummary = "";
+let scafldFailureSummary = "";
 if (jsonCommands.has(command)) {
   try {
     structured = parseJsonPayload(command, stdout);
@@ -179,7 +179,7 @@ if (jsonCommands.has(command)) {
     if (command === "review" || command === "complete") {
       structured = statusFallback({ scafld, taskId, cwd, env, fallbackCommand: command });
       if (structured !== null && exitCode !== 0) {
-        recoveredScafldFailureSummary = summarizeRecoveredScafldFailure({
+        scafldFailureSummary = summarizeScafldGateFailure({
           structured,
           command,
           exitCode,
@@ -199,14 +199,22 @@ if (jsonCommands.has(command)) {
   }
 }
 
+if (structured !== null && exitCode !== 0 && (command === "review" || command === "complete") && !scafldFailureSummary) {
+  scafldFailureSummary = summarizeScafldGateFailure({
+    structured,
+    command,
+    exitCode,
+  });
+}
+
 if (structured !== null) {
   process.stdout.write(`${JSON.stringify(structured)}\n`);
 } else if (stdout) {
   process.stdout.write(stdout);
 }
 
-if (recoveredScafldFailureSummary) {
-  process.stderr.write(`${recoveredScafldFailureSummary}\n`);
+if (scafldFailureSummary) {
+  process.stderr.write(`${scafldFailureSummary}\n`);
 } else if (stderr) {
   process.stderr.write(stderr);
 }
@@ -380,13 +388,14 @@ function statusFallback({ scafld, taskId, cwd, env, fallbackCommand }) {
   };
 }
 
-function summarizeRecoveredScafldFailure({ structured, command, exitCode, parseError }) {
+function summarizeScafldGateFailure({ structured, command, exitCode, parseError }) {
   const result = unwrapScafldResult(structured);
   const review = result.review && typeof result.review === "object" && !Array.isArray(result.review)
     ? result.review
     : {};
   const verdict = firstNonEmptyString(result.verdict, review.verdict, review.status, "unknown");
   const status = firstNonEmptyString(result.status, "unknown");
+  const statusLabel = result.recovered_from_status ? "recovered status" : "status";
   const findings = Array.isArray(result.findings)
     ? result.findings
     : Array.isArray(review.findings)
@@ -403,8 +412,10 @@ function summarizeRecoveredScafldFailure({ structured, command, exitCode, parseE
     .join(" | ");
   const tail = findingSummary
     ? ` Findings: ${findingSummary}`
-    : ` ${parseError.message}`;
-  return boundedLine(`scafld ${command} failed with exit ${exitCode}; recovered status=${status}; review verdict=${verdict}.${tail}`);
+    : parseError
+      ? ` ${parseError.message}`
+      : " No review findings were present in scafld JSON.";
+  return boundedLine(`scafld ${command} failed with exit ${exitCode}; ${statusLabel}=${status}; review verdict=${verdict}.${tail}`);
 }
 
 function firstNonEmptyString(...values) {
