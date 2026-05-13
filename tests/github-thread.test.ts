@@ -4,8 +4,10 @@ import {
   ensureGitHubOutboxEntryMarker,
   ensureGitHubOutboxMetadataMarker,
   ensureGitHubIssueReference,
+  findGitHubIssueRefs,
   gitHubIssueSearchQuery,
   hydrateGitHubIssueThread,
+  markdownReferencesGitHubIssue,
   parseGitHubIssueRef,
   selectPreferredGitHubPullRequest,
 } from "../tools/thread/github_adapter.mjs";
@@ -31,8 +33,27 @@ describe("GitHub thread helper", () => {
     expect(body).toContain("Source issue: https://github.com/example/repo/issues/123");
     expect(ensureGitHubIssueReference(body, issueRef)).toBe(body);
     expect(gitHubIssueSearchQuery(issueRef)).toBe(
-      "\"Source issue: https://github.com/example/repo/issues/123\" in:body",
+      "\"https://github.com/example/repo/issues/123\" in:body",
     );
+  });
+
+  it("recognizes rich reviewer-packet source thread links without adding a legacy marker", () => {
+    const issueRef = parseGitHubIssueRef("example/repo#issue/123");
+    const body = [
+      "## Source Context",
+      "Source: [Source thread](https://github.com/example/repo/issues/123)",
+      "Issue: [Generated issue](https://github.com/example/repo/issues/124)",
+      "",
+      "## Human Merge Gate",
+      "A human reviewer must merge this PR.",
+    ].join("\n");
+
+    expect(markdownReferencesGitHubIssue(body, issueRef)).toBe(true);
+    expect(findGitHubIssueRefs(body).map((ref) => ref.adapter_ref)).toEqual([
+      "example/repo#issue/123",
+      "example/repo#issue/124",
+    ]);
+    expect(ensureGitHubIssueReference(body, issueRef)).toBe(body);
   });
 
   it("hydrates provider issue state into portable thread with linked pull requests", () => {
@@ -79,6 +100,10 @@ describe("GitHub thread helper", () => {
           baseRefName: "main",
           updatedAt: "2026-04-22T01:30:00Z",
         },
+        {
+          number: 77,
+          mergedAt: "2026-04-22T02:00:00Z",
+        },
       ],
     });
 
@@ -118,6 +143,7 @@ describe("GitHub thread helper", () => {
             number: "77",
             branch: "issue-123",
             base: "main",
+            merged_at: "2026-04-22T02:00:00Z",
           },
         },
       ],
