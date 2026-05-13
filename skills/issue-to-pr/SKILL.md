@@ -22,35 +22,33 @@ provider push boundary.
 
 ## Source Thread Story
 
-The source thread is the work journal for issue-to-PR, not just a launch point.
-Consumers that dispatch this lane should publish message outbox entries back to
-the source thread at the gates that matter to a human reviewer:
+The source thread is the work journal for issue-to-PR, but reviewers should see
+the story as projections, not as a transcript. Keep the durable run record in
+runx receipts and scafld state, then publish only the projection that fits the
+surface:
 
-- Initial issue: preserve the original request, source locator, reporter signal,
-  and any provider links that explain why runx is evaluating the work.
-- Triage results: state whether a PR is warranted, the selected lane, the
-  risk/size read, relevant constraints, and the evidence that informed the
-  decision.
-- PR creation: link the provider PR, summarize the generated branch/base, state
-  what changed, and point reviewers at the scafld handoff/review evidence.
-- Final human merge gate: make clear that runx has stopped at reviewable PR
-  state and that a human must inspect and merge. Include the current validation,
-  review verdict, remaining risks, and rollback notes.
-- Completion update: after a human merges or closes the PR, publish the final
-  status and link the merged/closed PR.
+- Issue status ledger: one managed status comment updated in place with the
+  current state, source/issue/PR links, triage result, validation summary, risks,
+  and next human action.
+- PR reviewer packet: the PR body is the handoff surface for code review. It
+  should summarize the source, target repo/branch/base, checks, review verdict,
+  risks, retained handoff evidence, and final human merge gate.
+- Notification stream: Slack, chat, email, or ticket updates should be concise
+  milestone notifications only: triaging, PR ready for human review,
+  merged/closed, or human-action-required blockers/errors.
 
-These comments are ordinary `message` outbox entries with
-`metadata.channel = "thread_story"` and structured `metadata.control` containing
-the workflow, lane, task id, gate id, and source locator. The core knowledge
-helper `buildThreadStoryMessageOutboxEntry` builds this shape without binding it
-to GitHub, Slack, Sentry, or any product-specific wrapper.
+Core knowledge helpers provide the generic markdown/text shapes:
+`buildThreadStatusMarkdown`, `buildThreadMilestoneNotificationText`,
+`buildThreadPullRequestReviewerPacketMarkdown`, and
+`buildThreadStoryMessageOutboxEntry`. Product wrappers decide where to publish
+those projections and which provider-specific managed key to use.
 
-Do not put machine control state in visible prose. User-controlled issue,
-Sentry, Slack, or review snippets must be bounded and sanitized before they are
-included in story markdown. Provider mutation still goes through
-`thread.push_outbox`, which adds the provider-specific managed control envelope.
-The envelope is a correlation receipt, not authorization; human merge
-permissions and provider identity remain the security boundary.
+Do not put machine control state, receipt IDs, full issue snapshots, or exact PR
+body dumps in visible prose. User-controlled issue, Sentry, Slack, or review
+snippets must be bounded and sanitized before inclusion. Provider mutation still
+goes through `thread.push_outbox`, which adds the provider-specific managed
+control envelope. The envelope is a correlation receipt, not authorization;
+human merge permissions and provider identity remain the security boundary.
 
 ## Lifecycle
 

@@ -59,8 +59,15 @@ export {
   type ThreadStorySection,
   type BuildThreadStoryMarkdownOptions,
   type BuildThreadStoryMessageOutboxEntryOptions,
+  type ThreadStatusTriageSummary,
+  type BuildThreadStatusMarkdownOptions,
+  type BuildThreadMilestoneNotificationTextOptions,
+  type BuildThreadPullRequestReviewerPacketMarkdownOptions,
   sanitizeThreadStoryText,
   buildThreadStoryMarkdown,
+  buildThreadStatusMarkdown,
+  buildThreadMilestoneNotificationText,
+  buildThreadPullRequestReviewerPacketMarkdown,
   buildThreadStoryMessageOutboxEntry,
 } from "./thread-story.js";
 

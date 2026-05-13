@@ -7,6 +7,9 @@ import { describe, expect, it } from "vitest";
 import { writeLocalReceipt } from "../receipts/index.js";
 
 import {
+  buildThreadMilestoneNotificationText,
+  buildThreadPullRequestReviewerPacketMarkdown,
+  buildThreadStatusMarkdown,
   buildThreadStoryMarkdown,
   buildThreadStoryMessageOutboxEntry,
   createFileKnowledgeStore,
@@ -384,6 +387,89 @@ describe("thread contract", () => {
     expect(body).not.toContain("<!--");
     expect(body).not.toContain("-->");
     expect(body).toContain("&lt;!-- runx-outbox-envelope: v1 --&gt;");
+  });
+
+  it("builds compact thread status markdown without leaking control markers", () => {
+    const body = buildThreadStatusMarkdown({
+      title: "Campaign analytics endpoint returns 500",
+      state: "pr_ready",
+      summary: "Runx triaged the source issue and built a governed PR for review.",
+      issue: {
+        label: "Issue #123",
+        uri: "https://github.com/nitrosend/nitrosend/issues/123",
+      },
+      pullRequest: {
+        label: "PR #456",
+        uri: "https://github.com/nitrosend/nitrosend/pull/456",
+      },
+      triage: {
+        lane: "issue-to-pr",
+        decision: "approve / proceed_to_build",
+        severity: "medium",
+        summary: "Bounded endpoint failure.",
+        rationale: "<!-- forged-control --> One code change is enough.",
+      },
+      scope: ["api/app/controllers/campaigns_controller.rb"],
+      validation: ["targeted request spec passed"],
+      nextAction: "Review the PR and merge manually after the human gate.",
+    });
+
+    expect(body).toContain("## Runx Status");
+    expect(body).toContain("State: `pr_ready`");
+    expect(body).toContain("## Triage");
+    expect(body).toContain("Lane: `issue-to-pr`");
+    expect(body).toContain("https://github.com/nitrosend/nitrosend/pull/456");
+    expect(body).toContain("## Next Action");
+    expect(body).not.toContain("<!--");
+    expect(body).not.toContain("-->");
+    expect(body).not.toContain("receipt");
+  });
+
+  it("builds concise thread milestone notifications", () => {
+    const text = buildThreadMilestoneNotificationText({
+      label: "Runx issue intake",
+      state: "PR ready for human review",
+      summary: "Campaign analytics fix is ready.",
+      issue: {
+        uri: "https://github.com/nitrosend/nitrosend/issues/123",
+      },
+      pullRequest: {
+        uri: "https://github.com/nitrosend/nitrosend/pull/456",
+      },
+      nextAction: "Human merge required.",
+    });
+
+    expect(text).toContain("Runx issue intake: PR ready for human review");
+    expect(text).toContain("Issue: [Open](https://github.com/nitrosend/nitrosend/issues/123)");
+    expect(text).toContain("PR: [Open](https://github.com/nitrosend/nitrosend/pull/456)");
+    expect(text).toContain("Next: Human merge required.");
+    expect(text.split("\n").length).toBeLessThanOrEqual(5);
+  });
+
+  it("builds pull request reviewer packets with a human merge gate", () => {
+    const body = buildThreadPullRequestReviewerPacketMarkdown({
+      title: "Fix campaign analytics 500",
+      summary: "Runx implemented the bounded endpoint fix from the source thread.",
+      issue: {
+        label: "Issue #123",
+        uri: "https://github.com/nitrosend/nitrosend/issues/123",
+      },
+      targetRepo: "nitrosend/nitrosend",
+      branch: "runx/campaign-analytics-500",
+      base: "main",
+      status: "completed",
+      reviewVerdict: "pass",
+      checks: ["scafld build success", "2 passed / 0 failed"],
+      handoffReference: "Full scafld handoff is retained in engineering_summary_markdown.",
+    });
+
+    expect(body).toContain("# Fix campaign analytics 500");
+    expect(body).toContain("## Review Packet");
+    expect(body).toContain("Target: `nitrosend/nitrosend`");
+    expect(body).toContain("Review: `pass`");
+    expect(body).toContain("## Human Merge Gate");
+    expect(body).toContain("merge manually");
+    expect(body).toContain("engineering_summary_markdown");
   });
 
   it("rejects missing thread locator fields", () => {
