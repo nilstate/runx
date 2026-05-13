@@ -70,6 +70,49 @@ export function parseGitHubIssueRef(...values) {
   throw new Error("unable to resolve a GitHub issue reference from thread.adapter.adapter_ref, thread_locator, or canonical_uri.");
 }
 
+export function markdownReferencesGitHubIssue(bodyMarkdown, issueRef) {
+  const body = firstNonEmptyText(bodyMarkdown);
+  if (!body) {
+    return false;
+  }
+  const expected = normalizeGitHubIssueRef(issueRef);
+  for (const reference of findGitHubIssueRefs(body)) {
+    if (
+      reference.repo_slug.toLowerCase() === expected.repo_slug.toLowerCase()
+      && reference.issue_number === expected.issue_number
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function findGitHubIssueRefs(value) {
+  const text = firstNonEmptyText(value);
+  if (!text) {
+    return [];
+  }
+  const refs = [];
+  const seen = new Set();
+  const patterns = [
+    /https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/issues\/(\d+)\/?(?=$|[\s)\].,;:"'<>#?])/gi,
+    /github:\/\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/issues\/(\d+)\/?(?=$|[\s)\].,;:"'<>#?])/gi,
+    /\b([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#issue\/(\d+)\b/gi,
+  ];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const ref = buildGitHubIssueRef(match[1], match[2]);
+      const key = `${ref.repo_slug.toLowerCase()}#${ref.issue_number}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      refs.push(ref);
+    }
+  }
+  return refs;
+}
+
 export function buildGitHubIssueRef(repoSlug, issueNumber) {
   const normalizedRepo = firstNonEmptyString(repoSlug);
   const normalizedIssue = firstNonEmptyString(issueNumber);
@@ -85,10 +128,17 @@ export function buildGitHubIssueRef(repoSlug, issueNumber) {
   };
 }
 
+function normalizeGitHubIssueRef(issueRef) {
+  if (isRecord(issueRef) && issueRef.repo_slug && issueRef.issue_number) {
+    return buildGitHubIssueRef(issueRef.repo_slug, issueRef.issue_number);
+  }
+  return parseGitHubIssueRef(issueRef);
+}
+
 export function ensureGitHubIssueReference(bodyMarkdown, issueRef) {
   const body = firstNonEmptyText(bodyMarkdown) ?? "";
   const marker = gitHubIssueReferenceMarker(issueRef);
-  if (body.includes(marker) || body.includes(issueRef.issue_url)) {
+  if (body.includes(marker) || markdownReferencesGitHubIssue(body, issueRef)) {
     return body;
   }
   const trimmed = body.trimEnd();
@@ -100,7 +150,8 @@ export function gitHubIssueReferenceMarker(issueRef) {
 }
 
 export function gitHubIssueSearchQuery(issueRef) {
-  return `"${gitHubIssueReferenceMarker(issueRef)}" in:body`;
+  const normalized = normalizeGitHubIssueRef(issueRef);
+  return `"${normalized.issue_url}" in:body`;
 }
 
 export function gitHubOutboxEntryMarker(entryId) {
@@ -303,6 +354,7 @@ export function mapGitHubPullRequestToOutboxEntry(pullRequest, threadLocator) {
       state: firstNonEmptyString(pullRequest.state),
       is_draft: pullRequest.isDraft === true,
       updated_at: firstNonEmptyString(pullRequest.updatedAt),
+      merged_at: firstNonEmptyString(pullRequest.mergedAt, pullRequest.merged_at),
     }),
   });
 }
@@ -465,7 +517,7 @@ export function fetchGitHubIssueThread({ adapterRef, env, cwd }) {
       "--search",
       gitHubIssueSearchQuery(issueRef),
       "--json",
-      "baseRefName,headRefName,isDraft,number,state,title,updatedAt,url",
+      "baseRefName,headRefName,isDraft,mergedAt,number,state,title,updatedAt,url",
     ], { env, cwd }, { tokenFallback: true })),
   ]);
   return hydrateGitHubIssueThread({
@@ -885,17 +937,36 @@ function mapGitHubCommentToOutboxEntry(comment, threadLocator, entryId) {
 }
 
 function dedupeGitHubPullRequests(pullRequests) {
-  const seen = new Set();
+  const byKey = new Map();
   const merged = [];
   for (const pullRequest of normalizeGitHubPullRequestArray(pullRequests)) {
     const key = firstNonEmptyString(pullRequest.number, pullRequest.url);
-    if (!key || seen.has(key)) {
+    if (!key) {
       continue;
     }
-    seen.add(key);
-    merged.push(pullRequest);
+    const existing = byKey.get(key);
+    if (existing) {
+      mergeGitHubPullRequest(existing, pullRequest);
+      continue;
+    }
+    const copy = { ...pullRequest };
+    byKey.set(key, copy);
+    merged.push(copy);
   }
   return merged;
+}
+
+function mergeGitHubPullRequest(target, source) {
+  for (const [key, value] of Object.entries(source)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+    if (typeof value === "string" && value.trim().length === 0) {
+      continue;
+    }
+    target[key] = value;
+  }
+  return target;
 }
 
 function gitHubPullRequestBranchScore(pullRequest, preferredBranch) {

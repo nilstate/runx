@@ -23,6 +23,11 @@ export interface GitHubHydratedThread {
 
 export function firstNonEmptyString(...values: readonly unknown[]): string | undefined;
 export function parseGitHubIssueRef(...values: readonly unknown[]): GitHubIssueRef;
+export function findGitHubIssueRefs(value: string | undefined): readonly GitHubIssueRef[];
+export function markdownReferencesGitHubIssue(
+  bodyMarkdown: string | undefined,
+  issueRef: GitHubIssueRef | string,
+): boolean;
 export function ensureGitHubIssueReference(bodyMarkdown: string | undefined, issueRef: GitHubIssueRef): string;
 export function gitHubIssueSearchQuery(issueRef: GitHubIssueRef): string;
 export function gitHubOutboxEntryMarker(entryId: string): string;
