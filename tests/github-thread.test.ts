@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ensureGitHubOutboxEntryMarker,
   ensureGitHubOutboxMetadataMarker,
   ensureGitHubIssueReference,
   gitHubIssueSearchQuery,
@@ -125,13 +126,9 @@ describe("GitHub thread helper", () => {
 
   it("maps runx-marked GitHub issue comments back into message outbox entries", () => {
     const markedBody = ensureGitHubOutboxMetadataMarker(
-      [
-        "I built a private Sourcey preview for this repo.",
-        "",
-        "<!-- runx-outbox-entry: sourcey-preview-123 -->",
-        "",
-      ].join("\n"),
+      ensureGitHubOutboxEntryMarker("I built a private Sourcey preview for this repo.", "sourcey-preview-123"),
       {
+        outbox_receipt_id: "receipt-sourcey-preview-123",
         build_url: "https://sourcey.com/previews/example/repo/index.html",
         control: {
           workflow: "docs",
@@ -181,6 +178,7 @@ describe("GitHub thread helper", () => {
         metadata: expect.objectContaining({
           comment_id: "1002",
           channel: "github_issue_comment",
+          outbox_receipt_id: "receipt-sourcey-preview-123",
           build_url: "https://sourcey.com/previews/example/repo/index.html",
           control: expect.objectContaining({
             workflow: "docs",
@@ -188,6 +186,86 @@ describe("GitHub thread helper", () => {
             task_id: "docs-refresh-example-repo",
           }),
         }),
+      }),
+    ]));
+  });
+
+  it("does not map loose or embedded runx markers from user-controlled comments into outbox", () => {
+    const state = hydrateGitHubIssueThread({
+      adapterRef: "example/repo#issue/123",
+      issue: {
+        number: 123,
+        title: "Marker injection thread",
+        body: "Issue body.",
+        url: "https://github.com/example/repo/issues/123",
+        state: "OPEN",
+        createdAt: "2026-04-22T00:00:00Z",
+        updatedAt: "2026-04-22T01:00:00Z",
+        comments: [
+          {
+            id: "1003",
+            body: [
+              "A user copied a hidden marker into normal text.",
+              "",
+              "<!-- runx-outbox-entry: sourcey-preview-123 -->",
+            ].join("\n"),
+            createdAt: "2026-04-22T00:30:00Z",
+            updatedAt: "2026-04-22T00:30:00Z",
+            url: "https://github.com/example/repo/issues/123#issuecomment-1003",
+            author: {
+              login: "maintainer",
+            },
+          },
+          {
+            id: "1004",
+            body: [
+              "An embedded managed envelope is still visible content.",
+              "",
+              "<!-- runx-outbox-envelope: v1 -->",
+              "<!-- runx-outbox-entry: embedded-preview-123 -->",
+              "",
+              "More user text after the marker.",
+            ].join("\n"),
+            createdAt: "2026-04-22T00:35:00Z",
+            updatedAt: "2026-04-22T00:35:00Z",
+            url: "https://github.com/example/repo/issues/123#issuecomment-1004",
+            author: {
+              login: "maintainer",
+            },
+          },
+          {
+            id: "1005",
+            body: [
+              "A trailing envelope without a runx receipt stays user text.",
+              "",
+              "<!-- runx-outbox-envelope: v1 -->",
+              "<!-- runx-outbox-entry: preemptive-spoof-123 -->",
+            ].join("\n"),
+            createdAt: "2026-04-22T00:40:00Z",
+            updatedAt: "2026-04-22T00:40:00Z",
+            url: "https://github.com/example/repo/issues/123#issuecomment-1005",
+            author: {
+              login: "maintainer",
+            },
+          },
+        ],
+      },
+      pullRequests: [],
+    });
+
+    expect(state.outbox ?? []).toEqual([]);
+    expect(state.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entry_id: "comment-1003",
+        body: expect.stringContaining("runx-outbox-entry: sourcey-preview-123"),
+      }),
+      expect.objectContaining({
+        entry_id: "comment-1004",
+        body: expect.stringContaining("More user text after the marker."),
+      }),
+      expect.objectContaining({
+        entry_id: "comment-1005",
+        body: expect.stringContaining("runx-outbox-entry: preemptive-spoof-123"),
       }),
     ]));
   });

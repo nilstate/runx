@@ -18,7 +18,7 @@ scafld handoff <task-id>
 ## Boundaries
 
 - Use `scafld harden` to strengthen the draft before approval.
-- Use `scafld build` to run acceptance evidence.
+- Use `scafld build` to open one phase, then run it again after implementation to record evidence.
 - Use `scafld review` as the adversarial gate.
 - Use `scafld status --json` for automation.
 - Use `scafld handoff` for compact model context without moving state.
@@ -26,6 +26,8 @@ scafld handoff <task-id>
 For real review, use `--provider claude` or `--provider codex`.
 `--provider local` is smoke-test only and cannot satisfy `complete`.
 
+Inside the scafld repo, use `./bin/scafld` or `go run ./cmd/scafld`; do not use
+a copied compiled binary.
 
 # Claude Code Integration Notes
 

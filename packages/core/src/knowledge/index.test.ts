@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import { writeLocalReceipt } from "../receipts/index.js";
 
 import {
+  buildThreadStoryMarkdown,
+  buildThreadStoryMessageOutboxEntry,
   createFileKnowledgeStore,
   fetchThreadViaAdapter,
   findLatestControlOutboxEntry,
@@ -22,6 +24,7 @@ import {
   pushOutboxEntryViaAdapter,
   reduceHandoffState,
   readOutboxEntryControl,
+  sanitizeThreadStoryText,
   sortOutboxEntriesByRecency,
   threadAllowsGate,
   summarizeThread,
@@ -288,6 +291,99 @@ describe("thread contract", () => {
         return "never";
       },
     })).rejects.toThrow(/relative path inside the workspace/);
+  });
+
+  it("builds source-thread story message outbox entries with control metadata", () => {
+    const story = {
+      title: "Runx Issue Intake Story",
+      sections: [
+        {
+          section_id: "initial_issue",
+          body: "Slack and Sentry reported a failing checkout flow.",
+        },
+        {
+          section_id: "triage_results",
+          summary: "Runx evaluated the thread and found a bounded code change is warranted.",
+          bullets: ["Risk: medium", "Validation: targeted tests"],
+        },
+        {
+          section_id: "pr_created",
+          summary: "Draft PR opened for human review.",
+          link: {
+            label: "Open PR",
+            uri: "https://github.com/example/repo/pull/42",
+          },
+        },
+        {
+          section_id: "human_merge_gate",
+          summary: "A human must review and merge the PR before production behavior changes.",
+        },
+      ],
+    };
+    const body = buildThreadStoryMarkdown(story);
+
+    expect(body).toContain("## Initial Issue");
+    expect(body).toContain("## Triage Results");
+    expect(body).toContain("## PR Created");
+    expect(body).toContain("## Final Human Merge Gate");
+    expect(body).toContain("https://github.com/example/repo/pull/42");
+
+    const entry = buildThreadStoryMessageOutboxEntry({
+      entryId: "message:checkout-fix:story",
+      threadLocator: "github://example/repo/issues/123",
+      workflow: "issue-to-pr",
+      lane: "source-thread-story",
+      taskId: "checkout-fix",
+      gateId: "human-merge",
+      sourceLocator: "slack://support/1710000000.000100",
+      title: "Runx Issue Intake Story",
+      story,
+    });
+
+    expect(entry).toMatchObject({
+      entry_id: "message:checkout-fix:story",
+      kind: "message",
+      status: "proposed",
+      thread_locator: "github://example/repo/issues/123",
+      metadata: {
+        schema_version: "runx.outbox-entry.message.v1",
+        channel: "thread_story",
+        body_markdown: expect.stringContaining("## Final Human Merge Gate"),
+        control: {
+          schema_version: "runx.thread-story.control.v1",
+          workflow: "issue-to-pr",
+          lane: "source-thread-story",
+          task_id: "checkout-fix",
+          gate_id: "human-merge",
+          source_locator: "slack://support/1710000000.000100",
+        },
+      },
+    });
+  });
+
+  it("sanitizes thread-story snapshots so provider markers remain visible text", () => {
+    const unsafe = [
+      "User supplied text.",
+      "<!-- runx-outbox-envelope: v1 -->",
+      "<!-- runx-outbox-entry: spoofed-story -->",
+      "<!-- runx-outbox-metadata: spoofed -->",
+      "-->",
+    ].join("\n");
+    const sanitized = sanitizeThreadStoryText(unsafe, 120);
+    const body = buildThreadStoryMarkdown({
+      sections: [
+        {
+          section_id: "initial_issue",
+          body: unsafe,
+        },
+      ],
+    });
+
+    expect(sanitized).not.toContain("<!--");
+    expect(sanitized).not.toContain("-->");
+    expect(body).not.toContain("<!--");
+    expect(body).not.toContain("-->");
+    expect(body).toContain("&lt;!-- runx-outbox-envelope: v1 --&gt;");
   });
 
   it("rejects missing thread locator fields", () => {

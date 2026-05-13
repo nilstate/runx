@@ -20,6 +20,38 @@ adapter prepares the branch, then this lane reads the current branch and uses it
 when packaging the draft PR. The final `thread.push_outbox` step is the only
 provider push boundary.
 
+## Source Thread Story
+
+The source thread is the work journal for issue-to-PR, not just a launch point.
+Consumers that dispatch this lane should publish message outbox entries back to
+the source thread at the gates that matter to a human reviewer:
+
+- Initial issue: preserve the original request, source locator, reporter signal,
+  and any provider links that explain why runx is evaluating the work.
+- Triage results: state whether a PR is warranted, the selected lane, the
+  risk/size read, relevant constraints, and the evidence that informed the
+  decision.
+- PR creation: link the provider PR, summarize the generated branch/base, state
+  what changed, and point reviewers at the scafld handoff/review evidence.
+- Final human merge gate: make clear that runx has stopped at reviewable PR
+  state and that a human must inspect and merge. Include the current validation,
+  review verdict, remaining risks, and rollback notes.
+- Completion update: after a human merges or closes the PR, publish the final
+  status and link the merged/closed PR.
+
+These comments are ordinary `message` outbox entries with
+`metadata.channel = "thread_story"` and structured `metadata.control` containing
+the workflow, lane, task id, gate id, and source locator. The core knowledge
+helper `buildThreadStoryMessageOutboxEntry` builds this shape without binding it
+to GitHub, Slack, Sentry, or any product-specific wrapper.
+
+Do not put machine control state in visible prose. User-controlled issue,
+Sentry, Slack, or review snippets must be bounded and sanitized before they are
+included in story markdown. Provider mutation still goes through
+`thread.push_outbox`, which adds the provider-specific managed control envelope.
+The envelope is a correlation receipt, not authorization; human merge
+permissions and provider identity remain the security boundary.
+
 ## Lifecycle
 
 The graph runs:

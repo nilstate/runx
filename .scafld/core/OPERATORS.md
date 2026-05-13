@@ -30,13 +30,18 @@ scafld report
 - `review`: run the adversarial review gate
 - `complete`: archive only after the review gate passes
 
+Use `scafld config` after init or when project policy changes. It proposes
+config from cited repo evidence; it is not part of the normal task lifecycle.
+
 Prompt ownership:
 
 - `.scafld/prompts/*` is the active template layer
 - `.scafld/core/prompts/*` is the managed reset copy
 
 `scafld update` refreshes default project prompt copies when they are still
-known defaults. Customized project prompts are skipped.
+known defaults. Customized project prompts are skipped. It also refreshes root
+agent docs and renders generated `.scafld/config.yaml` into the current strict
+runtime shape.
 
 ## Review Providers
 

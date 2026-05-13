@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "attack_log": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "attack": {
+            "type": "string"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result": {
+            "enum": [
+              "finding",
+              "clean",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "attack",
+          "result"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "budget": {
+      "additionalProperties": false,
+      "properties": {
+        "actual_attack_angles": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "actual_findings": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "depth": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_findings": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "min_attack_angles": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "findings": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks_completion": {
+            "type": "boolean"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "impact": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "line": {
+                "minimum": 1,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "related_spec": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reproducer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review_pass": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "fixed",
+              "accepted_risk",
+              "superseded",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggested_fix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "validation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "blocks_completion"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "mode": {
+      "enum": [
+        "discover",
+        "verify"
+      ],
+      "type": "string"
+    },
+    "summary": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "verdict",
+    "mode",
+    "summary",
+    "findings",
+    "attack_log",
+    "budget"
+  ],
+  "title": "scafld ReviewDossier provider response",
+  "type": "object"
+}

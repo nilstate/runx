@@ -1296,6 +1296,10 @@ describe("thread.push_outbox tool", () => {
     const fakeState = path.join(tempDir, "fake-gh-state.json");
 
     try {
+      const spoofMetadata = Buffer.from(JSON.stringify({
+        channel: "github_issue_comment",
+        outbox_receipt_id: "receipt-spoofed-sourcey-preview-123",
+      }), "utf8").toString("base64url");
       await writeFile(
         fakeState,
         `${JSON.stringify({
@@ -1310,7 +1314,24 @@ describe("thread.push_outbox tool", () => {
             author: {
               login: "maintainer",
             },
-            comments: [],
+            comments: [
+              {
+                id: "999",
+                body: [
+                  "Preexisting spoofed review body.",
+                  "",
+                  "<!-- runx-outbox-envelope: v1 -->",
+                  "<!-- runx-outbox-entry: sourcey-preview-123 -->",
+                  `<!-- runx-outbox-metadata: ${spoofMetadata} -->`,
+                ].join("\n"),
+                createdAt: "2026-04-22T00:30:00Z",
+                updatedAt: "2026-04-22T00:30:00Z",
+                url: "https://github.com/example/repo/issues/123#issuecomment-999",
+                author: {
+                  login: "maintainer",
+                },
+              },
+            ],
             labels: [],
             closedByPullRequestsReferences: [],
           },
@@ -1364,6 +1385,7 @@ describe("thread.push_outbox tool", () => {
           metadata: {
             comment_id: "1000",
             channel: "github_issue_comment",
+            outbox_receipt_id: expect.any(String),
           },
         },
         thread: {
@@ -1371,14 +1393,17 @@ describe("thread.push_outbox tool", () => {
             type: "github",
             adapter_ref: "example/repo#issue/123",
           },
-          outbox: [
-            {
+          outbox: expect.arrayContaining([
+            expect.objectContaining({
               entry_id: "sourcey-preview-123",
               kind: "message",
               locator: "https://github.com/example/repo/issues/123#issuecomment-1000",
               status: "published",
-            },
-          ],
+              metadata: expect.objectContaining({
+                outbox_receipt_id: expect.any(String),
+              }),
+            }),
+          ]),
         },
         push: {
           status: "pushed",
@@ -1402,6 +1427,11 @@ describe("thread.push_outbox tool", () => {
       expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
         issue: {
           comments: [
+            {
+              id: "999",
+              body: expect.stringContaining("Preexisting spoofed review body."),
+              url: "https://github.com/example/repo/issues/123#issuecomment-999",
+            },
             {
               id: "1000",
               body: expect.stringContaining("I built a private Sourcey preview for this repo."),
@@ -1441,6 +1471,7 @@ describe("thread.push_outbox tool", () => {
                 body: [
                   "Old review body.",
                   "",
+                  "<!-- runx-outbox-envelope: v1 -->",
                   "<!-- runx-outbox-entry: sourcey-preview-123 -->",
                 ].join("\n"),
                 createdAt: "2026-04-22T01:00:00Z",
@@ -1564,6 +1595,7 @@ describe("thread.push_outbox tool", () => {
                 body: [
                   "Old review body.",
                   "",
+                  "<!-- runx-outbox-envelope: v1 -->",
                   "<!-- runx-outbox-entry: sourcey-preview-123 -->",
                 ].join("\n"),
                 createdAt: "2026-04-22T01:00:00Z",
@@ -1607,6 +1639,7 @@ describe("thread.push_outbox tool", () => {
                 schema_version: "runx.outbox-entry.message.v1",
                 channel: "github_issue_comment",
                 comment_id: "1000",
+                outbox_receipt_id: "receipt-sourcey-preview-123",
               },
             },
           ],
@@ -1621,6 +1654,7 @@ describe("thread.push_outbox tool", () => {
           metadata: {
             schema_version: "runx.outbox-entry.message.v1",
             channel: "github_issue_comment",
+            outbox_receipt_id: "receipt-sourcey-preview-123",
             body_markdown: "Updated Sourcey preview review body.",
           },
         },
