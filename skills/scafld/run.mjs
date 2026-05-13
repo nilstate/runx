@@ -171,12 +171,20 @@ const stderr = result.stderr ?? "";
 const exitCode = result.status ?? 1;
 
 let structured = null;
+let recoveredReviewFailureSummary = "";
 if (jsonCommands.has(command)) {
   try {
     structured = parseJsonPayload(command, stdout);
   } catch (error) {
-    if (command === "review" && exitCode === 0) {
+    if (command === "review") {
       structured = reviewStatusFallback({ scafld, taskId, cwd, env });
+      if (structured !== null && exitCode !== 0) {
+        recoveredReviewFailureSummary = summarizeRecoveredReviewFailure({
+          structured,
+          exitCode,
+          parseError: error,
+        });
+      }
     }
     if (structured !== null) {
       // Continue with the recovered native status envelope below.
@@ -196,7 +204,9 @@ if (structured !== null) {
   process.stdout.write(stdout);
 }
 
-if (stderr) {
+if (recoveredReviewFailureSummary) {
+  process.stderr.write(`${recoveredReviewFailureSummary}\n`);
+} else if (stderr) {
   process.stderr.write(stderr);
 }
 
@@ -367,6 +377,46 @@ function reviewStatusFallback({ scafld, taskId, cwd, env }) {
       recovered_from_status: true,
     },
   };
+}
+
+function summarizeRecoveredReviewFailure({ structured, exitCode, parseError }) {
+  const result = unwrapScafldResult(structured);
+  const review = result.review && typeof result.review === "object" && !Array.isArray(result.review)
+    ? result.review
+    : {};
+  const verdict = firstNonEmptyString(result.verdict, review.verdict, review.status, "unknown");
+  const findings = Array.isArray(result.findings)
+    ? result.findings
+    : Array.isArray(review.findings)
+      ? review.findings
+      : [];
+  const findingSummary = findings
+    .filter((finding) => finding && typeof finding === "object" && !Array.isArray(finding))
+    .slice(0, 3)
+    .map((finding) => {
+      const id = firstNonEmptyString(finding.id, finding.summary, "finding");
+      const summary = firstNonEmptyString(finding.summary, finding.evidence, finding.validation);
+      return summary && summary !== id ? `${id}: ${summary}` : id;
+    })
+    .join(" | ");
+  const tail = findingSummary
+    ? ` Findings: ${findingSummary}`
+    : ` ${parseError.message}`;
+  return boundedLine(`scafld review failed with exit ${exitCode}; recovered verdict=${verdict}.${tail}`);
+}
+
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function boundedLine(value) {
+  const line = String(value).replace(/\s+/g, " ").trim();
+  return line.length > 1200 ? `${line.slice(0, 1197)}...` : line;
 }
 
 function positiveInteger(value, fallback) {
