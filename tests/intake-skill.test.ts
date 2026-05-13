@@ -6,19 +6,19 @@ import { describe, expect, it } from "vitest";
 import { runHarnessTarget } from "@runxhq/runtime-local/harness";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
-describe("request-triage official skill", () => {
-  it("ships as an explicit agent-step boundary with a generic triage report contract", async () => {
+describe("intake official skill", () => {
+  it("ships as an explicit agent-task boundary with a generic triage report contract", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("skills/request-triage/X.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("skills/intake/X.yaml"), "utf8")),
     );
-    const runner = manifest.runners.triage;
+    const runner = manifest.runners.intake;
 
-    expect(runner?.source.type).toBe("agent-step");
-    if (!runner || runner.source.type !== "agent-step") {
-      throw new Error("request-triage runner must declare an agent-step source.");
+    expect(runner?.source.type).toBe("agent-task");
+    if (!runner || runner.source.type !== "agent-task") {
+      throw new Error("intake runner must declare an agent-task source.");
     }
 
-    expect(runner.source.task).toBe("request-triage");
+    expect(runner.source.task).toBe("intake");
     expect(runner.source.outputs).toEqual({
       triage_report: "object",
       change_set: "object",
@@ -33,11 +33,11 @@ describe("request-triage official skill", () => {
   });
 
   it("passes the inline harness suite, including supervisor-oriented gate examples", async () => {
-    const result = await runHarnessTarget(path.resolve("skills/request-triage"));
+    const result = await runHarnessTarget(path.resolve("skills/intake"));
 
     expect(result.source).toBe("inline");
     if (!("cases" in result)) {
-      throw new Error("expected inline harness suite for request-triage");
+      throw new Error("expected inline harness suite for intake");
     }
     expect(result.assertionErrors).toEqual([]);
     expect(result.cases.length).toBe(4);

@@ -19,7 +19,7 @@ harness:
           - sourcey
       caller:
         answers:
-          agent_step.research.output:
+          agent_task.research.output:
             research_brief:
               objective: Find the highest-signal trend in the runx ecosystem this week.
               scope: developer tools, OSS skill automation, adjacent agent products
@@ -44,7 +44,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: research
-          source_type: agent-step
+          source_type: agent-task
 
     - name: research-needs-objective
       inputs: {}
@@ -58,7 +58,7 @@ runners:
 
   research:
     default: true
-    type: agent-step
+    type: agent-task
     agent: researcher
     task: research
     outputs:

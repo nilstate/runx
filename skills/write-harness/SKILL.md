@@ -27,7 +27,7 @@ expect:
     kind: skill_execution      # or graph_execution
     status: success
     skill_name: expected-name
-    source_type: cli-tool    # or agent, agent-step, graph, etc.
+    source_type: cli-tool    # or agent, agent-task, graph, etc.
 ```
 
 For graph fixtures, assert step completion:

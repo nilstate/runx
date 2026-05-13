@@ -16,7 +16,7 @@ harness:
         skill_path: skills/design-skill
       caller:
         answers:
-          agent_step.review-receipt.output:
+          agent_task.review-receipt.output:
             verdict: needs_update
             failure_summary: Context edges are reading stdout instead of an artifact envelope, so structured data is flattened before the next step.
             improvement_proposals:
@@ -33,16 +33,16 @@ harness:
           kind: skill_execution
           status: success
           skill_name: review-receipt
-          source_type: agent-step
+          source_type: agent-task
 
     - name: review-receipt-passes-on-paused-graph
       inputs:
-        receipt_summary: Graph paused at step 1 awaiting caller cognitive work; status needs_resolution with one outstanding agent-step request.
+        receipt_summary: Graph paused at step 1 awaiting caller cognitive work; status needs_resolution with one outstanding agent-task request.
         harness_output: needs_resolution
         skill_path: skills/research
       caller:
         answers:
-          agent_step.review-receipt.output:
+          agent_task.review-receipt.output:
             verdict: pass
             failure_summary: No failure. The graph paused at step 1 as designed, awaiting caller cognitive work; needs_resolution is a healthy agent-mediated suspension in runx, not a failure class.
             improvement_proposals: []
@@ -54,12 +54,12 @@ harness:
           kind: skill_execution
           status: success
           skill_name: review-receipt
-          source_type: agent-step
+          source_type: agent-task
 
 runners:
   review-receipt-agent:
     default: true
-    type: agent-step
+    type: agent-task
     runx:
       post_run:
         reflect: never

@@ -17,7 +17,7 @@ harness:
         operator_context: Respond as a maintainer who prefers concise, factual clarifications over speculative promises.
       caller:
         answers:
-          agent_step.issue-triage-discover.output:
+          agent_task.issue-triage-discover.output:
             issue_candidates:
               - id: issue-241
                 title: Sourcey output path is unclear
@@ -35,7 +35,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: issue-triage
-          source_type: agent-step
+          source_type: agent-task
     - name: issue-triage-draft-response
       runner: respond
       inputs:
@@ -44,7 +44,7 @@ harness:
         maintainer_context: Respond as a maintainer who prefers concise, factual clarifications over speculative promises.
       caller:
         answers:
-          agent_step.issue-triage-respond.output:
+          agent_task.issue-triage-respond.output:
             issue_profile:
               title: Sourcey output path is unclear
               state: open
@@ -64,14 +64,14 @@ harness:
           kind: skill_execution
           status: success
           skill_name: issue-triage
-          source_type: agent-step
+          source_type: agent-task
 
 runners:
   agent:
     type: agent
 
   discover:
-    type: agent-step
+    type: agent-task
     agent: researcher
     task: issue-triage-discover
     outputs:
@@ -101,7 +101,7 @@ runners:
 
   respond:
     default: true
-    type: agent-step
+    type: agent-task
     agent: builder
     task: issue-triage-respond
     outputs:

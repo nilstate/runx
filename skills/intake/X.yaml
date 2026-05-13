@@ -1,4 +1,4 @@
-skill: request-triage
+skill: intake
 version: "0.1.1"
 
 catalog:
@@ -24,7 +24,7 @@ harness:
         operator_context: Prefer the canonical issue-to-pr name in user-facing replies.
       caller:
         answers:
-          agent_step.request-triage.output:
+          agent_task.intake.output:
             triage_report:
               category: docs
               severity: low
@@ -48,7 +48,7 @@ harness:
                   locator: https://github.com/example/repo/issues/101
                   status: published
                   thread_locator: github://example/repo/issues/101
-                size: micro
+                size: small
                 risk: low
             change_set:
               change_set_id: change_set_docs_work_101
@@ -80,8 +80,8 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: request-triage
-          source_type: agent-step
+          skill_name: intake
+          source_type: agent-task
     - name: feature-needs-decomposition
       inputs:
         thread_title: Add abandoned cart recovery across email and SMS
@@ -90,7 +90,7 @@ harness:
         product_context: Multi-channel marketing automation product
       caller:
         answers:
-          agent_step.request-triage.output:
+          agent_task.intake.output:
             triage_report:
               category: feature_request
               severity: medium
@@ -161,8 +161,8 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: request-triage
-          source_type: agent-step
+          skill_name: intake
+          source_type: agent-task
     - name: reply-only-question
       inputs:
         thread_title: How do I rotate my API key?
@@ -170,7 +170,7 @@ harness:
         thread_locator: support://request/983
       caller:
         answers:
-          agent_step.request-triage.output:
+          agent_task.intake.output:
             triage_report:
               category: question
               severity: low
@@ -206,8 +206,8 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: request-triage
-          source_type: agent-step
+          skill_name: intake
+          source_type: agent-task
     - name: request-review-before-mutation
       inputs:
         thread_title: Clarify the affected repo before we start
@@ -222,7 +222,7 @@ harness:
         product_context: Workspace repo with multiple bounded mutation surfaces
       caller:
         answers:
-          agent_step.request-triage.output:
+          agent_task.intake.output:
             triage_report:
               category: other
               severity: medium
@@ -266,21 +266,21 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: request-triage
-          source_type: agent-step
+          skill_name: intake
+          source_type: agent-task
 
 runners:
-  triage:
+  intake:
     default: true
-    type: agent-step
+    type: agent-task
     agent: builder
-    task: request-triage
+    task: intake
     outputs:
       triage_report: object
       change_set: object
     artifacts:
-      wrap_as: request_triage_packet
-      packet: runx.request.triage.v1
+      wrap_as: intake_packet
+      packet: runx.intake.v1
     inputs:
       thread_title:
         type: string

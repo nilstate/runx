@@ -60,7 +60,7 @@ runx config set agent.api_key "$OPENAI_API_KEY"
 ```
 
 With `agent.provider`, `agent.model`, and `agent.api_key` configured, the CLI
-can now resolve `agent` and `agent-step` cognitive work directly. Deterministic
+can now resolve `agent` and `agent-task` cognitive work directly. Deterministic
 tools, approvals, and required human inputs keep their existing local behavior.
 
 The global link points at `oss/packages/cli` in this checkout. Rebuild with
@@ -189,7 +189,7 @@ authored source. Do not hand-edit generated `manifest.json` or `run.mjs`.
 
 The official catalog has two public kinds:
 
-- skills: `request-triage`, `issue-triage`, `research`, `draft-content`,
+- skills: `intake`, `issue-triage`, `research`, `draft-content`,
   `vuln-scan`, `scafld`, `sourcey`, `moltbook`
 - skill graphs: `issue-to-pr`, `release`, `content-pipeline`,
   `deep-research-brief`, `ecosystem-vuln-scan`, `ecosystem-brief`,

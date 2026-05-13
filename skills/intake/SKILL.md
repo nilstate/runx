@@ -1,9 +1,9 @@
 ---
-name: request-triage
+name: intake
 description: Turn a noisy inbound request into a bounded triage artifact and an explicit next runx lane.
 ---
 
-# Request Triage
+# Intake
 
 Convert an inbound thread, support report, or operator request into one
 explicit triage decision plus the parent change artifact that downstream
@@ -14,7 +14,7 @@ job is to classify the report, summarize it, draft the next helpful response,
 and recommend the next governed lane. That next lane must be explicit:
 `issue-to-pr`, `work-plan`, `reply-only`, or `manual-triage`.
 
-In supervisor-style flows, `request-triage` is also the commencement gate. It
+In supervisor-style flows, `intake` is also the commencement gate. It
 decides whether work may start at all, whether the next step should stop at a
 review comment first, and whether mutation is justified yet. A recommended lane
 is not the same thing as build permission.
@@ -121,7 +121,7 @@ When `recommended_lane=issue-to-pr`, also include `thread_change_request` with:
 - `thread_locator`
 - `thread` (optional)
 - `outbox_entry` (optional)
-- `size`: one of `micro`, `small`, `medium`, or `large`
+- `size`: one of `small`, `medium`, or `large`
 - `risk`: one of `low`, `medium`, or `high`
 
 When `recommended_lane=work-plan`, also include

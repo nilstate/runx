@@ -60,7 +60,7 @@ describe("scafld issue-to-PR skill contract", () => {
     expect(graph.steps.some((step) => (step.tool ?? "").includes("capture"))).toBe(false);
     expect(graph.steps.find((step) => step.id === "author-spec")).toMatchObject({
       run: {
-        type: "agent-step",
+        type: "agent-task",
         task: "issue-to-pr-author-spec",
       },
       context: {
@@ -92,7 +92,7 @@ describe("scafld issue-to-PR skill contract", () => {
     });
     expect(graph.steps.find((step) => step.id === "author-fix")).toMatchObject({
       run: {
-        type: "agent-step",
+        type: "agent-task",
         task: "issue-to-pr-apply-fix",
       },
       context: {

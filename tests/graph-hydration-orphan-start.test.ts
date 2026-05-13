@@ -8,7 +8,7 @@ import { hydrateGraphFromLedger } from "../packages/runtime-local/src/runner-loc
 const STEP_A = {
   id: "step-a",
   label: "step A",
-  run: { type: "agent-step" as const, agent: "builder", task: "step-a" },
+  run: { type: "agent-task" as const, agent: "builder", task: "step-a" },
 };
 
 const STEPS = [STEP_A];
@@ -17,7 +17,7 @@ const STEP_SKILL = {
   name: "step-a",
   description: "fixture",
   body: "fixture",
-  source: { type: "agent-step" as const, agent: "builder", task: "step-a", outputs: {} },
+  source: { type: "agent-task" as const, agent: "builder", task: "step-a", outputs: {} },
   inputs: {},
   artifacts: undefined,
   qualityProfile: undefined,

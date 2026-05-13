@@ -9,7 +9,7 @@ import {
 } from "../internal.js";
 import { agentContextEnvelopeSchema } from "./context.js";
 
-const agentWorkSourceTypes = ["agent", "agent-step"] as const;
+const agentWorkSourceTypes = ["agent", "agent-task"] as const;
 
 export const agentWorkRequestSchema = Type.Object(
   {

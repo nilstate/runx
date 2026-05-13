@@ -14,7 +14,7 @@ harness:
         target: pnpm-lock.yaml
       caller:
         answers:
-          agent_step.vuln-scan.output:
+          agent_task.vuln-scan.output:
             dependency_inventory:
               target: pnpm-lock.yaml
             advisories:
@@ -27,7 +27,7 @@ harness:
             operator_summary:
               verdict: investigate
               summary: One advisory is worth preparing.
-          agent_step.vuln-scan-advisory.output:
+          agent_task.vuln-scan-advisory.output:
             advisory_draft:
               title: Example advisory
               body: We identified a medium-severity transitive issue and are preparing remediation.
@@ -37,7 +37,7 @@ harness:
             disclosure_checklist:
               - verify versions
               - verify patch
-          agent_step.draft-content-package.output:
+          agent_task.draft-content-package.output:
             publish_packet:
               channel: advisory
               headline: Example advisory

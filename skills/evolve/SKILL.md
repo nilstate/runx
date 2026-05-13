@@ -56,7 +56,7 @@ That projection is Knowledge-only metadata, not another canonical phase.
 
 ### Introspect
 
-Caller-mediated (agent-step). This is the zero-argument recommendation lane.
+Caller-mediated (agent-task). This is the zero-argument recommendation lane.
 It uses `scope + ingest + model` to analyze the current repo and produce:
 
 - `opportunity_report` — ranked opportunities grounded in repo evidence
@@ -79,7 +79,7 @@ No agent cognition, no mutation.
 
 ### Plan
 
-Caller-mediated (agent-step). This is the current `model` step and also drafts
+Caller-mediated (agent-task). This is the current `model` step and also drafts
 bounded plan artifacts. Given the objective and repo profile, it produces four
 artifacts in one pass:
 

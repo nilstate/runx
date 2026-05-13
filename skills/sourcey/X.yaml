@@ -68,7 +68,7 @@ runners:
         - id: discover
           label: inspect repo
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: sourcey-discover
             outputs:
@@ -131,7 +131,7 @@ runners:
         - id: author
           label: draft docs
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: sourcey-author
             outputs:
@@ -212,7 +212,7 @@ runners:
         - id: critique
           label: review built site
           run:
-            type: agent-step
+            type: agent-task
             agent: reviewer
             task: sourcey-critique
             outputs:
@@ -251,7 +251,7 @@ runners:
         - id: revise
           label: revise docs
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: sourcey-revise
             outputs:

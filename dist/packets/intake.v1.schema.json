@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.runx.dev/runx/request/triage/v1.json",
-  "x-runx-packet-id": "runx.request.triage.v1",
+  "$id": "https://schemas.runx.dev/runx/intake/v1.json",
+  "x-runx-packet-id": "runx.intake.v1",
   "type": "object",
   "properties": {
     "change_set": { "type": "object", "additionalProperties": true },

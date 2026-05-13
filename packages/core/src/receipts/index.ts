@@ -59,8 +59,8 @@ export interface AuthReceiptMetadata {
 }
 
 export interface AgentHookReceiptMetadata {
-  readonly agent_hook: {
-    readonly source_type: "agent-step" | "harness-hook";
+  readonly agent_task: {
+    readonly source_type: "agent-task" | "harness-hook";
     readonly agent?: string;
     readonly hook?: string;
     readonly task?: string;

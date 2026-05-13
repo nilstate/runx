@@ -15,7 +15,7 @@ harness:
         project_context: OSS evaluator demo
       caller:
         answers:
-          agent_step.work-plan.output:
+          agent_task.work-plan.output:
             objective_summary: Build a runx ecosystem-brief flow.
             orchestration_steps:
               - id: research
@@ -41,7 +41,7 @@ harness:
               - name: draft-content
                 exists: true
             open_questions: []
-          agent_step.prior-art.output:
+          agent_task.prior-art.output:
             findings:
               - claim: Market-intelligence should keep research and drafting as separate steps.
                 source: plans/runx.md
@@ -62,7 +62,7 @@ harness:
                 likelihood: medium
                 impact: high
                 mitigation: Require a cited evidence log.
-          agent_step.write-harness.output:
+          agent_task.write-harness.output:
             skill_spec:
               name: ecosystem-brief
               description: Research and draft a daily ecosystem brief.

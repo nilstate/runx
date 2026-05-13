@@ -39,7 +39,7 @@ export function isDomainArtifactEnvelope(entry: ArtifactEnvelope): boolean {
 }
 
 export function isAgentMediatedSource(sourceType: string | undefined): boolean {
-  return sourceType === "agent" || sourceType === "agent-step";
+  return sourceType === "agent" || sourceType === "agent-task";
 }
 
 export function resolveOptionalKnowledgeDir(options: {
@@ -129,7 +129,7 @@ export function mergeMetadata(
 
 export function runnerTrustMetadata(sourceType: string): Readonly<Record<string, unknown>> {
   const approvalMediated = sourceType === "approval";
-  const agentMediated = sourceType === "agent" || sourceType === "agent-step";
+  const agentMediated = sourceType === "agent" || sourceType === "agent-task";
   return {
     runner: {
       type: sourceType,

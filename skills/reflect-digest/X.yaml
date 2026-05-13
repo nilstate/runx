@@ -15,7 +15,7 @@ harness:
         min_support: 1
       caller:
         answers:
-          agent_step.reflect-digest.output:
+          agent_task.reflect-digest.output:
             proposals: []
       expect:
         status: success
@@ -42,7 +42,7 @@ harness:
               summary: sourcey completed with a low-confidence signal
       caller:
         answers:
-          agent_step.reflect-digest.output:
+          agent_task.reflect-digest.output:
             proposals: []
       expect:
         status: success
@@ -81,7 +81,7 @@ harness:
               summary: sourcey repeated the same bounded plan shape
       caller:
         answers:
-          agent_step.reflect-digest.output:
+          agent_task.reflect-digest.output:
             proposals:
               - skill_ref: sourcey
                 supporting_receipt_ids:
@@ -163,7 +163,7 @@ harness:
               summary: release repeated the same registry drift signal
       caller:
         answers:
-          agent_step.reflect-digest.output:
+          agent_task.reflect-digest.output:
             proposals:
               - skill_ref: release
                 supporting_receipt_ids:
@@ -270,7 +270,7 @@ runners:
           context:
             grouped_reflections: group-reflect-projections.grouped_reflections_packet.data.items
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: reflect-digest
             outputs:

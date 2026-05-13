@@ -27,7 +27,7 @@ harness:
           source_refs: []
       caller:
         answers:
-          agent_step.work-plan.output:
+          agent_task.work-plan.output:
             change_set:
               change_set_id: change_set_release_notes_skill
               thread_locator: github://runxhq/runx/issues/118
@@ -95,7 +95,7 @@ harness:
               - name: draft-content
                 exists: true
             open_questions: []
-          agent_step.prior-art.output:
+          agent_task.prior-art.output:
             findings:
               - claim: Release skills should separate read-only preparation from publish authority.
                 source: skills/release/X.yaml
@@ -119,7 +119,7 @@ harness:
                 likelihood: medium
                 impact: medium
                 mitigation: Keep the proposal scoped to maintainer workflow and receipts.
-          agent_step.write-harness.output:
+          agent_task.write-harness.output:
             skill_spec:
               name: release-notes
               description: Turn a bounded release diff into reviewable release notes.
@@ -156,7 +156,7 @@ harness:
             acceptance_checks:
               - release-notes produces a reviewable draft from a bounded release diff
               - release-notes requires approval before packaging
-          agent_step.draft-content-draft.output:
+          agent_task.draft-content-draft.output:
             content_brief:
               angle: maintainer skill proposal
               audience: maintainers
@@ -172,7 +172,7 @@ harness:
               - confirm the proposal stays portable and repo-grounded
             distribution_notes:
               primary_channel: skill-proposal
-          agent_step.draft-content-package.output:
+          agent_task.draft-content-package.output:
             publish_packet:
               channel: skill-proposal
               headline: release-notes skill proposal

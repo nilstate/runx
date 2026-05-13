@@ -109,7 +109,7 @@ condition, action, and exit artifact.
 - `objective` (required): the build or skill objective to decompose.
 - `project_context` (optional): repo, product, or user context that
   constrains the decomposition.
-- `change_set` (optional): parent change artifact from `request-triage` or a
+- `change_set` (optional): parent change artifact from `intake` or a
   workspace supervisor. Prefer this when present.
 - `thread_locator` (optional): canonical locator for the bounded thread the
   plan is serving.

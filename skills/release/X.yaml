@@ -17,7 +17,7 @@ harness:
         operator_context: Ship a bounded v0.4.6 patch release for the runx OSS CLI.
       caller:
         answers:
-          agent_step.release-prepare.output:
+          agent_task.release-prepare.output:
             release_brief:
               proposed_version: "0.4.6"
               previous_tag: v0.4.5
@@ -46,7 +46,7 @@ harness:
                 channel: npm
                 package: "@runxhq/cli"
                 tag_name: v0.4.6
-          agent_step.release-publish.output:
+          agent_task.release-publish.output:
             publish_report:
               registry_url: https://www.npmjs.com/package/@runxhq/cli/v/0.4.6
               release_tag: v0.4.6
@@ -89,7 +89,7 @@ harness:
         operator_context: Prepare a bounded patch release for review.
       caller:
         answers:
-          agent_step.release-prepare.output:
+          agent_task.release-prepare.output:
             release_brief:
               proposed_version: "0.4.6"
               previous_tag: v0.4.5
@@ -134,7 +134,7 @@ harness:
 
 runners:
   prepare:
-    type: agent-step
+    type: agent-task
     agent: builder
     task: release-prepare
     outputs:
@@ -187,7 +187,7 @@ runners:
         - id: prepare-release
           label: prepare the release brief
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: release-prepare
             outputs:
@@ -224,7 +224,7 @@ runners:
         - id: publish-release
           label: publish the approved release
           run:
-            type: agent-step
+            type: agent-task
             agent: builder
             task: release-publish
             outputs:

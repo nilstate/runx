@@ -32,7 +32,7 @@ describe("caller-mediated agent runtime execution location", () => {
 name: local-tool-summary
 description: Resolve a custom local tool through the caller runtime.
 source:
-  type: agent-step
+  type: agent-task
   agent: codex
   task: local-summary
   outputs:
@@ -170,7 +170,7 @@ process.stdout.write(JSON.stringify({
         return;
       }
       expect(JSON.parse(result.execution.stdout)).toEqual({ verdict: "grounded" });
-      expect(result.receipt.metadata?.agent_hook).toMatchObject({
+      expect(result.receipt.metadata?.agent_task).toMatchObject({
         route: "provided",
       });
       expect(requestCount).toBe(2);

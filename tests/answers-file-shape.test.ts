@@ -17,10 +17,10 @@ describe("readCallerInputFile shape contract", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-answers-flat-"));
     try {
       const filePath = await writeAnswersFile(tempDir, "answers.json", {
-        "agent_step.foo.output": { result: 42 },
+        "agent_task.foo.output": { result: 42 },
       });
       const result = await readCallerInputFile(filePath);
-      expect(result.answers).toEqual({ "agent_step.foo.output": { result: 42 } });
+      expect(result.answers).toEqual({ "agent_task.foo.output": { result: 42 } });
       expect(result.approvals).toBeUndefined();
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -31,11 +31,11 @@ describe("readCallerInputFile shape contract", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-answers-nested-"));
     try {
       const filePath = await writeAnswersFile(tempDir, "answers.json", {
-        answers: { "agent_step.foo.output": { result: 42 } },
+        answers: { "agent_task.foo.output": { result: 42 } },
         approvals: { "gate.foo": true },
       });
       const result = await readCallerInputFile(filePath);
-      expect(result.answers).toEqual({ "agent_step.foo.output": { result: 42 } });
+      expect(result.answers).toEqual({ "agent_task.foo.output": { result: 42 } });
       expect(result.approvals).toEqual({ "gate.foo": true });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -46,10 +46,10 @@ describe("readCallerInputFile shape contract", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-answers-mixed-"));
     try {
       const filePath = await writeAnswersFile(tempDir, "answers.json", {
-        "agent_step.foo.output": { result: 42 },
+        "agent_task.foo.output": { result: 42 },
         approvals: { "gate.foo": true },
       });
-      await expect(readCallerInputFile(filePath)).rejects.toThrow(/agent_step\.foo\.output/);
+      await expect(readCallerInputFile(filePath)).rejects.toThrow(/agent_task\.foo\.output/);
       await expect(readCallerInputFile(filePath)).rejects.toThrow(/flat|nested/);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -60,10 +60,10 @@ describe("readCallerInputFile shape contract", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-answers-nested-no-approvals-"));
     try {
       const filePath = await writeAnswersFile(tempDir, "answers.json", {
-        answers: { "agent_step.foo.output": { result: 42 } },
+        answers: { "agent_task.foo.output": { result: 42 } },
       });
       const result = await readCallerInputFile(filePath);
-      expect(result.answers).toEqual({ "agent_step.foo.output": { result: 42 } });
+      expect(result.answers).toEqual({ "agent_task.foo.output": { result: 42 } });
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

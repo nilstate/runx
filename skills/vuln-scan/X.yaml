@@ -16,7 +16,7 @@ harness:
         objective: identify the highest-risk dependency issue to surface today
       caller:
         answers:
-          agent_step.vuln-scan.output:
+          agent_task.vuln-scan.output:
             dependency_inventory:
               target: pnpm-lock.yaml
               packages:
@@ -39,7 +39,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: vuln-scan
-          source_type: agent-step
+          source_type: agent-task
     - name: vuln-scan-advisory-packet
       runner: advisory
       inputs:
@@ -49,7 +49,7 @@ harness:
             severity: medium
       caller:
         answers:
-          agent_step.vuln-scan-advisory.output:
+          agent_task.vuln-scan-advisory.output:
             advisory_draft:
               title: Example advisory
               body: We identified a medium-severity transitive dependency issue and are preparing the patch path.
@@ -65,7 +65,7 @@ harness:
           kind: skill_execution
           status: success
           skill_name: vuln-scan
-          source_type: agent-step
+          source_type: agent-task
 
 runners:
   agent:
@@ -73,7 +73,7 @@ runners:
 
   scan:
     default: true
-    type: agent-step
+    type: agent-task
     agent: reviewer
     task: vuln-scan
     outputs:
@@ -99,7 +99,7 @@ runners:
         description: "Known packages, incidents, or prior findings."
 
   advisory:
-    type: agent-step
+    type: agent-task
     agent: builder
     task: vuln-scan-advisory
     outputs:

@@ -3,7 +3,7 @@ skill: icey-server-operator
 runners:
   operator-plan:
     default: true
-    type: agent-step
+    type: agent-task
     agent: operator
     task: icey-server-operator-plan
     inputs:
@@ -65,7 +65,7 @@ harness:
         target_surface: "web"
       caller:
         answers:
-          agent_step.icey-server-operator-plan.output:
+          agent_task.icey-server-operator-plan.output:
             classification: "web"
             evidence_to_inspect:
               - "README.md"
@@ -96,7 +96,7 @@ harness:
         target_surface: "release"
       caller:
         answers:
-          agent_step.icey-server-operator-plan.output:
+          agent_task.icey-server-operator-plan.output:
             classification: "release"
             evidence_to_inspect:
               - "VERSION"

@@ -628,7 +628,7 @@ function extractReceiptActors(receipt: LocalReceipt): readonly string[] | undefi
     return undefined;
   }
   const actors = [
-    readNestedString(metadata, ["agent_hook", "agent"]),
+    readNestedString(metadata, ["agent_task", "agent"]),
     readNestedString(metadata, ["agent_runner", "skill"]),
     readNestedString(metadata, ["auth", "provider"]),
     readNestedString(metadata, ["runner", "provider"]),

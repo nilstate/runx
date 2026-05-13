@@ -96,7 +96,7 @@ export function admitLocalSkill(
   skill: LocalAdmissionSkill,
   options: LocalAdmissionOptions = {},
 ): AdmissionDecision {
-  const allowedSourceTypes = options.allowedSourceTypes ?? ["agent", "agent-step", "approval", "cli-tool", "mcp", "a2a", "catalog", "graph"];
+  const allowedSourceTypes = options.allowedSourceTypes ?? ["agent", "agent-task", "approval", "cli-tool", "mcp", "a2a", "catalog", "graph"];
   const maxTimeoutSeconds = options.maxTimeoutSeconds ?? 300;
   const reasons: string[] = [];
 

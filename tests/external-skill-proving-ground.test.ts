@@ -20,7 +20,7 @@ interface ProvingGroundExpectation {
   readonly inputKeys: readonly string[];
   readonly allowedTools?: readonly string[];
   readonly currentContextTypes?: readonly string[];
-  readonly sourceType?: "agent" | "agent-step";
+  readonly sourceType?: "agent" | "agent-task";
   readonly minimumInstructionChars?: number;
 }
 
@@ -48,206 +48,206 @@ const harnessScenarios: readonly HarnessProvingGroundScenario[] = [
     skillName: "content-pipeline",
     extraInputKeys: ["channel", "deliverable"],
     expectation: {
-      requestId: "agent_step.research.output",
+      requestId: "agent_task.research.output",
       inputKeys: ["objective", "audience", "domain", "operator_context", "target_entities", "channel", "deliverable"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "draft-content",
     expectation: {
-      requestId: "agent_step.draft-content-draft.output",
+      requestId: "agent_task.draft-content-draft.output",
       inputKeys: ["objective", "audience", "channel", "evidence_pack"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "deep-research-brief",
     extraInputKeys: ["channel", "deliverable"],
     expectation: {
-      requestId: "agent_step.research.output",
+      requestId: "agent_task.research.output",
       inputKeys: ["objective", "audience", "domain", "operator_context", "target_entities", "channel", "deliverable"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "ecosystem-vuln-scan",
     extraInputKeys: ["objective", "channel"],
     expectation: {
-      requestId: "agent_step.vuln-scan.output",
+      requestId: "agent_task.vuln-scan.output",
       inputKeys: ["target", "objective", "channel"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "review-skill",
     expectation: {
-      requestId: "agent_step.review-skill.output",
+      requestId: "agent_task.review-skill.output",
       inputKeys: ["skill_ref", "objective", "evidence_pack", "test_constraints"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "evolve",
     runner: "evolve",
     expectation: {
-      requestId: "agent_step.evolve-plan.output",
+      requestId: "agent_task.evolve-plan.output",
       inputKeys: ["objective", "repo_root", "terminate"],
       allowedTools: ["fs.read", "git.status", "shell.exec"],
       currentContextTypes: ["repo_profile"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "issue-triage",
     runner: "respond",
     expectation: {
-      requestId: "agent_step.issue-triage-respond.output",
+      requestId: "agent_task.issue-triage-respond.output",
       inputKeys: ["issue_url", "objective", "maintainer_context"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "write-harness",
     expectation: {
-      requestId: "agent_step.write-harness.output",
+      requestId: "agent_task.write-harness.output",
       inputKeys: ["objective", "decomposition", "research"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "improve-skill",
     expectation: {
-      requestId: "agent_step.review-receipt.output",
+      requestId: "agent_task.review-receipt.output",
       inputKeys: ["receipt_id", "receipt_summary", "harness_output", "skill_path", "objective"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "ecosystem-brief",
     extraInputKeys: ["channel", "deliverable"],
     expectation: {
-      requestId: "agent_step.research.output",
+      requestId: "agent_task.research.output",
       inputKeys: ["objective", "audience", "domain", "operator_context", "target_entities", "channel", "deliverable"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "moltbook",
     runner: "scan",
     expectation: {
-      requestId: "agent_step.moltbook-scan.output",
+      requestId: "agent_task.moltbook-scan.output",
       inputKeys: ["objective", "community_context", "feed_snapshot"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "moltbook",
     runner: "post",
     expectation: {
-      requestId: "agent_step.moltbook-post.output",
+      requestId: "agent_task.moltbook-post.output",
       inputKeys: ["outline", "community_context", "approval_note"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "work-plan",
     expectation: {
-      requestId: "agent_step.work-plan.output",
+      requestId: "agent_task.work-plan.output",
       inputKeys: ["objective", "project_context", "change_set"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "design-skill",
     expectation: {
-      requestId: "agent_step.work-plan.output",
+      requestId: "agent_task.work-plan.output",
       inputKeys: ["objective", "project_context"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "skill-lab",
     expectation: {
-      requestId: "agent_step.work-plan.output",
+      requestId: "agent_task.work-plan.output",
       inputKeys: ["objective", "project_context", "thread_locator", "thread"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "review-receipt",
     expectation: {
-      requestId: "agent_step.review-receipt.output",
+      requestId: "agent_task.review-receipt.output",
       inputKeys: ["receipt_summary", "harness_output", "skill_path"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "research",
     expectation: {
-      requestId: "agent_step.research.output",
+      requestId: "agent_task.research.output",
       inputKeys: ["objective", "domain", "deliverable", "target_entities"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "prior-art",
     expectation: {
-      requestId: "agent_step.prior-art.output",
+      requestId: "agent_task.prior-art.output",
       inputKeys: ["objective", "decomposition"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "skill-testing",
     extraInputKeys: ["channel"],
     expectation: {
-      requestId: "agent_step.review-skill.output",
+      requestId: "agent_task.review-skill.output",
       inputKeys: ["skill_ref", "objective", "evidence_pack", "test_constraints", "channel"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "release",
     runner: "prepare",
     expectation: {
-      requestId: "agent_step.release-prepare.output",
+      requestId: "agent_task.release-prepare.output",
       inputKeys: ["project_root", "channel", "last_tag", "operator_context"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "reflect-digest",
     expectation: {
-      requestId: "agent_step.reflect-digest.output",
+      requestId: "agent_task.reflect-digest.output",
       inputKeys: ["reflect_projections", "min_support"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "sourcey",
     expectation: {
-      requestId: "agent_step.sourcey-discover.output",
+      requestId: "agent_task.sourcey-discover.output",
       inputKeys: ["project"],
       allowedTools: ["fs.read", "git.status", "git.current_branch", "git.diff_name_only", "cli.capture_help"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
-    skillName: "request-triage",
+    skillName: "intake",
     expectation: {
-      requestId: "agent_step.request-triage.output",
+      requestId: "agent_task.intake.output",
       inputKeys: ["thread_title", "thread_body", "thread_locator", "outbox_entry", "product_context", "operator_context"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
   {
     skillName: "vuln-scan",
     runner: "scan",
     expectation: {
-      requestId: "agent_step.vuln-scan.output",
+      requestId: "agent_task.vuln-scan.output",
       inputKeys: ["target", "objective"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
 ] as const;
@@ -274,7 +274,7 @@ const customScenarios: readonly CustomProvingGroundScenario[] = [
       };
     },
     expectation: {
-      requestId: "agent_step.issue-to-pr-author-spec.output",
+      requestId: "agent_task.issue-to-pr-author-spec.output",
       inputKeys: [
         "fixture",
         "task_id",
@@ -288,7 +288,7 @@ const customScenarios: readonly CustomProvingGroundScenario[] = [
         "scafld_bin",
       ],
       allowedTools: ["fs.read", "git.status"],
-      sourceType: "agent-step",
+      sourceType: "agent-task",
     },
   },
 ] as const;
@@ -367,7 +367,7 @@ async function assertFreshBoundary(options: {
     return;
   }
 
-  expect(request.work.source_type).toBe(options.expectation.sourceType ?? "agent-step");
+  expect(request.work.source_type).toBe(options.expectation.sourceType ?? "agent-task");
   expect(request.work.envelope.instructions.trim().length).toBeGreaterThanOrEqual(
     options.expectation.minimumInstructionChars ?? 80,
   );

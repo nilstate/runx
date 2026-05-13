@@ -131,14 +131,14 @@ describe("history, inspect, and knowledge CLI", () => {
         type: "draft_pull_request",
         data: { title: "Draft PR" },
         runId: builderReceiptId,
-        producer: { skill: "draft-content", runner: "agent-step" },
+        producer: { skill: "draft-content", runner: "agent-task" },
       });
       await writeLocalReceipt({
         receiptId: builderReceiptId,
         receiptDir,
         runxHome,
         skillName: "draft-content",
-        sourceType: "agent-step",
+        sourceType: "agent-task",
         inputs: { objective: "draft a pull request" },
         stdout: JSON.stringify({ ok: true }),
         stderr: "",
@@ -148,8 +148,8 @@ describe("history, inspect, and knowledge CLI", () => {
           signal: null,
           durationMs: 2,
           metadata: {
-            agent_hook: {
-              source_type: "agent-step",
+            agent_task: {
+              source_type: "agent-task",
               agent: "builder",
               task: "draft-pr",
               route: "provided",
@@ -175,13 +175,13 @@ describe("history, inspect, and knowledge CLI", () => {
         type: "triage_packet",
         data: { verdict: "needs follow-up" },
         runId: reviewerReceiptId,
-        producer: { skill: "request-triage", runner: "cli-tool" },
+        producer: { skill: "intake", runner: "cli-tool" },
       });
       await writeLocalReceipt({
         receiptId: reviewerReceiptId,
         receiptDir,
         runxHome,
-        skillName: "request-triage",
+        skillName: "intake",
         sourceType: "cli-tool",
         inputs: { thread: "support request" },
         stdout: JSON.stringify({ ok: true }),
