@@ -124,7 +124,7 @@ describe("run replay", () => {
 name: child-task
 description: Temporary delegated fixture that echoes a task id through an agent boundary.
 source:
-  type: agent-task
+  type: agent-step
   agent: codex
   task: child-task
   outputs:
@@ -195,7 +195,7 @@ runners:
         `${JSON.stringify(
           {
             answers: {
-              "agent_task.child-task.output": {
+              "agent_step.child-task.output": {
                 echoed_task: "abc-123",
               },
             },
@@ -207,7 +207,7 @@ runners:
 
       const pausedStdout = createMemoryStream();
       const pausedExit = await runCli(
-        [wrapperDir, "--task-id", "abc-123", "--receipt-dir", receiptDir, "--non-interactive", "--json"],
+        ["skill", wrapperDir, "--task-id", "abc-123", "--receipt-dir", receiptDir, "--non-interactive", "--json"],
         { stdin: process.stdin, stdout: pausedStdout, stderr: createMemoryStream() },
         {
           ...process.env,

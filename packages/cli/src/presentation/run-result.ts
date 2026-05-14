@@ -1,6 +1,7 @@
 import type { RunLocalSkillResult } from "@runxhq/runtime-local";
 
-import type { CliIo, ParsedArgs } from "../index.js";
+import type { ParsedArgs } from "../args.js";
+import type { CliIo } from "../index.js";
 import { shortId, statusIcon, theme } from "../ui.js";
 import { isRecord } from "./internal.js";
 import { renderNeedsResolution, renderPolicyDenied } from "./needs-resolution.js";

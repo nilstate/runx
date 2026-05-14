@@ -1,0 +1,58 @@
+name: outbox-build-work-item-story-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: outbox.build_work_item_story
+inputs:
+  task_id: task-fixture
+  thread_title: Improve docs
+  thread_locator: issue://fixture/123
+  target_repo: acme/widgets
+  build_result:
+    passed: 2
+    failed: 0
+  review_result:
+    verdict: pass
+    blocking_count: 0
+  completion_result:
+    status: completed
+    title: Improve docs
+  pull_request_outbox_entry:
+    kind: pull_request
+    locator: https://github.com/acme/widgets/pull/42
+    metadata:
+      repo: acme/widgets
+      branch: docs/fixture
+      base: main
+  push_result:
+    status: pushed
+    pull_request:
+      url: https://github.com/acme/widgets/pull/42
+expect:
+  status: success
+  outputs:
+    story:
+      matches_packet: runx.work-item-story.v1
+      subset:
+        thread_locator: issue://fixture/123
+        milestones:
+          - kind: intake
+          - kind: triage
+          - kind: spec
+          - kind: build
+            status: passed
+          - kind: review
+            status: passed
+          - kind: pull_request
+            status: ready
+          - kind: merge_gate
+            status: ready
+    outbox_entry:
+      matches_packet: runx.outbox.entry.v1
+      subset:
+        entry_id: message:task-fixture:merge_gate
+        kind: message
+        status: proposed
+        metadata:
+          workflow: issue-to-pr
+          milestone_kind: merge_gate

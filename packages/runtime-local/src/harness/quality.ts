@@ -1,3 +1,5 @@
+import { builderFramingPatterns, machineFramingPatterns } from "./framing-patterns.js";
+
 export type QualityEvaluationStatus = "pass" | "warn" | "fail";
 
 export interface QualityProfileInput {
@@ -147,25 +149,6 @@ function requiresEvidence(profile: string): boolean {
 function hasEvidenceSignals(text: string): boolean {
   return /\bevidence\b|\bsource\b|\bfrom\b|\bbecause\b|\bobserved\b|\brepo\b|\bissue\b|\breceipt\b|\bartifact\b|\bcited\b/i.test(text);
 }
-
-const machineFramingPatterns = [
-  /\bmachine output\b/i,
-  /\bagent output\b/i,
-  /\bmodel output\b/i,
-  /\bAI-generated\b/i,
-  /\bthe machine should\b/i,
-  /\bthe agent should\b/i,
-  /\bthe model should\b/i,
-] as const;
-
-const builderFramingPatterns = [
-  /\bsupplied catalog\b/i,
-  /\bsupplied decomposition\b/i,
-  /\bsupplied work-?plan\b/i,
-  /\bprovided catalog evidence\b/i,
-  /\bbuilder envelope\b/i,
-  /\bmachine packet\b/i,
-] as const;
 
 const unresolvedPlaceholderPatterns = [
   /\bUNRESOLVED_[A-Z0-9_]+\b/,

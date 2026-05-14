@@ -28,7 +28,7 @@ runners:
         - id: only-step
           label: only step
           run:
-            type: agent-task
+            type: agent-step
             agent: builder
             task: graph-skill-only-step
             outputs:

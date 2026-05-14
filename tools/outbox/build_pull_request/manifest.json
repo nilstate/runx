@@ -40,6 +40,16 @@
       "required": false,
       "description": "Intended repository slug when the caller already knows it."
     },
+    "branch": {
+      "type": "string",
+      "required": false,
+      "description": "Explicit head branch for provider publication."
+    },
+    "fix_bundle": {
+      "type": "json",
+      "required": false,
+      "description": "Bounded fix bundle used to derive the governed file list for provider publication."
+    },
     "handoff_markdown": {
       "type": "string",
       "required": true,
@@ -107,7 +117,7 @@
       "./run.mjs"
     ]
   },
-  "source_hash": "sha256:c801ea419e111db9b8e1186db335d89f18c1019ad98f75b6669840c8395e31f3",
-  "schema_hash": "sha256:95627cd42b0d2a02ff911eed72031ed40f1aece79043ac81518c3d41ddda2085",
+  "source_hash": "sha256:a790945c5956f6261f7f754dc39d249b32b95b123ce5f2b51884d9f423bb6891",
+  "schema_hash": "sha256:6df4c15d8c80494285dd16c161fc11b0727cc31f23147675976482e2ea6e25c6",
   "toolkit_version": "0.1.3"
 }

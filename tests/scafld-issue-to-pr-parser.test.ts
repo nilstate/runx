@@ -31,6 +31,7 @@ describe("scafld issue-to-PR skill contract", () => {
       "read-declared-files",
       "author-fix",
       "write-fix",
+      "scafld-build-open",
       "scafld-build",
       "scafld-status",
       "read-current-branch",
@@ -40,6 +41,8 @@ describe("scafld issue-to-PR skill contract", () => {
       "scafld-handoff",
       "package-pull-request",
       "push-pull-request",
+      "package-thread-story",
+      "push-thread-story",
     ]);
     expect(
       Object.fromEntries(graph.steps.filter((step) => step.inputs.command !== undefined).map((step) => [step.id, step.inputs.command])),
@@ -47,7 +50,8 @@ describe("scafld issue-to-PR skill contract", () => {
       "scafld-plan": "plan",
       "scafld-validate": "validate",
       "scafld-approve": "approve",
-      "scafld-build": "build_to_review",
+      "scafld-build-open": "build",
+      "scafld-build": "build",
       "scafld-status": "status",
       "scafld-review": "review",
       "scafld-complete": "complete",
@@ -60,17 +64,18 @@ describe("scafld issue-to-PR skill contract", () => {
     expect(graph.steps.some((step) => (step.tool ?? "").includes("capture"))).toBe(false);
     expect(graph.steps.find((step) => step.id === "author-spec")).toMatchObject({
       run: {
-        type: "agent-task",
+        type: "agent-step",
         task: "issue-to-pr-author-spec",
       },
       context: {
         spec_path: "scafld-plan.result.path",
       },
     });
-    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("scafld 2.0 markdown spec");
+    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("scafld 2.4-compatible markdown spec");
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Do not use runx skill runner");
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("Files impacted");
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo-change scope empty");
+    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("reviewer story");
     expect(graph.steps.find((step) => step.id === "normalize-spec")).toMatchObject({
       tool: "spec.normalize_scafld_frontmatter",
       context: {
@@ -92,7 +97,7 @@ describe("scafld issue-to-PR skill contract", () => {
     });
     expect(graph.steps.find((step) => step.id === "author-fix")).toMatchObject({
       run: {
-        type: "agent-task",
+        type: "agent-step",
         task: "issue-to-pr-apply-fix",
       },
       context: {
@@ -114,8 +119,10 @@ describe("scafld issue-to-PR skill contract", () => {
         completion_result: "scafld-complete.result",
         status_snapshot: "scafld-final-status.result",
         current_branch: "read-current-branch.git_branch.data",
+        fix_bundle: "author-fix.fix_bundle.data",
       },
     });
+    expect(graph.steps.find((step) => step.id === "package-pull-request")?.label).toBe("package reviewer PR story");
     expect(graph.steps.find((step) => step.id === "push-pull-request")).toMatchObject({
       tool: "thread.push_outbox",
       context: {
@@ -124,6 +131,28 @@ describe("scafld issue-to-PR skill contract", () => {
       },
       inputs: {
         next_status: "draft",
+      },
+    });
+    expect(graph.steps.find((step) => step.id === "package-thread-story")).toMatchObject({
+      tool: "outbox.build_work_item_story",
+      context: {
+        build_result: "scafld-build.result",
+        review_result: "scafld-review.result",
+        completion_result: "scafld-complete.result",
+        status_snapshot: "scafld-final-status.result",
+        draft_pull_request: "package-pull-request.draft_pull_request.data",
+        pull_request_outbox_entry: "push-pull-request.outbox_entry",
+        push_result: "push-pull-request.push",
+      },
+    });
+    expect(graph.steps.find((step) => step.id === "push-thread-story")).toMatchObject({
+      tool: "thread.push_outbox",
+      context: {
+        outbox_entry: "package-thread-story.outbox_entry.data",
+        draft_pull_request: "package-pull-request.draft_pull_request.data",
+      },
+      inputs: {
+        next_status: "published",
       },
     });
     expect(graph.policy?.transitions).toEqual([

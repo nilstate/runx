@@ -34,7 +34,8 @@ import {
   type RunLocalSkillResult,
 } from "@runxhq/runtime-local";
 
-import type { CliIo, CliServices, ParsedArgs } from "./index.js";
+import type { ParsedArgs } from "./args.js";
+import type { CliIo, CliServices } from "./index.js";
 import { createAgentRuntimeLoader, createNonInteractiveCaller } from "./callers.js";
 import {
   renderCliError,

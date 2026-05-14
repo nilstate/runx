@@ -102,6 +102,7 @@ export function renderNeedsResolution(
   }
   lines.push("");
   lines.push(`  ${t.dim}Machine mode:${t.reset} ${t.dim}${t.cyan}--json${t.reset}${t.dim} prints the exact request envelope.${t.reset}`);
+  lines.push(`  ${t.dim}Exit code:${t.reset} ${t.dim}2, documented in ${t.cyan}docs/cli-exit-codes.md#exit-code-2-needs-resolution${t.reset}${t.dim}.${t.reset}`);
   lines.push("");
   return lines.join("\n");
 }

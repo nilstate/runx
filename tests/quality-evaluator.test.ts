@@ -51,6 +51,21 @@ describe("quality evaluator", () => {
       }
     }
   });
+
+  it("keeps machine and builder framing checks stable", async () => {
+    const evaluation = evaluateArtifactQuality({
+      qualityProfile: "Evidence bar: cite repository evidence.",
+      artifact: [
+        "This AI-generated note uses the supplied work-plan.",
+        "Evidence: repository fixture.",
+      ].join(" "),
+    });
+
+    expect(evaluation.status).toBe("fail");
+    expect(evaluation.findings.map((finding) => finding.code)).toEqual(
+      expect.arrayContaining(["machine_framing", "builder_framing"]),
+    );
+  });
 });
 
 async function loadQualityProfile(skill: string): Promise<string> {

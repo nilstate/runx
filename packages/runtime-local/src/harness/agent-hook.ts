@@ -38,7 +38,7 @@ export function createHarnessHookAdapter(options: HarnessHookAdapterOptions = {}
         durationMs: Math.round(performance.now() - started),
         errorMessage: result.errorMessage,
         metadata: {
-          agent_task: {
+          agent_hook: {
             source_type: "harness-hook",
             hook,
             status,

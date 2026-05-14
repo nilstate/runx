@@ -52,6 +52,10 @@ export function hydrateGitHubIssueThread(options: {
   readonly issue: unknown;
   readonly pullRequests?: readonly unknown[];
 }): GitHubHydratedThread;
+export function mapGitHubPullRequestToOutboxEntry(
+  pullRequest: Record<string, unknown>,
+  threadLocator: string,
+): Record<string, unknown>;
 export function fetchGitHubIssueThread(options: {
   readonly adapterRef: string;
   readonly env?: NodeJS.ProcessEnv;

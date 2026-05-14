@@ -16,7 +16,7 @@ const profileDocument = `skill: sourcey
 runners:
   default:
     default: true
-    type: agent-task
+    type: agent-step
     agent: operator
     task: sourcey
 `;

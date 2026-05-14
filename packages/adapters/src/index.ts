@@ -3,7 +3,7 @@ import type { SkillAdapter } from "@runxhq/core/executor";
 import { createCatalogAdapter } from "./catalog/index.js";
 import {
   createManagedAgentAdapter,
-  createManagedAgentTaskAdapter,
+  createManagedAgentStepAdapter,
   loadManagedAgentConfig,
 } from "./agent/index.js";
 import { createCliToolAdapter } from "./cli-tool/index.js";
@@ -44,7 +44,7 @@ export async function resolveDefaultSkillAdapters(
 
   return [
     createManagedAgentAdapter(managed),
-    createManagedAgentTaskAdapter(managed),
+    createManagedAgentStepAdapter(managed),
     ...baseAdapters,
   ];
 }

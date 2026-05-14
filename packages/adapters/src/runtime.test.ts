@@ -14,17 +14,17 @@ describe("createRuntimeBackedCaller", () => {
   it("uses provided answers before managed runtime resolution", async () => {
     const caller = createRuntimeBackedCaller({
       answers: {
-        "agent_task.docs-build.output": {
+        "agent_step.docs-build.output": {
           project_brief: { summary: "seeded" },
         },
       },
     });
     const request = {
-      id: "agent_task.docs-build.output",
+      id: "agent_step.docs-build.output",
       kind: "cognitive_work",
       work: {
-        id: "agent_task.docs-build.output",
-        source_type: "agent-task",
+        id: "agent_step.docs-build.output",
+        source_type: "agent-step",
         envelope: {
           run_id: "rx_test",
           step_id: "docs-build",
@@ -56,11 +56,11 @@ describe("createRuntimeBackedCaller", () => {
   it("falls back to the env-configured managed runtime for cognitive work", async () => {
     const caller = createRuntimeBackedCaller();
     const request = {
-      id: "agent_task.docs-build.output",
+      id: "agent_step.docs-build.output",
       kind: "cognitive_work",
       work: {
-        id: "agent_task.docs-build.output",
-        source_type: "agent-task",
+        id: "agent_step.docs-build.output",
+        source_type: "agent-step",
         envelope: {
           run_id: "rx_test",
           step_id: "docs-build",

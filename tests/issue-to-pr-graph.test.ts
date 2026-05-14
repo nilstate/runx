@@ -41,6 +41,7 @@ describe("issue-to-PR composite skill", () => {
       "read-declared-files",
       "author-fix",
       "write-fix",
+      "scafld-build-open",
       "scafld-build",
       "scafld-status",
       "read-current-branch",
@@ -50,26 +51,31 @@ describe("issue-to-PR composite skill", () => {
       "scafld-handoff",
       "package-pull-request",
       "push-pull-request",
+      "package-thread-story",
+      "push-thread-story",
     ]);
     expect(graph.steps.map((step) => step.inputs.command).filter(Boolean)).toEqual([
       "plan",
       "validate",
       "approve",
-      "build_to_review",
+      "build",
+      "build",
       "status",
       "review",
       "complete",
       "status",
       "handoff",
     ]);
-    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("scafld 2.0 markdown spec");
+    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("scafld 2.4-compatible markdown spec");
     expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("repo-change scope empty");
+    expect(graph.steps.find((step) => step.id === "author-spec")?.instructions).toContain("reviewer story");
     expect(graph.steps.find((step) => step.id === "author-fix")?.instructions).toContain("fix_bundle.status: blocked");
     expect(graph.steps.find((step) => step.id === "author-fix")?.instructions).toContain("one scoped docs edit is possible");
     expect(graph.steps.find((step) => step.id === "normalize-spec")).toMatchObject({
       tool: "spec.normalize_scafld_frontmatter",
     });
     expect(graph.steps.find((step) => step.id === "package-pull-request")).toMatchObject({
+      label: "package reviewer PR story",
       tool: "outbox.build_pull_request",
       context: {
         handoff_markdown: "scafld-handoff.stdout",
@@ -78,6 +84,20 @@ describe("issue-to-PR composite skill", () => {
         completion_result: "scafld-complete.result",
         status_snapshot: "scafld-final-status.result",
         current_branch: "read-current-branch.git_branch.data",
+        fix_bundle: "author-fix.fix_bundle.data",
+      },
+    });
+    expect(graph.steps.find((step) => step.id === "package-thread-story")).toMatchObject({
+      label: "package source-thread story",
+      tool: "outbox.build_work_item_story",
+      context: {
+        build_result: "scafld-build.result",
+        review_result: "scafld-review.result",
+        completion_result: "scafld-complete.result",
+        status_snapshot: "scafld-final-status.result",
+        draft_pull_request: "package-pull-request.draft_pull_request.data",
+        pull_request_outbox_entry: "push-pull-request.outbox_entry",
+        push_result: "push-pull-request.push",
       },
     });
     expect(graph.steps.find((step) => step.id === "read-current-branch")).toMatchObject({
@@ -103,6 +123,22 @@ describe("issue-to-PR composite skill", () => {
     try {
       await initScafldRepo(tempDir);
       runChecked("git", ["checkout", "-b", taskId], tempDir);
+      const threadPath = path.join(tempDir, "thread.json");
+      const thread = {
+        kind: "runx.thread.v1",
+        adapter: {
+          type: "file",
+          adapter_ref: threadPath,
+        },
+        thread_kind: "work_item",
+        thread_locator: "local://fixtures/repo/issues/123",
+        title: "Fixture thread-driven change",
+        entries: [],
+        decisions: [],
+        outbox: [],
+        source_refs: [],
+      };
+      await writeFile(threadPath, `${JSON.stringify(thread, null, 2)}\n`);
 
       const result = await runLocalSkill({
         skillPath: path.resolve("skills/issue-to-pr"),
@@ -111,7 +147,8 @@ describe("issue-to-PR composite skill", () => {
           task_id: taskId,
           thread_title: "Fixture thread-driven change",
           thread_body: "Apply a bounded fixture docs update.",
-          thread_locator: "github://example/repo/issues/123",
+          thread_locator: "local://fixtures/repo/issues/123",
+          thread,
           target_repo: "fixtures/repo",
           size: "micro",
           risk: "low",
@@ -137,17 +174,13 @@ describe("issue-to-PR composite skill", () => {
       const output = JSON.parse(result.execution.stdout);
       expect(output).toMatchObject({
         outbox_entry: {
-          kind: "pull_request",
-          status: "proposed",
-          entry_id: `pull_request:${taskId}`,
+          kind: "message",
+          status: "published",
+          entry_id: `message:${taskId}:merge_gate`,
           metadata: {
-            action: "create",
-            repo: "fixtures/repo",
-            branch: taskId,
-            base: "main",
-            review_verdict: "pass",
-            check_status: "success",
-            push_ready: true,
+            workflow: "issue-to-pr",
+            milestone_kind: "merge_gate",
+            body_markdown: expect.stringContaining("Human merge gate is required"),
           },
         },
         draft_pull_request: {
@@ -162,10 +195,9 @@ describe("issue-to-PR composite skill", () => {
           },
           pull_request: {
             title: "Fixture thread-driven change",
-            body_markdown: expect.stringContaining("## Human Merge Gate"),
+            body_markdown: expect.stringContaining("# Handoff: Fixture thread-driven change"),
             is_draft: true,
           },
-          engineering_summary_markdown: expect.stringContaining("# Handoff: Fixture thread-driven change"),
           governance: {
             status: "completed",
             review_verdict: "pass",
@@ -173,10 +205,29 @@ describe("issue-to-PR composite skill", () => {
           },
         },
         push: {
-          status: "skipped",
-          reason: "thread not provided",
+          status: "pushed",
+          adapter: {
+            type: "file",
+            adapter_ref: threadPath,
+          },
         },
       });
+      expect(output.thread.outbox).toEqual([
+        expect.objectContaining({
+          entry_id: `pull_request:${taskId}`,
+          kind: "pull_request",
+          status: "draft",
+          thread_locator: "local://fixtures/repo/issues/123",
+        }),
+        expect.objectContaining({
+          entry_id: `message:${taskId}:merge_gate`,
+          kind: "message",
+          status: "published",
+          thread_locator: "local://fixtures/repo/issues/123",
+        }),
+      ]);
+      await expect(readFile(threadPath, "utf8")).resolves.toContain(`pull_request:${taskId}`);
+      await expect(readFile(threadPath, "utf8")).resolves.toContain(`message:${taskId}:merge_gate`);
       expect(result.receipt.steps.map((step) => [step.step_id, step.status])).toEqual([
         ["scafld-plan", "success"],
         ["author-spec", "success"],
@@ -189,6 +240,7 @@ describe("issue-to-PR composite skill", () => {
         ["read-declared-files", "success"],
         ["author-fix", "success"],
         ["write-fix", "success"],
+        ["scafld-build-open", "success"],
         ["scafld-build", "success"],
         ["scafld-status", "success"],
         ["read-current-branch", "success"],
@@ -198,6 +250,8 @@ describe("issue-to-PR composite skill", () => {
         ["scafld-handoff", "success"],
         ["package-pull-request", "success"],
         ["push-pull-request", "success"],
+        ["package-thread-story", "success"],
+        ["push-thread-story", "success"],
       ]);
       await expect(readFile(path.join(tempDir, "app.txt"), "utf8")).resolves.toBe("fixed\n");
       await expect(readFile(path.join(tempDir, "notes.md"), "utf8")).resolves.toBe("governed\n");
@@ -217,11 +271,11 @@ describe("issue-to-PR composite skill", () => {
           ? {
               actor: "agent",
               payload:
-                request.id === "agent_task.issue-to-pr-author-spec.output"
+                request.id === "agent_step.issue-to-pr-author-spec.output"
                   ? {
                       spec_contents: buildIssueToPrSpec(taskId),
                     }
-                  : request.id === "agent_task.issue-to-pr-apply-fix.output"
+                  : request.id === "agent_step.issue-to-pr-apply-fix.output"
                     ? {
                         fix_bundle: {
                           status: "blocked",
@@ -302,12 +356,12 @@ function answerForIssueToPrStep(
   taskId: string,
   request: Parameters<Caller["resolve"]>[0],
 ): Readonly<Record<string, unknown>> | undefined {
-  if (request.id === "agent_task.issue-to-pr-author-spec.output") {
+  if (request.id === "agent_step.issue-to-pr-author-spec.output") {
     return {
       spec_contents: buildIssueToPrSpec(taskId),
     };
   }
-  if (request.id === "agent_task.issue-to-pr-apply-fix.output") {
+  if (request.id === "agent_step.issue-to-pr-apply-fix.output") {
     return {
       fix_bundle: {
         summary: "Apply the bounded fixture fix declared in the spec across both tracked files.",

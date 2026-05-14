@@ -19,7 +19,7 @@ describe("voice profile injection", () => {
     let capturedRequest: AdapterInvokeRequest | undefined;
 
     const adapter: SkillAdapter = {
-      type: "agent-task",
+      type: "agent-step",
       invoke: async (request) => {
         capturedRequest = request;
         return {
@@ -37,7 +37,7 @@ describe("voice profile injection", () => {
 
     try {
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/agent-task"),
+        skillPath: path.resolve("fixtures/skills/agent-step"),
         inputs: { prompt: "Check the boundary." },
         caller: {
           resolve: async () => undefined,

@@ -6,7 +6,7 @@ import {
   recordInput,
   stringInput,
 } from "@runxhq/authoring";
-import { buildThreadPullRequestReviewerPacketMarkdown } from "@runxhq/core/knowledge";
+import { sanitizePublicMarkdown } from "../../../public_markdown.mjs";
 
 export default defineTool({
   name: "outbox.build_pull_request",
@@ -18,6 +18,8 @@ export default defineTool({
     thread: recordInput({ optional: true, description: "Optional hydrated thread that may already carry a pull_request outbox entry." }),
     outbox_entry: recordInput({ optional: true, description: "Optional current pull_request outbox entry when refreshing an existing draft." }),
     target_repo: stringInput({ optional: true, description: "Intended repository slug when the caller already knows it." }),
+    branch: stringInput({ optional: true, description: "Explicit head branch for provider publication." }),
+    fix_bundle: recordInput({ optional: true, description: "Bounded fix bundle used to derive the governed file list for provider publication." }),
     handoff_markdown: stringInput({ description: "Native markdown emitted by `scafld handoff`." }),
     build_result: recordInput({ description: "Native scafld build result payload." }),
     review_result: recordInput({ description: "Native scafld review result payload." }),
@@ -54,8 +56,10 @@ function runBuildPullRequest({ inputs }) {
   const currentBranch = unwrapRecord(inputs.current_branch);
   const thread = optionalRecord(inputs.thread);
   const explicitOutboxEntry = optionalRecord(inputs.outbox_entry);
+  const fixBundle = unwrapRecord(inputs.fix_bundle);
 
   const threadContext = thread ?? {};
+  const changedFiles = normalizeChangedFiles(fixBundle);
 
   const existingOutboxEntry =
     normalizePullRequestOutbox(explicitOutboxEntry) ??
@@ -94,38 +98,10 @@ function runBuildPullRequest({ inputs }) {
     checkStatus === "success" &&
     !isFailingReview(reviewVerdict);
   const branch = firstNonEmptyString(
-    currentBranch?.branch,
     inputs.branch,
+    currentBranch?.branch,
   );
   const base = firstNonEmptyString(inputs.base);
-  const handoffText = firstNonEmptyText(handoffMarkdown);
-  const reviewerPacketMarkdown = buildThreadPullRequestReviewerPacketMarkdown({
-    title,
-    summary: summarizeHandoff(handoffText, title),
-    sourceContext: buildHandoffSectionLines(handoffText, ["Context", "Current State", "Origin"], 6),
-    source: threadLocator
-      ? {
-          label: "Source thread",
-          uri: firstNonEmptyString(threadContext.canonical_uri, threadLocator),
-        }
-      : undefined,
-    targetRepo,
-    branch,
-    base,
-    status: firstNonEmptyString(
-      completionResult.status,
-      statusSnapshot?.status,
-    ),
-    reviewVerdict,
-    scope: buildHandoffSectionLines(handoffText, ["Objectives", "Scope", "Touchpoints"], 8),
-    checks: buildReviewPacketChecks(check),
-    validation: buildReviewPacketValidation(handoffText, check),
-    reviewContext: buildReviewPacketReviewContext(reviewResult, handoffText),
-    risks: buildReviewPacketRisks(reviewResult),
-    rollback: extractMarkdownSection(handoffText, "Rollback"),
-    handoffReference: "Full native scafld handoff is retained in `engineering_summary_markdown` on this draft pull-request packet.",
-    nextAction: "Review the implementation, validation, and source thread. Merge manually only when the human gate is satisfied.",
-  });
 
   const draftPullRequest = prune({
     schema_version: "runx.pull-request-draft.v1",
@@ -150,11 +126,24 @@ function runBuildPullRequest({ inputs }) {
     }),
     pull_request: {
       title,
-      body_markdown: reviewerPacketMarkdown,
+      body_markdown: buildReviewerPullRequestBody({
+        taskId,
+        title,
+        threadLocator,
+        threadContext,
+        handoffMarkdown,
+        buildResult,
+        reviewResult,
+        completionResult,
+        statusSnapshot,
+        check,
+        reviewVerdict,
+        branch,
+        base,
+      }),
       is_draft: true,
     },
-    engineering_summary_markdown:
-      handoffText ?? "",
+    engineering_summary_markdown: sanitizePublicMarkdown(firstNonEmptyText(handoffMarkdown)) ?? "",
     checks: Object.keys(check).length > 0 ? check : undefined,
     governance: prune({
       status: firstNonEmptyString(
@@ -167,6 +156,7 @@ function runBuildPullRequest({ inputs }) {
       sync_status: syncStatus,
       build_passed: numberOrUndefined(buildResult.passed),
       build_failed: numberOrUndefined(buildResult.failed),
+      changed_files: changedFiles,
     }),
   });
 
@@ -196,6 +186,19 @@ function runBuildPullRequest({ inputs }) {
       check_status: checkStatus,
       sync_status: syncStatus,
       push_ready: pushReady,
+      changed_files: changedFiles,
+      human_merge_gate: "required",
+      post_merge_observation: "provider_state_update",
+      story_milestones: [
+        "intake",
+        "triage",
+        "spec",
+        "build",
+        "review",
+        "pull_request",
+        "merge_gate",
+        "outcome",
+      ],
     }),
   });
 
@@ -203,165 +206,6 @@ function runBuildPullRequest({ inputs }) {
     draft_pull_request: draftPullRequest,
     outbox_entry: outboxEntry,
   };
-}
-
-function summarizeHandoff(handoffMarkdown, fallbackTitle) {
-  const summarySection = extractMarkdownSection(handoffMarkdown, "Summary");
-  if (summarySection) {
-    return summarySection;
-  }
-  const firstParagraph = firstNonEmptyText(
-    ...String(handoffMarkdown ?? "")
-      .split(/\n{2,}/)
-      .map((paragraph) => paragraph
-        .split(/\r?\n/)
-        .filter((line) => {
-          const trimmed = line.trim();
-          return trimmed.length > 0
-            && !trimmed.startsWith("#")
-            && !/^status:/i.test(trimmed)
-            && !/^next:/i.test(trimmed);
-        })
-        .join("\n")
-        .trim()),
-  );
-  return firstParagraph ?? `Runx prepared a governed change for ${fallbackTitle}.`;
-}
-
-function extractMarkdownSection(markdown, heading) {
-  const text = firstNonEmptyText(markdown);
-  if (!text) {
-    return undefined;
-  }
-  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`^#{2,6}\\s+${escapedHeading}\\s*\\n([\\s\\S]*?)(?=\\n#{1,6}\\s+|$)`, "im");
-  const match = text.match(pattern);
-  return firstNonEmptyText(match?.[1]);
-}
-
-function buildReviewPacketChecks(check) {
-  const lines = [];
-  if (firstNonEmptyString(check.status)) {
-    lines.push(`scafld build ${check.status}`);
-  }
-  const passed = numberOrUndefined(check.passed);
-  const failed = numberOrUndefined(check.failed);
-  if (passed !== undefined || failed !== undefined) {
-    lines.push(`${passed ?? 0} passed / ${failed ?? 0} failed`);
-  }
-  return lines;
-}
-
-function buildReviewPacketValidation(handoffMarkdown, check) {
-  const lines = [
-    firstNonEmptyString(check.summary),
-    ...buildHandoffSectionLines(handoffMarkdown, ["Validation", "Acceptance"], 8),
-  ];
-  return uniqueStrings(lines);
-}
-
-function buildReviewPacketReviewContext(reviewResult, handoffMarkdown) {
-  const lines = [
-    firstNonEmptyString(reviewResult.summary),
-    ...buildHandoffSectionLines(handoffMarkdown, ["Review", "Self Eval", "Deviations"], 8),
-    ...reviewFindingSummaries(reviewResult, 6),
-  ];
-  return uniqueStrings(lines);
-}
-
-function buildReviewPacketRisks(reviewResult) {
-  const blocking = reviewFindingCount(reviewResult, "blocking");
-  const nonBlocking = reviewFindingCount(reviewResult, "non_blocking");
-  const lines = [];
-  if (blocking !== undefined) {
-    lines.push(`${blocking} blocking review finding${blocking === 1 ? "" : "s"}`);
-  }
-  if (nonBlocking !== undefined) {
-    lines.push(`${nonBlocking} non-blocking review finding${nonBlocking === 1 ? "" : "s"}`);
-  }
-  return lines;
-}
-
-function reviewFindingSummaries(reviewResult, maxFindings) {
-  if (!Array.isArray(reviewResult.findings)) {
-    return [];
-  }
-  return reviewResult.findings
-    .filter(isRecord)
-    .slice(0, maxFindings)
-    .map((finding) => {
-      const summary = firstNonEmptyString(finding.summary, finding.title, finding.id);
-      if (!summary) {
-        return undefined;
-      }
-      const status = finding.blocks_completion === true ? "blocking" : "non-blocking";
-      return `${status}: ${summary}`;
-    })
-    .filter((line) => Boolean(line));
-}
-
-function buildHandoffSectionLines(markdown, headings, maxLines) {
-  const lines = [];
-  for (const heading of headings) {
-    const section = extractMarkdownSection(markdown, heading);
-    if (!section) {
-      continue;
-    }
-    for (const line of sectionToVisibleLines(section)) {
-      lines.push(line);
-      if (lines.length >= maxLines) {
-        return lines;
-      }
-    }
-  }
-  return lines;
-}
-
-function sectionToVisibleLines(section) {
-  const lines = [];
-  let inFence = false;
-  for (const rawLine of String(section).split(/\r?\n/)) {
-    const rawTrimmed = rawLine.trim();
-    if (/^(```|~~~)/.test(rawTrimmed)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) {
-      continue;
-    }
-    const line = rawLine
-      .replace(/^[-*]\s+/, "")
-      .replace(/^\d+\.\s+/, "")
-      .replace(/^>\s?/, "")
-      .trim();
-    if (isVisibleHandoffLine(line)) {
-      lines.push(line);
-    }
-  }
-  return lines;
-}
-
-function isVisibleHandoffLine(line) {
-  return line.length > 0
-    && !/^(source event|session event|ledger event|last attempt|checked at|run id|run_id)\s*:/i.test(line)
-    && !/\bentry-\d+\b/i.test(line)
-    && !/\breceipt(?:_id)?\b\s*[:=]/i.test(line)
-    && !/\brx_[a-z0-9_]+/i.test(line)
-    && !/\bgx_[a-z0-9_]+/i.test(line);
-}
-
-function uniqueStrings(values) {
-  const seen = new Set();
-  const lines = [];
-  for (const value of values) {
-    const text = firstNonEmptyText(value);
-    if (!text || seen.has(text)) {
-      continue;
-    }
-    seen.add(text);
-    lines.push(text);
-  }
-  return lines;
 }
 
 function optionalRecord(value) {
@@ -400,16 +244,6 @@ function reviewFindingCount(reviewResult, severity) {
   if (!Array.isArray(reviewResult.findings)) {
     return undefined;
   }
-  if (severity === "blocking") {
-    return reviewResult.findings
-      .filter((finding) => isRecord(finding) && (finding.blocks_completion === true || finding.severity === "blocking"))
-      .length;
-  }
-  if (severity === "non_blocking") {
-    return reviewResult.findings
-      .filter((finding) => isRecord(finding) && (finding.blocks_completion === false || finding.severity === "non_blocking"))
-      .length;
-  }
   return reviewResult.findings
     .filter((finding) => isRecord(finding) && finding.severity === severity)
     .length;
@@ -418,6 +252,71 @@ function reviewFindingCount(reviewResult, severity) {
 function isFailingReview(value) {
   const verdict = firstNonEmptyString(value);
   return verdict === "fail" || verdict === "blocked" || verdict === "failure";
+}
+
+function buildReviewerPullRequestBody(options) {
+  const {
+    taskId,
+    title,
+    threadLocator,
+    threadContext,
+    handoffMarkdown,
+    buildResult,
+    reviewResult,
+    completionResult,
+    statusSnapshot,
+    check,
+    reviewVerdict,
+    branch,
+    base,
+  } = options;
+  const sourceTitle = sanitizePublicMarkdown(firstNonEmptyString(
+    threadContext.title,
+    title,
+  ));
+  const sourceLocator = sanitizePublicMarkdown(firstNonEmptyString(
+    threadLocator,
+    threadContext.thread_locator,
+  ));
+  const handoff = sanitizePublicMarkdown(firstNonEmptyText(handoffMarkdown));
+  const checkStatus = firstNonEmptyString(check.status, buildResult.status);
+  const buildPassed = numberOrUndefined(buildResult.passed);
+  const buildFailed = numberOrUndefined(buildResult.failed);
+  const blockingCount = reviewFindingCount(reviewResult, "blocking");
+  const nonBlockingCount = reviewFindingCount(reviewResult, "non_blocking");
+  const completedStatus = firstNonEmptyString(completionResult.status, statusSnapshot?.status);
+  const lines = [
+    `# ${sanitizePublicMarkdown(title) ?? taskId}`,
+    "",
+    "## Source Thread",
+    `- Thread: ${sourceLocator ? `\`${sourceLocator}\`` : "not provided"}`,
+    `- Request: ${sourceTitle ?? "not provided"}`,
+    "",
+    "## Scoped Change",
+    `- Task: \`${taskId}\``,
+    `- Branch: ${branch ? `\`${sanitizePublicMarkdown(branch)}\`` : "not reported"}`,
+    `- Base: ${base ? `\`${sanitizePublicMarkdown(base)}\`` : "not reported"}`,
+    `- Governance status: ${completedStatus ?? "not reported"}`,
+    "",
+    "## Validation",
+    `- scafld build: ${checkStatus ?? "not reported"}`,
+    `- Passed: ${buildPassed ?? "not reported"}`,
+    `- Failed: ${buildFailed ?? "not reported"}`,
+    "",
+    "## Review",
+    `- Verdict: ${sanitizePublicMarkdown(reviewVerdict) ?? "not reported"}`,
+    `- Blocking findings: ${blockingCount ?? "not reported"}`,
+    `- Non-blocking findings: ${nonBlockingCount ?? "not reported"}`,
+    "",
+    "## Human Merge Gate",
+    "- This PR is generated and reviewable; runx will not merge it.",
+    "- A human reviewer must merge, close, or request changes.",
+    "- After provider state changes, the source thread can be updated with the observed outcome.",
+    "",
+    "## scafld Handoff",
+    handoff ?? "No scafld handoff was reported.",
+  ];
+  return `${lines.join("\n")}\n`;
 }
 
 function firstNonEmptyText(...values) {
@@ -433,6 +332,16 @@ function numberOrUndefined(value) {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function stringArray(value) {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const items = value.filter(
+    (entry) => typeof entry === "string" && entry.trim().length > 0,
+  );
+  return items.length > 0 ? items : undefined;
 }
 
 function normalizePullRequestOutbox(value) {
@@ -453,6 +362,15 @@ function normalizePullRequestOutbox(value) {
     status: firstNonEmptyString(value.status),
     thread_locator: firstNonEmptyString(value.thread_locator),
   };
+}
+
+function normalizeChangedFiles(fixBundle) {
+  const files = Array.isArray(fixBundle?.files) ? fixBundle.files : [];
+  const paths = files
+    .filter(isRecord)
+    .map((file) => firstNonEmptyString(file.path))
+    .filter((filePath) => filePath !== undefined);
+  return paths.length > 0 ? [...new Set(paths)] : undefined;
 }
 
 function latestPullRequestOutbox(state) {

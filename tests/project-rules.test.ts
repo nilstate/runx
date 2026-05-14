@@ -28,7 +28,7 @@ describe("project rules", () => {
       await writeFile(path.join(workspaceDir, "CONVENTIONS.md"), conventionsContents);
 
       const result = await runLocalSkill({
-        skillPath: path.resolve("fixtures/skills/agent-task"),
+        skillPath: path.resolve("fixtures/skills/agent-step"),
         inputs: { prompt: "review this" },
         caller: passiveCaller,
         adapters: createDefaultSkillAdapters(),
@@ -120,7 +120,7 @@ steps:
         )}
   - id: inspect
     run:
-      type: agent-task
+      type: agent-step
       agent: codex
       task: inspect-project-rules
     context:

@@ -1,0 +1,13 @@
+name: hello-graph
+kind: graph
+target: ./graph.yaml
+expect:
+  status: success
+  steps:
+    - first
+    - second
+  receipt:
+    kind: graph_execution
+    status: success
+    graph_name: hello-graph
+    owner: runx

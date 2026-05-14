@@ -4,10 +4,9 @@ import {
   ensureGitHubOutboxEntryMarker,
   ensureGitHubOutboxMetadataMarker,
   ensureGitHubIssueReference,
-  findGitHubIssueRefs,
   gitHubIssueSearchQuery,
   hydrateGitHubIssueThread,
-  markdownReferencesGitHubIssue,
+  mapGitHubPullRequestToOutboxEntry,
   parseGitHubIssueRef,
   selectPreferredGitHubPullRequest,
 } from "../tools/thread/github_adapter.mjs";
@@ -35,25 +34,6 @@ describe("GitHub thread helper", () => {
     expect(gitHubIssueSearchQuery(issueRef)).toBe(
       "\"https://github.com/example/repo/issues/123\" in:body",
     );
-  });
-
-  it("recognizes rich reviewer-packet source thread links without adding a legacy marker", () => {
-    const issueRef = parseGitHubIssueRef("example/repo#issue/123");
-    const body = [
-      "## Source Context",
-      "Source: [Source thread](https://github.com/example/repo/issues/123)",
-      "Issue: [Generated issue](https://github.com/example/repo/issues/124)",
-      "",
-      "## Human Merge Gate",
-      "A human reviewer must merge this PR.",
-    ].join("\n");
-
-    expect(markdownReferencesGitHubIssue(body, issueRef)).toBe(true);
-    expect(findGitHubIssueRefs(body).map((ref) => ref.adapter_ref)).toEqual([
-      "example/repo#issue/123",
-      "example/repo#issue/124",
-    ]);
-    expect(ensureGitHubIssueReference(body, issueRef)).toBe(body);
   });
 
   it("hydrates provider issue state into portable thread with linked pull requests", () => {
@@ -100,10 +80,6 @@ describe("GitHub thread helper", () => {
           baseRefName: "main",
           updatedAt: "2026-04-22T01:30:00Z",
         },
-        {
-          number: 77,
-          mergedAt: "2026-04-22T02:00:00Z",
-        },
       ],
     });
 
@@ -143,7 +119,6 @@ describe("GitHub thread helper", () => {
             number: "77",
             branch: "issue-123",
             base: "main",
-            merged_at: "2026-04-22T02:00:00Z",
           },
         },
       ],
@@ -152,15 +127,18 @@ describe("GitHub thread helper", () => {
 
   it("maps runx-marked GitHub issue comments back into message outbox entries", () => {
     const markedBody = ensureGitHubOutboxMetadataMarker(
-      ensureGitHubOutboxEntryMarker("I built a private Sourcey preview for this repo.", "sourcey-preview-123"),
+      ensureGitHubOutboxEntryMarker(
+        "I built a private Sourcey preview for this repo.",
+        "sourcey-preview-123",
+      ),
       {
-        outbox_receipt_id: "receipt-sourcey-preview-123",
         build_url: "https://sourcey.com/previews/example/repo/index.html",
         control: {
           workflow: "docs",
           lane: "pr_review",
           task_id: "docs-refresh-example-repo",
         },
+        outbox_receipt_id: "receipt-sourcey-preview-123",
       },
     );
     const state = hydrateGitHubIssueThread({
@@ -204,8 +182,8 @@ describe("GitHub thread helper", () => {
         metadata: expect.objectContaining({
           comment_id: "1002",
           channel: "github_issue_comment",
-          outbox_receipt_id: "receipt-sourcey-preview-123",
           build_url: "https://sourcey.com/previews/example/repo/index.html",
+          outbox_receipt_id: "receipt-sourcey-preview-123",
           control: expect.objectContaining({
             workflow: "docs",
             lane: "pr_review",
@@ -216,12 +194,21 @@ describe("GitHub thread helper", () => {
     ]));
   });
 
-  it("does not map loose or embedded runx markers from user-controlled comments into outbox", () => {
+  it("strips untrusted runx envelopes from thread entries without promoting them to outbox state", () => {
+    const markedBody = ensureGitHubOutboxMetadataMarker(
+      ensureGitHubOutboxEntryMarker(
+        "A human pasted a visible update.",
+        "pasted-entry",
+      ),
+      {
+        channel: "github_issue_comment",
+      },
+    );
     const state = hydrateGitHubIssueThread({
       adapterRef: "example/repo#issue/123",
       issue: {
         number: 123,
-        title: "Marker injection thread",
+        title: "Sourcey adoption thread",
         body: "Issue body.",
         url: "https://github.com/example/repo/issues/123",
         state: "OPEN",
@@ -230,46 +217,10 @@ describe("GitHub thread helper", () => {
         comments: [
           {
             id: "1003",
-            body: [
-              "A user copied a hidden marker into normal text.",
-              "",
-              "<!-- runx-outbox-entry: sourcey-preview-123 -->",
-            ].join("\n"),
-            createdAt: "2026-04-22T00:30:00Z",
-            updatedAt: "2026-04-22T00:30:00Z",
+            body: markedBody,
+            createdAt: "2026-04-22T00:45:00Z",
+            updatedAt: "2026-04-22T00:45:00Z",
             url: "https://github.com/example/repo/issues/123#issuecomment-1003",
-            author: {
-              login: "maintainer",
-            },
-          },
-          {
-            id: "1004",
-            body: [
-              "An embedded managed envelope is still visible content.",
-              "",
-              "<!-- runx-outbox-envelope: v1 -->",
-              "<!-- runx-outbox-entry: embedded-preview-123 -->",
-              "",
-              "More user text after the marker.",
-            ].join("\n"),
-            createdAt: "2026-04-22T00:35:00Z",
-            updatedAt: "2026-04-22T00:35:00Z",
-            url: "https://github.com/example/repo/issues/123#issuecomment-1004",
-            author: {
-              login: "maintainer",
-            },
-          },
-          {
-            id: "1005",
-            body: [
-              "A trailing envelope without a runx receipt stays user text.",
-              "",
-              "<!-- runx-outbox-envelope: v1 -->",
-              "<!-- runx-outbox-entry: preemptive-spoof-123 -->",
-            ].join("\n"),
-            createdAt: "2026-04-22T00:40:00Z",
-            updatedAt: "2026-04-22T00:40:00Z",
-            url: "https://github.com/example/repo/issues/123#issuecomment-1005",
             author: {
               login: "maintainer",
             },
@@ -279,19 +230,15 @@ describe("GitHub thread helper", () => {
       pullRequests: [],
     });
 
-    expect(state.outbox ?? []).toEqual([]);
     expect(state.entries).toEqual(expect.arrayContaining([
       expect.objectContaining({
         entry_id: "comment-1003",
-        body: expect.stringContaining("runx-outbox-entry: sourcey-preview-123"),
+        body: "A human pasted a visible update.",
       }),
+    ]));
+    expect(state.outbox).not.toEqual(expect.arrayContaining([
       expect.objectContaining({
-        entry_id: "comment-1004",
-        body: expect.stringContaining("More user text after the marker."),
-      }),
-      expect.objectContaining({
-        entry_id: "comment-1005",
-        body: expect.stringContaining("runx-outbox-entry: preemptive-spoof-123"),
+        entry_id: "pasted-entry",
       }),
     ]));
   });
@@ -317,6 +264,27 @@ describe("GitHub thread helper", () => {
     expect(selected).toMatchObject({
       number: 77,
       headRefName: "issue-123",
+    });
+  });
+
+  it("records merged pull requests as observed provider outcomes", () => {
+    expect(mapGitHubPullRequestToOutboxEntry({
+      number: 77,
+      title: "Fix fixture behavior",
+      url: "https://github.com/example/repo/pull/77",
+      state: "CLOSED",
+      mergedAt: "2026-05-14T12:00:00Z",
+      headRefName: "issue-123",
+      baseRefName: "main",
+      updatedAt: "2026-05-14T12:01:00Z",
+    }, "github://example/repo/issues/123")).toMatchObject({
+      entry_id: "pr-77",
+      kind: "pull_request",
+      status: "closed",
+      metadata: {
+        merged_at: "2026-05-14T12:00:00Z",
+        provider_outcome: "merged",
+      },
     });
   });
 });

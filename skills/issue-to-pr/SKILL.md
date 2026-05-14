@@ -5,8 +5,9 @@ description: Govern a scafld-backed issue-to-PR lane with native scafld review a
 
 # Issue to PR
 
-Drive one bounded thread-driven change through the scafld 2.4 lifecycle and
-package the result as a provider-agnostic draft pull-request packet.
+Drive one bounded thread-driven change through the scafld 2.4-compatible
+lifecycle and package the result as a provider-agnostic draft pull-request
+packet.
 
 The graph separates cognition from mutation. Agent phases author the scafld
 markdown spec and the bounded repo change bundle. Deterministic `fs.write` and
@@ -16,42 +17,10 @@ owns the workflow kernel: `plan`, `validate`, `approve`, `build`, `status`,
 boundaries, deterministic writes, receipts, and final outbox packaging.
 
 Branch creation and provider PR mutation are outside scafld. The caller or
-adapter prepares the branch, then this lane reads the current branch and uses it
-when packaging the draft PR. The final `thread.push_outbox` step is the only
-provider push boundary.
-
-## Source Thread Story
-
-The source thread is the work journal for issue-to-PR, but reviewers should see
-the story as projections, not as a transcript. Keep the durable run record in
-runx receipts and scafld state, then publish only the projection that fits the
-surface:
-
-- Issue status ledger: one managed status comment updated in place with the
-  current state, source/issue/PR links, triage result, validation summary, risks,
-  and next human action.
-- PR reviewer packet: the PR body is the handoff surface for code review. It
-  should be comprehensive but bounded: source context, AI/scafld reasoning,
-  target repo/branch/base, scope, checks, validation, review verdict/findings,
-  risks, rollback, retained handoff evidence, and final human merge gate.
-- Notification stream: Slack, chat, email, or ticket updates should be concise
-  milestone notifications only: triaging, PR ready for human review,
-  merged/closed, or human-action-required blockers/errors.
-
-Core knowledge helpers provide the generic markdown/text shapes:
-`buildThreadStatusMarkdown`, `buildThreadMilestoneNotificationText`,
-`buildThreadPullRequestReviewerPacketMarkdown`, and
-`buildThreadStoryMessageOutboxEntry`. Product wrappers decide where to publish
-those projections and which provider-specific managed key to use.
-
-Do not put machine control state, receipt IDs, raw logs, or exact PR body dumps
-in visible prose. Do include the meaty reasoning a reviewer needs, but pull it
-into named sections and cap extracted snippets. User-controlled issue, Sentry,
-Slack, or review snippets must be bounded and sanitized before inclusion.
-Provider mutation still goes through `thread.push_outbox`, which adds the
-provider-specific managed control envelope. The envelope is a correlation
-receipt, not authorization; human merge permissions and provider identity remain
-the security boundary.
+adapter prepares the branch, then passes the intended branch into this lane.
+The lane records that branch in the draft PR packet, and the GitHub adapter
+fails closed if the workspace checkout does not match it. The final
+`thread.push_outbox` step is the only provider push boundary.
 
 ## Lifecycle
 
@@ -59,13 +28,32 @@ The graph runs:
 
 `scafld plan` -> author markdown spec -> write spec -> read spec -> validate ->
 approve -> read approved spec -> read declared files -> author fix bundle ->
-write fix bundle -> build to review -> status -> read current branch -> review
--> complete -> final status -> handoff -> package draft PR outbox -> adapter
-push.
+write fix bundle -> open build -> complete build -> status -> read current
+branch -> review -> complete -> final status -> handoff -> package draft PR
+outbox -> adapter push.
 
 There are no translation projection steps. `scafld handoff` is the human handoff
-surface, `scafld build` is the validation/check surface, and `scafld review` is
-the native review boundary.
+surface, repeated `scafld build` calls open and complete the native
+validation/check surface, and `scafld review` is the native review boundary.
+
+## Thread Story
+
+The lane should leave one coherent source-thread story, not a stream of every
+internal event. The durable milestones are:
+
+- intake source and the bounded request
+- triage or caller decision that a PR is justified
+- scafld spec approval and declared scope
+- build and validation result
+- adversarial review result
+- draft PR publication
+- human merge gate
+- final provider outcome when observed
+
+Comments and PR bodies should summarize those gates with enough evidence for a
+reviewer to act. They must not publish raw local paths, secrets, full command
+dumps, or duplicate retry comments. User-facing labels should use plain terms
+such as spec authoring, fix authoring, review, and human merge gate.
 
 ## Quality Profile
 
@@ -74,11 +62,15 @@ the native review boundary.
 - Audience: maintainers reviewing the issue, spec, code change, native review,
   handoff, and draft PR.
 - Artifact contract: markdown scafld spec, authored change bundle, build
-  build-to-review result, review result, completed status, handoff markdown,
-  draft PR packet, outbox entry, and receipt trail.
+  result, review result, completed status, handoff markdown, draft PR packet,
+  story summary, outbox entry, and receipt trail.
 - Evidence bar: every spec objective, file impact, validation command, and PR
   claim must trace to the thread, repo snapshot, scafld state, or actual
   working-tree change.
+- Story bar: public source-thread and PR surfaces should show the intake,
+  triage decision, scoped change, validation, review verdict, PR link, human
+  merge gate, and final provider outcome when observed without becoming a raw
+  execution log.
 - Stop conditions: return `needs_resolution` when authoring evidence is
   missing; return a blocked fix bundle only when no concrete repo-relative
   target is declared, a required existing file cannot be read, or the requested
@@ -86,8 +78,8 @@ the native review boundary.
 
 ## Spec Authoring Contract
 
-The `issue-to-pr-author-spec` boundary must emit a full scafld 2.0 markdown
-document, not YAML and not a reduced project brief.
+The `issue-to-pr-author-spec` boundary must emit a full scafld
+2.4-compatible markdown document, not YAML and not a reduced project brief.
 
 The document must preserve front matter with:
 
@@ -128,6 +120,10 @@ merge-base comparisons. Validation commands, when present, must be direct
 repo-local checks such as test, lint, build, or file-content commands. Never use
 runx skill runner internals or `skills/scafld/run.mjs` as a validation command;
 scafld is already the lifecycle runner around the task.
+
+Preserve source-thread context in the spec's Summary, Origin, and Planning Log
+so later PR packaging can explain why the lane ran and what evidence justified
+the mutation.
 
 ## Fix Authoring Contract
 
@@ -176,3 +172,5 @@ On success, the lane emits:
 - `outbox_entry`: a `pull_request` outbox entry suitable for adapter push.
 - `push`: adapter push result plus refreshed `thread` when the adapter supports
   push.
+- Story metadata suitable for one source-thread reviewer update that summarizes
+  the lifecycle gates and points at the human merge decision.

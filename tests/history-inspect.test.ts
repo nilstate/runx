@@ -131,14 +131,14 @@ describe("history, inspect, and knowledge CLI", () => {
         type: "draft_pull_request",
         data: { title: "Draft PR" },
         runId: builderReceiptId,
-        producer: { skill: "draft-content", runner: "agent-task" },
+        producer: { skill: "draft-content", runner: "agent-step" },
       });
       await writeLocalReceipt({
         receiptId: builderReceiptId,
         receiptDir,
         runxHome,
         skillName: "draft-content",
-        sourceType: "agent-task",
+        sourceType: "agent-step",
         inputs: { objective: "draft a pull request" },
         stdout: JSON.stringify({ ok: true }),
         stderr: "",
@@ -148,8 +148,8 @@ describe("history, inspect, and knowledge CLI", () => {
           signal: null,
           durationMs: 2,
           metadata: {
-            agent_task: {
-              source_type: "agent-task",
+            agent_hook: {
+              source_type: "agent-step",
               agent: "builder",
               task: "draft-pr",
               route: "provided",
@@ -172,16 +172,16 @@ describe("history, inspect, and knowledge CLI", () => {
 
       const reviewerReceiptId = "rx_historyreviewer0001";
       const reviewerArtifact = createArtifactEnvelope({
-        type: "triage_packet",
+        type: "issue_intake_packet",
         data: { verdict: "needs follow-up" },
         runId: reviewerReceiptId,
-        producer: { skill: "intake", runner: "cli-tool" },
+        producer: { skill: "issue-intake", runner: "cli-tool" },
       });
       await writeLocalReceipt({
         receiptId: reviewerReceiptId,
         receiptDir,
         runxHome,
-        skillName: "intake",
+        skillName: "issue-intake",
         sourceType: "cli-tool",
         inputs: { thread: "support request" },
         stdout: JSON.stringify({ ok: true }),
@@ -217,11 +217,11 @@ describe("history, inspect, and knowledge CLI", () => {
         ],
       });
 
-      await expect(listLocalHistory({ receiptDir, runxHome, artifactType: "triage_packet" })).resolves.toMatchObject({
+      await expect(listLocalHistory({ receiptDir, runxHome, artifactType: "issue_intake_packet" })).resolves.toMatchObject({
         receipts: [
           {
             id: reviewerReceiptId,
-            artifactTypes: ["triage_packet"],
+            artifactTypes: ["issue_intake_packet"],
           },
         ],
       });

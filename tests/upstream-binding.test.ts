@@ -154,7 +154,7 @@ Portable upstream skill fixture.
 runners:
   default:
     default: true
-    type: agent-task
+    type: agent-step
     agent: tester
     task: temp-upstream
     outputs:
@@ -167,7 +167,7 @@ harness:
       inputs: {}
       caller:
         answers:
-          agent_task.temp-upstream.output:
+          agent_step.temp-upstream.output:
             summary: ok
       expect:
         status: success

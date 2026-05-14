@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { sanitizePublicMarkdown } from "../public_markdown.mjs";
 
 export function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -215,7 +217,7 @@ export function ensureGitHubOutboxMetadataMarker(bodyMarkdown, metadata) {
 }
 
 export function stripGitHubOutboxEntryMarker(value) {
-  return stripTrailingGitHubOutboxEnvelope(value, { requireReceipt: true });
+  return stripTrailingGitHubOutboxEnvelope(value, { requireReceipt: false });
 }
 
 export function parseGitHubOutboxEnvelope(value) {
@@ -318,6 +320,9 @@ export function parseGitHubPullRequestNumber(value) {
 }
 
 export function mapGitHubPullRequestStatus(pullRequest) {
+  if (firstNonEmptyString(pullRequest.mergedAt)) {
+    return "closed";
+  }
   if (pullRequest.state && String(pullRequest.state).toUpperCase() !== "OPEN") {
     return "closed";
   }
@@ -353,6 +358,12 @@ export function mapGitHubPullRequestToOutboxEntry(pullRequest, threadLocator) {
       base: firstNonEmptyString(pullRequest.baseRefName),
       state: firstNonEmptyString(pullRequest.state),
       is_draft: pullRequest.isDraft === true,
+      merged_at: firstNonEmptyString(pullRequest.mergedAt),
+      provider_outcome: firstNonEmptyString(pullRequest.mergedAt)
+        ? "merged"
+        : String(pullRequest.state ?? "").toUpperCase() === "CLOSED"
+          ? "closed"
+          : undefined,
       updated_at: firstNonEmptyString(pullRequest.updatedAt),
       merged_at: firstNonEmptyString(pullRequest.mergedAt, pullRequest.merged_at),
     }),
@@ -566,21 +577,23 @@ export function pushGitHubPullRequest({
   }
 
   const body = ensureGitHubIssueReference(
-    firstNonEmptyText(pullRequest.body_markdown, `# ${title}\n`),
+    sanitizePublicMarkdown(firstNonEmptyText(pullRequest.body_markdown, `# ${title}\n`)),
     issueRef,
   );
 
-  if (repoHasUncommittedChanges(workspacePath, env)) {
-    runCommand("git", ["add", "-A"], {
-      cwd: workspacePath,
-      env,
-    });
-    ensureGitCommitIdentity(workspacePath, env);
-    runCommand("git", ["commit", "-m", commitMessage], {
-      cwd: workspacePath,
-      env,
-    });
-  }
+  assertWorkspaceOnBranch({
+    workspacePath,
+    expectedBranch: branch,
+    env,
+  });
+
+  commitGovernedWorkspaceChanges({
+    workspacePath,
+    env,
+    draft,
+    outbox,
+    commitMessage,
+  });
 
   pushGitHubBranch({
     workspacePath,
@@ -648,7 +661,7 @@ export function pushGitHubPullRequest({
     "--repo",
     repoSlug,
     "--json",
-    "baseRefName,headRefName,isDraft,number,state,title,updatedAt,url",
+    "baseRefName,headRefName,isDraft,mergedAt,number,state,title,updatedAt,url",
   ], {
     cwd: workspacePath,
     env,
@@ -674,6 +687,19 @@ export function pushGitHubPullRequest({
   };
 }
 
+function assertWorkspaceOnBranch({ workspacePath, expectedBranch, env }) {
+  const currentBranch = runCommand("git", ["branch", "--show-current"], {
+    cwd: workspacePath,
+    env,
+  }).trim();
+  if (!currentBranch) {
+    throw new Error(`GitHub PR publication requires workspace to be on branch '${expectedBranch}', but the checkout is detached or unknown.`);
+  }
+  if (currentBranch !== expectedBranch) {
+    throw new Error(`GitHub PR publication target branch '${expectedBranch}' does not match workspace branch '${currentBranch}'. Check out the target branch before pushing.`);
+  }
+}
+
 export function pushGitHubMessage({
   thread,
   outboxEntry,
@@ -697,7 +723,7 @@ export function pushGitHubMessage({
     randomUUID(),
   );
   const repoSlug = firstNonEmptyString(optionalRecord(state.metadata)?.repo, issueRef.repo_slug);
-  const bodyMarkdown = firstNonEmptyText(metadata.body_markdown, metadata.body);
+  const bodyMarkdown = sanitizePublicMarkdown(firstNonEmptyText(metadata.body_markdown, metadata.body));
   const commentId = firstNonEmptyString(
     parseGitHubIssueCommentId(outbox.locator),
     normalizeGitHubIssueCommentId(metadata.comment_id),
@@ -1416,11 +1442,115 @@ function githubTokenCandidateEnv(env, token) {
   };
 }
 
-function repoHasUncommittedChanges(workspacePath, env) {
-  return runCommand("git", ["status", "--short"], {
+function commitGovernedWorkspaceChanges({ workspacePath, env, draft, outbox, commitMessage }) {
+  const dirtyPaths = gitDirtyPaths(workspacePath, env);
+  if (dirtyPaths.length === 0) {
+    return;
+  }
+
+  const governedFiles = governedChangedFiles(draft, outbox);
+  if (governedFiles.length === 0) {
+    throw new Error(
+      "draft_pull_request.governance.changed_files is required before committing dirty workspace changes for GitHub publication.",
+    );
+  }
+
+  const governed = new Set(governedFiles);
+  const blocking = dirtyPaths.filter((filePath) =>
+    !governed.has(filePath) && !isIgnoredPublicationDirtyPath(filePath),
+  );
+  if (blocking.length > 0) {
+    throw new Error(
+      "dirty workspace contains files outside draft_pull_request.governance.changed_files: " +
+      blocking.join(", "),
+    );
+  }
+
+  const stagedPaths = dirtyPaths.filter((filePath) => governed.has(filePath));
+  if (stagedPaths.length === 0) {
+    return;
+  }
+  runCommand("git", ["add", "--", ...stagedPaths], {
     cwd: workspacePath,
     env,
-  }).trim().length > 0;
+  });
+  if (!repoHasStagedChanges(workspacePath, env)) {
+    return;
+  }
+  ensureGitCommitIdentity(workspacePath, env);
+  runCommand("git", ["commit", "-m", commitMessage], {
+    cwd: workspacePath,
+    env,
+  });
+}
+
+function gitDirtyPaths(workspacePath, env) {
+  const output = runCommand("git", ["status", "--porcelain=v1", "-z"], {
+    cwd: workspacePath,
+    env,
+  });
+  if (!output) {
+    return [];
+  }
+  const entries = output.split("\0").filter(Boolean);
+  const paths = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    const status = entry.slice(0, 2);
+    const filePath = entry.slice(3);
+    paths.push(filePath);
+    if ((status.includes("R") || status.includes("C")) && entries[index + 1]) {
+      index += 1;
+    }
+  }
+  return [...new Set(paths.map(normalizeRepoPath).filter(Boolean))].sort();
+}
+
+function governedChangedFiles(draft, outbox) {
+  const governance = optionalRecord(draft.governance) ?? {};
+  const metadata = optionalRecord(outbox.metadata) ?? {};
+  return [
+    ...stringList(governance.changed_files),
+    ...stringList(draft.changed_files),
+    ...stringList(metadata.changed_files),
+  ]
+    .map(normalizeRepoPath)
+    .filter((filePath) => filePath && !filePath.startsWith("../") && !path.posix.isAbsolute(filePath))
+    .filter((filePath, index, all) => all.indexOf(filePath) === index)
+    .sort();
+}
+
+function stringList(value) {
+  return Array.isArray(value)
+    ? value.map((entry) => firstNonEmptyString(entry)).filter(Boolean)
+    : [];
+}
+
+function normalizeRepoPath(value) {
+  const text = firstNonEmptyString(value);
+  if (!text) {
+    return undefined;
+  }
+  return path.posix.normalize(text.replace(/\\/g, "/"));
+}
+
+function isIgnoredPublicationDirtyPath(filePath) {
+  return filePath === ".scafld" || filePath.startsWith(".scafld/");
+}
+
+function repoHasStagedChanges(workspacePath, env) {
+  const result = spawnSync("git", ["diff", "--cached", "--quiet"], {
+    cwd: workspacePath,
+    env: env ?? process.env,
+    encoding: "utf8",
+  });
+  if (result.status === 0) {
+    return false;
+  }
+  if (result.status === 1) {
+    return true;
+  }
+  throw new Error(`command failed: git diff --cached --quiet\n${result.stderr || result.stdout || "unknown failure"}`);
 }
 
 function ensureGitCommitIdentity(workspacePath, env) {

@@ -78,6 +78,7 @@ async function runPushOutbox({ inputs, env }) {
     return {
       draft_pull_request: draftPullRequest,
       outbox_entry: outboxEntry,
+      thread: null,
       push: {
         status: "skipped",
         reason: "thread not provided",

@@ -1,4 +1,4 @@
-skill: intake
+skill: issue-intake
 version: "0.1.1"
 
 catalog:
@@ -24,8 +24,8 @@ harness:
         operator_context: Prefer the canonical issue-to-pr name in user-facing replies.
       caller:
         answers:
-          agent_task.intake.output:
-            triage_report:
+          agent_step.issue-intake.output:
+            intake_report:
               category: docs
               severity: low
               summary: The docs are outdated and still point users at the removed skill name instead of the canonical skill name.
@@ -48,7 +48,7 @@ harness:
                   locator: https://github.com/example/repo/issues/101
                   status: published
                   thread_locator: github://example/repo/issues/101
-                size: small
+                size: micro
                 risk: low
             change_set:
               change_set_id: change_set_docs_work_101
@@ -80,8 +80,8 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: intake
-          source_type: agent-task
+          skill_name: issue-intake
+          source_type: agent-step
     - name: feature-needs-decomposition
       inputs:
         thread_title: Add abandoned cart recovery across email and SMS
@@ -90,8 +90,8 @@ harness:
         product_context: Multi-channel marketing automation product
       caller:
         answers:
-          agent_task.intake.output:
-            triage_report:
+          agent_step.issue-intake.output:
+            intake_report:
               category: feature_request
               severity: medium
               summary: The request is a multi-step product capability that spans workflow design, content, and reporting.
@@ -161,8 +161,8 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: intake
-          source_type: agent-task
+          skill_name: issue-intake
+          source_type: agent-step
     - name: reply-only-question
       inputs:
         thread_title: How do I rotate my API key?
@@ -170,8 +170,8 @@ harness:
         thread_locator: support://request/983
       caller:
         answers:
-          agent_task.intake.output:
-            triage_report:
+          agent_step.issue-intake.output:
+            intake_report:
               category: question
               severity: low
               summary: The user is asking for operator guidance, not a product mutation.
@@ -206,8 +206,8 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: intake
-          source_type: agent-task
+          skill_name: issue-intake
+          source_type: agent-step
     - name: request-review-before-mutation
       inputs:
         thread_title: Clarify the affected repo before we start
@@ -222,13 +222,13 @@ harness:
         product_context: Workspace repo with multiple bounded mutation surfaces
       caller:
         answers:
-          agent_task.intake.output:
-            triage_report:
+          agent_step.issue-intake.output:
+            intake_report:
               category: other
               severity: medium
               summary: The report is directionally actionable but still too ambiguous to start a worker or planner safely.
               suggested_reply: Please confirm which repo owns the failing path before we start governed mutation.
-              recommended_lane: manual-triage
+              recommended_lane: manual-review
               rationale: The maintainer needs to confirm the target surface before runx opens a downstream lane.
               needs_human: false
               commence_decision: approve
@@ -243,7 +243,7 @@ harness:
               summary: Clarify the affected repo before opening a governed worker or plan.
               category: other
               severity: medium
-              recommended_lane: manual-triage
+              recommended_lane: manual-review
               commence_decision: approve
               action_decision: request_review
               outbox_entry:
@@ -266,21 +266,21 @@ harness:
         receipt:
           kind: skill_execution
           status: success
-          skill_name: intake
-          source_type: agent-task
+          skill_name: issue-intake
+          source_type: agent-step
 
 runners:
   intake:
     default: true
-    type: agent-task
+    type: agent-step
     agent: builder
-    task: intake
+    task: issue-intake
     outputs:
-      triage_report: object
+      intake_report: object
       change_set: object
     artifacts:
-      wrap_as: intake_packet
-      packet: runx.intake.v1
+      wrap_as: issue_intake_packet
+      packet: runx.issue.intake.v1
     inputs:
       thread_title:
         type: string
@@ -305,7 +305,7 @@ runners:
       product_context:
         type: string
         required: false
-        description: "Product or repo context that constrains the triage decision."
+        description: "Product or repo context that constrains the intake decision."
       operator_context:
         type: string
         required: false

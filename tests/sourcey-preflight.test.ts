@@ -62,7 +62,7 @@ describe("sourcey preflight", () => {
       }>;
     };
     expect(report.status).toBe("needs_resolution");
-    expect(report.requests[0]?.id).toBe("agent_task.sourcey-discover.output");
+    expect(report.requests[0]?.id).toBe("agent_step.sourcey-discover.output");
     expect(report.requests[0]?.kind).toBe("cognitive_work");
     expect(report.requests[0]?.work?.envelope.skill).toBe("sourcey.discover");
     expect(report.requests[0]?.work?.envelope.allowed_tools).toEqual([

@@ -1,0 +1,103 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "outbox.build_work_item_story",
+  "description": "Build a concise source-thread lifecycle story message from native scafld and outbox surfaces.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "task_id": {
+      "type": "string",
+      "required": true,
+      "description": "scafld task id that produced the lifecycle state."
+    },
+    "thread_title": {
+      "type": "string",
+      "required": false,
+      "description": "Canonical source thread title."
+    },
+    "thread_locator": {
+      "type": "string",
+      "required": false,
+      "description": "Canonical source thread locator."
+    },
+    "thread": {
+      "type": "json",
+      "required": false,
+      "description": "Optional hydrated source thread."
+    },
+    "build_result": {
+      "type": "json",
+      "required": false,
+      "description": "Native scafld build result payload."
+    },
+    "review_result": {
+      "type": "json",
+      "required": false,
+      "description": "Native scafld review result payload."
+    },
+    "completion_result": {
+      "type": "json",
+      "required": false,
+      "description": "Native scafld completion payload."
+    },
+    "status_snapshot": {
+      "type": "json",
+      "required": false,
+      "description": "Native scafld status payload."
+    },
+    "draft_pull_request": {
+      "type": "json",
+      "required": false,
+      "description": "Draft pull-request packet from outbox.build_pull_request."
+    },
+    "pull_request_outbox_entry": {
+      "type": "json",
+      "required": false,
+      "description": "Published or refreshed pull-request outbox entry."
+    },
+    "push_result": {
+      "type": "json",
+      "required": false,
+      "description": "Provider push result from thread.push_outbox."
+    }
+  },
+  "output": {
+    "named_emits": {
+      "story": "work_item_story",
+      "outbox_entry": "outbox_entry"
+    },
+    "outputs": {
+      "story": {
+        "packet": "runx.work-item-story.v1"
+      },
+      "outbox_entry": {
+        "packet": "runx.outbox.entry.v1"
+      }
+    }
+  },
+  "scopes": [
+    "runx:repo:package"
+  ],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "story": "work_item_story",
+        "outbox_entry": "outbox_entry"
+      }
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "source_hash": "sha256:4b8a0bd8309691e2bf52f65853550f2b422f2a4a2bc99762dafec8bcc365e5c3",
+  "schema_hash": "sha256:5806d878799fb22e38d2ceca601fe4bbab13d6caee19c43442d1fb99d6a6cd65",
+  "toolkit_version": "0.1.3"
+}

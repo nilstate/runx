@@ -1,20 +1,20 @@
 ---
-name: intake
-description: Turn a noisy inbound request into a bounded triage artifact and an explicit next runx lane.
+name: issue-intake
+description: Turn a noisy inbound request into a bounded intake artifact and an explicit next runx lane.
 ---
 
-# Intake
+# Issue Intake
 
 Convert an inbound thread, support report, or operator request into one
-explicit triage decision plus the parent change artifact that downstream
+explicit intake decision plus the parent change artifact that downstream
 planning or mutation lanes must share.
 
 This skill does not mutate code, open tickets, or publish replies directly. Its
 job is to classify the report, summarize it, draft the next helpful response,
 and recommend the next governed lane. That next lane must be explicit:
-`issue-to-pr`, `work-plan`, `reply-only`, or `manual-triage`.
+`issue-to-pr`, `work-plan`, `reply-only`, or `manual-review`.
 
-In supervisor-style flows, `intake` is also the commencement gate. It
+In supervisor-style flows, `issue-intake` is also the commencement gate. It
 decides whether work may start at all, whether the next step should stop at a
 review comment first, and whether mutation is justified yet. A recommended lane
 is not the same thing as build permission.
@@ -22,7 +22,7 @@ is not the same thing as build permission.
 Use `issue-to-pr` only when the requested change is bounded enough for one
 governed remediation lane. Use `work-plan` for larger or multi-step
 work. Use `reply-only` when the right answer is guidance rather than mutation.
-Use `manual-triage` when the report is ambiguous, risky, or missing key context.
+Use `manual-review` when the report is ambiguous, risky, or missing key context.
 
 ## Quality Profile
 
@@ -30,22 +30,22 @@ Use `manual-triage` when the report is ambiguous, risky, or missing key context.
   lane or a clean stop.
 - Audience: the maintainer supervising the queue and the downstream lane that
   must share the same parent change artifact.
-- Artifact contract: `triage_report`, `change_set`, and exactly one downstream
+- Artifact contract: `intake_report`, `change_set`, and exactly one downstream
   request shape when planning or build is justified.
 - Evidence bar: ground severity, category, and routing in the request text,
   visible context, and product constraints. Missing context must appear in
   `operator_notes`, not as invented certainty.
 - Voice bar: concise maintainer handoff. The suggested reply should sound like
   the project owner, not a ticket macro.
-- Strategic bar: prefer the smallest lane that moves the request forward while
+- Strategic bar: prefer the smallest lane that moves the issue forward while
   preserving trust boundaries and visible review.
-- Stop conditions: use `hold`, `needs_human`, `manual-triage`, or
+- Stop conditions: use `hold`, `needs_human`, `manual-review`, or
   `request_review` when the request is too broad, risky, under-specified, or
   low-value for immediate work.
 
 ## Output Contract
 
-`triage_report` must contain:
+`intake_report` must contain:
 
 - `category`: one of `bug`, `feature_request`, `docs`, `billing`, `account`,
   `question`, or `other`
@@ -53,12 +53,12 @@ Use `manual-triage` when the report is ambiguous, risky, or missing key context.
 - `summary`: concise summary of the actual request or report
 - `suggested_reply`: a user-facing reply draft or operator handoff note
 - `recommended_lane`: `issue-to-pr`, `work-plan`, `reply-only`, or
-  `manual-triage`
+  `manual-review`
 - `rationale`: why that lane is the right next step
 - `needs_human`: boolean
 - `operator_notes`: array of caveats, missing context, or escalation notes
 
-`triage_report` may also include supervisor-facing control fields:
+`intake_report` may also include supervisor-facing control fields:
 
 - `commence_decision`: `approve`, `hold`, `reject`, or `needs_human`
 - `action_decision`: `proceed_to_build`, `proceed_to_plan`,
@@ -85,7 +85,7 @@ When present, these fields mean:
   receipt stream
 - `recommended_lane=issue-to-pr` alone does **not** authorize a build lane
 
-Always emit `change_set` alongside `triage_report`.
+Always emit `change_set` alongside `intake_report`.
 
 The `change_set` is the parent artifact for any later planning or worker
 fanout. It is what keeps multiple repo-scoped lanes aligned to one shared
@@ -121,7 +121,7 @@ When `recommended_lane=issue-to-pr`, also include `thread_change_request` with:
 - `thread_locator`
 - `thread` (optional)
 - `outbox_entry` (optional)
-- `size`: one of `small`, `medium`, or `large`
+- `size`: one of `micro`, `small`, `medium`, or `large`
 - `risk`: one of `low`, `medium`, or `high`
 
 When `recommended_lane=work-plan`, also include

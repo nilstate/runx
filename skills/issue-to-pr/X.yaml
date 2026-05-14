@@ -31,7 +31,7 @@ harness:
         scafld_bin: ./fixtures/issue-to-pr-harness-scafld.mjs
       caller:
         answers:
-          agent_task.issue-to-pr-author-spec.output:
+          agent_step.issue-to-pr-author-spec.output:
             spec_contents: |
               ---
               spec_version: '2.0'
@@ -239,6 +239,10 @@ runners:
         type: string
         required: false
         description: "Intended repository slug for repo-local dispatchers."
+      branch:
+        type: string
+        required: false
+        description: "Explicit head branch for live provider publication; callers must ensure the workspace is on this branch before mutation."
       repo_snapshot:
         type: json
         required: false
@@ -301,7 +305,9 @@ runners:
           spec and bounded fix bundle. Deterministic fs.write phases perform
           mutations. Native scafld plan, validate, approve, build, review,
           complete, status, and handoff surfaces stay visible instead of being
-          re-created by translation projection steps.
+          re-created by translation projection steps. The public story is the
+          source-thread lifecycle: intake, triage decision, spec, build, review,
+          draft PR, human merge gate, and final provider outcome when observed.
       steps:
         - id: scafld-plan
           label: open task lane
@@ -312,16 +318,17 @@ runners:
           inputs:
             command: plan
         - id: author-spec
-          label: draft markdown spec
+          label: author scafld spec
           run:
-            type: agent-task
+            type: agent-step
             agent: builder
             task: issue-to-pr-author-spec
             outputs:
               spec_contents: string
           instructions: >
-            Replace the draft created by scafld plan with a complete scafld
-            2.0 markdown spec. Use thread_title, thread_body, thread_locator,
+            Replace the draft created by scafld plan with a complete
+            scafld 2.4-compatible markdown spec. Use thread_title,
+            thread_body, thread_locator,
             thread, outbox_entry, target_repo, repo_snapshot,
             repo_snapshot_path, and repo_context to keep the spec grounded in
             the actual request and repository. Preserve the front matter shape:
@@ -349,7 +356,9 @@ runners:
             existing documentation surfaces from repo_snapshot.existing_files or
             repo_context, and declare at least one non-governance repo file;
             issue-to-pr is a PR lane, so an approved spec must not leave the
-            repo-change scope empty.
+            repo-change scope empty. Preserve source-thread context in Summary,
+            Origin, and Planning Log so the eventual reviewer story can explain
+            why this lane ran and what evidence justified mutation.
           allowed_tools:
             - fs.read
             - git.status
@@ -409,9 +418,9 @@ runners:
           context:
             spec_contents: read-approved-spec.file_read.data.data.contents
         - id: author-fix
-          label: draft fix
+          label: author bounded fix
           run:
-            type: agent-task
+            type: agent-step
             agent: builder
             task: issue-to-pr-apply-fix
             outputs:
@@ -462,14 +471,22 @@ runners:
           mutation: true
           context:
             files: author-fix.fix_bundle.data.files
-        - id: scafld-build
-          label: build to review
+        - id: scafld-build-open
+          label: open build phase
           skill: ../scafld
           scopes:
             - scafld:build
           mutation: true
           inputs:
-            command: build_to_review
+            command: build
+        - id: scafld-build
+          label: complete build task
+          skill: ../scafld
+          scopes:
+            - scafld:build
+          mutation: true
+          inputs:
+            command: build
         - id: scafld-status
           label: inspect review state
           skill: ../scafld
@@ -513,7 +530,7 @@ runners:
           inputs:
             command: handoff
         - id: package-pull-request
-          label: package the draft PR outbox entry
+          label: package reviewer PR story
           tool: outbox.build_pull_request
           scopes:
             - runx:repo:package
@@ -524,6 +541,7 @@ runners:
             completion_result: scafld-complete.result
             status_snapshot: scafld-final-status.result
             current_branch: read-current-branch.git_branch.data
+            fix_bundle: author-fix.fix_bundle.data
         - id: push-pull-request
           label: push the PR outbox entry through thread
           tool: thread.push_outbox
@@ -534,6 +552,29 @@ runners:
             draft_pull_request: package-pull-request.draft_pull_request.data
           inputs:
             next_status: draft
+        - id: package-thread-story
+          label: package source-thread story
+          tool: outbox.build_work_item_story
+          scopes:
+            - runx:repo:package
+          context:
+            build_result: scafld-build.result
+            review_result: scafld-review.result
+            completion_result: scafld-complete.result
+            status_snapshot: scafld-final-status.result
+            draft_pull_request: package-pull-request.draft_pull_request.data
+            pull_request_outbox_entry: push-pull-request.outbox_entry
+            push_result: push-pull-request.push
+        - id: push-thread-story
+          label: update source thread story
+          tool: thread.push_outbox
+          scopes:
+            - thread:push
+          context:
+            outbox_entry: package-thread-story.outbox_entry.data
+            draft_pull_request: package-pull-request.draft_pull_request.data
+          inputs:
+            next_status: published
       policy:
         transitions:
           - to: write-fix

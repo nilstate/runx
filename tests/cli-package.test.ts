@@ -108,8 +108,10 @@ describeIfBatched("Node CLI package", () => {
     expect(files).toContain("skills/scafld/run.mjs");
     expect(files).toContain("tools/outbox/build_pull_request/manifest.json");
     expect(files).toContain("tools/outbox/build_pull_request/run.mjs");
-    expect(files).toContain("tools/scafld/capture_checks/manifest.json");
-    expect(files).toContain("tools/scafld/capture_checks/run.mjs");
+    expect(files).toContain("tools/spec/normalize_scafld_frontmatter/manifest.json");
+    expect(files).toContain("tools/spec/normalize_scafld_frontmatter/run.mjs");
+    expect(files).toContain("tools/spec/read_declared_files/manifest.json");
+    expect(files).toContain("tools/spec/read_declared_files/run.mjs");
     expect(files).toContain("tools/sourcey/build/manifest.json");
     expect(files).toContain("tools/sourcey/build/run.mjs");
     expect(files).toContain("tools/sourcey/package/manifest.json");

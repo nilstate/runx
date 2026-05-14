@@ -5,8 +5,13 @@ import path from "node:path";
 
 const inputs = loadInputs();
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const scafld = resolveBinary(String(inputs.scafld_bin || process.env.SCAFLD_BIN || "scafld"));
-const minimumScafldVersion = String(inputs.scafld_min_version || "2.4.0");
+const scafldCandidate = String(inputs.scafld_bin || process.env.SCAFLD_BIN || "scafld");
+const scafldSource = inputs.scafld_bin
+  ? "input:scafld_bin"
+  : process.env.SCAFLD_BIN
+    ? "env:SCAFLD_BIN"
+    : "path:scafld";
+const scafld = resolveBinary(scafldCandidate);
 const cwd = path.resolve(String(
   inputs.fixture
     || inputs.cwd
@@ -30,7 +35,6 @@ const jsonCommands = new Set([
   "list",
   "report",
   "build",
-  "build_to_review",
 ]);
 const commandsWithoutTaskId = new Set(["init", "list", "report"]);
 
@@ -85,8 +89,6 @@ switch (command) {
   case "build":
     args.push(command, taskId);
     break;
-  case "build_to_review":
-    break;
   case "review":
     args.push("review", taskId);
     if (inputs.provider) {
@@ -130,30 +132,6 @@ if (path.isAbsolute(scafld) || scafld.includes(path.sep)) {
   env.PATH = `${path.dirname(scafld)}${path.delimiter}${env.PATH || "/usr/local/bin:/usr/bin:/bin"}`;
 }
 
-try {
-  ensureScafldVersion({ scafld, cwd, env, minimum: minimumScafldVersion });
-} catch (error) {
-  console.error(error.message);
-  process.exit(1);
-}
-
-if (command === "build_to_review") {
-  const advanced = buildToReview({
-    scafld,
-    taskId,
-    cwd,
-    env,
-    maxBuilds: positiveInteger(inputs.max_builds, 12),
-  });
-  if (advanced.stdout) {
-    process.stdout.write(advanced.stdout);
-  }
-  if (advanced.stderr) {
-    process.stderr.write(advanced.stderr);
-  }
-  process.exit(advanced.exitCode);
-}
-
 const result = spawnSync(scafld, args, {
   cwd,
   env,
@@ -162,7 +140,15 @@ const result = spawnSync(scafld, args, {
 });
 
 if (result.error) {
-  console.error(result.error.message);
+  console.error(formatSpawnError({
+    error: result.error,
+    source: scafldSource,
+    requestedBinary: scafldCandidate,
+    resolvedBinary: scafld,
+    cwd,
+    command,
+    args,
+  }));
   process.exit(1);
 }
 
@@ -171,40 +157,16 @@ const stderr = result.stderr ?? "";
 const exitCode = result.status ?? 1;
 
 let structured = null;
-let scafldFailureSummary = "";
 if (jsonCommands.has(command)) {
   try {
     structured = parseJsonPayload(command, stdout);
   } catch (error) {
-    if (command === "review" || command === "complete") {
-      structured = statusFallback({ scafld, taskId, cwd, env, fallbackCommand: command });
-      if (structured !== null && exitCode !== 0) {
-        scafldFailureSummary = summarizeScafldGateFailure({
-          structured,
-          command,
-          exitCode,
-          parseError: error,
-        });
-      }
+    if (stderr) {
+      process.stderr.write(stderr);
     }
-    if (structured !== null) {
-      // Continue with the recovered native status envelope below.
-    } else {
-      if (stderr) {
-        process.stderr.write(stderr);
-      }
-      console.error(error.message);
-      process.exit(exitCode === 0 ? 1 : exitCode);
-    }
+    console.error(error.message);
+    process.exit(exitCode === 0 ? 1 : exitCode);
   }
-}
-
-if (structured !== null && exitCode !== 0 && (command === "review" || command === "complete") && !scafldFailureSummary) {
-  scafldFailureSummary = summarizeScafldGateFailure({
-    structured,
-    command,
-    exitCode,
-  });
 }
 
 if (structured !== null) {
@@ -213,9 +175,7 @@ if (structured !== null) {
   process.stdout.write(stdout);
 }
 
-if (scafldFailureSummary) {
-  process.stderr.write(`${scafldFailureSummary}\n`);
-} else if (stderr) {
+if (stderr) {
   process.stderr.write(stderr);
 }
 
@@ -251,236 +211,18 @@ function resolveBinary(candidate) {
   return path.isAbsolute(candidate) ? candidate : path.resolve(scriptDirectory, candidate);
 }
 
-function buildToReview({ scafld, taskId, cwd, env, maxBuilds }) {
-  const builds = [];
-  let passed = 0;
-  let failed = 0;
-
-  for (let attempt = 1; attempt <= maxBuilds; attempt += 1) {
-    const result = spawnSync(scafld, ["build", taskId, "--json"], {
-      cwd,
-      env,
-      encoding: "utf8",
-      shell: false,
-    });
-    if (result.error) {
-      return {
-        exitCode: 1,
-        stderr: `${result.error.message}\n`,
-      };
-    }
-
-    const stdout = result.stdout ?? "";
-    const stderr = result.stderr ?? "";
-    let structured = null;
-    try {
-      structured = parseJsonPayload("build", stdout);
-    } catch (error) {
-      return {
-        exitCode: result.status === 0 ? 1 : result.status ?? 1,
-        stderr: `${stderr}${error.message}\n`,
-      };
-    }
-
-    const payload = unwrapScafldResult(structured);
-    builds.push(payload);
-    passed += Number.isFinite(payload.passed) ? payload.passed : 0;
-    failed += Number.isFinite(payload.failed) ? payload.failed : 0;
-
-    const exitCode = result.status ?? 1;
-    if (exitCode !== 0) {
-      return {
-        exitCode,
-        stdout: `${JSON.stringify(structured)}\n`,
-        stderr,
-      };
-    }
-
-    if (payload.status === "review") {
-      return {
-        exitCode: 0,
-        stdout: `${JSON.stringify({
-          ok: true,
-          command: "build_to_review",
-          result: {
-            task_id: payload.task_id || taskId,
-            status: payload.status,
-            phase: payload.phase,
-            passed,
-            failed,
-            next: payload.next,
-            iterations: builds.length,
-            builds,
-            last: payload,
-          },
-        })}\n`,
-        stderr,
-      };
-    }
-  }
-
-  return {
-    exitCode: 1,
-    stdout: `${JSON.stringify({
-      ok: false,
-      command: "build_to_review",
-      error: {
-        code: "runtime_error",
-        message: `scafld build_to_review exceeded ${maxBuilds} build attempts before status review`,
-        exit_code: 1,
-      },
-      result: {
-        task_id: taskId,
-        status: builds.at(-1)?.status || "unknown",
-        passed,
-        failed,
-        iterations: builds.length,
-        builds,
-        last: builds.at(-1),
-      },
-    })}\n`,
-  };
-}
-
-function unwrapScafldResult(value) {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    if (value.result && typeof value.result === "object" && !Array.isArray(value.result)) {
-      return value.result;
-    }
-    return value;
-  }
-  return {};
-}
-
-function statusFallback({ scafld, taskId, cwd, env, fallbackCommand }) {
-  const result = spawnSync(scafld, ["status", taskId, "--json"], {
-    cwd,
-    env,
-    encoding: "utf8",
-    shell: false,
-  });
-  if (result.error || (result.status ?? 1) !== 0) {
-    return null;
-  }
-
-  let statusPayload;
-  try {
-    statusPayload = parseJsonPayload("status", result.stdout ?? "");
-  } catch {
-    return null;
-  }
-
-  const statusResult = unwrapScafldResult(statusPayload);
-  const review = statusResult.review && typeof statusResult.review === "object" && !Array.isArray(statusResult.review)
-    ? statusResult.review
-    : {};
-  return {
-    ok: true,
-    command: fallbackCommand,
-    result: {
-      task_id: statusResult.task_id || taskId,
-      status: statusResult.status,
-      verdict: review.verdict || review.status,
-      findings: Array.isArray(review.findings) ? review.findings : [],
-      review,
-      recovered_from_status: true,
-    },
-  };
-}
-
-function summarizeScafldGateFailure({ structured, command, exitCode, parseError }) {
-  const result = unwrapScafldResult(structured);
-  const review = result.review && typeof result.review === "object" && !Array.isArray(result.review)
-    ? result.review
-    : {};
-  const verdict = firstNonEmptyString(result.verdict, review.verdict, review.status, "unknown");
-  const status = firstNonEmptyString(result.status, "unknown");
-  const statusLabel = result.recovered_from_status ? "recovered status" : "status";
-  const findings = Array.isArray(result.findings)
-    ? result.findings
-    : Array.isArray(review.findings)
-      ? review.findings
-      : [];
-  const findingSummary = findings
-    .filter((finding) => finding && typeof finding === "object" && !Array.isArray(finding))
-    .slice(0, 3)
-    .map((finding) => {
-      const id = firstNonEmptyString(finding.id, finding.summary, "finding");
-      const summary = firstNonEmptyString(finding.summary, finding.evidence, finding.validation);
-      return summary && summary !== id ? `${id}: ${summary}` : id;
-    })
-    .join(" | ");
-  const tail = findingSummary
-    ? ` Findings: ${findingSummary}`
-    : parseError
-      ? ` ${parseError.message}`
-      : " No review findings were present in scafld JSON.";
-  return boundedLine(`scafld ${command} failed with exit ${exitCode}; ${statusLabel}=${status}; review verdict=${verdict}.${tail}`);
-}
-
-function firstNonEmptyString(...values) {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-  return undefined;
-}
-
-function boundedLine(value) {
-  const line = String(value).replace(/\s+/g, " ").trim();
-  return line.length > 1200 ? `${line.slice(0, 1197)}...` : line;
-}
-
-function positiveInteger(value, fallback) {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function ensureScafldVersion({ scafld, cwd, env, minimum }) {
-  const result = spawnSync(scafld, ["--version"], {
-    cwd,
-    env,
-    encoding: "utf8",
-    shell: false,
-  });
-  if (result.error) {
-    throw new Error(`could not resolve scafld ${minimum} or newer: ${result.error.message}`);
-  }
-  const exitCode = result.status ?? 1;
-  const rawVersion = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
-  if (exitCode !== 0) {
-    throw new Error(`scafld --version failed with exit ${exitCode}: ${rawVersion}`);
-  }
-
-  const actual = parseSemver(rawVersion);
-  const required = parseSemver(minimum);
-  if (!required) {
-    throw new Error(`invalid required scafld version: ${minimum}`);
-  }
-  if (!actual || compareSemver(actual, required) < 0) {
-    throw new Error(
-      `scafld ${minimum} or newer is required by this runx runner; ` +
-      `resolved ${scafld} reported ${rawVersion || "no version"}`,
-    );
-  }
-}
-
-function parseSemver(value) {
-  const match = String(value).match(/\bv?(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?\b/);
-  if (!match) {
-    return null;
-  }
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
-}
-
-function compareSemver(left, right) {
-  for (let index = 0; index < 3; index += 1) {
-    if (left[index] !== right[index]) {
-      return left[index] > right[index] ? 1 : -1;
-    }
-  }
-  return 0;
+function formatSpawnError({ error, source, requestedBinary, resolvedBinary, cwd: workingDirectory, command: commandName, args: argv }) {
+  const systemCode = error?.code ? ` (${error.code})` : "";
+  return [
+    `Unable to run scafld ${commandName}.${systemCode}`,
+    `- binary source: ${source}`,
+    `- requested binary: ${requestedBinary}`,
+    `- resolved binary: ${resolvedBinary}`,
+    `- cwd: ${workingDirectory}`,
+    `- argv: ${[resolvedBinary, ...argv].join(" ")}`,
+    `- system error: ${error.message}`,
+    "Next: install scafld on PATH, set SCAFLD_BIN to the executable, or pass the scafld_bin input. Verify with `scafld list --json` from the target workspace.",
+  ].join("\n");
 }
 
 function parseJsonPayload(commandName, rawStdout) {
@@ -491,18 +233,6 @@ function parseJsonPayload(commandName, rawStdout) {
   try {
     return JSON.parse(trimmed);
   } catch (error) {
-    const jsonLine = trimmed
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .reverse()
-      .find((line) => line.startsWith("{") && line.endsWith("}"));
-    if (jsonLine) {
-      try {
-        return JSON.parse(jsonLine);
-      } catch (lineError) {
-        // Continue to the contract error below with the original output preview.
-      }
-    }
     const preview = trimmed.length > 240 ? `${trimmed.slice(0, 240)}...` : trimmed;
     throw new Error(
       `scafld ${commandName} did not emit valid JSON. ` +

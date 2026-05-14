@@ -46,6 +46,7 @@ describe("thread.push_outbox tool", () => {
         status: "skipped",
         reason: "thread not provided",
       },
+      thread: null,
     });
   });
 
@@ -765,6 +766,9 @@ describe("thread.push_outbox tool", () => {
             body_markdown: "# Fix fixture behavior\n\nBody.\n",
             is_draft: true,
           },
+          governance: {
+            changed_files: ["identity.md"],
+          },
         },
         workspace_path: workspace,
         next_status: "draft",
@@ -787,6 +791,131 @@ describe("thread.push_outbox tool", () => {
       expect(runChecked("git", ["-C", workspace, "log", "-1", "--format=%an <%ae>"], path.dirname(workspace)).trim())
         .toBe("github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>");
       expect(runChecked("git", ["--git-dir", remote, "branch", "--list", "issue-identity"], tempDir)).toContain("issue-identity");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  it("fails closed when GitHub PR publication sees dirty files outside the governed change list", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-dirty-scope-tool-"));
+    const workspace = path.join(tempDir, "workspace");
+    const remote = path.join(tempDir, "remote.git");
+
+    try {
+      await initGitHubWorkspace(workspace, remote, "issue-scope");
+      await writeFile(path.join(workspace, "unrelated.md"), "do not commit\n");
+
+      const result = runToolFailure({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "pull_request:issue-scope",
+          kind: "pull_request",
+          title: "Fix fixture behavior",
+          status: "proposed",
+          thread_locator: "github://example/repo/issues/123",
+        },
+        draft_pull_request: {
+          schema_version: "runx.pull-request-draft.v1",
+          action: "create",
+          push_ready: true,
+          task_id: "issue-scope",
+          target: {
+            repo: "example/repo",
+            branch: "issue-scope",
+            base: "main",
+            remote: "origin",
+          },
+          pull_request: {
+            title: "Fix fixture behavior",
+            body_markdown: "# Fix fixture behavior\n\nBody.\n",
+            is_draft: true,
+          },
+          governance: {
+            changed_files: ["README.md"],
+          },
+        },
+        workspace_path: workspace,
+        next_status: "draft",
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr || result.stdout).toContain(
+        "dirty workspace contains files outside draft_pull_request.governance.changed_files: unrelated.md",
+      );
+      expect(runChecked("git", ["-C", workspace, "status", "--short"], path.dirname(workspace))).toContain("?? unrelated.md");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  it("fails closed when the draft PR branch does not match the checked-out workspace branch", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-gh-branch-scope-tool-"));
+    const workspace = path.join(tempDir, "workspace");
+    const remote = path.join(tempDir, "remote.git");
+
+    try {
+      await initGitHubWorkspace(workspace, remote, "issue-actual");
+
+      const result = runToolFailure({
+        thread: {
+          kind: "runx.thread.v1",
+          adapter: {
+            type: "github",
+            adapter_ref: "example/repo#issue/123",
+          },
+          thread_kind: "work_item",
+          thread_locator: "github://example/repo/issues/123",
+          canonical_uri: "https://github.com/example/repo/issues/123",
+          entries: [],
+          decisions: [],
+          outbox: [],
+          source_refs: [],
+        },
+        outbox_entry: {
+          entry_id: "pull_request:issue-target",
+          kind: "pull_request",
+          title: "Fix fixture behavior",
+          status: "proposed",
+          thread_locator: "github://example/repo/issues/123",
+        },
+        draft_pull_request: {
+          schema_version: "runx.pull-request-draft.v1",
+          action: "create",
+          push_ready: true,
+          task_id: "issue-target",
+          target: {
+            repo: "example/repo",
+            branch: "issue-target",
+            base: "main",
+            remote: "origin",
+          },
+          pull_request: {
+            title: "Fix fixture behavior",
+            body_markdown: "# Fix fixture behavior\n\nBody.\n",
+            is_draft: true,
+          },
+        },
+        workspace_path: workspace,
+        next_status: "draft",
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr || result.stdout).toContain(
+        "GitHub PR publication target branch 'issue-target' does not match workspace branch 'issue-actual'",
+      );
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -904,6 +1033,7 @@ describe("thread.push_outbox tool", () => {
         },
       });
       expect(JSON.parse(await readFile(fakeState, "utf8"))).toMatchObject({
+        lastPrListJson: expect.stringContaining("mergedAt"),
         nextPullNumber: 78,
         pulls: [
           {
@@ -1703,6 +1833,19 @@ describe("thread.push_outbox tool", () => {
 });
 
 function runTool(inputs: Readonly<Record<string, unknown>>, envOverrides: NodeJS.ProcessEnv = {}) {
+  const result = runToolProcess(inputs, envOverrides);
+  expect(result.status).toBe(0);
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || "tool failed");
+  }
+  return JSON.parse(result.stdout);
+}
+
+function runToolFailure(inputs: Readonly<Record<string, unknown>>, envOverrides: NodeJS.ProcessEnv = {}) {
+  return runToolProcess(inputs, envOverrides);
+}
+
+function runToolProcess(inputs: Readonly<Record<string, unknown>>, envOverrides: NodeJS.ProcessEnv = {}) {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     ...envOverrides,
@@ -1719,11 +1862,7 @@ function runTool(inputs: Readonly<Record<string, unknown>>, envOverrides: NodeJS
     encoding: "utf8",
     env,
   });
-  expect(result.status).toBe(0);
-  if (result.status !== 0) {
-    throw new Error(result.stderr || result.stdout || "tool failed");
-  }
-  return JSON.parse(result.stdout);
+  return result;
 }
 
 async function initGitHubWorkspace(workspace: string, remote: string, branch: string): Promise<void> {
@@ -1857,6 +1996,7 @@ if (args[0] === "api" && /^repos\\/[^/]+\\/[^/]+\\/pulls\\/\\d+$/.test(args[1] |
 if (args[0] === "pr" && args[1] === "list") {
   const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "";
   state.ghListTokens = [...(state.ghListTokens || []), token];
+  state.lastPrListJson = readFlag(args, "--json");
   if ((state.failPrListTokens || []).includes(token)) {
     writeFileSync(statePath, \`\${JSON.stringify(state, null, 2)}\\n\`);
     process.stderr.write(\`token \${token} cannot list pull requests\\n\`);

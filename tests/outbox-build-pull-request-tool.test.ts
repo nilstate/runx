@@ -12,42 +12,7 @@ describe("outbox.build_pull_request tool", () => {
       thread_title: "Fix fixture behavior",
       thread_locator: "github://example/repo/issues/123",
       target_repo: "example/repo",
-      handoff_markdown: [
-        "# Handoff: Fix fixture behavior",
-        "",
-        "Status: completed",
-        "Next: none",
-        "",
-        "## Summary",
-        "Fixes the fixture behavior reported in the source issue.",
-        "",
-        "## Context",
-        "The source issue reports a bounded fixture regression in the public workflow.",
-        "receipt_id: rx_hidden",
-        "",
-        "## Scope",
-        "- Update the fixture behavior implementation.",
-        "- Preserve the existing public contract.",
-        "",
-        "## Validation",
-        "- Targeted test passed.",
-        "",
-        "## Acceptance",
-        "- Source event: entry-8",
-        "- Last attempt: entry-9",
-        "- Checked at: 2026-05-14T00:00:00Z",
-        "- Workflow acceptance passed.",
-        "```",
-        "private log output should not appear",
-        "```",
-        "",
-        "## Review",
-        "Review found one non-blocking follow-up.",
-        "",
-        "## Rollback",
-        "Revert the fixture behavior change.",
-        "",
-      ].join("\n"),
+      handoff_markdown: "# Handoff: Fix fixture behavior\n\nStatus: completed\nNext: none\n",
       build_result: {
         status: "review",
         passed: 2,
@@ -66,7 +31,14 @@ describe("outbox.build_pull_request tool", () => {
         },
       },
       current_branch: {
-        branch: "fixture-task",
+        branch: "main",
+      },
+      branch: "fixture-task",
+      fix_bundle: {
+        files: [
+          { path: "app.txt", contents: "fixed\n" },
+          { path: "notes.md", contents: "governed\n" },
+        ],
       },
       base: "main",
       status_snapshot: {
@@ -89,6 +61,7 @@ describe("outbox.build_pull_request tool", () => {
         review_verdict: "pass_with_issues",
         check_status: "success",
         push_ready: true,
+        changed_files: ["app.txt", "notes.md"],
       },
     });
     expect(result.draft_pull_request).toMatchObject({
@@ -106,7 +79,6 @@ describe("outbox.build_pull_request tool", () => {
         body_markdown: expect.stringContaining("## Human Merge Gate"),
         is_draft: true,
       },
-      engineering_summary_markdown: expect.stringContaining("# Handoff: Fix fixture behavior"),
       governance: {
         review_verdict: "pass_with_issues",
         blocking_count: 0,
@@ -114,33 +86,18 @@ describe("outbox.build_pull_request tool", () => {
         sync_status: "ok",
         build_passed: 2,
         build_failed: 0,
+        changed_files: ["app.txt", "notes.md"],
       },
       thread: {
         thread_locator: "github://example/repo/issues/123",
       },
     });
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Review Packet");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Source Context");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("bounded fixture regression");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Scope");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Preserve the existing public contract");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Validation");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Targeted test passed");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Workflow acceptance passed");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Review Context");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Review found one non-blocking follow-up");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Rollback");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Target: `example/repo`");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Branch: `fixture-task` -> `main`");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Review: `pass_with_issues`");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("Merge manually");
-    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("rx_hidden");
-    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("Source event");
-    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("Last attempt");
-    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("Checked at");
-    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("entry-9");
-    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("private log output");
-    expect(result.draft_pull_request.pull_request.body_markdown).not.toBe(result.draft_pull_request.engineering_summary_markdown);
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## Source Thread");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("## scafld Handoff");
+    expect(result.outbox_entry.metadata).toMatchObject({
+      human_merge_gate: "required",
+      post_merge_observation: "provider_state_update",
+    });
   });
 
   it("refreshes an existing pull_request outbox entry from thread", () => {
@@ -212,31 +169,19 @@ describe("outbox.build_pull_request tool", () => {
     });
   });
 
-  it("counts native scafld review findings by blocks_completion", () => {
+  it("redacts local paths from reviewer pull request bodies", () => {
     const result = runTool({
       task_id: "fixture-task",
       thread_title: "Fix fixture behavior",
       thread_locator: "github://example/repo/issues/123",
       target_repo: "example/repo",
-      handoff_markdown: "# Handoff: Fix fixture behavior\n\n## Summary\nFix fixture behavior.\n",
+      handoff_markdown: "RUNX_BIN=/Users/kam/dev/runx/dist/index.js\n\nChanged /tmp/workspace/app.txt",
       build_result: {
-        passed: 2,
+        passed: 1,
         failed: 0,
       },
       review_result: {
-        verdict: "pass_with_issues",
-        findings: [
-          {
-            id: "blocking",
-            severity: "high",
-            blocks_completion: true,
-          },
-          {
-            id: "non-blocking",
-            severity: "medium",
-            blocks_completion: false,
-          },
-        ],
+        verdict: "pass",
       },
       completion_result: {
         status: "completed",
@@ -248,12 +193,10 @@ describe("outbox.build_pull_request tool", () => {
       base: "main",
     });
 
-    expect(result.draft_pull_request.governance).toMatchObject({
-      blocking_count: 1,
-      non_blocking_count: 1,
-    });
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("1 blocking review finding");
-    expect(result.draft_pull_request.pull_request.body_markdown).toContain("1 non-blocking review finding");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("/Users/kam");
+    expect(result.draft_pull_request.pull_request.body_markdown).not.toContain("/tmp/workspace");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("RUNX_BIN=[local-path]");
+    expect(result.draft_pull_request.pull_request.body_markdown).toContain("[local-path]");
   });
 });
 

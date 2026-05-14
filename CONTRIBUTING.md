@@ -64,11 +64,81 @@ The full DCO text (reproduced here for reference):
 3. Make your change. Keep commits focused and conventional (`feat:`, `fix:`,
    `docs:`, `chore:`, etc.).
 4. Run the workspace checks locally:
+   - `pnpm install`
+   - `pnpm build`
    - `pnpm typecheck`
    - `pnpm test`
 5. Sign off your commits with `git commit -s` (see DCO above).
 6. Open a pull request against `main` with a clear description of the change
    and any test or validation evidence.
+
+## Development setup
+
+Use Node.js 20 or newer and pnpm 10 or newer. From the OSS workspace:
+
+```bash
+cd oss
+pnpm install
+pnpm build
+pnpm test
+```
+
+For a type-only check:
+
+```bash
+pnpm typecheck
+```
+
+For the fast local loop:
+
+```bash
+pnpm test:fast
+```
+
+`test:fast` uses `vitest.fast.config.ts` and is intended for package-adjacent
+iteration. `pnpm test` remains the full workspace suite and includes the
+isolated CLI package contract check.
+
+See [docs/how-we-test.md](docs/how-we-test.md) for the full test lane split,
+including the `RUNX_VITEST_BATCH=cli-package` batch.
+
+To run one test file:
+
+```bash
+pnpm vitest run tests/examples/hello-world.test.ts
+```
+
+To use the local CLI from any directory:
+
+```bash
+pnpm cli:link-global
+runx --help
+```
+
+Re-run `pnpm build` after source changes that affect compiled package output.
+
+## Skill authoring paths
+
+Use `runx new <name>` when you already have the runx CLI available locally and
+want a standalone skill package:
+
+```bash
+runx new docs-demo
+```
+
+Use `npm create @runxhq/skill@latest <name>` for a cold start from npm:
+
+```bash
+npm create @runxhq/skill@latest docs-demo
+```
+
+Both entry points go through the same scaffolder. Community skills should be
+authored as standalone packages; the runx repo itself is the first-party lane
+for official skills, runtime code, tests, and examples.
+
+The first runnable example is documented in
+[docs/getting-started.md](docs/getting-started.md). The generated package
+export index is in [docs/api-surface.md](docs/api-surface.md).
 
 ## Code of conduct
 

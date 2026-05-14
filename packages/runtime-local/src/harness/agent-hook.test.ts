@@ -37,7 +37,7 @@ Review a receipt.
     expect(result.status).toBe("success");
     expect(JSON.parse(result.stdout)).toEqual({ verdict: "pass" });
     expect(result.metadata).toMatchObject({
-      agent_task: {
+      agent_hook: {
         source_type: "harness-hook",
         hook: "review-receipt",
         status: "success",
@@ -72,7 +72,7 @@ Fail.
     expect(result.status).toBe("failure");
     expect(result.stderr).toBe("fixture failure");
     expect(result.metadata).toMatchObject({
-      agent_task: {
+      agent_hook: {
         hook: "fail",
         status: "failure",
       },

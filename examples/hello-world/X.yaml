@@ -1,0 +1,34 @@
+skill: hello-world
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+
+harness:
+  cases:
+    - name: hello-world-smoke
+      runner: default
+      inputs:
+        message: hello from docs
+      expect:
+        status: success
+        receipt:
+          kind: skill_execution
+          status: success
+          skill_name: hello-world
+          source_type: cli-tool
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      message:
+        type: string
+        required: true
+        description: Message to print from the example skill.

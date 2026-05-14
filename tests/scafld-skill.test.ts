@@ -31,10 +31,6 @@ import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
-if (argv[0] === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
 writeFileSync(join(__dirname, \`\${argv[0] || "unknown"}-trace.json\`), JSON.stringify({
   argv,
   leakedEnv: Object.keys(process.env)
@@ -93,60 +89,6 @@ process.exit(1);
     }
   });
 
-  it("fails closed when the resolved scafld is older than 2.4.0", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-old-version-"));
-    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
-
-    try {
-      await writeFile(
-        fakeScafld,
-        `#!/usr/bin/env node
-const argv = process.argv.slice(2);
-if (argv[0] === "--version") {
-  process.stdout.write("2.3.12\\n");
-  process.exit(0);
-}
-if ((argv[0] || "") === "validate") {
-  process.stdout.write(JSON.stringify({
-    ok: true,
-    command: "validate",
-    result: { task_id: "fixture-task", valid: true, errors: null },
-  }) + "\\n");
-  process.exit(0);
-}
-process.stderr.write(\`unsupported command: \${argv[0] || ""}\\n\`);
-process.exit(1);
-`,
-        { mode: 0o755 },
-      );
-
-      const result = await runLocalSkill({
-        skillPath: path.resolve("skills/scafld"),
-        runner: "scafld-cli",
-        inputs: {
-          command: "validate",
-          task_id: "fixture-task",
-          fixture: tempDir,
-          scafld_bin: fakeScafld,
-        },
-        caller,
-        adapters: createDefaultSkillAdapters(),
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
-      });
-
-      expect(result.status).toBe("failure");
-      if (result.status !== "failure") {
-        return;
-      }
-      expect(result.execution.stderr).toContain("scafld 2.4.0 or newer is required");
-      expect(result.execution.stderr).toContain("2.3.12");
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
   it("forwards native review and complete payloads without local reconstruction", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-native-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
@@ -164,10 +106,6 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const command = argv[0] || "";
-if (command === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
 const tracePath = join(__dirname, \`\${command}-trace.json\`);
 writeFileSync(tracePath, JSON.stringify({
   argv,
@@ -176,8 +114,6 @@ writeFileSync(tracePath, JSON.stringify({
     .sort(),
 }));
 if (command === "review") {
-  process.stdout.write("scafld review[command] started node reviewer.mjs\\n");
-  process.stdout.write("scafld review[command] completed exit=0 elapsed=4ms last_output=0s\\n");
   process.stdout.write(JSON.stringify({
     ok: true,
     command: "review",
@@ -281,384 +217,6 @@ process.exit(1);
     }
   });
 
-  it("recovers scafld 2.4.0 command-review results from status when review omits JSON", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-review-status-"));
-    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
-
-    try {
-      await writeFile(
-        fakeScafld,
-        `#!/usr/bin/env node
-const argv = process.argv.slice(2);
-const command = argv[0] || "";
-if (command === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
-if (command === "review") {
-  process.stderr.write("scafld review[command] started node reviewer.mjs\\n");
-  process.stderr.write("scafld review[command] completed exit=0 elapsed=4ms last_output=0s\\n");
-  process.exit(0);
-}
-if (command === "status") {
-  process.stdout.write(JSON.stringify({
-    ok: true,
-    command: "status",
-    result: {
-      task_id: argv[1],
-      status: "review",
-      review: {
-        verdict: "pass",
-        findings: [],
-      },
-    },
-  }) + "\\n");
-  process.exit(0);
-}
-process.stderr.write(\`unsupported command: \${command}\\n\`);
-process.exit(1);
-`,
-        { mode: 0o755 },
-      );
-
-      const result = await runLocalSkill({
-        skillPath: path.resolve("skills/scafld"),
-        runner: "scafld-cli",
-        inputs: {
-          command: "review",
-          task_id: "fixture-task",
-          fixture: tempDir,
-          scafld_bin: fakeScafld,
-        },
-        caller,
-        adapters: createDefaultSkillAdapters(),
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
-      });
-
-      expect(result.status).toBe("success");
-      if (result.status !== "success") {
-        return;
-      }
-      expect(JSON.parse(result.execution.stdout)).toEqual({
-        ok: true,
-        command: "review",
-        result: {
-          task_id: "fixture-task",
-          status: "review",
-          verdict: "pass",
-          findings: [],
-          review: {
-            verdict: "pass",
-            findings: [],
-          },
-          recovered_from_status: true,
-        },
-      });
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  it("recovers failed command-review findings from status while preserving the nonzero exit", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-review-failed-status-"));
-    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
-
-    try {
-      await writeFile(
-        fakeScafld,
-        `#!/usr/bin/env node
-const argv = process.argv.slice(2);
-const command = argv[0] || "";
-if (command === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
-if (command === "review") {
-  process.stderr.write("scafld review[command] started node reviewer.mjs\\n");
-  process.stderr.write("scafld review[command] completed exit=0 elapsed=4ms last_output=0s\\n");
-  process.exit(1);
-}
-if (command === "status") {
-  process.stdout.write(JSON.stringify({
-    ok: true,
-    command: "status",
-    result: {
-      task_id: argv[1],
-      status: "review",
-      review: {
-        verdict: "fail",
-        findings: [
-          {
-            id: "repo-diff-empty",
-            summary: "no non-governance repo files changed.",
-            blocks_completion: true,
-          },
-        ],
-      },
-    },
-  }) + "\\n");
-  process.exit(0);
-}
-process.stderr.write(\`unsupported command: \${command}\\n\`);
-process.exit(1);
-`,
-        { mode: 0o755 },
-      );
-
-      const result = await runLocalSkill({
-        skillPath: path.resolve("skills/scafld"),
-        runner: "scafld-cli",
-        inputs: {
-          command: "review",
-          task_id: "fixture-task",
-          fixture: tempDir,
-          scafld_bin: fakeScafld,
-        },
-        caller,
-        adapters: createDefaultSkillAdapters(),
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
-      });
-
-      expect(result.status).toBe("failure");
-      if (result.status !== "failure") {
-        return;
-      }
-      expect(JSON.parse(result.execution.stdout)).toEqual({
-        ok: true,
-        command: "review",
-        result: {
-          task_id: "fixture-task",
-          status: "review",
-          verdict: "fail",
-          findings: [
-            {
-              id: "repo-diff-empty",
-              summary: "no non-governance repo files changed.",
-              blocks_completion: true,
-            },
-          ],
-          review: {
-            verdict: "fail",
-            findings: [
-              {
-                id: "repo-diff-empty",
-                summary: "no non-governance repo files changed.",
-                blocks_completion: true,
-              },
-            ],
-          },
-          recovered_from_status: true,
-        },
-      });
-      expect(result.execution.stderr).toContain("scafld review failed with exit 1");
-      expect(result.execution.stderr).toContain("recovered status=review");
-      expect(result.execution.stderr).toContain("review verdict=fail");
-      expect(result.execution.stderr).toContain("repo-diff-empty: no non-governance repo files changed.");
-      expect(result.execution.stderr).not.toContain("started node reviewer.mjs");
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  it("recovers failed complete-gate findings from status while preserving the nonzero exit", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-complete-failed-status-"));
-    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
-
-    try {
-      await writeFile(
-        fakeScafld,
-        `#!/usr/bin/env node
-const argv = process.argv.slice(2);
-const command = argv[0] || "";
-if (command === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
-if (command === "complete") {
-  process.stderr.write("scafld review[command] started node reviewer.mjs\\n");
-  process.stderr.write("scafld review[command] completed exit=0 elapsed=4ms last_output=0s\\n");
-  process.exit(1);
-}
-if (command === "status") {
-  process.stdout.write(JSON.stringify({
-    ok: true,
-    command: "status",
-    result: {
-      task_id: argv[1],
-      status: "review",
-      review: {
-        verdict: "fail",
-        findings: [
-          {
-            id: "repo-diff-empty",
-            summary: "no non-governance repo files changed.",
-            blocks_completion: true,
-          },
-        ],
-      },
-    },
-  }) + "\\n");
-  process.exit(0);
-}
-process.stderr.write(\`unsupported command: \${command}\\n\`);
-process.exit(1);
-`,
-        { mode: 0o755 },
-      );
-
-      const result = await runLocalSkill({
-        skillPath: path.resolve("skills/scafld"),
-        runner: "scafld-cli",
-        inputs: {
-          command: "complete",
-          task_id: "fixture-task",
-          fixture: tempDir,
-          scafld_bin: fakeScafld,
-        },
-        caller,
-        adapters: createDefaultSkillAdapters(),
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
-      });
-
-      expect(result.status).toBe("failure");
-      if (result.status !== "failure") {
-        return;
-      }
-      expect(JSON.parse(result.execution.stdout)).toEqual({
-        ok: true,
-        command: "complete",
-        result: {
-          task_id: "fixture-task",
-          status: "review",
-          verdict: "fail",
-          findings: [
-            {
-              id: "repo-diff-empty",
-              summary: "no non-governance repo files changed.",
-              blocks_completion: true,
-            },
-          ],
-          review: {
-            verdict: "fail",
-            findings: [
-              {
-                id: "repo-diff-empty",
-                summary: "no non-governance repo files changed.",
-                blocks_completion: true,
-              },
-            ],
-          },
-          recovered_from_status: true,
-        },
-      });
-      expect(result.execution.stderr).toContain("scafld complete failed with exit 1");
-      expect(result.execution.stderr).toContain("recovered status=review");
-      expect(result.execution.stderr).toContain("review verdict=fail");
-      expect(result.execution.stderr).toContain("repo-diff-empty: no non-governance repo files changed.");
-      expect(result.execution.stderr).not.toContain("started node reviewer.mjs");
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  it("summarizes parseable nonzero complete-gate JSON instead of stale provider stderr", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-complete-json-failed-"));
-    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
-
-    try {
-      await writeFile(
-        fakeScafld,
-        `#!/usr/bin/env node
-const argv = process.argv.slice(2);
-const command = argv[0] || "";
-if (command === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
-if (command === "complete") {
-  process.stdout.write(JSON.stringify({
-    ok: false,
-    command: "complete",
-    result: {
-      task_id: argv[1],
-      status: "review",
-      review: {
-        verdict: "fail",
-        findings: [
-          {
-            id: "repo-diff-empty",
-            summary: "no non-governance repo files changed.",
-            blocks_completion: true,
-          },
-        ],
-      },
-    },
-  }) + "\\n");
-  process.stderr.write("scafld review[command] started node reviewer.mjs\\n");
-  process.stderr.write("scafld review[command] completed exit=0 elapsed=4ms last_output=0s\\n");
-  process.exit(1);
-}
-process.stderr.write(\`unsupported command: \${command}\\n\`);
-process.exit(1);
-`,
-        { mode: 0o755 },
-      );
-
-      const result = await runLocalSkill({
-        skillPath: path.resolve("skills/scafld"),
-        runner: "scafld-cli",
-        inputs: {
-          command: "complete",
-          task_id: "fixture-task",
-          fixture: tempDir,
-          scafld_bin: fakeScafld,
-        },
-        caller,
-        adapters: createDefaultSkillAdapters(),
-        receiptDir: path.join(tempDir, "receipts"),
-        runxHome: path.join(tempDir, "home"),
-        env: process.env,
-      });
-
-      expect(result.status).toBe("failure");
-      if (result.status !== "failure") {
-        return;
-      }
-      expect(JSON.parse(result.execution.stdout)).toEqual({
-        ok: false,
-        command: "complete",
-        result: {
-          task_id: "fixture-task",
-          status: "review",
-          review: {
-            verdict: "fail",
-            findings: [
-              {
-                id: "repo-diff-empty",
-                summary: "no non-governance repo files changed.",
-                blocks_completion: true,
-              },
-            ],
-          },
-        },
-      });
-      expect(result.execution.stderr).toContain("scafld complete failed with exit 1");
-      expect(result.execution.stderr).toContain("status=review");
-      expect(result.execution.stderr).not.toContain("recovered status=review");
-      expect(result.execution.stderr).toContain("review verdict=fail");
-      expect(result.execution.stderr).toContain("repo-diff-empty: no non-governance repo files changed.");
-      expect(result.execution.stderr).not.toContain("started node reviewer.mjs");
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
   it("resolves relative scafld_bin paths from the scafld skill directory", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-relative-"));
     const fixtureDir = path.join(tempDir, "fixtures");
@@ -670,10 +228,6 @@ process.exit(1);
         fakeScafld,
         `#!/usr/bin/env node
 const argv = process.argv.slice(2);
-if (argv[0] === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
 if ((argv[0] || "") === "validate") {
   process.stdout.write(JSON.stringify({
     ok: true,
@@ -728,10 +282,6 @@ process.exit(1);
         fakeScafld,
         `#!/usr/bin/env node
 const argv = process.argv.slice(2);
-if (argv[0] === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
 if ((argv[0] || "") === "validate") {
   process.stdout.write(JSON.stringify({
     ok: true,
@@ -777,56 +327,19 @@ process.exit(1);
     }
   });
 
-  it("build_to_review advances native build until scafld reports review", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-build-to-review-"));
-    const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
+  it("reports the selected scafld binary and next fix when the binary cannot be started", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-missing-bin-"));
+    const missingScafld = path.join(tempDir, "missing-scafld");
 
     try {
-      await writeFile(
-        fakeScafld,
-        `#!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const countPath = join(__dirname, "build-count.txt");
-const argv = process.argv.slice(2);
-if (argv[0] === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
-if ((argv[0] || "") === "build") {
-  const count = existsSync(countPath) ? Number(readFileSync(countPath, "utf8")) + 1 : 1;
-  writeFileSync(countPath, String(count));
-  process.stdout.write(JSON.stringify({
-    ok: true,
-    command: "build",
-    result: {
-      task_id: argv[1],
-      status: count === 1 ? "active" : "review",
-      phase: count === 1 ? "phase1" : "final",
-      passed: count === 1 ? 0 : 2,
-      failed: 0,
-      next: count === 1 ? "scafld build fixture-task" : "scafld review fixture-task",
-    },
-  }) + "\\n");
-  process.exit(0);
-}
-process.stderr.write(\`unsupported command: \${argv[0] || ""}\\n\`);
-process.exit(1);
-`,
-        { mode: 0o755 },
-      );
-
       const result = await runLocalSkill({
         skillPath: path.resolve("skills/scafld"),
         runner: "scafld-cli",
         inputs: {
-          command: "build_to_review",
+          command: "validate",
           task_id: "fixture-task",
           fixture: tempDir,
-          scafld_bin: fakeScafld,
+          scafld_bin: missingScafld,
         },
         caller,
         adapters: createDefaultSkillAdapters(),
@@ -835,49 +348,16 @@ process.exit(1);
         env: process.env,
       });
 
-      expect(result.status).toBe("success");
-      if (result.status !== "success") {
+      expect(result.status).toBe("failure");
+      if (result.status !== "failure") {
         return;
       }
-      expect(JSON.parse(result.execution.stdout)).toEqual({
-        ok: true,
-        command: "build_to_review",
-        result: {
-          task_id: "fixture-task",
-          status: "review",
-          phase: "final",
-          passed: 2,
-          failed: 0,
-          next: "scafld review fixture-task",
-          iterations: 2,
-          builds: [
-            {
-              task_id: "fixture-task",
-              status: "active",
-              phase: "phase1",
-              passed: 0,
-              failed: 0,
-              next: "scafld build fixture-task",
-            },
-            {
-              task_id: "fixture-task",
-              status: "review",
-              phase: "final",
-              passed: 2,
-              failed: 0,
-              next: "scafld review fixture-task",
-            },
-          ],
-          last: {
-            task_id: "fixture-task",
-            status: "review",
-            phase: "final",
-            passed: 2,
-            failed: 0,
-            next: "scafld review fixture-task",
-          },
-        },
-      });
+      expect(result.execution.exitCode).toBe(1);
+      expect(result.execution.stderr).toContain("Unable to run scafld validate");
+      expect(result.execution.stderr).toContain("binary source: input:scafld_bin");
+      expect(result.execution.stderr).toContain(`requested binary: ${missingScafld}`);
+      expect(result.execution.stderr).toContain(`resolved binary: ${missingScafld}`);
+      expect(result.execution.stderr).toContain("Next: install scafld on PATH");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -892,10 +372,6 @@ process.exit(1);
         fakeScafld,
         `#!/usr/bin/env node
 const argv = process.argv.slice(2);
-if (argv[0] === "--version") {
-  process.stdout.write("2.4.0\\n");
-  process.exit(0);
-}
 if ((argv[0] || "") === "build") {
   process.stdout.write(JSON.stringify({
     ok: false,

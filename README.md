@@ -4,6 +4,25 @@ Public open-source boundary for the runx CLI, trusted kernel, adapters, SDK, har
 
 The npm CLI package is `@runxhq/cli` and exposes the `runx` binary.
 
+## Your First Skill In 5 Minutes
+
+Start with the checked-in hello-world skill:
+
+```bash
+cd oss
+pnpm install
+pnpm build
+pnpm exec runx skill examples/hello-world \
+  --message "hello from docs" \
+  --non-interactive \
+  --json
+```
+
+Then inspect the emitted receipt. The full walkthrough is in
+[docs/getting-started.md](docs/getting-started.md), and the next step is
+[docs/skill-to-graph.md](docs/skill-to-graph.md).
+For governed code changes, see [docs/issue-to-pr.md](docs/issue-to-pr.md).
+
 ## Requirements
 
 - Node.js 20+
@@ -19,6 +38,9 @@ pnpm test
 pnpm typecheck
 pnpm verify:fast
 ```
+
+Contributor setup, test selection, and commit sign-off rules are in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Local CLI
 
@@ -60,8 +82,8 @@ runx config set agent.api_key "$OPENAI_API_KEY"
 ```
 
 With `agent.provider`, `agent.model`, and `agent.api_key` configured, the CLI
-can now resolve `agent` and `agent-task` cognitive work directly. Deterministic
-tools, approvals, and required human inputs keep their existing local behavior.
+can now resolve managed agent work directly. Deterministic tools, approvals,
+and required human inputs keep their existing local behavior.
 
 The global link points at `oss/packages/cli` in this checkout. Rebuild with
 `pnpm --dir oss build`; do not reinstall.
@@ -72,6 +94,8 @@ The global link points at `oss/packages/cli` in this checkout. Rebuild with
 state-machine, policy, executor, receipts, registry, config, knowledge,
 artifacts, and marketplaces. Policy and state-machine are the pure decision
 domains.
+
+For the generated package export index, see [docs/api-surface.md](docs/api-surface.md).
 
 `@runxhq/runtime-local` is the local runtime package. It owns local
 orchestration, caller interaction, sandbox preparation, receipt-write
@@ -117,6 +141,10 @@ Sourcey is the reference shape for this model: from inside the Sourcey repo,
 `runx outreach --runner status --issue ...` resolves the local
 `skills/outreach` capability pack. `outreach` is not a privileged engine
 command, and there is no privileged `runx docs ...` path inside the engine.
+
+`issue-to-pr` follows the same boundary. runx owns the generic source-thread to
+scafld to PR machinery; service repos own Slack, Sentry, owner assignment, and
+publish policy. See [docs/issue-to-pr.md](docs/issue-to-pr.md).
 
 ## Standalone Skill Packages
 
@@ -189,7 +217,7 @@ authored source. Do not hand-edit generated `manifest.json` or `run.mjs`.
 
 The official catalog has two public kinds:
 
-- skills: `intake`, `issue-triage`, `research`, `draft-content`,
+- skills: `issue-intake`, `issue-triage`, `research`, `draft-content`,
   `vuln-scan`, `scafld`, `sourcey`, `moltbook`
 - skill graphs: `issue-to-pr`, `release`, `content-pipeline`,
   `deep-research-brief`, `ecosystem-vuln-scan`, `ecosystem-brief`,

@@ -52,24 +52,17 @@ export {
 } from "./outbox.js";
 
 export {
-  THREAD_STORY_CONTROL_SCHEMA_VERSION,
-  THREAD_STORY_MESSAGE_SCHEMA_VERSION,
-  type ThreadStorySectionId,
-  type ThreadStoryLink,
-  type ThreadStorySection,
-  type BuildThreadStoryMarkdownOptions,
-  type BuildThreadStoryMessageOutboxEntryOptions,
-  type ThreadStatusTriageSummary,
-  type BuildThreadStatusMarkdownOptions,
-  type BuildThreadMilestoneNotificationTextOptions,
-  type BuildThreadPullRequestReviewerPacketMarkdownOptions,
-  sanitizeThreadStoryText,
-  buildThreadStoryMarkdown,
-  buildThreadStatusMarkdown,
-  buildThreadMilestoneNotificationText,
-  buildThreadPullRequestReviewerPacketMarkdown,
-  buildThreadStoryMessageOutboxEntry,
-} from "./thread-story.js";
+  type WorkItemStoryMilestoneKind,
+  type WorkItemStoryMilestoneStatus,
+  type WorkItemStoryMilestone,
+  type WorkItemStory,
+  type BuildWorkItemStoryOutboxEntryOptions,
+  validateWorkItemStoryMilestone,
+  validateWorkItemStory,
+  renderWorkItemStoryMarkdown,
+  buildWorkItemStoryOutboxEntry,
+  sanitizePublicMarkdown,
+} from "./work-item-story.js";
 
 export {
   type HandoffSignal,

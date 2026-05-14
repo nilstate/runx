@@ -1,0 +1,11 @@
+name: hello-graph
+owner: runx
+steps:
+  - id: first
+    skill: ../hello-world
+    inputs:
+      message: hello from graph
+  - id: second
+    skill: ../hello-world
+    context:
+      message: first.stdout

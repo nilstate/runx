@@ -27,7 +27,7 @@ steps:
       repo_root: ${JSON.stringify(tempDir)}
   - id: plan
     run:
-      type: agent-task
+      type: agent-step
       agent: builder
       task: summarize-note
       outputs:
@@ -86,9 +86,9 @@ steps:
         return;
       }
 
-      expect(result.steps.map((step) => step.skill)).toEqual(["fs.read", "run:agent-task"]);
+      expect(result.steps.map((step) => step.skill)).toEqual(["fs.read", "run:agent-step"]);
       expect(result.steps[0]?.runner).toBe("tool");
-      expect(result.steps[1]?.runner).toBe("agent-task");
+      expect(result.steps[1]?.runner).toBe("agent-step");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

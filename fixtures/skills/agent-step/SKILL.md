@@ -1,8 +1,8 @@
 ---
 name: reviewer-boundary
-description: Test-only explicit agent-task boundary fixture.
+description: Test-only explicit agent-step boundary fixture.
 source:
-  type: agent-task
+  type: agent-step
   agent: codex
   task: review-boundary
   outputs:

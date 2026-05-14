@@ -6,21 +6,21 @@ import { describe, expect, it } from "vitest";
 import { runHarnessTarget } from "@runxhq/runtime-local/harness";
 import { parseRunnerManifestYaml, validateRunnerManifest } from "@runxhq/core/parser";
 
-describe("intake official skill", () => {
-  it("ships as an explicit agent-task boundary with a generic triage report contract", async () => {
+describe("issue-intake official skill", () => {
+  it("ships as a managed agent boundary with a generic intake report contract", async () => {
     const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.resolve("skills/intake/X.yaml"), "utf8")),
+      parseRunnerManifestYaml(await readFile(path.resolve("skills/issue-intake/X.yaml"), "utf8")),
     );
     const runner = manifest.runners.intake;
 
-    expect(runner?.source.type).toBe("agent-task");
-    if (!runner || runner.source.type !== "agent-task") {
-      throw new Error("intake runner must declare an agent-task source.");
+    expect(runner?.source.type).toBe("agent-step");
+    if (!runner || runner.source.type !== "agent-step") {
+      throw new Error("issue-intake runner must declare an agent-step source.");
     }
 
-    expect(runner.source.task).toBe("intake");
+    expect(runner.source.task).toBe("issue-intake");
     expect(runner.source.outputs).toEqual({
-      triage_report: "object",
+      intake_report: "object",
       change_set: "object",
     });
     expect(runner.inputs.thread_title?.type).toBe("string");
@@ -33,11 +33,11 @@ describe("intake official skill", () => {
   });
 
   it("passes the inline harness suite, including supervisor-oriented gate examples", async () => {
-    const result = await runHarnessTarget(path.resolve("skills/intake"));
+    const result = await runHarnessTarget(path.resolve("skills/issue-intake"));
 
     expect(result.source).toBe("inline");
     if (!("cases" in result)) {
-      throw new Error("expected inline harness suite for intake");
+      throw new Error("expected inline harness suite for issue-intake");
     }
     expect(result.assertionErrors).toEqual([]);
     expect(result.cases.length).toBe(4);
