@@ -79,7 +79,7 @@
     "@runxhq/core": "workspace:^0.1.5",
     "@runxhq/host-adapters": "workspace:^0.1.1",
     "@types/node": "^24.0.0",
-    "tsx": "^4.20.6",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
