@@ -159,7 +159,7 @@ jobs:
           cargo deb --no-build --target ${{ matrix.target }} -p runx-cli --output "dist/archives/"
         working-directory: crates
       - name: Upload npm artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-${{ matrix.platform }}
           path: |
@@ -168,7 +168,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Upload release archives
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archive-${{ matrix.platform }}
           path: dist/archives/
@@ -401,7 +401,7 @@ jobs:
           tar -C dist -czf dist/channel-manifests.tar.gz channels
           gh release upload "${{ github.ref_name }}" dist/channel-manifests.tar.gz --clobber
       - name: Upload rendered manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: channel-manifests
           path: dist/channels
