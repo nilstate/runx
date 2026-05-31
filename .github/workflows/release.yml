@@ -240,7 +240,7 @@ jobs:
           output-file: dist/archives/runx-${{ needs.prepare.outputs.version }}-sbom.cdx.json
       - name: Attest build provenance for released binaries
         if: needs.prepare.outputs.publish == 'true'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "dist/archives/runx-*.tar.gz, dist/archives/runx-*.zip"
       - name: Stage install scripts
