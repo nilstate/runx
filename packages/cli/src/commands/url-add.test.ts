@@ -137,6 +137,14 @@ describe("publishUrlSkill", () => {
         fetcher: async () => new Response("null", { status: 200 }),
       }),
     ).rejects.toMatchObject({ payload: { code: "invalid_response" } });
+  it("throws invalid_response when a 200 returns missing warnings or repo", async () => {
+    await expect(
+      publishUrlSkill({
+        repoUrl: "github.com/kam/skills",
+        apiBaseUrl: "https://api.runx.test",
+        fetcher: async () => new Response(JSON.stringify({ status: "success", listings: [] }), { status: 200 }),
+      }),
+    ).rejects.toMatchObject({ payload: { code: "invalid_response" } });
   });
 });
 

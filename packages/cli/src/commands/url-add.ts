@@ -107,6 +107,9 @@ export async function publishUrlSkill(options: UrlAddOptions): Promise<UrlAddInd
     || parsed === null
     || (parsed as { status?: unknown }).status !== "success"
     || !Array.isArray((parsed as { listings?: unknown }).listings)
+    || !Array.isArray((parsed as { warnings?: unknown }).warnings)
+    || typeof (parsed as { repo?: unknown }).repo !== "object"
+    || (parsed as { repo?: unknown }).repo === null
   ) {
     throw new UrlAddCliError({
       code: "invalid_response",
