@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const workspaceRoot = process.cwd();
 const packagesRoot = path.join(workspaceRoot, "packages");
 const FORBIDDEN_PACKAGE_NAMES = [
+  "@runxhq/core",
   "@runxhq/adapters",
   "@runxhq/runtime-local",
 ] as const;
@@ -13,7 +14,7 @@ const FORBIDDEN_PACKAGE_NAMES = [
 const ALLOWED_FORBIDDEN_IMPORTERS = new Map<string, readonly string[]>();
 
 describe("published package import boundary", () => {
-  it("keeps deleted runtime-local and adapters packages out of published package sources", async () => {
+  it("keeps deleted legacy packages out of published package sources", async () => {
     const importers = await collectForbiddenPackageImporters();
 
     expect(importers).toEqual(ALLOWED_FORBIDDEN_IMPORTERS);
