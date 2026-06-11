@@ -320,7 +320,7 @@ Commands:
   runx list [tools|skills|graphs|packets|overlays] [--ok-only|--invalid-only] [--json]
   runx config set|get|list [agent.provider|agent.model|agent.api_key] [value] [--json]
   runx policy inspect|lint <policy.json> [--json]
-  runx publish <receipt.json> [--api-base-url url] [--token token] [--json]
+  runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]
   runx kernel eval --input <file|-> --json
   runx payment admission issue --input <file|-> --json
   runx parser eval --input <file|-> --json
@@ -365,11 +365,12 @@ pub fn publish_help_text() -> String {
 runx publish
 
 Usage:
-  runx publish <receipt.json> [--api-base-url url] [--token token] [--json]
+  runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]
 
 Options:
   --api-base-url url  Hosted API base URL (default: RUNX_PUBLIC_API_BASE_URL or https://runx.ai)
   --token token       Hosted API token (default: RUNX_PUBLIC_API_TOKEN or RUNX_CONNECT_ACCESS_TOKEN)
+  --allow-local-api   Allow loopback/private hosted API URLs for local dogfood only
   --json              Print the raw notary response as JSON
 "
     .to_owned()

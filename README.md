@@ -378,6 +378,16 @@ by the notary. Configure the hosted API with `RUNX_PUBLIC_API_BASE_URL` (default
 `https://runx.ai`) and authenticate with `RUNX_PUBLIC_API_TOKEN`,
 `RUNX_CONNECT_ACCESS_TOKEN`, or `--token`.
 
+For local hosted dogfood only, point at a loopback API and opt into the private
+network escape explicitly:
+
+```bash
+runx publish ./.runx/receipts/<receipt-id>.json \
+  --api-base-url http://127.0.0.1:47882 \
+  --token dev-token \
+  --allow-local-api
+```
+
 ## Workspace Policy
 
 Projects can opt into stricter local `cli-tool` admission with

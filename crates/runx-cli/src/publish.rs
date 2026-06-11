@@ -24,6 +24,7 @@ pub struct PublishPlan {
     pub receipt_path: PathBuf,
     pub api_base_url: Option<String>,
     pub token: Option<String>,
+    pub allow_local_api: bool,
     pub json: bool,
 }
 
@@ -153,6 +154,7 @@ pub fn parse_publish_plan(args: &[OsString]) -> Result<PublishPlan, String> {
     let mut receipt_path = None;
     let mut api_base_url = None;
     let mut token = None;
+    let mut allow_local_api = false;
     let mut json = false;
     let mut index = 1;
     while index < args.len() {
@@ -184,6 +186,13 @@ pub fn parse_publish_plan(args: &[OsString]) -> Result<PublishPlan, String> {
                 token = Some(value);
                 index = next_index;
             }
+            "--allow-local-api" | "--allowLocalApi" => {
+                if inline_value.is_some() {
+                    return Err("--allow-local-api does not take a value".to_owned());
+                }
+                allow_local_api = true;
+                index += 1;
+            }
             _ => return Err(PublishCliError::UnknownFlag(flag.to_owned()).to_string()),
         }
     }
@@ -191,6 +200,7 @@ pub fn parse_publish_plan(args: &[OsString]) -> Result<PublishPlan, String> {
         receipt_path: receipt_path.ok_or_else(|| PublishCliError::MissingReceipt.to_string())?,
         api_base_url,
         token,
+        allow_local_api,
         json,
     })
 }
@@ -224,7 +234,12 @@ fn run_publish_command(
     let receipt = read_receipt_json(&plan.receipt_path)?;
     let base_url = resolve_public_api_base_url(plan, env);
     let token = resolve_publish_token(plan, env).ok_or(PublishCliError::MissingToken)?;
-    let transport = DefaultRuntimeHttpTransport::new().map_err(PublishCliError::TransportInit)?;
+    let transport = if allow_local_api(plan, env) {
+        DefaultRuntimeHttpTransport::with_private_network_access()
+    } else {
+        DefaultRuntimeHttpTransport::new()
+    }
+    .map_err(PublishCliError::TransportInit)?;
     let response = publish_receipt(
         &transport,
         &PublishOptions {
@@ -234,6 +249,13 @@ fn run_publish_command(
         },
     )?;
     render_publish_result(plan.json, &response)
+}
+
+fn allow_local_api(plan: &PublishPlan, env: &BTreeMap<String, String>) -> bool {
+    plan.allow_local_api
+        || env
+            .get("RUNX_PUBLISH_ALLOW_LOCAL_API")
+            .is_some_and(|value| matches!(value.trim(), "1" | "true" | "TRUE" | "yes" | "YES"))
 }
 
 fn read_receipt_json(path: &PathBuf) -> Result<JsonValue, PublishCliError> {

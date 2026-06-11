@@ -33,6 +33,7 @@ export interface ParsedArgs {
   readonly receiptPublishPath?: string;
   readonly receiptPublishApiBaseUrl?: string;
   readonly receiptPublishToken?: string;
+  readonly receiptPublishAllowLocalApi: boolean;
   readonly receiptId?: string;
   readonly runId?: string;
   readonly replayRef?: string;
@@ -195,6 +196,8 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       ? String(inputs.apiBaseUrl ?? inputs["api-base-url"])
       : undefined;
   const receiptPublishToken = isReceiptPublish && typeof inputs.token === "string" ? inputs.token : undefined;
+  const receiptPublishAllowLocalApi =
+    isReceiptPublish && truthyFlag(inputs.allowLocalApi ?? inputs["allow-local-api"]);
   const registryUrl = (isSkillSearch || isTopLevelAdd || isSkillPublish || isSkillRun) && typeof inputs.registry === "string" ? inputs.registry : undefined;
   const expectedDigest = (isTopLevelAdd || isSkillRun) && typeof inputs.digest === "string" ? normalizeDigest(inputs.digest) : undefined;
   const newDirectory = isNew && typeof inputs.directory === "string"
@@ -213,7 +216,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     : isTopLevelAdd
       ? omitInputs(inputs, ["version", "ref", "apiBaseUrl", "api-base-url", "to", "registry", "digest", "installationId", "installation-id"])
       : isReceiptPublish
-        ? omitInputs(inputs, ["apiBaseUrl", "api-base-url", "token"])
+        ? omitInputs(inputs, ["apiBaseUrl", "api-base-url", "token", "allowLocalApi", "allow-local-api"])
       : isRetiredSkillAdd
         ? {}
         : isSkillPublish
@@ -276,6 +279,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     receiptPublishPath,
     receiptPublishApiBaseUrl,
     receiptPublishToken,
+    receiptPublishAllowLocalApi,
     receiptId: isSkillInspect ? inspectPositionals[0] : undefined,
     replayRef: isReplay ? positionals[0] : undefined,
     diffLeft: isDiff ? positionals[0] : undefined,

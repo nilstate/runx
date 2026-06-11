@@ -47,7 +47,7 @@ export function writeUsage(stream: Writable, env: NodeJS.ProcessEnv = process.en
       "  runx list [tools|skills|graphs|packets|overlays] [--ok-only|--invalid-only] [--json]",
       "  runx config set|get|list [agent.provider|agent.model|agent.api_key] [value] [--json]",
       "  runx policy inspect|lint <policy.json> [--json]",
-      "  runx publish <receipt.json> [--api-base-url url] [--token token] [--json]",
+      "  runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]",
       "  runx kernel eval --input <file|-> --json",
       "  runx doctor [path] [--json]",
       "  runx dev [root] [--lane lane] [--json]",

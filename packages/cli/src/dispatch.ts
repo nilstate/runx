@@ -225,6 +225,7 @@ export async function dispatchCli(
     const args = ["publish", resolvePathFromUserInput(parsed.receiptPublishPath, env)];
     pushOptionalFlag(args, "--api-base-url", parsed.receiptPublishApiBaseUrl);
     pushOptionalFlag(args, "--token", parsed.receiptPublishToken);
+    if (parsed.receiptPublishAllowLocalApi) args.push("--allow-local-api");
     if (parsed.json) args.push("--json");
     return await streamNativeRunxToIo(io, args, env);
   }

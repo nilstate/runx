@@ -46,6 +46,7 @@ fn parses_publish_plan() -> Result<(), String> {
             receipt_path: PathBuf::from("receipt.json"),
             api_base_url: Some("https://runx.test/".to_owned()),
             token: Some("rxk_test".to_owned()),
+            allow_local_api: false,
             json: true,
         }
     );
@@ -71,6 +72,7 @@ fn resolves_publish_endpoint_and_token_precedence() {
         receipt_path: PathBuf::from("receipt.json"),
         api_base_url: Some("https://plan.runx.test/".to_owned()),
         token: Some("plan-token".to_owned()),
+        allow_local_api: false,
         json: false,
     };
 
@@ -101,6 +103,7 @@ fn resolves_publish_endpoint_and_token_precedence() {
         receipt_path: PathBuf::from("receipt.json"),
         token: Some("   ".to_owned()),
         api_base_url: None,
+        allow_local_api: false,
         json: false,
     };
     assert_eq!(
@@ -112,12 +115,37 @@ fn resolves_publish_endpoint_and_token_precedence() {
         receipt_path: PathBuf::from("receipt.json"),
         api_base_url: Some("  /  ".to_owned()),
         token: None,
+        allow_local_api: false,
         json: false,
     };
     assert_eq!(
         resolve_public_api_base_url(&empty_url_plan, &BTreeMap::new()),
         "https://runx.ai"
     );
+}
+
+#[test]
+fn parses_and_resolves_local_api_override() -> Result<(), String> {
+    let args = vec![
+        OsString::from("publish"),
+        OsString::from("receipt.json"),
+        OsString::from("--allow-local-api"),
+    ];
+    let plan = parse_publish_plan(&args)?;
+    assert!(plan.allow_local_api);
+    assert!(allow_local_api(&plan, &BTreeMap::new()));
+
+    let plan = PublishPlan {
+        receipt_path: PathBuf::from("receipt.json"),
+        api_base_url: None,
+        token: None,
+        allow_local_api: false,
+        json: false,
+    };
+    let mut env = BTreeMap::new();
+    env.insert("RUNX_PUBLISH_ALLOW_LOCAL_API".to_owned(), "true".to_owned());
+    assert!(allow_local_api(&plan, &env));
+    Ok(())
 }
 
 #[test]

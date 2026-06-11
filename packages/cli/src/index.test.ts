@@ -1045,6 +1045,7 @@ Answer the prompt directly.
         "https://runx.example.test",
         "--token",
         "rxk_test",
+        "--allow-local-api",
         "--json",
       ],
       { stdin: process.stdin, stdout, stderr },
@@ -1065,6 +1066,7 @@ Answer the prompt directly.
       "https://runx.example.test",
       "--token",
       "rxk_test",
+      "--allow-local-api",
       "--json",
     ]);
   });

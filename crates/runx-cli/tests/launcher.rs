@@ -105,7 +105,7 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
     );
     assert_help_line(
         &publish_help_text(),
-        "runx publish <receipt.json> [--api-base-url url] [--token token] [--json]",
+        "runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]",
     );
 }
 
