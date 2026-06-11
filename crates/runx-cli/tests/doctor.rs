@@ -49,6 +49,9 @@ fn doctor_authority_json_reports_missing_env_names() -> Result<(), Box<dyn std::
     assert_eq!(report["summary"]["warnings"], 4);
     let rendered = serde_json::to_string(&report)?;
     for env_name in AUTHORITY_ENV_NAMES {
+        if *env_name == "RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON" {
+            continue;
+        }
         assert!(
             rendered.contains(env_name),
             "authority doctor should name missing env var {env_name}"
@@ -116,13 +119,43 @@ fn doctor_authority_json_reports_unsupported_hosted_effect_state_backend()
             diagnostic["id"] == "runx.authority.effect_state"
                 && diagnostic["severity"] == "error"
                 && diagnostic["message"].as_str().is_some_and(|message| {
-                    message.contains("does not yet implement the hosted effect-state transport")
+                    message.contains("without a complete hosted effect-state transport")
                 })
         })
     }));
     let rendered = serde_json::to_string(&report)?;
     assert!(rendered.contains("RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON"));
     assert!(!rendered.contains("tenant_1"));
+    Ok(())
+}
+
+#[test]
+fn doctor_authority_json_accepts_complete_hosted_effect_state_backend()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = authority_doctor_command()
+        .args(["doctor", "authority", "--json"])
+        .env(
+            "RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON",
+            r#"{"kind":"hosted_transactional","tenant_id":"tenant_1","store_ref":"runx:hosted-effect-state","endpoint_url":"http://127.0.0.1:12345/effect-state","bearer_token":"secret-token","allowed_families":["payment"]}"#,
+        )
+        .output()?;
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stderr)?, "");
+    let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
+    assert_eq!(report["summary"]["errors"], 0);
+    assert!(report["diagnostics"].as_array().is_some_and(|diagnostics| {
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic["id"] == "runx.authority.effect_state"
+                && diagnostic["severity"] == "info"
+                && diagnostic["message"]
+                    .as_str()
+                    .is_some_and(|message| message.contains("hosted transactional transport"))
+        })
+    }));
+    let rendered = serde_json::to_string(&report)?;
+    assert!(rendered.contains("RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON"));
+    assert!(!rendered.contains("secret-token"));
     Ok(())
 }
 

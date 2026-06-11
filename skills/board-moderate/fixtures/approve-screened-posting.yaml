@@ -1,0 +1,32 @@
+name: approve-screened-posting
+kind: skill
+target: ..
+runner: default
+inputs:
+  moderator_kid: moderator
+  posting:
+    id: post_1
+    status: screening
+    funded_badge: true
+    deliverable: Run verifier.
+  decision: approve
+  reasons:
+    - scope bounded
+    - funding present
+caller:
+  answers:
+    agent_task.board-moderate.output:
+      moderator_kid: moderator
+      posting_id: post_1
+      decision: approve
+      reasons:
+        - scope bounded
+        - funding present
+      visibility_effect: listable_and_claimable
+      stop_conditions: []
+expect:
+  status: sealed
+metadata:
+  public_skill: board-moderate
+  source_case: approve-screened-posting
+  source: skills-fixture

@@ -1,0 +1,36 @@
+name: permissive-take
+kind: skill
+target: ..
+runner: default
+inputs:
+  actor_kid: worker
+  victim_kid: vendor
+  amount_minor: 25
+  currency: USD
+  constitution:
+    mode: permissive
+    norm_refs:
+      - norm:trial-exhibit
+  receipt_ref: receipt:take:1
+caller:
+  answers:
+    agent_task.board-take.output:
+      family: arena
+      phase: sealed
+      actor_kid: worker
+      victim_kid: vendor
+      norm_refs:
+        - norm:trial-exhibit
+      receipt_ref: receipt:take:1
+      ledger_entries:
+        - debit: kid:vendor
+          credit: kid:worker
+          amount_minor: 25
+          currency: USD
+      stop_conditions: []
+expect:
+  status: sealed
+metadata:
+  public_skill: board-take
+  source_case: permissive-take
+  source: skills-fixture

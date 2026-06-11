@@ -1,0 +1,33 @@
+name: accept-delivery
+kind: skill
+target: ..
+runner: default
+inputs:
+  actor_kid: vendor
+  delivery:
+    posting_id: post_1
+    claimant_kid: worker
+    delivery_ref: delivery:post_1
+    artifact_ref: git:commit:abc123
+  acceptance_evidence:
+    verifier_result: passed
+caller:
+  answers:
+    agent_task.board-accept.output:
+      actor_kid: vendor
+      posting_id: post_1
+      acceptance:
+        accepted: true
+        acceptance_ref: acceptance:post_1
+      payout_authorization:
+        debit: board:escrow
+        credit: kid:worker
+        amount_minor: 5000
+        currency: USD
+      stop_conditions: []
+expect:
+  status: sealed
+metadata:
+  public_skill: board-accept
+  source_case: accept-delivery
+  source: skills-fixture

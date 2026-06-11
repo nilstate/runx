@@ -14,6 +14,7 @@ pub enum AuthorityResourceFamily {
     Deployment,
     Credential,
     Effect,
+    Arena,
     Artifact,
     Harness,
     Publication,

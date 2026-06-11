@@ -11,7 +11,7 @@ use runx_contracts::{
 };
 use runx_pay::state::{
     RUNX_EFFECT_STATE_PATH_ENV, RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV,
-    resolve_effect_state_path,
+    hosted_effect_state_backend_is_supported, resolve_effect_state_path,
 };
 use runx_runtime::{
     PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
@@ -461,6 +461,7 @@ fn run_authority_doctor(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorRep
 // rust-style-allow: long-function - one diagnostic keeps effect-state path, evidence, and repairs together.
 fn effect_state_diagnostic(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorDiagnostic {
     if env_contains_non_empty(env, RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV) {
+        let hosted_status = hosted_effect_state_backend_is_supported(env);
         let mut evidence = authority_evidence(
             &[
                 RUNX_EFFECT_STATE_PATH_ENV,
@@ -469,19 +470,51 @@ fn effect_state_diagnostic(env: &BTreeMap<String, String>, cwd: &Path) -> Doctor
             true,
             None,
         );
+        if matches!(hosted_status, Ok(true)) {
+            evidence.insert(
+                "backend".to_owned(),
+                JsonValue::String("hosted_transactional".to_owned()),
+            );
+            evidence.insert(
+                "transport".to_owned(),
+                JsonValue::String("configured".to_owned()),
+            );
+            return DoctorDiagnostic {
+                id: "runx.authority.effect_state".to_owned(),
+                instance_id: "runx:doctor-authority:runx.authority.effect_state".to_owned(),
+                severity: DoctorDiagnosticSeverity::Info,
+                title: "Hosted effect state transport".to_owned(),
+                message: format!(
+                    "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} is configured with a hosted transactional transport."
+                ),
+                target: object([
+                    ("kind", string_value("authority")),
+                    ("ref", string_value("runx.authority.effect_state")),
+                ]),
+                location: DoctorLocation {
+                    path: "environment".to_owned(),
+                    json_pointer: None,
+                },
+                evidence: Some(evidence),
+                repairs: Vec::new(),
+            };
+        }
         evidence.insert(
             "consequence".to_owned(),
             JsonValue::String(
-                "Native runx currently refuses hosted transactional effect-state descriptors before local file fallback.".to_owned(),
+                "Native runx refuses incomplete hosted transactional effect-state descriptors before local file fallback.".to_owned(),
             ),
         );
+        if let Err(error) = hosted_status {
+            evidence.insert("error".to_owned(), JsonValue::String(error.to_string()));
+        }
         return DoctorDiagnostic {
             id: "runx.authority.effect_state".to_owned(),
             instance_id: "runx:doctor-authority:runx.authority.effect_state".to_owned(),
             severity: DoctorDiagnosticSeverity::Error,
             title: "Effect state path".to_owned(),
             message: format!(
-                "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} is configured, but this native runtime does not yet implement the hosted effect-state transport. Unset it for local file-backed execution, or run only after the hosted bridge is installed."
+                "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} is configured without a complete hosted effect-state transport. Unset it for local file-backed execution, or pass endpoint_url, bearer_token, and allowed_families from the hosted runtime service."
             ),
             target: object([
                 ("kind", string_value("authority")),
@@ -495,7 +528,7 @@ fn effect_state_diagnostic(env: &BTreeMap<String, String>, cwd: &Path) -> Doctor
             repairs: vec![manual_env_repair(
                 "runx.authority.effect_state.configure_hosted_transport",
                 &[RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV],
-                "Install the native-hosted effect-state transport before setting RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON, or unset it for local file-backed execution.",
+                "Pass a complete native-hosted effect-state transport descriptor, or unset RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON for local file-backed execution.",
                 DoctorRepairRisk::High,
             )],
         };

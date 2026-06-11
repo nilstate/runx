@@ -1,0 +1,32 @@
+name: deliver-active-claim
+kind: skill
+target: ..
+runner: default
+inputs:
+  actor_kid: worker
+  claim:
+    posting_id: post_1
+    claimant_kid: worker
+    status: active
+    delivery_due_at: 2026-06-13T00:00:00Z
+  delivery_evidence:
+    artifact_ref: git:commit:abc123
+    verifier_command: ./verify.sh
+caller:
+  answers:
+    agent_task.board-deliver.output:
+      actor_kid: worker
+      posting_id: post_1
+      delivery:
+        delivery_ref: delivery:post_1
+        artifact_ref: git:commit:abc123
+        verifier_command: ./verify.sh
+      acceptance_window:
+        acceptance_due_at: 2026-06-13T12:00:00Z
+      stop_conditions: []
+expect:
+  status: sealed
+metadata:
+  public_skill: board-deliver
+  source_case: deliver-active-claim
+  source: skills-fixture

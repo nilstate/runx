@@ -3,6 +3,10 @@
 #![allow(clippy::expect_used)]
 
 use std::collections::BTreeMap;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 use runx_contracts::EffectFinalityPhase;
 use runx_contracts::{JsonObject, JsonValue, Receipt};
@@ -53,12 +57,70 @@ fn hosted_effect_state_backend_fails_closed_before_file_fallback()
     assert!(
         error
             .to_string()
-            .contains("no hosted effect-state transport"),
+            .contains("complete hosted effect-state transport"),
         "{error}"
     );
     assert!(
         !state_path.exists(),
         "unsupported hosted backend must fail before opening local state"
+    );
+    Ok(())
+}
+
+#[test]
+fn hosted_effect_state_transport_records_without_local_file_fallback()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let state_path = temp.path().join("effect-state.json");
+    let transport = HostedEffectStateFixture::start()?;
+    let env = BTreeMap::from([
+        (
+            RUNX_EFFECT_STATE_PATH_ENV.to_owned(),
+            state_path.display().to_string(),
+        ),
+        (
+            RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV.to_owned(),
+            json!({
+                "kind": "hosted_transactional",
+                "tenant_id": "tenant_123",
+                "store_ref": "runx:hosted-effect-state",
+                "endpoint_url": transport.endpoint,
+                "bearer_token": transport.token,
+                "allowed_families": ["payment"]
+            })
+            .to_string(),
+        ),
+    ]);
+    let idempotency_key = EffectIdempotencyKey::new("mock", "merchant:paid-echo", "hosted-001");
+    let input = EffectStepStateInput {
+        idempotency_key: idempotency_key.clone(),
+        act_id: "act_pay".to_owned(),
+        ..payment_step_input()
+    };
+
+    record_effect_finality_intent(&env, temp.path(), &input)?;
+    let recorded = lookup_effect_idempotency_entry(
+        &env,
+        temp.path(),
+        PAYMENT_EFFECT_FAMILY,
+        &idempotency_key,
+    )?;
+
+    assert!(
+        recorded.is_none(),
+        "recording a finality intent must not fabricate idempotency output"
+    );
+    assert!(
+        transport
+            .state
+            .lock()
+            .expect("state lock")
+            .contains("finality_intents"),
+        "hosted transport should hold the persisted family state"
+    );
+    assert!(
+        !state_path.exists(),
+        "hosted effect state must not fall back to local file persistence"
     );
     Ok(())
 }
@@ -1028,6 +1090,77 @@ fn payment_step_input() -> EffectStepStateInput {
         run_spend: None,
         period_spend: None,
     }
+}
+
+struct HostedEffectStateFixture {
+    endpoint: String,
+    token: String,
+    state: Arc<Mutex<String>>,
+}
+
+impl HostedEffectStateFixture {
+    fn start() -> Result<Self, Box<dyn std::error::Error>> {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let port = listener.local_addr()?.port();
+        let state = Arc::new(Mutex::new("{}".to_owned()));
+        let fixture_state = Arc::clone(&state);
+        thread::spawn(move || {
+            for stream in listener.incoming().flatten().take(8) {
+                handle_hosted_effect_state_fixture_request(stream, &fixture_state);
+            }
+        });
+        Ok(Self {
+            endpoint: format!("http://127.0.0.1:{port}/effect-state"),
+            token: "fixture-token".to_owned(),
+            state,
+        })
+    }
+}
+
+fn handle_hosted_effect_state_fixture_request(mut stream: TcpStream, state: &Arc<Mutex<String>>) {
+    let mut buffer = [0_u8; 65536];
+    let Ok(read) = stream.read(&mut buffer) else {
+        return;
+    };
+    let request = String::from_utf8_lossy(&buffer[..read]);
+    if !request.contains("Authorization: Bearer fixture-token") {
+        write_fixture_response(&mut stream, 401, r#"{"state":{},"version":0}"#);
+        return;
+    }
+    if request.starts_with("GET ") {
+        let state = state.lock().expect("state lock").clone();
+        write_fixture_response(
+            &mut stream,
+            200,
+            &format!(r#"{{"state":{state},"version":1}}"#),
+        );
+        return;
+    }
+    if request.starts_with("PUT ") {
+        let body = request.split("\r\n\r\n").nth(1).unwrap_or("{}");
+        let payload: serde_json::Value = serde_json::from_str(body).unwrap_or_else(|_| json!({}));
+        let next_state = payload
+            .get("state")
+            .cloned()
+            .unwrap_or_else(|| json!({}))
+            .to_string();
+        *state.lock().expect("state lock") = next_state.clone();
+        write_fixture_response(
+            &mut stream,
+            200,
+            &format!(r#"{{"state":{next_state},"version":1}}"#),
+        );
+        return;
+    }
+    write_fixture_response(&mut stream, 405, r#"{"state":{},"version":0}"#);
+}
+
+fn write_fixture_response(stream: &mut TcpStream, status: u16, body: &str) {
+    let _ = write!(
+        stream,
+        "HTTP/1.1 {status} OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
 }
 
 fn inference_step_input() -> EffectStepStateInput {

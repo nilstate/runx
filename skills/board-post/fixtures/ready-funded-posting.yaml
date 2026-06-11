@@ -1,0 +1,42 @@
+name: ready-funded-posting
+kind: skill
+target: ..
+runner: default
+inputs:
+  actor_kid: vendor
+  title: Verify receipt link
+  deliverable: Run the published verifier from a clean checkout and report the result.
+  amount_minor: 5000
+  currency: USD
+  funding_evidence:
+    hold_ref: mock:hold:post-1
+  clock_policy:
+    claim_fuse_ms: 1800000
+    delivery_deadline_ms: 86400000
+    acceptance_window_ms: 43200000
+caller:
+  answers:
+    agent_task.board-post.output:
+      actor_kid: vendor
+      posting:
+        title: Verify receipt link
+        deliverable: Run the published verifier from a clean checkout and report the result.
+        amount_minor: 5000
+        currency: USD
+        status: screening
+      funding:
+        funded_badge: true
+        evidence_ref: mock:hold:post-1
+      clocks:
+        claim_fuse_ms: 1800000
+        delivery_deadline_ms: 86400000
+        acceptance_window_ms: 43200000
+      screening_notes:
+        - Verify funding hold before approval.
+      stop_conditions: []
+expect:
+  status: sealed
+metadata:
+  public_skill: board-post
+  source_case: ready-funded-posting
+  source: skills-fixture

@@ -3,7 +3,8 @@
 // at the runtime trust boundary.
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -24,6 +25,7 @@ const EFFECT_STATE_LOCK_TIMEOUT: Duration = Duration::from_secs(5);
 const EFFECT_STATE_LOCK_RETRY: Duration = Duration::from_millis(10);
 const HOSTED_TRANSACTIONAL_BACKEND_KIND: &str = "hosted_transactional";
 const HOSTED_EFFECT_STATE_STORE_REF: &str = "runx:hosted-effect-state";
+const HOSTED_EFFECT_STATE_COMMIT_RETRIES: usize = 5;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -209,12 +211,18 @@ pub struct EffectPeriodSpendReservation {
     pub window_start: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct HostedEffectStateBackend {
     kind: String,
     tenant_id: String,
     store_ref: String,
+    #[serde(default)]
+    endpoint_url: Option<String>,
+    #[serde(default)]
+    bearer_token: Option<String>,
+    #[serde(default)]
+    allowed_families: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -331,6 +339,27 @@ pub struct FileBackedEffectStateStore {
 }
 
 #[derive(Debug)]
+struct HostedEffectStateStore {
+    backend: HostedEffectStateBackend,
+    endpoint: HostedEffectStateEndpoint,
+    state: EffectStateDocument,
+    versions: BTreeMap<String, u64>,
+}
+
+#[derive(Clone, Debug)]
+struct HostedEffectStateEndpoint {
+    host: String,
+    port: u16,
+    base_path: String,
+}
+
+#[derive(Debug)]
+enum HostedCommitOutcome {
+    Committed(HostedFamilyResponse),
+    Conflict(HostedFamilyResponse),
+}
+
+#[derive(Debug)]
 struct EffectStateLock {
     path: PathBuf,
     _file: File,
@@ -346,15 +375,22 @@ struct EffectStateDocument {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct EffectFamilyState {
+    #[serde(default)]
     finality_intents: BTreeMap<String, EffectFinalityIntent>,
+    #[serde(default)]
     finality_records: BTreeMap<String, EffectFinalityRecord>,
+    #[serde(default)]
     finality_events: BTreeMap<String, EffectFinalityEventRecord>,
+    #[serde(default)]
     run_spend_ledger: BTreeMap<String, EffectRunSpendLedgerEntry>,
     // Defaulted so state files written before period ledgers existed still load.
     #[serde(default)]
     period_spend_ledger: BTreeMap<String, EffectPeriodSpendLedgerEntry>,
+    #[serde(default)]
     idempotency_entries: BTreeMap<String, EffectIdempotencyEntry>,
+    #[serde(default)]
     consumed_spend_capabilities: BTreeMap<String, EffectCapabilityConsumption>,
+    #[serde(default)]
     rail_mutations: BTreeMap<String, EffectMutation>,
 }
 
@@ -471,6 +507,8 @@ pub enum EffectStateError {
     HostedBackendInvalid { message: String },
     #[error("hosted effect state backend is not supported by native runtime: {message}")]
     HostedBackendUnsupported { message: String },
+    #[error("hosted effect state transport failed: {message}")]
+    HostedBackendTransport { message: String },
     #[error(transparent)]
     PaymentPacket(#[from] PaymentPacketError),
 }
@@ -823,6 +861,635 @@ impl FileBackedEffectStateStore {
         persist_effect_state(&self.path, &state)?;
         self.state = state;
         Ok(result)
+    }
+}
+
+impl HostedEffectStateStore {
+    fn open(backend: HostedEffectStateBackend) -> Result<Self, EffectStateError> {
+        let endpoint = HostedEffectStateEndpoint::parse(
+            backend
+                .endpoint_url
+                .as_deref()
+                .ok_or_else(hosted_transport_missing)?,
+        )?;
+        let token = backend
+            .bearer_token
+            .as_deref()
+            .ok_or_else(hosted_transport_missing)?;
+        if token.trim().is_empty() {
+            return Err(hosted_transport_missing());
+        }
+        if backend.allowed_families.is_empty() {
+            return Err(EffectStateError::HostedBackendInvalid {
+                message: "allowed_families is required for hosted effect-state transport"
+                    .to_owned(),
+            });
+        }
+
+        let mut store = Self {
+            backend,
+            endpoint,
+            state: EffectStateDocument::default(),
+            versions: BTreeMap::new(),
+        };
+        let families = store.backend.allowed_families.clone();
+        for family in families {
+            store.refresh_family(&family)?;
+        }
+        Ok(store)
+    }
+
+    fn lookup_idempotency(
+        &self,
+        family: &str,
+        key: &EffectIdempotencyKey,
+    ) -> Option<&EffectIdempotencyEntry> {
+        self.state
+            .family(family)
+            .and_then(|state| state.idempotency_entries.get(&key.index_key()))
+    }
+
+    fn record_idempotency(
+        &mut self,
+        family: &'static str,
+        entry: EffectIdempotencyEntry,
+    ) -> Result<(), EffectStateError> {
+        let index_key = entry.idempotency_key.index_key();
+        if self
+            .state
+            .family(family)
+            .is_some_and(|state| state.idempotency_entries.contains_key(&index_key))
+        {
+            return Err(EffectStateError::IdempotencyAlreadyRecorded {
+                idempotency_key: index_key,
+            });
+        }
+        self.with_transactional_family(family, move |state| {
+            if state.idempotency_entries.contains_key(&index_key) {
+                return Err(EffectStateError::IdempotencyAlreadyRecorded {
+                    idempotency_key: index_key.clone(),
+                });
+            }
+            state
+                .idempotency_entries
+                .insert(index_key.clone(), entry.clone());
+            Ok(())
+        })
+    }
+
+    fn lookup_consumed_spend_capability(
+        &self,
+        family: &str,
+        capability_ref: &str,
+    ) -> Option<&EffectCapabilityConsumption> {
+        self.state
+            .family(family)
+            .and_then(|state| state.consumed_spend_capabilities.get(capability_ref))
+    }
+
+    fn consume_spend_capability(
+        &mut self,
+        family: &'static str,
+        consumption: EffectCapabilityConsumption,
+    ) -> Result<(), EffectStateError> {
+        let capability_ref = consumption.capability_ref.clone();
+        if self.state.family(family).is_some_and(|state| {
+            state
+                .consumed_spend_capabilities
+                .contains_key(&capability_ref)
+        }) {
+            return Err(EffectStateError::SpendCapabilityAlreadyConsumed { capability_ref });
+        }
+        self.with_transactional_family(family, move |state| {
+            if state
+                .consumed_spend_capabilities
+                .contains_key(&capability_ref)
+            {
+                return Err(EffectStateError::SpendCapabilityAlreadyConsumed {
+                    capability_ref: capability_ref.clone(),
+                });
+            }
+            state
+                .consumed_spend_capabilities
+                .insert(capability_ref.clone(), consumption.clone());
+            Ok(())
+        })
+    }
+
+    fn lookup_mutation(&self, family: &str, key: &EffectIdempotencyKey) -> Option<&EffectMutation> {
+        self.state
+            .family(family)
+            .and_then(|state| state.rail_mutations.get(&key.index_key()))
+    }
+
+    fn lookup_finality_intent(
+        &self,
+        family: &str,
+        key: &EffectIdempotencyKey,
+    ) -> Option<&EffectFinalityIntent> {
+        self.state
+            .family(family)
+            .and_then(|state| state.finality_intents.get(&key.index_key()))
+    }
+
+    fn lookup_finality_record(
+        &self,
+        family: &str,
+        money_movement_id: &str,
+    ) -> Option<&EffectFinalityRecord> {
+        self.state
+            .family(family)
+            .and_then(|state| state.finality_records.get(money_movement_id))
+    }
+
+    fn record_finality_record(
+        &mut self,
+        family: &'static str,
+        record: EffectFinalityRecord,
+    ) -> Result<(), EffectStateError> {
+        let money_movement_id = record.money_movement_id.clone();
+        if let Some(existing) = self
+            .state
+            .family(family)
+            .and_then(|state| state.finality_records.get(&money_movement_id))
+            && finality_record_conflicts(existing, &record)
+        {
+            return Err(EffectStateError::FinalityRecordConflict { money_movement_id });
+        }
+        self.with_transactional_family(family, move |state| {
+            if let Some(existing) = state.finality_records.get(&money_movement_id)
+                && finality_record_conflicts(existing, &record)
+            {
+                return Err(EffectStateError::FinalityRecordConflict {
+                    money_movement_id: money_movement_id.clone(),
+                });
+            }
+            state
+                .finality_records
+                .insert(money_movement_id.clone(), record.clone());
+            Ok(())
+        })
+    }
+
+    fn lookup_finality_event(
+        &self,
+        family: &str,
+        rail: &str,
+        provider_event_id: &str,
+    ) -> Option<&EffectFinalityEventRecord> {
+        self.state.family(family).and_then(|state| {
+            state
+                .finality_events
+                .get(&finality_event_key(rail, provider_event_id))
+        })
+    }
+
+    fn record_finality_event(
+        &mut self,
+        family: &'static str,
+        event: EffectFinalityEventRecord,
+    ) -> Result<(), EffectStateError> {
+        let event_key = finality_event_key(&event.rail, &event.provider_event_id);
+        if let Some(existing) = self
+            .state
+            .family(family)
+            .and_then(|state| state.finality_events.get(&event_key))
+        {
+            if existing == &event {
+                return Ok(());
+            }
+            return Err(EffectStateError::FinalityEventConflict { event_key });
+        }
+        self.with_transactional_family(family, move |state| {
+            if let Some(existing) = state.finality_events.get(&event_key) {
+                if existing == &event {
+                    return Ok(());
+                }
+                return Err(EffectStateError::FinalityEventConflict {
+                    event_key: event_key.clone(),
+                });
+            }
+            state
+                .finality_events
+                .insert(event_key.clone(), event.clone());
+            Ok(())
+        })
+    }
+
+    fn record_finality_intent(
+        &mut self,
+        family: &'static str,
+        intent: EffectFinalityIntent,
+        run_spend: Option<&EffectRunSpendReservation>,
+        period_spend: Option<&EffectPeriodSpendReservation>,
+    ) -> Result<(), EffectStateError> {
+        let index_key = intent.idempotency_key.index_key();
+        if let Some(existing) = self
+            .state
+            .family(family)
+            .and_then(|state| state.finality_intents.get(&index_key))
+        {
+            if existing == &intent {
+                return Ok(());
+            }
+            return Err(EffectStateError::FinalityIntentConflict {
+                idempotency_key: index_key,
+            });
+        }
+        let run_spend = run_spend.cloned();
+        let period_spend = period_spend.cloned();
+        self.with_transactional_family(family, move |state| {
+            if let Some(existing) = state.finality_intents.get(&index_key) {
+                if existing == &intent {
+                    return Ok(());
+                }
+                return Err(EffectStateError::FinalityIntentConflict {
+                    idempotency_key: index_key.clone(),
+                });
+            }
+            reserve_run_spend(state, family, &intent, run_spend.as_ref())?;
+            reserve_period_spend(state, family, &intent, period_spend.as_ref())?;
+            state
+                .finality_intents
+                .insert(index_key.clone(), intent.clone());
+            Ok(())
+        })
+    }
+
+    fn seal_run_spend(
+        &mut self,
+        family: &'static str,
+        input: &EffectStepStateInput,
+        receipt_ref: &str,
+    ) -> Result<(), EffectStateError> {
+        let Some(run_spend) = input.run_spend.as_ref() else {
+            return Ok(());
+        };
+        let ledger_key = run_spend_ledger_key(family, run_spend, &input.currency);
+        let entry_key = input.idempotency_key.index_key();
+        let receipt_ref = receipt_ref.to_owned();
+        self.with_transactional_family(family, move |state| {
+            let Some(ledger) = state.run_spend_ledger.get_mut(&ledger_key) else {
+                return Ok(());
+            };
+            let Some(item) = ledger.entries.get_mut(&entry_key) else {
+                return Ok(());
+            };
+            if item.status != EffectRunSpendStatus::Sealed {
+                ledger.sealed_minor = ledger.sealed_minor.saturating_add(item.amount_minor);
+            }
+            item.status = EffectRunSpendStatus::Sealed;
+            item.receipt_ref = Some(receipt_ref.clone());
+            Ok(())
+        })
+    }
+
+    fn seal_period_spend(
+        &mut self,
+        family: &'static str,
+        input: &EffectStepStateInput,
+        receipt_ref: &str,
+    ) -> Result<(), EffectStateError> {
+        let Some(period_spend) = input.period_spend.as_ref() else {
+            return Ok(());
+        };
+        let ledger_key = period_spend_ledger_key(family, period_spend, &input.currency);
+        let entry_key = input.idempotency_key.index_key();
+        let receipt_ref = receipt_ref.to_owned();
+        self.with_transactional_family(family, move |state| {
+            let Some(ledger) = state.period_spend_ledger.get_mut(&ledger_key) else {
+                return Ok(());
+            };
+            let Some(item) = ledger.entries.get_mut(&entry_key) else {
+                return Ok(());
+            };
+            if item.status != EffectRunSpendStatus::Sealed {
+                ledger.sealed_minor = ledger.sealed_minor.saturating_add(item.amount_minor);
+            }
+            item.status = EffectRunSpendStatus::Sealed;
+            item.receipt_ref = Some(receipt_ref.clone());
+            Ok(())
+        })
+    }
+
+    fn escalate_mutation(
+        &mut self,
+        family: &'static str,
+        key: &EffectIdempotencyKey,
+    ) -> Result<Option<EffectMutation>, EffectStateError> {
+        if !self
+            .state
+            .family(family)
+            .is_some_and(|state| state.rail_mutations.contains_key(&key.index_key()))
+        {
+            return Ok(None);
+        }
+        let index_key = key.index_key();
+        self.with_transactional_family(family, move |state| {
+            let Some(mutation) = state.rail_mutations.get_mut(&index_key) else {
+                return Ok(None);
+            };
+            mutation.status = EffectMutationStatus::Escalated;
+            mutation.recovery_state = EffectRecoveryState::Escalated;
+            Ok(Some(mutation.clone()))
+        })
+    }
+
+    fn record_mutation(
+        &mut self,
+        family: &'static str,
+        mutation: EffectMutation,
+    ) -> Result<(), EffectStateError> {
+        let index_key = mutation.idempotency_key.index_key();
+        if self
+            .state
+            .family(family)
+            .is_some_and(|state| state.rail_mutations.contains_key(&index_key))
+        {
+            return Err(EffectStateError::EffectMutationAlreadyRecorded {
+                idempotency_key: index_key,
+            });
+        }
+        self.with_transactional_family(family, move |state| {
+            if state.rail_mutations.contains_key(&index_key) {
+                return Err(EffectStateError::EffectMutationAlreadyRecorded {
+                    idempotency_key: index_key.clone(),
+                });
+            }
+            if let Some(intent) = state.finality_intents.get_mut(&index_key) {
+                intent.status = finality_intent_status_for_recovery(&mutation.recovery_state);
+            }
+            state
+                .rail_mutations
+                .insert(index_key.clone(), mutation.clone());
+            Ok(())
+        })
+    }
+
+    fn with_transactional_family<T>(
+        &mut self,
+        family: &'static str,
+        mut update: impl FnMut(&mut EffectFamilyState) -> Result<T, EffectStateError>,
+    ) -> Result<T, EffectStateError> {
+        self.ensure_family_allowed(family)?;
+        for _ in 0..HOSTED_EFFECT_STATE_COMMIT_RETRIES {
+            let expected_version = self.versions.get(family).copied().unwrap_or(0);
+            let mut next_family = self.state.family(family).cloned().unwrap_or_default();
+            let result = update(&mut next_family)?;
+            match self.commit_family(family, expected_version, &next_family)? {
+                HostedCommitOutcome::Committed(response) => {
+                    self.state
+                        .families
+                        .insert(family.to_owned(), response.state);
+                    self.versions.insert(family.to_owned(), response.version);
+                    return Ok(result);
+                }
+                HostedCommitOutcome::Conflict(response) => {
+                    self.state
+                        .families
+                        .insert(family.to_owned(), response.state);
+                    self.versions.insert(family.to_owned(), response.version);
+                }
+            }
+        }
+        Err(EffectStateError::HostedBackendTransport {
+            message: format!(
+                "hosted effect-state commit for family {family} stayed stale after {HOSTED_EFFECT_STATE_COMMIT_RETRIES} retries"
+            ),
+        })
+    }
+
+    fn refresh_family(&mut self, family: &str) -> Result<(), EffectStateError> {
+        self.ensure_family_allowed(family)?;
+        let response = self.request_family("GET", family, None)?;
+        self.state
+            .families
+            .insert(family.to_owned(), response.state);
+        self.versions.insert(family.to_owned(), response.version);
+        Ok(())
+    }
+
+    fn commit_family(
+        &self,
+        family: &str,
+        expected_version: u64,
+        state: &EffectFamilyState,
+    ) -> Result<HostedCommitOutcome, EffectStateError> {
+        let body = serde_json::to_string(&HostedFamilyCommitRequest {
+            expected_version,
+            state,
+        })
+        .map_err(|source| EffectStateError::HostedBackendTransport {
+            message: format!("failed to serialize hosted effect-state commit: {source}"),
+        })?;
+        match self.request_family_with_status("PUT", family, Some(&body))? {
+            (200, response) => Ok(HostedCommitOutcome::Committed(response)),
+            (409, response) => Ok(HostedCommitOutcome::Conflict(response)),
+            (status, _) => Err(EffectStateError::HostedBackendTransport {
+                message: format!("unexpected hosted effect-state status {status}"),
+            }),
+        }
+    }
+
+    fn request_family(
+        &self,
+        method: &str,
+        family: &str,
+        body: Option<&str>,
+    ) -> Result<HostedFamilyResponse, EffectStateError> {
+        let (status, response) = self.request_family_with_status(method, family, body)?;
+        if status == 200 {
+            Ok(response)
+        } else {
+            Err(EffectStateError::HostedBackendTransport {
+                message: format!("unexpected hosted effect-state status {status}"),
+            })
+        }
+    }
+
+    fn request_family_with_status(
+        &self,
+        method: &str,
+        family: &str,
+        body: Option<&str>,
+    ) -> Result<(u16, HostedFamilyResponse), EffectStateError> {
+        self.ensure_family_allowed(family)?;
+        let token = self
+            .backend
+            .bearer_token
+            .as_deref()
+            .ok_or_else(hosted_transport_missing)?;
+        let path = format!("{}/families/{family}", self.endpoint.base_path);
+        let body = body.unwrap_or("");
+        let request = format!(
+            "{method} {path} HTTP/1.1\r\nHost: {}\r\nAuthorization: Bearer {token}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            self.endpoint.host,
+            body.len(),
+        );
+        let mut stream = TcpStream::connect((self.endpoint.host.as_str(), self.endpoint.port))
+            .map_err(|source| EffectStateError::HostedBackendTransport {
+                message: format!("failed to connect to hosted effect-state transport: {source}"),
+            })?;
+        stream.write_all(request.as_bytes()).map_err(|source| {
+            EffectStateError::HostedBackendTransport {
+                message: format!("failed to write hosted effect-state request: {source}"),
+            }
+        })?;
+        let mut response = String::new();
+        stream.read_to_string(&mut response).map_err(|source| {
+            EffectStateError::HostedBackendTransport {
+                message: format!("failed to read hosted effect-state response: {source}"),
+            }
+        })?;
+        parse_hosted_response(&response)
+    }
+
+    fn ensure_family_allowed(&self, family: &str) -> Result<(), EffectStateError> {
+        if !hosted_family_name_is_safe(family) {
+            return Err(EffectStateError::HostedBackendInvalid {
+                message: format!("invalid hosted effect-state family {family}"),
+            });
+        }
+        if self
+            .backend
+            .allowed_families
+            .iter()
+            .any(|allowed| allowed == family)
+        {
+            return Ok(());
+        }
+        Err(EffectStateError::HostedBackendInvalid {
+            message: format!("hosted effect-state family {family} is not allowed"),
+        })
+    }
+}
+
+impl EffectStateStore for HostedEffectStateStore {
+    fn lookup_idempotency(
+        &self,
+        family: &str,
+        key: &EffectIdempotencyKey,
+    ) -> Option<&EffectIdempotencyEntry> {
+        HostedEffectStateStore::lookup_idempotency(self, family, key)
+    }
+
+    fn record_idempotency(
+        &mut self,
+        family: &'static str,
+        entry: EffectIdempotencyEntry,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::record_idempotency(self, family, entry)
+    }
+
+    fn lookup_consumed_spend_capability(
+        &self,
+        family: &str,
+        capability_ref: &str,
+    ) -> Option<&EffectCapabilityConsumption> {
+        HostedEffectStateStore::lookup_consumed_spend_capability(self, family, capability_ref)
+    }
+
+    fn consume_spend_capability(
+        &mut self,
+        family: &'static str,
+        consumption: EffectCapabilityConsumption,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::consume_spend_capability(self, family, consumption)
+    }
+
+    fn lookup_mutation(&self, family: &str, key: &EffectIdempotencyKey) -> Option<&EffectMutation> {
+        HostedEffectStateStore::lookup_mutation(self, family, key)
+    }
+
+    fn lookup_finality_intent(
+        &self,
+        family: &str,
+        key: &EffectIdempotencyKey,
+    ) -> Option<&EffectFinalityIntent> {
+        HostedEffectStateStore::lookup_finality_intent(self, family, key)
+    }
+
+    fn lookup_finality_record(
+        &self,
+        family: &str,
+        money_movement_id: &str,
+    ) -> Option<&EffectFinalityRecord> {
+        HostedEffectStateStore::lookup_finality_record(self, family, money_movement_id)
+    }
+
+    fn record_finality_record(
+        &mut self,
+        family: &'static str,
+        record: EffectFinalityRecord,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::record_finality_record(self, family, record)
+    }
+
+    fn lookup_finality_event(
+        &self,
+        family: &str,
+        rail: &str,
+        provider_event_id: &str,
+    ) -> Option<&EffectFinalityEventRecord> {
+        HostedEffectStateStore::lookup_finality_event(self, family, rail, provider_event_id)
+    }
+
+    fn record_finality_event(
+        &mut self,
+        family: &'static str,
+        event: EffectFinalityEventRecord,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::record_finality_event(self, family, event)
+    }
+
+    fn record_finality_intent(
+        &mut self,
+        family: &'static str,
+        intent: EffectFinalityIntent,
+        run_spend: Option<&EffectRunSpendReservation>,
+        period_spend: Option<&EffectPeriodSpendReservation>,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::record_finality_intent(
+            self,
+            family,
+            intent,
+            run_spend,
+            period_spend,
+        )
+    }
+
+    fn seal_run_spend(
+        &mut self,
+        family: &'static str,
+        input: &EffectStepStateInput,
+        receipt_ref: &str,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::seal_run_spend(self, family, input, receipt_ref)
+    }
+
+    fn seal_period_spend(
+        &mut self,
+        family: &'static str,
+        input: &EffectStepStateInput,
+        receipt_ref: &str,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::seal_period_spend(self, family, input, receipt_ref)
+    }
+
+    fn escalate_mutation(
+        &mut self,
+        family: &'static str,
+        key: &EffectIdempotencyKey,
+    ) -> Result<Option<EffectMutation>, EffectStateError> {
+        HostedEffectStateStore::escalate_mutation(self, family, key)
+    }
+
+    fn record_mutation(
+        &mut self,
+        family: &'static str,
+        mutation: EffectMutation,
+    ) -> Result<(), EffectStateError> {
+        HostedEffectStateStore::record_mutation(self, family, mutation)
     }
 }
 
@@ -1324,25 +1991,118 @@ fn effect_state_lock_path(path: &Path) -> PathBuf {
     path.with_file_name(format!(".{file_name}.lock"))
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HostedFamilyResponse {
+    state: EffectFamilyState,
+    version: u64,
+}
+
+#[derive(Serialize)]
+struct HostedFamilyCommitRequest<'a> {
+    expected_version: u64,
+    state: &'a EffectFamilyState,
+}
+
+impl HostedEffectStateEndpoint {
+    fn parse(raw: &str) -> Result<Self, EffectStateError> {
+        let Some(rest) = raw.strip_prefix("http://") else {
+            return Err(EffectStateError::HostedBackendInvalid {
+                message: "hosted effect-state endpoint must use http:// loopback".to_owned(),
+            });
+        };
+        let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+        let (host, port) =
+            authority
+                .rsplit_once(':')
+                .ok_or_else(|| EffectStateError::HostedBackendInvalid {
+                    message: "hosted effect-state endpoint must include a loopback port".to_owned(),
+                })?;
+        if host != "127.0.0.1" && host != "localhost" {
+            return Err(EffectStateError::HostedBackendInvalid {
+                message: "hosted effect-state endpoint must be loopback".to_owned(),
+            });
+        }
+        let port =
+            port.parse::<u16>()
+                .map_err(|source| EffectStateError::HostedBackendInvalid {
+                    message: format!("hosted effect-state endpoint port is invalid: {source}"),
+                })?;
+        let mut base_path = format!("/{path}");
+        while base_path.ends_with('/') && base_path.len() > 1 {
+            base_path.pop();
+        }
+        Ok(Self {
+            host: host.to_owned(),
+            port,
+            base_path,
+        })
+    }
+}
+
+fn parse_hosted_response(response: &str) -> Result<(u16, HostedFamilyResponse), EffectStateError> {
+    let (head, body) = response.split_once("\r\n\r\n").ok_or_else(|| {
+        EffectStateError::HostedBackendTransport {
+            message: "hosted effect-state response is missing an HTTP body".to_owned(),
+        }
+    })?;
+    let status = head
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .ok_or_else(|| EffectStateError::HostedBackendTransport {
+            message: "hosted effect-state response is missing a status code".to_owned(),
+        })?
+        .parse::<u16>()
+        .map_err(|source| EffectStateError::HostedBackendTransport {
+            message: format!("hosted effect-state status code is invalid: {source}"),
+        })?;
+    let body = body.trim();
+    if body.is_empty() {
+        return Err(EffectStateError::HostedBackendTransport {
+            message: format!("hosted effect-state status {status} returned no response body"),
+        });
+    }
+    let family =
+        serde_json::from_str(body).map_err(|source| EffectStateError::HostedBackendTransport {
+            message: format!("hosted effect-state response JSON is invalid: {source}"),
+        })?;
+    Ok((status, family))
+}
+
+fn hosted_family_name_is_safe(family: &str) -> bool {
+    !family.is_empty()
+        && family
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+}
+
+fn hosted_transport_missing() -> EffectStateError {
+    EffectStateError::HostedBackendUnsupported {
+        message: format!(
+            "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} requests {HOSTED_TRANSACTIONAL_BACKEND_KIND}, but this native runtime did not receive a complete hosted effect-state transport"
+        ),
+    }
+}
+
 pub fn consumed_spend_capability_recorded(
     env: &BTreeMap<String, String>,
     cwd: &Path,
     family: &'static str,
     capability_ref: &str,
 ) -> Result<bool, EffectStateError> {
-    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
+    let Some(store) = open_supported_effect_state_store(env, cwd)? else {
         return Ok(false);
     };
-    let store = FileBackedEffectStateStore::open(&path)?;
     Ok(consumed_spend_capability_recorded_in_store(
-        &store,
+        store.as_ref(),
         family,
         capability_ref,
     ))
 }
 
 pub fn consumed_spend_capability_recorded_in_store(
-    store: &impl EffectStateStore,
+    store: &(impl EffectStateStore + ?Sized),
     family: &'static str,
     capability_ref: &str,
 ) -> bool {
@@ -1357,17 +2117,18 @@ pub fn lookup_effect_idempotency_entry(
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Result<Option<EffectIdempotencyEntry>, EffectStateError> {
-    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
+    let Some(store) = open_supported_effect_state_store(env, cwd)? else {
         return Ok(None);
     };
-    let store = FileBackedEffectStateStore::open(&path)?;
     Ok(lookup_effect_idempotency_entry_in_store(
-        &store, family, key,
+        store.as_ref(),
+        family,
+        key,
     ))
 }
 
 pub fn lookup_effect_idempotency_entry_in_store(
-    store: &impl EffectStateStore,
+    store: &(impl EffectStateStore + ?Sized),
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Option<EffectIdempotencyEntry> {
@@ -1380,15 +2141,14 @@ pub fn lookup_effect_mutation(
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Result<Option<EffectMutation>, EffectStateError> {
-    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
+    let Some(store) = open_supported_effect_state_store(env, cwd)? else {
         return Ok(None);
     };
-    let store = FileBackedEffectStateStore::open(&path)?;
-    Ok(lookup_effect_mutation_in_store(&store, family, key))
+    Ok(lookup_effect_mutation_in_store(store.as_ref(), family, key))
 }
 
 pub fn lookup_effect_mutation_in_store(
-    store: &impl EffectStateStore,
+    store: &(impl EffectStateStore + ?Sized),
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Option<EffectMutation> {
@@ -1400,15 +2160,14 @@ pub fn record_effect_finality_intent(
     cwd: &Path,
     input: &EffectStepStateInput,
 ) -> Result<(), EffectStateError> {
-    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
+    let Some(mut store) = open_supported_effect_state_store(env, cwd)? else {
         return Ok(());
     };
-    let mut store = FileBackedEffectStateStore::open(&path)?;
-    record_effect_finality_intent_in_store(&mut store, input)
+    record_effect_finality_intent_in_store(store.as_mut(), input)
 }
 
 pub fn record_effect_finality_intent_in_store(
-    store: &mut impl EffectStateStore,
+    store: &mut (impl EffectStateStore + ?Sized),
     input: &EffectStepStateInput,
 ) -> Result<(), EffectStateError> {
     store.record_finality_intent(
@@ -1434,15 +2193,14 @@ pub fn escalate_effect_mutation(
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Result<Option<EffectMutation>, EffectStateError> {
-    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
+    let Some(mut store) = open_supported_effect_state_store(env, cwd)? else {
         return Ok(None);
     };
-    let mut store = FileBackedEffectStateStore::open(&path)?;
-    escalate_effect_mutation_in_store(&mut store, family, key)
+    escalate_effect_mutation_in_store(store.as_mut(), family, key)
 }
 
 pub fn escalate_effect_mutation_in_store(
-    store: &mut impl EffectStateStore,
+    store: &mut (impl EffectStateStore + ?Sized),
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Result<Option<EffectMutation>, EffectStateError> {
@@ -1459,17 +2217,16 @@ pub fn persist_effect_step_state(
     receipt: &runx_contracts::Receipt,
     supervisor_proof: Option<&PaymentSupervisorProof>,
 ) -> Result<(), EffectStateError> {
-    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
+    let Some(mut store) = open_supported_effect_state_store(env, cwd)? else {
         return Ok(());
     };
-    let mut store = FileBackedEffectStateStore::open(&path)?;
-    persist_effect_step_state_in_store(&mut store, input, outputs, receipt, supervisor_proof)
+    persist_effect_step_state_in_store(store.as_mut(), input, outputs, receipt, supervisor_proof)
 }
 
 // rust-style-allow: long-function because effect state persistence binds
 // authority, output, receipt, and recovery-state invariants in one transaction.
 pub fn persist_effect_step_state_in_store(
-    store: &mut impl EffectStateStore,
+    store: &mut (impl EffectStateStore + ?Sized),
     input: &EffectStepStateInput,
     outputs: &JsonObject,
     receipt: &runx_contracts::Receipt,
@@ -1694,22 +2451,33 @@ pub fn resolve_effect_state_path(env: &BTreeMap<String, String>, cwd: &Path) -> 
         })
 }
 
-fn resolve_supported_effect_state_path(
+pub fn hosted_effect_state_backend_is_supported(
     env: &BTreeMap<String, String>,
-    cwd: &Path,
-) -> Result<Option<PathBuf>, EffectStateError> {
-    reject_unsupported_hosted_effect_state_backend(env)?;
-    Ok(resolve_effect_state_path(env, cwd))
+) -> Result<bool, EffectStateError> {
+    resolve_hosted_effect_state_backend(env).map(|backend| backend.is_some())
 }
 
-fn reject_unsupported_hosted_effect_state_backend(
+fn open_supported_effect_state_store(
     env: &BTreeMap<String, String>,
-) -> Result<(), EffectStateError> {
+    cwd: &Path,
+) -> Result<Option<Box<dyn EffectStateStore>>, EffectStateError> {
+    if let Some(backend) = resolve_hosted_effect_state_backend(env)? {
+        return Ok(Some(Box::new(HostedEffectStateStore::open(backend)?)));
+    }
+    let Some(path) = resolve_effect_state_path(env, cwd) else {
+        return Ok(None);
+    };
+    Ok(Some(Box::new(FileBackedEffectStateStore::open(path)?)))
+}
+
+fn resolve_hosted_effect_state_backend(
+    env: &BTreeMap<String, String>,
+) -> Result<Option<HostedEffectStateBackend>, EffectStateError> {
     let Some(raw) = env
         .get(RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV)
         .filter(|value| !value.trim().is_empty())
     else {
-        return Ok(());
+        return Ok(None);
     };
 
     let backend: HostedEffectStateBackend =
@@ -1732,12 +2500,16 @@ fn reject_unsupported_hosted_effect_state_backend(
             message: "tenant_id is required".to_owned(),
         });
     }
+    if backend.endpoint_url.is_none() || backend.bearer_token.is_none() {
+        return Err(hosted_transport_missing());
+    }
+    if backend.allowed_families.is_empty() {
+        return Err(EffectStateError::HostedBackendInvalid {
+            message: "allowed_families is required for hosted effect-state transport".to_owned(),
+        });
+    }
 
-    Err(EffectStateError::HostedBackendUnsupported {
-        message: format!(
-            "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} requests {HOSTED_TRANSACTIONAL_BACKEND_KIND}, but this native runtime has no hosted effect-state transport; refusing local file fallback"
-        ),
-    })
+    Ok(Some(backend))
 }
 
 fn resolve_path(path: &Path, cwd: &Path) -> PathBuf {
