@@ -1,0 +1,57 @@
+skill: open-meteo-snapshot
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+  provider: open-meteo
+  runtime_path: http
+
+harness:
+  cases:
+    - name: open-meteo-washington-dc
+      runner: snapshot
+      inputs:
+        lat: "38.8894"
+        lon: "-77.0352"
+      expect:
+        status: sealed
+
+runners:
+  snapshot:
+    default: true
+    type: graph
+    inputs:
+      lat:
+        type: string
+        required: true
+        description: Decimal latitude.
+      lon:
+        type: string
+        required: true
+        description: Decimal longitude.
+    graph:
+      name: open-meteo-snapshot
+      steps:
+        - id: current-weather
+          stage: current_weather
+          scopes:
+            - http.read.open-meteo.forecast
+          inputs:
+            lat: $input.lat
+            lon: $input.lon
+          artifacts:
+            wrap_as: current_weather_packet
+            packet: runx.provider.open_meteo_current_weather.v1
+        - id: air-quality
+          stage: air_quality
+          scopes:
+            - http.read.open-meteo.air_quality
+          inputs:
+            lat: $input.lat
+            lon: $input.lon
+          artifacts:
+            wrap_as: air_quality_packet
+            packet: runx.provider.open_meteo_air_quality.v1

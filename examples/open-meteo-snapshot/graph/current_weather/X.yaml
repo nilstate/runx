@@ -1,0 +1,28 @@
+skill: open-meteo-current-weather
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/open-meteo-snapshot
+
+runners:
+  current_weather:
+    default: true
+    type: http
+    url: https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m
+    method: GET
+    headers:
+      accept: "application/json"
+    inputs:
+      lat:
+        type: string
+        required: true
+        description: Decimal latitude.
+      lon:
+        type: string
+        required: true
+        description: Decimal longitude.
