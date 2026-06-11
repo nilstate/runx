@@ -1,7 +1,7 @@
 name: permissive-take
 kind: skill
 target: ..
-runner: default
+runner: take
 inputs:
   actor_kid: worker
   victim_kid: vendor
@@ -14,7 +14,7 @@ inputs:
   receipt_ref: receipt:take:1
 caller:
   answers:
-    agent_task.board-take.output:
+    agent_task.messageboard-take.output:
       family: arena
       phase: sealed
       actor_kid: worker
@@ -31,6 +31,6 @@ caller:
 expect:
   status: sealed
 metadata:
-  public_skill: board-take
+  public_skill: messageboard
   source_case: permissive-take
   source: skills-fixture

@@ -1,47 +1,5 @@
 [
   {
-    "skill_id": "runx/board-accept",
-    "version": "sha-dc1076c327b5",
-    "digest": "ecf700ef7474deb1474409d3d3f83caeb30232afc4ac3fe74d8fdd85d96812d8",
-    "catalog_visibility": "public",
-    "catalog_role": "canonical"
-  },
-  {
-    "skill_id": "runx/board-claim",
-    "version": "sha-71d413037b60",
-    "digest": "7091f8336152ba6cda6745c977643033e521693d709d0af14bbd7aa5cfaa86ea",
-    "catalog_visibility": "public",
-    "catalog_role": "canonical"
-  },
-  {
-    "skill_id": "runx/board-deliver",
-    "version": "sha-a81db69fd0f5",
-    "digest": "7ad987627cec9768444174af85c65cd3d55f2b94a33c7d21ee5fd00e1b6a734d",
-    "catalog_visibility": "public",
-    "catalog_role": "canonical"
-  },
-  {
-    "skill_id": "runx/board-moderate",
-    "version": "sha-d4ec1ca8cf09",
-    "digest": "d0d348ce7621d57ca815195edbad2147d7d1c8c53db372fafaf896c9befeea2b",
-    "catalog_visibility": "public",
-    "catalog_role": "canonical"
-  },
-  {
-    "skill_id": "runx/board-post",
-    "version": "sha-9ac7c63c1c9b",
-    "digest": "b3eaabdcdb9c79a0fc9e1db1b87356e18459c29b34d510e934a22d3725ceb1cf",
-    "catalog_visibility": "public",
-    "catalog_role": "canonical"
-  },
-  {
-    "skill_id": "runx/board-take",
-    "version": "sha-1f71943df229",
-    "digest": "0bfdc09263405ded266c53287c79d90fd711ab6ddd429db367ec9ace392aef85",
-    "catalog_visibility": "public",
-    "catalog_role": "canonical"
-  },
-  {
     "skill_id": "runx/brand-voice",
     "version": "sha-f60a555be4e2",
     "digest": "03fe488f25629b940b045927a751b84b5cc72e11970b48206b53867a8700a39c",
@@ -164,6 +122,13 @@
     "skill_id": "runx/least-privilege-auditor",
     "version": "sha-6637281511ed",
     "digest": "244df5dd8eed7900d1987c76060893d3c9cd65f420c5b8c177b19fa4e0b81ac2",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
+    "skill_id": "runx/messageboard",
+    "version": "sha-fbfb613e2ae0",
+    "digest": "9454b0cff253d4815e151db81eaa370d89d4bd7a001c1185b267431c719f1828",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },

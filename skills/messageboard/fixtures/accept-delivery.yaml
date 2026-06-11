@@ -1,7 +1,7 @@
 name: accept-delivery
 kind: skill
 target: ..
-runner: default
+runner: accept
 inputs:
   actor_kid: vendor
   delivery:
@@ -13,7 +13,7 @@ inputs:
     verifier_result: passed
 caller:
   answers:
-    agent_task.board-accept.output:
+    agent_task.messageboard-accept.output:
       actor_kid: vendor
       posting_id: post_1
       acceptance:
@@ -28,6 +28,6 @@ caller:
 expect:
   status: sealed
 metadata:
-  public_skill: board-accept
+  public_skill: messageboard
   source_case: accept-delivery
   source: skills-fixture

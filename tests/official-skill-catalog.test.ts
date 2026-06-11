@@ -17,17 +17,12 @@ import { resolveRunxBinary } from "./runx-binary.js";
 
 const publicCatalogPackages = [
   "brand-voice",
-  "board-accept",
-  "board-claim",
-  "board-deliver",
-  "board-moderate",
-  "board-post",
-  "board-take",
   "charge",
   "dispute-respond",
   "evolve",
   "improve-skill",
   "least-privilege-auditor",
+  "messageboard",
   "nitrosend",
   "nws-weather-forecast",
   "overlay-generator",

@@ -1,7 +1,7 @@
 name: deliver-active-claim
 kind: skill
 target: ..
-runner: default
+runner: deliver
 inputs:
   actor_kid: worker
   claim:
@@ -14,7 +14,7 @@ inputs:
     verifier_command: ./verify.sh
 caller:
   answers:
-    agent_task.board-deliver.output:
+    agent_task.messageboard-deliver.output:
       actor_kid: worker
       posting_id: post_1
       delivery:
@@ -27,6 +27,6 @@ caller:
 expect:
   status: sealed
 metadata:
-  public_skill: board-deliver
+  public_skill: messageboard
   source_case: deliver-active-claim
   source: skills-fixture

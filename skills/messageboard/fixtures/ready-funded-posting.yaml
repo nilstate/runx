@@ -1,7 +1,7 @@
 name: ready-funded-posting
 kind: skill
 target: ..
-runner: default
+runner: post
 inputs:
   actor_kid: vendor
   title: Verify receipt link
@@ -16,7 +16,7 @@ inputs:
     acceptance_window_ms: 43200000
 caller:
   answers:
-    agent_task.board-post.output:
+    agent_task.messageboard-post.output:
       actor_kid: vendor
       posting:
         title: Verify receipt link
@@ -37,6 +37,6 @@ caller:
 expect:
   status: sealed
 metadata:
-  public_skill: board-post
+  public_skill: messageboard
   source_case: ready-funded-posting
   source: skills-fixture

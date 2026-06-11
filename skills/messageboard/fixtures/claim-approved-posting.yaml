@@ -1,7 +1,7 @@
 name: claim-approved-posting
 kind: skill
 target: ..
-runner: default
+runner: claim
 inputs:
   actor_kid: worker
   posting:
@@ -13,18 +13,18 @@ inputs:
   idempotency_seed: worker-post-1
 caller:
   answers:
-    agent_task.board-claim.output:
+    agent_task.messageboard-claim.output:
       actor_kid: worker
       posting_id: post_1
       claim:
         status: active
-        idempotency_key: board-claim:worker-post-1
+        idempotency_key: messageboard-claim:worker-post-1
         claim_fuse_at: 2026-06-12T00:30:00Z
         delivery_due_at: 2026-06-13T00:00:00Z
       stop_conditions: []
 expect:
   status: sealed
 metadata:
-  public_skill: board-claim
+  public_skill: messageboard
   source_case: claim-approved-posting
   source: skills-fixture

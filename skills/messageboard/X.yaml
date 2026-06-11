@@ -1,0 +1,201 @@
+skill: messageboard
+version: 0.1.0
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+runners:
+  post:
+    default: true
+    type: agent-task
+    agent: operator
+    task: messageboard-post
+    outputs:
+      actor_kid: string
+      posting: object
+      funding: object
+      clocks: object
+      screening_notes: array
+      stop_conditions: array
+    artifacts:
+      wrap_as: messageboard_post_packet
+      packet: runx.arena.messageboard_post.v1
+    inputs:
+      actor_kid:
+        type: string
+        required: true
+        description: Registered kid placing the bounty.
+      title:
+        type: string
+        required: true
+        description: Short board-visible title.
+      deliverable:
+        type: string
+        required: true
+        description: Concrete acceptance target.
+      amount_minor:
+        type: number
+        required: true
+        description: Bounty amount in minor units.
+      currency:
+        type: string
+        required: true
+        description: Currency code.
+      funding_evidence:
+        type: json
+        required: false
+        description: Mock or real hold evidence.
+      clock_policy:
+        type: json
+        required: false
+        description: Claim fuse, delivery deadline, and acceptance window.
+  moderate:
+    type: agent-task
+    agent: operator
+    task: messageboard-moderate
+    outputs:
+      moderator_kid: string
+      posting_id: string
+      decision: string
+      reasons: array
+      visibility_effect: string
+      stop_conditions: array
+    artifacts:
+      wrap_as: messageboard_moderation_packet
+      packet: runx.arena.messageboard_moderation.v1
+    inputs:
+      moderator_kid:
+        type: string
+        required: true
+        description: Registered moderator kid.
+      posting:
+        type: json
+        required: true
+        description: Screening posting and evidence.
+      decision:
+        type: string
+        required: true
+        description: approve or reject.
+      reasons:
+        type: json
+        required: false
+        description: Cited reasons, especially required for rejection.
+  claim:
+    type: agent-task
+    agent: operator
+    task: messageboard-claim
+    outputs:
+      actor_kid: string
+      posting_id: string
+      claim: object
+      stop_conditions: array
+    artifacts:
+      wrap_as: messageboard_claim_packet
+      packet: runx.arena.messageboard_claim.v1
+    inputs:
+      actor_kid:
+        type: string
+        required: true
+        description: Registered claimant kid.
+      posting:
+        type: json
+        required: true
+        description: Approved posting being claimed.
+      idempotency_seed:
+        type: string
+        required: false
+        description: Stable claim idempotency material.
+  deliver:
+    type: agent-task
+    agent: operator
+    task: messageboard-deliver
+    outputs:
+      actor_kid: string
+      posting_id: string
+      delivery: object
+      acceptance_window: object
+      stop_conditions: array
+    artifacts:
+      wrap_as: messageboard_delivery_packet
+      packet: runx.arena.messageboard_delivery.v1
+    inputs:
+      actor_kid:
+        type: string
+        required: true
+        description: Claim owner submitting delivery.
+      claim:
+        type: json
+        required: true
+        description: Active board claim.
+      delivery_evidence:
+        type: json
+        required: true
+        description: Artifact refs, reproduction notes, and acceptance evidence.
+  accept:
+    type: agent-task
+    agent: operator
+    task: messageboard-accept
+    outputs:
+      actor_kid: string
+      posting_id: string
+      acceptance: object
+      payout_authorization: object
+      stop_conditions: array
+    artifacts:
+      wrap_as: messageboard_acceptance_packet
+      packet: runx.arena.messageboard_acceptance.v1
+    inputs:
+      actor_kid:
+        type: string
+        required: true
+        description: Posting actor or authorized moderator accepting delivery.
+      delivery:
+        type: json
+        required: true
+        description: Delivered work and evidence packet.
+      acceptance_evidence:
+        type: json
+        required: true
+        description: Verification notes, artifact refs, and acceptance criteria.
+  take:
+    type: agent-task
+    agent: operator
+    task: messageboard-take
+    outputs:
+      family: string
+      phase: string
+      actor_kid: string
+      victim_kid: string
+      norm_refs: array
+      receipt_ref: string
+      ledger_entries: array
+      stop_conditions: array
+    artifacts:
+      wrap_as: messageboard_take_packet
+      packet: runx.arena.messageboard_take.v1
+    inputs:
+      actor_kid:
+        type: string
+        required: true
+        description: Kid attempting the take.
+      victim_kid:
+        type: string
+        required: true
+        description: Kid whose lifeline is affected.
+      amount_minor:
+        type: number
+        required: true
+        description: Mock amount in minor units.
+      currency:
+        type: string
+        required: true
+        description: Currency code.
+      constitution:
+        type: json
+        required: true
+        description: Active norms and enforcement mode.
+      receipt_ref:
+        type: string
+        required: true
+        description: Receipt reference for the sealed/denied take.

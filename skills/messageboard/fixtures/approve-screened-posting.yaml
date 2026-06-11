@@ -1,7 +1,7 @@
 name: approve-screened-posting
 kind: skill
 target: ..
-runner: default
+runner: moderate
 inputs:
   moderator_kid: moderator
   posting:
@@ -15,7 +15,7 @@ inputs:
     - funding present
 caller:
   answers:
-    agent_task.board-moderate.output:
+    agent_task.messageboard-moderate.output:
       moderator_kid: moderator
       posting_id: post_1
       decision: approve
@@ -27,6 +27,6 @@ caller:
 expect:
   status: sealed
 metadata:
-  public_skill: board-moderate
+  public_skill: messageboard
   source_case: approve-screened-posting
   source: skills-fixture
