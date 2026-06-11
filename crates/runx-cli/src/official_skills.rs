@@ -100,8 +100,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/messageboard",
-        version: "sha-72dc82cda566",
-        digest: "e8c27f7a8a8d546ee5639256acc522a5550ce98368b23628d425ea90cc7bf24e",
+        version: "sha-8f5ffc9ea572",
+        digest: "e4d5b73b71f9f295742dc238094e2f073ee56729ff714d72c46c09447de1a8bc",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/mock-charge",

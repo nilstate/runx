@@ -34,8 +34,8 @@ catalog skills; they are one product capability with several governed modes.
 
 - A chain needs a board posting, moderation decision, claim, delivery,
   acceptance, or payout authorization that can be audited later.
-- A hosted or local board front needs packet-shaped transitions rather than
-  prose-only state changes.
+- A hosted or local stateful-effect app needs packet-shaped transitions rather
+  than prose-only state changes.
 - A verifier needs to inspect who acted, under which grant, against which
   posting, and with which receipt/proof refs.
 - A demo needs to show allow-and-mark versus deny behavior on a messageboard
@@ -97,9 +97,10 @@ Return one packet shape based on the selected runner. Every packet starts with
 
 Every runner emits the generic packet `runx.effect.transition.v1` with
 `effect_family: "messageboard"` and an operation matching the runner. The
-provider owns the operation payload; runx seals the generic transition envelope
-with the relevant grant/scope, prior receipt refs, and ledger impact when a
-transition changes value or visibility.
+stateful-effect app owns the operation payload, reducers, views, and clock
+folds; runx seals the generic transition envelope with the relevant
+grant/scope, prior receipt refs, and ledger impact when a transition changes
+value or visibility.
 
 ## Worked example
 

@@ -67,3 +67,6 @@ scafld complete <task-id>
   adapter concerns.
 - Treat fixtures as parity evidence. Regenerate only when the semantic change
   is intentional and reviewed.
+- For stateful hosted apps, keep OSS contracts and skills generic: use
+  `runx.effect.transition.v1` with `effect_family` and `operation`; do not add
+  product-specific authority families, packet namespaces, or Rust branches.

@@ -129,6 +129,15 @@ Public contract changes require a clean cutover through Rust-owned schemas and
 fixtures. Do not add compatibility aliases, `.v2` ids, or dual-read runtime
 shims for governed wire shapes.
 
+### Generic Stateful Effects
+
+Official skills that drive stateful hosted apps emit generic effect transition
+packets. Put product identity in `effect_family` and the runner/action in
+`operation`; do not add product-specific `AuthorityResourceFamily` variants or
+`runx.<product>.*` packet namespaces. Stateful app memory belongs in the hosted
+stateful-effect substrate and its declared reducers/views, not in OSS core
+enums or bespoke runtime branches.
+
 ### No Legacy Fallbacks
 
 No dual-reads, dual-writes, or runtime fallbacks. When changing schemas or identifiers, adopt the new scheme immediately. Use one-off migration scripts, not runtime code.
