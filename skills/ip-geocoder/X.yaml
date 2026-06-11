@@ -1,0 +1,44 @@
+﻿skill: ip-geocoder
+version: 0.1.0
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+harness:
+  cases:
+    - name: ip-geocoder-run
+      runner: default
+      inputs:
+        ip: "8.8.8.8"
+      caller:
+        answers:
+          ip-geocoder.ip_api:
+            status: "success"
+            country: "US"
+            city: "Ashburn"
+      expect:
+        status: sealed
+runners:
+  default:
+    default: true
+    type: graph
+    inputs:
+      ip:
+        type: string
+        required: true
+    graph:
+      name: ip-geocoder
+      steps:
+        - id: fetch_geo
+          stage: fetch
+          tool: ip-geocoder.ip_api
+          inputs:
+            ip: $input.ip
+        - id: format_packet
+          stage: format
+          tool: builtins.object
+          inputs:
+            country: $step.fetch_geo.country
+            city: $step.fetch_geo.city
+

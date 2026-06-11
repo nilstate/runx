@@ -1,0 +1,18 @@
+﻿{
+  "schema": "runx.tool.manifest.v1",
+  "name": "ip-geocoder.ip_api",
+  "description": "Governed HTTP tool: GET geolocation for an IP",
+  "source": {
+    "type": "http",
+    "url": "http://ip-api.com/json/{ip}",
+    "method": "GET"
+  },
+  "inputs": {
+    "ip": {
+      "type": "string",
+      "required": true,
+      "description": "The IP address to lookup"
+    }
+  },
+  "scopes": ["ip-geocoder.ip_api"]
+}
