@@ -1,0 +1,66 @@
+skill: open-meteo-weather-forecast
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: internal
+  role: branded
+  canonical_skill: runx/weather-forecast
+  provider: open-meteo
+  runtime_path: http
+
+harness:
+  cases:
+    - name: open-meteo-shanghai
+      runner: main
+      inputs:
+        name: Shanghai
+        latitude: "31.2222"
+        longitude: "121.4581"
+        forecast_days: "3"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  main:
+    default: true
+    type: graph
+    inputs:
+      name:
+        type: string
+        required: true
+        description: City or place name to resolve.
+      latitude:
+        type: string
+        required: true
+        description: Decimal latitude selected from the location evidence.
+      longitude:
+        type: string
+        required: true
+        description: Decimal longitude selected from the location evidence.
+      forecast_days:
+        type: string
+        required: false
+        default: "3"
+        description: Number of forecast days to request.
+    graph:
+      name: open-meteo-weather-forecast
+      steps:
+        - id: locate
+          stage: locate
+          scopes:
+            - runx:http:read
+          inputs:
+            name: $input.name
+            count: "5"
+        - id: forecast
+          stage: forecast
+          scopes:
+            - runx:http:read
+          inputs:
+            latitude: $input.latitude
+            longitude: $input.longitude
+            forecast_days: $input.forecast_days
