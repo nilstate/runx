@@ -97,6 +97,36 @@ fn doctor_authority_json_redacts_secret_values_and_reports_state_path()
 }
 
 #[test]
+fn doctor_authority_json_reports_unsupported_hosted_effect_state_backend()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = authority_doctor_command()
+        .args(["doctor", "authority", "--json"])
+        .env(
+            "RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON",
+            r#"{"kind":"hosted_transactional","tenant_id":"tenant_1","store_ref":"runx:hosted-effect-state"}"#,
+        )
+        .output()?;
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stderr)?, "");
+    let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
+    assert_eq!(report["summary"]["errors"], 1);
+    assert!(report["diagnostics"].as_array().is_some_and(|diagnostics| {
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic["id"] == "runx.authority.effect_state"
+                && diagnostic["severity"] == "error"
+                && diagnostic["message"].as_str().is_some_and(|message| {
+                    message.contains("does not yet implement the hosted effect-state transport")
+                })
+        })
+    }));
+    let rendered = serde_json::to_string(&report)?;
+    assert!(rendered.contains("RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON"));
+    assert!(!rendered.contains("tenant_1"));
+    Ok(())
+}
+
+#[test]
 fn doctor_registry_json_reports_readiness_without_key_material()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = temp_root("doctor-registry");
@@ -222,6 +252,7 @@ const AUTHORITY_ENV_NAMES: &[&str] = &[
     "RUNX_RECEIPT_VERIFY_KID",
     "RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64",
     "RUNX_EFFECT_STATE_PATH",
+    "RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON",
     "RUNX_PROVIDER_PERMISSION_GRANT_ID",
     "RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES",
 ];
