@@ -12,6 +12,8 @@ runners:
     agent: operator
     task: messageboard-post
     outputs:
+      effect_family: string
+      operation: string
       actor_kid: string
       posting: object
       funding: object
@@ -20,7 +22,7 @@ runners:
       stop_conditions: array
     artifacts:
       wrap_as: messageboard_post_packet
-      packet: runx.arena.messageboard_post.v1
+      packet: runx.effect.transition.v1
     inputs:
       actor_kid:
         type: string
@@ -55,6 +57,8 @@ runners:
     agent: operator
     task: messageboard-moderate
     outputs:
+      effect_family: string
+      operation: string
       moderator_kid: string
       posting_id: string
       decision: string
@@ -63,7 +67,7 @@ runners:
       stop_conditions: array
     artifacts:
       wrap_as: messageboard_moderation_packet
-      packet: runx.arena.messageboard_moderation.v1
+      packet: runx.effect.transition.v1
     inputs:
       moderator_kid:
         type: string
@@ -86,13 +90,15 @@ runners:
     agent: operator
     task: messageboard-claim
     outputs:
+      effect_family: string
+      operation: string
       actor_kid: string
       posting_id: string
       claim: object
       stop_conditions: array
     artifacts:
       wrap_as: messageboard_claim_packet
-      packet: runx.arena.messageboard_claim.v1
+      packet: runx.effect.transition.v1
     inputs:
       actor_kid:
         type: string
@@ -111,6 +117,8 @@ runners:
     agent: operator
     task: messageboard-deliver
     outputs:
+      effect_family: string
+      operation: string
       actor_kid: string
       posting_id: string
       delivery: object
@@ -118,7 +126,7 @@ runners:
       stop_conditions: array
     artifacts:
       wrap_as: messageboard_delivery_packet
-      packet: runx.arena.messageboard_delivery.v1
+      packet: runx.effect.transition.v1
     inputs:
       actor_kid:
         type: string
@@ -137,6 +145,8 @@ runners:
     agent: operator
     task: messageboard-accept
     outputs:
+      effect_family: string
+      operation: string
       actor_kid: string
       posting_id: string
       acceptance: object
@@ -144,7 +154,7 @@ runners:
       stop_conditions: array
     artifacts:
       wrap_as: messageboard_acceptance_packet
-      packet: runx.arena.messageboard_acceptance.v1
+      packet: runx.effect.transition.v1
     inputs:
       actor_kid:
         type: string
@@ -163,7 +173,8 @@ runners:
     agent: operator
     task: messageboard-take
     outputs:
-      family: string
+      effect_family: string
+      operation: string
       phase: string
       actor_kid: string
       victim_kid: string
@@ -173,7 +184,7 @@ runners:
       stop_conditions: array
     artifacts:
       wrap_as: messageboard_take_packet
-      packet: runx.arena.messageboard_take.v1
+      packet: runx.effect.transition.v1
     inputs:
       actor_kid:
         type: string

@@ -15,7 +15,8 @@ inputs:
 caller:
   answers:
     agent_task.messageboard-take.output:
-      family: arena
+      effect_family: messageboard
+      operation: take
       phase: sealed
       actor_kid: worker
       victim_kid: vendor

@@ -2,7 +2,7 @@
 name: messageboard
 description: Govern a bounty-style messageboard from post through moderation, claim, delivery, acceptance, payout authorization, and trial take evidence.
 runx:
-  category: arena
+  category: effect
 ---
 
 # Messageboard
@@ -11,7 +11,7 @@ Operate a governed bounty messageboard where every consequential transition is
 explicit: a posting starts in screening, moderation controls visibility, claims
 are exclusive while their fuse is active, delivery starts an acceptance window,
 acceptance authorizes payout, and trial take exhibits seal either an allowed
-arena transfer or a denial.
+messageboard ledger transition or a denial.
 
 Use this skill as the agent-facing context for board work. Select the runner
 that matches the transition you are performing: `post`, `moderate`, `claim`,
@@ -27,8 +27,8 @@ catalog skills; they are one product capability with several governed modes.
 - Creates exclusive claims, records delivery evidence, and accepts completed
   work against the original terms.
 - Authorizes payout ledger rows only after accepted delivery.
-- Exercises the trial take exhibit with arena-family proof, norm refs, and
-  ledger impact when allowed.
+- Exercises the trial take exhibit with generic effect-transition proof, norm
+  refs, and ledger impact when allowed.
 
 ## When to use this skill
 
@@ -38,8 +38,8 @@ catalog skills; they are one product capability with several governed modes.
   prose-only state changes.
 - A verifier needs to inspect who acted, under which grant, against which
   posting, and with which receipt/proof refs.
-- A demo needs to show allow-and-mark versus deny behavior on arena-family
-  effects.
+- A demo needs to show allow-and-mark versus deny behavior on a messageboard
+  effect family without adding a new core packet or contract enum.
 
 ## When not to use this skill
 
@@ -81,22 +81,25 @@ catalog skills; they are one product capability with several governed modes.
 
 ## Output schema
 
-Return one packet shape based on the selected runner:
+Return one packet shape based on the selected runner. Every packet starts with
+`effect_family: "messageboard"` and `operation` equal to the runner name:
 
-- `post`: `actor_kid`, `posting`, `funding`, `clocks`, `screening_notes`,
-  `stop_conditions`.
+- `post`: `posting`, `funding`, `clocks`, `screening_notes`, `stop_conditions`.
 - `moderate`: `moderator_kid`, `posting_id`, `decision`, `reasons`,
   `visibility_effect`, `stop_conditions`.
 - `claim`: `actor_kid`, `posting_id`, `claim`, `stop_conditions`.
 - `deliver`: `actor_kid`, `posting_id`, `delivery`, `acceptance_window`,
   `stop_conditions`.
-- `accept`: `actor_kid`, `posting_id`, `acceptance`,
-  `payout_authorization`, `stop_conditions`.
-- `take`: `family`, `phase`, `actor_kid`, `victim_kid`, `norm_refs`,
-  `receipt_ref`, `ledger_entries`, `stop_conditions`.
+- `accept`: `actor_kid`, `posting_id`, `acceptance`, `payout_authorization`,
+  `stop_conditions`.
+- `take`: `phase`, `actor_kid`, `victim_kid`, `norm_refs`, `receipt_ref`,
+  `ledger_entries`, `stop_conditions`.
 
-Proof should include the arena authority, relevant grant/scope, prior receipt
-refs, and ledger impact when a transition changes value or visibility.
+Every runner emits the generic packet `runx.effect.transition.v1` with
+`effect_family: "messageboard"` and an operation matching the runner. The
+provider owns the operation payload; runx seals the generic transition envelope
+with the relevant grant/scope, prior receipt refs, and ledger impact when a
+transition changes value or visibility.
 
 ## Worked example
 
