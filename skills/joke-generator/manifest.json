@@ -1,0 +1,11 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "joke_generator.fetch",
+  "description": "Governed HTTP tool: GET a random joke.",
+  "source": {
+    "type": "http",
+    "url": "https://official-joke-api.appspot.com/random_joke",
+    "method": "GET"
+  },
+  "scopes": ["joke_generator.fetch"]
+}
