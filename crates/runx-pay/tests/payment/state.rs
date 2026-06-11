@@ -11,10 +11,10 @@ use runx_pay::state::{
     EffectFinalityIntentStatus, EffectFinalityRecord, EffectIdempotencyEntry, EffectIdempotencyKey,
     EffectMutation, EffectMutationStatus, EffectPeriodSpendReservation, EffectRecoveryState,
     EffectRunSpendReservation, EffectStepStateInput, FileBackedEffectStateStore,
-    RUNX_EFFECT_STATE_PATH_ENV, consumed_spend_capability_recorded, escalate_effect_mutation,
-    lookup_effect_idempotency_entry, lookup_effect_mutation, period_window_start,
-    persist_effect_step_state, record_effect_finality_intent,
-    record_effect_finality_intent_in_store,
+    RUNX_EFFECT_STATE_PATH_ENV, RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV,
+    consumed_spend_capability_recorded, escalate_effect_mutation, lookup_effect_idempotency_entry,
+    lookup_effect_mutation, period_window_start, persist_effect_step_state,
+    record_effect_finality_intent, record_effect_finality_intent_in_store,
 };
 use runx_pay::supervisor::{PAYMENT_RAIL_SUPERVISOR_VERIFIER_ID, PaymentSupervisorProof};
 use runx_pay::{INFERENCE_EFFECT_FAMILY, PAYMENT_EFFECT_FAMILY};
@@ -24,6 +24,44 @@ use runx_runtime::{InvocationStatus, SkillOutput};
 use serde_json::json;
 
 const MESSAGE_EFFECT_FAMILY: &str = "message";
+
+#[test]
+fn hosted_effect_state_backend_fails_closed_before_file_fallback()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let state_path = temp.path().join("effect-state.json");
+    let env = BTreeMap::from([
+        (
+            RUNX_EFFECT_STATE_PATH_ENV.to_owned(),
+            state_path.display().to_string(),
+        ),
+        (
+            RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV.to_owned(),
+            json!({
+                "kind": "hosted_transactional",
+                "tenant_id": "tenant_123",
+                "store_ref": "runx:hosted-effect-state"
+            })
+            .to_string(),
+        ),
+    ]);
+    let input = payment_step_input();
+
+    let error = record_effect_finality_intent(&env, temp.path(), &input)
+        .expect_err("hosted backend descriptor must not fall back to local file state");
+
+    assert!(
+        error
+            .to_string()
+            .contains("no hosted effect-state transport"),
+        "{error}"
+    );
+    assert!(
+        !state_path.exists(),
+        "unsupported hosted backend must fail before opening local state"
+    );
+    Ok(())
+}
 
 #[test]
 fn records_finality_intent_before_rail_mutation() -> Result<(), Box<dyn std::error::Error>> {

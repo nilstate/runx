@@ -14,7 +14,7 @@ use runx_parser::{SkillInput, ValidatedSkill};
 use crate::adapter::{SkillAdapter, SkillInvocation, SkillOutput};
 use crate::host::Host;
 use crate::receipts::step_receipt_with_signature_policy;
-use crate::registry::required_scopes_from_skill;
+use crate::registry::scopes::required_scopes_from_skill;
 use crate::services::ReceiptServices;
 use crate::{GraphRun, Runtime, RuntimeError, RuntimeOptions};
 

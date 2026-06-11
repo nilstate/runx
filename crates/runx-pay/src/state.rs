@@ -19,8 +19,11 @@ use crate::supervisor::{
 
 pub const EFFECT_STATE_SCHEMA_VERSION: &str = "runx.effect_state.v1";
 pub const RUNX_EFFECT_STATE_PATH_ENV: &str = "RUNX_EFFECT_STATE_PATH";
+pub const RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV: &str = "RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON";
 const EFFECT_STATE_LOCK_TIMEOUT: Duration = Duration::from_secs(5);
 const EFFECT_STATE_LOCK_RETRY: Duration = Duration::from_millis(10);
+const HOSTED_TRANSACTIONAL_BACKEND_KIND: &str = "hosted_transactional";
+const HOSTED_EFFECT_STATE_STORE_REF: &str = "runx:hosted-effect-state";
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -204,6 +207,14 @@ pub struct EffectPeriodSpendReservation {
     pub max_per_period_units: u64,
     pub period: String,
     pub window_start: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HostedEffectStateBackend {
+    kind: String,
+    tenant_id: String,
+    store_ref: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -456,6 +467,10 @@ pub enum EffectStateError {
     MissingSupervisorProof { proof_ref: String },
     #[error("payment supervisor proof mismatch: {message}")]
     SupervisorProof { message: String },
+    #[error("hosted effect state backend config is invalid: {message}")]
+    HostedBackendInvalid { message: String },
+    #[error("hosted effect state backend is not supported by native runtime: {message}")]
+    HostedBackendUnsupported { message: String },
     #[error(transparent)]
     PaymentPacket(#[from] PaymentPacketError),
 }
@@ -1315,7 +1330,7 @@ pub fn consumed_spend_capability_recorded(
     family: &'static str,
     capability_ref: &str,
 ) -> Result<bool, EffectStateError> {
-    let Some(path) = resolve_effect_state_path(env, cwd) else {
+    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
         return Ok(false);
     };
     let store = FileBackedEffectStateStore::open(&path)?;
@@ -1342,7 +1357,7 @@ pub fn lookup_effect_idempotency_entry(
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Result<Option<EffectIdempotencyEntry>, EffectStateError> {
-    let Some(path) = resolve_effect_state_path(env, cwd) else {
+    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
         return Ok(None);
     };
     let store = FileBackedEffectStateStore::open(&path)?;
@@ -1365,7 +1380,7 @@ pub fn lookup_effect_mutation(
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Result<Option<EffectMutation>, EffectStateError> {
-    let Some(path) = resolve_effect_state_path(env, cwd) else {
+    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
         return Ok(None);
     };
     let store = FileBackedEffectStateStore::open(&path)?;
@@ -1385,7 +1400,7 @@ pub fn record_effect_finality_intent(
     cwd: &Path,
     input: &EffectStepStateInput,
 ) -> Result<(), EffectStateError> {
-    let Some(path) = resolve_effect_state_path(env, cwd) else {
+    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
         return Ok(());
     };
     let mut store = FileBackedEffectStateStore::open(&path)?;
@@ -1419,7 +1434,7 @@ pub fn escalate_effect_mutation(
     family: &'static str,
     key: &EffectIdempotencyKey,
 ) -> Result<Option<EffectMutation>, EffectStateError> {
-    let Some(path) = resolve_effect_state_path(env, cwd) else {
+    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
         return Ok(None);
     };
     let mut store = FileBackedEffectStateStore::open(&path)?;
@@ -1444,7 +1459,7 @@ pub fn persist_effect_step_state(
     receipt: &runx_contracts::Receipt,
     supervisor_proof: Option<&PaymentSupervisorProof>,
 ) -> Result<(), EffectStateError> {
-    let Some(path) = resolve_effect_state_path(env, cwd) else {
+    let Some(path) = resolve_supported_effect_state_path(env, cwd)? else {
         return Ok(());
     };
     let mut store = FileBackedEffectStateStore::open(&path)?;
@@ -1677,6 +1692,52 @@ pub fn resolve_effect_state_path(env: &BTreeMap<String, String>, cwd: &Path) -> 
                 .filter(|value| !value.trim().is_empty())
                 .map(|value| resolve_path(Path::new(value), cwd).join("effect-state.json"))
         })
+}
+
+fn resolve_supported_effect_state_path(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+) -> Result<Option<PathBuf>, EffectStateError> {
+    reject_unsupported_hosted_effect_state_backend(env)?;
+    Ok(resolve_effect_state_path(env, cwd))
+}
+
+fn reject_unsupported_hosted_effect_state_backend(
+    env: &BTreeMap<String, String>,
+) -> Result<(), EffectStateError> {
+    let Some(raw) = env
+        .get(RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV)
+        .filter(|value| !value.trim().is_empty())
+    else {
+        return Ok(());
+    };
+
+    let backend: HostedEffectStateBackend =
+        serde_json::from_str(raw).map_err(|source| EffectStateError::HostedBackendInvalid {
+            message: source.to_string(),
+        })?;
+
+    if backend.kind != HOSTED_TRANSACTIONAL_BACKEND_KIND {
+        return Err(EffectStateError::HostedBackendInvalid {
+            message: format!("unsupported backend kind {}", backend.kind),
+        });
+    }
+    if backend.store_ref != HOSTED_EFFECT_STATE_STORE_REF {
+        return Err(EffectStateError::HostedBackendInvalid {
+            message: format!("unsupported store_ref {}", backend.store_ref),
+        });
+    }
+    if backend.tenant_id.trim().is_empty() {
+        return Err(EffectStateError::HostedBackendInvalid {
+            message: "tenant_id is required".to_owned(),
+        });
+    }
+
+    Err(EffectStateError::HostedBackendUnsupported {
+        message: format!(
+            "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} requests {HOSTED_TRANSACTIONAL_BACKEND_KIND}, but this native runtime has no hosted effect-state transport; refusing local file fallback"
+        ),
+    })
 }
 
 fn resolve_path(path: &Path, cwd: &Path) -> PathBuf {
