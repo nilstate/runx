@@ -1,6 +1,7 @@
 // rust-style-allow: large-file because the JSON-RPC dispatch loop, server
 // state, tool-result builders, and host-result projections for `runx mcp
 // serve` all sit on the same protocol surface.
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -10,6 +11,8 @@ use std::thread;
 
 use runx_contracts::{JsonObject, JsonValue};
 use tokio::sync::mpsc;
+
+use crate::effects::{PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV};
 
 use super::rmcp_content_length::{RmcpContentLengthTransport, RmcpTransportErrorState};
 use super::server_skill::{execute_mcp_server_skill, identifier_segment};
@@ -318,12 +321,63 @@ fn prepare_rmcp_tool_call(
     };
     match tool.result {
         McpServerToolBehavior::Fixed(result) => Ok(PreparedMcpToolCall::Fixed(result)),
-        McpServerToolBehavior::Skill(execution) => Ok(PreparedMcpToolCall::Skill {
-            run_id: state.next_run_id(&execution.skill.name),
-            execution,
-            arguments,
-        }),
+        McpServerToolBehavior::Skill(execution) => {
+            admit_mcp_tool_scopes(&tool.name, &tool.required_scopes, &execution.env)?;
+            Ok(PreparedMcpToolCall::Skill {
+                run_id: state.next_run_id(&execution.skill.name),
+                execution,
+                arguments,
+            })
+        }
     }
+}
+
+fn admit_mcp_tool_scopes(
+    tool_name: &str,
+    required_scopes: &[String],
+    env: &BTreeMap<String, String>,
+) -> Result<(), rmcp::ErrorData> {
+    if required_scopes.is_empty() {
+        return Ok(());
+    }
+    let Some(grant_id) = env
+        .get(PROVIDER_PERMISSION_GRANT_ID_ENV)
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    else {
+        return Err(rmcp_invalid_params(format!(
+            "MCP tool '{tool_name}' requires scopes [{}], but no operator provider grant id was supplied in {PROVIDER_PERMISSION_GRANT_ID_ENV}",
+            required_scopes.join(", ")
+        )));
+    };
+    let granted_scopes = env
+        .get(PROVIDER_PERMISSION_GRANTED_SCOPES_ENV)
+        .map(|value| parse_scope_list(value))
+        .unwrap_or_default();
+    let granted = granted_scopes.iter().collect::<BTreeSet<_>>();
+    let missing = required_scopes
+        .iter()
+        .filter(|scope| !granted.contains(scope))
+        .cloned()
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        return Ok(());
+    }
+    Err(rmcp_invalid_params(format!(
+        "MCP tool '{tool_name}' requires scopes [{}], but operator grant '{}' only provides [{}]",
+        required_scopes.join(", "),
+        grant_id,
+        granted_scopes.join(", ")
+    )))
+}
+
+fn parse_scope_list(value: &str) -> Vec<String> {
+    value
+        .split([',', '\n', '\t', ' '])
+        .map(str::trim)
+        .filter(|scope| !scope.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
 async fn execute_rmcp_tool_call(
@@ -552,7 +606,6 @@ fn assert_unique_server_tool_names(tools: &[McpServerTool]) -> Result<(), McpSer
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
     use std::sync::{Arc, Barrier};
 
     use super::*;
@@ -595,5 +648,41 @@ mod tests {
             assert!(ids.contains(&format!("rx_mcp_skill_alpha_{sequence}")));
         }
         Ok(())
+    }
+
+    #[test]
+    fn scoped_mcp_tool_requires_operator_grant_before_dispatch() {
+        let required_scopes = vec!["repo.read".to_owned(), "issues.write".to_owned()];
+        let result = admit_mcp_tool_scopes("github-write", &required_scopes, &BTreeMap::new());
+        assert!(
+            matches!(&result, Err(error) if error.message.contains("no operator provider grant id")),
+            "scoped MCP tool must deny without operator grant id; got: {result:?}"
+        );
+
+        let mut env = BTreeMap::from([
+            (
+                PROVIDER_PERMISSION_GRANT_ID_ENV.to_owned(),
+                "grant-gh".to_owned(),
+            ),
+            (
+                PROVIDER_PERMISSION_GRANTED_SCOPES_ENV.to_owned(),
+                "repo.read".to_owned(),
+            ),
+        ]);
+        let result = admit_mcp_tool_scopes("github-write", &required_scopes, &env);
+        assert!(
+            matches!(&result, Err(error) if error.message.contains("issues.write")),
+            "scoped MCP tool must deny missing granted scopes before dispatch; got: {result:?}"
+        );
+
+        env.insert(
+            PROVIDER_PERMISSION_GRANTED_SCOPES_ENV.to_owned(),
+            "repo.read,issues.write".to_owned(),
+        );
+        let result = admit_mcp_tool_scopes("github-write", &required_scopes, &env);
+        assert!(
+            result.is_ok(),
+            "matching operator grant scopes should admit the MCP tool; got: {result:?}"
+        );
     }
 }

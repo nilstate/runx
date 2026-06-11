@@ -4,6 +4,7 @@ mod install;
 mod local;
 mod payload;
 mod refs;
+mod scopes;
 mod source_authority;
 mod trust_anchor;
 mod types;
@@ -35,6 +36,7 @@ pub use refs::{
     ParsedRegistryRef, RegistryResolveError, materialization_cache_path,
     materialization_digest_marker, parse_registry_ref, safe_skill_package_parts,
 };
+pub(crate) use scopes::required_scopes_from_skill;
 pub use source_authority::{
     RUNX_REGISTRY_SOURCE_AUTHORITY_ENV, RegistryManifestSourceAuthority,
     is_official_runx_registry_url, registry_manifest_source_authority_from_env,

@@ -62,6 +62,7 @@ pub struct McpServerTool {
     pub name: String,
     pub description: String,
     pub input_schema: JsonObject,
+    pub required_scopes: Vec<String>,
     pub result: McpServerToolBehavior,
 }
 

@@ -9,6 +9,7 @@ use runx_parser::{
 };
 use serde::Deserialize;
 
+use super::super::scopes::required_scopes_from_skill_and_runner;
 use super::super::types::{
     RegistryAttestation, RegistryPublisher, RegistrySkillVersion, RegistrySourceMetadata, TrustTier,
 };
@@ -134,12 +135,7 @@ pub(super) fn registry_required_scopes(
     skill: &ValidatedSkill,
     manifest: Option<&SkillRunnerManifest>,
 ) -> Vec<String> {
-    unique(
-        extract_scopes(skill)
-            .into_iter()
-            .chain(extract_runner_scopes(manifest))
-            .collect(),
-    )
+    required_scopes_from_skill_and_runner(skill, manifest)
 }
 
 pub(super) fn registry_runtime(
@@ -400,38 +396,6 @@ pub(super) fn derive_registry_trust_tier(
     trust_tier.cloned().unwrap_or(TrustTier::Community)
 }
 
-pub(super) fn extract_scopes(skill: &ValidatedSkill) -> Vec<String> {
-    unique(
-        record_array_field(skill.auth.as_ref(), "scopes")
-            .into_iter()
-            .chain(record_array_field_from_object(
-                skill.runx.as_ref(),
-                "scopes",
-            ))
-            .collect(),
-    )
-}
-
-pub(super) fn extract_runner_scopes(manifest: Option<&SkillRunnerManifest>) -> Vec<String> {
-    let Some(manifest) = manifest else {
-        return Vec::new();
-    };
-    unique(
-        manifest
-            .runners
-            .values()
-            .flat_map(|runner| {
-                record_array_field(runner.auth.as_ref(), "scopes")
-                    .into_iter()
-                    .chain(record_array_field_from_object(
-                        runner.runx.as_ref(),
-                        "scopes",
-                    ))
-            })
-            .collect(),
-    )
-}
-
 pub(super) fn extract_runner_runtime(manifest: Option<&SkillRunnerManifest>) -> Option<JsonValue> {
     let manifest = manifest?;
     let runners = manifest
@@ -464,13 +428,6 @@ pub(super) fn extract_runner_tags(manifest: Option<&SkillRunnerManifest>) -> Vec
 
 pub(super) fn extract_tags(skill: &ValidatedSkill) -> Vec<String> {
     unique(record_array_field_from_object(skill.runx.as_ref(), "tags"))
-}
-
-pub(super) fn record_array_field(value: Option<&JsonValue>, field: &str) -> Vec<String> {
-    let Some(JsonValue::Object(record)) = value else {
-        return Vec::new();
-    };
-    record_array_field_from_object(Some(record), field)
 }
 
 pub(super) fn record_array_field_from_object(

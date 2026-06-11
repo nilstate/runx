@@ -14,6 +14,7 @@ use runx_parser::{SkillInput, ValidatedSkill};
 use crate::adapter::{SkillAdapter, SkillInvocation, SkillOutput};
 use crate::host::Host;
 use crate::receipts::step_receipt_with_signature_policy;
+use crate::registry::required_scopes_from_skill;
 use crate::services::ReceiptServices;
 use crate::{GraphRun, Runtime, RuntimeError, RuntimeOptions};
 
@@ -74,6 +75,7 @@ pub(super) fn load_mcp_server_tool(
             .clone()
             .unwrap_or_else(|| format!("runx skill {}", skill.name)),
         input_schema: skill_inputs_to_json_schema(&skill.inputs),
+        required_scopes: required_scopes_from_skill(&skill),
         result: McpServerToolBehavior::Skill(Box::new(McpServerSkillExecution {
             skill_path,
             skill,
