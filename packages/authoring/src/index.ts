@@ -612,8 +612,8 @@ export function resolveRepoRoot(
 export function resolveInsideRepo(repoRoot: string, targetPath: string): string {
   const resolvedPath = path.resolve(repoRoot, targetPath);
   const realRepoRoot = realpathOrResolved(repoRoot);
-  const realParent = realExistingAncestor(path.dirname(resolvedPath));
-  if (!realParent.startsWith(`${realRepoRoot}${path.sep}`) && realParent !== realRepoRoot) {
+  const realTarget = realpathOrExistingAncestor(resolvedPath);
+  if (!realTarget.startsWith(`${realRepoRoot}${path.sep}`) && realTarget !== realRepoRoot) {
     throw new Error(`path escapes repo_root: ${targetPath}`);
   }
   return resolvedPath;
@@ -624,6 +624,14 @@ function realpathOrResolved(targetPath: string): string {
     return realpathSync.native(targetPath);
   } catch {
     return path.resolve(targetPath);
+  }
+}
+
+function realpathOrExistingAncestor(targetPath: string): string {
+  try {
+    return realpathSync.native(targetPath);
+  } catch {
+    return realExistingAncestor(path.dirname(targetPath));
   }
 }
 
