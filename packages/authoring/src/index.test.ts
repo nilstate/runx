@@ -166,6 +166,10 @@ describe("@runxhq/authoring", () => {
     expect(() => resolveInsideRepo("/tmp/repo", "../escape")).toThrow(/escapes repo_root/);
   });
 
+  it("preserves POSIX absolute RUNX_CWD values on Windows hosts", () => {
+    expect(resolveRepoRoot({}, { RUNX_CWD: "/tmp/project/../repo" } as NodeJS.ProcessEnv)).toBe("/tmp/repo");
+  });
+
   it("parses tool inputs from a spill file when RUNX_INPUTS_PATH is provided", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-authoring-inputs-"));
     const inputsPath = path.join(tempDir, "inputs.json");
