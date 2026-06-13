@@ -134,4 +134,17 @@ Run it from the OSS workspace:
 sh examples/loop-orchestration/run.sh
 ```
 
+For a repeatable harness check, use a clean receipt directory and the demo
+signing identity:
+
+```sh
+tmpdir="$(mktemp -d)"
+RUNX_RECEIPT_SIGN_KID=runx-demo-key \
+RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI= \
+RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted \
+"${RUNX_BIN:-crates/target/debug/runx}" harness examples/loop-orchestration \
+  --receipt-dir "$tmpdir" \
+  --json
+```
+
 The example proves the shape before any CLI sugar or hosted loop host is added.

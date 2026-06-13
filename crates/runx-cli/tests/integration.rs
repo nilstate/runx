@@ -9,6 +9,7 @@
 
 mod doctor;
 mod export;
+mod harness;
 mod kernel;
 mod launcher;
 mod local_credential;

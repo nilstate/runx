@@ -9,6 +9,9 @@ use runx_cli::launcher::{
     verify_help_text,
 };
 
+const INLINE_HARNESS_SIGNING_HINT: &str = "runx: hint: inline harnesses seal signed receipts; set RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE, or run the example's run.sh when one is provided.";
+const INLINE_HARNESS_STALE_RECEIPT_STORE_HINT: &str = "runx: hint: the receipt store contains entries that do not verify with the current issuer; retry with --receipt-dir \"$(mktemp -d)\" for an isolated harness run.";
+
 fn main() -> ExitCode {
     let args: Vec<OsString> = env::args_os().skip(1).collect();
 
@@ -247,13 +250,22 @@ fn run_inline_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> Exit
     let report = match runx_cli::runtime::local_orchestrator().run_inline_harness(&request) {
         Ok(report) => report,
         Err(error) => {
+            let error_message = error.to_string();
             let _ignored = write_stderr_line(&format!(
-                "runx: inline harness failed for {}: {error}",
+                "runx: inline harness failed for {}: {error_message}",
                 skill_path.display()
             ));
+            if let Some(hint) = inline_harness_failure_hint(&error_message) {
+                let _ignored = write_stderr_line(hint);
+            }
             return ExitCode::from(1);
         }
     };
+    if report.status == "failed" {
+        if let Some(hint) = inline_harness_report_hint(&report) {
+            let _ignored = write_stderr_line(hint);
+        }
+    }
     let json = match serde_json::to_string_pretty(&report) {
         Ok(json) => json,
         Err(error) => {
@@ -271,6 +283,31 @@ fn run_inline_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> Exit
     } else {
         ExitCode::SUCCESS
     }
+}
+
+fn inline_harness_failure_hint(message: &str) -> Option<&'static str> {
+    if message.contains("governed runtime receipt signing requires") {
+        return Some(INLINE_HARNESS_SIGNING_HINT);
+    }
+    None
+}
+
+fn inline_harness_report_hint(report: &runx_runtime::InlineHarnessReport) -> Option<&'static str> {
+    if report
+        .assertion_errors
+        .iter()
+        .any(|error| error.contains("governed runtime receipt signing requires"))
+    {
+        return Some(INLINE_HARNESS_SIGNING_HINT);
+    }
+    if report
+        .assertion_errors
+        .iter()
+        .any(|error| error.contains("receipt store index is stale"))
+    {
+        return Some(INLINE_HARNESS_STALE_RECEIPT_STORE_HINT);
+    }
+    None
 }
 
 fn write_stdout(message: &str) -> ExitCode {
@@ -307,5 +344,46 @@ fn write_stderr_line(message: &str) -> ExitCode {
         ExitCode::SUCCESS
     } else {
         ExitCode::from(1)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inline_harness_report_hint_recognizes_missing_signer() {
+        let report = failed_inline_harness_report(
+            "smoke: skill run failed: governed runtime receipt signing requires RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE",
+        );
+
+        assert_eq!(
+            inline_harness_report_hint(&report),
+            Some(INLINE_HARNESS_SIGNING_HINT)
+        );
+    }
+
+    #[test]
+    fn inline_harness_report_hint_recognizes_stale_receipt_store() {
+        let report = failed_inline_harness_report(
+            "smoke: receipt store index is stale: receipt proof is invalid for sha256:abc",
+        );
+
+        assert_eq!(
+            inline_harness_report_hint(&report),
+            Some(INLINE_HARNESS_STALE_RECEIPT_STORE_HINT)
+        );
+    }
+
+    fn failed_inline_harness_report(error: &str) -> runx_runtime::InlineHarnessReport {
+        runx_runtime::InlineHarnessReport {
+            status: "failed",
+            case_count: 1,
+            assertion_error_count: 1,
+            assertion_errors: vec![error.to_owned()],
+            case_names: vec!["smoke".to_owned()],
+            receipt_ids: Vec::new(),
+            graph_case_count: 0,
+        }
     }
 }
