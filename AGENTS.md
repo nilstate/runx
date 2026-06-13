@@ -142,6 +142,21 @@ enums or bespoke runtime branches.
 
 No dual-reads, dual-writes, or runtime fallbacks. When changing schemas or identifiers, adopt the new scheme immediately. Use one-off migration scripts, not runtime code.
 
+### Loop Orchestration
+
+Long-running agent workflows are loops over governed turns, not resident kernel
+loops. The loop host lives in an app, hosted service, local script, or external
+orchestrator. It owns scheduling, durable loop state, wakeups, projections, and
+stop policy. A runx turn is one skill or graph run with explicit inputs,
+authority, `allowed_tools`, optional `context_skills`, bounded model/tool
+rounds, approval gates, and one sealed receipt.
+
+Handoffs are receipt-backed artifacts or tool-shaped results. Prior receipts and
+skill context are untrusted data for the next turn, not new authority. Do not add
+loop-specific authority families, packet namespaces, product branches, or
+schedulers to `runx-core`; build residency outside the kernel over ordinary runx
+submissions.
+
 ### No Hardcoded Secrets
 
 Configuration from environment or secrets management, never hardcoded. No secrets in code, logs, or diffs.

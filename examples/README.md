@@ -30,6 +30,7 @@ The curated proof set is also machine-checked in
 | `openapi-graph` + `openapi-tool` | OpenAPI via external-adapter (an OpenAPI operation executed and sealed) | `sh examples/openapi-graph/run.sh` |
 | `nws-weather-openapi` + `nws-weather-points` | http against a real OpenAPI-described public provider | `sh examples/nws-weather-openapi/run.sh` |
 | `governed-spend` | payment authority, deterministic x402/Stripe receipt demos, and offline verification | `pnpm demos:check` |
+| `loop-orchestration` | outer loop over governed runx turns, with receipts, refusal, and agent context preview | `sh examples/loop-orchestration/run.sh` |
 
 ## Runnable previews
 

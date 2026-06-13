@@ -122,3 +122,8 @@ visible in the execution record.
 Graphs should stay small enough to review. If the graph is carrying hidden
 policy decisions, split the policy into the skill profile or a separate
 governed step instead of burying it in prose.
+
+For long-running agent workflows, do not turn a graph into an unbounded resident
+loop. Use [Loop Orchestration](./loop-orchestration.md): an outer loop host
+submits one governed runx turn at a time, reads receipts and projections, and
+continues only when explicit stop policy allows.

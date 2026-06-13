@@ -70,3 +70,8 @@ scafld complete <task-id>
 - For stateful hosted apps, keep OSS contracts and skills generic: use
   `runx.effect.transition.v1` with `effect_family` and `operation`; do not add
   product-specific authority families, packet namespaces, or Rust branches.
+- For loop orchestration, keep the loop host outside the kernel. runx owns
+  bounded governed turns, `allowed_tools`, `context_skills`, approvals, and
+  receipts; the app/orchestrator owns scheduling, durable loop state, wakeups,
+  projections, and stop policy. Do not add a resident loop engine or loop packet
+  namespace to core.

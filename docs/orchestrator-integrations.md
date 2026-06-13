@@ -6,6 +6,11 @@ for authority, secrets, policy, runtime, and receipts;
 n8n/Zapier/Make remain workflow surfaces for triggers, canvases, schedules, and
 cross-app branching.
 
+For long-running agent systems, keep the same boundary described in
+[Loop Orchestration](./loop-orchestration.md): n8n, Zapier, Make, Temporal,
+LangGraph, or a hosted app may own the loop, while each consequential turn is a
+normal governed runx skill/graph run with its own receipt.
+
 - a runx listing on n8n's public integrations surface
 - a runx app page in Zapier's public App Directory
 - follow-on listings in adjacent automation, connector, CI, and MCP registries

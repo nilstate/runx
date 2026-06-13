@@ -772,7 +772,7 @@ export function pushGitHubMessage({
   return {
     outbox_entry: prune({
       ...outbox,
-      status: firstNonEmptyString(nextStatus, outbox.status, "published"),
+      status: firstNonEmptyString(nextStatus, "published", outbox.status),
       locator,
       thread_locator: firstNonEmptyString(outbox.thread_locator, state.thread_locator, issueRef.thread_locator),
       metadata: prune({
@@ -788,6 +788,130 @@ export function pushGitHubMessage({
     message: prune({
       locator,
       comment_id: commentId,
+    }),
+  };
+}
+
+export function pushGitHubLifecycleIntent({
+  thread,
+  outboxEntry,
+  workspacePath,
+  nextStatus,
+  env,
+}) {
+  const state = asRecord(thread, "thread");
+  const outbox = asRecord(outboxEntry, "outbox_entry");
+  const metadata = optionalRecord(outbox.metadata) ?? {};
+  const issueRef = parseGitHubIssueRef(
+    optionalRecord(state.adapter)?.adapter_ref,
+    state.canonical_uri,
+    state.thread_locator,
+  );
+  const repoSlug = firstNonEmptyString(optionalRecord(state.metadata)?.repo, issueRef.repo_slug);
+  const cwd = workspacePath ?? process.cwd();
+  const issueState = getGitHubIssueState({
+    repoSlug,
+    issueNumber: issueRef.issue_number,
+    cwd,
+    env,
+  });
+  const addLabels = stringList(metadata.add_labels);
+  const removeLabels = stringList(metadata.remove_labels);
+  const closeReason = firstNonEmptyString(metadata.close_reason, "completed");
+
+  if (!repoSlug) {
+    throw new Error("GitHub issue repo slug is required to push a provider thread lifecycle entry.");
+  }
+  if (addLabels.length === 0 && removeLabels.length === 0 && metadata.action !== "close") {
+    throw new Error("provider_thread_lifecycle requires label changes or a close action.");
+  }
+
+  for (const label of addLabels) {
+    ensureGitHubLabel({
+      repoSlug,
+      label,
+      cwd,
+      env,
+    });
+  }
+
+  const existingLabels = new Set(stringList(issueState.labels));
+  for (const label of addLabels) {
+    if (existingLabels.has(label)) {
+      continue;
+    }
+    runGhCommand([
+      "issue",
+      "edit",
+      issueRef.issue_number,
+      "--repo",
+      repoSlug,
+      "--add-label",
+      label,
+    ], {
+      cwd,
+      env,
+    }, { tokenFallback: true });
+    existingLabels.add(label);
+  }
+
+  for (const label of removeLabels) {
+    if (!existingLabels.has(label)) {
+      continue;
+    }
+    runGhCommand([
+      "issue",
+      "edit",
+      issueRef.issue_number,
+      "--repo",
+      repoSlug,
+      "--remove-label",
+      label,
+    ], {
+      cwd,
+      env,
+    }, { tokenFallback: true });
+    existingLabels.delete(label);
+  }
+
+  const shouldClose = firstNonEmptyString(metadata.action) === "close";
+  if (shouldClose && String(issueState.state ?? "").toUpperCase() !== "CLOSED") {
+    runGhCommand([
+      "issue",
+      "close",
+      issueRef.issue_number,
+      "--repo",
+      repoSlug,
+      "--reason",
+      closeReason === "not_planned" ? "not planned" : "completed",
+    ], {
+      cwd,
+      env,
+    }, { tokenFallback: true });
+  }
+
+  return {
+    outbox_entry: prune({
+      ...outbox,
+      status: firstNonEmptyString(nextStatus, "published", outbox.status),
+      locator: firstNonEmptyString(outbox.locator, issueRef.issue_url),
+      thread_locator: firstNonEmptyString(outbox.thread_locator, state.thread_locator, issueRef.thread_locator),
+      metadata: prune({
+        ...metadata,
+        schema_version: firstNonEmptyString(
+          metadata.schema_version,
+          "runx.outbox-entry.provider-thread-lifecycle.v1",
+        ),
+        channel: firstNonEmptyString(metadata.channel, "github_issue"),
+        pushed_at: new Date().toISOString(),
+      }),
+    }),
+    lifecycle: prune({
+      locator: issueRef.issue_url,
+      added_labels: addLabels,
+      removed_labels: removeLabels,
+      closed: shouldClose,
+      close_reason: shouldClose ? closeReason : undefined,
     }),
   };
 }
@@ -870,6 +994,47 @@ function gitHubMessageOutboxMatchScore(candidate, outboxEntry) {
     return 2;
   }
   return 1;
+}
+
+function getGitHubIssueState({ repoSlug, issueNumber, cwd, env }) {
+  const issue = runGhJson([
+    "issue",
+    "view",
+    issueNumber,
+    "--repo",
+    repoSlug,
+    "--json",
+    "labels,state,url",
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+  return {
+    state: firstNonEmptyString(issue.state, "OPEN"),
+    url: firstNonEmptyString(issue.url),
+    labels: normalizeLabelNames(issue.labels) ?? [],
+  };
+}
+
+function ensureGitHubLabel({ repoSlug, label, cwd, env }) {
+  if (!label.startsWith("frantic:")) {
+    return;
+  }
+  runGhCommand([
+    "label",
+    "create",
+    label,
+    "--repo",
+    repoSlug,
+    "--color",
+    "0969DA",
+    "--description",
+    "Frantic lifecycle",
+    "--force",
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
 }
 
 export function resolveGhBinary(env) {

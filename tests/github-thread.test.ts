@@ -1,3 +1,6 @@
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,8 +11,10 @@ import {
   hydrateGitHubIssueThread,
   mapGitHubPullRequestToOutboxEntry,
   parseGitHubIssueRef,
+  pushGitHubLifecycleIntent,
   selectPreferredGitHubPullRequest,
 } from "../tools/thread/github_adapter.mjs";
+import { buildFranticThreadProviderPush } from "../tools/thread/frantic_thread_outbox.mjs";
 
 describe("GitHub thread helper", () => {
   it("parses adapter refs, locators, and canonical issue URLs into one stable shape", () => {
@@ -287,4 +292,142 @@ describe("GitHub thread helper", () => {
       },
     });
   });
+
+  it("maps Frantic thread intents into GitHub provider push frames", () => {
+    const frame = buildFranticThreadProviderPush({
+      schema_version: 1,
+      kind: "thread.comment",
+      outbox_id: "github:payout-1:thread.comment",
+      provider: "github",
+      thread_locator: "github://auscaster/frantic-board/issues/7",
+      source: "frantic",
+      source_ref: "github:payout-1",
+      event_id: 99,
+      occurred_at: "2026-06-13T00:00:00.000Z",
+      room: "town",
+      posting_id: "auscaster/frantic-board#7",
+      bounty_number: 7,
+      bounty_url: "https://gofrantic.com/bounties/7",
+      receipt_ref: "frantic:receipt:payout:7",
+      receipt_url: "https://gofrantic.com/receipts/frantic%3Areceipt%3Apayout%3A7",
+      body: "Frantic paid the final accepted claim and closed the bounty.",
+    });
+
+    expect(frame).toMatchObject({
+      protocol_version: "runx.thread_outbox_provider.v1",
+      provider: "github",
+      outbox_entry_id: "github:payout-1:thread.comment",
+      thread_locator: {
+        locator: "github://auscaster/frantic-board/issues/7",
+      },
+      idempotency: {
+        key: "github:payout-1:thread.comment",
+      },
+      payload: {
+        format: "json",
+      },
+    });
+    const body = JSON.parse((frame.payload as { body: string }).body);
+    expect(body.thread).toMatchObject({
+      adapter: {
+        adapter_ref: "auscaster/frantic-board#issue/7",
+      },
+      canonical_uri: "https://github.com/auscaster/frantic-board/issues/7",
+    });
+    expect(body.outbox_entry).toMatchObject({
+      kind: "message",
+      metadata: {
+        channel: "github_issue_comment",
+        body_markdown: expect.stringContaining("https://gofrantic.com/bounties/7"),
+      },
+    });
+  });
+
+  it("pushes Frantic lifecycle labels and close operations through the GitHub adapter", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-"));
+    const ghBin = path.join(tempDir, "fake-gh.mjs");
+    const logPath = path.join(tempDir, "gh.log");
+
+    try {
+      await writeFile(ghBin, fakeGhScript(logPath));
+      await chmod(ghBin, 0o700);
+      const result = pushGitHubLifecycleIntent({
+        thread: {
+          adapter: {
+            adapter_ref: "auscaster/frantic-board#issue/7",
+          },
+          thread_locator: "github://auscaster/frantic-board/issues/7",
+          canonical_uri: "https://github.com/auscaster/frantic-board/issues/7",
+          metadata: {
+            repo: "auscaster/frantic-board",
+          },
+        },
+        outboxEntry: {
+          entry_id: "github:payout-1:thread.close",
+          kind: "provider_thread_lifecycle",
+          status: "pending",
+          metadata: {
+            action: "close",
+            add_labels: ["frantic:paid", "frantic:closed"],
+            remove_labels: ["frantic:open"],
+            close_reason: "completed",
+          },
+        },
+        env: {
+          ...process.env,
+          RUNX_GH_BIN: ghBin,
+          GH_FAKE_LOG: logPath,
+        },
+      });
+
+      const calls = JSON.parse(await readFile(logPath, "utf8"));
+      expect(calls.map((call: { args: string[] }) => call.args.slice(0, 2).join(" "))).toEqual([
+        "issue view",
+        "label create",
+        "label create",
+        "issue edit",
+        "issue edit",
+        "issue edit",
+        "issue close",
+      ]);
+      expect(result).toMatchObject({
+        outbox_entry: {
+          status: "published",
+          locator: "https://github.com/auscaster/frantic-board/issues/7",
+        },
+        lifecycle: {
+          added_labels: ["frantic:paid", "frantic:closed"],
+          removed_labels: ["frantic:open"],
+          closed: true,
+        },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
+
+function fakeGhScript(logPath: string): string {
+  return `#!/usr/bin/env node
+import { readFileSync, writeFileSync } from "node:fs";
+
+const args = process.argv.slice(2);
+const logPath = process.env.GH_FAKE_LOG || ${JSON.stringify(logPath)};
+let calls = [];
+try {
+  calls = JSON.parse(readFileSync(logPath, "utf8"));
+} catch {}
+calls.push({ args });
+writeFileSync(logPath, JSON.stringify(calls));
+
+if (args[0] === "issue" && args[1] === "view") {
+  process.stdout.write(JSON.stringify({
+    state: "OPEN",
+    url: "https://github.com/auscaster/frantic-board/issues/7",
+    labels: [{ name: "frantic:open" }]
+  }));
+  process.exit(0);
+}
+process.stdout.write("");
+`;
+}
