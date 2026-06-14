@@ -60,7 +60,6 @@ export interface GraphStep {
   readonly id: string;
   readonly label?: string;
   readonly skill?: string;
-  readonly stage?: string;
   readonly tool?: string;
   readonly run?: Readonly<Record<string, unknown>>;
   readonly instructions?: string;
@@ -167,23 +166,22 @@ function validateStep(
   const label = optionalNonEmptyString(rawStep.label, `${field}.label`);
 
   const skill = optionalNonEmptyString(rawStep.skill, `${field}.skill`);
-  const stage = optionalNonEmptyString(rawStep.stage, `${field}.stage`);
   const tool = optionalNonEmptyString(rawStep.tool, `${field}.tool`);
   const run = optionalNullableRecord(rawStep.run, `${field}.run`);
-  if ((skill ? 1 : 0) + (stage ? 1 : 0) + (tool ? 1 : 0) + (run ? 1 : 0) !== 1) {
-    throw new GraphValidationError(`${field} must declare exactly one of skill, stage, tool, or run.`);
+  if ((skill ? 1 : 0) + (tool ? 1 : 0) + (run ? 1 : 0) !== 1) {
+    throw new GraphValidationError(`${field} must declare exactly one of skill, tool, or run.`);
   }
   if (run && typeof run.type !== "string") {
     throw new GraphValidationError(`${field}.run.type is required.`);
   }
   const runner = optionalNonEmptyString(rawStep.runner, `${field}.runner`);
   if ((run || tool) && runner) {
-    throw new GraphValidationError(`${field}.runner is only valid for nested skill or stage steps.`);
+    throw new GraphValidationError(`${field}.runner is only valid for nested skill steps.`);
   }
   const inputs = optionalNullableRecord(rawStep.inputs, `${field}.inputs`) ?? {};
   const context = optionalStringRecord(rawStep.context, `${field}.context`) ?? {};
   const contextSkills = optionalNullableStringArray(rawStep.context_skills, `${field}.context_skills`) ?? [];
-  validateContextSkills(contextSkills, field, { skill, stage, tool, run });
+  validateContextSkills(contextSkills, field, { skill, tool, run });
   const scopes = optionalNullableStringArray(rawStep.scopes, `${field}.scopes`) ?? [];
   const allowedTools = optionalNullableStringArray(rawStep.allowed_tools, `${field}.allowed_tools`);
   const retry = validateRetry(rawStep.retry, `${field}.retry`);
@@ -201,7 +199,6 @@ function validateStep(
     id,
     label,
     skill,
-    stage,
     tool,
     run,
     instructions,
@@ -224,11 +221,11 @@ function validateStep(
 function validateContextSkills(
   contextSkills: readonly string[],
   field: string,
-  target: { skill?: string; stage?: string; tool?: string; run?: Readonly<Record<string, unknown>> },
+  target: { skill?: string; tool?: string; run?: Readonly<Record<string, unknown>> },
 ): void {
-  if (contextSkills.length === 0 || target.skill || target.stage) return;
+  if (contextSkills.length === 0 || target.skill) return;
   if (target.run?.type === "agent-task") return;
-  throw new GraphValidationError(`${field}.context_skills is only valid for agent-task steps or nested agent skills/stages.`);
+  throw new GraphValidationError(`${field}.context_skills is only valid for agent-task steps or nested agent skills.`);
 }
 
 function rejectUnsupportedTopLevel(document: Readonly<Record<string, unknown>>): void {
@@ -253,9 +250,9 @@ function rejectUnsupportedStepFields(rawStep: Readonly<Record<string, unknown>>,
   if (mode === "fanout" && typeof rawStep.fanout_group !== "string") {
     throw new GraphValidationError(`${field}.fanout_group is required when mode is fanout.`);
   }
-  const declaredTargets = [rawStep.run, rawStep.skill, rawStep.stage, rawStep.tool].filter((value) => value !== undefined).length;
+  const declaredTargets = [rawStep.run, rawStep.skill, rawStep.tool].filter((value) => value !== undefined).length;
   if (declaredTargets > 1) {
-    throw new GraphValidationError(`${field} must not declare more than one of run, skill, stage, or tool.`);
+    throw new GraphValidationError(`${field} must not declare more than one of run, skill, or tool.`);
   }
 }
 

@@ -1,5 +1,5 @@
 skill: least-privilege-auditor
-version: 0.1.0
+version: "0.1.0"
 catalog:
   kind: skill
   audience: operator

@@ -1,5 +1,5 @@
 skill: improve-skill
-version: 0.1.1
+version: "0.1.1"
 catalog:
   kind: graph
   audience: builder

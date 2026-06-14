@@ -105,8 +105,10 @@ steps:
 }
 
 #[test]
-fn graph_accepts_stage_steps() -> Result<(), String> {
-    let graph = validate_graph(
+fn graph_rejects_stage_steps() -> Result<(), String> {
+    // `stage` is no longer a step kind; nested graph components are referenced as
+    // ordinary skills (e.g. `skill: graph/pay-quote`).
+    let error = validate_graph(
         parse_graph_yaml(
             r#"
 name: stage-graph
@@ -114,19 +116,18 @@ steps:
   - id: quote
     stage: pay-quote
     runner: quote
-    context_skills:
-      - registry:runx/taste-profile@1.0.0
 "#,
         )
         .map_err(|error| error.to_string())?,
     )
-    .map_err(|error| error.to_string())?;
+    .err()
+    .ok_or_else(|| "expected stage step to be rejected".to_owned())?;
 
-    assert_eq!(graph.steps[0].stage.as_deref(), Some("pay-quote"));
-    assert_eq!(graph.steps[0].runner.as_deref(), Some("quote"));
-    assert_eq!(
-        graph.steps[0].context_skills,
-        vec!["registry:runx/taste-profile@1.0.0"]
+    assert!(
+        error
+            .to_string()
+            .contains("must declare exactly one of skill, tool, or run"),
+        "{error}"
     );
     Ok(())
 }

@@ -1,310 +1,310 @@
 [
   {
     "skill_id": "runx/brand-voice",
-    "version": "sha-f60a555be4e2",
+    "version": "sha-6cb0c816446f",
     "digest": "03fe488f25629b940b045927a751b84b5cc72e11970b48206b53867a8700a39c",
     "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/charge",
-    "version": "sha-67419f6e7c5e",
+    "version": "sha-5a99e090c695",
     "digest": "c151b98be3a2a7ccd306d7395d906ffd1fc22e45a7d94ffe34c294e9db1c47ce",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/content-pipeline",
-    "version": "sha-c1dcc00fe55b",
+    "version": "sha-d2adef0a30a2",
     "digest": "b93475f254b458a92936cd4612b8d01a59c371876b810eb242b06ce184f2b798",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/deep-research-brief",
-    "version": "sha-54289b839578",
+    "version": "sha-900c5edb92de",
     "digest": "08cefe802c15e5be7d32ae9a363a6c42168e86f7fab92890e5ce5c994af367c9",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/design-skill",
-    "version": "sha-7c1ed50c6f65",
+    "version": "sha-0353a69bc33f",
     "digest": "da1eae6fa3016c24dd3347082fe8639577a0b169ebfa63050f0df145e448b82b",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/dispute-respond",
-    "version": "sha-f4fa215388d8",
+    "version": "sha-39c3ae5164c4",
     "digest": "81469e87f29886e11b27faa2249a4e83fae59659f84f6628c81da7de0bf762c5",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/draft-content",
-    "version": "sha-bab177bded9d",
+    "version": "sha-227b32600887",
     "digest": "356ec279727984c0432d7ff6e3700eea3a518e7eca3eec8e0d548a583e615a26",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/ecosystem-brief",
-    "version": "sha-3f5562b5cd1e",
+    "version": "sha-a9ae51ed6325",
     "digest": "50256b25f1c4dfbb74dddce335d34d84c42725599e8f121067f816214545c6d7",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/ecosystem-vuln-scan",
-    "version": "sha-1bad9dd43b99",
+    "version": "sha-70a9694025a6",
     "digest": "4ef19f394dd9c905518e5e1be1afe98cf361c0adc27d6255153d194020b5e890",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/evolve",
-    "version": "sha-cf01eff7207e",
+    "version": "sha-e0e2b933e8a7",
     "digest": "aa446e7d3ab8a3168facd2372b8bd8fe63736a3e061438d38cc83ea8f294b971",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/improve-skill",
-    "version": "sha-3dc17887ab3f",
+    "version": "sha-73e69bae0a5f",
     "digest": "f083e32ee65bcb6f6f338e8f98443fdb2546b8f63bdc6fcea234897eb30e762b",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/inbox-and-calendar-exec",
-    "version": "sha-528f3d536eca",
+    "version": "sha-2bbd12c41930",
     "digest": "c901733cb87251e3508bf49af8d006978b4fbf63a73a722a68a476968b1a6435",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/issue-intake",
-    "version": "sha-25df8f8d2a9e",
+    "version": "sha-94c248e98a1c",
     "digest": "cc964980fe249ac3633e7b30c664648f0df9406a0254ede9bb0e3cbcdebdd603",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/issue-to-pr",
-    "version": "sha-0af0711146ab",
+    "version": "sha-ffe4a5f0cfc8",
     "digest": "c62756dd6f63d2600075cd5ffcee74786b81ef9db99b8ccf9d79362c43595010",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/issue-triage",
-    "version": "sha-dcb2c57da3b6",
+    "version": "sha-a5167273f34a",
     "digest": "10cbe7f936bc12f7f5e5a2aa926382a6b556c3ae0a572b0851d795316d909ab7",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/knowledge-router",
-    "version": "sha-626d1130f978",
+    "version": "sha-527ef0c67064",
     "digest": "45e33971d320dd19dc43236eb160e6b6fcfd086556e491a341a181a7c9b341c2",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/lead-enrichment",
-    "version": "sha-8ce9ab8cdbcb",
+    "version": "sha-374078af0e1a",
     "digest": "a8d1d744f3ec502ed3dd719bd06434d05854a2eaf55ce8ed8ceb57fe830f3b88",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/least-privilege-auditor",
-    "version": "sha-6637281511ed",
+    "version": "sha-b2913b95c069",
     "digest": "244df5dd8eed7900d1987c76060893d3c9cd65f420c5b8c177b19fa4e0b81ac2",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/messageboard",
-    "version": "sha-8f5ffc9ea572",
+    "version": "sha-c16ec5287e05",
     "digest": "e4d5b73b71f9f295742dc238094e2f073ee56729ff714d72c46c09447de1a8bc",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/mock-charge",
-    "version": "sha-6362f537c567",
+    "version": "sha-52ddd89e5172",
     "digest": "51f21f9180a94ee12844f3b7ca3e4c508ce14727248660a982ec4c456117640e",
     "catalog_visibility": "internal",
     "catalog_role": "harness-fixture"
   },
   {
     "skill_id": "runx/mock-pay",
-    "version": "sha-eacb6ae4afb4",
+    "version": "sha-174dd46d1669",
     "digest": "efc70ddce02a87296a90072071141f66684349bce16888fb997371a8f7279c50",
     "catalog_visibility": "internal",
     "catalog_role": "harness-fixture"
   },
   {
     "skill_id": "runx/mock-refund",
-    "version": "sha-04e84cdd4de6",
+    "version": "sha-cf22c4334afc",
     "digest": "25fbf4792b69b3240b08141f4145d080db7bc0c357c2d8656ff7013d83684ac1",
     "catalog_visibility": "internal",
     "catalog_role": "harness-fixture"
   },
   {
     "skill_id": "runx/moltbook",
-    "version": "sha-22b63f7f482b",
+    "version": "sha-1aa6f8210836",
     "digest": "14037d45fa2f7a5a154aba3903b2917d2d84a248e1898d2730109d3064c739e8",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/mpp-charge",
-    "version": "sha-de6d730853b8",
+    "version": "sha-cb35686691da",
     "digest": "1f5ddff16031843acbd5f7180b0647e5ebf8a02c59e446d51c30890ef7e327db",
     "catalog_visibility": "internal",
     "catalog_role": "runtime-path"
   },
   {
     "skill_id": "runx/mpp-pay",
-    "version": "sha-e8963799db38",
+    "version": "sha-41927d065dc3",
     "digest": "bebe8f94a802986c9b8d9dacb73c9753825d61aa24504130adff495d1f7ef099",
     "catalog_visibility": "internal",
     "catalog_role": "runtime-path"
   },
   {
     "skill_id": "runx/mpp-refund",
-    "version": "sha-10f8194baa3b",
+    "version": "sha-8db33fec8299",
     "digest": "6f2e22db27e85c02d6c05836c2d9e8812c697ba34fe7bfcdfd6fd679d8ee5c18",
     "catalog_visibility": "internal",
     "catalog_role": "runtime-path"
   },
   {
     "skill_id": "runx/n8n-handoff",
-    "version": "sha-690c6a426823",
+    "version": "sha-534958c11063",
     "digest": "608d26178d99d8e4fb9933e5c4c63ade7015d59f55bfd342368f481070309bdc",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/nitrosend",
-    "version": "sha-6cfeaa31ebae",
+    "version": "sha-a46e1a582e9c",
     "digest": "cc9c36d6da648078c7222e56d91219575a390029e8737bae1cb5f354cb55f603",
     "catalog_visibility": "public",
     "catalog_role": "branded"
   },
   {
     "skill_id": "runx/nws-weather-forecast",
-    "version": "sha-808c5fca6386",
+    "version": "sha-4165e2a29b22",
     "digest": "201ebb74962a918fc7b5bdb8ae2460e13c55c7c2614903f734c1f85278bf8564",
     "catalog_visibility": "public",
     "catalog_role": "branded"
   },
   {
     "skill_id": "runx/overlay-generator",
-    "version": "sha-537aa886be24",
+    "version": "sha-b5dc11a7088d",
     "digest": "e19bbe8dc5f3bf732dc265a1808819587e67759fdf3014d89bc9bf6629400b18",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/policy-author",
-    "version": "sha-c9708d0fab34",
+    "version": "sha-a1f056d7c7f7",
     "digest": "b3bbcbda2711d78c59c572d99206c3116347e9751506301ca40a52c75e85bc84",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/pr-review-note",
-    "version": "sha-15c7dfef1362",
+    "version": "sha-dd1608925a76",
     "digest": "1b9f34f9e7f5355a10babbd154333db4b1b94fa16668583438166b91eec95e0a",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/prior-art",
-    "version": "sha-6f028bf95382",
+    "version": "sha-2555f66bde78",
     "digest": "991ec474c6013ce9d29d84df810c14db567328607018c4de9606ba3952d8b9c7",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/receipt-auditor",
-    "version": "sha-42c277c63cd7",
+    "version": "sha-acbe46a62851",
     "digest": "155c522fb8e029bc4bd83863ea0960e23a8936c47977b70052aa9b119675d61e",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/reflect-digest",
-    "version": "sha-fe921d6c8fcf",
+    "version": "sha-b92263c8a347",
     "digest": "732a9e98825f5eb36827884fdedb68b01a08bd23494f48c0568980e7b9469fe6",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/refund",
-    "version": "sha-2eb52376d1da",
+    "version": "sha-7c377f947fe8",
     "digest": "1295dd1950b137f828319d3d56491241ba8629c56ede9e50a736e61e96dd1a9a",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/release",
-    "version": "sha-00f5d1546cf5",
+    "version": "sha-74de7d602c6e",
     "digest": "2aeef83dd0a4a43314510ec6cc64c398342497324ed09c9437af1dd08a43b14f",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/research",
-    "version": "sha-448c83a6c64c",
+    "version": "sha-65df55554027",
     "digest": "4c729e750abddc00379902686439d90965e7c593b6bcb3606ef7e0bc66cecd66",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/review-receipt",
-    "version": "sha-2f4b6e7b273b",
+    "version": "sha-a24882594b28",
     "digest": "88e529e362d21e05cc31f47be240e91aae352e10cf3e321e9de864bb272af5c8",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/review-skill",
-    "version": "sha-7cc3f9da5488",
+    "version": "sha-a27dde2ab9bb",
     "digest": "09b4a6ec017f9d75536c6db21c60667bd855a20b0b20f53054f63143cbb9d13d",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/run-history-analyst",
-    "version": "sha-2f275aa80e9e",
+    "version": "sha-0ec78eb20018",
     "digest": "1a1441365a20b74442998656478fc3d530f2d09f25f811d970b403a8a7920df4",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/send-as",
-    "version": "sha-ab503bf8dcf5",
+    "version": "sha-76a4e1aa5f48",
     "digest": "b0781cc728d1988a60e7626608738cf2e5119d573dec712e34289f37701d49fb",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/skill-lab",
-    "version": "sha-fa77d9ef4b7c",
+    "version": "sha-ef536999b26c",
     "digest": "46d70be92a655c20e47b4cd8674b2e19d1d4257029a073319805c4235bdc6441",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/skill-testing",
-    "version": "sha-ee01095d4ff4",
+    "version": "sha-95b01aca7f2a",
     "digest": "7fc86c62bd493cb374850d7e9fc4faad94adb318fc3b20947aa2d411a741cc75",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
@@ -316,86 +316,86 @@
   },
   {
     "skill_id": "runx/spend",
-    "version": "sha-1e6a2ec51fae",
+    "version": "sha-d620e4cf8471",
     "digest": "4b9810ee99bbbc58e467547595e0cdb7d67ad117f8cbba422b6e6e5e2b065fc5",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/sql-analyst",
-    "version": "sha-cf2dc838d89e",
+    "version": "sha-95e6fba89c33",
     "digest": "054798d4b29958f90300ea940c94b73233c0d5c5ff19e7156278b31e99e68475",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/stripe-charge",
-    "version": "sha-c8a0cb7894e8",
+    "version": "sha-fac92c49fa9b",
     "digest": "34b04a5ba67c0de4e682519cd1a6c160e097a08b3c5eaf4537441e709d3ba982",
     "catalog_visibility": "internal",
     "catalog_role": "runtime-path"
   },
   {
     "skill_id": "runx/stripe-pay",
-    "version": "sha-e7f5702d5fe2",
+    "version": "sha-36ed79109851",
     "digest": "cd0f34e02d6d5e89df53acaf3bc20c85141a97c681f9d32a08b041818c8ff0ca",
     "catalog_visibility": "public",
     "catalog_role": "branded"
   },
   {
     "skill_id": "runx/stripe-refund",
-    "version": "sha-c8175b1fb215",
+    "version": "sha-e513d3aed77c",
     "digest": "2bfa94189cd3b7084a3b29e1f83de2d0787d28c5f0c962a15bac76155c24d95f",
     "catalog_visibility": "internal",
     "catalog_role": "runtime-path"
   },
   {
     "skill_id": "runx/taste-profile",
-    "version": "sha-ce70f149104f",
+    "version": "sha-3f746cc8b9e6",
     "digest": "2fe618611cf0e3af2cbc6cedd7d9e6f154912339edd877e7f55b02718bf598ce",
     "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/vuln-scan",
-    "version": "sha-299dce1cd6f3",
+    "version": "sha-71f8b23b780a",
     "digest": "a42e03ed700f4c60895ee46883adaa30a82890f3a82798a82d1d1c21ca73181a",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/weather-forecast",
-    "version": "sha-46f8837fd434",
+    "version": "sha-0f3ad8bc5e65",
     "digest": "e83bd7bcf38a40e5bbe35256cab2c83f7a73865ad5e14e4d48d58c9aa622123c",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
   {
     "skill_id": "runx/work-plan",
-    "version": "sha-e34e7334e5e6",
+    "version": "sha-d2b3abc77e97",
     "digest": "ba007b997503258ca52e6a067e0dd6ed12ec7250add5dae35e048663b2a502a2",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/write-harness",
-    "version": "sha-cc39fa3b6237",
+    "version": "sha-c989640c5604",
     "digest": "f4fbf60192335baff43a5d50f3702a17f96a42a25d69508f457cf0e396320528",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   },
   {
     "skill_id": "runx/x402-pay",
-    "version": "sha-4b97f750f3bd",
+    "version": "sha-008aef3f3b2e",
     "digest": "18e4e8c85606f201463d29f4aca8cf910f84293a720a68b2090bd0df1544a62c",
     "catalog_visibility": "public",
     "catalog_role": "branded"
   },
   {
     "skill_id": "runx/zapier-handoff",
-    "version": "sha-ea2a064877b8",
+    "version": "sha-6468f4adb1c1",
     "digest": "36d6515bd6f7d5a7ecd658c12abf32391ac2738bcf11544f9a57d3a8a930da8c",
-    "catalog_visibility": "internal",
+    "catalog_visibility": "public",
     "catalog_role": "context"
   }
 ]

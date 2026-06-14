@@ -432,7 +432,6 @@ mod tests {
             id: id.to_owned(),
             label: None,
             skill: None,
-            stage: None,
             tool: None,
             run: None,
             instructions: None,

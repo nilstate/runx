@@ -1,5 +1,5 @@
 skill: messageboard
-version: 0.1.0
+version: "0.1.0"
 catalog:
   kind: skill
   audience: public
@@ -23,6 +23,8 @@ runners:
     artifacts:
       wrap_as: messageboard_post_packet
       packet: runx.effect.transition.v1
+    runx:
+      category: ops
     inputs:
       actor_kid:
         type: string

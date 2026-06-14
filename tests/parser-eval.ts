@@ -72,7 +72,6 @@ export interface GraphStep {
   readonly id: string;
   readonly label?: string;
   readonly skill?: string;
-  readonly stage?: string;
   readonly tool?: string;
   readonly run?: JsonRecord;
   readonly instructions?: string;

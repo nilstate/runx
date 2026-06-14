@@ -43,6 +43,8 @@ runners:
   comment:
     default: true
     type: graph
+    runx:
+      category: code
     inputs:
       repository:
         type: string

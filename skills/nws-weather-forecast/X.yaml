@@ -1,5 +1,5 @@
 skill: nws-weather-forecast
-version: 0.1.0
+version: "0.1.0"
 catalog:
   kind: graph
   audience: public
@@ -12,6 +12,8 @@ runners:
   forecast:
     default: true
     type: graph
+    runx:
+      category: data
     inputs:
       office:
         type: string
@@ -29,7 +31,7 @@ runners:
       name: nws-weather-forecast
       steps:
         - id: forecast
-          stage: forecast
+          skill: graph/forecast
           inputs:
             office: $input.office
             grid_x: $input.grid_x
@@ -49,7 +51,7 @@ runners:
       name: nws-weather-locate
       steps:
         - id: points
-          stage: points
+          skill: graph/points
           inputs:
             lat: $input.lat
             lon: $input.lon

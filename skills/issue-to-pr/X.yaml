@@ -338,7 +338,7 @@ runners:
       steps:
         - id: scafld-plan
           label: open task lane
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:spec:write
           mutation: true
@@ -431,14 +431,14 @@ runners:
             path: scafld-plan.result.path
         - id: scafld-validate
           label: validate spec
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:spec:validate
           inputs:
             command: validate
         - id: scafld-approve
           label: approve spec
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:spec:approve
           mutation: true
@@ -541,7 +541,7 @@ runners:
             files: author-fix.fix_bundle.data.files
         - id: scafld-build
           label: build to review
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:build
           mutation: true
@@ -549,7 +549,7 @@ runners:
             command: build_to_review
         - id: scafld-status
           label: inspect review state
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:status:read
           inputs:
@@ -561,7 +561,7 @@ runners:
             - git.read
         - id: scafld-review
           label: run scafld review
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:review:write
           mutation: true
@@ -569,7 +569,7 @@ runners:
             command: review
         - id: scafld-complete
           label: complete task
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:archive:write
           mutation: true
@@ -577,14 +577,14 @@ runners:
             command: complete
         - id: scafld-final-status
           label: inspect completed state
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:status:read
           inputs:
             command: status
         - id: scafld-handoff
           label: render handoff
-          stage: scafld
+          skill: graph/scafld
           scopes:
             - scafld:handoff:read
           inputs:

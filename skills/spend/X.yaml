@@ -1,5 +1,5 @@
 skill: spend
-version: 0.1.0
+version: "0.1.0"
 catalog:
   kind: graph
   audience: operator
@@ -46,7 +46,7 @@ runners:
       name: spend
       steps:
         - id: quote
-          stage: pay-quote
+          skill: graph/pay-quote
           runner: quote
           scopes:
             - payment:quote
@@ -58,7 +58,7 @@ runners:
             wrap_as: payment_quote_packet
             packet: runx.payment.quote.v1
         - id: reserve
-          stage: pay-reserve
+          skill: graph/pay-reserve
           runner: reserve
           scopes:
             - payment:reserve
@@ -87,7 +87,7 @@ runners:
             wrap_as: payment_approval
             packet: runx.payment.approval.v1
         - id: fulfill
-          stage: pay-fulfill-rail
+          skill: graph/pay-fulfill-rail
           runner: mock
           scopes:
             - payment:spend
@@ -150,7 +150,7 @@ runners:
       name: spend
       steps:
         - id: quote
-          stage: pay-quote
+          skill: graph/pay-quote
           runner: quote
           scopes:
             - payment:quote
@@ -162,7 +162,7 @@ runners:
             wrap_as: payment_quote_packet
             packet: runx.payment.quote.v1
         - id: reserve
-          stage: pay-reserve
+          skill: graph/pay-reserve
           runner: reserve
           scopes:
             - payment:reserve
@@ -191,7 +191,7 @@ runners:
             wrap_as: payment_approval
             packet: runx.payment.approval.v1
         - id: fulfill
-          stage: pay-fulfill-rail
+          skill: graph/pay-fulfill-rail
           runner: mpp
           scopes:
             - payment:spend
@@ -254,7 +254,7 @@ runners:
       name: spend
       steps:
         - id: quote
-          stage: pay-quote
+          skill: graph/pay-quote
           runner: quote
           scopes:
             - payment:quote
@@ -266,7 +266,7 @@ runners:
             wrap_as: payment_quote_packet
             packet: runx.payment.quote.v1
         - id: reserve
-          stage: pay-reserve
+          skill: graph/pay-reserve
           runner: reserve
           scopes:
             - payment:reserve
@@ -295,7 +295,7 @@ runners:
             wrap_as: payment_approval
             packet: runx.payment.approval.v1
         - id: fulfill
-          stage: pay-fulfill-rail
+          skill: graph/pay-fulfill-rail
           runner: stripe-spt
           scopes:
             - payment:spend
@@ -358,7 +358,7 @@ runners:
       name: spend
       steps:
         - id: quote
-          stage: pay-quote
+          skill: graph/pay-quote
           runner: quote
           scopes:
             - payment:quote
@@ -370,7 +370,7 @@ runners:
             wrap_as: payment_quote_packet
             packet: runx.payment.quote.v1
         - id: reserve
-          stage: pay-reserve
+          skill: graph/pay-reserve
           runner: reserve
           scopes:
             - payment:reserve
@@ -399,7 +399,7 @@ runners:
             wrap_as: payment_approval
             packet: runx.payment.approval.v1
         - id: fulfill
-          stage: pay-fulfill-rail
+          skill: graph/pay-fulfill-rail
           runner: x402
           scopes:
             - payment:spend

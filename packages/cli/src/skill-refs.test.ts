@@ -12,23 +12,53 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const publicOfficialCatalogSkills = [
   "brand-voice",
   "charge",
+  "content-pipeline",
+  "deep-research-brief",
+  "design-skill",
   "dispute-respond",
+  "draft-content",
+  "ecosystem-brief",
+  "ecosystem-vuln-scan",
   "evolve",
   "improve-skill",
+  "inbox-and-calendar-exec",
+  "issue-intake",
+  "issue-to-pr",
+  "issue-triage",
+  "knowledge-router",
+  "lead-enrichment",
   "least-privilege-auditor",
+  "messageboard",
+  "moltbook",
+  "n8n-handoff",
   "nitrosend",
   "nws-weather-forecast",
   "overlay-generator",
   "policy-author",
+  "pr-review-note",
+  "prior-art",
   "receipt-auditor",
+  "reflect-digest",
   "refund",
+  "release",
+  "research",
+  "review-receipt",
+  "review-skill",
+  "run-history-analyst",
   "send-as",
+  "skill-lab",
+  "skill-testing",
   "sourcey",
   "spend",
+  "sql-analyst",
   "stripe-pay",
   "taste-profile",
+  "vuln-scan",
   "weather-forecast",
+  "work-plan",
+  "write-harness",
   "x402-pay",
+  "zapier-handoff",
 ];
 const paymentGraphStageOwners: Readonly<Record<string, string>> = {
   "charge-challenge": "charge",
@@ -63,8 +93,9 @@ describe("official skill catalog exposure", () => {
     expect(officialSkillVisibleForCatalog("runx/mock-pay", {})).toBe(false);
     expect(officialSkillVisibleForCatalog("runx/x402-pay", {})).toBe(true);
     expect(officialSkillVisibleForCatalog("runx/stripe-pay", {})).toBe(true);
-    expect(officialSkillVisibleForCatalog("runx/issue-to-pr", {})).toBe(false);
-    expect(officialSkillVisibleForCatalog("runx/research", {})).toBe(false);
+    expect(officialSkillVisibleForCatalog("runx/issue-to-pr", {})).toBe(true);
+    expect(officialSkillVisibleForCatalog("runx/research", {})).toBe(true);
+    expect(officialSkillVisibleForCatalog("runx/stripe-charge", {})).toBe(false);
     expect(
       officialSkillVisibleForCatalog("runx/mock-pay", {
         RUNX_DEV_CATALOG: "1",

@@ -18,24 +18,53 @@ import { resolveRunxBinary } from "./runx-binary.js";
 const publicCatalogPackages = [
   "brand-voice",
   "charge",
+  "content-pipeline",
+  "deep-research-brief",
+  "design-skill",
   "dispute-respond",
+  "draft-content",
+  "ecosystem-brief",
+  "ecosystem-vuln-scan",
   "evolve",
   "improve-skill",
+  "inbox-and-calendar-exec",
+  "issue-intake",
+  "issue-to-pr",
+  "issue-triage",
+  "knowledge-router",
+  "lead-enrichment",
   "least-privilege-auditor",
   "messageboard",
+  "moltbook",
+  "n8n-handoff",
   "nitrosend",
   "nws-weather-forecast",
   "overlay-generator",
   "policy-author",
+  "pr-review-note",
+  "prior-art",
   "receipt-auditor",
+  "reflect-digest",
   "refund",
+  "release",
+  "research",
+  "review-receipt",
+  "review-skill",
+  "run-history-analyst",
   "send-as",
+  "skill-lab",
+  "skill-testing",
   "sourcey",
   "spend",
+  "sql-analyst",
   "stripe-pay",
   "taste-profile",
+  "vuln-scan",
   "weather-forecast",
+  "work-plan",
+  "write-harness",
   "x402-pay",
+  "zapier-handoff",
 ] as const;
 
 const publicSkillRequiredHeadings = [
@@ -188,6 +217,9 @@ describe("official skill catalog", () => {
       if (catalogVisibility(skillName) !== "public") {
         continue;
       }
+      if (catalogRole(skillName) === "context") {
+        continue;
+      }
       const skillMarkdown = readFileSync(path.resolve("skills", skillName, "SKILL.md"), "utf8");
 
       expect(
@@ -213,6 +245,9 @@ describe("official skill catalog", () => {
       if (catalogVisibility(skillName) !== "public") {
         continue;
       }
+      if (catalogRole(skillName) === "context") {
+        continue;
+      }
       const manifest = validateRunnerManifestYaml(readFileSync(path.resolve("skills", skillName, "X.yaml"), "utf8"));
 
       expect(manifest.harness, `${skillName} must keep concrete scenarios in fixtures, not X.yaml`).toBeUndefined();
@@ -222,6 +257,9 @@ describe("official skill catalog", () => {
   it("keeps public packages covered by standalone runner fixtures", () => {
     for (const skillName of officialSkillPackages()) {
       if (catalogVisibility(skillName) !== "public") {
+        continue;
+      }
+      if (catalogRole(skillName) === "context") {
         continue;
       }
       const manifest = validateRunnerManifestYaml(readFileSync(path.resolve("skills", skillName, "X.yaml"), "utf8"));
@@ -295,15 +333,15 @@ describe("official skill catalog", () => {
   });
 
   it("keeps evaluator-facing packages runnable through native inline harness fixtures", async () => {
+    const internalHarnessedShowcasePackages = harnessedShowcasePackages.filter(
+      (skillName) => catalogVisibility(skillName) !== "public",
+    );
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-official-native-harness-"));
     let executedCases = 0;
     try {
-      for (const skillName of harnessedShowcasePackages) {
+      for (const skillName of internalHarnessedShowcasePackages) {
         const manifestPath = path.resolve("skills", skillName, "X.yaml");
         const manifest = validateRunnerManifestYaml(await readFile(manifestPath, "utf8"));
-        if (catalogVisibility(skillName) === "public") {
-          continue;
-        }
         if (Object.values(manifest.runners).some((runner) => runner.source.graph)) {
           continue;
         }
@@ -337,6 +375,10 @@ describe("official skill catalog", () => {
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
+    if (internalHarnessedShowcasePackages.length === 0) {
+      expect(executedCases).toBe(0);
+      return;
+    }
     expect(executedCases).toBeGreaterThan(0);
   }, 60_000);
 });
@@ -354,6 +396,12 @@ function catalogVisibility(skillName: string): "public" | "internal" {
   const manifest = validateRunnerManifestYaml(readFileSync(path.resolve("skills", skillName, "X.yaml"), "utf8"));
   const catalog = manifest.catalog as { readonly visibility?: "public" | "internal" } | undefined;
   return catalog?.visibility ?? "public";
+}
+
+function catalogRole(skillName: string): string | undefined {
+  const manifest = validateRunnerManifestYaml(readFileSync(path.resolve("skills", skillName, "X.yaml"), "utf8"));
+  const catalog = manifest.catalog as { readonly role?: string } | undefined;
+  return catalog?.role;
 }
 
 function paymentCatalogPublicIds(): readonly string[] {

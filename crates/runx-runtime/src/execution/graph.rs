@@ -251,9 +251,6 @@ pub(crate) fn skill_dir(
         }
         return Ok(graph_dir.join(skill));
     }
-    if let Some(stage) = &step.stage {
-        return stage_dir(graph_dir, step, stage);
-    }
     Err(RuntimeError::StepMissingSkill {
         step_id: step.id.clone(),
     })
@@ -399,29 +396,6 @@ fn is_registry_step_ref(reference: &str) -> bool {
     reference.starts_with("registry:")
         || reference.starts_with("runx-registry:")
         || reference.starts_with("runx://skill/")
-}
-
-fn stage_dir(graph_dir: &Path, step: &GraphStep, stage: &str) -> Result<PathBuf, RuntimeError> {
-    let stage_path = Path::new(stage);
-    if stage_path.is_absolute()
-        || stage_path
-            .components()
-            .any(|part| matches!(part, std::path::Component::ParentDir))
-    {
-        return Err(RuntimeError::InvalidRunStep {
-            step_id: step.id.clone(),
-            reason: format!("stage reference {stage:?} must be relative below graph"),
-        });
-    }
-    let root = graph_dir.join("graph");
-    if !root.is_dir() {
-        return Err(RuntimeError::InvalidRunStep {
-            step_id: step.id.clone(),
-            reason: "stage reference requires a graph directory in the current skill package"
-                .to_owned(),
-        });
-    };
-    Ok(root.join(stage_path))
 }
 
 pub(crate) fn resolve_inputs(

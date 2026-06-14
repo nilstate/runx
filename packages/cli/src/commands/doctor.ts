@@ -511,7 +511,7 @@ async function validateGraphContextReferences(
 async function loadStepOutputDeclarations(
   root: string,
   skillDir: string,
-  step: { readonly tool?: string; readonly skill?: string; readonly stage?: string; readonly run?: Readonly<Record<string, unknown>>; readonly runner?: string; readonly artifacts?: Readonly<Record<string, unknown>> },
+  step: { readonly tool?: string; readonly skill?: string; readonly run?: Readonly<Record<string, unknown>>; readonly runner?: string; readonly artifacts?: Readonly<Record<string, unknown>> },
 ): Promise<Readonly<Record<string, StepOutputDeclaration>>> {
   if (step.tool) {
     const toolDir = resolveToolDirFromRef(root, step.tool);
@@ -545,13 +545,6 @@ async function loadStepOutputDeclarations(
   }
   if (step.skill) {
     const profilePath = resolveNestedSkillProfilePath(skillDir, step.skill);
-    if (!profilePath) {
-      return {};
-    }
-    return loadRunnerOutputDeclarations(profilePath, step.runner);
-  }
-  if (step.stage) {
-    const profilePath = resolveStageProfilePath(skillDir, step.stage);
     if (!profilePath) {
       return {};
     }
@@ -633,14 +626,6 @@ function resolveNestedSkillProfilePath(skillDir: string, ref: string): string | 
   const resolved = path.resolve(skillDir, ref);
   const directory = path.basename(resolved).toLowerCase() === "skill.md" ? path.dirname(resolved) : resolved;
   const profilePath = path.join(directory, "X.yaml");
-  return existsSync(profilePath) ? profilePath : undefined;
-}
-
-function resolveStageProfilePath(skillDir: string, ref: string): string | undefined {
-  if (path.isAbsolute(ref) || ref.split(/[\\/]/).includes("..")) {
-    return undefined;
-  }
-  const profilePath = path.join(skillDir, "graph", ref, "X.yaml");
   return existsSync(profilePath) ? profilePath : undefined;
 }
 

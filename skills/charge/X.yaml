@@ -1,5 +1,5 @@
 skill: charge
-version: 0.1.0
+version: "0.1.0"
 catalog:
   kind: graph
   audience: operator
@@ -38,7 +38,7 @@ runners:
       name: charge
       steps:
         - id: price
-          stage: charge-price
+          skill: graph/charge-price
           runner: price
           scopes:
             - payment:quote
@@ -48,7 +48,7 @@ runners:
             parent_payment_authority: "{{parent_payment_authority}}"
             idempotency_seed: "{{idempotency_seed}}"
         - id: challenge
-          stage: charge-challenge
+          skill: graph/charge-challenge
           runner: challenge
           scopes:
             - payment:quote
@@ -58,7 +58,7 @@ runners:
           context:
             charge_price_packet: price.charge_price_packet.data
         - id: verify
-          stage: charge-verify
+          skill: graph/charge-verify
           runner: verify
           scopes:
             - payment:verify
@@ -148,7 +148,7 @@ runners:
       name: charge
       steps:
         - id: price
-          stage: charge-price
+          skill: graph/charge-price
           runner: price
           scopes:
             - payment:quote
@@ -158,7 +158,7 @@ runners:
             parent_payment_authority: "{{parent_payment_authority}}"
             idempotency_seed: "{{idempotency_seed}}"
         - id: challenge
-          stage: charge-challenge
+          skill: graph/charge-challenge
           runner: challenge
           scopes:
             - payment:quote
@@ -168,7 +168,7 @@ runners:
           context:
             charge_price_packet: price.charge_price_packet.data
         - id: verify
-          stage: charge-verify
+          skill: graph/charge-verify
           runner: verify
           scopes:
             - payment:verify
@@ -258,7 +258,7 @@ runners:
       name: charge
       steps:
         - id: price
-          stage: charge-price
+          skill: graph/charge-price
           runner: price
           scopes:
             - payment:quote
@@ -268,7 +268,7 @@ runners:
             parent_payment_authority: "{{parent_payment_authority}}"
             idempotency_seed: "{{idempotency_seed}}"
         - id: challenge
-          stage: charge-challenge
+          skill: graph/charge-challenge
           runner: challenge
           scopes:
             - payment:quote
@@ -278,7 +278,7 @@ runners:
           context:
             charge_price_packet: price.charge_price_packet.data
         - id: verify
-          stage: charge-verify
+          skill: graph/charge-verify
           runner: verify
           scopes:
             - payment:verify

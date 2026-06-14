@@ -2603,7 +2603,7 @@ runners:
       name: graph-stage-cli
       steps:
         - id: nested
-          stage: child-echo
+          skill: graph/child-echo
           inputs:
             message: $input.thread_title
 "#,

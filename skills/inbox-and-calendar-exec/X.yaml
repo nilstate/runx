@@ -73,6 +73,8 @@ runners:
     artifacts:
       wrap_as: inbox_calendar_action_packet
       packet: runx.ops.inbox_calendar_action_packet.v1
+    runx:
+      category: ops
     inputs:
       objective:
         type: string

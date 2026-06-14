@@ -67,6 +67,8 @@ runners:
     artifacts:
       wrap_as: knowledge_route
       packet: runx.ops.knowledge_route.v1
+    runx:
+      category: ops
     inputs:
       question:
         type: string
@@ -80,4 +82,3 @@ runners:
         type: json
         required: false
         description: "Allowed systems, sensitivity flags, and preferred owners."
-

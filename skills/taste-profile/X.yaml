@@ -1,5 +1,5 @@
 skill: taste-profile
-version: 0.1.0
+version: "0.1.0"
 catalog:
   kind: skill
   audience: public
@@ -23,6 +23,8 @@ runners:
     artifacts:
       wrap_as: taste_profile_packet
       packet: runx.context.taste_profile.v1
+    runx:
+      category: content
     inputs:
       subject:
         type: string

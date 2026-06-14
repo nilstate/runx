@@ -1,5 +1,5 @@
 skill: refund
-version: 0.1.0
+version: "0.1.0"
 catalog:
   kind: graph
   audience: operator
@@ -38,7 +38,7 @@ runners:
       name: refund
       steps:
         - id: quote
-          stage: refund-quote
+          skill: graph/refund-quote
           runner: quote
           scopes:
             - payment:quote
@@ -48,7 +48,7 @@ runners:
             original_receipt: "{{original_receipt}}"
             refund_request: "{{refund_request}}"
         - id: reserve
-          stage: refund-reserve
+          skill: graph/refund-reserve
           runner: reserve
           scopes:
             - payment:refund
@@ -136,7 +136,7 @@ runners:
       name: refund
       steps:
         - id: quote
-          stage: refund-quote
+          skill: graph/refund-quote
           runner: quote
           scopes:
             - payment:quote
@@ -146,7 +146,7 @@ runners:
             original_receipt: "{{original_receipt}}"
             refund_request: "{{refund_request}}"
         - id: reserve
-          stage: refund-reserve
+          skill: graph/refund-reserve
           runner: reserve
           scopes:
             - payment:refund
@@ -234,7 +234,7 @@ runners:
       name: refund
       steps:
         - id: quote
-          stage: refund-quote
+          skill: graph/refund-quote
           runner: quote
           scopes:
             - payment:quote
@@ -244,7 +244,7 @@ runners:
             original_receipt: "{{original_receipt}}"
             refund_request: "{{refund_request}}"
         - id: reserve
-          stage: refund-reserve
+          skill: graph/refund-reserve
           runner: reserve
           scopes:
             - payment:refund

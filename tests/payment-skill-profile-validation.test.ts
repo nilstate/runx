@@ -120,12 +120,11 @@ describe("payment skill execution profiles", () => {
       expect(graphRunners.length, `${skillName} graph runners`).toBeGreaterThan(0);
       for (const runner of graphRunners) {
         const steps = runner.source.graph?.steps ?? [];
-        const stageRefs = steps.flatMap((step) => step.stage ? [step.stage] : []);
-        const skillRefs = steps.flatMap((step) => step.skill ? [step.skill] : []);
+        const graphRefs = steps.flatMap((step) => (step.skill?.startsWith("graph/") ? [step.skill] : []));
+        const expectedRefs = expectedStages.map((stage) => `graph/${stage}`);
 
-        expect(stageRefs, `${skillName}.${runner.name} stage refs`).toEqual(expectedStages);
-        expect(skillRefs, `${skillName}.${runner.name} canonical graph skill refs`).toEqual([]);
-        for (const stage of stageRefs) {
+        expect(graphRefs, `${skillName}.${runner.name} canonical graph skill refs`).toEqual(expectedRefs);
+        for (const stage of expectedStages) {
           expect(existsSync(path.resolve("skills", skillName, "graph", stage, "X.yaml")), `${skillName}/${stage}`).toBe(true);
           expect(existsSync(path.resolve("skills", stage)), stage).toBe(false);
         }
@@ -141,7 +140,6 @@ describe("payment skill execution profiles", () => {
         const steps = runner.source.graph?.steps ?? [];
         expect(steps, `${skillName}.${runner.name} graph steps`).toHaveLength(1);
         expect(steps[0]?.skill, `${skillName}.${runner.name} canonical skill ref`).toBe(canonicalRef);
-        expect(steps[0]?.stage, `${skillName}.${runner.name} stage internals`).toBeUndefined();
       }
     }
   });
@@ -202,8 +200,8 @@ describe("payment skill execution profiles", () => {
         }
         const outputDeclarations = new Map<string, Readonly<Record<string, OutputDeclaration>>>();
         for (const step of graph.steps) {
-          if (step.skill || step.stage) {
-            const nested = await loadNestedRunner(skillDir, step.skill ?? step.stage ?? "", step.runner);
+          if (step.skill) {
+            const nested = await loadNestedRunner(skillDir, step.skill, step.runner);
             expect(nested.error, `${skillName}.${runnerName}.${step.id} nested runner`).toBeUndefined();
           }
           outputDeclarations.set(step.id, await loadStepOutputDeclarations(skillDir, step));
@@ -396,7 +394,7 @@ async function loadNestedRunner(
   ref: string,
   runnerName: string | undefined,
 ): Promise<{ readonly error?: string; readonly runner?: RunnerDefinition }> {
-  const profilePath = resolveNestedProfilePath(skillDir, ref) ?? resolveStageProfilePath(skillDir, ref);
+  const profilePath = resolveNestedProfilePath(skillDir, ref);
   if (!profilePath) {
     return { error: `missing profile for ${ref}` };
   }
@@ -407,10 +405,10 @@ async function loadNestedRunner(
 
 async function loadStepOutputDeclarations(
   skillDir: string,
-  step: { readonly skill?: string; readonly stage?: string; readonly run?: Readonly<Record<string, unknown>>; readonly runner?: string; readonly artifacts?: Readonly<Record<string, unknown>> },
+  step: { readonly skill?: string; readonly run?: Readonly<Record<string, unknown>>; readonly runner?: string; readonly artifacts?: Readonly<Record<string, unknown>> },
 ): Promise<Readonly<Record<string, OutputDeclaration>>> {
-  if (step.skill || step.stage) {
-    const nested = await loadNestedRunner(skillDir, step.skill ?? step.stage ?? "", step.runner);
+  if (step.skill) {
+    const nested = await loadNestedRunner(skillDir, step.skill, step.runner);
     return nested.runner ? outputDeclarationsFromArtifacts(nested.runner.raw) : {};
   }
   return outputDeclarationsFromArtifacts({ ...(step.run ?? {}), artifacts: step.artifacts });
@@ -463,13 +461,6 @@ function resolveNestedProfilePath(skillDir: string, ref: string): string | undef
   return existsSync(profilePath) ? profilePath : undefined;
 }
 
-function resolveStageProfilePath(skillDir: string, ref: string): string | undefined {
-  if (path.isAbsolute(ref) || ref.split(/[\\/]/).includes("..")) {
-    return undefined;
-  }
-  const profilePath = path.join(skillDir, "graph", ref, "X.yaml");
-  return existsSync(profilePath) ? profilePath : undefined;
-}
 
 function parseRunnerManifest(profileDocument: string): SkillRunnerManifest {
   return validateRunnerManifest(parseRunnerManifestYaml(profileDocument));
