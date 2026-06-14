@@ -1,0 +1,95 @@
+name: frantic-github-thread-sync
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      after_event_id:
+        description: "Optional cursor override for a one-off replay"
+        required: false
+        type: string
+      dry_run:
+        description: "Fetch and render without posting to GitHub or Frantic"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      limit:
+        description: "Maximum Frantic thread intents to process"
+        required: false
+        default: "25"
+        type: string
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frantic-github-thread-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      FRANTIC_API_BASE_URL: ${{ vars.FRANTIC_API_BASE_URL || 'https://api.gofrantic.com' }}
+      FRANTIC_GITHUB_TARGET_REPO: ${{ vars.FRANTIC_GITHUB_TARGET_REPO || 'auscaster/frantic-board' }}
+      FRANTIC_THREAD_LIMIT: ${{ inputs.limit || '25' }}
+      FRANTIC_THREAD_DRY_RUN: ${{ inputs.dry_run || 'false' }}
+      FRANTIC_THREAD_CURSOR_BASELINE: ${{ inputs.after_event_id || vars.FRANTIC_THREAD_CURSOR_BASELINE || '0' }}
+      FRANTIC_INTERNAL_SYNC_SECRET: ${{ secrets.FRANTIC_INTERNAL_SYNC_SECRET }}
+      GH_TOKEN: ${{ secrets.FRANTIC_BOARD_GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.FRANTIC_BOARD_GITHUB_TOKEN }}
+      GH_PROMPT_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10.18.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore sync cursor
+        id: restore_cursor
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/frantic-thread-cursor
+          key: frantic-thread-cursor-${{ github.run_id }}
+          restore-keys: |
+            frantic-thread-cursor-
+
+      - name: Sync Frantic thread outbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${FRANTIC_INTERNAL_SYNC_SECRET}" ]] || { echo "FRANTIC_INTERNAL_SYNC_SECRET is required"; exit 1; }
+          [[ -n "${GH_TOKEN}" ]] || { echo "FRANTIC_BOARD_GITHUB_TOKEN is required"; exit 1; }
+
+          cursor_file="${RUNNER_TEMP}/frantic-thread-cursor"
+          if [[ ! -s "${cursor_file}" ]]; then
+            printf '%s\n' "${FRANTIC_THREAD_CURSOR_BASELINE}" > "${cursor_file}"
+          fi
+
+          FRANTIC_THREAD_CURSOR_FILE="${cursor_file}" pnpm --silent frantic:github-thread-sync
+          printf 'cursor=%s\n' "$(cat "${cursor_file}")" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Save sync cursor
+        if: ${{ always() && env.FRANTIC_THREAD_DRY_RUN != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/frantic-thread-cursor
+          key: frantic-thread-cursor-${{ github.run_id }}
