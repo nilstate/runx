@@ -115,7 +115,7 @@ name: stage-graph
 steps:
   - id: quote
     stage: pay-quote
-    runner: quote
+    skill: graph/pay-quote
 "#,
         )
         .map_err(|error| error.to_string())?,
@@ -124,9 +124,7 @@ steps:
     .ok_or_else(|| "expected stage step to be rejected".to_owned())?;
 
     assert!(
-        error
-            .to_string()
-            .contains("must declare exactly one of skill, tool, or run"),
+        error.to_string().contains("stage is not supported"),
         "{error}"
     );
     Ok(())

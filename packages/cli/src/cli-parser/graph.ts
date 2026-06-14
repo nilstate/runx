@@ -237,7 +237,7 @@ function rejectUnsupportedTopLevel(document: Readonly<Record<string, unknown>>):
 }
 
 function rejectUnsupportedStepFields(rawStep: Readonly<Record<string, unknown>>, field: string): void {
-  for (const unsupported of ["sync"]) {
+  for (const unsupported of ["sync", "stage"]) {
     if (rawStep[unsupported] !== undefined) {
       throw new GraphValidationError(`${field}.${unsupported} is not supported by the local sequential graph runner.`);
     }

@@ -174,6 +174,11 @@ fn reject_unsupported_step_fields(
             "{field}.sync is not supported by the local sequential graph runner."
         )));
     }
+    if raw_step.contains_key("stage") {
+        return Err(validation_error(format!(
+            "{field}.stage is not supported by the local sequential graph runner."
+        )));
+    }
     validate_mode(raw_step, field)?;
     if ["run", "skill", "tool"]
         .into_iter()
