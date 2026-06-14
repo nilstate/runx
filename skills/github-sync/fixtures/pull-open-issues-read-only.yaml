@@ -1,0 +1,40 @@
+name: pull-open-issues-read-only
+kind: skill
+target: ..
+runner: github-sync
+inputs:
+  repo: runxhq/runx
+  direction: pull
+  scope: read
+  resources:
+    kind: issues
+    filters:
+      state: open
+      label: triage
+caller:
+  answers:
+    agent_task.github-sync.output:
+      sync_plan:
+        decision: ready
+        repo: runxhq/runx
+        direction: pull
+        resources_touched:
+          - kind: issue
+            ref: runxhq/runx#412
+            selected_by: "state:open label:triage"
+          - kind: issue
+            ref: runxhq/runx#418
+            selected_by: "state:open label:triage"
+        diff_summary: []
+        scope_used: repo:read
+        gates:
+          approval_required: false
+        blockers: []
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: github-sync
+  source_case: pull-open-issues-read-only
+  source: skills-fixture

@@ -1,0 +1,12 @@
+name: missing-direction-needs-agent
+kind: skill
+target: ..
+runner: github-sync
+inputs:
+  repo: runxhq/runx
+expect:
+  status: needs_agent
+metadata:
+  public_skill: github-sync
+  source_case: missing-direction-stops
+  source: skills-fixture

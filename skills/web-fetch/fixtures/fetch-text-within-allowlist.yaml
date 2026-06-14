@@ -1,0 +1,40 @@
+name: fetch-text-within-allowlist
+kind: skill
+target: ..
+runner: web-fetch
+inputs:
+  url: https://www.rfc-editor.org/rfc/rfc9110.html
+  allowlist:
+    - www.rfc-editor.org
+    - rfc-editor.org
+  extract: text
+  max_bytes: 200000
+caller:
+  answers:
+    agent_task.web-fetch.output:
+      fetch_result:
+        decision: ready
+        final_url: https://www.rfc-editor.org/rfc/rfc9110.html
+        status: 200
+        content_digest: sha256:9f2c4b8e7a1d3f60c5e2a9b14d7e0f3a6c8b1d24e9f07a35c1b8d62f4a09e7c3
+        extract_mode: text
+        extracted: "HTTP Semantics. This document describes the overall architecture of HTTP, establishes common terminology, and defines aspects of the protocol that are shared by all versions."
+        provenance:
+          fetched_at: "2026-06-15T14:02:11Z"
+          redirects: []
+          bytes: 184302
+          truncated: false
+        policy:
+          allowlist_decision: allowed
+          attempted_host: www.rfc-editor.org
+          allowlist_checked:
+            - www.rfc-editor.org
+            - rfc-editor.org
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: web-fetch
+  source_case: fetch-text-within-allowlist
+  source: skills-fixture

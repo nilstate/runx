@@ -1,0 +1,36 @@
+name: needs-connector-and-fields
+kind: skill
+target: ..
+runner: plan
+inputs: {}
+caller:
+  answers:
+    agent_task.slack-notify.output:
+      notify_plan:
+        decision: needs_agent
+        principal: ""
+        channel:
+          ref: ""
+          name: ""
+          kind: internal
+        content:
+          ref: ""
+          digest: ""
+          length_chars: 0
+          mentions: []
+        send_class: direct
+        gates:
+          preflight_required: true
+          approval_required: false
+          approval_ref: ""
+        blockers:
+          - connector and workspace are missing
+          - channel is missing
+          - principal is missing
+        provider_actions: []
+expect:
+  status: needs_agent
+metadata:
+  public_skill: slack-notify
+  source_case: needs-connector-and-fields
+  source: skills-fixture

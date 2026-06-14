@@ -1,0 +1,38 @@
+name: harden-needs-workload
+kind: skill
+target: ..
+runner: sandbox-harden
+inputs:
+  threat_context: untrusted third-party plugin
+caller:
+  answers:
+    agent_task.sandbox-harden.output:
+      hardening_profile:
+        decision: needs_agent
+        workload:
+          ref_form: image_digest
+          image_digest: ""
+          class: ""
+        seccomp:
+          default: deny
+          allowed_syscalls: []
+        dropped_caps: []
+        egress:
+          mode: none
+          hosts: []
+        filesystem:
+          readonly: true
+          writable_paths: []
+        residual_risk:
+          level: high
+          reason: No workload was supplied, so no posture can be reasoned about; an unnamed target cannot be hardened.
+        rationale: >-
+          No workload ref was supplied. There is nothing to harden, so the
+          skill stops with needs_agent rather than emitting a guessed posture
+          for an unidentified target.
+expect:
+  status: needs_agent
+metadata:
+  public_skill: sandbox-harden
+  source_case: harden-needs-workload
+  source: skills-fixture

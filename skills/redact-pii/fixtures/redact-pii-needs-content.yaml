@@ -1,0 +1,11 @@
+name: redact-pii-needs-content
+kind: skill
+target: ..
+runner: redact-pii
+inputs: {}
+expect:
+  status: needs_agent
+metadata:
+  public_skill: redact-pii
+  source_case: redact-pii-needs-content
+  source: skills-fixture

@@ -1,0 +1,57 @@
+name: broadcast-held-for-approval
+kind: skill
+target: ..
+runner: plan
+inputs:
+  channel: "#incidents"
+  content:
+    content_ref: draft://incident-2026-06-15-db-failover
+    digest: "sha256:6f1c0b2a9e4d7c83a15b0e2f9d4c6a18b7e0f3d2c5a9b4e1d8c0a3f6b2e5d7c9"
+  principal: svc:release-bot
+  provider_context:
+    connector: slack/runxhq-workspace
+    workspace_ready: true
+    principal_can_post: true
+caller:
+  answers:
+    agent_task.slack-notify.output:
+      notify_plan:
+        decision: needs_review
+        principal: svc:release-bot
+        channel:
+          ref: C04INCIDENTS
+          name: "#incidents"
+          kind: internal
+        content:
+          ref: draft://incident-2026-06-15-db-failover
+          digest: "sha256:6f1c0b2a9e4d7c83a15b0e2f9d4c6a18b7e0f3d2c5a9b4e1d8c0a3f6b2e5d7c9"
+          length_chars: 142
+          mentions:
+            - "@here"
+        send_class: broadcast
+        gates:
+          preflight_required: true
+          approval_required: true
+          approval_ref: ""
+        blockers: []
+        provider_actions:
+          - action: resolve_channel
+            channel_ref: C04INCIDENTS
+            via: slack/runxhq-workspace
+          - action: preflight
+            checks:
+              - connector_reachable
+              - channel_resolvable
+              - principal_can_post
+          - action: post_message
+            gated_on: human_approval
+            channel_ref: C04INCIDENTS
+            content_digest: "sha256:6f1c0b2a9e4d7c83a15b0e2f9d4c6a18b7e0f3d2c5a9b4e1d8c0a3f6b2e5d7c9"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: slack-notify
+  source_case: broadcast-held-for-approval
+  source: skills-fixture

@@ -1,0 +1,35 @@
+name: invoice-missing-required-inputs
+kind: skill
+target: ..
+runner: settle-invoice
+inputs:
+  invoice_ref: "INV-2026-0488"
+  currency: USD
+caller:
+  answers:
+    agent_task.settle-invoice.output:
+      payment_plan:
+        decision: needs_review
+        invoice_ref: "INV-2026-0488"
+        amount: 0
+        currency: USD
+        payee:
+          name: ""
+          account_digest: ""
+        rail: ""
+        spend_limit: 0
+        gates:
+          human_approval_required: true
+          preflight_required: true
+        blockers:
+          - amount is missing
+          - payee is missing
+          - spend_limit is missing
+expect:
+  status: needs_agent
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: settle-invoice
+  source_case: invoice-missing-required-inputs
+  source: skills-fixture

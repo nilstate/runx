@@ -5,51 +5,7 @@ catalog:
   audience: public
   visibility: public
   role: canonical
-harness:
-  cases:
-    - name: unseal-plan-approved
-      inputs:
-        secret_ref: vault://drive/service-account
-        purpose: Sign one Drive export request for the monthly reports job
-        ttl: 10m
-        scope:
-          resource: drive.files
-          action: export
-          path: /reports/*
-        principal: svc/report-exporter
-      caller:
-        answers:
-          agent_task.vault-unseal.output:
-            unseal_plan:
-              decision: ready
-              secret_ref: vault://drive/service-account
-              handle: handle://unseal/3f9c2a1b
-              ttl: 10m
-              scope:
-                resource: drive.files
-                action: export
-                path: /reports/*
-              principal: svc/report-exporter
-              gates:
-                human_approval_required: true
-              audit_binding:
-                receipt_ref: rx_unseal_4471
-              blockers: []
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-
-    - name: unseal-missing-inputs
-      inputs:
-        purpose: Need a key for the export job
-      expect:
-        status: needs_agent
-
 runners:
-  agent:
-    type: agent
-
   vault-unseal:
     default: true
     type: agent-task
@@ -60,6 +16,8 @@ runners:
     artifacts:
       wrap_as: unseal_plan_packet
       packet: runx.unseal.v1
+    runx:
+      category: security
     inputs:
       secret_ref:
         type: string

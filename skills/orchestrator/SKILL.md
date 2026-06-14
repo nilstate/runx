@@ -16,24 +16,20 @@ builds that wiring. It reads the objective, selects from the available catalog,
 orders the hops, narrows the grant at each one, and names the receipt every
 step will seal. The output is a reviewable run plan, not a started run.
 
+## What this skill does
+
+`orchestrator` produces a reviewable `run_plan` over skills that already exist.
+It reads the objective and the available catalog, selects the skills whose
+declared purpose covers each part of the objective, orders the hops into a
+dependency topology, scopes authority per hop so no step exceeds the parent
+grant, names the gate each hop must clear, and names the receipt each hop is
+expected to seal. It carries a budget and a blocker list, and stops cleanly
+when no safe routing exists.
+
 It routes EXISTING skills into a run; `work-plan` decomposes an objective into
 reviewable tasks for humans to build. Orchestrator never invents a step that has
 no catalog skill behind it. If the objective needs a capability the catalog
 cannot cover, that is a blocker, not a hand-written instruction.
-
-## What this skill does
-
-1. Read the objective and the available catalog refs.
-2. Select the skills whose declared purpose covers each part of the objective.
-3. Order the hops into a topology: which steps depend on which, what runs in
-   parallel, where a step consumes a prior step's output.
-4. Scope authority per hop. Each step gets the narrowest grant that lets it run,
-   and never broader than the parent grant the orchestrator itself holds.
-5. Name the gate on each step: which hops need human approval or preflight
-   before they proceed.
-6. Name the receipt each step is expected to seal, so the run is auditable
-   before it starts.
-7. Carry a budget and a blocker list. Stop cleanly when no safe routing exists.
 
 ## When to use this skill
 
@@ -126,54 +122,43 @@ cannot cover, that is a blocker, not a hand-written instruction.
   span, or bound handle. If reference-only routing is impossible, record a
   blocker rather than embedding the value.
 
-## Output
+## Output schema
 
-- `run_plan.objective`: the objective restated in operational terms.
-- `run_plan.steps`: array of hop objects, each with:
-  - `id`: stable step id used by edges and `inputs_ref`.
-  - `skill_ref`: catalog ref (skill id plus version or digest). Never the body.
-  - `scope`: the narrowest grant for this hop, in policy syntax, bounded by the
-    parent grant.
-  - `inputs_ref`: references to upstream step outputs or caller handles; digests
-    and handles only, never raw secrets, PII, or fetched content.
-  - `gates`: the gate the executor must satisfy (`approval`, `preflight`, or
-    `none`).
-  - `expected_receipt`: the receipt this hop should seal.
-- `run_plan.topology`: array of edges (`from` step id, `to` step id) describing
-  dependency and parallelism.
-- `run_plan.budget`: the plan-level cost ceiling, bounded by the constraint
-  budget, with per-hop allocations.
-- `run_plan.blockers`: array of unresolved conditions (catalog gap, over-scope
-  hop, budget breach, cycle, ambiguous routing). Empty when `routed`.
-- `run_plan.status`: `routed`, `needs_review`, or `needs_agent`.
+```yaml
+run_plan:
+  status: routed | needs_review | needs_agent
+  objective: string            # restated in operational terms
+  steps:
+    - id: string               # stable step id used by edges and inputs_ref
+      skill_ref: string        # catalog ref (skill id plus version or digest); never the body
+      scope: array             # narrowest grant for this hop, in policy syntax, bounded by parent grant
+      inputs_ref: object       # upstream step outputs or caller handles; digests and handles only
+      gates: approval | preflight | none
+      expected_receipt: string # the receipt this hop should seal
+  topology: array              # edges (from step id, to step id) for dependency and parallelism
+  budget:
+    ceiling_usd: number        # plan-level ceiling, bounded by the constraint budget
+    allocations: object        # per-hop spend allocation
+  blockers: array              # catalog gap, over-scope hop, budget breach, cycle, ambiguous routing; empty when routed
+```
 
 The plan references every skill by ref and stops at the plan boundary. It does
 not start the run.
 
-## Quality Profile
+## Worked example
 
-- Purpose: route an objective onto existing catalog skills as a hop-by-hop run
-  graph that is in scope, in budget, and auditable before any hop runs.
-- Audience: the operator who reviews the plan and the executor that will run it
-  under each hop's gate.
-- Artifact contract: a `run_plan` object carrying `objective`, `steps` (each with
-  `id`, `skill_ref`, `scope`, `inputs_ref`, `gates`, `expected_receipt`),
-  `topology`, `budget`, `blockers`, and `status`. Skills are referenced by ref;
-  bodies are never inlined.
-- Evidence bar: every step names a real catalog ref drawn from the available
-  catalog. A step with no covering skill is a blocker, not an invented
-  instruction. Per-hop scope and budget cite the constraint they were bounded
-  by.
-- Voice bar: terse operator-to-executor plan. Name skills, scopes, gates, and
-  receipts in concrete syntax. No generic automation language; the plan reads
-  maintainer-owned.
-- Strategic bar: the plan makes authority and ordering reviewable before
-  execution, so over-reach, cycles, and budget breaches are caught at plan time
-  rather than mid-run.
-- Stop conditions: return `needs_agent` when the objective is missing; return
-  `needs_review` when no safe routing exists under the constraints (catalog gap,
-  a hop that exceeds the parent grant, a budget breach, or a cyclic topology),
-  carrying the partial plan and the blockers.
+Input: "Refund the customer for charge rcpt_9f21, then notify them the refund
+is on its way", with `refund@0.1.0` and `send-as@0.1.0` in the catalog and a
+parent grant of `wallet:refund<=$200`, `net:allowlist:api.stripe.com`, and
+`send:channel:email`.
+
+Output: `status: routed`. Step `s1_refund` runs `refund@0.1.0` scoped to
+`wallet:refund<=$200` and `net:allowlist:api.stripe.com`, gated on `approval`,
+sealing `runx.receipt.v1`. Step `s2_notify` runs `send-as@0.1.0` scoped to
+`send:channel:email`, consuming `s1_refund.output.refund_receipt_ref` by step
+reference, gated on `approval`. The topology edge runs `s1_refund` before
+`s2_notify`; the budget ceiling is $200, fully allocated to the refund hop. No
+step exceeds the parent grant, so the plan routes.
 
 ## Inputs
 

@@ -1,0 +1,28 @@
+name: sign-receipt-needs-subject
+kind: skill
+target: ..
+runner: sign-receipt
+inputs:
+  action: ""
+  principal: ""
+  claim: ""
+  evidence: []
+caller:
+  answers:
+    agent_task.sign-receipt.output:
+      attestation:
+        action: ""
+        claim: ""
+        principal: ""
+        evidence_refs: []
+        signed: false
+        attestation_id: ""
+        bound_receipt_ref: ""
+expect:
+  status: needs_agent
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: sign-receipt
+  source_case: sign-receipt-needs-subject
+  source: skills-fixture

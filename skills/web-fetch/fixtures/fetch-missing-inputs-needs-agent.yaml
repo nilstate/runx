@@ -1,0 +1,30 @@
+name: fetch-missing-inputs-needs-agent
+kind: skill
+target: ..
+runner: web-fetch
+inputs: {}
+caller:
+  answers:
+    agent_task.web-fetch.output:
+      fetch_result:
+        decision: needs_agent
+        final_url: ""
+        status: 0
+        content_digest: ""
+        extract_mode: text
+        extracted: ""
+        provenance:
+          fetched_at: ""
+          redirects: []
+          bytes: 0
+          truncated: false
+        policy:
+          allowlist_decision: denied
+          attempted_host: ""
+          allowlist_checked: []
+expect:
+  status: needs_agent
+metadata:
+  public_skill: web-fetch
+  source_case: fetch-missing-inputs
+  source: skills-fixture

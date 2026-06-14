@@ -1,0 +1,31 @@
+name: unseal-missing-inputs
+kind: skill
+target: ..
+runner: vault-unseal
+inputs:
+  purpose: Need a key for the export job
+caller:
+  answers:
+    agent_task.vault-unseal.output:
+      unseal_plan:
+        decision: needs_review
+        secret_ref: ""
+        handle: ""
+        ttl: ""
+        scope: {}
+        principal: ""
+        gates:
+          human_approval_required: true
+        audit_binding:
+          receipt_ref: ""
+        blockers:
+          - secret_ref is missing
+          - ttl is missing
+          - scope is missing
+          - principal is missing
+expect:
+  status: needs_agent
+metadata:
+  public_skill: vault-unseal
+  source_case: unseal-missing-inputs
+  source: skills-fixture

@@ -1,0 +1,38 @@
+name: invoice-ready-within-bound
+kind: skill
+target: ..
+runner: settle-invoice
+inputs:
+  invoice_ref: "INV-2026-0412"
+  amount: 1840.00
+  currency: USD
+  payee:
+    name: Acme Hosting
+    account_ref: "acct_3f9c1a7e"
+  spend_limit: 2500.00
+  rail: ach
+caller:
+  answers:
+    agent_task.settle-invoice.output:
+      payment_plan:
+        decision: ready
+        invoice_ref: "INV-2026-0412"
+        amount: 1840.00
+        currency: USD
+        payee:
+          name: Acme Hosting
+          account_digest: "sha256:9b1f...e042"
+        rail: ach
+        spend_limit: 2500.00
+        gates:
+          human_approval_required: true
+          preflight_required: true
+        blockers: []
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: settle-invoice
+  source_case: invoice-ready-within-bound
+  source: skills-fixture

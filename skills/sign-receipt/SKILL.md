@@ -10,52 +10,27 @@ runx:
 Turn an action that happened outside a run into a signed attestation the ledger
 can carry.
 
+## What this skill does
+
+`sign-receipt` binds an actor, a claim, and the evidence that backs the claim
+into one attestation, signs it under the ledger key, and appends a reference so
+downstream runs can depend on the external act with provenance instead of trust.
+
 The runtime already signs every hop of work it executes itself; each act, each
-decision, each refusal lands in a sealed receipt without anyone asking. Work
-that happens elsewhere has no such record. A human approved a refund in the
-provider console. A partner service shipped a build. A reviewer signed off in a
-tool runx never touched. That work is real, but to the ledger it is a rumor.
-This skill makes the rumor citable: it binds an actor, a claim, and the evidence
-that backs the claim into one attestation, signs it, and appends a reference to
-the ledger so downstream runs can depend on the external act with provenance
-instead of trust.
+decision, each refusal lands in a sealed receipt without anyone asking. Work that
+happens elsewhere has no such record. A human approved a refund in the provider
+console. A partner service shipped a build. A reviewer signed off in a tool runx
+never touched. That work is real, but to the ledger it is a rumor. This skill
+makes the rumor citable.
 
 It will not sign a claim the evidence does not support. An attestation with no
 binding evidence is a signature on a guess, and a signed guess is worse than no
 record at all.
 
 **Distinctness:** it attests work that happened OUTSIDE a run; the runtime
-already signs every hop of work it executes itself. `receipt-auditor` reads a
-sealed in-runtime receipt to check authority; `sign-receipt` mints a new receipt
-for work the runtime never saw.
-
-## What this skill does
-
-1. **Take the claim.** The caller states what was done (`action`), who did it
-   (`principal`), and exactly what is being asserted (`claim`).
-2. **Bind the evidence.** Evidence arrives as references and digests: a provider
-   transaction id, a commit sha, a signed approval handle, a content digest.
-   The skill records what each reference proves, never the underlying content.
-3. **Test claim against evidence.** If the references do not actually support
-   the claim, the skill stops at `needs_more_evidence` rather than signing.
-4. **Sign and bind.** On a supported claim, the attestation is signed under the
-   ledger key and appended; the result carries an `attestation_id` and a
-   `bound_receipt_ref` tying it into the ledger.
-
-## Core principles
-
-- **No evidence, no signature.** A claim with no binding reference is not
-  attestable. The skill refuses before it signs.
-- **References only.** Evidence enters and leaves as digests, handles, ids, and
-  spans. Raw content, secret values, card numbers, and PII never appear in the
-  attestation or the receipt.
-- **The principal is named.** An attestation asserts that a specific actor did a
-  specific thing. An unnamed actor cannot be attested.
-- **Scope of the claim is the scope of the signature.** The signature covers the
-  exact claim text and the bound references, nothing wider. An optional `scope`
-  narrows what the attestation may later be relied on for.
-- **Append, do not overwrite.** Attestations are ledger entries. A correction is
-  a new attestation that references the prior one, never an edit.
+already signs every hop it executes itself. `receipt-auditor` reads a sealed
+in-runtime receipt to check authority; `sign-receipt` mints a new receipt for
+work the runtime never saw.
 
 ## When to use this skill
 
@@ -67,24 +42,37 @@ for work the runtime never saw.
 
 ## When not to use this skill
 
-- To audit a run the runtime executed. That is `receipt-auditor`.
+- To audit a run the runtime executed. That is `receipt-auditor`, which reads an
+  existing sealed receipt rather than minting a new one.
 - To execute the action itself. Use the action skill (`spend`, `send-as`,
   `refund`); they seal their own receipts.
 - To attest a claim with no evidence, or with evidence you cannot reference
   without inlining secret or personal data.
 - To store the evidence content. This skill stores references to it.
 
-## Governance
+## Procedure
 
-- **Scopes:** `ledger:append` to add the attestation entry, `sign:key` to sign
-  it. No network, repo, or wallet authority is requested or used.
-- **Gate:** evidence sufficiency is the preflight. The skill will not reach the
-  signing step until each load-bearing part of the claim maps to a binding
-  reference. Insufficient evidence stops the run before any signature.
-- **Receipt:** the sealed receipt carries the `attestation_id`, the principal,
-  the claim text, the digest of each evidence reference, the signing key id, and
-  the `signed` outcome. It never carries the evidence content, a secret value,
-  or any PII drawn from the evidence.
+1. **Take the claim.** The caller states what was done (`action`), who did it
+   (`principal`), and exactly what is being asserted (`claim`). An attestation
+   asserts that a specific actor did a specific thing; an unnamed actor cannot be
+   attested.
+2. **Bind the evidence.** Evidence arrives as references and digests: a provider
+   transaction id, a commit sha, a signed approval handle, a content digest.
+   Record what each reference proves, never the underlying content. References,
+   digests, handles, ids, and spans only; raw content, secret values, card
+   numbers, and PII never appear.
+3. **Test claim against evidence.** Evidence sufficiency is the gate. The run
+   does not reach the signing step until each load-bearing part of the claim maps
+   to a binding reference. If the references do not support the claim, stop at
+   `needs_more_evidence` rather than signing. If the claim is broader than the
+   evidence, narrow it to what the references prove, or stop. The scope of the
+   signature is the scope of the claim, nothing wider.
+4. **Sign and bind.** On a supported claim, sign the attestation under the ledger
+   key and append it. Attestations are ledger entries; append, do not overwrite.
+   A correction is a new attestation that references the prior one, never an edit.
+   The result carries an `attestation_id` and a `bound_receipt_ref` tying it into
+   the ledger. The required scopes are `ledger:append` to add the entry and
+   `sign:key` to sign it; no network, repo, or wallet authority is requested.
 
 ## Edge cases and stop conditions
 
@@ -100,43 +88,44 @@ for work the runtime never saw.
 - **Conflicting references:** stop at `needs_more_evidence`; an attestation must
   not paper over contradiction.
 
-## Output
+## Output schema
 
-- `attestation.action`: what was done, in operational terms.
-- `attestation.claim`: the exact assertion the signature covers.
-- `attestation.principal`: the actor the attestation names.
-- `attestation.evidence_refs`: array of bound references, each with a `ref`, a
-  `digest`, and what it `proves`. References and digests only, never content.
-- `attestation.signed`: boolean; true only when the evidence supports the claim
-  and the signature was applied.
-- `attestation.attestation_id`: stable id of this ledger entry.
-- `attestation.bound_receipt_ref`: reference tying the attestation into the
-  ledger receipt.
-- `attestation.scope` (optional): bound on what the attestation may be relied on
-  for downstream.
+```yaml
+attestation:
+  action: string          # what was done, in operational terms
+  claim: string           # the exact assertion the signature covers
+  principal: string       # the actor the attestation names
+  evidence_refs:          # bound references, refs and digests only, never content
+    - ref: string
+      digest: string
+      proves: string
+  signed: boolean         # true only when evidence supports the claim and the signature was applied
+  attestation_id: string  # stable id of this ledger entry
+  bound_receipt_ref: string  # reference tying the attestation into the ledger receipt
+  scope:                  # optional, bound on what the attestation may be relied on for
+    rely_for: string
+```
 
-## Quality Profile
+The sealed receipt carries the `attestation_id`, the principal, the claim text,
+the digest of each evidence reference, the signing key id, and the `signed`
+outcome. It never carries the evidence content, a secret value, or any PII drawn
+from the evidence.
 
-- Purpose: seal one off-runtime action into a signed attestation so external
-  work enters the ledger with provenance, or stop when the evidence cannot back
-  the claim.
-- Audience: the operator, auditor, or follow-on skill that will rely on the
-  external action and needs it citable rather than asserted.
-- Artifact contract: `attestation` object carrying `action`, `claim`,
-  `principal`, `evidence_refs` (refs and digests only), `signed`,
-  `attestation_id`, and `bound_receipt_ref`.
-- Evidence bar: every load-bearing part of the claim maps to a named reference
-  with a digest; references are recorded by handle and digest, never inlined;
-  a claim wider than its references is narrowed or refused.
-- Voice bar: terse security-record prose. State what is attested and what backs
-  it. Do not narrate the signing mechanism, hedge the assertion, or pad with
-  governance adjectives.
-- Strategic bar: the attestation must let a downstream run depend on the
-  external act with provenance instead of trust; if it would not change what a
-  downstream consumer can safely assume, it is not worth signing.
-- Stop conditions: return `needs_agent` when `action`, `evidence`, `principal`,
-  or `claim` is missing; return `needs_more_evidence` when the evidence does not
-  support the claim or supports only a narrower one.
+## Worked example
+
+Input: an operator (`ops:jordan`) issued a $40.00 goodwill refund for order
+ORD-7741 in the provider console. Evidence is two references: a provider refund
+transaction (`provider:refund/re_3PqL2x`, with digest) proving the refund
+settled, and a console approval handle (`approval:console-signoff/ap_5512`, with
+digest) proving sign-off preceded the refund.
+
+Output: each load-bearing part of the claim maps to a binding reference, so the
+gate passes. The attestation names the principal, carries both `evidence_refs`
+with their digests, sets `signed: true`, and returns an `attestation_id` plus a
+`bound_receipt_ref`. The scope binds reliance to downstream dispute and
+reconciliation runs referencing ORD-7741. Had only the approval handle been
+supplied with no settlement reference, the decision would be
+`needs_more_evidence`, not a signature.
 
 ## Inputs
 

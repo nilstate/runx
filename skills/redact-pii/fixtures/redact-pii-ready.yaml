@@ -1,0 +1,45 @@
+name: redact-pii-ready
+kind: skill
+target: ..
+runner: redact-pii
+inputs:
+  content: "Customer Dana Whitfield wrote in from dana.w@example.com about order #44120; callback number on file is 415-555-0188."
+  classes:
+    - name
+    - email
+    - phone
+  mode: redact
+  locale: en-US
+caller:
+  answers:
+    agent_task.redact-pii.output:
+      redaction_report:
+        decision: ready
+        detected:
+          - class: name
+            span: [9, 23]
+            confidence: 0.97
+          - class: email
+            span: [38, 56]
+            confidence: 0.99
+          - class: phone
+            span: [104, 116]
+            confidence: 0.96
+        redacted_digest: "sha256:6b1d4c9e2af0b73c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+        residual_risk:
+          level: low
+          reason: "order id is a record reference, not a personal identifier; all three personal spans removed at high confidence."
+        policy:
+          classes:
+            - name
+            - email
+            - phone
+          mode: redact
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: redact-pii
+  source_case: redact-pii-ready
+  source: skills-fixture

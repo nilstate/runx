@@ -12,13 +12,6 @@ must stop for a human. The skill turns "tell #deploys the build is green" into a
 reviewable plan: one channel, one digest-bound message, one egress lane, and an
 explicit gate when the post would page a room or cross a workspace boundary.
 
-It refuses to be a generic Slack client. It does not list channels, manage
-members, read history, react, or open DMs as a side effect. It plans one
-outbound notification to one named target and nothing else.
-
-Distinctness: it plans a single channel notification with egress gates; send-as
-plans broader cross-provider sends, github-sync moves repo state.
-
 ## What this skill does
 
 `slack-notify` produces a `notify_plan`: a sealed intent to post one message to
@@ -29,8 +22,13 @@ is a separate, gated step; this skill stops at the reviewable plan.
 
 The hard line it draws: a notification to `#build-status` is routine, a post
 that fires `@channel` across 4,000 people or lands in a shared external channel
-is not. The first proceeds as `direct`; the second is classified `broadcast`,
+is not. The first proceeds as `direct`. The second is classified `broadcast`,
 flagged with `approval_required`, and held until a human signs off.
+
+Distinctness: this is not a generic Slack client. It plans one outbound
+notification to one named target and nothing else, and never lists channels,
+manages members, reads history, reacts, or opens DMs as a side effect.
+`send-as` plans broader cross-provider sends; `github-sync` moves repo state.
 
 ## When to use this skill
 
@@ -54,44 +52,32 @@ flagged with `approval_required`, and held until a human signs off.
   receipt.
 - To post without a named principal and a named channel.
 
-## Governance
-
-- Egress scope is `net:allowlist` pinned to the configured Slack connector. No
-  other host is reachable from this plan. The skill never widens egress to add a
-  webhook, a second workspace, or a non-Slack endpoint.
-- The connector identity binds to the principal. The plan posts as the principal
-  the caller named, not as an ambient bot token chosen at send time.
-- Send class drives the gate. `direct` posts to a normal internal channel clear
-  preflight only. `broadcast` covers `@channel`, `@here`, `@everyone`, and any
-  external or shared (Slack Connect) channel; these set
-  `gates.approval_required: true` and hold for human sign-off.
-- Preflight is always required: connector reachable, channel resolvable, the
-  principal allowed to post there, content digest present.
-- The receipt carries the channel id, the principal ref, the content digest, the
-  send class, the gate decisions, and the connector identity. It does not carry
-  the message body, secret values, or any membership roster. Review can prove
-  what was authorized without reading what was said.
-
 ## Procedure
 
 1. Resolve the principal and confirm a Slack connector and workspace are
-   configured. No connector means `needs_agent`.
+   configured. No connector means `needs_agent`. The connector identity binds to
+   the principal the caller named, not an ambient bot token chosen at send time.
 2. Resolve the target channel to a stable reference. Determine whether it is
    internal, external, or shared (Slack Connect).
-3. Bind content by digest. Accept either an inline `message` (hash it, keep a
-   short safe preview) or a `content_ref` plus `digest`. Never approve mutable
-   prose by summary alone.
+3. Bind content by digest. Accept either an inline `message` (hash it, record
+   only its length and detected broadcast mentions) or a `content_ref` plus
+   `digest`. The message body never enters the plan. Never approve mutable prose
+   by summary alone.
 4. Classify the send. Internal channel with no broadcast mention is `direct`.
    Any `@channel`/`@here`/`@everyone`, or any external or shared channel, is
    `broadcast`.
-5. Set gates. `direct` requires preflight only. `broadcast` requires preflight
-   and human approval.
-6. Run preflight checks; record any failure as a blocker. A consent or policy
-   block (the principal may not post to this channel) is a hard blocker.
+5. Set gates. The send class drives the gate. `direct` requires preflight only.
+   `broadcast` requires preflight and human approval; it is held for sign-off.
+6. Run preflight checks: connector reachable, channel resolvable, the principal
+   allowed to post there, content digest present. Record any failure as a
+   blocker. A consent or policy block (the principal may not post to this
+   channel) is a hard blocker.
 7. Emit the smallest `notify_plan` a connector lane can execute without widening
-   egress, plus the ordered `provider_actions` it would run.
-8. Stop. Return `needs_agent` for a missing connector or missing required
-   field; return a `blocked` decision when policy or consent forbids the post.
+   egress, plus the ordered `provider_actions` it would run. Egress scope stays
+   `net:allowlist` pinned to the configured Slack connector; the plan never adds
+   a webhook, a second workspace, or a non-Slack endpoint.
+8. Stop. Return `needs_agent` for a missing connector or missing required field;
+   return a `blocked` decision when policy or consent forbids the post.
 
 ## Edge cases and stop conditions
 
@@ -107,59 +93,67 @@ flagged with `approval_required`, and held until a human signs off.
   digest-bound.
 - **Policy or consent forbids the post:** `decision: blocked`; record the
   blocker and do not plan delivery.
-- **Raw secret or PII in the message:** the preview is truncated and scrubbed;
-  the digest binds the full content, but no value enters the plan or receipt. If
-  scrubbing would remove the evidence needed to decide, return `needs_agent`.
+- **Raw secret or PII in the message:** the digest binds the full content, but
+  no body text, secret, or value enters the plan or receipt. Only the content
+  length and detected broadcast mentions are recorded. If that is not enough to
+  decide whether the post is safe, return `needs_agent`.
 
-## Output
+## Output schema
 
-- `notify_plan.decision`: `ready` (gates can be satisfied and the post may
-  proceed to the connector lane), `needs_review` (a gate, usually approval, is
-  outstanding), or `blocked` (policy or consent forbids the post).
-- `notify_plan.channel`: object with `ref` (stable channel id), `name`, and
-  `kind` (`internal` | `external` | `shared`).
-- `notify_plan.content`: object with `ref`, `digest`, and a short scrubbed
-  `preview`. No full body, no secret values.
-- `notify_plan.principal`: ref of the actor the post is sent as.
-- `notify_plan.send_class`: `direct` | `broadcast`.
-- `notify_plan.gates`: object with `approval_required` and `preflight_required`
-  booleans, plus `approval_ref` when an approval is recorded.
-- `notify_plan.blockers`: array of named blockers with cause; empty when clear.
-- `notify_plan.provider_actions`: ordered array of connector steps the lane
-  would run (resolve channel, preflight, gated post), described, not executed.
+The receipt carries the channel id, the principal ref, the content digest, the
+send class, the gate decisions, and the connector identity. It does not carry
+the message body, secret values, or any membership roster. Review can prove what
+authority was granted without reading what was said.
+
+```yaml
+notify_plan:
+  decision: ready | needs_review | blocked
+  principal: string
+  channel:
+    ref: string
+    name: string
+    kind: internal | external | shared
+  content:
+    ref: string
+    digest: string
+    length_chars: integer
+    mentions: array
+  send_class: direct | broadcast
+  gates:
+    preflight_required: boolean
+    approval_required: boolean
+    approval_ref: string
+  blockers: array
+  provider_actions: array
+```
 
 Key fields for review: `decision`, `send_class`, `channel.kind`,
-`gates.approval_required`, `content.digest`.
+`gates.approval_required`, `content.digest`. A `ready` decision means the gates
+can be satisfied and the post may proceed to the connector lane. `needs_review`
+means a gate, usually approval, is outstanding. `blocked` means policy or
+consent forbids the post. `provider_actions` is an ordered array of connector
+steps the lane would run (resolve channel, preflight, gated post), described,
+not executed.
+
+## Worked example
+
+Input: "Post the DB failover update to #incidents with an `@here`," carrying a
+digest-bound draft, a `svc:release-bot` principal, and a ready Slack connector
+that allows the principal to post.
+
+Output: `decision: needs_review`; `send_class: broadcast` because the message
+contains an `@here`; `gates.approval_required: true`; the channel binds to its
+stable id; content is digest-bound with only its length and the detected
+`@here` mention recorded. The provider actions are resolve-channel, preflight,
+then a post gated on human approval. No message leaves the workspace until the
+approval gate clears.
 
 ## Inputs
 
 - `channel` (required): the destination channel, by id or name.
 - `content` (required): the message. Either `{ message: "..." }` for inline text
-  or `{ content_ref: "...", digest: "..." }` for digest-bound content.
+  or `{ content_ref: "...", digest: "..." }` for digest-bound content. Raw
+  secrets and PII must not appear.
 - `principal` (required): who the post is sent as.
 - `provider_context` (optional): connector and workspace readiness, e.g. the
   result of a connector status check.
-
-## Quality Profile
-
-- Purpose: produce one reviewable, digest-bound plan to post a single Slack
-  notification, with the egress lane named and any broad or external post held
-  for human approval.
-- Audience: the operator, reviewer, or connector lane that will approve or
-  execute the post, and later anyone auditing the receipt.
-- Artifact contract: `notify_plan` with `decision`, `send_class`,
-  `channel.kind`, `content.digest`, `gates.approval_required`, and `blockers`
-  populated. Content is referenced by digest and a scrubbed preview; never by
-  full body.
-- Evidence bar: channel kind, send class, and gate decisions are grounded in the
-  resolved channel and the provider context, not assumed. A missing connector or
-  unresolvable channel is named as a blocker, not papered over.
-- Voice bar: terse operator prose; the plan reads like a runbook entry. CLI and
-  field text stay factual. No marketing language, no AI-authored framing.
-- Strategic bar: the plan must make one decision easier, post or hold, and must
-  make a `broadcast` impossible to send by accident. A `direct` status ping
-  should not drag a human into the loop; a room-wide page should never skip one.
-- Stop conditions: return `needs_agent` when the connector, workspace, channel,
-  principal, or digest-bound content is missing; return a `blocked` decision
-  when policy or consent forbids the post; return `needs_review` when approval
-  is required and not yet recorded.
