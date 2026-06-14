@@ -1,0 +1,135 @@
+skill: github-sync
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: pull-open-issues-read-only
+      inputs:
+        repo: runxhq/runx
+        direction: pull
+        scope: read
+        resources:
+          kind: issues
+          filters:
+            state: open
+            label: triage
+      caller:
+        answers:
+          agent_task.github-sync.output:
+            sync_plan:
+              decision: ready
+              repo: runxhq/runx
+              direction: pull
+              resources_touched:
+                - kind: issue
+                  ref: runxhq/runx#412
+                  selected_by: "state:open label:triage"
+                - kind: issue
+                  ref: runxhq/runx#418
+                  selected_by: "state:open label:triage"
+              diff_summary: []
+              scope_used: repo:read
+              gates:
+                approval_required: false
+              blockers: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: push-labels-gated-on-approval
+      inputs:
+        repo: runxhq/runx
+        direction: push
+        scope: write
+        resources:
+          kind: issues
+          filters:
+            refs:
+              - runxhq/runx#412
+              - runxhq/runx#418
+      caller:
+        answers:
+          agent_task.github-sync.output:
+            sync_plan:
+              decision: blocked
+              repo: runxhq/runx
+              direction: push
+              resources_touched:
+                - kind: issue
+                  ref: runxhq/runx#412
+                - kind: issue
+                  ref: runxhq/runx#418
+              diff_summary:
+                - ref: runxhq/runx#412
+                  op: add_label
+                  digest: sha256:9f1c0a7e
+                - ref: runxhq/runx#418
+                  op: close
+                  digest: sha256:2b4d8c10
+              scope_used: repo:write
+              gates:
+                approval_required: true
+              blockers:
+                - awaiting human approval for repo:write push
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: write-without-grant-denied
+      inputs:
+        repo: runxhq/runx
+        direction: push
+        scope: write
+        resources:
+          kind: issues
+          filters:
+            refs:
+              - runxhq/runx#412
+      expect:
+        status: policy_denied
+
+    - name: missing-direction-stops
+      inputs:
+        repo: runxhq/runx
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  github-sync:
+    default: true
+    type: agent-task
+    agent: operator
+    task: github-sync
+    outputs:
+      sync_plan: object
+    artifacts:
+      wrap_as: sync_plan_packet
+      packet: runx.github_sync.v1
+    inputs:
+      repo:
+        type: string
+        required: true
+        description: "Target repository as owner/name."
+      direction:
+        type: string
+        required: true
+        description: "Sync direction: pull (read-only) or push (mutation)."
+      resources:
+        type: json
+        required: true
+        description: "Selector for issues, prs, or threads plus filters (state, label, author, range, refs)."
+      scope:
+        type: string
+        required: true
+        description: "read or write. A push needs write backed by a repo:write grant."

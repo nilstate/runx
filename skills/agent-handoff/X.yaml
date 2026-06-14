@@ -1,0 +1,106 @@
+skill: agent-handoff
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+harness:
+  cases:
+    - name: agent-handoff-bounded-contract
+      inputs:
+        task: Refactor the auth module to remove the deprecated token path and update its tests.
+        to_agent: builder
+        grants:
+          - repo:write:auth/*
+          - repo:read:auth/*
+        success_criteria:
+          - The deprecated token path is removed from auth/ and no caller references it.
+          - The auth test suite passes with the new path only.
+          - No public function signature outside auth/ changes.
+        context_refs:
+          - receipt:rx_auth_review_204
+          - file:auth/token.rs
+          - digest:sha256:9f1c...spec-deprecation-note
+      caller:
+        answers:
+          agent_task.agent-handoff.output:
+            handoff_packet:
+              status: ready
+              task:
+                deliverable: Refactor the auth module to remove the deprecated token path and update its tests.
+                boundary: auth/ module only; no changes to public signatures outside auth/.
+              to_agent: builder
+              grants:
+                - scope: repo:write:auth/*
+                  state: held
+                - scope: repo:read:auth/*
+                  state: held
+              success_criteria:
+                - The deprecated token path is removed from auth/ and no caller references it.
+                - The auth test suite passes with the new path only.
+                - No public function signature outside auth/ changes.
+              deadline:
+                value: 2026-06-18T17:00:00Z
+                source: derived
+              context_refs:
+                - receipt:rx_auth_review_204
+                - file:auth/token.rs
+                - digest:sha256:9f1c...spec-deprecation-note
+              gates:
+                approval_required: false
+                approval_ref: null
+              acceptance:
+                checklist:
+                  - id: c1
+                    condition: deprecated token path removed and unreferenced
+                  - id: c2
+                    condition: auth test suite green on new path
+                  - id: c3
+                    condition: no external signature change
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: agent-handoff-needs-contract
+      inputs:
+        task: Improve auth.
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  handoff:
+    default: true
+    type: agent-task
+    agent: operator
+    task: agent-handoff
+    outputs:
+      handoff_packet: object
+    artifacts:
+      wrap_as: handoff_packet_packet
+      packet: runx.handoff.v1
+    inputs:
+      task:
+        type: string
+        required: true
+        description: "The bounded deliverable to delegate, with a completion boundary; not a standing role."
+      to_agent:
+        type: string
+        required: true
+        description: "The single agent that receives the work."
+      grants:
+        type: json
+        required: true
+        description: "Scopes the receiver may exercise, in canonical policy syntax (e.g. repo:write:auth/*, net:allowlist:host, wallet:spend<=$50). Scope strings only, never secret values."
+      success_criteria:
+        type: json
+        required: true
+        description: "Acceptance checklist that decides accepted or rejected; each item a verifiable condition."
+      context_refs:
+        type: json
+        required: false
+        description: "References to receipts, files, threads, specs, or vault handles. By ref or digest only; no inlined secrets or raw content."

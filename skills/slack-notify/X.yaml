@@ -1,0 +1,95 @@
+skill: slack-notify
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: broadcast-held-for-approval
+      inputs:
+        channel: "#incidents"
+        content:
+          content_ref: draft://incident-2026-06-15-db-failover
+          digest: "sha256:6f1c0b2a9e4d7c83a15b0e2f9d4c6a18b7e0f3d2c5a9b4e1d8c0a3f6b2e5d7c9"
+        principal: svc:release-bot
+        provider_context:
+          connector: slack/runxhq-workspace
+          workspace_ready: true
+          principal_can_post: true
+      caller:
+        answers:
+          agent_task.slack-notify.output:
+            notify_plan:
+              decision: needs_review
+              channel:
+                ref: C04INCIDENTS
+                name: "#incidents"
+                kind: internal
+              content:
+                ref: draft://incident-2026-06-15-db-failover
+                digest: "sha256:6f1c0b2a9e4d7c83a15b0e2f9d4c6a18b7e0f3d2c5a9b4e1d8c0a3f6b2e5d7c9"
+                preview: "@here DB failover complete, primary back in us-east-1, monitoring..."
+              principal: svc:release-bot
+              send_class: broadcast
+              gates:
+                approval_required: true
+                preflight_required: true
+              blockers: []
+              provider_actions:
+                - action: resolve_channel
+                  channel_ref: C04INCIDENTS
+                  via: slack/runxhq-workspace
+                - action: preflight
+                  checks:
+                    - connector_reachable
+                    - channel_resolvable
+                    - principal_can_post
+                - action: post_message
+                  gated_on: human_approval
+                  channel_ref: C04INCIDENTS
+                  content_digest: "sha256:6f1c0b2a9e4d7c83a15b0e2f9d4c6a18b7e0f3d2c5a9b4e1d8c0a3f6b2e5d7c9"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: needs-connector-and-fields
+      inputs: {}
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  plan:
+    default: true
+    type: agent-task
+    agent: operator
+    task: slack-notify
+    outputs:
+      notify_plan: object
+    artifacts:
+      wrap_as: notify_plan_packet
+      packet: runx.notify.v1
+    inputs:
+      channel:
+        type: string
+        required: true
+        description: "Destination Slack channel, by id or name."
+      content:
+        type: json
+        required: true
+        description: "Message as { message } for inline text, or { content_ref, digest } for digest-bound content. Raw secrets and PII must not appear."
+      principal:
+        type: string
+        required: true
+        description: "Principal the notification is posted as."
+      provider_context:
+        type: json
+        required: false
+        description: "Slack connector and workspace readiness, e.g. a connector status snapshot."

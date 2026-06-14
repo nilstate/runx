@@ -1,0 +1,87 @@
+skill: pay-invoice
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: invoice-ready-within-bound
+      inputs:
+        invoice_ref: "INV-2026-0412"
+        amount: 1840.00
+        currency: USD
+        payee:
+          name: Acme Hosting
+          account_ref: "acct_3f9c1a7e"
+        spend_limit: 2500.00
+        rail: ach
+      caller:
+        answers:
+          agent_task.pay-invoice.output:
+            payment_plan:
+              decision: ready
+              invoice_ref: "INV-2026-0412"
+              amount: 1840.00
+              currency: USD
+              payee:
+                name: Acme Hosting
+                account_digest: "sha256:9b1f...e042"
+              rail: ach
+              spend_limit: 2500.00
+              gates:
+                human_approval_required: true
+                preflight_required: true
+              blockers: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: invoice-missing-required-inputs
+      inputs: {}
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  pay-invoice:
+    default: true
+    type: agent-task
+    agent: operator
+    task: pay-invoice
+    outputs:
+      payment_plan: object
+    artifacts:
+      wrap_as: payment_plan_packet
+      packet: runx.payment.v1
+    inputs:
+      invoice_ref:
+        type: string
+        required: true
+        description: "Reference for the invoice being settled."
+      amount:
+        type: number
+        required: true
+        description: "Settlement amount for the invoice."
+      currency:
+        type: string
+        required: true
+        description: "Settlement currency for the invoice."
+      payee:
+        type: json
+        required: true
+        description: "Payee name and account by reference or digest; a raw account number is reduced to a digest and the raw value is dropped."
+      spend_limit:
+        type: number
+        required: true
+        description: "Spend bound the settlement is authorized against; an amount over this bound forces an over_budget decision."
+      rail:
+        type: string
+        required: false
+        description: "Settlement rail to use, for example ach, wire, or a configured rail profile reference."

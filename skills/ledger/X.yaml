@@ -1,0 +1,87 @@
+skill: ledger
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+harness:
+  cases:
+    - name: ledger-answer-with-chain-proof
+      inputs:
+        question: Which spend runs over $500 sealed for the ops principal last week, and is that stretch of the chain intact?
+        filter:
+          principal: principal:ops
+          skill_ref: runx/spend
+          status:
+            - sealed
+          time_range:
+            from: "2026-06-01T00:00:00Z"
+            to: "2026-06-08T00:00:00Z"
+        proof:
+          verify_chain: true
+      caller:
+        answers:
+          agent_task.ledger.output:
+            ledger_answer:
+              question: Which spend runs over $500 sealed for principal:ops between 2026-06-01 and 2026-06-08, and is that chain stretch intact?
+              query:
+                principal: principal:ops
+                skill_ref: runx/spend
+                status:
+                  - sealed
+                time_range:
+                  from: "2026-06-01T00:00:00Z"
+                  to: "2026-06-08T00:00:00Z"
+            matched_receipts:
+              - receipt_id: rcpt_01HZX5K2spend
+                skill_ref: runx/spend
+                status: sealed
+                created_at: "2026-06-03T14:21:08Z"
+              - receipt_id: rcpt_01HZX9Q7spend
+                skill_ref: runx/spend
+                status: sealed
+                created_at: "2026-06-06T09:02:44Z"
+            chain_verification:
+              checked: true
+              intact: true
+              breaks: []
+            summary: Two sealed spend runs over $500 ran for principal:ops in the window; the link walk across both is unbroken.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: ledger-needs-question
+      inputs: {}
+      expect:
+        status: needs_agent
+
+
+runners:
+  agent:
+    type: agent
+
+  ledger:
+    default: true
+    type: agent-task
+    agent: analyst
+    task: ledger
+    outputs:
+      ledger_answer: object
+    artifacts:
+      wrap_as: ledger_answer_packet
+      packet: runx.ledger_answer.v1
+    inputs:
+      question:
+        type: string
+        required: true
+        description: "The audit question to answer against the receipt ledger."
+      filter:
+        type: json
+        required: false
+        description: "Query narrowing: principal, skill_ref, status, and time_range (from/to)."
+      proof:
+        type: json
+        required: false
+        description: "Chain-verification request over the matched receipts, e.g. { verify_chain: true }."

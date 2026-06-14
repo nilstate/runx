@@ -1,0 +1,73 @@
+skill: web-fetch
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: fetch-text-within-allowlist
+      inputs:
+        url: https://www.rfc-editor.org/rfc/rfc9110.html
+        allowlist:
+          - www.rfc-editor.org
+          - rfc-editor.org
+        extract: text
+        max_bytes: 200000
+      caller:
+        answers:
+          agent_task.web-fetch.output:
+            fetch_result:
+              final_url: https://www.rfc-editor.org/rfc/rfc9110.html
+              status: 200
+              content_digest: sha256:9f2c4b8e7a1d3f60c5e2a9b14d7e0f3a6c8b1d24e9f07a35c1b8d62f4a09e7c3
+              extracted: "HTTP Semantics. This document describes the overall architecture of HTTP, establishes common terminology, and defines aspects of the protocol that are shared by all versions."
+              provenance:
+                fetched_at: "2026-06-15T14:02:11Z"
+                redirects: []
+                bytes: 184302
+                truncated: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: fetch-missing-inputs
+      inputs: {}
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  web-fetch:
+    default: true
+    type: agent-task
+    agent: researcher
+    task: web-fetch
+    outputs:
+      fetch_result: object
+    artifacts:
+      wrap_as: fetch_result_packet
+      packet: runx.fetch.v1
+    inputs:
+      url:
+        type: string
+        required: true
+        description: "Single URL to fetch; its host must match the allowlist."
+      allowlist:
+        type: json
+        required: true
+        description: "Permitted hosts or host patterns; the URL and every redirect target must match an entry."
+      extract:
+        type: string
+        required: false
+        description: "Extraction mode: text, metadata, or links. Defaults to text."
+      max_bytes:
+        type: number
+        required: false
+        description: "Cap on bytes read; a clipped read is flagged truncated in provenance."

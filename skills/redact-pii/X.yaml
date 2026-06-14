@@ -1,0 +1,125 @@
+skill: redact-pii
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: redact-pii-ready
+      inputs:
+        content: "Customer Dana Whitfield wrote in from dana.w@example.com about order #44120; callback number on file is 415-555-0188."
+        classes:
+          - name
+          - email
+          - phone
+        mode: redact
+        locale: en-US
+      caller:
+        answers:
+          agent_task.redact-pii.output:
+            redaction_report:
+              decision: ready
+              detected:
+                - class: name
+                  span: [9, 23]
+                  confidence: 0.97
+                - class: email
+                  span: [38, 56]
+                  confidence: 0.99
+                - class: phone
+                  span: [104, 116]
+                  confidence: 0.96
+              redacted_digest: "sha256:6b1d4c9e2af0b73c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+              residual_risk:
+                level: low
+                reason: "order id is a record reference, not a personal identifier; all three personal spans removed at high confidence."
+              policy:
+                classes:
+                  - name
+                  - email
+                  - phone
+                mode: redact
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: redact-pii-blocked
+      inputs:
+        content: "Patient narrative with diagnosis, full home address, and date of birth woven through free text that cannot be scrubbed without losing clinical meaning."
+        mode: block
+        locale: en-US
+      caller:
+        answers:
+          agent_task.redact-pii.output:
+            redaction_report:
+              decision: blocked
+              detected:
+                - class: postal_address
+                  span: [33, 52]
+                  confidence: 0.88
+                - class: date_of_birth
+                  span: [58, 73]
+                  confidence: 0.74
+                - class: health_condition
+                  span: [21, 30]
+                  confidence: 0.69
+              redacted_digest: null
+              residual_risk:
+                level: high
+                reason: "quasi-identifiers are interleaved with clinical free text; removing them strips the meaning, and date-of-birth confidence is below threshold. block mode emits no usable residual."
+              policy:
+                classes:
+                  - postal_address
+                  - date_of_birth
+                  - health_condition
+                mode: block
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: redact-pii-needs-content
+      inputs: {}
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  redact-pii:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: redact-pii
+    outputs:
+      redaction_report: object
+    artifacts:
+      wrap_as: redaction_report_packet
+      packet: runx.redaction.v1
+    inputs:
+      content:
+        type: string
+        required: true
+        description: "Content to inspect and scrub before it crosses a trust boundary."
+      classes:
+        type: json
+        required: false
+        description: "Personal-data classes to target. Defaults to a broad personal-data set when omitted."
+      mode:
+        type: string
+        required: false
+        description: "Treatment to apply: redact, tokenize, or block. Defaults to redact."
+      locale:
+        type: string
+        required: false
+        description: "Locale that tunes identifier and address grammars, for example en-US."
+      operator_context:
+        type: string
+        required: false
+        description: "Boundary context, threshold posture, or extra constraints that focus the pass."

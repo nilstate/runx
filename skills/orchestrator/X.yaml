@@ -1,0 +1,105 @@
+skill: orchestrator
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: routes-refund-then-notify
+      inputs:
+        objective: Refund the customer for charge rcpt_9f21, then notify them the refund is on its way.
+        available_skills:
+          - ref: refund@0.1.0
+            purpose: Govern one refund linked to a sealed original charge receipt.
+          - ref: send-as@0.1.0
+            purpose: Govern a message sent on behalf of a principal.
+        constraints:
+          budget_usd: 200
+          parent_scope:
+            - wallet:refund<=$200
+            - net:allowlist:api.stripe.com
+            - send:channel:email
+          allowed_gates:
+            - approval
+            - preflight
+      caller:
+        answers:
+          agent_task.orchestrator.output:
+            run_plan:
+              objective: Refund charge rcpt_9f21, then send the customer a refund-confirmation email.
+              steps:
+                - id: s1_refund
+                  skill_ref: refund@0.1.0
+                  scope:
+                    - wallet:refund<=$200
+                    - net:allowlist:api.stripe.com
+                  inputs_ref:
+                    original_charge_receipt: receipt:rcpt_9f21
+                  gates: approval
+                  expected_receipt: runx.receipt.v1
+                - id: s2_notify
+                  skill_ref: send-as@0.1.0
+                  scope:
+                    - send:channel:email
+                  inputs_ref:
+                    principal: principal:acct_merchant
+                    audience: handle:customer_of:rcpt_9f21
+                    content_ref: digest:sha256:9c1d4b7a
+                    refund_evidence: step:s1_refund.output.refund_receipt_ref
+                  gates: approval
+                  expected_receipt: runx.receipt.v1
+              topology:
+                - from: s1_refund
+                  to: s2_notify
+              budget:
+                ceiling_usd: 200
+                allocations:
+                  s1_refund: 200
+                  s2_notify: 0
+              blockers: []
+              status: routed
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: stops-when-objective-missing
+      inputs:
+        available_skills:
+          - ref: refund@0.1.0
+            purpose: Govern one refund linked to a sealed original charge receipt.
+        constraints:
+          budget_usd: 50
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  orchestrator:
+    default: true
+    type: agent-task
+    agent: operator
+    task: orchestrator
+    outputs:
+      run_plan: object
+    artifacts:
+      wrap_as: run_plan_packet
+      packet: runx.run_plan.v1
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "The goal to route onto existing catalog skills, in plain language."
+      available_skills:
+        type: json
+        required: false
+        description: "Catalog refs the orchestrator may choose from (skill id plus version or digest, with declared purpose). When omitted, route over the resolvable catalog and name any gap as a blocker."
+      constraints:
+        type: json
+        required: false
+        description: "Bounds the plan must respect: budget, the parent scope grant, allowed gates, and deadlines. No step may exceed the parent grant."

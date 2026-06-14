@@ -1,0 +1,91 @@
+skill: vault-unseal
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+harness:
+  cases:
+    - name: unseal-plan-approved
+      inputs:
+        secret_ref: vault://drive/service-account
+        purpose: Sign one Drive export request for the monthly reports job
+        ttl: 10m
+        scope:
+          resource: drive.files
+          action: export
+          path: /reports/*
+        principal: svc/report-exporter
+      caller:
+        answers:
+          agent_task.vault-unseal.output:
+            unseal_plan:
+              decision: ready
+              secret_ref: vault://drive/service-account
+              handle: handle://unseal/3f9c2a1b
+              ttl: 10m
+              scope:
+                resource: drive.files
+                action: export
+                path: /reports/*
+              principal: svc/report-exporter
+              gates:
+                human_approval_required: true
+              audit_binding:
+                receipt_ref: rx_unseal_4471
+              blockers: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: unseal-missing-inputs
+      inputs:
+        purpose: Need a key for the export job
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  vault-unseal:
+    default: true
+    type: agent-task
+    agent: operator
+    task: vault-unseal
+    outputs:
+      unseal_plan: object
+    artifacts:
+      wrap_as: unseal_plan_packet
+      packet: runx.unseal.v1
+    inputs:
+      secret_ref:
+        type: string
+        required: true
+        description: "Reference to the secret to unseal, never its value."
+      purpose:
+        type: string
+        required: true
+        description: "Bounded reason the secret is needed."
+      ttl:
+        type: string
+        required: true
+        description: "Access window duration; the window starts at approval."
+      scope:
+        type: json
+        required: true
+        description: "Structured statement of what the secret unlocks."
+      principal:
+        type: string
+        required: true
+        description: "Who the access is attributed to."
+      policy_notes:
+        type: string
+        required: false
+        description: "Reserved purposes, break-glass conditions, or constraints that affect the decision."
+      operator_context:
+        type: string
+        required: false
+        description: "Approval posture or extra guardrails."

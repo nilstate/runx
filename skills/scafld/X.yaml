@@ -1,0 +1,82 @@
+skill: scafld
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: scafld-finalize-sealed-on-passing-review
+      inputs:
+        objective: Bind finalize behind a passing review for the export task.
+        spec_ref: .scafld/specs/export-task.md
+        repo: runxhq/runx
+        lifecycle: finalize
+      caller:
+        answers:
+          agent_task.scafld.output:
+            scafld_run:
+              phase: finalize
+              spec_ref: .scafld/specs/export-task.md
+              artifacts:
+                build:
+                  - path: src/export.ts
+                    kind: source-change
+                  - path: test/export.test.ts
+                    kind: test
+                review:
+                  - digest: sha256:9f1c0a3e7b
+                    kind: review-result
+              review:
+                verdict: pass
+                blocking_findings: []
+              finalize:
+                sealed: true
+                receipt_ref: runx.receipt://export-task/seal/01HF3
+              next_lane: done
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: scafld-needs-objective-and-repo
+      inputs: {}
+      expect:
+        status: needs_agent
+
+runners:
+  agent:
+    type: agent
+
+  scafld:
+    default: true
+    type: agent-task
+    agent: builder
+    task: scafld
+    outputs:
+      scafld_run: object
+    artifacts:
+      wrap_as: scafld_run_packet
+      packet: runx.scafld.v1
+    runx:
+      category: code
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "Bounded change the scafld task should accomplish; anchors the spec when no spec_ref is given."
+      spec_ref:
+        type: string
+        required: false
+        description: "Repo-relative path or digest of an existing scafld spec to run the lifecycle against."
+      repo:
+        type: string
+        required: true
+        description: "Repository slug or root the scafld task lives in."
+      lifecycle:
+        type: string
+        required: false
+        description: "Lifecycle stage to run: plan, build, review, or finalize. Defaults to plan."
