@@ -742,52 +742,46 @@ export function pushGitHubMessage({
     outbox_receipt_id: outboxReceiptId,
   });
   const commentBodyWithMetadata = ensureGitHubOutboxMetadataMarker(commentBody, commentMetadata);
+  let publishedComment;
   if (shouldPublish) {
-    runGhCommand([
-      "issue",
-      "comment",
-      issueRef.issue_number,
-      "--repo",
+    publishedComment = createGitHubIssueComment({
       repoSlug,
-      "--body",
-      commentBodyWithMetadata,
-    ], {
       cwd: workspacePath ?? process.cwd(),
       env,
-    }, { tokenFallback: true });
+      issueNumber: issueRef.issue_number,
+      body: commentBodyWithMetadata,
+    });
   } else {
-    runGhCommand([
-      "api",
-      `repos/${repoSlug}/issues/comments/${commentId}`,
-      "--method",
-      "PATCH",
-      "-f",
-      `body=${commentBodyWithMetadata}`,
-    ], {
+    updateGitHubIssueComment({
+      repoSlug,
       cwd: workspacePath ?? process.cwd(),
       env,
-    }, { tokenFallback: true });
+      commentId,
+      body: commentBodyWithMetadata,
+    });
   }
+  const pushedLocator = firstNonEmptyString(publishedComment?.locator, locator);
+  const pushedCommentId = firstNonEmptyString(publishedComment?.comment_id, commentId);
 
   return {
     outbox_entry: prune({
       ...outbox,
       status: firstNonEmptyString(nextStatus, "published", outbox.status),
-      locator,
+      locator: pushedLocator,
       thread_locator: firstNonEmptyString(outbox.thread_locator, state.thread_locator, issueRef.thread_locator),
       metadata: prune({
         ...metadata,
         schema_version: firstNonEmptyString(metadata.schema_version, "runx.outbox-entry.message.v1"),
         channel: firstNonEmptyString(metadata.channel, "github_issue_comment"),
         body_markdown: bodyMarkdown,
-        comment_id: commentId,
+        comment_id: pushedCommentId,
         outbox_receipt_id: outboxReceiptId,
         pushed_at: new Date().toISOString(),
       }),
     }),
     message: prune({
-      locator,
-      comment_id: commentId,
+      locator: pushedLocator,
+      comment_id: pushedCommentId,
     }),
   };
 }
@@ -838,34 +832,22 @@ export function pushGitHubCreateIssue({
   if (existingIssue) {
     issueRef = buildGitHubIssueRef(repoSlug, existingIssue.number);
     existingLabels = normalizeLabelNames(existingIssue.labels) ?? [];
-    runGhCommand([
-      "issue",
-      "edit",
-      issueRef.issue_number,
-      "--repo",
+    updateGitHubIssue({
       repoSlug,
-      "--title",
+      issueNumber: issueRef.issue_number,
       title,
-      "--body",
-      issueBody,
-    ], {
+      body: issueBody,
       cwd,
       env,
-    }, { tokenFallback: true });
+    });
   } else {
-    const issueUrl = runGhCommand([
-      "issue",
-      "create",
-      "--repo",
+    const issueUrl = createGitHubIssue({
       repoSlug,
-      "--title",
       title,
-      "--body",
-      issueBody,
-    ], {
+      body: issueBody,
       cwd,
       env,
-    }, { tokenFallback: true }).trim();
+    });
     issueRef = parseGitHubIssueRef(issueUrl);
     created = true;
   }
@@ -955,18 +937,13 @@ export function pushGitHubLifecycleIntent({
 
   const shouldClose = firstNonEmptyString(metadata.action) === "close";
   if (shouldClose && String(issueState.state ?? "").toUpperCase() !== "CLOSED") {
-    runGhCommand([
-      "issue",
-      "close",
-      issueRef.issue_number,
-      "--repo",
+    closeGitHubIssue({
       repoSlug,
-      "--reason",
-      closeReason === "not_planned" ? "not planned" : "completed",
-    ], {
+      issueNumber: issueRef.issue_number,
+      reason: closeReason,
       cwd,
       env,
-    }, { tokenFallback: true });
+    });
   }
 
   return {
@@ -1000,6 +977,9 @@ function findGitHubIssueByOutboxEntry({ repoSlug, entryId, cwd, env }) {
   if (!normalizedEntryId) {
     throw new Error("outbox entry id is required to find an existing GitHub issue.");
   }
+  if (canUseGitHubRest(env)) {
+    return findGitHubIssueByOutboxEntryRest({ repoSlug, entryId: normalizedEntryId, env });
+  }
   const issues = runGhJson([
     "issue",
     "list",
@@ -1016,6 +996,27 @@ function findGitHubIssueByOutboxEntry({ repoSlug, entryId, cwd, env }) {
     env,
   }, { tokenFallback: true });
   return Array.isArray(issues) ? issues.find(isRecord) : undefined;
+}
+
+function findGitHubIssueByOutboxEntryRest({ repoSlug, entryId, env }) {
+  const query = encodeURIComponent(`"${entryId}" repo:${repoSlug} type:issue in:body`);
+  const response = runGitHubRest({
+    method: "GET",
+    path: `search/issues?q=${query}&per_page=10`,
+    env,
+    acceptedStatuses: [200],
+  });
+  const parsed = parseGitHubRestJson(response);
+  const issues = Array.isArray(parsed.items) ? parsed.items.filter(isRecord) : [];
+  return issues
+    .map((issue) => ({
+      number: firstNonEmptyString(issue.number),
+      state: firstNonEmptyString(issue.state),
+      title: firstNonEmptyString(issue.title),
+      url: firstNonEmptyString(issue.html_url, issue.url),
+      labels: Array.isArray(issue.labels) ? issue.labels : [],
+    }))
+    .find((issue) => issue.number);
 }
 
 function applyGitHubLabelChanges({
@@ -1041,18 +1042,13 @@ function applyGitHubLabelChanges({
     if (labels.has(label)) {
       continue;
     }
-    runGhCommand([
-      "issue",
-      "edit",
-      issueNumber,
-      "--repo",
+    addGitHubIssueLabel({
       repoSlug,
-      "--add-label",
+      issueNumber,
       label,
-    ], {
       cwd,
       env,
-    }, { tokenFallback: true });
+    });
     labels.add(label);
     addedLabels.push(label);
   }
@@ -1061,23 +1057,208 @@ function applyGitHubLabelChanges({
     if (!labels.has(label)) {
       continue;
     }
-    runGhCommand([
-      "issue",
-      "edit",
-      issueNumber,
-      "--repo",
+    removeGitHubIssueLabel({
       repoSlug,
-      "--remove-label",
+      issueNumber,
       label,
-    ], {
       cwd,
       env,
-    }, { tokenFallback: true });
+    });
     labels.delete(label);
     removedLabels.push(label);
   }
 
   return { addedLabels, removedLabels };
+}
+
+function createGitHubIssue({ repoSlug, title, body, cwd, env }) {
+  if (canUseGitHubRest(env)) {
+    const response = runGitHubRest({
+      method: "POST",
+      path: gitHubRepoApiPath(repoSlug, "issues"),
+      env,
+      body: { title, body },
+      acceptedStatuses: [201],
+    });
+    const issue = parseGitHubRestJson(response);
+    const url = firstNonEmptyString(issue.html_url, issue.url);
+    if (!url) {
+      throw new Error("GitHub issue create response did not include html_url.");
+    }
+    return url;
+  }
+  return runGhCommand([
+    "issue",
+    "create",
+    "--repo",
+    repoSlug,
+    "--title",
+    title,
+    "--body",
+    body,
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true }).trim();
+}
+
+function updateGitHubIssue({ repoSlug, issueNumber, title, body, cwd, env }) {
+  if (canUseGitHubRest(env)) {
+    runGitHubRest({
+      method: "PATCH",
+      path: gitHubIssueApiPath(repoSlug, issueNumber),
+      env,
+      body: prune({ title, body }),
+      acceptedStatuses: [200],
+    });
+    return;
+  }
+  runGhCommand([
+    "issue",
+    "edit",
+    issueNumber,
+    "--repo",
+    repoSlug,
+    "--title",
+    title,
+    "--body",
+    body,
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+}
+
+function createGitHubIssueComment({ repoSlug, issueNumber, body, cwd, env }) {
+  if (canUseGitHubRest(env)) {
+    const response = runGitHubRest({
+      method: "POST",
+      path: `${gitHubIssueApiPath(repoSlug, issueNumber)}/comments`,
+      env,
+      body: { body },
+      acceptedStatuses: [201],
+    });
+    const comment = parseGitHubRestJson(response);
+    return prune({
+      locator: firstNonEmptyString(comment.html_url, comment.url),
+      comment_id: firstNonEmptyString(comment.id),
+    });
+  }
+  runGhCommand([
+    "issue",
+    "comment",
+    issueNumber,
+    "--repo",
+    repoSlug,
+    "--body",
+    body,
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+  return undefined;
+}
+
+function updateGitHubIssueComment({ repoSlug, commentId, body, cwd, env }) {
+  if (canUseGitHubRest(env)) {
+    runGitHubRest({
+      method: "PATCH",
+      path: gitHubRepoApiPath(repoSlug, `issues/comments/${encodeURIComponent(commentId)}`),
+      env,
+      body: { body },
+      acceptedStatuses: [200],
+    });
+    return;
+  }
+  runGhCommand([
+    "api",
+    `repos/${repoSlug}/issues/comments/${commentId}`,
+    "--method",
+    "PATCH",
+    "-f",
+    `body=${body}`,
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+}
+
+function addGitHubIssueLabel({ repoSlug, issueNumber, label, cwd, env }) {
+  if (canUseGitHubRest(env)) {
+    runGitHubRest({
+      method: "POST",
+      path: `${gitHubIssueApiPath(repoSlug, issueNumber)}/labels`,
+      env,
+      body: { labels: [label] },
+      acceptedStatuses: [200],
+    });
+    return;
+  }
+  runGhCommand([
+    "issue",
+    "edit",
+    issueNumber,
+    "--repo",
+    repoSlug,
+    "--add-label",
+    label,
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+}
+
+function removeGitHubIssueLabel({ repoSlug, issueNumber, label, cwd, env }) {
+  if (canUseGitHubRest(env)) {
+    runGitHubRest({
+      method: "DELETE",
+      path: `${gitHubIssueApiPath(repoSlug, issueNumber)}/labels/${encodeURIComponent(label)}`,
+      env,
+      acceptedStatuses: [200, 404],
+    });
+    return;
+  }
+  runGhCommand([
+    "issue",
+    "edit",
+    issueNumber,
+    "--repo",
+    repoSlug,
+    "--remove-label",
+    label,
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+}
+
+function closeGitHubIssue({ repoSlug, issueNumber, reason, cwd, env }) {
+  const stateReason = reason === "not_planned" || reason === "not planned" ? "not_planned" : "completed";
+  if (canUseGitHubRest(env)) {
+    runGitHubRest({
+      method: "PATCH",
+      path: gitHubIssueApiPath(repoSlug, issueNumber),
+      env,
+      body: {
+        state: "closed",
+        state_reason: stateReason,
+      },
+      acceptedStatuses: [200],
+    });
+    return;
+  }
+  runGhCommand([
+    "issue",
+    "close",
+    issueNumber,
+    "--repo",
+    repoSlug,
+    "--reason",
+    stateReason === "not_planned" ? "not planned" : "completed",
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
 }
 
 function selectExistingGitHubMessageOutboxEntry(thread, outboxEntry) {
@@ -1161,6 +1342,20 @@ function gitHubMessageOutboxMatchScore(candidate, outboxEntry) {
 }
 
 function getGitHubIssueState({ repoSlug, issueNumber, cwd, env }) {
+  if (canUseGitHubRest(env)) {
+    const response = runGitHubRest({
+      method: "GET",
+      path: gitHubIssueApiPath(repoSlug, issueNumber),
+      env,
+      acceptedStatuses: [200],
+    });
+    const issue = parseGitHubRestJson(response);
+    return {
+      state: firstNonEmptyString(issue.state, "OPEN"),
+      url: firstNonEmptyString(issue.html_url, issue.url),
+      labels: normalizeLabelNames(issue.labels) ?? [],
+    };
+  }
   const issue = runGhJson([
     "issue",
     "view",
@@ -1262,6 +1457,14 @@ function gitHubLabelApiPath(repoSlug, label) {
   return gitHubRepoApiPath(repoSlug, `labels/${encodeURIComponent(label)}`);
 }
 
+function gitHubIssueApiPath(repoSlug, issueNumber) {
+  const normalizedIssue = firstNonEmptyString(issueNumber);
+  if (!normalizedIssue) {
+    throw new Error("GitHub issue number is required.");
+  }
+  return gitHubRepoApiPath(repoSlug, `issues/${encodeURIComponent(normalizedIssue)}`);
+}
+
 function gitHubRepoApiPath(repoSlug, suffix) {
   const parts = firstNonEmptyString(repoSlug)?.split("/");
   if (!parts || parts.length !== 2 || !parts[0] || !parts[1]) {
@@ -1273,7 +1476,7 @@ function gitHubRepoApiPath(repoSlug, suffix) {
 function runGitHubRest({ method, path: apiPath, env, body, acceptedStatuses }) {
   const tokens = githubTokenCandidates(env);
   if (tokens.length === 0) {
-    throw new Error("GitHub token is required for REST label management.");
+    throw new Error("GitHub token is required for REST provider operations.");
   }
   const payload = body === undefined ? undefined : JSON.stringify(body);
   const failures = [];
@@ -1281,6 +1484,10 @@ function runGitHubRest({ method, path: apiPath, env, body, acceptedStatuses }) {
     const result = spawnSync("curl", [
       "--silent",
       "--show-error",
+      "--connect-timeout",
+      "8",
+      "--max-time",
+      "25",
       "--request",
       method,
       "--url",
@@ -1325,6 +1532,14 @@ function parseGitHubRestResponse(stdout) {
     status,
     body: splitAt >= 0 ? text.slice(0, splitAt).trim() : "",
   };
+}
+
+function parseGitHubRestJson(response) {
+  if (!response.body) {
+    return {};
+  }
+  const parsed = JSON.parse(response.body);
+  return isRecord(parsed) ? parsed : {};
 }
 
 export function resolveGhBinary(env) {
@@ -1798,6 +2013,10 @@ function githubTokenCandidates(env) {
     tokens.push({ name, value: token });
   }
   return tokens;
+}
+
+function canUseGitHubRest(env) {
+  return !firstNonEmptyString(env?.RUNX_GH_BIN) && githubTokenCandidates(env).length > 0;
 }
 
 function buildGitHubPullRequestCreateArgs({ repoSlug, branch, base, title, body }) {
