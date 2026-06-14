@@ -437,10 +437,13 @@ describe("GitHub thread helper", () => {
       expect(calls.map((call: { args: string[] }) => call.args.slice(0, 2).join(" "))).toEqual([
         "issue list",
         "issue create",
+        "label list",
         "label create",
         "issue edit",
+        "label list",
         "label create",
         "issue edit",
+        "label list",
         "label create",
         "issue edit",
       ]);
@@ -501,8 +504,10 @@ describe("GitHub thread helper", () => {
       const calls = JSON.parse(await readFile(logPath, "utf8"));
       expect(calls.map((call: { args: string[] }) => call.args.slice(0, 2).join(" "))).toEqual([
         "issue view",
+        "label list",
         "label create",
         "issue edit",
+        "label list",
         "label create",
         "issue edit",
         "issue edit",
@@ -552,6 +557,10 @@ if (args[0] === "issue" && args[1] === "view") {
     url: "https://github.com/auscaster/frantic-board/issues/7",
     labels: [{ name: "frantic:open" }]
   }));
+  process.exit(0);
+}
+if (args[0] === "label" && args[1] === "list") {
+  process.stdout.write(JSON.stringify([]));
   process.exit(0);
 }
 process.stdout.write("");

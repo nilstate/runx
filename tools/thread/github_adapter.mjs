@@ -1180,8 +1180,31 @@ function getGitHubIssueState({ repoSlug, issueNumber, cwd, env }) {
   };
 }
 
+const knownGitHubLabels = new Set();
+
 function ensureGitHubLabel({ repoSlug, label, cwd, env }) {
   if (!label.startsWith("frantic:")) {
+    return;
+  }
+  const cacheKey = `${repoSlug}:${label}`;
+  if (knownGitHubLabels.has(cacheKey)) {
+    return;
+  }
+  const existingLabels = runGhJson([
+    "label",
+    "list",
+    "--repo",
+    repoSlug,
+    "--search",
+    label,
+    "--json",
+    "name",
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+  if (Array.isArray(existingLabels) && existingLabels.some((entry) => firstNonEmptyString(entry?.name) === label)) {
+    knownGitHubLabels.add(cacheKey);
     return;
   }
   runGhCommand([
@@ -1199,6 +1222,7 @@ function ensureGitHubLabel({ repoSlug, label, cwd, env }) {
     cwd,
     env,
   }, { tokenFallback: true });
+  knownGitHubLabels.add(cacheKey);
 }
 
 export function resolveGhBinary(env) {
