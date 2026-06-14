@@ -1190,6 +1190,10 @@ function ensureGitHubLabel({ repoSlug, label, cwd, env }) {
   if (knownGitHubLabels.has(cacheKey)) {
     return;
   }
+  if (!firstNonEmptyString(env?.RUNX_GH_BIN) && ensureGitHubLabelRest({ repoSlug, label, env })) {
+    knownGitHubLabels.add(cacheKey);
+    return;
+  }
   const existingLabels = runGhJson([
     "label",
     "list",
@@ -1223,6 +1227,104 @@ function ensureGitHubLabel({ repoSlug, label, cwd, env }) {
     env,
   }, { tokenFallback: true });
   knownGitHubLabels.add(cacheKey);
+}
+
+function ensureGitHubLabelRest({ repoSlug, label, env }) {
+  const tokens = githubTokenCandidates(env);
+  if (tokens.length === 0) {
+    return false;
+  }
+  const labelPath = gitHubLabelApiPath(repoSlug, label);
+  const existing = runGitHubRest({
+    method: "GET",
+    path: labelPath,
+    env,
+    acceptedStatuses: [200, 404],
+  });
+  if (existing.status === 200) {
+    return true;
+  }
+  const created = runGitHubRest({
+    method: "POST",
+    path: gitHubRepoApiPath(repoSlug, "labels"),
+    env,
+    body: {
+      name: label,
+      color: "0969DA",
+      description: "Frantic lifecycle",
+    },
+    acceptedStatuses: [201, 422],
+  });
+  return created.status === 201 || created.status === 422;
+}
+
+function gitHubLabelApiPath(repoSlug, label) {
+  return gitHubRepoApiPath(repoSlug, `labels/${encodeURIComponent(label)}`);
+}
+
+function gitHubRepoApiPath(repoSlug, suffix) {
+  const parts = firstNonEmptyString(repoSlug)?.split("/");
+  if (!parts || parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new Error("GitHub repo slug must be owner/repo.");
+  }
+  return `repos/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}/${suffix}`;
+}
+
+function runGitHubRest({ method, path: apiPath, env, body, acceptedStatuses }) {
+  const tokens = githubTokenCandidates(env);
+  if (tokens.length === 0) {
+    throw new Error("GitHub token is required for REST label management.");
+  }
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  const failures = [];
+  for (const token of tokens) {
+    const result = spawnSync("curl", [
+      "--silent",
+      "--show-error",
+      "--request",
+      method,
+      "--url",
+      `https://api.github.com/${apiPath}`,
+      "--header",
+      "Accept: application/vnd.github+json",
+      "--header",
+      "X-GitHub-Api-Version: 2022-11-28",
+      "--header",
+      `Authorization: Bearer ${token.value}`,
+      "--write-out",
+      "\n%{http_code}",
+      ...(payload === undefined ? [] : ["--data-binary", "@-"]),
+    ], {
+      input: payload,
+      env: env ?? process.env,
+      encoding: "utf8",
+      stdio: payload === undefined ? ["ignore", "pipe", "pipe"] : ["pipe", "pipe", "pipe"],
+    });
+    if (result.status !== 0) {
+      failures.push(`${token.name}: ${result.stderr || result.stdout || "unknown failure"}`);
+      continue;
+    }
+    const parsed = parseGitHubRestResponse(result.stdout);
+    if (acceptedStatuses.includes(parsed.status)) {
+      return parsed;
+    }
+    failures.push(`${token.name}: HTTP ${parsed.status}${parsed.body ? ` ${parsed.body}` : ""}`);
+  }
+  throw new Error(`GitHub REST ${method} ${apiPath} failed\n${failures.join("\n")}`);
+}
+
+function parseGitHubRestResponse(stdout) {
+  const text = firstNonEmptyText(stdout) ?? "";
+  const splitAt = text.lastIndexOf("\n");
+  const statusText = splitAt >= 0 ? text.slice(splitAt + 1).trim() : text.trim();
+  const status = Number.parseInt(statusText, 10);
+  if (!Number.isFinite(status)) {
+    throw new Error("GitHub REST response did not include a status code.");
+  }
+  return {
+    status,
+    body: splitAt >= 0 ? text.slice(0, splitAt).trim() : "",
+  };
 }
 
 export function resolveGhBinary(env) {
