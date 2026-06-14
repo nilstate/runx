@@ -15,8 +15,12 @@ export function buildFranticThreadProviderPush(intent, options = {}) {
     throw new Error(`unsupported Frantic thread provider '${normalized.provider}'.`);
   }
 
-  const issueRef = parseGitHubIssueRef(normalized.thread_locator);
-  const thread = buildGitHubThreadFrame(normalized, issueRef);
+  const issueRef = normalized.kind === "thread.create"
+    ? undefined
+    : parseGitHubIssueRef(normalized.thread_locator);
+  const thread = issueRef
+    ? buildGitHubThreadFrame(normalized, issueRef)
+    : buildGitHubCreateThreadFrame(normalized);
   const outboxEntry = buildGitHubOutboxEntry(normalized);
   const body = JSON.stringify({
     thread,
@@ -28,12 +32,7 @@ export function buildFranticThreadProviderPush(intent, options = {}) {
     push_id: `frantic-thread-push:${normalized.outbox_id}`,
     adapter_id: firstNonEmptyString(options.adapterId, DEFAULT_ADAPTER_ID),
     provider: normalized.provider,
-    thread_locator: {
-      type: "provider_thread",
-      provider: normalized.provider,
-      uri: issueRef.issue_url,
-      locator: issueRef.thread_locator,
-    },
+    thread_locator: buildProviderThreadLocator(normalized, issueRef),
     outbox_entry_id: outboxEntry.entry_id,
     idempotency: {
       key: normalized.outbox_id,
@@ -62,14 +61,16 @@ export function normalizeFranticThreadIntent(intent) {
   const kind = requiredString(intent.kind, "intent.kind");
   const provider = requiredString(intent.provider, "intent.provider");
   const outboxId = requiredString(intent.outbox_id, "intent.outbox_id");
-  const threadLocator = requiredString(intent.thread_locator, "intent.thread_locator");
+  const threadLocator = kind === "thread.create"
+    ? firstNonEmptyString(intent.thread_locator)
+    : requiredString(intent.thread_locator, "intent.thread_locator");
   const sourceRef = requiredString(intent.source_ref, "intent.source_ref");
   const bountyUrl = requiredString(intent.bounty_url, "intent.bounty_url");
   const postingId = requiredString(intent.posting_id, "intent.posting_id");
   const bountyNumber = requiredPositiveInteger(intent.bounty_number, "intent.bounty_number");
   const occurredAt = requiredString(intent.occurred_at, "intent.occurred_at");
 
-  if (!["thread.comment", "thread.labels", "thread.close"].includes(kind)) {
+  if (!["thread.create", "thread.comment", "thread.labels", "thread.close"].includes(kind)) {
     throw new Error(`unsupported Frantic thread intent kind '${kind}'.`);
   }
 
@@ -90,10 +91,54 @@ export function normalizeFranticThreadIntent(intent) {
     receipt_url: firstNonEmptyString(intent.receipt_url),
     claim_id: firstNonEmptyString(intent.claim_id),
     body: kind === "thread.comment" ? requiredString(intent.body, "intent.body") : undefined,
+    target_repo: kind === "thread.create" ? requiredString(intent.target_repo, "intent.target_repo") : undefined,
+    title: kind === "thread.create" ? requiredString(intent.title, "intent.title") : undefined,
+    create_body: kind === "thread.create" ? requiredString(intent.body, "intent.body") : undefined,
+    labels: kind === "thread.create" ? stringList(intent.labels) : undefined,
+    dedupe_key: kind === "thread.create" ? firstNonEmptyString(intent.dedupe_key, outboxId) : undefined,
     add_labels: kind === "thread.labels" ? stringList(intent.add_labels) : undefined,
     remove_labels: kind === "thread.labels" ? stringList(intent.remove_labels) : undefined,
     reason: kind === "thread.close" ? firstNonEmptyString(intent.reason, "completed") : undefined,
   });
+}
+
+function buildGitHubCreateThreadFrame(intent) {
+  const targetLocator = pendingGitHubThreadLocator(intent);
+  return {
+    kind: "runx.thread.v1",
+    adapter: {
+      type: "github",
+      provider: "github",
+      surface: "issue_thread",
+      adapter_ref: `${intent.target_repo}#issue/new:${intent.posting_id}`,
+    },
+    thread_kind: "signal",
+    thread_locator: targetLocator.locator,
+    canonical_uri: targetLocator.uri,
+    title: intent.title,
+    metadata: {
+      repo: intent.target_repo,
+      source: "frantic",
+      source_ref: intent.source_ref,
+      pending_provider_thread: true,
+    },
+    entries: [],
+    decisions: [],
+    outbox: [],
+    source_refs: [
+      {
+        type: "provider_repository",
+        uri: `https://github.com/${intent.target_repo}`,
+        provider: "github",
+      },
+      {
+        type: "receipt",
+        uri: intent.receipt_ref ?? intent.source_ref,
+        provider: "frantic",
+      },
+    ],
+    generated_at: new Date().toISOString(),
+  };
 }
 
 function buildGitHubThreadFrame(intent, issueRef) {
@@ -135,6 +180,35 @@ function buildGitHubThreadFrame(intent, issueRef) {
 }
 
 function buildGitHubOutboxEntry(intent) {
+  if (intent.kind === "thread.create") {
+    return {
+      entry_id: intent.outbox_id,
+      kind: "provider_thread_create",
+      status: "pending",
+      thread_locator: pendingGitHubThreadLocator(intent).locator,
+      title: intent.title,
+      metadata: prune({
+        schema_version: "runx.outbox-entry.provider-thread-create.v1",
+        channel: "github_issue",
+        source: "frantic",
+        source_ref: intent.source_ref,
+        action: "create",
+        target_repo: intent.target_repo,
+        title: intent.title,
+        body_markdown: sanitizePublicMarkdown(intent.create_body),
+        labels: intent.labels,
+        dedupe_key: intent.dedupe_key,
+        outbox_receipt_id: intent.receipt_ref ?? intent.outbox_id,
+        frantic_intent_kind: intent.kind,
+        receipt_ref: intent.receipt_ref,
+        receipt_url: intent.receipt_url,
+        bounty_url: intent.bounty_url,
+        bounty_number: String(intent.bounty_number),
+        posting_id: intent.posting_id,
+      }),
+    };
+  }
+
   if (intent.kind === "thread.comment") {
     return {
       entry_id: intent.outbox_id,
@@ -177,6 +251,28 @@ function buildGitHubOutboxEntry(intent) {
       posting_id: intent.posting_id,
       claim_id: intent.claim_id,
     }),
+  };
+}
+
+function buildProviderThreadLocator(intent, issueRef) {
+  if (issueRef) {
+    return {
+      type: "provider_thread",
+      provider: intent.provider,
+      uri: issueRef.issue_url,
+      locator: issueRef.thread_locator,
+    };
+  }
+  return pendingGitHubThreadLocator(intent);
+}
+
+function pendingGitHubThreadLocator(intent) {
+  const encodedKey = encodeURIComponent(firstNonEmptyString(intent.dedupe_key, intent.outbox_id));
+  return {
+    type: "provider_thread_target",
+    provider: intent.provider,
+    uri: `https://github.com/${intent.target_repo}/issues/new`,
+    locator: `github://${intent.target_repo}/issues/new/${encodedKey}`,
   };
 }
 

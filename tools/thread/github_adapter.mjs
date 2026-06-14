@@ -792,6 +792,123 @@ export function pushGitHubMessage({
   };
 }
 
+export function pushGitHubCreateIssue({
+  thread,
+  outboxEntry,
+  workspacePath,
+  nextStatus,
+  env,
+}) {
+  const state = asRecord(thread, "thread");
+  const outbox = asRecord(outboxEntry, "outbox_entry");
+  const metadata = optionalRecord(outbox.metadata) ?? {};
+  const repoSlug = firstNonEmptyString(metadata.target_repo, optionalRecord(state.metadata)?.repo);
+  const title = firstNonEmptyString(metadata.title, outbox.title, state.title);
+  const bodyMarkdown = sanitizePublicMarkdown(firstNonEmptyText(metadata.body_markdown, metadata.body));
+  const labels = stringList(metadata.labels);
+  const cwd = workspacePath ?? process.cwd();
+
+  if (!repoSlug) {
+    throw new Error("provider_thread_create requires outbox_entry.metadata.target_repo.");
+  }
+  if (!title) {
+    throw new Error("provider_thread_create requires outbox_entry.metadata.title.");
+  }
+  if (!bodyMarkdown) {
+    throw new Error("provider_thread_create requires outbox_entry.metadata.body_markdown.");
+  }
+
+  const issueBody = ensureGitHubOutboxMetadataMarker(
+    ensureGitHubOutboxEntryMarker(bodyMarkdown, outbox.entry_id),
+    normalizeGitHubPersistedOutboxMetadata({
+      ...metadata,
+      outbox_receipt_id: firstNonEmptyString(metadata.outbox_receipt_id, outbox.entry_id),
+    }),
+  );
+  const existingIssue = findGitHubIssueByOutboxEntry({
+    repoSlug,
+    entryId: outbox.entry_id,
+    cwd,
+    env,
+  });
+
+  let issueRef;
+  let existingLabels = [];
+  let created = false;
+  if (existingIssue) {
+    issueRef = buildGitHubIssueRef(repoSlug, existingIssue.number);
+    existingLabels = normalizeLabelNames(existingIssue.labels) ?? [];
+    runGhCommand([
+      "issue",
+      "edit",
+      issueRef.issue_number,
+      "--repo",
+      repoSlug,
+      "--title",
+      title,
+      "--body",
+      issueBody,
+    ], {
+      cwd,
+      env,
+    }, { tokenFallback: true });
+  } else {
+    const issueUrl = runGhCommand([
+      "issue",
+      "create",
+      "--repo",
+      repoSlug,
+      "--title",
+      title,
+      "--body",
+      issueBody,
+    ], {
+      cwd,
+      env,
+    }, { tokenFallback: true }).trim();
+    issueRef = parseGitHubIssueRef(issueUrl);
+    created = true;
+  }
+
+  const labelResult = applyGitHubLabelChanges({
+    repoSlug,
+    issueNumber: issueRef.issue_number,
+    addLabels: labels,
+    removeLabels: [],
+    existingLabels,
+    cwd,
+    env,
+  });
+
+  return {
+    outbox_entry: prune({
+      ...outbox,
+      status: firstNonEmptyString(nextStatus, "published", outbox.status),
+      locator: firstNonEmptyString(outbox.locator, issueRef.issue_url),
+      thread_locator: issueRef.thread_locator,
+      metadata: prune({
+        ...metadata,
+        schema_version: firstNonEmptyString(
+          metadata.schema_version,
+          "runx.outbox-entry.provider-thread-create.v1",
+        ),
+        channel: firstNonEmptyString(metadata.channel, "github_issue"),
+        provider_thread_id: issueRef.issue_number,
+        provider_thread_url: issueRef.issue_url,
+        created,
+        pushed_at: new Date().toISOString(),
+      }),
+    }),
+    provider_thread: prune({
+      locator: issueRef.issue_url,
+      thread_locator: issueRef.thread_locator,
+      issue_number: issueRef.issue_number,
+      created,
+      added_labels: labelResult.addedLabels,
+    }),
+  };
+}
+
 export function pushGitHubLifecycleIntent({
   thread,
   outboxEntry,
@@ -826,53 +943,15 @@ export function pushGitHubLifecycleIntent({
     throw new Error("provider_thread_lifecycle requires label changes or a close action.");
   }
 
-  for (const label of addLabels) {
-    ensureGitHubLabel({
-      repoSlug,
-      label,
-      cwd,
-      env,
-    });
-  }
-
-  const existingLabels = new Set(stringList(issueState.labels));
-  for (const label of addLabels) {
-    if (existingLabels.has(label)) {
-      continue;
-    }
-    runGhCommand([
-      "issue",
-      "edit",
-      issueRef.issue_number,
-      "--repo",
-      repoSlug,
-      "--add-label",
-      label,
-    ], {
-      cwd,
-      env,
-    }, { tokenFallback: true });
-    existingLabels.add(label);
-  }
-
-  for (const label of removeLabels) {
-    if (!existingLabels.has(label)) {
-      continue;
-    }
-    runGhCommand([
-      "issue",
-      "edit",
-      issueRef.issue_number,
-      "--repo",
-      repoSlug,
-      "--remove-label",
-      label,
-    ], {
-      cwd,
-      env,
-    }, { tokenFallback: true });
-    existingLabels.delete(label);
-  }
+  const labelResult = applyGitHubLabelChanges({
+    repoSlug,
+    issueNumber: issueRef.issue_number,
+    addLabels,
+    removeLabels,
+    existingLabels: stringList(issueState.labels),
+    cwd,
+    env,
+  });
 
   const shouldClose = firstNonEmptyString(metadata.action) === "close";
   if (shouldClose && String(issueState.state ?? "").toUpperCase() !== "CLOSED") {
@@ -908,12 +987,97 @@ export function pushGitHubLifecycleIntent({
     }),
     lifecycle: prune({
       locator: issueRef.issue_url,
-      added_labels: addLabels,
-      removed_labels: removeLabels,
+      added_labels: labelResult.addedLabels,
+      removed_labels: labelResult.removedLabels,
       closed: shouldClose,
       close_reason: shouldClose ? closeReason : undefined,
     }),
   };
+}
+
+function findGitHubIssueByOutboxEntry({ repoSlug, entryId, cwd, env }) {
+  const normalizedEntryId = firstNonEmptyString(entryId);
+  if (!normalizedEntryId) {
+    throw new Error("outbox entry id is required to find an existing GitHub issue.");
+  }
+  const issues = runGhJson([
+    "issue",
+    "list",
+    "--repo",
+    repoSlug,
+    "--state",
+    "all",
+    "--search",
+    `"${normalizedEntryId}" in:body`,
+    "--json",
+    "labels,number,state,title,url",
+  ], {
+    cwd,
+    env,
+  }, { tokenFallback: true });
+  return Array.isArray(issues) ? issues.find(isRecord) : undefined;
+}
+
+function applyGitHubLabelChanges({
+  repoSlug,
+  issueNumber,
+  addLabels,
+  removeLabels,
+  existingLabels,
+  cwd,
+  env,
+}) {
+  const labels = new Set(stringList(existingLabels));
+  const addedLabels = [];
+  const removedLabels = [];
+
+  for (const label of addLabels) {
+    ensureGitHubLabel({
+      repoSlug,
+      label,
+      cwd,
+      env,
+    });
+    if (labels.has(label)) {
+      continue;
+    }
+    runGhCommand([
+      "issue",
+      "edit",
+      issueNumber,
+      "--repo",
+      repoSlug,
+      "--add-label",
+      label,
+    ], {
+      cwd,
+      env,
+    }, { tokenFallback: true });
+    labels.add(label);
+    addedLabels.push(label);
+  }
+
+  for (const label of removeLabels) {
+    if (!labels.has(label)) {
+      continue;
+    }
+    runGhCommand([
+      "issue",
+      "edit",
+      issueNumber,
+      "--repo",
+      repoSlug,
+      "--remove-label",
+      label,
+    ], {
+      cwd,
+      env,
+    }, { tokenFallback: true });
+    labels.delete(label);
+    removedLabels.push(label);
+  }
+
+  return { addedLabels, removedLabels };
 }
 
 function selectExistingGitHubMessageOutboxEntry(thread, outboxEntry) {

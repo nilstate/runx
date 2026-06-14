@@ -8,6 +8,7 @@ import {
   isRecord,
   optionalRecord,
   prune,
+  pushGitHubCreateIssue,
   pushGitHubMessage,
   pushGitHubLifecycleIntent,
   pushGitHubPullRequest,
@@ -24,7 +25,8 @@ try {
   const kind = firstNonEmptyString(outboxEntry.kind);
   const env = process.env;
   const adapterRef = firstNonEmptyString(optionalRecord(thread.adapter)?.adapter_ref);
-  const pushThread = adapterRef
+  const pendingProviderThread = optionalRecord(thread.metadata)?.pending_provider_thread === true;
+  const pushThread = adapterRef && !pendingProviderThread
     ? fetchGitHubIssueThread({ adapterRef, env, cwd: workspacePath ?? process.cwd() })
     : thread;
 
@@ -33,6 +35,14 @@ try {
     result = pushGitHubPullRequest({
       thread: pushThread,
       draftPullRequest,
+      outboxEntry,
+      workspacePath,
+      nextStatus,
+      env,
+    });
+  } else if (kind === "provider_thread_create") {
+    result = pushGitHubCreateIssue({
+      thread: pushThread,
       outboxEntry,
       workspacePath,
       nextStatus,
@@ -58,13 +68,14 @@ try {
     throw new Error(`unsupported GitHub outbox entry kind '${kind ?? "unknown"}'`);
   }
 
-  const refreshedThread = adapterRef
+  const refreshedThread = adapterRef && !pendingProviderThread
     ? fetchGitHubIssueThread({ adapterRef, env, cwd: workspacePath ?? process.cwd() })
     : pushThread;
   const pushedEntry = optionalRecord(result.outbox_entry) ?? outboxEntry;
   const locator = firstNonEmptyString(
     pushedEntry.locator,
     optionalRecord(result.message)?.locator,
+    optionalRecord(result.provider_thread)?.locator,
     optionalRecord(result.pull_request)?.url,
     request.thread_locator?.locator,
   );
@@ -81,6 +92,7 @@ try {
         adapter: optionalRecord(thread.adapter),
         locator,
         message: optionalRecord(result.message),
+        provider_thread: optionalRecord(result.provider_thread),
         lifecycle: optionalRecord(result.lifecycle),
         pull_request: optionalRecord(result.pull_request),
       }),

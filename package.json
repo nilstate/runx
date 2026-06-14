@@ -25,6 +25,7 @@
     "dogfood:native-core": "sh scripts/dogfood-native-core.sh",
     "dogfood:core-skills": "node scripts/dogfood-core-skills.mjs",
     "dogfood:github-issue-to-pr": "node scripts/dogfood-github-issue-to-pr.mjs",
+    "frantic:github-thread-sync": "node scripts/frantic-github-thread-sync.mjs",
     "live:issue-to-pr": "node scripts/dogfood-github-issue-to-pr.mjs --preflight",
     "docs:api": "tsx scripts/gen-api-index.ts",
     "docs:exit-codes": "tsx scripts/check-cli-exit-codes.ts",

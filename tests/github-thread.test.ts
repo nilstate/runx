@@ -11,6 +11,7 @@ import {
   hydrateGitHubIssueThread,
   mapGitHubPullRequestToOutboxEntry,
   parseGitHubIssueRef,
+  pushGitHubCreateIssue,
   pushGitHubLifecycleIntent,
   selectPreferredGitHubPullRequest,
 } from "../tools/thread/github_adapter.mjs";
@@ -343,6 +344,123 @@ describe("GitHub thread helper", () => {
     });
   });
 
+  it("maps Frantic thread creation intents into pending GitHub provider frames", () => {
+    const frame = buildFranticThreadProviderPush({
+      schema_version: 1,
+      kind: "thread.create",
+      outbox_id: "frantic:bounty:9:github:thread.create",
+      provider: "github",
+      source: "frantic",
+      source_ref: "frantic:receipt:funding:9",
+      event_id: 41,
+      occurred_at: "2026-06-13T00:00:00.000Z",
+      room: "town",
+      posting_id: "round-one-009",
+      bounty_number: 9,
+      bounty_url: "https://gofrantic.com/bounties/9",
+      receipt_ref: "frantic:receipt:funding:9",
+      receipt_url: "https://gofrantic.com/receipts/frantic%3Areceipt%3Afunding%3A9",
+      target_repo: "auscaster/frantic-board",
+      title: "Frantic bounty #9: Audit the public receipt trail",
+      body: "Frantic is the source of truth.",
+      labels: ["frantic:bounty", "frantic:funded", "frantic:open"],
+      dedupe_key: "frantic:bounty:9:github:thread.create",
+    });
+
+    expect(frame).toMatchObject({
+      protocol_version: "runx.thread_outbox_provider.v1",
+      provider: "github",
+      outbox_entry_id: "frantic:bounty:9:github:thread.create",
+      thread_locator: {
+        type: "provider_thread_target",
+        locator: expect.stringContaining("github://auscaster/frantic-board/issues/new/"),
+      },
+    });
+    const body = JSON.parse((frame.payload as { body: string }).body);
+    expect(body.thread).toMatchObject({
+      metadata: {
+        repo: "auscaster/frantic-board",
+        pending_provider_thread: true,
+      },
+    });
+    expect(body.outbox_entry).toMatchObject({
+      kind: "provider_thread_create",
+      metadata: {
+        target_repo: "auscaster/frantic-board",
+        posting_id: "round-one-009",
+        bounty_number: "9",
+      },
+    });
+  });
+
+  it("creates Frantic GitHub issues idempotently through the GitHub adapter", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-create-"));
+    const ghBin = path.join(tempDir, "fake-gh.mjs");
+    const logPath = path.join(tempDir, "gh.log");
+
+    try {
+      await writeFile(ghBin, fakeGhScript(logPath));
+      await chmod(ghBin, 0o700);
+      const result = pushGitHubCreateIssue({
+        thread: {
+          adapter: {
+            adapter_ref: "auscaster/frantic-board#issue/new:round-one-009",
+          },
+          thread_locator: "github://auscaster/frantic-board/issues/new/frantic-bounty-9",
+          canonical_uri: "https://github.com/auscaster/frantic-board/issues/new",
+          metadata: {
+            repo: "auscaster/frantic-board",
+            pending_provider_thread: true,
+          },
+        },
+        outboxEntry: {
+          entry_id: "frantic:bounty:9:github:thread.create",
+          kind: "provider_thread_create",
+          status: "pending",
+          metadata: {
+            target_repo: "auscaster/frantic-board",
+            title: "Frantic bounty #9: Audit the public receipt trail",
+            body_markdown: "Frantic is the source of truth.",
+            labels: ["frantic:bounty", "frantic:funded", "frantic:open"],
+            posting_id: "round-one-009",
+            bounty_number: "9",
+          },
+        },
+        env: {
+          ...process.env,
+          RUNX_GH_BIN: ghBin,
+          GH_FAKE_LOG: logPath,
+        },
+      });
+
+      const calls = JSON.parse(await readFile(logPath, "utf8"));
+      expect(calls.map((call: { args: string[] }) => call.args.slice(0, 2).join(" "))).toEqual([
+        "issue list",
+        "issue create",
+        "label create",
+        "issue edit",
+        "label create",
+        "issue edit",
+        "label create",
+        "issue edit",
+      ]);
+      expect(result).toMatchObject({
+        outbox_entry: {
+          status: "published",
+          locator: "https://github.com/auscaster/frantic-board/issues/91",
+          thread_locator: "github://auscaster/frantic-board/issues/91",
+        },
+        provider_thread: {
+          issue_number: "91",
+          created: true,
+          added_labels: ["frantic:bounty", "frantic:funded", "frantic:open"],
+        },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("pushes Frantic lifecycle labels and close operations through the GitHub adapter", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
@@ -384,8 +502,8 @@ describe("GitHub thread helper", () => {
       expect(calls.map((call: { args: string[] }) => call.args.slice(0, 2).join(" "))).toEqual([
         "issue view",
         "label create",
-        "label create",
         "issue edit",
+        "label create",
         "issue edit",
         "issue edit",
         "issue close",
@@ -420,6 +538,14 @@ try {
 calls.push({ args });
 writeFileSync(logPath, JSON.stringify(calls));
 
+if (args[0] === "issue" && args[1] === "list") {
+  process.stdout.write(JSON.stringify([]));
+  process.exit(0);
+}
+if (args[0] === "issue" && args[1] === "create") {
+  process.stdout.write("https://github.com/auscaster/frantic-board/issues/91\\n");
+  process.exit(0);
+}
 if (args[0] === "issue" && args[1] === "view") {
   process.stdout.write(JSON.stringify({
     state: "OPEN",

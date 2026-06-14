@@ -61,6 +61,13 @@ export function fetchGitHubIssueThread(options: {
   readonly env?: NodeJS.ProcessEnv;
   readonly cwd?: string;
 }): GitHubHydratedThread;
+export function pushGitHubCreateIssue(options: {
+  readonly thread: Record<string, unknown>;
+  readonly outboxEntry: Record<string, unknown>;
+  readonly workspacePath?: string;
+  readonly nextStatus?: string;
+  readonly env?: NodeJS.ProcessEnv;
+}): Record<string, unknown>;
 export function pushGitHubLifecycleIntent(options: {
   readonly thread: Record<string, unknown>;
   readonly outboxEntry: Record<string, unknown>;

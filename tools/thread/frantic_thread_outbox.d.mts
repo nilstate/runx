@@ -1,8 +1,8 @@
 export interface FranticThreadIntent {
-  readonly kind: "thread.comment" | "thread.labels" | "thread.close";
+  readonly kind: "thread.create" | "thread.comment" | "thread.labels" | "thread.close";
   readonly outbox_id: string;
   readonly provider: string;
-  readonly thread_locator: string;
+  readonly thread_locator?: string;
   readonly source?: string;
   readonly source_ref: string;
   readonly event_id: number;
@@ -14,7 +14,11 @@ export interface FranticThreadIntent {
   readonly receipt_ref?: string;
   readonly receipt_url?: string;
   readonly claim_id?: string;
+  readonly target_repo?: string;
+  readonly title?: string;
   readonly body?: string;
+  readonly labels?: readonly string[];
+  readonly dedupe_key?: string;
   readonly add_labels?: readonly string[];
   readonly remove_labels?: readonly string[];
   readonly reason?: "completed" | "not_planned";

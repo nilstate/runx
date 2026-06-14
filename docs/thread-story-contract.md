@@ -46,13 +46,22 @@ delivery; they must not be implemented as hidden provider side effects in a
 TypeScript helper package.
 
 Frantic uses that provider lane for source-thread continuity. Frantic emits a
-typed, read-only lifecycle outbox (`thread.comment`, `thread.labels`,
+typed outbox (`thread.create`, `thread.comment`, `thread.labels`,
 `thread.close`) derived from its ledger; runx maps each intent to a provider
-push frame with `tools/thread/frantic_thread_outbox.mjs`, hydrates the GitHub
-issue before writing, then applies comments, labels, or completion closure
+push frame with `tools/thread/frantic_thread_outbox.mjs`. `thread.create`
+creates or updates the missing GitHub issue by deterministic outbox marker and
+returns the observed provider locator. Bound lifecycle intents hydrate the
+GitHub issue before writing, then apply comments, labels, or completion closure
 through the GitHub provider adapter. Frantic remains the completion authority:
 a GitHub issue may close only after a Frantic `thread.close` intent, and GitHub
 state never completes a Frantic bounty.
+
+The operational driver for that integration is
+`scripts/frantic-github-thread-sync.mjs` (`pnpm frantic:github-thread-sync` in
+`oss/`). It polls Frantic's internal outbox with a cursor, invokes the GitHub
+thread-outbox provider process for each intent, and posts provider-thread
+observations back to Frantic so future lifecycle intents bind to the created
+issue.
 
 The canonical v1 milestone ids are:
 
