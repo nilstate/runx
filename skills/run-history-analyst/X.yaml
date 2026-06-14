@@ -4,7 +4,7 @@ version: "0.1.0"
 catalog:
   kind: skill
   audience: operator
-  visibility: internal
+  visibility: public
   role: context
 harness:
   cases:
