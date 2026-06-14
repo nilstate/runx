@@ -2,7 +2,7 @@
 name: nws-weather-forecast
 description: Fetch National Weather Service forecast evidence through the governed HTTP front, producing a sealed provider packet for downstream weather planning.
 runx:
-  category: weather
+  category: data
 ---
 
 # NWS Weather Forecast

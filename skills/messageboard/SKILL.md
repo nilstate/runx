@@ -2,7 +2,7 @@
 name: messageboard
 description: Govern a bounty-style messageboard from post through moderation, claim, delivery, acceptance, payout authorization, and trial take evidence.
 runx:
-  category: effect
+  category: ops
 ---
 
 # Messageboard

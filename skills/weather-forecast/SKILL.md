@@ -2,7 +2,7 @@
 name: weather-forecast
 description: Normalize provider weather evidence into an action-safe forecast packet with provenance, uncertainty, and stop conditions for downstream agents.
 runx:
-  category: context
+  category: data
 ---
 
 # Weather Forecast

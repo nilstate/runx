@@ -2,7 +2,7 @@
 name: send-as
 description: Govern a message or campaign send on behalf of a principal, binding channel, audience, content digest, provider evidence, and human approval before delivery.
 runx:
-  category: communications
+  category: ops
 ---
 
 # Send As

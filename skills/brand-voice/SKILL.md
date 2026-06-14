@@ -2,7 +2,7 @@
 name: brand-voice
 description: Build a scoped brand voice packet from source material so downstream agents can write, review, and adapt content without inventing brand claims.
 runx:
-  category: context
+  category: content
 ---
 
 # Brand Voice

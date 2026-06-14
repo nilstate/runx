@@ -2,7 +2,7 @@
 name: knowledge-router
 description: Route a question or source event to the right knowledge sources, owners, and follow-up skill.
 runx:
-  category: operations
+  category: ops
 ---
 
 # Knowledge Router
@@ -31,4 +31,3 @@ is already available, and which next skill should run.
 - `question` (required): user question, event, or thread summary to route.
 - `available_sources` (required): source catalog, docs, systems, or owner map.
 - `constraints` (optional): allowed systems, sensitivity, or preferred owner.
-

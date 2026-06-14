@@ -2,7 +2,7 @@
 name: zapier-handoff
 description: Validate a runx execution context and hand off a governed payload to a Zapier Catch Hook with scoped auth, idempotency, and receipt expectations.
 runx:
-  category: orchestrators
+  category: ops
 ---
 
 # Zapier Handoff

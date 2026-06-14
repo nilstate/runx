@@ -2,7 +2,7 @@
 name: n8n-handoff
 description: Validate a runx execution context and hand off a governed payload to an n8n workflow webhook with scoped auth, idempotency, and receipt expectations.
 runx:
-  category: orchestrators
+  category: ops
 ---
 
 # n8n Handoff

@@ -2,7 +2,7 @@
 name: taste-profile
 description: Build a scoped taste profile packet from examples, preferences, and explicit dislikes so downstream agents can make style decisions without inventing the user's taste.
 runx:
-  category: context
+  category: content
 ---
 
 # Taste Profile

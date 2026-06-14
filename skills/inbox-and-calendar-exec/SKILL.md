@@ -2,7 +2,7 @@
 name: inbox-and-calendar-exec
 description: Convert mailbox and calendar context into a reviewable executive action packet.
 runx:
-  category: operations
+  category: ops
 ---
 
 # Inbox And Calendar Exec
@@ -32,4 +32,3 @@ rescheduling, and destructive provider actions remain separate governed actions.
 - `mail_context` (required): redacted message/thread summaries.
 - `calendar_context` (optional): redacted upcoming events and availability.
 - `constraints` (optional): owner, tone, send policy, or scheduling limits.
-
