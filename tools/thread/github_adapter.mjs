@@ -1947,6 +1947,7 @@ function runCommand(command, args, options) {
     env: commandEnv,
     input: options?.input,
     encoding: "utf8",
+    stdio: options?.input === undefined ? ["ignore", "pipe", "pipe"] : ["pipe", "pipe", "pipe"],
   });
   if (result.status !== 0) {
     throw new Error(
