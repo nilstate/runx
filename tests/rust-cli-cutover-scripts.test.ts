@@ -100,9 +100,15 @@ describe("Rust CLI cutover scripts", () => {
       await expect(readFile(path.join(packageDir, "package.json"), "utf8")).resolves.toContain(
         `"name": "${nativePackageName(platformKey(process.platform, process.arch))}"`,
       );
-      await expect(readFile(path.join(selectorDir, "package.json"), "utf8")).resolves.toContain(
-        '"@runxhq/cli-linux-x64": "0.5.22"',
-      );
+      const nativeManifest = JSON.parse(await readFile(path.join(packageDir, "package.json"), "utf8")) as {
+        readonly bin?: unknown;
+      };
+      expect(nativeManifest).not.toHaveProperty("bin");
+      const selectorManifest = JSON.parse(await readFile(path.join(selectorDir, "package.json"), "utf8")) as {
+        readonly version: string;
+        readonly optionalDependencies?: Record<string, string>;
+      };
+      expect(selectorManifest.optionalDependencies?.["@runxhq/cli-linux-x64"]).toBe(selectorManifest.version);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }

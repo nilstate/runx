@@ -153,14 +153,12 @@ writeFileSync(
     publishConfig: manifest.publishConfig,
     os: [platform.os],
     cpu: [platform.cpu],
-    bin: {
-      runx: `./bin/${stagedBinaryName}`,
-    },
     runx: {
       nativePackage: {
         schema: "runx.rust_cli_native_package.v1",
         selectorPackage: manifest.name,
         platform: platform.key,
+        binary: `bin/${stagedBinaryName}`,
       },
     },
     files: [

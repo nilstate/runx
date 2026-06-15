@@ -128,6 +128,7 @@ function inspectPackageDir(packageDir: string, output: Finding[]): void {
         readonly schema?: string;
         readonly selectorPackage?: string;
         readonly platform?: string;
+        readonly binary?: string;
       };
     };
     readonly dependencies?: Record<string, string>;
@@ -143,38 +144,45 @@ function inspectPackageDir(packageDir: string, output: Finding[]): void {
     return;
   }
   const bin = typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.runx;
-  if (!bin) {
-    output.push(finding("package_bin_missing", manifestPath, "package.json must declare bin.runx"));
-    return;
-  }
 
   inspectForbiddenManifestEntrypoints(manifest, manifestPath, output);
   if (isSelectorPackage(manifest)) {
+    if (!bin) {
+      output.push(finding("selector_bin_missing", manifestPath, "selector package.json must declare bin.runx"));
+      return;
+    }
     inspectSelectorPackage(packageDir, manifestPath, manifest, bin, output);
     return;
   }
 
-  if (/\.(?:js|mjs|cjs)$/u.test(bin)) {
-    output.push(finding("package_bin_js", manifestPath, `bin.runx points to JavaScript: ${bin}`));
+  const spec = nativeSpecForPackage(manifest.name);
+  if (!spec) {
+    inspectNativePackageManifest(manifestPath, manifest, output);
+    return;
   }
-  inspectNativePackageManifest(manifestPath, manifest, bin, output);
-  const binaryPath = path.resolve(packageDir, bin);
+  if (bin) {
+    if (/\.(?:js|mjs|cjs)$/u.test(bin)) {
+      output.push(finding("package_bin_js", manifestPath, `bin.runx points to JavaScript: ${bin}`));
+    }
+  }
+  inspectNativePackageManifest(manifestPath, manifest, output);
+  const binaryPath = path.resolve(packageDir, spec.binary);
   if (!isInside(binaryPath, packageDir)) {
-    output.push(finding("package_bin_escapes", manifestPath, `bin.runx points outside the package: ${bin}`));
+    output.push(finding("package_binary_escapes", manifestPath, `native binary points outside the package: ${spec.binary}`));
     return;
   }
   if (!existsSync(binaryPath)) {
-    output.push(finding("package_bin_target_missing", binaryPath, "bin.runx target is missing"));
+    output.push(finding("native_binary_missing", binaryPath, "native binary target is missing"));
   } else {
     const entry = statSync(binaryPath);
     if (!entry.isFile() || (process.platform !== "win32" && (entry.mode & 0o111) === 0)) {
-      output.push(finding("package_bin_not_executable", binaryPath, "bin.runx target is not executable"));
+      output.push(finding("native_binary_not_executable", binaryPath, "native binary target is not executable"));
     }
   }
 
   inspectDependencySections(manifest, manifestPath, output);
-  inspectChecksum(packageDir, bin, output);
-  inspectSignature(packageDir, bin, output);
+  inspectChecksum(packageDir, spec.binary, output);
+  inspectSignature(packageDir, spec.binary, output);
   const packedFiles = inspectPackList(packageDir, output);
 
   if (options.noJsDelegation) {
@@ -182,7 +190,7 @@ function inspectPackageDir(packageDir: string, output: Finding[]): void {
     // legitimately contains source-path strings (e.g. diagnostic examples), so
     // exclude it from the delegation-token text scan. Integrity is covered by
     // the checksum and signature manifests instead.
-    inspectTextFiles(packageDir, packedFiles, output, stripDotSlash(bin));
+    inspectTextFiles(packageDir, packedFiles, output, spec.binary);
   }
 }
 
@@ -322,6 +330,7 @@ function inspectNativePackageManifest(
   manifestPath: string,
   manifest: {
     readonly name?: string;
+    readonly bin?: string | { readonly runx?: string };
     readonly os?: readonly string[];
     readonly cpu?: readonly string[];
     readonly runx?: {
@@ -329,19 +338,19 @@ function inspectNativePackageManifest(
         readonly schema?: string;
         readonly selectorPackage?: string;
         readonly platform?: string;
+        readonly binary?: string;
       };
     };
   },
-  bin: string,
   output: Finding[],
 ): void {
-  const spec = supportedPlatforms.find((entry) => nativePackageName(entry.key) === manifest.name);
+  const spec = nativeSpecForPackage(manifest.name);
   if (!spec) {
     output.push(finding("native_package_name_invalid", manifestPath, `native package name must be one of ${supportedPlatforms.map((entry) => nativePackageName(entry.key)).join(", ")}`));
     return;
   }
-  if (bin !== `./${spec.binary}`) {
-    output.push(finding("native_package_bin_invalid", manifestPath, `native package bin.runx must be ./${spec.binary}`));
+  if (Object.hasOwn(manifest, "bin")) {
+    output.push(finding("native_package_bin_unexpected", manifestPath, "native package must not declare package.json bin; use runx.nativePackage.binary"));
   }
   if (!sameStringSet(manifest.os ?? [], [spec.os])) {
     output.push(finding("native_package_os_invalid", manifestPath, `native package os must be ${spec.os}`));
@@ -358,6 +367,9 @@ function inspectNativePackageManifest(
   }
   if (native?.platform !== spec.key) {
     output.push(finding("native_package_platform_invalid", manifestPath, `native package platform must be ${spec.key}`));
+  }
+  if (native?.binary !== spec.binary) {
+    output.push(finding("native_package_binary_invalid", manifestPath, `runx.nativePackage.binary must be ${spec.binary}`));
   }
 }
 
@@ -578,6 +590,10 @@ function isSelectorPackage(manifest: { readonly name?: string; readonly runx?: {
 
 function nativePackageName(platform: string): string {
   return `${selectorPackageName}-${platform}`;
+}
+
+function nativeSpecForPackage(packageName: string | undefined): PlatformSpec | undefined {
+  return supportedPlatforms.find((entry) => nativePackageName(entry.key) === packageName);
 }
 
 function sameStringSet(actual: readonly string[], expected: readonly string[]): boolean {
