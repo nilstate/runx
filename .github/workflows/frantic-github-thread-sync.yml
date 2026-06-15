@@ -24,7 +24,7 @@ on:
         default: "25"
         type: string
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "1-59/5 * * * *"
 
 permissions:
   contents: read
@@ -42,6 +42,7 @@ jobs:
       FRANTIC_THREAD_LIMIT: ${{ inputs.limit || '25' }}
       FRANTIC_THREAD_DRY_RUN: ${{ inputs.dry_run || 'false' }}
       FRANTIC_THREAD_CURSOR_BASELINE: ${{ inputs.after_event_id || vars.FRANTIC_THREAD_CURSOR_BASELINE || '0' }}
+      FRANTIC_THREAD_CURSOR_OVERRIDE: ${{ inputs.after_event_id || '' }}
       FRANTIC_INTERNAL_SYNC_SECRET: ${{ secrets.FRANTIC_INTERNAL_SYNC_SECRET }}
       GH_TOKEN: ${{ secrets.FRANTIC_BOARD_GITHUB_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.FRANTIC_BOARD_GITHUB_TOKEN }}
@@ -80,7 +81,9 @@ jobs:
           [[ -n "${GH_TOKEN}" ]] || { echo "FRANTIC_BOARD_GITHUB_TOKEN is required"; exit 1; }
 
           cursor_file="${RUNNER_TEMP}/frantic-thread-cursor"
-          if [[ ! -s "${cursor_file}" ]]; then
+          if [[ -n "${FRANTIC_THREAD_CURSOR_OVERRIDE}" ]]; then
+            printf '%s\n' "${FRANTIC_THREAD_CURSOR_OVERRIDE}" > "${cursor_file}"
+          elif [[ ! -s "${cursor_file}" ]]; then
             printf '%s\n' "${FRANTIC_THREAD_CURSOR_BASELINE}" > "${cursor_file}"
           fi
 
