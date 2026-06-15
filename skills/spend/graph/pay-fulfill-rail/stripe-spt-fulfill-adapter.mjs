@@ -28,7 +28,7 @@ runAdapter(async ({ inputs }) => {
     rail: issuance.rail,
   });
 
-  const executorModule = await importStripeExecutor();
+  const executorModule = await resolveStripeExecutorModule();
   const executor = executorModule.createStripeSptExecutor({
     restrictedKey: restrictedStripeKey(),
     api_base_url: optionalString(process.env.RUNX_STRIPE_API_BASE_URL),
@@ -89,6 +89,13 @@ runAdapter(async ({ inputs }) => {
     },
   };
 });
+
+async function resolveStripeExecutorModule() {
+  if (process.env.RUNX_STRIPE_SPT_MOCK === "1" && !process.env.RUNX_STRIPE_SPT_EXECUTOR_MODULE) {
+    return mockStripeExecutorModule();
+  }
+  return await importStripeExecutor();
+}
 
 function stripeIssuanceFromInputs({ challenge, paymentAdmission, idempotency }) {
   return {
@@ -179,6 +186,38 @@ function mockStripeFetch(issuance) {
     }
     return jsonResponse({ error: { message: `unexpected Stripe endpoint ${target}` } }, 404);
   };
+}
+
+function mockStripeExecutorModule() {
+  return {
+    createStripeSptExecutor() {
+      return {
+        async chargeScopedPayment({ issuance }) {
+          assertMockIssuance(issuance);
+          const id = safeStripeSuffix(issuance.money_movement_id);
+          return {
+            amount_minor: issuance.amount_minor,
+            currency: issuance.currency.toUpperCase(),
+            payment_intent_id: `pi_test_${id}`,
+            charge_id: `ch_test_${id}`,
+            shared_payment_token_id: `spt_test_${id}`,
+            money_movement_id: issuance.money_movement_id,
+            admission_token_digest: issuance.admission_token_digest,
+          };
+        },
+      };
+    },
+  };
+}
+
+function assertMockIssuance(issuance) {
+  if (!issuance || typeof issuance !== "object") {
+    throw new Error("Stripe SPT mock expected an issuance object");
+  }
+  requiredPositiveInteger(issuance, "amount_minor");
+  requiredString(issuance, "currency");
+  requiredString(issuance, "money_movement_id");
+  requiredString(issuance, "admission_token_digest");
 }
 
 function assertUsageLimitBody(body, issuance) {

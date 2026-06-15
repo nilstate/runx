@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -14,13 +14,15 @@ const runxBinary = resolveRunxBinary();
 describe("runx mcp serve", () => {
   it("lists served skills and executes through the local kernel", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-mcp-serve-"));
+    const skillDir = path.join(tempDir, "echo");
+    await writeEchoSkill(skillDir);
     const stdin = new PassThrough();
     const stdout = new PassThrough();
     const stderr = new PassThrough();
 
     try {
       const responsesPromise = collectRpcResponses(stdout, 3);
-      const serverPromise = startServer(tempDir, stdin, stdout, stderr);
+      const serverPromise = startServer(tempDir, skillDir, stdin, stdout, stderr);
 
       writeRpcMessage(stdin, {
         jsonrpc: "2.0",
@@ -118,13 +120,14 @@ describe("runx mcp serve", () => {
 
 function startServer(
   tempDir: string,
+  skillDir: string,
   stdin: PassThrough,
   stdout: PassThrough,
   stderr: PassThrough,
 ): Promise<void> {
   return handleMcpServeCommand(
     {
-      mcpRefs: [path.resolve("fixtures/skills/echo")],
+      mcpRefs: [skillDir],
     },
     {
       stdin: stdin as unknown as NodeJS.ReadStream,
@@ -144,6 +147,53 @@ function startServer(
       resolveRegistryStoreForGraphs: async () => undefined,
       resolveDefaultReceiptDir: () => path.join(tempDir, "receipts"),
     },
+  );
+}
+
+async function writeEchoSkill(skillDir: string): Promise<void> {
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(
+    path.join(skillDir, "run.sh"),
+    `#!/bin/sh
+printf '%s' "\${RUNX_INPUT_MESSAGE:-}"
+`,
+  );
+  await writeFile(
+    path.join(skillDir, "X.yaml"),
+    `skill: echo
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: sh
+    args:
+      - ./run.sh
+    inputs:
+      message:
+        type: string
+        required: true
+        description: Message to echo.
+`,
+  );
+  await writeFile(
+    path.join(skillDir, "SKILL.md"),
+    `---
+name: echo
+description: Echo a message through the cli-tool adapter.
+source:
+  type: cli-tool
+  command: sh
+  args:
+    - ./run.sh
+inputs:
+  message:
+    type: string
+    required: true
+    description: Message to echo.
+---
+
+Echo the provided message.
+`,
   );
 }
 

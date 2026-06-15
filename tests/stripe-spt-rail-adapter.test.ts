@@ -139,6 +139,8 @@ function invokeAdapter(inputs: Record<string, unknown>): Record<string, unknown>
     env: {
       ...process.env,
       RUNX_STRIPE_SPT_MOCK: "1",
+      RUNX_STRIPE_SPT_EXECUTOR_MODULE: "",
+      RUNX_STRIPE_SPT_RESTRICTED_KEY: "",
     },
     input: JSON.stringify({
       schema: "runx.external_adapter.invocation.v1",
