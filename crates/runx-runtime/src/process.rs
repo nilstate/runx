@@ -38,8 +38,6 @@ const CHILD_MAX_FILE_BYTES: u64 = 512 * 1024 * 1024;
 #[cfg(unix)]
 const CHILD_MAX_CPU_SECONDS: u64 = 60;
 #[cfg(any(target_os = "linux", target_os = "android"))]
-const CHILD_MAX_PROCESSES: u64 = 128;
-#[cfg(any(target_os = "linux", target_os = "android"))]
 const CHILD_MAX_ADDRESS_SPACE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
 #[derive(Clone, Debug)]
@@ -286,8 +284,8 @@ fn child_resource_limits() -> Vec<ChildResourceLimit> {
         RESOURCE_LIMIT_FILE_BLOCK_BYTES,
     );
     push_count_limit(&mut limits, "-t", Resource::Cpu, CHILD_MAX_CPU_SECONDS);
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    push_count_limit(&mut limits, "-u", Resource::Nproc, CHILD_MAX_PROCESSES);
+    // POSIX sh does not guarantee a process-count ulimit flag, and Ubuntu dash
+    // rejects `ulimit -u`. Keep this wrapper to flags supported by /bin/sh.
     #[cfg(any(target_os = "linux", target_os = "android"))]
     push_scaled_limit(
         &mut limits,

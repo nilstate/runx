@@ -449,6 +449,7 @@ mod tests {
             retry: None,
             policy: Some(policy),
             fanout_group: None,
+            when: None,
             mutating,
             idempotency_key: Some(format!("{id}-key")),
         }

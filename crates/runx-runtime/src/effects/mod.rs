@@ -146,6 +146,7 @@ mod tests {
             retry: None,
             policy: None,
             fanout_group: None,
+            when: None,
             mutating: false,
             idempotency_key: None,
         }
