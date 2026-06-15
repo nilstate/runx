@@ -54,14 +54,14 @@ export interface ExecutionGraph {
   readonly name: string;
   readonly steps: readonly GraphStep[];
   readonly policy?: {
-    readonly transitions?: readonly GraphTransition[];
+    readonly guards?: readonly GraphGuard[];
     readonly [key: string]: unknown;
   };
   readonly [key: string]: unknown;
 }
 
-export interface GraphTransition {
-  readonly to: string;
+export interface GraphGuard {
+  readonly step: string;
   readonly field: string;
   readonly equals?: unknown;
   readonly notEquals?: unknown;

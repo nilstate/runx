@@ -30,6 +30,11 @@
       "path": "examples/governed-spend",
       "proof": "Payment authority, over-cap refusal, deterministic x402/Stripe receipt demos, and offline verification.",
       "command": "pnpm demos:check"
+    },
+    {
+      "path": "examples/loop-orchestration",
+      "proof": "Outer loop over governed runx turns, with receipts, refusal, and agent context preview.",
+      "command": "sh examples/loop-orchestration/run.sh"
     }
   ],
   "runnable_preview": [

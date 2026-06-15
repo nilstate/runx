@@ -1,3 +1,5 @@
+// rust-style-allow: large-file - native CLI command dispatch remains one audited
+// boundary so release shims and exit-code handling are visible in one place.
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Write};

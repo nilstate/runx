@@ -189,9 +189,9 @@ describe("scafld issue-to-PR skill contract", () => {
         next_status: "published",
       },
     });
-    expect(graph.policy?.transitions).toEqual([
+    expect(graph.policy?.guards).toEqual([
       {
-        to: "write-fix",
+        step: "write-fix",
         field: "author-fix.fix_bundle.data.files",
         notEquals: [],
       },

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/notify/v1.json",
+  "x-runx-packet-id": "runx.notify.v1",
+  "type": "object",
+  "properties": {
+    "decision": { "type": "string" },
+    "channel": { "type": "string" },
+    "content": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "principal": { "type": "string" },
+    "send_class": { "type": "string" },
+    "gates": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "blockers": { "type": "array" },
+    "provider_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

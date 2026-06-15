@@ -211,9 +211,9 @@ describe("payment skill execution profiles", () => {
             .toBe("runx.payment.charge_seal.v1");
         }
 
-        for (const transition of graph.policy?.transitions ?? []) {
-          const result = validateGraphFieldReference(transition.field, outputDeclarations, packetIds);
-          expect(result, `${skillName}.${runnerName} transition ${transition.field}`).toBeUndefined();
+        for (const guard of graph.policy?.guards ?? []) {
+          const result = validateGraphFieldReference(guard.field, outputDeclarations, packetIds);
+          expect(result, `${skillName}.${runnerName} guard ${guard.field}`).toBeUndefined();
         }
       }
     }

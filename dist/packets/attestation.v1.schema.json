@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/attestation/v1.json",
+  "x-runx-packet-id": "runx.attestation.v1",
+  "type": "object",
+  "properties": {
+    "action": { "type": "string" },
+    "claim": { "type": "string" },
+    "principal": { "type": "string" },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "signed": { "type": "boolean" },
+    "attestation_id": { "type": "string" },
+    "bound_receipt_ref": { "type": "string" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

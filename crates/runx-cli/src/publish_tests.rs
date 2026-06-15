@@ -54,6 +54,8 @@ fn parses_publish_plan() -> Result<(), String> {
 }
 
 #[test]
+// rust-style-allow: long-function - this regression asserts endpoint and token
+// precedence in one table-shaped flow so the cases stay visually adjacent.
 fn resolves_publish_endpoint_and_token_precedence() {
     let mut env = BTreeMap::new();
     env.insert(

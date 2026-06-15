@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/fetch/v1.json",
+  "x-runx-packet-id": "runx.fetch.v1",
+  "type": "object",
+  "properties": {
+    "final_url": { "type": "string" },
+    "status": { "type": "number" },
+    "content_digest": { "type": "string" },
+    "extracted": { "type": "string" },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
