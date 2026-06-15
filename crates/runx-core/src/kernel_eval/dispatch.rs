@@ -104,7 +104,6 @@ fn evaluate_state_machine_input(input: KernelInput) -> Result<JsonValue, KernelE
             steps,
             fanout_policies,
             resolved_fanout_gate_keys,
-            skipped_steps,
         } => {
             let resolved = resolved_fanout_gate_keys.map(vec_to_set);
             to_value(plan_sequential_graph_transition(
@@ -112,7 +111,6 @@ fn evaluate_state_machine_input(input: KernelInput) -> Result<JsonValue, KernelE
                 &steps,
                 &fanout_policies,
                 resolved.as_ref(),
-                &vec_to_set(skipped_steps),
             ))
         }
         KernelInput::TransitionSequentialGraph { state, event } => {

@@ -36,6 +36,9 @@ pub fn apply_sequential_graph_event(
         SequentialGraphEvent::StepFailed { step_id, at, error } => {
             update_step_in_place(state, step_id, |step| fail_step_in_place(step, at, error));
         }
+        SequentialGraphEvent::StepSkipped { step_id, at } => {
+            update_step_in_place(state, step_id, |step| skip_step_in_place(step, at));
+        }
         SequentialGraphEvent::Complete if is_graph_complete(state) => {
             state.status = GraphStatus::Succeeded;
         }
@@ -95,6 +98,16 @@ fn fail_step_in_place(step: &mut SequentialGraphStepState, at: &str, error: &str
     step.completed_at = Some(at.to_owned());
     step.outputs = None;
     step.error = Some(error.to_owned());
+}
+
+fn skip_step_in_place(step: &mut SequentialGraphStepState, at: &str) {
+    if step.status != GraphStepStatus::Pending {
+        return;
+    }
+    step.status = GraphStepStatus::Skipped;
+    step.completed_at = Some(at.to_owned());
+    step.outputs = None;
+    step.error = None;
 }
 
 fn update_step_in_place(

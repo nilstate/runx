@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use runx_contracts::{JsonObject, JsonValue};
 use runx_core::state_machine::{
@@ -67,7 +67,6 @@ impl ExecutionGraphIndex {
         &self,
         state: &SequentialGraphState,
         fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
-        skipped_steps: &BTreeSet<String>,
     ) -> SequentialGraphPlan {
         plan_sequential_graph_transition_indexed(
             state,
@@ -75,7 +74,6 @@ impl ExecutionGraphIndex {
             &self.planner_index,
             fanout_policies,
             None,
-            skipped_steps,
         )
     }
 

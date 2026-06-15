@@ -16,7 +16,6 @@ pub fn plan_sequential_graph_transition(
     steps: &[SequentialGraphStepDefinition],
     fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
     resolved_fanout_gate_keys: Option<&BTreeSet<String>>,
-    skipped_steps: &BTreeSet<String>,
 ) -> SequentialGraphPlan {
     let step_index = SequentialGraphStepIndex::new(steps);
     plan_sequential_graph_transition_indexed(
@@ -25,7 +24,6 @@ pub fn plan_sequential_graph_transition(
         &step_index,
         fanout_policies,
         resolved_fanout_gate_keys,
-        skipped_steps,
     )
 }
 
@@ -36,7 +34,6 @@ pub fn plan_sequential_graph_transition_indexed(
     step_index: &SequentialGraphStepIndex,
     fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
     resolved_fanout_gate_keys: Option<&BTreeSet<String>>,
-    skipped_steps: &BTreeSet<String>,
 ) -> SequentialGraphPlan {
     if let Some(running_step) = state
         .steps
@@ -53,12 +50,6 @@ pub fn plan_sequential_graph_transition_indexed(
     let mut index = 0;
     while index < steps.len() {
         let step_definition = &steps[index];
-        // a `when` condition the runtime resolved to false selects this step out;
-        // it is treated as done so the forward walker simply moves past it.
-        if skipped_steps.contains(&step_definition.id) {
-            index += 1;
-            continue;
-        }
         if let Some(group_id) = fanout_group_id(step_definition) {
             let group_steps = contiguous_fanout_group(steps, index, group_id);
             match plan_fanout_group(
@@ -100,7 +91,12 @@ fn plan_step(
         });
     };
 
-    if step_state.status == GraphStepStatus::Succeeded {
+    // A succeeded step is done; a `when`-skipped step is selected out. Both are
+    // terminal, so the forward walker moves past them to the next live step.
+    if matches!(
+        step_state.status,
+        GraphStepStatus::Succeeded | GraphStepStatus::Skipped
+    ) {
         return None;
     }
     if retry_budget_exhausted(step_state, step_definition) {

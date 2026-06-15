@@ -33,6 +33,9 @@ pub enum GraphStepStatus {
     Running,
     Succeeded,
     Failed,
+    /// A `when` condition the runtime resolved to false selected this step out;
+    /// it never runs and counts as terminal for graph-completion purposes.
+    Skipped,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -310,6 +313,10 @@ pub enum SequentialGraphEvent {
         step_id: String,
         at: String,
         error: String,
+    },
+    StepSkipped {
+        step_id: String,
+        at: String,
     },
     Complete,
     PauseGraph {

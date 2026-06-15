@@ -7,7 +7,7 @@ use std::thread;
 
 use runx_contracts::{ExecutionEvent, FanoutReceiptSyncPoint, JsonValue};
 use runx_core::state_machine::{
-    FanoutBranchResult, FanoutGroupPolicy, FanoutSyncDecision, FanoutSyncOutcome,
+    FanoutBranchResult, FanoutGroupPolicy, FanoutSyncDecision, FanoutSyncOutcome, GraphStepStatus,
     SequentialGraphEvent, SequentialGraphPlan, SequentialGraphState, apply_sequential_graph_event,
     create_sequential_graph_state, evaluate_fanout_sync,
 };
@@ -135,16 +135,34 @@ impl GraphExecution {
             if reached_step_limit(initial_step_count, self.runs.len(), max_new_steps) {
                 return Ok(());
             }
-            let plan = self.graph_index.plan_transition(
-                &self.state,
-                &fanout_policies,
-                &when_skipped_steps(graph, &self.runs),
-            );
+            self.mark_when_skipped_steps(graph, &runtime.options.created_at);
+            let plan = self.graph_index.plan_transition(&self.state, &fanout_policies);
             if self.apply_plan(runtime, graph_dir, graph, host, &fanout_policies, plan)? {
                 break;
             }
         }
         Ok(())
+    }
+
+    /// Mark every step whose `when` condition the runtime has resolved to false
+    /// as `Skipped`, so the planner walks past it and graph completion treats it
+    /// as terminal. Evaluated against the runs so far, so a branch is only
+    /// selected out once the step it reads from has produced its output.
+    fn mark_when_skipped_steps(&mut self, graph: &ExecutionGraph, at: &str) {
+        for step_id in when_skipped_steps(graph, &self.runs) {
+            let is_pending = self.state.steps.iter().any(|step| {
+                step.step_id == step_id && step.status == GraphStepStatus::Pending
+            });
+            if is_pending {
+                apply_sequential_graph_event(
+                    &mut self.state,
+                    &SequentialGraphEvent::StepSkipped {
+                        step_id,
+                        at: at.to_owned(),
+                    },
+                );
+            }
+        }
     }
 
     pub(super) fn apply_plan<A>(
@@ -856,11 +874,7 @@ impl GraphExecution {
         fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
         group_id: &str,
     ) -> Result<(), RuntimeError> {
-        let follow_up = self.graph_index.plan_transition(
-            &self.state,
-            fanout_policies,
-            &when_skipped_steps(graph, &self.runs),
-        );
+        let follow_up = self.graph_index.plan_transition(&self.state, fanout_policies);
         if matches!(
             follow_up,
             SequentialGraphPlan::RunFanout {
