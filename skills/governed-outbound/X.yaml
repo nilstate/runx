@@ -1,0 +1,178 @@
+skill: governed-outbound
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+harness:
+  cases:
+    - name: governed-outbound-approved-post
+      inputs:
+        url: https://status.example.com/incidents/2026-06-14
+        allowlist:
+          - status.example.com
+        channel: "#incidents"
+        principal: account:ops-bot
+        claim: A public incident update was gathered, scrubbed of personal data, and posted to the incident channel.
+        operator_context: Post-incident summary; never let customer identifiers reach the channel.
+      caller:
+        answers:
+          agent_task.web-fetch.output:
+            fetch_result:
+              final_url: https://status.example.com/incidents/2026-06-14
+              status: 200
+              content_digest: "sha256:1f0a9c7e4b2d6a8f3c5e1b0d9a7c6e4f2b8d0a1c3e5f7a9b1d3f5a7c9e1b3d5f"
+              extracted: "Incident resolved at 14:20 UTC. Primary restored in us-east-1. Reporter on file and one affected account were contacted directly."
+              provenance:
+                fetched_at: "2026-06-14T14:35:00Z"
+                redirects: 0
+                bytes: 1841
+          agent_task.redact-pii.output:
+            redaction_report:
+              decision: ready
+              detected:
+                - class: person
+                  span: [78, 86]
+                  confidence: 0.91
+                - class: account_id
+                  span: [104, 118]
+                  confidence: 0.95
+              redacted_digest: "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+              residual_risk:
+                level: low
+                reason: Two personal spans removed at high confidence; the rest is incident status with no identifiers.
+              policy:
+                classes:
+                  - person
+                  - account_id
+                mode: redact
+          agent_task.slack-notify.output:
+            notify_plan:
+              decision: ready
+              channel: "#incidents"
+              content:
+                ref: redaction:redacted
+                digest: "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+                preview: scrubbed incident summary, personal spans removed
+              principal: account:ops-bot
+              send_class: broadcast
+              gates:
+                approval_required: true
+                preflight_required: true
+              blockers: []
+              provider_actions:
+                - slack.post_message
+          agent_task.sign-receipt.output:
+            attestation:
+              action: governed outbound post
+              claim: A public incident update was gathered, scrubbed of personal data, and posted to the incident channel.
+              principal: account:ops-bot
+              evidence_refs:
+                - "sha256:1f0a9c7e4b2d6a8f3c5e1b0d9a7c6e4f2b8d0a1c3e5f7a9b1d3f5a7c9e1b3d5f"
+                - "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+              signed: true
+              attestation_id: att_governed_outbound_demo
+        approvals:
+          governed-outbound.send.approval: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: governed-outbound-needs-target
+      inputs: {}
+      expect:
+        status: needs_agent
+
+runners:
+  governed-outbound:
+    default: true
+    type: graph
+    inputs:
+      url:
+        type: string
+        required: true
+        description: "Source URL to gather before posting."
+      allowlist:
+        type: json
+        required: true
+        description: "Hosts the fetch is permitted to reach."
+      channel:
+        type: string
+        required: true
+        description: "Destination channel for the notification."
+      principal:
+        type: string
+        required: true
+        description: "Principal the notification is sent as."
+      claim:
+        type: string
+        required: false
+        description: "What the sealed attestation should assert about the run."
+      operator_context:
+        type: string
+        required: false
+        description: "Boundary, audience, or compliance context for the run."
+    graph:
+      name: governed-outbound
+      steps:
+        - id: fetch-source
+          label: gather the source
+          skill: ../web-fetch
+          runner: web-fetch
+          scopes:
+            - runx:net:allowlist
+          inputs:
+            extract: text
+        - id: scrub-content
+          label: scrub personal data before the boundary
+          skill: ../redact-pii
+          runner: redact-pii
+          scopes:
+            - runx:content:read
+          inputs:
+            mode: redact
+          context:
+            content: fetch-source.fetch_result_packet.data.extracted
+        - id: approve-send
+          label: human approval before delivery
+          run:
+            type: approval
+          inputs:
+            gate_id: governed-outbound.send.approval
+            reason: Approve delivery of the scrubbed content; review the redaction verdict and residual risk before it leaves the boundary.
+          context:
+            decision: scrub-content.redaction_report_packet.data.decision
+            residual_risk: scrub-content.redaction_report_packet.data.residual_risk
+            redacted_digest: scrub-content.redaction_report_packet.data.redacted_digest
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+        - id: post-notice
+          label: post the governed notification
+          skill: ../slack-notify
+          runner: plan
+          scopes:
+            - runx:net:allowlist
+          context:
+            content: scrub-content.redaction_report_packet.data
+        - id: seal-run
+          label: seal the run to the ledger
+          skill: ../sign-receipt
+          runner: sign-receipt
+          scopes:
+            - runx:ledger:append
+          inputs:
+            action: governed outbound post
+          context:
+            evidence: post-notice.notify_plan_packet.data
+      policy:
+        guards:
+          - step: post-notice
+            field: approve-send.approval_decision.data.approved
+            equals: true
+          - step: post-notice
+            field: scrub-content.redaction_report_packet.data.decision
+            equals: ready

@@ -305,23 +305,23 @@ runners:
             revision_bundle: revise.revision_bundle.data
             sourcey_verification_proof: verify.sourcey_verification_proof.data.data
       policy:
-        transitions:
-          - to: author
+        guards:
+          - step: author
             field: approve.approval_decision.data.approved
             equals: true
-          - to: build
+          - step: build
             field: approve.approval_decision.data.approved
             equals: true
-          - to: critique
+          - step: critique
             field: build.sourcey_build_report.data.data.generated
             equals: true
-          - to: revise
+          - step: revise
             field: build.sourcey_build_report.data.data.generated
             equals: true
-          - to: rebuild
+          - step: rebuild
             field: build.sourcey_build_report.data.data.generated
             equals: true
-          - to: verify
+          - step: verify
             field: rebuild.sourcey_build_report.data.data.generated
             equals: true
     artifacts:

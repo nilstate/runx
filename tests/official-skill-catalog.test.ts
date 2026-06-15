@@ -16,7 +16,6 @@ import { validateSkillMarkdown } from "./parser-eval.js";
 import { resolveRunxBinary } from "./runx-binary.js";
 
 const publicCatalogPackages = [
-  "agent-handoff",
   "brand-voice",
   "charge",
   "content-pipeline",
@@ -28,6 +27,7 @@ const publicCatalogPackages = [
   "ecosystem-vuln-scan",
   "evolve",
   "github-sync",
+  "governed-outbound",
   "improve-skill",
   "inbox-and-calendar-exec",
   "issue-intake",
@@ -35,6 +35,7 @@ const publicCatalogPackages = [
   "issue-triage",
   "knowledge-router",
   "lead-enrichment",
+  "lead-router",
   "least-privilege-auditor",
   "ledger",
   "messageboard",
@@ -42,7 +43,6 @@ const publicCatalogPackages = [
   "n8n-handoff",
   "nitrosend",
   "nws-weather-forecast",
-  "orchestrator",
   "overlay-generator",
   "policy-author",
   "pr-review-note",

@@ -144,8 +144,8 @@ steps:
   - id: closure
     skill: ./closure
 policy:
-  transitions:
-    - to: closure
+  guards:
+    - step: closure
       field: act.approved
       equals: true
 "#,

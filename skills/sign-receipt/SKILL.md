@@ -1,6 +1,6 @@
 ---
 name: sign-receipt
-description: Seal an off-runtime action into a signed attestation receipt so external work joins the ledger with provenance.
+description: Prepare an evidence-bound attestation of an off-runtime action so the runtime can seal it into a signed receipt and external work joins the ledger with provenance.
 runx:
   category: security
 ---
@@ -13,8 +13,9 @@ can carry.
 ## What this skill does
 
 `sign-receipt` binds an actor, a claim, and the evidence that backs the claim
-into one attestation, signs it under the ledger key, and appends a reference so
-downstream runs can depend on the external act with provenance instead of trust.
+into one attestation, tests the claim against that evidence, and hands the
+runtime an attestation ready to seal under the ledger key so downstream runs can
+depend on the external act with provenance instead of trust.
 
 The runtime already signs every hop of work it executes itself; each act, each
 decision, each refusal lands in a sealed receipt without anyone asking. Work that
@@ -29,8 +30,8 @@ record at all.
 
 **Distinctness:** it attests work that happened OUTSIDE a run; the runtime
 already signs every hop it executes itself. `receipt-auditor` reads a sealed
-in-runtime receipt to check authority; `sign-receipt` mints a new receipt for
-work the runtime never saw.
+in-runtime receipt to check authority; `sign-receipt` prepares a new attestation,
+which the runtime seals into a receipt, for work the runtime never saw.
 
 ## When to use this skill
 
@@ -43,7 +44,7 @@ work the runtime never saw.
 ## When not to use this skill
 
 - To audit a run the runtime executed. That is `receipt-auditor`, which reads an
-  existing sealed receipt rather than minting a new one.
+  existing sealed receipt rather than preparing a new attestation.
 - To execute the action itself. Use the action skill (`spend`, `send-as`,
   `refund`); they seal their own receipts.
 - To attest a claim with no evidence, or with evidence you cannot reference
@@ -67,12 +68,14 @@ work the runtime never saw.
    `needs_more_evidence` rather than signing. If the claim is broader than the
    evidence, narrow it to what the references prove, or stop. The scope of the
    signature is the scope of the claim, nothing wider.
-4. **Sign and bind.** On a supported claim, sign the attestation under the ledger
-   key and append it. Attestations are ledger entries; append, do not overwrite.
+4. **Mark ready to seal.** On a supported claim, set `signed: true` to mark the
+   attestation ready and hand it to the runtime, which signs it under the ledger
+   key and appends it. Attestations are ledger entries; append, do not overwrite.
    A correction is a new attestation that references the prior one, never an edit.
-   The result carries an `attestation_id` and a `bound_receipt_ref` tying it into
-   the ledger. The required scopes are `ledger:append` to add the entry and
-   `sign:key` to sign it; no network, repo, or wallet authority is requested.
+   The sealed result carries an `attestation_id` and a `bound_receipt_ref` tying it
+   into the ledger. The required scopes are `ledger:append` to add the entry and
+   `sign:key` for the runtime to sign it; no network, repo, or wallet authority is
+   requested.
 
 ## Edge cases and stop conditions
 
@@ -99,9 +102,9 @@ attestation:
     - ref: string
       digest: string
       proves: string
-  signed: boolean         # true only when evidence supports the claim and the signature was applied
-  attestation_id: string  # stable id of this ledger entry
-  bound_receipt_ref: string  # reference tying the attestation into the ledger receipt
+  signed: boolean         # true only when evidence supports the claim; marks the attestation ready for the runtime to seal
+  attestation_id: string  # stable id of this ledger entry, set when the runtime seals it
+  bound_receipt_ref: string  # reference tying the attestation into the ledger receipt, set on seal
   scope:                  # optional, bound on what the attestation may be relied on for
     rely_for: string
 ```
@@ -121,8 +124,8 @@ digest) proving sign-off preceded the refund.
 
 Output: each load-bearing part of the claim maps to a binding reference, so the
 gate passes. The attestation names the principal, carries both `evidence_refs`
-with their digests, sets `signed: true`, and returns an `attestation_id` plus a
-`bound_receipt_ref`. The scope binds reliance to downstream dispute and
+with their digests, and sets `signed: true`; the runtime then seals it, returning
+an `attestation_id` plus a `bound_receipt_ref`. The scope binds reliance to downstream dispute and
 reconciliation runs referencing ORD-7741. Had only the approval handle been
 supplied with no settlement reference, the decision would be
 `needs_more_evidence`, not a signature.

@@ -244,7 +244,7 @@ runners:
             named_emits:
               publish_report: publish_report
       policy:
-        transitions:
-          - to: publish-release
+        guards:
+          - step: publish-release
             field: approve-publish.approval_decision.data.approved
             equals: true

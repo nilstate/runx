@@ -86,8 +86,8 @@ pub struct FanoutGroupPolicy {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct GraphTransitionGate {
-    pub to: String,
+pub struct GraphGuard {
+    pub step: String,
     pub field: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub equals: Option<JsonValue>,
@@ -98,7 +98,21 @@ pub struct GraphTransitionGate {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GraphPolicy {
-    pub transitions: Vec<GraphTransitionGate>,
+    pub guards: Vec<GraphGuard>,
+}
+
+/// Per-step conditional selection. When present and the condition does not hold
+/// (or the field is unresolved), the step is skipped and the graph continues;
+/// sibling steps with complementary conditions form a branch. Unlike a guard,
+/// a `when` never blocks the run, it selects.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GraphWhen {
+    pub field: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub equals: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub not_equals: Option<JsonValue>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -133,6 +147,8 @@ pub struct GraphStep {
     pub policy: Option<JsonObject>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fanout_group: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub when: Option<GraphWhen>,
     pub mutating: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency_key: Option<String>,

@@ -774,7 +774,7 @@ fn native_graph_transition_gate_allows_declared_agent_output()
 }
 
 #[test]
-fn native_graph_transition_gate_rejects_skill_claim_as_fact()
+fn native_graph_guard_rejects_skill_claim_as_fact()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let skill_dir = write_graph_gated_agent_task_skill(temp.path())?;
@@ -824,7 +824,7 @@ fn native_graph_transition_gate_rejects_skill_claim_as_fact()
     assert!(
         string_field(closure, "summary")
             .unwrap_or_default()
-            .contains("transition gate 'decide.skill_claim.approved' is unresolved"),
+            .contains("guard 'decide.skill_claim.approved' is unresolved"),
         "unexpected closure: {closure:?}"
     );
 
@@ -2161,8 +2161,8 @@ runners:
             outputs:
               result: object
       policy:
-        transitions:
-          - to: gated
+        guards:
+          - step: gated
             field: {gate_field}
             equals: true
             "#
@@ -2784,4 +2784,102 @@ fn string_field<'a>(object: &'a runx_contracts::JsonObject, field: &str) -> Opti
         Some(JsonValue::String(value)) => Some(value),
         _ => None,
     }
+}
+
+fn write_graph_when_branch_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = root.join("graph-when-branch");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: graph-when-branch\n---\n# Graph When Branch\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"
+skill: graph-when-branch
+runners:
+  graph:
+    default: true
+    type: graph
+    graph:
+      name: graph-when-branch
+      steps:
+        - id: decide
+          run:
+            type: agent-task
+            agent: builder
+            task: when-decide
+            outputs:
+              verdict: string
+        - id: branch_go
+          when:
+            field: decide.verdict
+            equals: go
+          run:
+            type: agent-task
+            agent: builder
+            task: when-go
+            outputs:
+              result: object
+        - id: branch_stop
+          when:
+            field: decide.verdict
+            equals: stop
+          run:
+            type: agent-task
+            agent: builder
+            task: when-stop
+            outputs:
+              result: object
+"#,
+    )?;
+    Ok(skill_dir.to_path_buf())
+}
+
+#[test]
+fn native_graph_when_skips_unselected_branch() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let skill_dir = write_graph_when_branch_skill(temp.path())?;
+    let receipt_dir = temp.path().join("receipts");
+
+    let initial = run_skill(SkillRunRequest {
+        skill_path: skill_dir.clone(),
+        receipt_dir: Some(receipt_dir.clone()),
+        run_id: None,
+        answers_path: None,
+        inputs: BTreeMap::new(),
+        env: BTreeMap::new(),
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+    let output = object(&initial.output, "when graph result")?;
+    let run_id = string_field(output, "run_id").ok_or("missing run_id")?;
+
+    // answers for decide and the selected branch only; branch_stop gets no
+    // answer, so the run can seal only if `when` skipped it.
+    let answers_path = temp.path().join("when-answers.json");
+    fs::write(
+        &answers_path,
+        serde_json::json!({
+            "answers": {
+                "agent_task.when-decide.output": { "verdict": "go" },
+                "agent_task.when-go.output": { "result": { "ok": true } }
+            }
+        })
+        .to_string(),
+    )?;
+
+    let sealed = run_skill(SkillRunRequest {
+        skill_path: skill_dir,
+        receipt_dir: Some(receipt_dir),
+        run_id: Some(run_id.to_owned()),
+        answers_path: Some(answers_path),
+        inputs: BTreeMap::new(),
+        env: BTreeMap::new(),
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+    let output = object(&sealed.output, "sealed when graph result")?;
+    assert_eq!(string_field(output, "status"), Some("sealed"));
+    Ok(())
 }

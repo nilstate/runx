@@ -45,15 +45,21 @@ export interface FanoutGroupPolicy {
   readonly conflictGates: readonly FanoutConflictGate[];
 }
 
-export interface GraphTransitionGate {
-  readonly to: string;
+export interface GraphGuard {
+  readonly step: string;
   readonly field: string;
   readonly equals?: unknown;
   readonly notEquals?: unknown;
 }
 
 export interface GraphPolicy {
-  readonly transitions: readonly GraphTransitionGate[];
+  readonly guards: readonly GraphGuard[];
+}
+
+export interface GraphWhen {
+  readonly field: string;
+  readonly equals?: unknown;
+  readonly notEquals?: unknown;
 }
 
 export interface GraphStep {
@@ -74,6 +80,7 @@ export interface GraphStep {
   readonly retry?: GraphRetryPolicy;
   readonly policy?: Readonly<Record<string, unknown>>;
   readonly fanoutGroup?: string;
+  readonly when?: GraphWhen;
   readonly mutating: boolean;
   readonly idempotencyKey?: string;
 }
@@ -187,6 +194,7 @@ function validateStep(
   const retry = validateRetry(rawStep.retry, `${field}.retry`);
   const policy = optionalNullableRecord(rawStep.policy, `${field}.policy`);
   const fanoutGroup = optionalNullableString(rawStep.fanout_group, `${field}.fanout_group`);
+  const when = validateWhen(rawStep.when, `${field}.when`);
   const mutating = validateMutation(rawStep.mutation, `${field}.mutation`);
   const instructions = optionalNullableString(rawStep.instructions, `${field}.instructions`);
   const artifacts = optionalNullableRecord(rawStep.artifacts, `${field}.artifacts`);
@@ -213,8 +221,29 @@ function validateStep(
     retry,
     policy,
     fanoutGroup,
+    when,
     mutating,
     idempotencyKey,
+  };
+}
+
+function validateWhen(value: unknown, field: string): GraphWhen | undefined {
+  const record = optionalNullableRecord(value, field);
+  if (!record) {
+    return undefined;
+  }
+  const equals = record.equals;
+  const notEquals = record.not_equals;
+  if (equals !== undefined && notEquals !== undefined) {
+    throw new GraphValidationError(`${field} must not declare both equals and not_equals.`);
+  }
+  if (equals === undefined && notEquals === undefined) {
+    throw new GraphValidationError(`${field} must declare equals or not_equals.`);
+  }
+  return {
+    field: requiredNullableString(record.field, `${field}.field`),
+    equals,
+    notEquals,
   };
 }
 
@@ -294,12 +323,12 @@ function validateGraphPolicy(value: unknown, field: string): GraphPolicy | undef
   if (!policy) {
     return undefined;
   }
-  const transitionsValue = policy.transitions;
-  if (transitionsValue === undefined || transitionsValue === null) {
+  const guardsValue = policy.guards;
+  if (guardsValue === undefined || guardsValue === null) {
     return undefined;
   }
-  const transitions = requiredArray(transitionsValue, `${field}.transitions`).map((rawGate, index) => {
-    const gateField = `${field}.transitions.${index}`;
+  const guards = requiredArray(guardsValue, `${field}.guards`).map((rawGate, index) => {
+    const gateField = `${field}.guards.${index}`;
     const gate = requiredNullableRecord(rawGate, gateField);
     const equals = gate.equals;
     const notEquals = gate.not_equals;
@@ -310,13 +339,13 @@ function validateGraphPolicy(value: unknown, field: string): GraphPolicy | undef
       throw new GraphValidationError(`${gateField} must declare equals or not_equals.`);
     }
     return {
-      to: requiredNullableString(gate.to, `${gateField}.to`),
+      step: requiredNullableString(gate.step, `${gateField}.step`),
       field: requiredNullableString(gate.field, `${gateField}.field`),
       equals,
       notEquals,
     };
   });
-  return { transitions };
+  return { guards };
 }
 
 function validateThresholdGates(value: unknown, field: string): readonly FanoutThresholdGate[] {

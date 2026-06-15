@@ -215,6 +215,7 @@ fn evaluate_input(input: StateMachineInput) -> Result<Value, String> {
                 &steps,
                 &fanout_policies,
                 resolved.as_ref(),
+                &std::collections::BTreeSet::new(),
             ))
         }
         StateMachineInput::TransitionSequentialGraph { state, event } => {

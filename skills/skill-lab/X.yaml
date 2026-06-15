@@ -290,7 +290,7 @@ runners:
             draft: draft-proposal.content_draft_packet.data.draft
             distribution_notes: draft-proposal.content_draft_packet.data.distribution_notes
       policy:
-        transitions:
-          - to: package-proposal
+        guards:
+          - step: package-proposal
             field: approve-proposal.approval_decision.data.approved
             equals: true

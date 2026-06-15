@@ -106,8 +106,8 @@ runners:
             wrap_as: effect_evidence_packet
             packet: runx.effect.evidence.v1
       policy:
-        transitions:
-          - to: fulfill
+        guards:
+          - step: fulfill
             field: approve-spend.payment_approval.data.approved
             equals: true
   mpp:
@@ -210,8 +210,8 @@ runners:
             wrap_as: effect_evidence_packet
             packet: runx.effect.evidence.v1
       policy:
-        transitions:
-          - to: fulfill
+        guards:
+          - step: fulfill
             field: approve-spend.payment_approval.data.approved
             equals: true
   stripe-spt:
@@ -314,8 +314,8 @@ runners:
             wrap_as: effect_evidence_packet
             packet: runx.effect.evidence.v1
       policy:
-        transitions:
-          - to: fulfill
+        guards:
+          - step: fulfill
             field: approve-spend.payment_approval.data.approved
             equals: true
   x402:
@@ -418,7 +418,7 @@ runners:
             wrap_as: effect_evidence_packet
             packet: runx.effect.evidence.v1
       policy:
-        transitions:
-          - to: fulfill
+        guards:
+          - step: fulfill
             field: approve-spend.payment_approval.data.approved
             equals: true

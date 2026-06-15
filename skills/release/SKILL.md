@@ -53,8 +53,8 @@ channel, no implicit approval on timeout.
 The destructive phase. Takes the approved `release_brief` from graph
 context and carries out the declared publication — tag and push, upload
 to the registry, open the release artifact, emit the announcement packet.
-Every side effect is recorded in `publish_report.side_effects[]` with a
-receipt link.
+Every side effect is recorded in `publish_report.side_effects[]` with its
+locator and evidence; the graph receipt seals the trail.
 
 Refuses to act if the brief is missing, unpublishable, or not carried
 through the approval gate.
@@ -95,7 +95,7 @@ through the approval gate.
   approval decision, and the publish report into one auditable trail.
 - `publish-release` (inside the graph) emits `publish_report`: registry
   URL, release tag, announcement packet, and a `side_effects[]` list with
-  a receipt per write action.
+  a locator and evidence per write action.
 
 ## Trust boundary
 

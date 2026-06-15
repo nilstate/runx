@@ -133,7 +133,7 @@ runners:
             draft: draft-report.content_draft_packet.data.draft
             distribution_notes: draft-report.content_draft_packet.data.distribution_notes
       policy:
-        transitions:
-          - to: package-report
+        guards:
+          - step: package-report
             field: approve-report.approval_decision.data.approved
             equals: true

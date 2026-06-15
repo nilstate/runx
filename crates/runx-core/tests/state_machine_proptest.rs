@@ -180,7 +180,7 @@ fn empty_fanout_group_behaves_like_linear_step() {
         }],
     };
 
-    let plan = plan_sequential_graph_transition(&state, &steps, &BTreeMap::new(), None);
+    let plan = plan_sequential_graph_transition(&state, &steps, &BTreeMap::new(), None, &std::collections::BTreeSet::new());
 
     assert_eq!(
         plan,

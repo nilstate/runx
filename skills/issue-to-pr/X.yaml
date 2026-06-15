@@ -664,7 +664,7 @@ runners:
             workspace_path: $input.workspace_path
             next_status: published
       policy:
-        transitions:
-          - to: write-fix
+        guards:
+          - step: write-fix
             field: author-fix.fix_bundle.data.files
             not_equals: []

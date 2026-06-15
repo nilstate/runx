@@ -156,7 +156,7 @@ runners:
             draft: draft-brief.content_draft_packet.data.draft
             distribution_notes: draft-brief.content_draft_packet.data.distribution_notes
       policy:
-        transitions:
-          - to: package-brief
+        guards:
+          - step: package-brief
             field: approve-brief.approval_decision.data.approved
             equals: true

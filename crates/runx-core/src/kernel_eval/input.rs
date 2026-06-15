@@ -104,6 +104,8 @@ pub(super) enum KernelInput {
         #[serde(default)]
         fanout_policies: BTreeMap<String, FanoutGroupPolicy>,
         resolved_fanout_gate_keys: Option<Vec<String>>,
+        #[serde(default)]
+        skipped_steps: Vec<String>,
     },
     #[serde(rename = "state-machine.transitionSequentialGraph")]
     TransitionSequentialGraph {

@@ -1,0 +1,123 @@
+skill: lead-router
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+harness:
+  cases:
+    - name: lead-router-reach-out
+      inputs:
+        lead:
+          account_ref: acct_4821
+          segment: mid-market SaaS
+          signals:
+            - opened the last three product updates
+            - visited pricing twice this week
+        principal: account:growth-bot
+        objective: Offer a deliverability review to a qualified mid-market lead.
+      caller:
+        answers:
+          agent_task.lead-qualify.output:
+            route: reach_out
+            rationale: Strong firmographic fit and repeated pricing intent; direct outreach is warranted.
+            segment: mid-market SaaS
+          agent_task.send-as.output:
+            send_plan:
+              decision: ready
+              action_family: send-as
+              principal:
+                type: account
+                ref: account:growth-bot
+              send_class: outreach
+              channel: email
+              audience:
+                type: recipient
+                ref: acct_4821
+                requires_reconfirmation: false
+              content:
+                draft_ref: draft:deliverability-review-offer
+                subject_or_title: A quick deliverability review for your team
+              gates:
+                preflight_required: true
+                human_approval_required: true
+              blockers: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: lead-router-needs-lead
+      inputs: {}
+      expect:
+        status: needs_agent
+
+runners:
+  lead-router:
+    default: true
+    type: graph
+    inputs:
+      lead:
+        type: json
+        required: true
+        description: "Lead, account, and engagement signals to qualify."
+      principal:
+        type: string
+        required: true
+        description: "Principal the outreach or nurture is sent as."
+      objective:
+        type: string
+        required: false
+        description: "What the outreach should accomplish."
+      operator_context:
+        type: string
+        required: false
+        description: "Compliance, consent posture, or campaign constraints."
+    graph:
+      name: lead-router
+      steps:
+        - id: qualify
+          label: qualify the lead and choose a route
+          run:
+            type: agent-task
+            agent: growth
+            task: lead-qualify
+            outputs:
+              route: string
+              rationale: string
+              segment: string
+        - id: reach_out
+          label: plan direct outreach
+          when:
+            field: qualify.route
+            equals: reach_out
+          skill: ../send-as
+          runner: plan
+          scopes:
+            - runx:net:allowlist
+          context:
+            audience: qualify.segment
+        - id: nurture
+          label: enroll in a nurture campaign
+          when:
+            field: qualify.route
+            equals: nurture
+          skill: ../nitrosend
+          runner: send-campaign
+          scopes:
+            - runx:net:allowlist
+        - id: hold
+          label: record a do-not-contact hold
+          when:
+            field: qualify.route
+            equals: hold
+          run:
+            type: agent-task
+            agent: growth
+            task: lead-hold
+            outputs:
+              hold_record: object
+          context:
+            rationale: qualify.rationale

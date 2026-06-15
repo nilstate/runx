@@ -118,7 +118,7 @@ runners:
           context:
             draft: draft-advisory.vulnerability_advisory_packet.data.advisory_draft
       policy:
-        transitions:
-          - to: package-advisory
+        guards:
+          - step: package-advisory
             field: approve-advisory.approval_decision.data.approved
             equals: true

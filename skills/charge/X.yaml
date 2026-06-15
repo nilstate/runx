@@ -104,8 +104,8 @@ runners:
           artifacts:
             wrap_as: forwarded_result
       policy:
-        transitions:
-          - to: forward
+        guards:
+          - step: forward
             field: seal.charge_seal.data.sealed
             equals: true
     runx:
@@ -214,8 +214,8 @@ runners:
           artifacts:
             wrap_as: forwarded_result
       policy:
-        transitions:
-          - to: forward
+        guards:
+          - step: forward
             field: seal.charge_seal.data.sealed
             equals: true
     runx:
@@ -324,8 +324,8 @@ runners:
           artifacts:
             wrap_as: forwarded_result
       policy:
-        transitions:
-          - to: forward
+        guards:
+          - step: forward
             field: seal.charge_seal.data.sealed
             equals: true
     runx:

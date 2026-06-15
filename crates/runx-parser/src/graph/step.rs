@@ -8,7 +8,7 @@ use super::helpers::{
     optional_non_empty_string, optional_number, optional_object, optional_string,
     optional_string_array, optional_string_object, required_string, validation_error,
 };
-use super::types::{GraphContextEdge, GraphRetryPolicy, GraphStep};
+use super::types::{GraphContextEdge, GraphRetryPolicy, GraphStep, GraphWhen};
 use crate::ValidationError;
 
 struct StepTarget {
@@ -62,6 +62,7 @@ pub fn validate_step(
             raw_step.get("fanout_group"),
             &format!("{field}.fanout_group"),
         )?,
+        when: validate_when(raw_step.get("when"), &format!("{field}.when"))?,
         mutating: optional_bool(raw_step.get("mutation"), &format!("{field}.mutation"))?
             .unwrap_or(false),
         idempotency_key: optional_non_empty_string(
@@ -69,6 +70,32 @@ pub fn validate_step(
             &format!("{field}.idempotency_key"),
         )?,
     })
+}
+
+fn validate_when(
+    value: Option<&JsonValue>,
+    field: &str,
+) -> Result<Option<GraphWhen>, ValidationError> {
+    let Some(record) = optional_object(value, field)? else {
+        return Ok(None);
+    };
+    let equals = record.get("equals").cloned();
+    let not_equals = record.get("not_equals").cloned();
+    if equals.is_some() && not_equals.is_some() {
+        return Err(validation_error(format!(
+            "{field} must not declare both equals and not_equals."
+        )));
+    }
+    if equals.is_none() && not_equals.is_none() {
+        return Err(validation_error(format!(
+            "{field} must declare equals or not_equals."
+        )));
+    }
+    Ok(Some(GraphWhen {
+        field: required_string(record.get("field"), &format!("{field}.field"))?,
+        equals,
+        not_equals,
+    }))
 }
 
 fn validate_allowed_tools(

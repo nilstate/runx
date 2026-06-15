@@ -135,9 +135,11 @@ impl GraphExecution {
             if reached_step_limit(initial_step_count, self.runs.len(), max_new_steps) {
                 return Ok(());
             }
-            let plan = self
-                .graph_index
-                .plan_transition(&self.state, &fanout_policies);
+            let plan = self.graph_index.plan_transition(
+                &self.state,
+                &fanout_policies,
+                &when_skipped_steps(graph, &self.runs),
+            );
             if self.apply_plan(runtime, graph_dir, graph, host, &fanout_policies, plan)? {
                 break;
             }
@@ -378,7 +380,7 @@ impl GraphExecution {
     {
         for scheduled in &schedule.steps {
             let step = self.find_step(graph, scheduled.step_id)?;
-            enforce_transition_gates(graph, step, &self.runs)?;
+            enforce_guards(graph, step, &self.runs)?;
         }
         for scheduled in &schedule.steps {
             self.record_lifecycle(host, LifecycleEvent::step_started(scheduled.step_id))?;
@@ -636,7 +638,7 @@ impl GraphExecution {
         A: SkillAdapter,
     {
         let step = self.find_step(graph, plan.step_id)?;
-        enforce_transition_gates(graph, step, &self.runs)?;
+        enforce_guards(graph, step, &self.runs)?;
         let retry_remaining = retry_budget_remaining(step, plan.attempt);
         self.record_lifecycle(host, LifecycleEvent::step_started(plan.step_id))?;
         self.start_step(runtime, plan.step_id);
@@ -854,9 +856,11 @@ impl GraphExecution {
         fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
         group_id: &str,
     ) -> Result<(), RuntimeError> {
-        let follow_up = self
-            .graph_index
-            .plan_transition(&self.state, fanout_policies);
+        let follow_up = self.graph_index.plan_transition(
+            &self.state,
+            fanout_policies,
+            &when_skipped_steps(graph, &self.runs),
+        );
         if matches!(
             follow_up,
             SequentialGraphPlan::RunFanout {
@@ -1035,7 +1039,7 @@ pub(super) fn reached_step_limit(
     max_new_steps.is_some_and(|max| current.saturating_sub(initial) >= max)
 }
 
-pub(super) fn enforce_transition_gates(
+pub(super) fn enforce_guards(
     graph: &ExecutionGraph,
     step: &GraphStep,
     runs: &[StepRun],
@@ -1043,11 +1047,11 @@ pub(super) fn enforce_transition_gates(
     let Some(policy) = &graph.policy else {
         return Ok(());
     };
-    for gate in policy.transitions.iter().filter(|gate| gate.to == step.id) {
+    for gate in policy.guards.iter().filter(|gate| gate.step == step.id) {
         let Some(value) = transition_field_value(&gate.field, runs) else {
             return Err(RuntimeError::GraphBlocked {
                 step_id: step.id.clone(),
-                reason: format!("transition gate '{}' is unresolved", gate.field),
+                reason: format!("guard '{}' is unresolved", gate.field),
             });
         };
         if let Some(expected) = &gate.equals
@@ -1056,7 +1060,7 @@ pub(super) fn enforce_transition_gates(
             return Err(RuntimeError::GraphBlocked {
                 step_id: step.id.clone(),
                 reason: format!(
-                    "transition gate '{}' expected {}",
+                    "guard '{}' expected {}",
                     gate.field,
                     display_json(expected)
                 ),
@@ -1068,7 +1072,7 @@ pub(super) fn enforce_transition_gates(
             return Err(RuntimeError::GraphBlocked {
                 step_id: step.id.clone(),
                 reason: format!(
-                    "transition gate '{}' must not equal {}",
+                    "guard '{}' must not equal {}",
                     gate.field,
                     display_json(disallowed)
                 ),
@@ -1077,7 +1081,7 @@ pub(super) fn enforce_transition_gates(
         if gate.equals.is_none() && gate.not_equals.is_none() {
             return Err(RuntimeError::GraphBlocked {
                 step_id: step.id.clone(),
-                reason: format!("transition gate '{}' has no comparison", gate.field),
+                reason: format!("guard '{}' has no comparison", gate.field),
             });
         }
     }
@@ -1107,4 +1111,32 @@ pub(super) fn transition_field_value<'a>(
 
 pub(super) fn display_json(value: &JsonValue) -> String {
     serde_json::to_string(value).unwrap_or_else(|_| "<unprintable>".to_owned())
+}
+
+/// Resolve which steps a `when` condition selects out, given the runs so far.
+/// A step is skipped only when its `when` field is resolved and the condition
+/// does not hold; an unresolved field leaves the step pending so a branch is
+/// never skipped before the step it depends on has run.
+pub(super) fn when_skipped_steps(
+    graph: &ExecutionGraph,
+    runs: &[StepRun],
+) -> std::collections::BTreeSet<String> {
+    let mut skipped = std::collections::BTreeSet::new();
+    for step in &graph.steps {
+        let Some(when) = &step.when else {
+            continue;
+        };
+        let Some(value) = transition_field_value(&when.field, runs) else {
+            continue;
+        };
+        let satisfied = match (&when.equals, &when.not_equals) {
+            (Some(expected), _) => value == expected,
+            (_, Some(disallowed)) => value != disallowed,
+            _ => true,
+        };
+        if !satisfied {
+            skipped.insert(step.id.clone());
+        }
+    }
+    skipped
 }

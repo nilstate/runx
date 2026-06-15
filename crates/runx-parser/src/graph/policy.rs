@@ -3,7 +3,7 @@ use runx_contracts::JsonValue;
 use super::helpers::{
     optional_object, required_array, required_object, required_string, validation_error,
 };
-use super::types::{GraphPolicy, GraphTransitionGate};
+use super::types::{GraphPolicy, GraphGuard};
 use crate::ValidationError;
 
 pub fn validate_graph_policy(
@@ -13,24 +13,24 @@ pub fn validate_graph_policy(
     let Some(policy) = optional_object(value, field)? else {
         return Ok(None);
     };
-    let Some(transitions_value) = policy.get("transitions") else {
+    let Some(guards_value) = policy.get("guards") else {
         return Ok(None);
     };
-    if matches!(transitions_value, JsonValue::Null) {
+    if matches!(guards_value, JsonValue::Null) {
         return Ok(None);
     }
-    let transitions = required_array(Some(transitions_value), &format!("{field}.transitions"))?
+    let guards = required_array(Some(guards_value), &format!("{field}.guards"))?
         .iter()
         .enumerate()
-        .map(|(index, raw_gate)| transition_gate(raw_gate, &format!("{field}.transitions.{index}")))
+        .map(|(index, raw_gate)| guard(raw_gate, &format!("{field}.guards.{index}")))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(Some(GraphPolicy { transitions }))
+    Ok(Some(GraphPolicy { guards }))
 }
 
-fn transition_gate(
+fn guard(
     raw_gate: &JsonValue,
     gate_field: &str,
-) -> Result<GraphTransitionGate, ValidationError> {
+) -> Result<GraphGuard, ValidationError> {
     let gate = required_object(Some(raw_gate), gate_field)?;
     let equals = gate.get("equals").cloned();
     let not_equals = gate.get("not_equals").cloned();
@@ -44,8 +44,8 @@ fn transition_gate(
             "{gate_field} must declare equals or not_equals."
         )));
     }
-    Ok(GraphTransitionGate {
-        to: required_string(gate.get("to"), &format!("{gate_field}.to"))?,
+    Ok(GraphGuard {
+        step: required_string(gate.get("step"), &format!("{gate_field}.step"))?,
         field: required_string(gate.get("field"), &format!("{gate_field}.field"))?,
         equals,
         not_equals,
