@@ -33,8 +33,8 @@ stampPackageJson(packageJsonPath, options, findings);
 stampCargoToml(cargoTomlPath, options, findings);
 stampCargoLock(cargoLockPath, options, findings);
 
-if (options.check && findings.length > 0) {
-  emit({ status: "drift", version: options.version, findings });
+if (findings.length > 0) {
+  emit({ status: options.check ? "drift" : "failed", version: options.version, findings });
   process.exit(1);
 }
 emit({
@@ -87,7 +87,7 @@ function stampCargoToml(filePath: string, opts: Options, output: Finding[]): voi
 function stampCargoLock(filePath: string, opts: Options, output: Finding[]): void {
   const raw = readFileSync(filePath, "utf8");
   // Update the version inside the [[package]] block whose name is runx-cli.
-  const block = /(name = "runx-cli"\nversion = ")([^"]*)(")/u;
+  const block = /(name = "runx-cli"\r?\nversion = ")([^"]*)(")/u;
   const match = raw.match(block);
   if (!match) {
     output.push({ file: relative(filePath), message: "could not find the runx-cli lock entry" });
