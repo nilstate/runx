@@ -985,6 +985,54 @@ fn cli_tool_source(step: &GraphStep) -> Result<SkillSource, RuntimeError> {
     })
 }
 
+// The shared close for an agent act: a resolved host response becomes the
+// step's output, projection, and sealed receipt. Both the inline `agent-task`
+// step and a referenced agent skill end here, so the agent-act seal lives in
+// one place.
+fn seal_agent_act_step<A>(
+    runtime: &Runtime<A>,
+    graph_name: &str,
+    step: &GraphStep,
+    attempt: u32,
+    skill_name: String,
+    response: ResolutionResponse,
+) -> Result<StepRun, RuntimeError> {
+    let disposition = agent_answer_disposition_value(&response.payload);
+    let output = agent_task_output(response)?;
+    let projection =
+        build_step_output_projection(step, &output, ClaimContextExposure::DeclaredOnly)?;
+    let disposition_label = closure_disposition_label(&disposition);
+    let receipt = seal_step(
+        StepSeal {
+            graph_name,
+            step_id: &step.id,
+            attempt,
+            output: &output,
+            projection: &projection,
+            created_at: &runtime.options.created_at,
+            authority_grant_refs: Vec::new(),
+            closure: Some(StepSealClosure {
+                disposition,
+                reason_code: format!("agent_act_{disposition_label}"),
+                summary: format!("agent act closed with {disposition_label}"),
+            }),
+        },
+        runtime.options.signature_policy(),
+    )?;
+    let admission_witness = StepAdmissionWitness::local_runtime(&step.id, receipt.id.as_str());
+    Ok(StepRun {
+        step_id: step.id.clone(),
+        attempt,
+        skill: skill_name,
+        runner: step.runner.clone(),
+        fanout_group: step.fanout_group.clone(),
+        output,
+        outputs: projection.outputs,
+        receipt,
+        admission_witness,
+    })
+}
+
 // rust-style-allow: long-function because agent-task execution is one
 // request/resolve/seal trust-boundary path.
 fn run_agent_task<A>(
@@ -1029,40 +1077,14 @@ where
             reason: format!("agent act {request_id} requires resolution"),
         });
     };
-    let disposition = agent_answer_disposition_value(&response.payload);
-    let output = agent_task_output(response)?;
-    let projection =
-        build_step_output_projection(step, &output, ClaimContextExposure::DeclaredOnly)?;
-    let disposition_label = closure_disposition_label(&disposition);
-    let receipt = seal_step(
-        StepSeal {
-            graph_name,
-            step_id: &step.id,
-            attempt,
-            output: &output,
-            projection: &projection,
-            created_at: &runtime.options.created_at,
-            authority_grant_refs: Vec::new(),
-            closure: Some(StepSealClosure {
-                disposition,
-                reason_code: format!("agent_act_{disposition_label}"),
-                summary: format!("agent act closed with {disposition_label}"),
-            }),
-        },
-        runtime.options.signature_policy(),
-    )?;
-    let admission_witness = StepAdmissionWitness::local_runtime(&step.id, receipt.id.as_str());
-    Ok(StepRun {
-        step_id: step.id.clone(),
+    seal_agent_act_step(
+        runtime,
+        graph_name,
+        step,
         attempt,
-        skill: "run:agent-task".to_owned(),
-        runner: step.runner.clone(),
-        fanout_group: step.fanout_group.clone(),
-        output,
-        outputs: projection.outputs,
-        receipt,
-        admission_witness,
-    })
+        "run:agent-task".to_owned(),
+        response,
+    )
 }
 
 fn run_agent_skill_step<A>(
@@ -1093,40 +1115,7 @@ where
             step.id, skill_name
         ),
     )?;
-    let disposition = agent_answer_disposition_value(&response.payload);
-    let output = agent_task_output(response)?;
-    let projection =
-        build_step_output_projection(step, &output, ClaimContextExposure::DeclaredOnly)?;
-    let disposition_label = closure_disposition_label(&disposition);
-    let receipt = seal_step(
-        StepSeal {
-            graph_name,
-            step_id: &step.id,
-            attempt,
-            output: &output,
-            projection: &projection,
-            created_at: &runtime.options.created_at,
-            authority_grant_refs: Vec::new(),
-            closure: Some(StepSealClosure {
-                disposition,
-                reason_code: format!("agent_act_{disposition_label}"),
-                summary: format!("agent act closed with {disposition_label}"),
-            }),
-        },
-        runtime.options.signature_policy(),
-    )?;
-    let admission_witness = StepAdmissionWitness::local_runtime(&step.id, receipt.id.as_str());
-    Ok(StepRun {
-        step_id: step.id.clone(),
-        attempt,
-        skill: skill_name,
-        runner: step.runner.clone(),
-        fanout_group: step.fanout_group.clone(),
-        output,
-        outputs: projection.outputs,
-        receipt,
-        admission_witness,
-    })
+    seal_agent_act_step(runtime, graph_name, step, attempt, skill_name, response)
 }
 
 fn resolve_agent_act(
