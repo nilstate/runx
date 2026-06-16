@@ -1100,6 +1100,7 @@ fn allowed_delivery() -> Result<CredentialDelivery, CredentialDeliveryError> {
             "secret://github/main",
             ResolvedCredentialMaterial::api_key("secret://github/main", "ghs_secret_token"),
         ),
+        credential_delivery_observation(),
     )
 }
 

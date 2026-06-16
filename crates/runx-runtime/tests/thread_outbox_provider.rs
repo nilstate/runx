@@ -683,15 +683,7 @@ fn credential_delivery() -> Result<CredentialDelivery, Box<dyn std::error::Error
         "secret://github/main",
         ResolvedCredentialMaterial::api_key("secret://github/main", "ghs_TEST_SECRET_TOKEN"),
     );
-    let delivery = CredentialDelivery::from_allowed_binding(
-        &CredentialBindingDecision::Allow {
-            reasons: vec!["test grant".to_owned()],
-        },
-        &credential,
-        &profile,
-        &resolver,
-    )?
-    .with_public_observation(CredentialDeliveryObservation {
+    let observation = CredentialDeliveryObservation {
         schema: runx_contracts::CredentialDeliveryObservationSchema::V1,
         observation_id: "cred_obs_123".into(),
         request_id: "cred_req_123".into(),
@@ -740,7 +732,16 @@ fn credential_delivery() -> Result<CredentialDelivery, Box<dyn std::error::Error
             proof_kind: None,
         }]),
         observed_at: "2026-05-22T00:00:00Z".into(),
-    });
+    };
+    let delivery = CredentialDelivery::from_allowed_binding(
+        &CredentialBindingDecision::Allow {
+            reasons: vec!["test grant".to_owned()],
+        },
+        &credential,
+        &profile,
+        &resolver,
+        observation,
+    )?;
     Ok(delivery)
 }
 

@@ -123,6 +123,9 @@ pub struct CredentialResolutionRequest<'a> {
     pub decision: &'a CredentialBindingDecision,
     pub credential: &'a CredentialEnvelope,
     pub profile: &'a CredentialDeliveryProfile,
+    /// The non-secret observation recording this delivery. Required so a resolved
+    /// secret can never be delivered without its audit record on the receipt.
+    pub observation: CredentialDeliveryObservation,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -185,7 +188,7 @@ where
         Ok(CredentialResolution {
             delivery: CredentialDelivery {
                 secret_env: apply_profile(request.profile, &material)?,
-                public_observation: None,
+                public_observation: Some(request.observation),
             },
         })
     }
@@ -351,10 +354,7 @@ impl CredentialDelivery {
             ResolvedCredentialMaterial::api_key(material_ref, secret),
         );
 
-        Ok(
-            Self::from_allowed_binding(&decision, &envelope, &profile, &resolver)?
-                .with_public_observation(observation),
-        )
+        Self::from_allowed_binding(&decision, &envelope, &profile, &resolver, observation)
     }
 
     pub fn from_hosted_handles_json(raw: &str) -> Result<Self, CredentialDeliveryError> {
@@ -439,12 +439,14 @@ impl CredentialDelivery {
         credential: &CredentialEnvelope,
         profile: &CredentialDeliveryProfile,
         resolver: &R,
+        observation: CredentialDeliveryObservation,
     ) -> Result<Self, CredentialDeliveryError> {
         MaterialCredentialSupervisor::new(resolver)
             .resolve(CredentialResolutionRequest {
                 decision,
                 credential,
                 profile,
+                observation,
             })
             .map(CredentialResolution::into_delivery)
     }
@@ -779,6 +781,7 @@ mod tests {
                 decision: &decision,
                 credential: &credential,
                 profile: &profile,
+                observation: build_local_provision_observation("github", "api_key", material_ref),
             })?
             .into_delivery();
 

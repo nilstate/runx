@@ -5,6 +5,10 @@ use std::path::PathBuf;
 
 use runx_contracts::CredentialEnvelopeKind;
 use runx_contracts::{CredentialDeliveryMode, CredentialDeliveryPurpose, CredentialMaterialRole};
+use runx_contracts::{
+    CredentialDeliveryObservation, CredentialDeliveryObservationSchema,
+    CredentialDeliveryObservationStatus, Reference, ReferenceType,
+};
 use runx_core::policy::{CredentialBindingDecision, CredentialEnvelope};
 use runx_parser::{SkillSandbox, SkillSource};
 use runx_runtime::adapters::cli_tool::CliToolAdapter;
@@ -17,6 +21,29 @@ use runx_runtime::{
 
 const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
 
+/// A minimal delivered-credential observation for the resolution tests, which
+/// assert on the delivered secret, not on the observation contents.
+fn delivered_observation() -> CredentialDeliveryObservation {
+    CredentialDeliveryObservation {
+        schema: CredentialDeliveryObservationSchema::V1,
+        observation_id: "test-credential-delivery".into(),
+        request_id: "test-credential-request".into(),
+        response_id: None,
+        status: CredentialDeliveryObservationStatus::Delivered,
+        harness_ref: Reference::with_uri(ReferenceType::Harness, "runx:harness:test-credential-binding"),
+        host_ref: None,
+        profile_id: "github-api-key".into(),
+        provider: "github".into(),
+        purpose: CredentialDeliveryPurpose::ProviderApi,
+        delivery_mode: Some(CredentialDeliveryMode::ProcessEnv),
+        credential_refs: Vec::new(),
+        material_ref_hash: None,
+        delivered_roles: vec![CredentialMaterialRole::ApiKey],
+        redaction_refs: None,
+        observed_at: FIXTURE_CREATED_AT.into(),
+    }
+}
+
 #[test]
 fn delivery_profile_requires_allowed_binding() -> Result<(), Box<dyn std::error::Error>> {
     let result = CredentialDelivery::from_allowed_binding(
@@ -26,6 +53,7 @@ fn delivery_profile_requires_allowed_binding() -> Result<(), Box<dyn std::error:
         &credential(),
         &github_profile()?,
         &resolver(),
+        delivered_observation(),
     );
 
     match result {
@@ -54,6 +82,7 @@ fn delivery_profile_rejects_provider_mismatch() -> Result<(), Box<dyn std::error
         &credential(),
         &CredentialDeliveryProfile::env_token("slack", "api_key", "SLACK_TOKEN")?,
         &resolver(),
+        delivered_observation(),
     );
 
     match result {
@@ -90,6 +119,7 @@ fn delivery_profile_maps_process_env_contract_profile() -> Result<(), Box<dyn st
         &credential(),
         &profile,
         &resolver(),
+        delivered_observation(),
     )?;
 
     assert_eq!(profile.provider(), "github");
@@ -189,6 +219,7 @@ fn delivery_profile_skips_optional_missing_contract_binding()
         &credential(),
         &profile,
         &resolver(),
+        delivered_observation(),
     )?;
 
     assert_eq!(
@@ -221,6 +252,7 @@ fn delivery_profile_resolves_contract_client_secret_role() -> Result<(), Box<dyn
         &credential(),
         &profile,
         &resolver,
+        delivered_observation(),
     )?;
 
     assert_eq!(
@@ -243,6 +275,7 @@ fn delivery_profile_rejects_empty_material() -> Result<(), Box<dyn std::error::E
         &credential(),
         &github_profile()?,
         &resolver,
+        delivered_observation(),
     );
 
     assert!(matches!(
@@ -371,6 +404,7 @@ fn allowed_delivery() -> Result<CredentialDelivery, CredentialDeliveryError> {
         &credential(),
         &github_profile()?,
         &resolver(),
+        delivered_observation(),
     )
 }
 
