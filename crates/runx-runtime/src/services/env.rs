@@ -50,7 +50,7 @@ pub(crate) fn process_env_value(key: &str) -> Option<String> {
     std::env::var(key).ok()
 }
 
-#[cfg(feature = "mcp")]
+#[cfg(any(feature = "mcp", feature = "agent"))]
 pub(crate) fn process_env_snapshot() -> BTreeMap<String, String> {
     std::env::vars().collect()
 }

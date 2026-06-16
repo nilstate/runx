@@ -256,6 +256,8 @@ fn step_receipt_with_disposition_projection_authority_and_policy(
         sync_points: Vec::new(),
         signals: output_refs.signal_refs,
         authority_grant_refs,
+        authority_override: None,
+        previous: None,
     });
     seal_receipt_unvalidated(&mut receipt, signature_policy)?;
     Ok(receipt)
@@ -438,6 +440,8 @@ fn build_graph_receipt(
         sync_points: sync_points.to_vec(),
         signals: Vec::new(),
         authority_grant_refs: Vec::new(),
+        authority_override: None,
+        previous: None,
     })
 }
 
@@ -490,6 +494,12 @@ struct BuildReceipt<'a> {
     sync_points: Vec<FanoutReceiptSyncPoint>,
     signals: Vec<Reference>,
     authority_grant_refs: Vec<Reference>,
+    /// Fully-built authority for a domain act seal. When `None`, the generic
+    /// `local_runtime` authority is used (unchanged for every existing caller).
+    authority_override: Option<ReceiptAuthority>,
+    /// The predecessor receipt this one chains from (`lineage.previous`), e.g. a
+    /// judgment chaining from the delivery it judged. `None` for generic seals.
+    previous: Option<Reference>,
 }
 
 fn build_receipt(parts: BuildReceipt<'_>) -> Receipt {
@@ -506,10 +516,12 @@ fn build_receipt(parts: BuildReceipt<'_>) -> Receipt {
         sync_points,
         signals,
         authority_grant_refs,
+        authority_override,
+        previous,
     } = parts;
     let lineage = Lineage {
         parent: None,
-        previous: None,
+        previous,
         children,
         sync: sync_points,
         resume_ref: None,
@@ -524,7 +536,7 @@ fn build_receipt(parts: BuildReceipt<'_>) -> Receipt {
         digest: "sha256:runtime-skeleton".into(),
         idempotency: idempotency(graph_name, node_id),
         subject: subject(graph_name, node_id, kind),
-        authority: authority(authority_grant_refs),
+        authority: authority_override.unwrap_or_else(|| authority(authority_grant_refs)),
         signals,
         decisions,
         acts,
@@ -668,6 +680,137 @@ fn authority(grant_refs: Vec<Reference>) -> ReceiptAuthority {
             teardown_refs: Vec::new(),
         },
     }
+}
+
+/// A governed turn's domain act, assembled from trusted sources (the skill's act
+/// declaration, the driver's pinned beat inputs, the delivered credential) plus
+/// the model's reason text. This is what makes a receipt read as "operator judged
+/// claim c-4417, rejected" instead of "a turn ran". The model never sets the
+/// form, target, choice, or authority; it supplies only the reason prose.
+pub(crate) struct DomainActFrame {
+    pub form: ActForm,
+    pub purpose: NonEmptyString,
+    pub legitimacy: NonEmptyString,
+    pub summary: NonEmptyString,
+    pub target_refs: Vec<Reference>,
+    pub artifact_refs: Vec<Reference>,
+    pub decision_choice: DecisionChoice,
+    pub decision_summary: NonEmptyString,
+    pub actor_ref: Reference,
+    pub authority_grant_refs: Vec<Reference>,
+    pub authority_scope_refs: Vec<Reference>,
+    pub previous: Option<Reference>,
+}
+
+/// Seal a governed turn as its domain act. Reuses the generic receipt assembly
+/// (`build_receipt`/`seal`) but fills the act, decision, and authority from the
+/// trusted `DomainActFrame`. Transport (tool names, urls, status codes, tokens)
+/// never enters the receipt.
+pub(crate) fn domain_act_receipt(
+    graph_name: &str,
+    step_id: &str,
+    succeeded: bool,
+    created_at: &str,
+    disposition: ClosureDisposition,
+    reason_code: String,
+    seal_summary: String,
+    frame: DomainActFrame,
+    signature_policy: RuntimeReceiptSignaturePolicy<'_>,
+) -> Result<Receipt, RuntimeError> {
+    let status = if succeeded {
+        CriterionStatus::Verified
+    } else {
+        CriterionStatus::Failed
+    };
+    let closure = Closure {
+        disposition: disposition.clone(),
+        reason_code: reason_code.clone().into(),
+        summary: frame.summary.clone(),
+        closed_at: created_at.into(),
+    };
+    let criterion = CriterionBinding {
+        criterion_id: "act_closed".into(),
+        status,
+        evidence_refs: Vec::new(),
+        verification_refs: Vec::new(),
+        summary: Some(frame.summary.clone()),
+    };
+    let intent = Intent {
+        purpose: frame.purpose.clone(),
+        legitimacy: frame.legitimacy.clone(),
+        success_criteria: Vec::new(),
+        constraints: Vec::new(),
+        derived_from: Vec::new(),
+    };
+    let act = ReceiptAct {
+        id: format!("act_{step_id}").into(),
+        form: frame.form,
+        intent: intent.clone(),
+        summary: frame.summary.clone(),
+        criterion_bindings: vec![criterion.clone()],
+        by: None,
+        source_refs: Vec::new(),
+        target_refs: frame.target_refs.clone(),
+        artifact_refs: frame.artifact_refs.clone(),
+        context_ref: None,
+        closure: closure.clone(),
+        revision: None,
+        verification: None,
+    };
+    let decision = Decision {
+        decision_id: format!("dec_{step_id}").into(),
+        choice: frame.decision_choice,
+        inputs: DecisionInputs {
+            target_ref: frame.target_refs.first().cloned(),
+            ..DecisionInputs::default()
+        },
+        proposed_intent: intent,
+        selected_act_id: Some(act.id.clone()),
+        selected_harness_ref: None,
+        justification: DecisionJustification {
+            summary: frame.decision_summary,
+            evidence_refs: Vec::new(),
+        },
+        closure: Some(closure),
+        artifact_refs: frame.artifact_refs.clone(),
+    };
+    let authority = ReceiptAuthority {
+        actor_ref: frame.actor_ref,
+        authority_proof_refs: Vec::new(),
+        grant_refs: frame.authority_grant_refs,
+        scope_refs: frame.authority_scope_refs,
+        terms: Vec::new(),
+        attenuation: AuthorityAttenuation {
+            parent_authority_ref: None,
+            subset_proof: None,
+        },
+        mandate_ref: None,
+        enforcement: ReceiptEnforcement {
+            profile_hash: "sha256:runtime-skeleton-enforcement".into(),
+            redaction_refs: Vec::new(),
+            setup_refs: Vec::new(),
+            teardown_refs: Vec::new(),
+        },
+    };
+    let seal = seal(disposition, reason_code, seal_summary, created_at, vec![criterion]);
+    let mut receipt = build_receipt(BuildReceipt {
+        id: step_receipt_id(graph_name, step_id, 1),
+        graph_name,
+        node_id: step_id,
+        kind: receipt_subject_kind::SKILL.into(),
+        created_at,
+        decisions: vec![decision],
+        acts: vec![act],
+        seal,
+        children: Vec::new(),
+        sync_points: Vec::new(),
+        signals: Vec::new(),
+        authority_grant_refs: Vec::new(),
+        authority_override: Some(authority),
+        previous: frame.previous,
+    });
+    seal_receipt_unvalidated(&mut receipt, signature_policy)?;
+    Ok(receipt)
 }
 
 fn idempotency(graph_name: &str, node_id: &str) -> ReceiptIdempotency {

@@ -4,7 +4,7 @@ mod receipts;
 mod sandbox;
 mod tool_roots;
 
-#[cfg(feature = "mcp")]
+#[cfg(any(feature = "mcp", feature = "agent"))]
 pub(crate) use env::process_env_snapshot;
 pub(crate) use env::{WorkspaceEnv, process_env_value};
 pub(crate) use receipts::ReceiptServices;

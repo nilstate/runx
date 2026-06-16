@@ -110,6 +110,9 @@ where
     let mut tool_calls: u32 = 0;
     let mut tools: Vec<String> = Vec::new();
     let mut tool_executions: Vec<AgentToolExecutionTrace> = Vec::new();
+    // The real result of the last successful governed tool call, captured from the
+    // tool output so a domain receipt records the effect, not the model's retelling.
+    let mut last_effect: Option<JsonValue> = None;
 
     for round in 1..=config.max_rounds {
         let uses = model.next_tool_uses(&transcript)?;
@@ -129,7 +132,11 @@ where
                     tools: Some(tools),
                     tool_executions: Some(tool_executions),
                 };
-                return Ok(AgentResolution::agent(use_.input.clone(), Some(telemetry)));
+                return Ok(AgentResolution::agent_with_effect(
+                    use_.input.clone(),
+                    Some(telemetry),
+                    last_effect,
+                ));
             }
 
             tool_calls = tool_calls.saturating_add(1);
@@ -139,6 +146,11 @@ where
 
             let output = executor.execute(&use_.name, &use_.input)?;
             let is_error = !matches!(output.status, InvocationStatus::Success);
+            if !is_error {
+                if let Ok(effect) = serde_json::from_str::<JsonValue>(output.stdout.trim()) {
+                    last_effect = Some(effect);
+                }
+            }
             let content = tool_result_content(&output, is_error);
             tool_executions.push(AgentToolExecutionTrace {
                 tool: use_.name.clone(),

@@ -41,9 +41,10 @@ use crate::host::Host;
 use crate::receipts::signing::strip_receipt_signing_env;
 use crate::receipts::store::ReceiptStoreError;
 use crate::receipts::{
-    RuntimeReceiptSignatureConfig, StepReceiptWithDisposition,
+    DomainActFrame, RuntimeReceiptSignatureConfig, StepReceiptWithDisposition, domain_act_receipt,
     step_receipt_with_disposition_and_policy,
 };
+use crate::credentials::CredentialDelivery;
 use crate::services::{ReceiptServices, WorkspaceEnv};
 
 const SKILL_RUN_SCHEMA: &str = "runx.skill_run.v1";
@@ -366,13 +367,13 @@ fn execute_agent_skill_run(
         .seeded_answers
         .as_ref()
         .and_then(|answers| answers.get(&request_id).cloned());
-    let answer = match seeded_answer {
-        Some(answer) => answer,
+    let (answer, governed_effect): (JsonValue, Option<JsonValue>) = match seeded_answer {
+        Some(answer) => (answer, None),
         None => match &request.answers_path {
-            Some(answers_path) => read_answer(answers_path, &request_id)?,
+            Some(answers_path) => (read_answer(answers_path, &request_id)?, None),
             None => match try_inline_agent_resolution(&invocation)? {
                 #[cfg(feature = "agent")]
-                InlineAgentOutcome::Resolved(answer) => answer,
+                InlineAgentOutcome::Resolved { payload, effect } => (payload, effect),
                 InlineAgentOutcome::HostDrives => {
                     return Ok(JsonValue::Object(needs_agent_output(
                         &run_id,
@@ -386,13 +387,23 @@ fn execute_agent_skill_run(
     let stdout = serde_json::to_string(&answer)
         .map_err(|error| SkillRunError::Invalid(format!("failed to serialize answer: {error}")))?;
     let disposition = answer_disposition(&answer);
-    let receipt = seal_skill_answer(
-        &run_id,
-        runner,
-        &stdout,
-        disposition,
-        receipts.signature_config(),
-    )?;
+    let receipt = match domain_act_frame(&invocation, &answer, governed_effect.as_ref()) {
+        Some(frame) => {
+            let label = closure_disposition_label(&disposition);
+            domain_act_receipt(
+                &identifier_segment(&run_id),
+                &identifier_segment(&runner.name),
+                disposition == ClosureDisposition::Closed,
+                &crate::time::now_iso8601(),
+                disposition,
+                format!("agent_act_{label}"),
+                format!("agent act sealed ({label})"),
+                frame,
+                receipts.signature_config().signature_policy(),
+            )?
+        }
+        None => seal_skill_answer(&run_id, runner, &stdout, disposition, receipts.signature_config())?,
+    };
     write_skill_receipt(request, workspace, receipts, &receipt)?;
 
     Ok(JsonValue::Object(sealed_output(
@@ -407,9 +418,13 @@ fn execute_agent_skill_run(
 
 /// Outcome of attempting the optional in-process managed-agent loop.
 enum InlineAgentOutcome {
-    /// The in-kernel loop ran and produced the agent answer payload.
+    /// The in-kernel loop ran and produced the agent answer payload, plus the last
+    /// successful governed tool result (the real effect) for the domain receipt.
     #[cfg(feature = "agent")]
-    Resolved(JsonValue),
+    Resolved {
+        payload: JsonValue,
+        effect: Option<JsonValue>,
+    },
     /// No in-process provider is configured; yield to the host loop.
     HostDrives,
 }
@@ -467,7 +482,10 @@ fn try_inline_agent_resolution(
     let resolution = resolver
         .resolve(request)
         .map_err(|error| SkillRunError::Invalid(error.sanitized_message().to_owned()))?;
-    Ok(InlineAgentOutcome::Resolved(resolution.response.payload))
+    Ok(InlineAgentOutcome::Resolved {
+        payload: resolution.response.payload,
+        effect: resolution.governed_effect,
+    })
 }
 
 #[cfg(not(feature = "agent"))]
@@ -505,6 +523,10 @@ fn execute_graph_skill_run(
     env.insert(RUNX_RUN_ID_ENV.to_owned(), run_id.clone());
     let credential_delivery =
         credential_delivery_from_invocation(workspace.env(), request.local_credential.as_ref())?;
+    let inline_resolver = InlineResolver {
+        skill_directory: skill_dir.clone(),
+        credential_delivery: credential_delivery.clone(),
+    };
     let runtime = Runtime::new(
         SkillRunGraphAdapter::default(),
         RuntimeOptions {
@@ -528,7 +550,7 @@ fn execute_graph_skill_run(
             None => JsonObject::new(),
         },
     };
-    let mut host = SkillRunGraphHost::new(answers);
+    let mut host = SkillRunGraphHost::with_inline(answers, inline_resolver);
     let mut checkpoint = if resume {
         read_graph_state(request, workspace, receipts, &run_id, &runner.name)?.checkpoint
     } else {
@@ -550,14 +572,28 @@ fn execute_graph_skill_run(
                     )?;
                     write_graph_receipts(request, workspace, receipts, &run)?;
                     let payload = graph_payload(&run)?;
+                    // A graph that declares an `act:` block seals a clean domain-act
+                    // receipt as its primary receipt; the step receipts above remain
+                    // as its execution trace.
+                    let domain = graph_domain_act_receipt(
+                        runner,
+                        &graph_inputs,
+                        &run,
+                        &run_id,
+                        receipts.signature_config(),
+                    )?;
+                    if let Some(domain_receipt) = &domain {
+                        write_skill_receipt(request, workspace, receipts, domain_receipt)?;
+                    }
+                    let receipt = domain.as_ref().unwrap_or(&run.receipt);
                     let output = graph_skill_output(&payload, &run)?;
                     return Ok(JsonValue::Object(sealed_output(
                         manifest,
                         &run_id,
                         &output,
                         &payload,
-                        &run.receipt,
-                        contract_json_value(&run.receipt)?,
+                        receipt,
+                        contract_json_value(receipt)?,
                     )));
                 }
                 write_graph_state(
@@ -813,9 +849,65 @@ fn invoke_graph_thread_outbox_provider(
 }
 
 #[derive(Default)]
+/// In-process managed-agent resolver for graph agent steps. An agent step inside
+/// a graph that has no seeded answer would otherwise host-drive (yield
+/// `needs_agent`); when a provider is configured this resolves it inline, exactly
+/// as the top-level agent path does, so the agent step authors its result and the
+/// graph's later deterministic steps (e.g. a governed http action) still run as
+/// one sealed turn. With no provider configured `try_resolve` returns `None`, so
+/// graphs host-drive precisely as before; behavior changes only opt-in.
+struct InlineResolver {
+    skill_directory: PathBuf,
+    credential_delivery: CredentialDelivery,
+}
+
+impl InlineResolver {
+    #[cfg(feature = "agent")]
+    fn try_resolve(&self, request: &ResolutionRequest) -> Result<Option<JsonValue>, RuntimeError> {
+        use crate::adapters::agent::AgentResolver;
+        use crate::adapters::agent_resolver::AnthropicAgentResolver;
+        use crate::runtime_http::ReqwestHttpTransport;
+
+        let fail = |message: String| RuntimeError::SkillFailed {
+            skill_name: "managed-agent".to_owned(),
+            message,
+        };
+        // The same process-env snapshot the rest of the runtime reads, so the
+        // inline graph agent path resolves the provider exactly like the
+        // top-level agent path rather than reaching for raw `std::env`.
+        let env = crate::services::process_env_snapshot();
+        let config = match crate::config::load_managed_agent_config(&env, &self.skill_directory)
+            .map_err(|error| fail(format!("managed agent config error: {error}")))?
+        {
+            Some(config) if config.provider.as_str().eq_ignore_ascii_case("anthropic") => config,
+            _ => return Ok(None),
+        };
+        let transport =
+            ReqwestHttpTransport::new().map_err(|error| fail(format!("managed agent transport error: {error}")))?;
+        let resolver = AnthropicAgentResolver::new(
+            transport,
+            config.api_key,
+            config.model,
+            env,
+            self.skill_directory.clone(),
+            self.credential_delivery.clone(),
+        );
+        let resolution = resolver
+            .resolve(request.clone())
+            .map_err(|error| fail(error.sanitized_message().to_owned()))?;
+        Ok(Some(resolution.response.payload))
+    }
+
+    #[cfg(not(feature = "agent"))]
+    fn try_resolve(&self, _request: &ResolutionRequest) -> Result<Option<JsonValue>, RuntimeError> {
+        Ok(None)
+    }
+}
+
 struct SkillRunGraphHost {
     answers: JsonObject,
     pending: Vec<(String, JsonValue)>,
+    inline: Option<InlineResolver>,
 }
 
 impl SkillRunGraphHost {
@@ -823,6 +915,15 @@ impl SkillRunGraphHost {
         Self {
             answers,
             pending: Vec::new(),
+            inline: None,
+        }
+    }
+
+    fn with_inline(answers: JsonObject, inline: InlineResolver) -> Self {
+        Self {
+            answers,
+            pending: Vec::new(),
+            inline: Some(inline),
         }
     }
 
@@ -848,6 +949,20 @@ impl Host for SkillRunGraphHost {
                 actor: ResolutionResponseActor::Agent,
                 payload: answer.clone(),
             }));
+        }
+        // An agent step with no seeded answer runs the configured provider inline
+        // rather than host-driving, so a graph turn (agent step -> governed action
+        // step) completes in one pass. No provider configured -> falls through to
+        // the host as before.
+        if matches!(request, ResolutionRequest::AgentAct { .. }) {
+            if let Some(inline) = &self.inline {
+                if let Some(payload) = inline.try_resolve(&request)? {
+                    return Ok(Some(ResolutionResponse {
+                        actor: ResolutionResponseActor::Agent,
+                        payload,
+                    }));
+                }
+            }
         }
         let request_value = serde_json::to_value(&request)
             .and_then(serde_json::from_value)
@@ -1381,6 +1496,190 @@ fn seal_skill_answer(
         format!("agent act closed with {disposition_label}"),
         signature_config,
     )
+}
+
+/// Build the domain act frame for a governed turn when its runner declares an
+/// `act:` block: the trusted mapping from the driver's pinned beat inputs and the
+/// model's reason text to the receipt's act, decision, and authority. Returns
+/// `None` for runners without an `act:` block (sealed generically, exactly as
+/// before). The model supplies only the reason prose; every structural field is
+/// read from the runner declaration and the trusted inputs, never the model.
+fn domain_act_frame(
+    invocation: &SkillInvocation,
+    answer: &JsonValue,
+    governed_effect: Option<&JsonValue>,
+) -> Option<DomainActFrame> {
+    let act = invocation.source.raw.get("act").and_then(JsonValue::as_object)?;
+    build_domain_act_frame(act, &invocation.inputs, answer, governed_effect)
+}
+
+/// The core of [`domain_act_frame`], reusable by the graph path: build the domain
+/// act frame from a declared `act:` block, the trusted run inputs, the model's
+/// authored reason source, and the real governed effect.
+fn build_domain_act_frame(
+    act: &runx_contracts::JsonObject,
+    inputs: &runx_contracts::JsonObject,
+    reason_source: &JsonValue,
+    governed_effect: Option<&JsonValue>,
+) -> Option<DomainActFrame> {
+    use runx_contracts::{ActForm, DecisionChoice, Reference, ReferenceType};
+
+    let act_str = |key: &str| act.get(key).and_then(JsonValue::as_str);
+    // A declared field may be a static literal (`form: review`) or driver-pinned
+    // from an input (`form_from: act_form`). The driver-pinned value wins, so one
+    // generic skill serves every beat.
+    let resolved = |key: &str| -> Option<String> {
+        act_str(&format!("{key}_from"))
+            .and_then(|input_key| inputs.get(input_key))
+            .and_then(JsonValue::as_str)
+            .or_else(|| act_str(key))
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+    };
+
+    let form = match resolved("form").as_deref().unwrap_or("observation") {
+        "revision" => ActForm::Revision,
+        "reply" => ActForm::Reply,
+        "review" => ActForm::Review,
+        "verification" => ActForm::Verification,
+        _ => ActForm::Observation,
+    };
+    let purpose = resolved("purpose")?;
+    let legitimacy = resolved("legitimacy")
+        .unwrap_or_else(|| "Held the declared authority for this act".to_owned());
+
+    // The single model-authored field: the human reason text.
+    let reason = act_str("reason_from")
+        .and_then(|key| reason_source.as_object().and_then(|object| object.get(key)))
+        .and_then(JsonValue::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map_or_else(|| purpose.clone(), str::to_owned);
+
+    // Resolve a trusted input value (a uri) named by the act mapping into a ref.
+    let input_ref = |map_key: &str, reference_type: ReferenceType| -> Option<Reference> {
+        let input_key = act_str(map_key)?;
+        let uri = inputs
+            .get(input_key)
+            .and_then(JsonValue::as_str)?
+            .trim();
+        (!uri.is_empty()).then(|| Reference::with_uri(reference_type, uri.to_owned()))
+    };
+
+    let decision_choice = act_str("decision_from")
+        .and_then(|key| inputs.get(key))
+        .and_then(JsonValue::as_str)
+        .and_then(map_decision_choice)
+        .unwrap_or(DecisionChoice::Close);
+
+    // The effect ref: a venue id read from the real governed tool result (never
+    // the model's restatement), wrapped into a domain uri. e.g. the `/v1`
+    // response's `id` becomes `frantic:judgment:<id>` for the venue to reconcile.
+    let artifact_refs = governed_effect
+        .and_then(|effect| {
+            let field = resolved("effect_from")?;
+            let id = effect
+                .as_object()
+                .and_then(|object| object.get(field.as_str()))
+                .and_then(JsonValue::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())?;
+            let reference_type = match act_str("effect_type").unwrap_or("artifact") {
+                "act" => ReferenceType::Act,
+                "tracking_item" => ReferenceType::TrackingItem,
+                "receipt" => ReferenceType::Receipt,
+                _ => ReferenceType::Artifact,
+            };
+            let prefix = resolved("effect_prefix").unwrap_or_default();
+            Some(Reference::with_uri(reference_type, format!("{prefix}{id}")))
+        })
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    Some(DomainActFrame {
+        form,
+        purpose: purpose.into(),
+        legitimacy: legitimacy.into(),
+        summary: reason.clone().into(),
+        target_refs: input_ref("target_from", ReferenceType::TrackingItem)
+            .into_iter()
+            .collect(),
+        artifact_refs,
+        decision_choice,
+        decision_summary: reason.into(),
+        actor_ref: input_ref("actor_from", ReferenceType::Principal)
+            .unwrap_or_else(|| Reference::runx(ReferenceType::Principal, "local_runtime")),
+        authority_grant_refs: Vec::new(),
+        authority_scope_refs: input_ref("authority_from", ReferenceType::Grant)
+            .into_iter()
+            .collect(),
+        previous: input_ref("previous_from", ReferenceType::Receipt),
+    })
+}
+
+/// Map a driver-pinned decision word onto the receipt's `DecisionChoice`.
+fn map_decision_choice(value: &str) -> Option<runx_contracts::DecisionChoice> {
+    use runx_contracts::DecisionChoice;
+    match value.trim().to_ascii_lowercase().as_str() {
+        "decline" | "reject" | "rejected" | "deny" | "denied" => Some(DecisionChoice::Decline),
+        "close" | "accept" | "accepted" | "approve" | "approved" | "paid" | "settle" | "settled" => {
+            Some(DecisionChoice::Close)
+        }
+        "continue" | "claim" | "claimed" | "deliver" | "delivered" => Some(DecisionChoice::Continue),
+        "defer" | "deferred" => Some(DecisionChoice::Defer),
+        "escalate" | "escalated" => Some(DecisionChoice::Escalate),
+        "monitor" | "monitored" => Some(DecisionChoice::Monitor),
+        _ => None,
+    }
+}
+
+/// When a graph runner declares an `act:` block, seal the turn's primary receipt
+/// as its domain act: the reason comes from the agent voice step's output, the
+/// effect from the deterministic action step's real `/v1` response, and the
+/// structure/authority from the declared `act:` block plus the trusted graph
+/// inputs. The graph's per-step receipts remain as the execution trace; this
+/// standalone domain receipt is what the turn presents and what chains by
+/// lineage. Transport (the http step, status, token) never enters it.
+fn graph_domain_act_receipt(
+    runner: &SkillRunnerDefinition,
+    graph_inputs: &JsonObject,
+    run: &GraphRun,
+    run_id: &str,
+    signature_config: &RuntimeReceiptSignatureConfig,
+) -> Result<Option<runx_contracts::Receipt>, SkillRunError> {
+    let Some(act) = runner.source.raw.get("act").and_then(JsonValue::as_object) else {
+        return Ok(None);
+    };
+    let step_output = |key: &str| {
+        act.get(key)
+            .and_then(JsonValue::as_str)
+            .and_then(|step_id| run.steps.iter().find(|step| step.step_id == step_id))
+    };
+    // Reason: the agent voice step's structured output (e.g. {line: "..."}).
+    let reason_source = step_output("reason_step")
+        .map(|step| JsonValue::Object(step.outputs.clone()))
+        .unwrap_or(JsonValue::Null);
+    // Effect: the action step's real /v1 response body.
+    let governed_effect = step_output("effect_step")
+        .filter(|step| step.output.succeeded())
+        .and_then(|step| serde_json::from_str::<JsonValue>(step.output.stdout.trim()).ok());
+    let Some(frame) = build_domain_act_frame(act, graph_inputs, &reason_source, governed_effect.as_ref())
+    else {
+        return Ok(None);
+    };
+    let receipt = domain_act_receipt(
+        &identifier_segment(run_id),
+        "turn",
+        run.state.status == GraphStatus::Succeeded,
+        &crate::time::now_iso8601(),
+        ClosureDisposition::Closed,
+        "agent_act_closed".to_owned(),
+        "governed graph turn sealed".to_owned(),
+        frame,
+        signature_config.signature_policy(),
+    )?;
+    Ok(Some(receipt))
 }
 
 /// Record the non-secret credential-delivery observation on the skill output so

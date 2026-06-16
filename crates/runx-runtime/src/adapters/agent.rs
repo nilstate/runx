@@ -59,17 +59,32 @@ pub struct AgentToolExecutionTrace {
 pub struct AgentResolution {
     pub response: ResolutionResponse,
     pub telemetry: Option<AgentExecutionTelemetry>,
+    /// The last successful governed tool result of this turn (the real effect,
+    /// e.g. the `/v1` response carrying the venue id). Captured from the tool
+    /// output, never the model's restatement, so a domain receipt can record an
+    /// effect ref that can be reconciled against the venue's own record.
+    pub governed_effect: Option<JsonValue>,
 }
 
 impl AgentResolution {
     #[must_use]
     pub fn agent(payload: JsonValue, telemetry: Option<AgentExecutionTelemetry>) -> Self {
+        Self::agent_with_effect(payload, telemetry, None)
+    }
+
+    #[must_use]
+    pub fn agent_with_effect(
+        payload: JsonValue,
+        telemetry: Option<AgentExecutionTelemetry>,
+        governed_effect: Option<JsonValue>,
+    ) -> Self {
         Self {
             response: ResolutionResponse {
                 actor: ResolutionResponseActor::Agent,
                 payload,
             },
             telemetry,
+            governed_effect,
         }
     }
 }
