@@ -16,7 +16,7 @@ use runx_contracts::{
     DecisionInputs, DecisionJustification, FanoutReceiptSyncPoint, Intent, JsonObject, Lineage,
     RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority, ReceiptEnforcement,
     ReceiptIdempotency, ReceiptIssuer, ReceiptSchema, Reference, ReferenceType, Seal,
-    SignatureAlgorithm, Subject, SuccessCriterion, json_string_field, receipt_subject_kind,
+    SignatureAlgorithm, Subject, json_string_field, receipt_subject_kind,
 };
 use runx_receipts::{
     ReceiptProofContext, ReceiptProofContextProvider, ReceiptSignature, ReceiptTreeConfig,
@@ -24,6 +24,7 @@ use runx_receipts::{
     content_addressed_receipt_id,
 };
 
+use super::act::{ActOutcome, RuntimeAct};
 use super::local_runtime_issuer;
 use super::signing::{
     RuntimeReceiptSigner, RuntimeReceiptSigningError, is_local_pseudo_signature,
@@ -222,13 +223,13 @@ fn step_receipt_with_disposition_projection_authority_and_policy(
         summary,
     } = params;
     let output_refs = output_refs(output, &projection.refs);
-    let act = observation_act(
-        step_id,
-        output,
-        created_at,
-        disposition.clone(),
-        &output_refs,
-    );
+    let act = RuntimeAct::observation(step_id).close(ActOutcome {
+        disposition: disposition.clone(),
+        succeeded: output.succeeded(),
+        summary: output_summary(output),
+        performed_at: created_at,
+        refs: &output_refs,
+    });
     let seal_criterion = process_exit_criterion(output, &output_refs);
     let seal = seal(
         disposition,
@@ -577,57 +578,6 @@ fn decisions(
         closure: None,
         artifact_refs: artifact_refs.to_vec(),
     }]
-}
-
-fn observation_act(
-    step_id: &str,
-    output: &SkillOutput,
-    performed_at: &str,
-    disposition: ClosureDisposition,
-    refs: &StepOutputRefs,
-) -> ReceiptAct {
-    let mut artifact_refs = refs.artifact_refs.clone();
-    artifact_refs.extend(refs.surface_refs.iter().cloned());
-    ReceiptAct {
-        id: format!("act_{step_id}").into(),
-        form: ActForm::Observation,
-        intent: Intent {
-            purpose: format!("Run graph step {step_id}").into(),
-            legitimacy: "Runtime graph execution was admitted by the local harness".into(),
-            success_criteria: vec![SuccessCriterion {
-                criterion_id: "process_exit".into(),
-                statement: "cli-tool exits successfully".into(),
-                required: true,
-            }],
-            constraints: Vec::new(),
-            derived_from: Vec::new(),
-        },
-        summary: format!("Executed graph step {step_id}").into(),
-        criterion_bindings: vec![CriterionBinding {
-            criterion_id: "process_exit".into(),
-            status: if output.succeeded() {
-                CriterionStatus::Verified
-            } else {
-                CriterionStatus::Failed
-            },
-            evidence_refs: refs.evidence_refs.clone(),
-            verification_refs: refs.verification_refs.clone(),
-            summary: Some(output_summary(output).into()),
-        }],
-        by: None,
-        source_refs: refs.source_refs.clone(),
-        target_refs: Vec::new(),
-        artifact_refs,
-        context_ref: None,
-        closure: Closure {
-            disposition,
-            reason_code: "process_exit".into(),
-            summary: output_summary(output).into(),
-            closed_at: performed_at.into(),
-        },
-        revision: None,
-        verification: None,
-    }
 }
 
 fn seal(

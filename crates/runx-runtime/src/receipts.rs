@@ -1,10 +1,12 @@
 //! Receipts cluster.
 //!
+//! - `act`: the act as a first-class object, opened with intent and closed with outcome.
 //! - `seal`: step and graph receipt sealing helpers.
 //! - `store`: the local on-disk receipt store and index.
 //! - `tree`: receipt-tree resolution and proof validation.
 //! - `paths`: workspace and receipt-store path resolution.
 
+pub(crate) mod act;
 pub(crate) mod issuer;
 pub mod paths;
 pub mod seal;
