@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 
 use runx_contracts::{ClosureDisposition, JsonNumber, JsonObject, JsonValue};
-use runx_parser::{SkillRunnerDefinition, SkillRunnerManifest};
+use runx_parser::{ActDeclaration, SkillRunnerDefinition, SkillRunnerManifest};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -264,7 +264,7 @@ fn domain_act_frame(
     answer: &JsonValue,
     governed_effect: Option<&JsonValue>,
 ) -> Option<DomainActFrame> {
-    let act = invocation.source.raw.get("act").and_then(JsonValue::as_object)?;
+    let act = invocation.source.act_declaration()?;
     // Promote the delivered credential into the act's held authority: a governed
     // turn's receipt records the grants it actually carried, not just the
     // declared scope.
@@ -274,7 +274,7 @@ fn domain_act_frame(
         .map(|observation| observation.credential_refs.clone())
         .unwrap_or_default();
     build_domain_act_frame(
-        act,
+        &act,
         &invocation.inputs,
         answer,
         governed_effect,
@@ -286,7 +286,7 @@ fn domain_act_frame(
 /// act frame from a declared `act:` block, the trusted run inputs, the model's
 /// authored reason source, and the real governed effect.
 fn build_domain_act_frame(
-    act: &runx_contracts::JsonObject,
+    act: &ActDeclaration,
     inputs: &runx_contracts::JsonObject,
     reason_source: &JsonValue,
     governed_effect: Option<&JsonValue>,
@@ -294,33 +294,37 @@ fn build_domain_act_frame(
 ) -> Option<DomainActFrame> {
     use runx_contracts::{ActForm, DecisionChoice, Reference, ReferenceType};
 
-    let act_str = |key: &str| act.get(key).and_then(JsonValue::as_str);
     // A declared field may be a static literal (`form: review`) or driver-pinned
-    // from an input (`form_from: act_form`). The driver-pinned value wins, so one
-    // generic skill serves every beat.
-    let resolved = |key: &str| -> Option<String> {
-        act_str(&format!("{key}_from"))
-            .and_then(|input_key| inputs.get(input_key))
+    // from an input (`form_from: act_form` names the input key). The driver-pinned
+    // input wins, so one generic skill serves every beat.
+    let resolve = |from_key: Option<&str>, literal: Option<&str>| -> Option<String> {
+        from_key
+            .and_then(|key| inputs.get(key))
             .and_then(JsonValue::as_str)
-            .or_else(|| act_str(key))
+            .or(literal)
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .map(str::to_owned)
     };
 
-    let form = match resolved("form").as_deref().unwrap_or("observation") {
+    let form = match resolve(act.form_from.as_deref(), act.form.as_deref())
+        .as_deref()
+        .unwrap_or("observation")
+    {
         "revision" => ActForm::Revision,
         "reply" => ActForm::Reply,
         "review" => ActForm::Review,
         "verification" => ActForm::Verification,
         _ => ActForm::Observation,
     };
-    let purpose = resolved("purpose")?;
-    let legitimacy = resolved("legitimacy")
+    let purpose = resolve(act.purpose_from.as_deref(), act.purpose.as_deref())?;
+    let legitimacy = resolve(act.legitimacy_from.as_deref(), act.legitimacy.as_deref())
         .unwrap_or_else(|| "Held the declared authority for this act".to_owned());
 
     // The single model-authored field: the human reason text.
-    let reason = act_str("reason_from")
+    let reason = act
+        .reason_from
+        .as_deref()
         .and_then(|key| reason_source.as_object().and_then(|object| object.get(key)))
         .and_then(JsonValue::as_str)
         .map(str::trim)
@@ -328,16 +332,17 @@ fn build_domain_act_frame(
         .map_or_else(|| purpose.clone(), str::to_owned);
 
     // Resolve a trusted input value (a uri) named by the act mapping into a ref.
-    let input_ref = |map_key: &str, reference_type: ReferenceType| -> Option<Reference> {
-        let input_key = act_str(map_key)?;
+    let input_ref = |map_key: Option<&str>, reference_type: ReferenceType| -> Option<Reference> {
         let uri = inputs
-            .get(input_key)
+            .get(map_key?)
             .and_then(JsonValue::as_str)?
             .trim();
         (!uri.is_empty()).then(|| Reference::with_uri(reference_type, uri.to_owned()))
     };
 
-    let decision_choice = act_str("decision_from")
+    let decision_choice = act
+        .decision_from
+        .as_deref()
         .and_then(|key| inputs.get(key))
         .and_then(JsonValue::as_str)
         .and_then(map_decision_choice)
@@ -348,20 +353,20 @@ fn build_domain_act_frame(
     // response's `id` becomes `frantic:judgment:<id>` for the venue to reconcile.
     let artifact_refs = governed_effect
         .and_then(|effect| {
-            let field = resolved("effect_from")?;
+            let field = resolve(None, act.effect_from.as_deref())?;
             let id = effect
                 .as_object()
                 .and_then(|object| object.get(field.as_str()))
                 .and_then(JsonValue::as_str)
                 .map(str::trim)
                 .filter(|value| !value.is_empty())?;
-            let reference_type = match act_str("effect_type").unwrap_or("artifact") {
+            let reference_type = match act.effect_type.as_deref().unwrap_or("artifact") {
                 "act" => ReferenceType::Act,
                 "tracking_item" => ReferenceType::TrackingItem,
                 "receipt" => ReferenceType::Receipt,
                 _ => ReferenceType::Artifact,
             };
-            let prefix = resolved("effect_prefix").unwrap_or_default();
+            let prefix = resolve(None, act.effect_prefix.as_deref()).unwrap_or_default();
             Some(Reference::with_uri(reference_type, format!("{prefix}{id}")))
         })
         .into_iter()
@@ -372,19 +377,19 @@ fn build_domain_act_frame(
         purpose: purpose.into(),
         legitimacy: legitimacy.into(),
         summary: reason.clone().into(),
-        target_refs: input_ref("target_from", ReferenceType::TrackingItem)
+        target_refs: input_ref(act.target_from.as_deref(), ReferenceType::TrackingItem)
             .into_iter()
             .collect(),
         artifact_refs,
         decision_choice,
         decision_summary: reason.into(),
-        actor_ref: input_ref("actor_from", ReferenceType::Principal)
+        actor_ref: input_ref(act.actor_from.as_deref(), ReferenceType::Principal)
             .unwrap_or_else(|| Reference::runx(ReferenceType::Principal, "local_runtime")),
         authority_grant_refs,
-        authority_scope_refs: input_ref("authority_from", ReferenceType::Grant)
+        authority_scope_refs: input_ref(act.authority_from.as_deref(), ReferenceType::Grant)
             .into_iter()
             .collect(),
-        previous: input_ref("previous_from", ReferenceType::Receipt),
+        previous: input_ref(act.previous_from.as_deref(), ReferenceType::Receipt),
     })
 }
 

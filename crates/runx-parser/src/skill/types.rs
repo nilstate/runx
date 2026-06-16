@@ -144,6 +144,64 @@ pub struct SkillSource {
     pub raw: JsonObject,
 }
 
+/// A skill's declared act: how a run describes the act it performs. The form and
+/// purpose, and how the target, decision, effect, actor, authority, and previous
+/// receipt are read, where `<field>_from` names a trusted input key and the bare
+/// field is a static literal (the driver-pinned input wins). The runtime fills
+/// the act's structure from these and the trusted inputs; the model authors only
+/// the reason prose. Absent an `act:` block, a run seals a generic observation.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActDeclaration {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub form_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purpose: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purpose_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legitimacy: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legitimacy_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub decision_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effect_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effect_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effect_prefix: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_from: Option<String>,
+    /// Graph turns only: the step whose output supplies the reason prose.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason_step: Option<String>,
+    /// Graph turns only: the step whose real result supplies the governed effect.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effect_step: Option<String>,
+}
+
+impl SkillSource {
+    /// The declared act for this source, if it carries an `act:` block, parsed
+    /// into the typed schema. `None` when no `act:` is declared (the run then
+    /// seals a generic observation act) or when the block is malformed. Parsed
+    /// with serde, not a hand-maintained field list, so a field added to
+    /// `ActDeclaration` is picked up automatically with nothing to keep in sync.
+    #[must_use]
+    pub fn act_declaration(&self) -> Option<ActDeclaration> {
+        serde_json::from_value(serde_json::to_value(self.raw.get("act")?).ok()?).ok()
+    }
+}
+
 /// Config for an `http` source: the endpoint, the method, static request headers
 /// (whose values may carry `${secret:NAME}` references resolved at invocation),
 /// and an explicit, default-off opt-in to reach private or loopback networks

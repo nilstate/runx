@@ -23,7 +23,7 @@ pub use runner::{
     RawRunnerManifestIr, SkillRunnerManifest, parse_runner_manifest_yaml, validate_runner_manifest,
 };
 pub use skill::{
-    CatalogAudience, CatalogKind, CatalogMetadata, CatalogRole, CatalogVisibility,
+    ActDeclaration, CatalogAudience, CatalogKind, CatalogMetadata, CatalogRole, CatalogVisibility,
     HarnessCallerFixture, HarnessExpectation, InputMode, RawSkillIr, ReceiptExpectation,
     RunnerHarnessCase, RunnerHarnessManifest, SkillArtifactContract, SkillHttpSource,
     SkillIdempotencyPolicy, SkillInput, SkillMcpServer, SkillQualityProfile, SkillRetryPolicy,

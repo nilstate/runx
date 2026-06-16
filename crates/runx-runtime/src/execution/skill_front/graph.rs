@@ -626,25 +626,23 @@ fn graph_domain_act_receipt(
     run_id: &str,
     signature_config: &RuntimeReceiptSignatureConfig,
 ) -> Result<Option<runx_contracts::Receipt>, SkillRunError> {
-    let Some(act) = runner.source.raw.get("act").and_then(JsonValue::as_object) else {
+    let Some(act) = runner.source.act_declaration() else {
         return Ok(None);
     };
-    let step_output = |key: &str| {
-        act.get(key)
-            .and_then(JsonValue::as_str)
-            .and_then(|step_id| run.steps.iter().find(|step| step.step_id == step_id))
+    let step_output = |step_id: Option<&str>| {
+        step_id.and_then(|id| run.steps.iter().find(|step| step.step_id == id))
     };
     // Reason: the agent voice step's structured output (e.g. {line: "..."}).
-    let reason_source = step_output("reason_step")
+    let reason_source = step_output(act.reason_step.as_deref())
         .map(|step| JsonValue::Object(step.outputs.clone()))
         .unwrap_or(JsonValue::Null);
     // Effect: the action step's real /v1 response body.
-    let governed_effect = step_output("effect_step")
+    let governed_effect = step_output(act.effect_step.as_deref())
         .filter(|step| step.output.succeeded())
         .and_then(|step| serde_json::from_str::<JsonValue>(step.output.stdout.trim()).ok());
     let authority_grant_refs = graph_credential_grant_refs(run);
     let Some(frame) = build_domain_act_frame(
-        act,
+        &act,
         graph_inputs,
         &reason_source,
         governed_effect.as_ref(),
