@@ -101,70 +101,6 @@ pub fn step_receipt_with_authority_grant_refs(
     )
 }
 
-pub(crate) fn step_receipt_with_projection_and_signature_policy(
-    graph_name: &str,
-    step_id: &str,
-    attempt: u32,
-    output: &SkillOutput,
-    projection: &StepOutputProjection,
-    created_at: &str,
-    signature_policy: RuntimeReceiptSignaturePolicy<'_>,
-) -> Result<Receipt, RuntimeError> {
-    step_receipt_with_projection_authority_and_signature_policy(
-        StepReceiptWithProjectionAuthority {
-            graph_name,
-            step_id,
-            attempt,
-            output,
-            projection,
-            authority_grant_refs: Vec::new(),
-            created_at,
-        },
-        signature_policy,
-    )
-}
-
-pub(crate) struct StepReceiptWithProjectionAuthority<'a> {
-    pub(crate) graph_name: &'a str,
-    pub(crate) step_id: &'a str,
-    pub(crate) attempt: u32,
-    pub(crate) output: &'a SkillOutput,
-    pub(crate) projection: &'a StepOutputProjection,
-    pub(crate) authority_grant_refs: Vec<Reference>,
-    pub(crate) created_at: &'a str,
-}
-
-pub(crate) fn step_receipt_with_projection_authority_and_signature_policy(
-    params: StepReceiptWithProjectionAuthority<'_>,
-    signature_policy: RuntimeReceiptSignaturePolicy<'_>,
-) -> Result<Receipt, RuntimeError> {
-    let StepReceiptWithProjectionAuthority {
-        graph_name,
-        step_id,
-        attempt,
-        output,
-        projection,
-        authority_grant_refs,
-        created_at,
-    } = params;
-    let disposition = disposition(output);
-    step_receipt_with_disposition_projection_authority_and_policy(
-        StepReceiptWithDisposition {
-            graph_name,
-            step_id,
-            attempt,
-            output,
-            created_at,
-            reason_code: process_reason_code(&disposition),
-            disposition,
-            summary: format!("step {step_id} completed"),
-        },
-        projection,
-        authority_grant_refs,
-        signature_policy,
-    )
-}
-
 pub(crate) struct StepReceiptWithDisposition<'a> {
     pub(crate) graph_name: &'a str,
     pub(crate) step_id: &'a str,
@@ -262,6 +198,74 @@ fn step_receipt_with_disposition_projection_authority_and_policy(
     });
     seal_receipt_unvalidated(&mut receipt, signature_policy)?;
     Ok(receipt)
+}
+
+/// The single step-receipt seal. Every runtime step (regular skill, tool,
+/// approval, agent act, replay, error) seals through here, so the act,
+/// decision, and authority assembly lives in exactly one place. `closure` is
+/// `None` for process-exit steps (the disposition is derived from the output)
+/// and `Some` for steps that carry their own disposition, e.g. an agent act
+/// that closes `Deferred` on a successful turn.
+pub(crate) struct StepSeal<'a> {
+    pub(crate) graph_name: &'a str,
+    pub(crate) step_id: &'a str,
+    pub(crate) attempt: u32,
+    pub(crate) output: &'a SkillOutput,
+    pub(crate) projection: &'a StepOutputProjection,
+    pub(crate) created_at: &'a str,
+    pub(crate) authority_grant_refs: Vec<Reference>,
+    pub(crate) closure: Option<StepSealClosure>,
+}
+
+/// A step's own disposition, reason, and summary when it does not derive them
+/// from a process exit.
+pub(crate) struct StepSealClosure {
+    pub(crate) disposition: ClosureDisposition,
+    pub(crate) reason_code: String,
+    pub(crate) summary: String,
+}
+
+pub(crate) fn seal_step(
+    params: StepSeal<'_>,
+    signature_policy: RuntimeReceiptSignaturePolicy<'_>,
+) -> Result<Receipt, RuntimeError> {
+    let StepSeal {
+        graph_name,
+        step_id,
+        attempt,
+        output,
+        projection,
+        created_at,
+        authority_grant_refs,
+        closure,
+    } = params;
+    let StepSealClosure {
+        disposition,
+        reason_code,
+        summary,
+    } = closure.unwrap_or_else(|| {
+        let disposition = disposition(output);
+        StepSealClosure {
+            reason_code: process_reason_code(&disposition),
+            summary: format!("step {step_id} completed"),
+            disposition,
+        }
+    });
+    step_receipt_with_disposition_projection_authority_and_policy(
+        StepReceiptWithDisposition {
+            graph_name,
+            step_id,
+            attempt,
+            output,
+            created_at,
+            disposition,
+            reason_code,
+            summary,
+        },
+        projection,
+        authority_grant_refs,
+        signature_policy,
+    )
 }
 
 /// The single `process_exit` criterion binding a step receipt seals on, derived

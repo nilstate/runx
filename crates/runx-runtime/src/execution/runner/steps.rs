@@ -39,12 +39,7 @@ use crate::approval::ApprovalResolution;
 use crate::effects::EffectReplay;
 use crate::execution::output_projection::{StepOutputProjection, project_step_output};
 use crate::host::Host;
-use crate::receipts::{
-    StepReceiptWithDisposition, StepReceiptWithProjectionAuthority,
-    step_receipt_with_disposition_projection_and_policy,
-    step_receipt_with_projection_and_signature_policy,
-    step_receipt_with_projection_authority_and_signature_policy,
-};
+use crate::receipts::{StepSeal, StepSealClosure, seal_step};
 
 const EXTERNAL_ADAPTER_HOST_RESOLUTION_REQUEST_METADATA: &str =
     "external_adapter_host_resolution_request";
@@ -503,15 +498,16 @@ where
         .map(|authority| authority.authority_grant_refs(&context.runtime.options.effects))
         .transpose()?
         .unwrap_or_default();
-    let receipt = step_receipt_with_projection_authority_and_signature_policy(
-        StepReceiptWithProjectionAuthority {
+    let receipt = seal_step(
+        StepSeal {
             graph_name: context.graph_name,
             step_id: &context.step.id,
             attempt: context.attempt,
             output: &output,
             projection: &projection,
-            authority_grant_refs,
             created_at: &context.runtime.options.created_at,
+            authority_grant_refs,
+            closure: None,
         },
         context.runtime.options.signature_policy(),
     )?;
@@ -663,15 +659,16 @@ fn run_replayed_effect_step(
         .map_err(|source| RuntimeError::ReceiptInvalid {
             message: source.to_string(),
         })?;
-    let receipt = step_receipt_with_projection_authority_and_signature_policy(
-        StepReceiptWithProjectionAuthority {
+    let receipt = seal_step(
+        StepSeal {
             graph_name,
             step_id: &step.id,
             attempt,
             output: &output,
             projection: &projection,
-            authority_grant_refs,
             created_at: replay.receipt_created_at(),
+            authority_grant_refs,
+            closure: None,
         },
         runtime.options.signature_policy(),
     )?;
@@ -1037,18 +1034,21 @@ where
     let projection =
         build_step_output_projection(step, &output, ClaimContextExposure::DeclaredOnly)?;
     let disposition_label = closure_disposition_label(&disposition);
-    let receipt = step_receipt_with_disposition_projection_and_policy(
-        StepReceiptWithDisposition {
+    let receipt = seal_step(
+        StepSeal {
             graph_name,
             step_id: &step.id,
             attempt,
             output: &output,
+            projection: &projection,
             created_at: &runtime.options.created_at,
-            disposition,
-            reason_code: format!("agent_act_{disposition_label}"),
-            summary: format!("agent act closed with {disposition_label}"),
+            authority_grant_refs: Vec::new(),
+            closure: Some(StepSealClosure {
+                disposition,
+                reason_code: format!("agent_act_{disposition_label}"),
+                summary: format!("agent act closed with {disposition_label}"),
+            }),
         },
-        &projection,
         runtime.options.signature_policy(),
     )?;
     let admission_witness = StepAdmissionWitness::local_runtime(&step.id, receipt.id.as_str());
@@ -1098,18 +1098,21 @@ where
     let projection =
         build_step_output_projection(step, &output, ClaimContextExposure::DeclaredOnly)?;
     let disposition_label = closure_disposition_label(&disposition);
-    let receipt = step_receipt_with_disposition_projection_and_policy(
-        StepReceiptWithDisposition {
+    let receipt = seal_step(
+        StepSeal {
             graph_name,
             step_id: &step.id,
             attempt,
             output: &output,
+            projection: &projection,
             created_at: &runtime.options.created_at,
-            disposition,
-            reason_code: format!("agent_act_{disposition_label}"),
-            summary: format!("agent act closed with {disposition_label}"),
+            authority_grant_refs: Vec::new(),
+            closure: Some(StepSealClosure {
+                disposition,
+                reason_code: format!("agent_act_{disposition_label}"),
+                summary: format!("agent act closed with {disposition_label}"),
+            }),
         },
-        &projection,
         runtime.options.signature_policy(),
     )?;
     let admission_witness = StepAdmissionWitness::local_runtime(&step.id, receipt.id.as_str());
@@ -1255,15 +1258,16 @@ where
             .map(|authority| authority.authority_grant_refs(&runtime.options.effects))
             .transpose()?
             .unwrap_or_default();
-        let receipt = step_receipt_with_projection_authority_and_signature_policy(
-            StepReceiptWithProjectionAuthority {
+        let receipt = seal_step(
+            StepSeal {
                 graph_name,
                 step_id: &step.id,
                 attempt,
                 output: &output,
                 projection: &projection,
-                authority_grant_refs,
                 created_at: &runtime.options.created_at,
+                authority_grant_refs,
+                closure: None,
             },
             runtime.options.signature_policy(),
         )?;
@@ -1429,13 +1433,17 @@ where
         metadata: JsonObject::new(),
     };
     let projection = project_step_output(&output);
-    let receipt = step_receipt_with_projection_and_signature_policy(
-        graph_name,
-        &step.id,
-        attempt,
-        &output,
-        &projection,
-        &runtime.options.created_at,
+    let receipt = seal_step(
+        StepSeal {
+            graph_name,
+            step_id: &step.id,
+            attempt,
+            output: &output,
+            projection: &projection,
+            created_at: &runtime.options.created_at,
+            authority_grant_refs: Vec::new(),
+            closure: None,
+        },
         runtime.options.signature_policy(),
     )?;
     let admission_witness = StepAdmissionWitness::local_runtime(&step.id, receipt.id.as_str());
@@ -1592,13 +1600,17 @@ where
         metadata: JsonObject::new(),
     };
     let projection = project_step_output(&output);
-    let receipt = step_receipt_with_projection_and_signature_policy(
-        graph_name,
-        &step.id,
-        attempt,
-        &output,
-        &projection,
-        &runtime.options.created_at,
+    let receipt = seal_step(
+        StepSeal {
+            graph_name,
+            step_id: &step.id,
+            attempt,
+            output: &output,
+            projection: &projection,
+            created_at: &runtime.options.created_at,
+            authority_grant_refs: Vec::new(),
+            closure: None,
+        },
         runtime.options.signature_policy(),
     )?;
     let admission_witness = StepAdmissionWitness::local_runtime(&step.id, receipt.id.as_str());
