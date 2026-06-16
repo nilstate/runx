@@ -662,6 +662,7 @@ fn graph_domain_act_receipt(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::path::PathBuf;
 
     use runx_parser::{SkillSource, SourceKind};
