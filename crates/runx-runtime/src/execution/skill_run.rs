@@ -13,9 +13,9 @@ use crate::effects::RuntimeEffectRegistry;
 use crate::execution::orchestrator::SkillRunRequest;
 use crate::receipts::signing::strip_receipt_signing_env;
 use crate::receipts::store::ReceiptStoreError;
+use crate::execution::output_projection::project_step_output;
 use crate::receipts::{
-    DomainActFrame, RuntimeReceiptSignatureConfig, StepReceiptWithDisposition,
-    step_receipt_with_disposition_and_policy,
+    DomainActFrame, RuntimeReceiptSignatureConfig, StepSeal, StepSealClosure, seal_step,
 };
 use crate::services::{ReceiptServices, WorkspaceEnv};
 
@@ -395,16 +395,21 @@ fn seal_skill_output(
 ) -> Result<runx_contracts::Receipt, SkillRunError> {
     let graph_name = identifier_segment(run_id);
     let step_id = identifier_segment(&runner.name);
-    Ok(step_receipt_with_disposition_and_policy(
-        StepReceiptWithDisposition {
+    let projection = project_step_output(output);
+    Ok(seal_step(
+        StepSeal {
             graph_name: &graph_name,
             step_id: &step_id,
             attempt: 1,
             output,
+            projection: &projection,
             created_at: &crate::time::now_iso8601(),
-            disposition,
-            reason_code,
-            summary,
+            authority_grant_refs: Vec::new(),
+            closure: Some(StepSealClosure {
+                disposition,
+                reason_code,
+                summary,
+            }),
         },
         signature_config.signature_policy(),
     )?)
