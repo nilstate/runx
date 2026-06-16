@@ -54,7 +54,7 @@ pub mod tool_catalogs;
 pub use execution::harness;
 pub use execution::orchestrator;
 pub use execution::runner;
-pub use execution::skill_run;
+pub use execution::skill_front;
 
 #[cfg(any(
     feature = "cli-tool",
@@ -154,7 +154,7 @@ pub use scaffold::{
     InitAction, InitGeneratedValues, RunxInitOptions, RunxInitResult, RunxNewOptions,
     RunxNewResult, ScaffoldError, runx_init, sanitize_runx_package_name, scaffold_runx_package,
 };
-pub use skill_run::InlineHarnessReport;
+pub use skill_front::InlineHarnessReport;
 pub use tool_catalogs::{
     ToolBuildOptions, ToolCatalogError, ToolInspectOptions, ToolSearchOptions, build_tool_catalogs,
     inspect_tool, search_tools,

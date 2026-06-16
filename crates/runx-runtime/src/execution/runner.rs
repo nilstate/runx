@@ -1,6 +1,8 @@
 // rust-style-allow: large-file because RuntimeOptions, checkpoint resume, and
 // the public graph runner surface are still audited as one Rust cutover unit.
-//! Native runtime engine for runx graphs.
+//! The act engine for runx: the single admit -> execute -> seal path every run
+//! takes. A standalone skill is a one-act plan and a graph a multi-act plan;
+//! both run through this one engine.
 //!
 //! The public surface lives here: [`Runtime`], [`RuntimeOptions`], [`StepRun`],
 //! [`GraphRun`], [`GraphCheckpoint`], and the feature-gated [`run_graph_file`]

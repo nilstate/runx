@@ -13,7 +13,7 @@ use thiserror::Error;
 use super::harness::{HarnessReplayError, HarnessReplayOutput};
 #[cfg(feature = "cli-tool")]
 use super::runner::GraphRun;
-use super::skill_run::{InlineHarnessReport, SkillRunError};
+use super::skill_front::{InlineHarnessReport, SkillRunError};
 use crate::effects::RuntimeEffectRegistry;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -157,7 +157,7 @@ impl LocalOrchestrator {
     }
 
     pub fn run_skill(&self, request: &SkillRunRequest) -> Result<RunResult, OrchestratorError> {
-        let output = super::skill_run::execute_skill_run_with_effects(request, &self.effects)?;
+        let output = super::skill_front::execute_skill_run_with_effects(request, &self.effects)?;
         Ok(skill_result(output))
     }
 
@@ -166,12 +166,12 @@ impl LocalOrchestrator {
         request: &SkillRunRequest,
         runner: &str,
     ) -> Result<RunResult, OrchestratorError> {
-        let overrides = super::skill_run::SkillRunOverrides {
+        let overrides = super::skill_front::SkillRunOverrides {
             runner: Some(runner.to_owned()),
             seeded_answers: None,
         };
         let output =
-            super::skill_run::execute_skill_run_with_overrides(request, &overrides, &self.effects)?;
+            super::skill_front::execute_skill_run_with_overrides(request, &overrides, &self.effects)?;
         Ok(skill_result(output))
     }
 
@@ -199,7 +199,7 @@ impl LocalOrchestrator {
         &self,
         request: &InlineHarnessRequest,
     ) -> Result<InlineHarnessReport, OrchestratorError> {
-        Ok(super::skill_run::run_inline_harness_with_effects(
+        Ok(super::skill_front::run_inline_harness_with_effects(
             &request.skill_path,
             request.receipt_dir.as_deref(),
             &self.effects,
@@ -216,7 +216,7 @@ impl LocalOrchestrator {
         options.effects = self.effects.clone();
         Ok(super::harness::run_harness_fixture_with_adapter(
             &request.fixture_path,
-            super::skill_run::SkillRunGraphAdapter::default(),
+            super::skill_front::SkillRunGraphAdapter::default(),
             options,
         )?)
     }

@@ -88,7 +88,7 @@ pub fn run_harness_fixture(
     {
         run_harness_fixture_with_adapter(
             fixture_path,
-            crate::execution::skill_run::SkillRunGraphAdapter::default(),
+            crate::execution::skill_front::SkillRunGraphAdapter::default(),
             fixture_runtime_options()?,
         )
     }
@@ -105,7 +105,7 @@ pub fn run_harness_fixture_cli_tool(
 ) -> Result<HarnessReplayOutput, HarnessReplayError> {
     run_harness_fixture_with_adapter(
         fixture_path,
-        crate::execution::skill_run::SkillRunGraphAdapter::default(),
+        crate::execution::skill_front::SkillRunGraphAdapter::default(),
         fixture_runtime_options()?,
     )
 }

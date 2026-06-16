@@ -16,4 +16,4 @@ pub mod orchestrator;
 pub(crate) mod output_projection;
 pub mod runner;
 pub(crate) mod skill_context;
-pub mod skill_run;
+pub mod skill_front;

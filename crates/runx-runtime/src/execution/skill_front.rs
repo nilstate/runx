@@ -1,3 +1,8 @@
+//! The skill front: compiles a skill-run request into an execution (cli-tool,
+//! agent, or graph runner) and seals it through the shared act engine. This is
+//! one of the source-type "fronts" from `plans/governed-execution-layer.md`;
+//! the act engine (`execution::runner`) owns admit -> execute -> seal.
+
 use std::fs;
 use std::path::Path;
 
