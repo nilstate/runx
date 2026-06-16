@@ -260,7 +260,21 @@ fn domain_act_frame(
     governed_effect: Option<&JsonValue>,
 ) -> Option<DomainActFrame> {
     let act = invocation.source.raw.get("act").and_then(JsonValue::as_object)?;
-    build_domain_act_frame(act, &invocation.inputs, answer, governed_effect)
+    // Promote the delivered credential into the act's held authority: a governed
+    // turn's receipt records the grants it actually carried, not just the
+    // declared scope.
+    let authority_grant_refs = invocation
+        .credential_delivery
+        .public_observation()
+        .map(|observation| observation.credential_refs.clone())
+        .unwrap_or_default();
+    build_domain_act_frame(
+        act,
+        &invocation.inputs,
+        answer,
+        governed_effect,
+        authority_grant_refs,
+    )
 }
 
 /// The core of [`domain_act_frame`], reusable by the graph path: build the domain
@@ -271,6 +285,7 @@ fn build_domain_act_frame(
     inputs: &runx_contracts::JsonObject,
     reason_source: &JsonValue,
     governed_effect: Option<&JsonValue>,
+    authority_grant_refs: Vec<runx_contracts::Reference>,
 ) -> Option<DomainActFrame> {
     use runx_contracts::{ActForm, DecisionChoice, Reference, ReferenceType};
 
@@ -360,7 +375,7 @@ fn build_domain_act_frame(
         decision_summary: reason.into(),
         actor_ref: input_ref("actor_from", ReferenceType::Principal)
             .unwrap_or_else(|| Reference::runx(ReferenceType::Principal, "local_runtime")),
-        authority_grant_refs: Vec::new(),
+        authority_grant_refs,
         authority_scope_refs: input_ref("authority_from", ReferenceType::Grant)
             .into_iter()
             .collect(),

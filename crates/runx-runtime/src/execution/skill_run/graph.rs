@@ -642,8 +642,14 @@ fn graph_domain_act_receipt(
     let governed_effect = step_output("effect_step")
         .filter(|step| step.output.succeeded())
         .and_then(|step| serde_json::from_str::<JsonValue>(step.output.stdout.trim()).ok());
-    let Some(frame) = build_domain_act_frame(act, graph_inputs, &reason_source, governed_effect.as_ref())
-    else {
+    let authority_grant_refs = graph_credential_grant_refs(run);
+    let Some(frame) = build_domain_act_frame(
+        act,
+        graph_inputs,
+        &reason_source,
+        governed_effect.as_ref(),
+        authority_grant_refs,
+    ) else {
         return Ok(None);
     };
     let receipt = domain_act_receipt(
@@ -658,6 +664,28 @@ fn graph_domain_act_receipt(
         signature_config.signature_policy(),
     )?;
     Ok(Some(receipt))
+}
+
+/// Gather the credential grant refs the turn actually held, read from the
+/// `Credential` verification refs sealed on each step receipt. These become the
+/// domain act's `authority.grant_refs`, so the receipt records the authority it
+/// carried, not only the declared scope.
+fn graph_credential_grant_refs(run: &GraphRun) -> Vec<runx_contracts::Reference> {
+    let mut refs: Vec<runx_contracts::Reference> = Vec::new();
+    for step in &run.steps {
+        for act in &step.receipt.acts {
+            for binding in &act.criterion_bindings {
+                for reference in &binding.verification_refs {
+                    if reference.reference_type == runx_contracts::ReferenceType::Credential
+                        && !refs.contains(reference)
+                    {
+                        refs.push(reference.clone());
+                    }
+                }
+            }
+        }
+    }
+    refs
 }
 
 #[cfg(test)]
