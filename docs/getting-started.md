@@ -81,4 +81,7 @@ crates/target/debug/runx history <receipt-id> --json
   scaffolding.
 - Use `npm create @runxhq/skill@latest docs-demo` when starting from npm.
 - Compose the example into a graph with [Skill To Graph](./skill-to-graph.md).
+- Publish a ready skill from a public repo at https://runx.ai/x/publish, or run
+  `crates/target/debug/runx login` followed by `crates/target/debug/runx registry publish ... --registry https://runx.ai`.
+  See [Publishing](./publishing.md) for the full local and hosted paths.
 - See [API Surface](./api-surface.md) for public package exports.

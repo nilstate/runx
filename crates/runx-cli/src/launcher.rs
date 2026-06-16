@@ -6,6 +6,7 @@ use crate::cli_args::{flag_value, optional_flag_value, os_arg, split_flag};
 use crate::config::ConfigPlan;
 use crate::export::ExportPlan;
 use crate::kernel::{KernelInputSource, KernelPlan};
+use crate::login::LoginPlan;
 use crate::mcp::McpPlan;
 use crate::parser::{ParserInputSource, ParserPlan};
 use crate::payment::{PaymentAction, PaymentAdmissionPlan, PaymentInputSource, PaymentPlan};
@@ -23,6 +24,7 @@ pub enum LauncherAction {
     RunExport(ExportPlan),
     RunInit(InitPlan),
     RunList(ListPlan),
+    RunLogin(LoginPlan),
     RunMcp(McpPlan),
     RunParser(ParserPlan),
     RunNew(NewPlan),
@@ -178,6 +180,11 @@ pub fn plan_launcher(args: Vec<OsString>) -> LauncherAction {
             .map_or_else(LauncherAction::Error, LauncherAction::RunConfig);
     }
 
+    if first_arg_is(&args, "login") {
+        return crate::login::parse_login_plan(&args)
+            .map_or_else(LauncherAction::Error, LauncherAction::RunLogin);
+    }
+
     if first_arg_is(&args, "policy") {
         return parse_policy_plan(&args)
             .map_or_else(LauncherAction::Error, LauncherAction::RunPolicy);
@@ -318,7 +325,8 @@ Commands:
   runx verify [receipt-id] [--receipt-dir dir] [--receipt <path|->] [--notary <path|-> --notary-key trusted.pem] [--json]
   runx history [query] [--skill s] [--status s] [--source s] [--actor a] [--artifact-type t] [--since iso] [--until iso] [--receipt-dir dir] [--json]
   runx list [tools|skills|graphs|packets|overlays] [--ok-only|--invalid-only] [--json]
-  runx config set|get|list [agent.provider|agent.model|agent.api_key] [value] [--json]
+  runx login [--provider github|google|gitlab] [--api-base-url url] [--allow-local-api] [--json]
+  runx config set|get|list [agent.provider|agent.model|agent.api_key|public.api_token] [value] [--json]
   runx policy inspect|lint <policy.json> [--json]
   runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]
   runx kernel eval --input <file|-> --json
@@ -368,9 +376,9 @@ Usage:
   runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]
 
 Options:
-  --api-base-url url  Hosted API base URL (default: RUNX_PUBLIC_API_BASE_URL or https://runx.ai)
-  --token token       Hosted API token (default: RUNX_PUBLIC_API_TOKEN or RUNX_CONNECT_ACCESS_TOKEN)
-  --allow-local-api   Allow loopback/private hosted API URLs for local dogfood only
+  --api-base-url url  Public API base URL (default: RUNX_PUBLIC_API_BASE_URL or https://runx.ai)
+  --token token       Public API token (default: RUNX_PUBLIC_API_TOKEN, RUNX_CONNECT_ACCESS_TOKEN, or runx login)
+  --allow-local-api   Allow loopback/private public API URLs for local dogfood only
   --json              Print the raw notary response as JSON
 "
     .to_owned()

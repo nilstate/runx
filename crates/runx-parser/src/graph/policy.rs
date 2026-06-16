@@ -3,7 +3,7 @@ use runx_contracts::JsonValue;
 use super::helpers::{
     optional_object, required_array, required_object, required_string, validation_error,
 };
-use super::types::{GraphPolicy, GraphGuard};
+use super::types::{GraphGuard, GraphPolicy};
 use crate::ValidationError;
 
 pub fn validate_graph_policy(
@@ -27,10 +27,7 @@ pub fn validate_graph_policy(
     Ok(Some(GraphPolicy { guards }))
 }
 
-fn guard(
-    raw_gate: &JsonValue,
-    gate_field: &str,
-) -> Result<GraphGuard, ValidationError> {
+fn guard(raw_gate: &JsonValue, gate_field: &str) -> Result<GraphGuard, ValidationError> {
     let gate = required_object(Some(raw_gate), gate_field)?;
     let equals = gate.get("equals").cloned();
     let not_equals = gate.get("not_equals").cloned();

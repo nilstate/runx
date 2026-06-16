@@ -38,6 +38,7 @@ fn main() -> ExitCode {
         LauncherAction::RunHistory(plan) => run_native_history(plan.args),
         LauncherAction::RunVerify(plan) => run_native_verify(plan.args),
         LauncherAction::RunList(plan) => run_native_list(plan),
+        LauncherAction::RunLogin(plan) => runx_cli::login::run_native_login(plan),
         LauncherAction::RunMcp(plan) => runx_cli::mcp::run_native_mcp(plan),
         LauncherAction::RunHarness(plan) => run_native_harness(plan),
         LauncherAction::RunKernel(plan) => runx_cli::kernel::run_native_kernel(plan),

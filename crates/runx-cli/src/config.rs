@@ -245,18 +245,22 @@ fn render_config_result(result: &ConfigResult) -> String {
 }
 
 fn flatten_config(config: &RunxConfigFile) -> Vec<(&'static str, &str)> {
-    let Some(agent) = config.agent.as_ref() else {
-        return Vec::new();
-    };
     let mut rows = Vec::new();
-    if let Some(provider) = agent.provider.as_deref() {
-        rows.push(("agent.provider", provider));
+    if let Some(agent) = config.agent.as_ref() {
+        if let Some(provider) = agent.provider.as_deref() {
+            rows.push(("agent.provider", provider));
+        }
+        if let Some(model) = agent.model.as_deref() {
+            rows.push(("agent.model", model));
+        }
+        if let Some(api_key_ref) = agent.api_key_ref.as_deref() {
+            rows.push(("agent.api_key", api_key_ref));
+        }
     }
-    if let Some(model) = agent.model.as_deref() {
-        rows.push(("agent.model", model));
-    }
-    if let Some(api_key_ref) = agent.api_key_ref.as_deref() {
-        rows.push(("agent.api_key", api_key_ref));
+    if let Some(public) = config.public.as_ref()
+        && let Some(api_token_ref) = public.api_token_ref.as_deref()
+    {
+        rows.push(("public.api_token", api_token_ref));
     }
     rows
 }
@@ -338,10 +342,19 @@ mod tests {
             value: Some("sk-secret-test".to_owned()),
             json: true,
         };
+        let set_public_token = ConfigPlan {
+            action: ConfigAction::Set,
+            key: Some("public.api_token".to_owned()),
+            value: Some("rxk-secret-test".to_owned()),
+            json: true,
+        };
         run_config_command(&set_provider, &env, &temp)?;
         let key_output = run_config_command(&set_key, &env, &temp)?;
+        let public_output = run_config_command(&set_public_token, &env, &temp)?;
         assert!(key_output.contains("\"value\": \"[encrypted]\""));
+        assert!(public_output.contains("\"value\": \"[encrypted]\""));
         assert!(!key_output.contains("sk-secret-test"));
+        assert!(!public_output.contains("rxk-secret-test"));
 
         let get_output = run_config_command(
             &ConfigPlan {
@@ -370,12 +383,16 @@ mod tests {
         assert!(list_output.contains("agent.provider"));
         assert!(list_output.contains("openai"));
         assert!(list_output.contains("agent.api_key"));
+        assert!(list_output.contains("public.api_token"));
         assert!(list_output.contains("[encrypted]"));
         assert!(!list_output.contains("sk-secret-test"));
+        assert!(!list_output.contains("rxk-secret-test"));
 
         let config_contents = fs::read_to_string(runx_home.join("config.json"))?;
         assert!(config_contents.contains("api_key_ref"));
+        assert!(config_contents.contains("api_token_ref"));
         assert!(!config_contents.contains("sk-secret-test"));
+        assert!(!config_contents.contains("rxk-secret-test"));
         fs::remove_dir_all(temp)?;
         Ok(())
     }

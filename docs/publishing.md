@@ -17,8 +17,9 @@ they behave differently.
 
 The skill must be real and runnable:
 
-- A valid `SKILL.md` (frontmatter `name`, `description`, `runx.category`) and an
-  `X.yaml` execution profile. Format: https://runx.ai/SKILL.md
+- A valid `SKILL.md` (frontmatter `name`, `description`, and `source`) and an
+  `X.yaml` execution profile when the skill has a runnable path. Format:
+  https://runx.ai/SKILL.md
 - It passes the harness:
   ```bash
   runx harness ./skills/<your-skill> --json
@@ -32,53 +33,82 @@ runx registry publish ./skills/<your-skill>/SKILL.md
 
 This writes the skill into your local workspace registry. It takes no credentials
 and is the fast way to confirm the package resolves and installs before you push
-it to the shared catalog. (The native OSS CLI publishes to the *local* registry
-only; remote publish goes through the credentialed path below.)
+it to the shared catalog.
 
 ## Publish to the hosted registry
 
-Publishing to `runx.ai/x` is a governed run: you bring a publish credential per
-invocation, nothing is persisted, and the scope narrows to that single publish.
+The hosted registry is open by default and conservative in discovery. A new
+public package starts as a community row, is reachable by URL and exact search,
+and earns broader ranking through identity, harness evidence, and hosted
+verified runs.
+
+For humans, start at https://runx.ai/x/publish. There are two publish lanes:
+
+- **Public URL publish.** Paste a public repository URL. runx indexes every valid
+  `SKILL.md`/`X.yaml` package it finds and leaves the source in the upstream repo.
+  This is the fastest way to get a community listing into the catalog.
+- **Authenticated CLI publish.** Use this for publisher-controlled releases. Sign
+  in once, then publish the package directly from your local checkout. Hosted
+  runx derives the owner from your connected identity, reconstructs the submitted
+  package, reruns the publish harness, rejects failed cases, and starts the row
+  at community trust.
+
+The CLI form keeps the public API token out of command lines:
 
 ```bash
-export RUNX_PUBLISH_SECRET=...        # the secret value lives in the env var
-runx skill ./skills/<your-skill> \
-  --credential publish:<auth_mode>:<material_ref> \
-  --secret-env RUNX_PUBLISH_SECRET
+runx login
+runx registry publish ./skills/<your-skill>/SKILL.md --registry https://runx.ai
 ```
 
-- `--credential publish:<auth_mode>:<material_ref>` declares the publish
-  credential: the auth mode and the reference to your credential material. Get the
-  exact value for your publisher from the publish surface at https://runx.ai/x/publish
-- `--secret-env <ENV_VAR>` passes the secret by **environment variable name**. The
-  value is read from the environment, never placed on the command line. The CLI
-  requires `--credential` and `--secret-env` together.
+For remote publishes the CLI sends `SKILL.md`, `X.yaml`, and bounded UTF-8
+sidecar files from the package directory. That lets hosted runx rerun the
+harness from the same package material instead of trusting a client-supplied
+summary. The local harness still runs first for fast feedback.
 
-The hosted, no-friction alternative is **managed OAuth connect** from
-https://runx.ai/x/publish, which establishes the publish credential for you.
+`runx login` opens the hosted sign-in flow and stores the returned public API
+token in the encrypted local config at `public.api_token`. Hosted CLI commands
+use token precedence in this order: an explicit `--token` when the command has
+one, `RUNX_PUBLIC_API_TOKEN`, `RUNX_CONNECT_ACCESS_TOKEN`, then the stored token
+from `runx login`. `runx registry publish` uses the env or stored-token sources.
 
-### Why a credential and a secret env var?
+After a public URL publish, use the claim flow from the registry listing to prove
+control of the source repo and move matching versions toward verified discovery.
+
+### Why sign in?
 
 Publishing writes a signed package into a shared public catalog under your
 publisher identity. That is an authenticated write to an external authority, so
 runx treats it like every other governed action, with no special-casing:
 
-- The **credential** proves you are allowed to publish under that identity. Without
-  it, anyone could publish under any publisher name (squatting, impersonation).
-- The **secret is passed by env-var name, never inline**, so it never lands in your
-  shell history, the process argument list, or the receipt.
-- It is **scoped per run and not persisted**, so a publish credential cannot be
-  reused for anything else later.
-
-The publish, like any governed action, seals into a receipt you can verify.
+- The **connected identity** proves the publisher namespace. Hosted runx derives
+  the owner from that identity; the request body cannot spoof it.
+- The **public API token is stored encrypted locally** and masked by `runx config`.
+  You can also use `RUNX_PUBLIC_API_TOKEN` for CI.
+- New publishes start as **community**. Verification and evidence promote
+  discovery; publisher declaration alone never does.
+- Hosted publishing is rate-limited per publisher identity. A noisy publisher
+  cannot churn public versions indefinitely, even though the on-ramp stays open.
+- Hosted publishing reruns the submitted package harness. Failed harness cases
+  stop the write before a registry row is created.
+- The registry row stores immutable `digest` and `profile_digest` values for the
+  published package. Signed run receipts and hosted verified-run evidence are
+  separate signals recorded when the skill is executed.
 
 ## After you publish
 
 - Your skill appears as a live registry row on your publisher profile at
   `runx.ai/x/<publisher>`.
 - New publishes start at **community** trust tier. Promotion to **verified**
-  requires a verified identity, a set domain, passing harnesses, and signing
+  requires claimed source identity, passing harnesses, and signing evidence
   (shown on the publisher trust panel).
+- Community rows with no install or run evidence stay out of broad discovery by
+  default, but they remain reachable by direct URL and exact-name search. Use
+  `?include=unverified` when intentionally browsing the full frontier.
+- `first_party`, `verified`, and established `community` rows appear in normal
+  discovery; ranking prefers hosted verified-run evidence first, then trust tier,
+  install evidence, and recency. A verified run is counted only from a sealed
+  hosted-issued receipt that carries runx-written registry metadata for the
+  skill/version. Publisher self-runs are excluded when the publisher id is known.
 - Confirm it resolves:
   ```bash
   runx registry search <your-skill>

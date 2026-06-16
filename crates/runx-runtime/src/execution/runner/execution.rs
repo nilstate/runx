@@ -136,7 +136,9 @@ impl GraphExecution {
                 return Ok(());
             }
             self.mark_when_skipped_steps(graph, &runtime.options.created_at);
-            let plan = self.graph_index.plan_transition(&self.state, &fanout_policies);
+            let plan = self
+                .graph_index
+                .plan_transition(&self.state, &fanout_policies);
             if self.apply_plan(runtime, graph_dir, graph, host, &fanout_policies, plan)? {
                 break;
             }
@@ -150,9 +152,11 @@ impl GraphExecution {
     /// selected out once the step it reads from has produced its output.
     fn mark_when_skipped_steps(&mut self, graph: &ExecutionGraph, at: &str) {
         for step_id in when_skipped_steps(graph, &self.runs) {
-            let is_pending = self.state.steps.iter().any(|step| {
-                step.step_id == step_id && step.status == GraphStepStatus::Pending
-            });
+            let is_pending = self
+                .state
+                .steps
+                .iter()
+                .any(|step| step.step_id == step_id && step.status == GraphStepStatus::Pending);
             if is_pending {
                 apply_sequential_graph_event(
                     &mut self.state,
@@ -874,7 +878,9 @@ impl GraphExecution {
         fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
         group_id: &str,
     ) -> Result<(), RuntimeError> {
-        let follow_up = self.graph_index.plan_transition(&self.state, fanout_policies);
+        let follow_up = self
+            .graph_index
+            .plan_transition(&self.state, fanout_policies);
         if matches!(
             follow_up,
             SequentialGraphPlan::RunFanout {
@@ -1073,11 +1079,7 @@ pub(super) fn enforce_guards(
         {
             return Err(RuntimeError::GraphBlocked {
                 step_id: step.id.clone(),
-                reason: format!(
-                    "guard '{}' expected {}",
-                    gate.field,
-                    display_json(expected)
-                ),
+                reason: format!("guard '{}' expected {}", gate.field, display_json(expected)),
             });
         }
         if let Some(disallowed) = &gate.not_equals

@@ -8,6 +8,6 @@ mod validate;
 pub use types::{
     ExecutionGraph, FanoutBranchFailurePolicy, FanoutConflictAction, FanoutConflictGate,
     FanoutGroupPolicy, FanoutSyncStrategy, FanoutThresholdAction, FanoutThresholdGate,
-    GraphContextEdge, GraphPolicy, GraphRetryPolicy, GraphStep, GraphGuard, RawGraphIr,
+    GraphContextEdge, GraphGuard, GraphPolicy, GraphRetryPolicy, GraphStep, RawGraphIr,
 };
 pub use validate::{parse_graph_yaml, validate_graph, validate_graph_document};

@@ -74,10 +74,11 @@ pub use adapter::{
 pub use approval::{ApprovalError, LocalApprovalGateResolver, request_approval};
 pub use config::{
     ConfigError, ConfigKey, LocalProfileSource, ManagedAgentConfig, RunxAgentConfig,
-    RunxConfigFile, load_local_agent_api_key, load_managed_agent_config, load_runx_config_file,
-    lookup_runx_config_value, managed_agent_provider, mask_runx_config_file, parse_config_key,
-    resolve_local_skill_profile, resolve_path_from_user_input, resolve_runx_global_home_dir,
-    resolve_runx_home_dir, update_runx_config_value, write_runx_config_file,
+    RunxConfigFile, RunxPublicConfig, load_local_agent_api_key, load_local_public_api_token,
+    load_managed_agent_config, load_runx_config_file, lookup_runx_config_value,
+    managed_agent_provider, mask_runx_config_file, parse_config_key, resolve_local_skill_profile,
+    resolve_path_from_user_input, resolve_runx_global_home_dir, resolve_runx_home_dir,
+    update_runx_config_value, write_runx_config_file,
 };
 pub use credentials::{
     CredentialDelivery, CredentialDeliveryError, CredentialDeliveryProfile, CredentialMaterialRole,

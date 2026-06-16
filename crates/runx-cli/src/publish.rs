@@ -5,19 +5,17 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fmt;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use runx_contracts::JsonValue;
+use runx_runtime::ConfigError;
 use runx_runtime::registry::{
-    DefaultRuntimeHttpTransport, HttpMethod, HttpRequest, RuntimeHttpError, RuntimeHttpHeader,
-    Transport,
+    HttpMethod, HttpRequest, RuntimeHttpError, RuntimeHttpHeader, Transport,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::cli_args::{flag_value, os_arg, split_flag};
-
-const DEFAULT_PUBLIC_API_BASE_URL: &str = "https://runx.ai";
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct PublishPlan {
@@ -37,6 +35,7 @@ pub enum PublishCliError {
     InvalidReceiptJson { path: String, message: String },
     MissingToken,
     TransportInit(RuntimeHttpError),
+    Config(ConfigError),
     Publish(PublishError),
     Serialize(String),
 }
@@ -58,11 +57,12 @@ impl fmt::Display for PublishCliError {
             }
             Self::MissingToken => write!(
                 formatter,
-                "missing hosted API token; pass --token, set RUNX_PUBLIC_API_TOKEN, or set RUNX_CONNECT_ACCESS_TOKEN"
+                "missing public API token; run `runx login`, pass --token, set RUNX_PUBLIC_API_TOKEN, or set RUNX_CONNECT_ACCESS_TOKEN"
             ),
             Self::TransportInit(error) => {
                 write!(formatter, "failed to initialize HTTP transport: {error}")
             }
+            Self::Config(error) => write!(formatter, "{error}"),
             Self::Publish(error) => write!(formatter, "{error}"),
             Self::Serialize(message) => {
                 write!(formatter, "failed to serialize publish result: {message}")
@@ -76,6 +76,12 @@ impl std::error::Error for PublishCliError {}
 impl From<PublishError> for PublishCliError {
     fn from(error: PublishError) -> Self {
         Self::Publish(error)
+    }
+}
+
+impl From<ConfigError> for PublishCliError {
+    fn from(error: ConfigError) -> Self {
+        Self::Config(error)
     }
 }
 
@@ -206,7 +212,16 @@ pub fn parse_publish_plan(args: &[OsString]) -> Result<PublishPlan, String> {
 }
 
 pub fn run_native_publish(plan: PublishPlan) -> ExitCode {
-    match run_publish_command(&plan, &crate::history::env_map()) {
+    let cwd = match std::env::current_dir() {
+        Ok(cwd) => cwd,
+        Err(error) => {
+            let _ignored = crate::cli_io::write_stderr(&format!(
+                "runx publish: failed to resolve cwd: {error}\n"
+            ));
+            return ExitCode::from(1);
+        }
+    };
+    match run_publish_command(&plan, &crate::history::env_map(), &cwd) {
         Ok(output) => crate::cli_io::write_stdout_code(&output, 0),
         Err(error) => {
             if plan.json {
@@ -230,16 +245,13 @@ pub fn run_native_publish(plan: PublishPlan) -> ExitCode {
 fn run_publish_command(
     plan: &PublishPlan,
     env: &BTreeMap<String, String>,
+    cwd: &Path,
 ) -> Result<String, PublishCliError> {
     let receipt = read_receipt_json(&plan.receipt_path)?;
     let base_url = resolve_public_api_base_url(plan, env);
-    let token = resolve_publish_token(plan, env).ok_or(PublishCliError::MissingToken)?;
-    let transport = if allow_local_api(plan, env) {
-        DefaultRuntimeHttpTransport::with_private_network_access()
-    } else {
-        DefaultRuntimeHttpTransport::new()
-    }
-    .map_err(PublishCliError::TransportInit)?;
+    let token = resolve_publish_token(plan, env, cwd)?.ok_or(PublishCliError::MissingToken)?;
+    let transport = crate::public_api::transport(allow_local_api(plan, env))
+        .map_err(PublishCliError::TransportInit)?;
     let response = publish_receipt(
         &transport,
         &PublishOptions {
@@ -252,10 +264,11 @@ fn run_publish_command(
 }
 
 fn allow_local_api(plan: &PublishPlan, env: &BTreeMap<String, String>) -> bool {
-    plan.allow_local_api
-        || env
-            .get("RUNX_PUBLISH_ALLOW_LOCAL_API")
-            .is_some_and(|value| matches!(value.trim(), "1" | "true" | "TRUE" | "yes" | "YES"))
+    crate::public_api::private_network_allowed(
+        plan.allow_local_api,
+        env,
+        "RUNX_PUBLISH_ALLOW_LOCAL_API",
+    )
 }
 
 fn read_receipt_json(path: &PathBuf) -> Result<JsonValue, PublishCliError> {
@@ -270,31 +283,15 @@ fn read_receipt_json(path: &PathBuf) -> Result<JsonValue, PublishCliError> {
 }
 
 fn resolve_public_api_base_url(plan: &PublishPlan, env: &BTreeMap<String, String>) -> String {
-    if let Some(value) = plan
-        .api_base_url
-        .as_deref()
-        .map(|value| value.trim().trim_end_matches('/'))
-        .filter(|value| !value.is_empty())
-    {
-        return value.to_owned();
-    }
-    env.get("RUNX_PUBLIC_API_BASE_URL")
-        .map(|value| value.trim().trim_end_matches('/'))
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| DEFAULT_PUBLIC_API_BASE_URL.to_owned())
+    crate::public_api::resolve_base_url(plan.api_base_url.as_deref(), env)
 }
 
-fn resolve_publish_token(plan: &PublishPlan, env: &BTreeMap<String, String>) -> Option<String> {
-    plan.token
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .or_else(|| env.get("RUNX_PUBLIC_API_TOKEN").map(String::as_str))
-        .or_else(|| env.get("RUNX_CONNECT_ACCESS_TOKEN").map(String::as_str))
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
+fn resolve_publish_token(
+    plan: &PublishPlan,
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+) -> Result<Option<String>, PublishCliError> {
+    crate::public_api_token::resolve(plan.token.as_deref(), env, cwd).map_err(PublishCliError::from)
 }
 
 fn publish_receipt<T: Transport>(
@@ -319,12 +316,12 @@ fn publish_receipt<T: Transport>(
         body: Some(body),
     })?;
     if !(200..=299).contains(&response.status) {
-        if let Ok(envelope) = serde_json::from_str::<ErrorEnvelope>(&response.body) {
+        if let Some(error) = crate::public_api::parse_error(&response.body) {
             return Err(PublishError::RunxApi {
-                code: envelope.error.code,
-                detail: envelope.error.detail,
-                hint: envelope.error.hint,
-                retry_after_seconds: envelope.error.retry_after_seconds,
+                code: error.code,
+                detail: error.detail,
+                hint: error.hint,
+                retry_after_seconds: error.retry_after_seconds,
             });
         }
         return Err(PublishError::HttpStatus {
@@ -378,21 +375,6 @@ fn render_publish_result(
 
 fn compact_json(value: &JsonValue) -> Result<String, serde_json::Error> {
     serde_json::to_string(value)
-}
-
-#[derive(Deserialize)]
-struct ErrorEnvelope {
-    error: ErrorPayload,
-}
-
-#[derive(Deserialize)]
-struct ErrorPayload {
-    code: String,
-    detail: String,
-    #[serde(default)]
-    hint: Option<String>,
-    #[serde(default)]
-    retry_after_seconds: Option<u32>,
 }
 
 #[cfg(test)]

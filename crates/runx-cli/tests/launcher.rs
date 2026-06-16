@@ -6,6 +6,7 @@ use runx_cli::launcher::{
     LauncherAction, ListKind, ListPlan, NewPlan, ToolAction, ToolPlan, UrlAddPlan, help_text,
     history_help_text, plan_launcher, publish_help_text, skill_help_text, verify_help_text,
 };
+use runx_cli::login::LoginPlan;
 use runx_cli::mcp::McpPlan;
 use runx_cli::parser::{ParserInputSource, ParserPlan};
 use runx_cli::policy::{PolicyAction, PolicyPlan};
@@ -47,6 +48,10 @@ fn top_level_help_and_version_are_native() {
     assert_help_line(
         &help,
         "runx export <claude|codex> [skill-ref...] [--project] [--json]",
+    );
+    assert_help_line(
+        &help,
+        "runx login [--provider github|google|gitlab] [--api-base-url url] [--allow-local-api] [--json]",
     );
     assert!(
         !help.contains("runx connect"),
@@ -106,6 +111,30 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
     assert_help_line(
         &publish_help_text(),
         "runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]",
+    );
+}
+
+#[test]
+fn routes_login_to_native_plan() {
+    assert_eq!(
+        plan(&[
+            "login",
+            "--provider",
+            "github",
+            "--api-base-url",
+            "https://runx.test",
+            "--json",
+        ]),
+        LauncherAction::RunLogin(LoginPlan {
+            provider: Some("github".to_owned()),
+            api_base_url: Some("https://runx.test".to_owned()),
+            allow_local_api: false,
+            json: true,
+        })
+    );
+    assert_eq!(
+        plan(&["login", "--unknown"]),
+        LauncherAction::Error("unknown login flag --unknown".to_owned())
     );
 }
 

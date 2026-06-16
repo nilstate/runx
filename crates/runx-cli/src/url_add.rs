@@ -7,16 +7,12 @@ use std::collections::BTreeMap;
 use std::process::ExitCode;
 
 use runx_runtime::registry::{
-    DefaultRuntimeHttpTransport, GithubRepoRef, IndexGithubRepoOptions, IndexResponse,
-    IndexWarning, IndexedListing, IndexedRepo, TrustTier, index_github_repo, parse_github_repo_ref,
+    GithubRepoRef, IndexGithubRepoOptions, IndexResponse, IndexWarning, IndexedListing,
+    IndexedRepo, TrustTier, index_github_repo, parse_github_repo_ref,
 };
 use serde::Serialize;
 
 use crate::launcher::UrlAddPlan;
-
-/// Default base URL for the hosted runx API. Overridden by `--api-base-url` on
-/// the plan or `RUNX_PUBLIC_API_BASE_URL` in the environment.
-const DEFAULT_PUBLIC_API_BASE_URL: &str = "https://runx.ai";
 
 pub fn run_native_url_add(plan: UrlAddPlan) -> ExitCode {
     let env = crate::history::env_map();
@@ -27,7 +23,7 @@ pub fn run_native_url_add(plan: UrlAddPlan) -> ExitCode {
         Err(error) => return fail(&error.to_string()),
     };
 
-    let transport = match DefaultRuntimeHttpTransport::new() {
+    let transport = match crate::public_api::transport(false) {
         Ok(transport) => transport,
         Err(error) => return fail(&format!("failed to initialize HTTP transport: {error}")),
     };
@@ -45,14 +41,7 @@ pub fn run_native_url_add(plan: UrlAddPlan) -> ExitCode {
 }
 
 fn resolve_public_api_base_url(plan: &UrlAddPlan, env: &BTreeMap<String, String>) -> String {
-    if let Some(api) = plan.api_base_url.as_deref() {
-        return api.trim_end_matches('/').to_owned();
-    }
-    env.get("RUNX_PUBLIC_API_BASE_URL")
-        .map(|value| value.trim().trim_end_matches('/'))
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| DEFAULT_PUBLIC_API_BASE_URL.to_owned())
+    crate::public_api::resolve_base_url(plan.api_base_url.as_deref(), env)
 }
 
 fn render_result(json: bool, repo_ref: &GithubRepoRef, response: &IndexResponse) -> ExitCode {

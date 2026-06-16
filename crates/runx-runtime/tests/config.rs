@@ -4,10 +4,10 @@ use std::path::Path;
 
 use runx_runtime::{
     ConfigError, ConfigKey, LocalProfileSource, ManagedAgentConfig, RunxAgentConfig,
-    RunxConfigFile, SecretString, load_local_agent_api_key, load_managed_agent_config,
-    load_runx_config_file, lookup_runx_config_value, managed_agent_provider, mask_runx_config_file,
-    resolve_local_skill_profile, resolve_runx_global_home_dir, update_runx_config_value,
-    write_runx_config_file,
+    RunxConfigFile, SecretString, load_local_agent_api_key, load_local_public_api_token,
+    load_managed_agent_config, load_runx_config_file, lookup_runx_config_value,
+    managed_agent_provider, mask_runx_config_file, resolve_local_skill_profile,
+    resolve_runx_global_home_dir, update_runx_config_value, write_runx_config_file,
 };
 use tempfile::tempdir;
 
@@ -84,6 +84,48 @@ fn config_round_trips_encrypted_local_agent_api_keys() -> Result<(), Box<dyn std
 }
 
 #[test]
+fn config_round_trips_encrypted_public_api_token() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let config_dir = temp.path();
+    let config = update_runx_config_value(
+        RunxConfigFile::default(),
+        ConfigKey::PublicApiToken,
+        "rxk_test_secret",
+        config_dir,
+    )?;
+    let token_ref = config
+        .public
+        .as_ref()
+        .and_then(|public| public.api_token_ref.as_ref())
+        .ok_or("missing public API token ref")?;
+
+    assert!(token_ref.starts_with("local_public_api_token_"));
+    assert_eq!(
+        load_local_public_api_token(config_dir, token_ref)?,
+        "rxk_test_secret"
+    );
+    assert_eq!(
+        lookup_runx_config_value(&config, ConfigKey::PublicApiToken),
+        Some("[encrypted]".to_owned())
+    );
+    assert_eq!(
+        mask_runx_config_file(&config)
+            .public
+            .and_then(|public| public.api_token_ref),
+        Some("[encrypted]".to_owned())
+    );
+    let config_json = serde_json::to_string(&config)?;
+    assert!(!config_json.contains("rxk_test_secret"));
+    assert!(
+        config_dir
+            .join("keys")
+            .join(format!("{token_ref}.json"))
+            .exists()
+    );
+    Ok(())
+}
+
+#[test]
 fn config_loads_and_writes_supported_keys_only() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let config_path = temp.path().join("config.json");
@@ -93,6 +135,7 @@ fn config_loads_and_writes_supported_keys_only() -> Result<(), Box<dyn std::erro
             model: Some("gpt-test".to_owned()),
             api_key_ref: None,
         }),
+        public: None,
     };
     write_runx_config_file(&config_path, &config)?;
     assert_private_file(&config_path)?;
@@ -183,6 +226,7 @@ fn config_loads_managed_agent_env_precedence_and_local_key_fallback()
                 model: Some("claude-test".to_owned()),
                 api_key_ref: None,
             }),
+            public: None,
         },
         ConfigKey::AgentApiKey,
         "local-secret",
@@ -223,6 +267,7 @@ fn config_matches_blank_env_overlay_edges() -> Result<(), Box<dyn std::error::Er
                 model: Some("claude-file".to_owned()),
                 api_key_ref: None,
             }),
+            public: None,
         },
         ConfigKey::AgentApiKey,
         "local-secret",

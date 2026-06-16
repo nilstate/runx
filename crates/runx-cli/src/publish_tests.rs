@@ -57,7 +57,9 @@ fn parses_publish_plan() -> Result<(), String> {
 // rust-style-allow: long-function - this regression asserts endpoint and token
 // precedence in one table-shaped flow so the cases stay visually adjacent.
 fn resolves_publish_endpoint_and_token_precedence() {
+    let temp = tempfile_dir().expect("tempdir");
     let mut env = BTreeMap::new();
+    env.insert("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string());
     env.insert(
         "RUNX_PUBLIC_API_BASE_URL".to_owned(),
         "https://env.runx.test/".to_owned(),
@@ -83,7 +85,9 @@ fn resolves_publish_endpoint_and_token_precedence() {
         "https://plan.runx.test"
     );
     assert_eq!(
-        resolve_publish_token(&plan, &env).as_deref(),
+        resolve_publish_token(&plan, &env, &temp)
+            .expect("plan token")
+            .as_deref(),
         Some("plan-token")
     );
 
@@ -97,7 +101,9 @@ fn resolves_publish_endpoint_and_token_precedence() {
         "https://env.runx.test"
     );
     assert_eq!(
-        resolve_publish_token(&env_plan, &env).as_deref(),
+        resolve_publish_token(&env_plan, &env, &temp)
+            .expect("env token")
+            .as_deref(),
         Some("public-token")
     );
 
@@ -109,8 +115,18 @@ fn resolves_publish_endpoint_and_token_precedence() {
         json: false,
     };
     assert_eq!(
-        resolve_publish_token(&empty_token_plan, &env).as_deref(),
+        resolve_publish_token(&empty_token_plan, &env, &temp)
+            .expect("empty plan token")
+            .as_deref(),
         Some("public-token")
+    );
+
+    env.insert("RUNX_PUBLIC_API_TOKEN".to_owned(), " ".to_owned());
+    assert_eq!(
+        resolve_publish_token(&empty_token_plan, &env, &temp)
+            .expect("blank public token falls through")
+            .as_deref(),
+        Some("connect-token")
     );
 
     let empty_url_plan = PublishPlan {
@@ -124,6 +140,33 @@ fn resolves_publish_endpoint_and_token_precedence() {
         resolve_public_api_base_url(&empty_url_plan, &BTreeMap::new()),
         "https://runx.ai"
     );
+}
+
+#[test]
+fn resolves_stored_public_api_token_after_explicit_sources()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile_dir()?;
+    let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
+    let config = runx_runtime::update_runx_config_value(
+        runx_runtime::RunxConfigFile::default(),
+        runx_runtime::ConfigKey::PublicApiToken,
+        "stored-token",
+        &temp,
+    )?;
+    runx_runtime::write_runx_config_file(&temp.join("config.json"), &config)?;
+    let plan = PublishPlan {
+        receipt_path: PathBuf::from("receipt.json"),
+        api_base_url: None,
+        token: None,
+        allow_local_api: false,
+        json: false,
+    };
+
+    assert_eq!(
+        resolve_publish_token(&plan, &env, &temp)?.as_deref(),
+        Some("stored-token")
+    );
+    Ok(())
 }
 
 #[test]
@@ -227,4 +270,17 @@ fn request_json_body(request: &HttpRequest) -> Result<JsonValue, String> {
 
 fn stringify(error: impl std::fmt::Display) -> String {
     error.to_string()
+}
+
+fn tempfile_dir() -> Result<std::path::PathBuf, std::io::Error> {
+    let path = std::env::temp_dir().join(format!(
+        "runx-cli-publish-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
 }

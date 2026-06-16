@@ -774,8 +774,7 @@ fn native_graph_transition_gate_allows_declared_agent_output()
 }
 
 #[test]
-fn native_graph_guard_rejects_skill_claim_as_fact()
--> Result<(), Box<dyn std::error::Error>> {
+fn native_graph_guard_rejects_skill_claim_as_fact() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let skill_dir = write_graph_gated_agent_task_skill(temp.path())?;
     let receipt_dir = temp.path().join("receipts");

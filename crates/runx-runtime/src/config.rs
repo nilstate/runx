@@ -23,6 +23,8 @@ use crate::credentials::SecretString;
 pub struct RunxConfigFile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent: Option<RunxAgentConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public: Option<RunxPublicConfig>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,11 +38,19 @@ pub struct RunxAgentConfig {
     pub api_key_ref: Option<String>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RunxPublicConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_token_ref: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConfigKey {
     AgentProvider,
     AgentModel,
     AgentApiKey,
+    PublicApiToken,
 }
 
 /// Canonical managed agent provider identifiers. The wire form on
@@ -119,6 +129,7 @@ pub fn parse_config_key(key: &str) -> Result<ConfigKey, ConfigError> {
         "agent.provider" => Ok(ConfigKey::AgentProvider),
         "agent.model" => Ok(ConfigKey::AgentModel),
         "agent.api_key" => Ok(ConfigKey::AgentApiKey),
+        "public.api_token" => Ok(ConfigKey::PublicApiToken),
         _ => Err(ConfigError::UnsupportedKey {
             key: key.to_owned(),
         }),
@@ -210,15 +221,28 @@ pub fn update_runx_config_value(
     value: &str,
     config_dir: &Path,
 ) -> Result<RunxConfigFile, ConfigError> {
-    let mut agent = config.agent.unwrap_or_default();
     match key {
-        ConfigKey::AgentProvider => agent.provider = Some(value.to_owned()),
-        ConfigKey::AgentModel => agent.model = Some(value.to_owned()),
+        ConfigKey::AgentProvider => {
+            let mut agent = config.agent.unwrap_or_default();
+            agent.provider = Some(value.to_owned());
+            config.agent = Some(agent);
+        }
+        ConfigKey::AgentModel => {
+            let mut agent = config.agent.unwrap_or_default();
+            agent.model = Some(value.to_owned());
+            config.agent = Some(agent);
+        }
         ConfigKey::AgentApiKey => {
-            agent.api_key_ref = Some(store_local_agent_api_key(config_dir, value)?)
+            let mut agent = config.agent.unwrap_or_default();
+            agent.api_key_ref = Some(store_local_agent_api_key(config_dir, value)?);
+            config.agent = Some(agent);
+        }
+        ConfigKey::PublicApiToken => {
+            let mut public = config.public.unwrap_or_default();
+            public.api_token_ref = Some(store_local_public_api_token(config_dir, value)?);
+            config.public = Some(public);
         }
     }
-    config.agent = Some(agent);
     Ok(config)
 }
 
@@ -232,6 +256,12 @@ pub fn lookup_runx_config_value(config: &RunxConfigFile, key: ConfigKey) -> Opti
             .api_key_ref
             .as_ref()
             .map(|_| "[encrypted]".to_owned()),
+        ConfigKey::PublicApiToken => config
+            .public
+            .as_ref()?
+            .api_token_ref
+            .as_ref()
+            .map(|_| "[encrypted]".to_owned()),
     }
 }
 
@@ -242,10 +272,26 @@ pub fn mask_runx_config_file(config: &RunxConfigFile) -> RunxConfigFile {
     {
         agent.api_key_ref = Some("[encrypted]".to_owned());
     }
+    if let Some(public) = masked.public.as_mut()
+        && public.api_token_ref.is_some()
+    {
+        public.api_token_ref = Some("[encrypted]".to_owned());
+    }
     masked
 }
 
 pub fn load_local_agent_api_key(config_dir: &Path, key_ref: &str) -> Result<String, ConfigError> {
+    load_local_config_secret_value(config_dir, key_ref)
+}
+
+pub fn load_local_public_api_token(
+    config_dir: &Path,
+    token_ref: &str,
+) -> Result<String, ConfigError> {
+    load_local_config_secret_value(config_dir, token_ref)
+}
+
+fn load_local_config_secret_value(config_dir: &Path, key_ref: &str) -> Result<String, ConfigError> {
     let key_path = config_dir.join("keys").join(format!("{key_ref}.json"));
     let payload = load_key_payload(&key_path)?;
     if payload.alg != "aes-256-gcm" {
@@ -354,7 +400,7 @@ pub fn resolve_local_skill_profile(
 }
 
 #[derive(Deserialize)]
-struct LocalAgentKeyPayload {
+struct LocalConfigSecretPayload {
     alg: String,
     iv: String,
     ciphertext: String,
@@ -362,7 +408,7 @@ struct LocalAgentKeyPayload {
 }
 
 #[derive(Serialize)]
-struct StoredLocalAgentKeyPayload<'a> {
+struct StoredLocalConfigSecretPayload<'a> {
     #[serde(rename = "ref")]
     key_ref: &'a str,
     alg: &'static str,
@@ -398,6 +444,18 @@ fn home_dir() -> PathBuf {
 }
 
 fn store_local_agent_api_key(config_dir: &Path, api_key: &str) -> Result<String, ConfigError> {
+    store_local_config_secret_value(config_dir, api_key, "local_agent_key")
+}
+
+fn store_local_public_api_token(config_dir: &Path, api_token: &str) -> Result<String, ConfigError> {
+    store_local_config_secret_value(config_dir, api_token, "local_public_api_token")
+}
+
+fn store_local_config_secret_value(
+    config_dir: &Path,
+    value: &str,
+    ref_prefix: &str,
+) -> Result<String, ConfigError> {
     let key_dir = config_dir.join("keys");
     fs::create_dir_all(&key_dir)?;
     let secret = load_or_create_local_config_secret(&key_dir)?;
@@ -406,17 +464,17 @@ fn store_local_agent_api_key(config_dir: &Path, api_key: &str) -> Result<String,
         Aes256Gcm::new_from_slice(&key).map_err(|error| ConfigError::Crypto(error.to_string()))?;
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
     let mut sealed = cipher
-        .encrypt(&nonce, api_key.as_bytes())
+        .encrypt(&nonce, value.as_bytes())
         .map_err(|error| ConfigError::Crypto(error.to_string()))?;
     let auth_tag = sealed.split_off(sealed.len().saturating_sub(16));
     let key_ref = format!(
-        "local_agent_key_{}",
+        "{ref_prefix}_{}",
         hex_prefix(
             &Sha256::digest([nonce.as_slice(), sealed.as_slice()].concat()),
             24
         )
     );
-    let payload = StoredLocalAgentKeyPayload {
+    let payload = StoredLocalConfigSecretPayload {
         key_ref: &key_ref,
         alg: "aes-256-gcm",
         iv: URL_SAFE_NO_PAD.encode(nonce),
@@ -453,7 +511,7 @@ fn load_or_create_local_config_secret(key_dir: &Path) -> Result<String, ConfigEr
     }
 }
 
-fn load_key_payload(key_path: &Path) -> Result<LocalAgentKeyPayload, ConfigError> {
+fn load_key_payload(key_path: &Path) -> Result<LocalConfigSecretPayload, ConfigError> {
     let contents = fs::read_to_string(key_path)
         .map_err(|error| config_key_read_error(key_path, Some(error.to_string())))?;
     serde_json::from_str(&contents)
