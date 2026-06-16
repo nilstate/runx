@@ -374,6 +374,7 @@ mod tests {
 
     fn source_for_child_env(source_type: SourceKind) -> SkillSource {
         SkillSource {
+            act: None,
             source_type,
             command: Some("node".to_owned()),
             args: vec!["script.mjs".to_owned()],

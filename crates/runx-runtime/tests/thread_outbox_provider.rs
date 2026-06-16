@@ -598,6 +598,7 @@ fn thread_outbox_source(operation: &str, frame_path: &str) -> runx_parser::Skill
         JsonValue::Object(config),
     );
     runx_parser::SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::ThreadOutboxProvider,
         command: None,
         args: Vec::new(),
@@ -642,6 +643,7 @@ fn thread_outbox_dynamic_source(operation: &str) -> runx_parser::SkillSource {
         JsonValue::Object(config),
     );
     runx_parser::SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::ThreadOutboxProvider,
         command: None,
         args: Vec::new(),

@@ -434,6 +434,7 @@ fn invocation(tool: &str, timeout_seconds: Option<u64>, inputs: JsonObject) -> S
     SkillInvocation {
         skill_name: "fixture.mcp".to_owned(),
         source: SkillSource {
+            act: None,
             source_type: runx_parser::SourceKind::Mcp,
             command: None,
             args: Vec::new(),

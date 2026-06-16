@@ -41,6 +41,9 @@ use self::runner_manifest::{
     selected_runner,
 };
 
+// The run-result envelope schema. The string keeps the `skill_run` name, a stable
+// wire contract consumed by the CLI/SDK/cloud, even though the module is now
+// `skill_front`; renaming the wire schema is a separate, versioned change.
 const SKILL_RUN_SCHEMA: &str = "runx.skill_run.v1";
 const GRAPH_SKILL_STATE_SCHEMA: &str = "runx.graph_skill_state.v1";
 
@@ -264,7 +267,7 @@ fn domain_act_frame(
     answer: &JsonValue,
     governed_effect: Option<&JsonValue>,
 ) -> Option<DomainActFrame> {
-    let act = invocation.source.act_declaration()?;
+    let act = invocation.source.act.as_ref()?;
     // Promote the delivered credential into the act's held authority: a governed
     // turn's receipt records the grants it actually carried, not just the
     // declared scope.
@@ -274,7 +277,7 @@ fn domain_act_frame(
         .map(|observation| observation.credential_refs.clone())
         .unwrap_or_default();
     build_domain_act_frame(
-        &act,
+        act,
         &invocation.inputs,
         answer,
         governed_effect,

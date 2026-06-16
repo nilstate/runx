@@ -57,8 +57,9 @@ A skill is a definition; a run is an act. The relationship is fixed:
   separate kind of thing.
 - **One act per run.** The discipline that keeps a receipt honest: a run produces
   one declared (or default) act, composed into chains by lineage, never a loose
-  bag of acts. A standalone skill is a one-act run; a graph is a chain of acts; a
-  paused run is an act left open mid-chain.
+  bag of acts. A standalone skill is a one-act run; a graph is a chain of acts.
+  (Pausing for the host is today a `needs_agent` side channel, not yet a
+  first-class pending act; making pause an act state is planned, not live.)
 
 ## Plan vocabulary -> live contracts
 

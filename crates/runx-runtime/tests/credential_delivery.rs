@@ -433,6 +433,7 @@ fn contract_profile(
 
 fn cli_source() -> SkillSource {
     SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::CliTool,
         command: Some("sh".to_owned()),
         args: vec![

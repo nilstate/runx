@@ -141,6 +141,10 @@ pub struct SkillSource {
     pub graph: Option<crate::ExecutionGraph>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub http: Option<SkillHttpSource>,
+    /// The declared act this source performs, validated at load. `None` when no
+    /// `act:` block is declared (the run then seals a generic observation act).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub act: Option<ActDeclaration>,
     pub raw: JsonObject,
 }
 
@@ -188,18 +192,6 @@ pub struct ActDeclaration {
     /// Graph turns only: the step whose real result supplies the governed effect.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub effect_step: Option<String>,
-}
-
-impl SkillSource {
-    /// The declared act for this source, if it carries an `act:` block, parsed
-    /// into the typed schema. `None` when no `act:` is declared (the run then
-    /// seals a generic observation act) or when the block is malformed. Parsed
-    /// with serde, not a hand-maintained field list, so a field added to
-    /// `ActDeclaration` is picked up automatically with nothing to keep in sync.
-    #[must_use]
-    pub fn act_declaration(&self) -> Option<ActDeclaration> {
-        serde_json::from_value(serde_json::to_value(self.raw.get("act")?).ok()?).ok()
-    }
 }
 
 /// Config for an `http` source: the endpoint, the method, static request headers

@@ -432,6 +432,7 @@ fn source(
     arguments: Option<JsonObject>,
 ) -> SkillSource {
     SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::A2a,
         command: None,
         args: Vec::new(),

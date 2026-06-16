@@ -377,6 +377,7 @@ mod tests {
         SkillInvocation {
             skill_name: "fixture.http".to_owned(),
             source: runx_parser::SkillSource {
+                act: None,
                 source_type: SourceKind::Http,
                 command: None,
                 args: Vec::new(),

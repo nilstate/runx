@@ -364,6 +364,7 @@ fn source(
     outputs: Option<JsonObject>,
 ) -> SkillSource {
     SkillSource {
+        act: None,
         source_type,
         command: None,
         args: Vec::new(),

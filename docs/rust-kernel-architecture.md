@@ -227,7 +227,7 @@ of side effects. Current modules map to these implementation buckets:
   receipt paths, and signing policy. They should become typed service facets
   that are constructed near runtime entrypoints, not leaf adapters.
 - Harness execution: `execution::harness`, `execution::orchestrator`,
-  `execution::runner`, and `execution::skill_run`. These modules open the
+  `execution::runner`, and `execution::skill_front`. These modules open the
   governed execution boundary, run graphs or skills, and seal receipts.
 - Adapter invocation: `adapter`, `adapters::*`, `agent_invocation`,
   `sandbox`, and `outbox_provider`. These modules resolve an invocation,

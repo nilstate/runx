@@ -4,8 +4,8 @@ use crate::ValidationError;
 use crate::graph::{RawGraphIr, validate_graph_document};
 
 use super::{
-    FIELDS, InputMode, SkillHttpSource, SkillMcpServer, SkillSource, SourceKind, field_value,
-    first_value, validate_sandbox,
+    ActDeclaration, FIELDS, InputMode, SkillHttpSource, SkillMcpServer, SkillSource, SourceKind,
+    field_value, first_value, validate_sandbox,
 };
 
 pub fn validate_skill_source(
@@ -56,9 +56,25 @@ pub(super) fn validate_source(
         outputs: FIELDS.optional_object(source.get("outputs"), "source.outputs")?,
         graph: validate_graph_source(source, &source_type)?,
         http: validate_http_source(source, &source_type)?,
+        act: validate_act_declaration(source.get("act"))?,
         raw: source.clone(),
         source_type: source_kind,
     })
+}
+
+/// Validate a declared `act:` block at load: deserialize it into the typed
+/// `ActDeclaration` and fail closed if it is present but malformed, so a skill
+/// author sees the error instead of silently sealing a generic observation act.
+fn validate_act_declaration(
+    value: Option<&JsonValue>,
+) -> Result<Option<ActDeclaration>, ValidationError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    serde_json::to_value(value)
+        .and_then(serde_json::from_value::<ActDeclaration>)
+        .map(Some)
+        .map_err(|error| FIELDS.validation_error(format!("source.act is malformed: {error}")))
 }
 
 fn parse_source_kind(value: &str, field: &str) -> Result<SourceKind, ValidationError> {

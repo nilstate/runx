@@ -927,6 +927,7 @@ fn skill_source(
         );
     }
     Ok(SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::ExternalAdapter,
         command: None,
         args: Vec::new(),
@@ -966,6 +967,7 @@ fn skill_source_manifest_path(path: &str) -> Result<SkillSource, Box<dyn std::er
         JsonValue::Object(external_adapter),
     );
     Ok(SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::ExternalAdapter,
         command: None,
         args: Vec::new(),

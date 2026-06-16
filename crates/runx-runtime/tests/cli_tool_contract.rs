@@ -444,6 +444,7 @@ fn cli_tool_spawn_failure_is_runtime_io() -> Result<(), Box<dyn std::error::Erro
     let result = CliToolAdapter.invoke(SkillInvocation {
         skill_name: "spawn-failure".to_owned(),
         source: SkillSource {
+            act: None,
             source_type: runx_parser::SourceKind::CliTool,
             command: Some(missing_command.clone()),
             args: Vec::new(),
@@ -546,6 +547,7 @@ fn enforced_readonly_sandbox_denies_workspace_write_when_backend_available()
     let _output = CliToolAdapter.invoke(SkillInvocation {
         skill_name: "enforced-readonly".to_owned(),
         source: SkillSource {
+            act: None,
             source_type: runx_parser::SourceKind::CliTool,
             command: Some("/bin/sh".to_owned()),
             args: vec!["-c".to_owned(), script],
@@ -594,6 +596,7 @@ fn source_with_args(
     timeout_seconds: Option<u64>,
 ) -> SkillSource {
     SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::CliTool,
         command: Some("node".to_owned()),
         args,

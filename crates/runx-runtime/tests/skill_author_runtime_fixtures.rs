@@ -124,6 +124,7 @@ fn fixture_source(
     probe_path: &Path,
 ) -> Result<SkillSource, Box<dyn std::error::Error>> {
     Ok(SkillSource {
+        act: None,
         source_type: runx_parser::SourceKind::CliTool,
         command: Some("node".to_owned()),
         args: vec![path_string(probe_path)?, fixture.mode.clone()],

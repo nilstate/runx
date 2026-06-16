@@ -192,6 +192,7 @@ mod tests {
         let output = CliToolAdapter.invoke(SkillInvocation {
             skill_name: "default-timeout".to_owned(),
             source: runx_parser::SkillSource {
+                act: None,
                 source_type: runx_parser::SourceKind::CliTool,
                 command: Some("/bin/sh".to_owned()),
                 args: vec!["-c".to_owned(), "sleep 10".to_owned()],

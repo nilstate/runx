@@ -626,7 +626,7 @@ fn graph_domain_act_receipt(
     run_id: &str,
     signature_config: &RuntimeReceiptSignatureConfig,
 ) -> Result<Option<runx_contracts::Receipt>, SkillRunError> {
-    let Some(act) = runner.source.act_declaration() else {
+    let Some(act) = runner.source.act.as_ref() else {
         return Ok(None);
     };
     let step_output = |step_id: Option<&str>| {
@@ -642,7 +642,7 @@ fn graph_domain_act_receipt(
         .and_then(|step| serde_json::from_str::<JsonValue>(step.output.stdout.trim()).ok());
     let authority_grant_refs = graph_credential_grant_refs(run);
     let Some(frame) = build_domain_act_frame(
-        &act,
+        act,
         graph_inputs,
         &reason_source,
         governed_effect.as_ref(),
@@ -703,6 +703,7 @@ mod tests {
         let invocation = SkillInvocation {
             skill_name: "fixture-a2a".to_owned(),
             source: SkillSource {
+                act: None,
                 source_type: SourceKind::A2a,
                 command: None,
                 args: Vec::new(),
@@ -753,6 +754,7 @@ mod tests {
         let invocation = SkillInvocation {
             skill_name: "fixture-external".to_owned(),
             source: SkillSource {
+                act: None,
                 source_type: SourceKind::ExternalAdapter,
                 command: None,
                 args: Vec::new(),
@@ -801,6 +803,7 @@ mod tests {
         let invocation = SkillInvocation {
             skill_name: "fixture-thread-outbox-provider".to_owned(),
             source: SkillSource {
+                act: None,
                 source_type: SourceKind::ThreadOutboxProvider,
                 command: None,
                 args: Vec::new(),

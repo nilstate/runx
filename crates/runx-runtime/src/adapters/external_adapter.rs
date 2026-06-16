@@ -879,6 +879,7 @@ fn external_adapter_sandbox_source(
     base_env: &BTreeMap<String, String>,
 ) -> Result<SkillSource, ExternalAdapterSupervisorError> {
     Ok(SkillSource {
+        act: None,
         source_type: SourceKind::ExternalAdapter,
         command: Some(command.to_owned()),
         args: manifest.transport.args.clone().unwrap_or_default(),

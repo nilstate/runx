@@ -962,6 +962,7 @@ fn cli_tool_source(step: &GraphStep) -> Result<SkillSource, RuntimeError> {
         })
         .unwrap_or_default();
     Ok(SkillSource {
+        act: None,
         source_type: SourceKind::CliTool,
         command: Some(command),
         args,
@@ -1171,6 +1172,7 @@ fn agent_task_source(step: &GraphStep) -> Result<SkillSource, RuntimeError> {
         );
     }
     Ok(SkillSource {
+        act: None,
         source_type: SourceKind::AgentStep,
         command: None,
         args: Vec::new(),
@@ -1284,6 +1286,7 @@ fn catalog_source(tool_ref: &str) -> SkillSource {
         JsonValue::String(tool_ref.to_owned()),
     );
     SkillSource {
+        act: None,
         source_type: SourceKind::Catalog,
         command: None,
         args: Vec::new(),
