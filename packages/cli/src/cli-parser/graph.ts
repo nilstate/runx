@@ -323,6 +323,13 @@ function validateGraphPolicy(value: unknown, field: string): GraphPolicy | undef
   if (!policy) {
     return undefined;
   }
+  for (const key of Object.keys(policy)) {
+    if (key !== "guards") {
+      throw new GraphValidationError(
+        `${field} has unknown field '${key}'; only 'guards' is supported.`,
+      );
+    }
+  }
   const guardsValue = policy.guards;
   if (guardsValue === undefined || guardsValue === null) {
     return undefined;

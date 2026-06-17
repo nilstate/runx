@@ -119,8 +119,8 @@ steps:
     graphSuccess("tool-and-policy", `
 name: policy-aware
 policy:
-  transitions:
-    - to: review
+  guards:
+    - step: review
       field: status
       equals: needs_review
 steps:

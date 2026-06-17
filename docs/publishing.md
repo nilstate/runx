@@ -68,8 +68,8 @@ summary. The local harness still runs first for fast feedback.
 `runx login` opens the hosted sign-in flow and stores the returned public API
 token in the encrypted local config at `public.api_token`. Hosted CLI commands
 use token precedence in this order: an explicit `--token` when the command has
-one, `RUNX_PUBLIC_API_TOKEN`, `RUNX_CONNECT_ACCESS_TOKEN`, then the stored token
-from `runx login`. `runx registry publish` uses the env or stored-token sources.
+one, then `RUNX_PUBLIC_API_TOKEN`, then the stored token from `runx login`.
+`runx registry publish` uses the env or stored-token sources.
 
 After a public URL publish, use the claim flow from the registry listing to prove
 control of the source repo and move matching versions toward verified discovery.

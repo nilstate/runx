@@ -65,10 +65,6 @@ fn resolves_publish_endpoint_and_token_precedence() {
         "https://env.runx.test/".to_owned(),
     );
     env.insert(
-        "RUNX_CONNECT_ACCESS_TOKEN".to_owned(),
-        "connect-token".to_owned(),
-    );
-    env.insert(
         "RUNX_PUBLIC_API_TOKEN".to_owned(),
         "public-token".to_owned(),
     );
@@ -122,11 +118,11 @@ fn resolves_publish_endpoint_and_token_precedence() {
     );
 
     env.insert("RUNX_PUBLIC_API_TOKEN".to_owned(), " ".to_owned());
-    assert_eq!(
+    assert!(
         resolve_publish_token(&empty_token_plan, &env, &temp)
-            .expect("blank public token falls through")
-            .as_deref(),
-        Some("connect-token")
+            .expect("blank public token with no stored token")
+            .is_none(),
+        "a blank public token with no stored login token resolves to no token"
     );
 
     let empty_url_plan = PublishPlan {

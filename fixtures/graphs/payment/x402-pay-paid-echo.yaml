@@ -44,7 +44,7 @@ steps:
       payment_capability_ref: fulfill.skill_claim.effect_evidence_packet.data.credential_envelope.credential_ref
       payment_proof_ref: fulfill.skill_claim.effect_evidence_packet.data.rail_proof.proof_ref
 policy:
-  transitions:
-    - to: fulfill
+  guards:
+    - step: fulfill
       field: approve-spend.payment_approval.data.approved
       equals: true

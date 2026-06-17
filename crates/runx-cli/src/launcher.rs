@@ -377,7 +377,7 @@ Usage:
 
 Options:
   --api-base-url url  Public API base URL (default: RUNX_PUBLIC_API_BASE_URL or https://runx.ai)
-  --token token       Public API token (default: RUNX_PUBLIC_API_TOKEN, RUNX_CONNECT_ACCESS_TOKEN, or runx login)
+  --token token       Public API token (default: RUNX_PUBLIC_API_TOKEN or runx login)
   --allow-local-api   Allow loopback/private public API URLs for local dogfood only
   --json              Print the raw notary response as JSON
 "

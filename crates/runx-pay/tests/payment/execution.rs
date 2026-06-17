@@ -1807,9 +1807,9 @@ fn graph_yaml(
             fulfill
         ],
         "policy": {
-            "transitions": [
+            "guards": [
                 {
-                    "to": "fulfill",
+                    "step": "fulfill",
                     "field": "approve-spend.payment_approval.data.approved",
                     "equals": true
                 }
@@ -1881,9 +1881,9 @@ fn paid_echo_graph_yaml() -> Result<String, serde_json::Error> {
             }
         ],
         "policy": {
-            "transitions": [
+            "guards": [
                 {
-                    "to": "fulfill",
+                    "step": "fulfill",
                     "field": "approve-spend.payment_approval.data.approved",
                     "equals": true
                 }

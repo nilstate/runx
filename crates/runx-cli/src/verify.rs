@@ -364,7 +364,14 @@ fn run_single_receipt_verify<R: Read>(
     stdin: R,
 ) -> Result<VerifyCliResult, VerifyCliError> {
     let document = read_single_receipt_input(input, cwd, stdin)?;
-    let verifier = receipt_verifier(env, allow_local_development_signatures)?;
+    // A malformed document yields a parse-error verdict without requiring trust
+    // keys: you do not need a verifier to report that bytes are not a receipt.
+    // Keys are required only to verify the signature of a well-formed receipt.
+    let verifier = if serde_json::from_slice::<Receipt>(&document).is_ok() {
+        receipt_verifier(env, allow_local_development_signatures)?
+    } else {
+        None
+    };
     let local_verifier = LocalDevelopmentReceiptVerifier;
     let (signature_mode, signature_verifier): (ReceiptVerifySignatureMode, &dyn SignatureVerifier) =
         match verifier.as_ref() {

@@ -150,7 +150,7 @@ steps:
       idempotency:
         key: payment:x402-pay-approval-001
 policy:
-  transitions:
-    - to: fulfill
+  guards:
+    - step: fulfill
       field: approve-spend.payment_approval.data.approved
       equals: true

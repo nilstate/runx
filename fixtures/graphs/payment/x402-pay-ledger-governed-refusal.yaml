@@ -27,7 +27,7 @@ steps:
     artifacts:
       wrap_as: payment_approval
 policy:
-  transitions:
-    - to: approve-spend
+  guards:
+    - step: approve-spend
       field: reserve.skill_claim.payment_reservation_packet.data.spend_capability_ref.uri
       equals: runx:payment-capability:paid-echo-spend-1

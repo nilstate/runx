@@ -398,7 +398,12 @@ fn invoke_graph_thread_outbox_provider(
 /// one sealed turn. With no provider configured `try_resolve` returns `None`, so
 /// graphs host-drive precisely as before; behavior changes only opt-in.
 struct InlineResolver {
+    // Both fields feed the agent resolver path in `try_resolve` under the `agent`
+    // feature; without it `try_resolve` is a no-op, so they are written at
+    // construction but never read.
+    #[cfg_attr(not(feature = "agent"), allow(dead_code))]
     skill_directory: PathBuf,
+    #[cfg_attr(not(feature = "agent"), allow(dead_code))]
     credential_delivery: CredentialDelivery,
 }
 

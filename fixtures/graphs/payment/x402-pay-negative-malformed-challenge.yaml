@@ -15,7 +15,7 @@ steps:
     context:
       payment_quote_packet: quote.skill_claim.payment_quote_packet.data
 policy:
-  transitions:
-    - to: reserve
+  guards:
+    - step: reserve
       field: quote.skill_claim.payment_quote_packet.data.payment_quote.quote_id
       equals: quote_paid_echo_001

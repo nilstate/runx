@@ -37,7 +37,7 @@ steps:
       spend_capability_ref: reserve.skill_claim.payment_reservation_packet.data.spend_capability_ref
       idempotency: reserve.skill_claim.payment_reservation_packet.data.idempotency
 policy:
-  transitions:
-    - to: fulfill
+  guards:
+    - step: fulfill
       field: approve-spend.payment_approval.data.approved
       equals: true

@@ -375,8 +375,8 @@ runx publish ./.runx/receipts/<receipt-id>.json
 `runx publish` posts the full sealed receipt to `POST /v1/receipts/notarize`
 with `publish: true`, then prints the public `/r` link and content hash returned
 by the notary. Configure the hosted API with `RUNX_PUBLIC_API_BASE_URL` (default
-`https://runx.ai`) and authenticate with `RUNX_PUBLIC_API_TOKEN`,
-`RUNX_CONNECT_ACCESS_TOKEN`, or `--token`.
+`https://runx.ai`) and authenticate with `RUNX_PUBLIC_API_TOKEN` or `--token`
+(or run `runx login`).
 
 For local hosted dogfood only, point at a loopback API and opt into the private
 network escape explicitly:

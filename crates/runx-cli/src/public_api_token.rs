@@ -16,9 +16,6 @@ pub(crate) fn resolve(
     if let Some(token) = non_empty_token(env.get("RUNX_PUBLIC_API_TOKEN").map(String::as_str)) {
         return Ok(Some(token));
     }
-    if let Some(token) = non_empty_token(env.get("RUNX_CONNECT_ACCESS_TOKEN").map(String::as_str)) {
-        return Ok(Some(token));
-    }
     let config_dir = resolve_runx_home_dir(env, cwd);
     let config = load_runx_config_file(&config_dir.join("config.json"))?;
     let Some(token_ref) = config

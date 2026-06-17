@@ -13,6 +13,16 @@ pub fn validate_graph_policy(
     let Some(policy) = optional_object(value, field)? else {
         return Ok(None);
     };
+    // Fail closed on unknown policy fields: `guards` is the only supported key.
+    // Silently ignoring others drops gates without warning; a stale `transitions`
+    // key (since renamed to `guards`) once disabled every payment gate this way.
+    for key in policy.keys() {
+        if key.as_str() != "guards" {
+            return Err(validation_error(format!(
+                "{field} has unknown field '{key}'; only 'guards' is supported."
+            )));
+        }
+    }
     let Some(guards_value) = policy.get("guards") else {
         return Ok(None);
     };
@@ -47,4 +57,39 @@ fn guard(raw_gate: &JsonValue, gate_field: &str) -> Result<GraphGuard, Validatio
         equals,
         not_equals,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn policy_value(json: &str) -> JsonValue {
+        serde_json::from_str(json).expect("valid json")
+    }
+
+    #[test]
+    fn rejects_unknown_policy_field() {
+        // A stale `transitions` key (the pre-rename name) must be rejected, not
+        // silently dropped: dropping it would disable the gate it declares.
+        let policy = policy_value(
+            r#"{"transitions":[{"step":"fulfill","field":"approve-spend.data.approved","equals":true}]}"#,
+        );
+        let error = validate_graph_policy(Some(&policy), "policy")
+            .expect_err("unknown policy field must be rejected");
+        assert!(
+            error.to_string().contains("transitions"),
+            "error should name the unknown field, got: {error}"
+        );
+    }
+
+    #[test]
+    fn accepts_guards_policy() {
+        let policy = policy_value(
+            r#"{"guards":[{"step":"fulfill","field":"approve-spend.data.approved","equals":true}]}"#,
+        );
+        let parsed = validate_graph_policy(Some(&policy), "policy")
+            .expect("a guards policy must parse")
+            .expect("guards present");
+        assert_eq!(parsed.guards.len(), 1);
+    }
 }

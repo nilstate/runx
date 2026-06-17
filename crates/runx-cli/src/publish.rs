@@ -57,7 +57,7 @@ impl fmt::Display for PublishCliError {
             }
             Self::MissingToken => write!(
                 formatter,
-                "missing public API token; run `runx login`, pass --token, set RUNX_PUBLIC_API_TOKEN, or set RUNX_CONNECT_ACCESS_TOKEN"
+                "missing public API token; run `runx login`, pass --token, or set RUNX_PUBLIC_API_TOKEN"
             ),
             Self::TransportInit(error) => {
                 write!(formatter, "failed to initialize HTTP transport: {error}")
