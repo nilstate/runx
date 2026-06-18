@@ -62,6 +62,7 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
             path_string(capture_path.as_path())?,
         ),
         ("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?),
+        local_sandbox_fallback_env(),
     ]);
 
     let outcome = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation)?;
@@ -166,7 +167,10 @@ fn external_adapter_process_supervisor_rejects_mismatched_response_identity()
     response.adapter_id = "adapter.other".to_owned();
     fs::write(&response_path, serde_json::to_vec(&response)?)?;
     let script = write_cat_response_script(temp.path())?;
-    let invocation = invocation_with_env([("RUNX_RESPONSE_PATH", path_string(&response_path)?)]);
+    let invocation = invocation_with_env([
+        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
+        local_sandbox_fallback_env(),
+    ]);
 
     let Err(error) =
         ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &invocation)
@@ -194,7 +198,10 @@ fn external_adapter_process_supervisor_rejects_unexpected_credential_request()
         br#"{"schema":"runx.external_adapter.credential_request.v1","protocol_version":"runx.external_adapter.v1","request_id":"cred_req_1","adapter_id":"adapter.github.issue-intake","invocation_id":"external_inv_123","credential_refs":[],"requested_at":"2026-05-21T15:00:01Z"}"#,
     )?;
     let script = write_cat_response_script(temp.path())?;
-    let invocation = invocation_with_env([("RUNX_RESPONSE_PATH", path_string(&response_path)?)]);
+    let invocation = invocation_with_env([
+        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
+        local_sandbox_fallback_env(),
+    ]);
 
     let Err(error) =
         ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &invocation)
@@ -223,7 +230,7 @@ IFS= read -r _invocation
     )?;
     let mut manifest = manifest_for_script(&script)?;
     manifest.timeouts.invocation_ms = 50;
-    let invocation = base_invocation();
+    let invocation = invocation_with_env([local_sandbox_fallback_env()]);
 
     let Err(error) = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation) else {
         return Err("timed out process must fail closed".into());
@@ -267,8 +274,10 @@ IFS= read -r _invocation
     )?;
     let mut manifest = manifest_for_script(&script)?;
     manifest.timeouts.invocation_ms = 1_000;
-    let invocation =
-        invocation_with_env([("RUNX_DESCENDANT_SENTINEL", path_string(&sentinel_path)?)]);
+    let invocation = invocation_with_env([
+        ("RUNX_DESCENDANT_SENTINEL", path_string(&sentinel_path)?),
+        local_sandbox_fallback_env(),
+    ]);
 
     let started = Instant::now();
     let Err(error) = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation) else {
@@ -300,9 +309,10 @@ exit 12
 "#,
     )?;
 
-    let Err(error) =
-        ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &base_invocation())
-    else {
+    let Err(error) = ExternalAdapterProcessSupervisor.invoke(
+        &manifest_for_script(&script)?,
+        &invocation_with_env([local_sandbox_fallback_env()]),
+    ) else {
         return Err("crashed process must fail closed".into());
     };
 
@@ -321,7 +331,10 @@ fn external_adapter_process_supervisor_rejects_spawn_failure()
     let missing_command = path_string(&temp.path().join("missing-shell"))?;
     manifest.transport.command = Some(missing_command.clone().into());
 
-    let Err(error) = ExternalAdapterProcessSupervisor.invoke(&manifest, &base_invocation()) else {
+    let Err(error) = ExternalAdapterProcessSupervisor.invoke(
+        &manifest,
+        &invocation_with_env([local_sandbox_fallback_env()]),
+    ) else {
         return Err("spawn failure must fail closed".into());
     };
 
@@ -358,9 +371,10 @@ done
 "#,
     )?;
 
-    let Err(error) =
-        ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &base_invocation())
-    else {
+    let Err(error) = ExternalAdapterProcessSupervisor.invoke(
+        &manifest_for_script(&script)?,
+        &invocation_with_env([local_sandbox_fallback_env()]),
+    ) else {
         return Err("oversized stdout must fail closed".into());
     };
 
@@ -585,7 +599,10 @@ esac
     let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation_with_source(
         temp.path(),
         skill_source(Some(manifest))?,
-        [("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?)],
+        [
+            ("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?),
+            local_sandbox_fallback_env(),
+        ],
         credential_observation_only(),
     )?)?;
 
@@ -617,7 +634,10 @@ fn external_adapter_skill_adapter_preserves_response_stderr()
     let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation(
         temp.path(),
         Some(manifest),
-        [("RUNX_RESPONSE_PATH", path_string(&response_path)?)],
+        [
+            ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
+            local_sandbox_fallback_env(),
+        ],
     )?)?;
 
     assert_eq!(output.status, runx_runtime::InvocationStatus::Success);
@@ -635,7 +655,10 @@ fn external_adapter_process_supervisor_maps_host_resolution_frame()
         serde_json::to_vec(&host_resolution_frame("external_inv_123"))?,
     )?;
     let script = write_cat_response_script(temp.path())?;
-    let invocation = invocation_with_env([("RUNX_RESPONSE_PATH", path_string(&response_path)?)]);
+    let invocation = invocation_with_env([
+        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
+        local_sandbox_fallback_env(),
+    ]);
 
     let outcome =
         ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &invocation)?;
@@ -753,7 +776,10 @@ fn external_adapter_skill_adapter_preserves_supervisor_fail_closed_response_mism
     let Err(error) = ExternalAdapterSkillAdapter::default().invoke(skill_invocation(
         temp.path(),
         Some(manifest),
-        [("RUNX_RESPONSE_PATH", path_string(&response_path)?)],
+        [
+            ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
+            local_sandbox_fallback_env(),
+        ],
     )?) else {
         return Err("mismatched response identity must fail closed through SkillAdapter".into());
     };
@@ -797,6 +823,7 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
                 path_string(capture_path.as_path())?,
             ),
             ("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?),
+            local_sandbox_fallback_env(),
             ("RUNX_API_TOKEN", "do-not-forward-runx-token".to_owned()),
             ("SECRET_TOKEN", "do-not-forward".to_owned()),
         ],
@@ -1069,10 +1096,6 @@ fn skill_source_manifest_path(path: &str) -> Result<SkillSource, Box<dyn std::er
         http: None,
         raw,
     })
-}
-
-fn base_invocation() -> ExternalAdapterInvocation {
-    invocation_with_env([])
 }
 
 fn invocation_with_env<const N: usize>(env: [(&str, String); N]) -> ExternalAdapterInvocation {
