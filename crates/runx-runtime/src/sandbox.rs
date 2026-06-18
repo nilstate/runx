@@ -31,6 +31,9 @@ use self::template::resolve_template;
 
 pub use self::metadata::sandbox_metadata;
 
+pub(crate) const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str =
+    "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SandboxPlan {
     pub command: String,

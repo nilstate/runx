@@ -113,6 +113,7 @@ fn safe_default_env_from(
         RUNX_RECEIPT_SIGN_KID_ENV,
         RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
         RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
+        crate::sandbox::RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV,
         RUNX_MAX_FANOUT_CONCURRENCY_ENV,
         RUNX_RUN_ID_ENV,
         RUNX_PROJECT_DIR_ENV,
@@ -466,6 +467,7 @@ mod tests {
         RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV, RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
         RUNX_RECEIPT_SIGN_KID_ENV, RuntimeOptions, safe_default_env_from,
     };
+    use crate::sandbox::RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV;
     use std::collections::BTreeMap;
 
     #[test]
@@ -488,6 +490,19 @@ mod tests {
         assert_eq!(
             env.get(RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV),
             Some(&"hosted".to_owned())
+        );
+    }
+
+    #[test]
+    fn safe_default_env_preserves_sandbox_operator_override() {
+        let env = safe_default_env_from(|key| match key {
+            RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV => Some("local".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(
+            env.get(RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV),
+            Some(&"local".to_owned())
         );
     }
 

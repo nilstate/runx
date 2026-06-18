@@ -4,10 +4,9 @@ use std::path::PathBuf;
 use runx_core::policy::SandboxProfile;
 use runx_parser::SkillSandbox;
 
+use super::RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV;
 use super::policy::sandbox_violation;
 use crate::RuntimeError;
-
-const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum SandboxRuntime {
