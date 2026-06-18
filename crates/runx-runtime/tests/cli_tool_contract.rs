@@ -187,7 +187,7 @@ fn workspace_cwd_policy_defaults_to_current_dir_when_runx_cwd_is_absent()
         ),
         &skill_dir,
         &JsonObject::new(),
-        &BTreeMap::new(),
+        &env_with_local_sandbox_fallback(),
     )?;
 
     assert_eq!(plan.cwd, current_dir);
@@ -287,7 +287,7 @@ fn oversized_per_input_env_value_is_omitted() -> Result<(), Box<dyn std::error::
         ]
         .into_iter()
         .collect(),
-        &BTreeMap::new(),
+        &env_with_local_sandbox_fallback(),
     )?;
 
     assert!(!plan.env.contains_key("RUNX_INPUT_LARGE"));
@@ -349,7 +349,7 @@ fn input_env_names_match_author_visible_typescript_normalization()
         ]
         .into_iter()
         .collect(),
-        &BTreeMap::new(),
+        &env_with_local_sandbox_fallback(),
     )?;
 
     assert_eq!(
