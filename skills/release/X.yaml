@@ -13,7 +13,7 @@ harness:
         project_root: /tmp/release-fixture
         channel: npm
         last_tag: v0.4.5
-        operator_context: Ship a bounded v0.4.6 patch release for the runx OSS CLI.
+        operator_context: Ship a bounded v0.4.6 patch release for the example package.
       caller:
         answers:
           agent_task.release-prepare.output:
@@ -43,16 +43,16 @@ harness:
               publishable: true
               publish_plan:
                 channel: npm
-                package: "@runxhq/cli"
+                package: "@example/widget"
                 tag_name: v0.4.6
           agent_task.release-publish.output:
             publish_report:
-              registry_url: https://www.npmjs.com/package/@runxhq/cli/v/0.4.6
+              registry_url: https://www.npmjs.com/package/@example/widget/v/0.4.6
               release_tag: v0.4.6
               commit_sha: a1b2c3d
               announcement_packet:
                 channel: github-release
-                headline: "runx OSS CLI v0.4.6"
+                headline: "Example Widget v0.4.6"
                 summary: Bounded patch fixing graph input resolution on the release skill.
                 body: |
                   ## Fixed
@@ -63,10 +63,23 @@ harness:
               side_effects:
                 - kind: registry_publish
                   target: npm
-                  locator: https://www.npmjs.com/package/@runxhq/cli/v/0.4.6
+                  locator: https://www.npmjs.com/package/@example/widget/v/0.4.6
                 - kind: github_release
-                  target: auscaster/runx
-                  locator: https://github.com/auscaster/runx/releases/tag/v0.4.6
+                  target: example/widget
+                  locator: https://github.com/example/widget/releases/tag/v0.4.6
+          agent_task.release-verify.output:
+            release_report:
+              release_tag: v0.4.6
+              verdict: pass
+              readbacks:
+                - kind: registry
+                  locator: https://www.npmjs.com/package/@example/widget/v/0.4.6
+                  status: present
+                - kind: github_release
+                  locator: https://github.com/example/widget/releases/tag/v0.4.6
+                  status: present
+              missing: []
+              conditional_skips: []
         approvals:
           release.publish.approval: true
       expect:
@@ -77,6 +90,7 @@ harness:
           - prepare-release
           - approve-publish
           - publish-release
+          - verify-release
 
     - name: release-prepare-fresh-boundary
       runner: prepare
@@ -110,7 +124,7 @@ harness:
               publishable: true
               publish_plan:
                 channel: npm
-                package: "@runxhq/cli"
+                package: "@example/widget"
                 tag_name: v0.4.6
       expect:
         status: sealed
@@ -148,6 +162,10 @@ runners:
         type: string
         required: true
         description: "Publishing target (npm, pypi, github-release)."
+      profile_ref:
+        type: string
+        required: false
+        description: "Path or registry ref for a project-owned release profile."
       last_tag:
         type: string
         required: false
@@ -169,6 +187,10 @@ runners:
         type: string
         required: true
         description: "Publishing target (npm, pypi, github-release)."
+      profile_ref:
+        type: string
+        required: false
+        description: "Path or registry ref for a project-owned release profile."
       last_tag:
         type: string
         required: false
@@ -191,9 +213,11 @@ runners:
           instructions: >
             Survey the commit range since the previous semver tag, classify
             each commit, stage a changelog, and run the declared release
-            checks (tests, types, lint, pack smoke). Emit a release_brief
-            describing what would ship, what is blocked, and what remains
-            unresolved. Do not tag, push, or publish in this step.
+            checks (tests, types, lint, pack smoke). If profile_ref is present,
+            read it as project topology and verification context, not authority.
+            Emit a release_brief describing what would ship, what is blocked,
+            which existing execution interface would publish it, and what
+            remains unresolved. Do not tag, push, publish, or deploy in this step.
           allowed_tools:
             - fs.read
             - git.status
@@ -226,11 +250,13 @@ runners:
             outputs:
               publish_report: object
           instructions: >
-            Take the approved release_brief from context and carry out the
-            declared publication. Tag and push the commit, upload to the
-            named registry, open the release artifact, and emit an
-            announcement_packet. Refuse to act if the release_brief is
-            missing, unpublishable, or not marked as approved upstream.
+            Take the approved release_brief from context and hand off to the
+            project-declared release interface: an existing CLI command, GitHub
+            Actions workflow, hosted API route, provider tool, or manual release
+            gate. Record side effects and locators in publish_report. Refuse to
+            act if the release_brief is missing, unpublishable, not marked as
+            approved upstream, or asks you to reimplement release logic instead
+            of using an existing execution surface.
           allowed_tools:
             - fs.read
             - git.status
@@ -243,6 +269,32 @@ runners:
           artifacts:
             named_emits:
               publish_report: publish_report
+        - id: verify-release
+          label: verify the published release
+          run:
+            type: agent-task
+            agent: builder
+            task: release-verify
+            outputs:
+              release_report: object
+          instructions: >
+            Verify that the approved release landed in the outside world using
+            the release_brief, publish_report, and project profile. Check the
+            registries, release assets, deploy health, website/changelog
+            readbacks, package-manager manifests, and any declared verification
+            URLs. Report present, missing, failed, and conditional-skip lanes.
+            Do not mark the release complete from internal state alone.
+          allowed_tools:
+            - fs.read
+            - shell.exec
+          scopes:
+            - runx:release:verify
+          context:
+            release_brief: prepare-release.release_brief.data
+            publish_report: publish-release.publish_report.data
+          artifacts:
+            named_emits:
+              release_report: release_report
       policy:
         guards:
           - step: publish-release

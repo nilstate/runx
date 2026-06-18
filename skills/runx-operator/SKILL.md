@@ -7,7 +7,7 @@ runx:
 
 # Runx Operator
 
-Operate a runx-managed tenant from a manager cockpit.
+Operate a runx-managed project or tenant from an agent-controlled desk.
 
 This skill is the umbrella operations layer. It turns a tenant snapshot, an
 operator objective, and receipt-backed evidence into one safe operator packet:
@@ -15,23 +15,28 @@ what is happening, what needs attention, what can be checked read-only, what
 requires approval, which governed lane should execute, and how success will be
 verified.
 
-It is not the authority. It does not replace `send-as`, `ledger`, `refund`,
-`spend`, `messageboard`, `nitrosend`, or provider-specific skills. It routes to
-them with the smallest sufficient context and stops before any consequential act
-that lacks the right gate.
+It is not the authority and it is not a second CLI. It does not replace
+`release`, `send-as`, `ledger`, `refund`, `spend`, `messageboard`, `nitrosend`,
+provider-specific skills, hosted API routes, GitHub workflows, or deploy
+commands. It routes to the existing interface with the smallest sufficient
+context and stops before any consequential act that lacks the right gate.
 
 ## What this skill does
 
-`runx-operator` produces an operator packet for a manager dashboard or an agent
-session. It reads tenant state, classifies findings, ranks the next action,
-selects the governed lane, names blockers, writes the approval prompt when a
-human decision is required, and states the receipt/effect/readback that will
-prove success.
+`runx-operator` produces an operator packet for a manager dashboard, agent
+session, or self-operation run. It reads projected state, classifies findings,
+ranks the next action, selects the governed lane, names blockers, writes the
+approval prompt when a human decision is required, and states the
+receipt/effect/readback that will prove success.
 
 It is useful before an action and after an action:
 
 - before action, it turns state into proposals and approval requests;
 - after action, it checks whether the expected receipt and projection appeared.
+
+The model may diagnose and write the operator rationale. The mutation itself
+must be a deterministic handoff to an existing skill runner, CLI command, hosted
+API route, workflow, or provider tool.
 
 ## When to use this skill
 
@@ -41,13 +46,17 @@ It is useful before an action and after an action:
   actions, and post-action verification.
 - A tenant-specific operator skill needs a generic cockpit spine instead of
   inventing its own action model.
+- Runx needs to dogfood its own release, registry, hosted, receipt, or provider
+  operations through the same governed lanes it exposes to users.
 
 ## When not to use this skill
 
 - To execute a live mutation directly. Route to the named governed lane.
+- To duplicate a CLI command, release script, GitHub workflow, hosted endpoint,
+  registry client, or provider SDK.
 - To bypass a human gate because the agent or UI believes the action is obvious.
 - To replace a domain skill such as `send-as`, `nitrosend`, `messageboard`,
-  `ledger`, `refund`, `spend`, or `least-privilege-auditor`.
+  `release`, `ledger`, `refund`, `spend`, or `least-privilege-auditor`.
 - To operate from stale, missing, or unverifiable state while claiming readiness.
 - To put secrets, private keys, raw customer lists, or provider dumps into the
   operator packet.
@@ -64,11 +73,30 @@ The manager dashboard and the agent must read the same state and emit the same
 action families. A button click and an agent plan are different interfaces over
 the same governed lane, not separate backdoors.
 
+## Delegation Model
+
+Operator packets name existing execution surfaces; they do not implement them.
+
+- `release` owns release preparation, approval, publish handoff, and
+  post-release verification.
+- `ledger`, `receipt-auditor`, and `run-history-analyst` own proof questions.
+- `send-as` owns authority for live communications; provider skills such as
+  `nitrosend` own provider details.
+- `spend`, `charge`, `refund`, and branded payment skills own money movement.
+- Project skills own product vocabulary and product-specific actions.
+- CLI commands, hosted API routes, and GitHub workflows remain deterministic
+  execution interfaces. The operator skill may cite them as handoff targets but
+  must not clone their behavior in prose.
+
+If no existing lane can perform the action cleanly, return `needs_input` or a
+product gap. Do not invent a private workaround.
+
 ## Procedure
 
 1. Scope the objective.
    - Identify the tenant, surface, time window, and whether the ask is
      read-only, proposal-only, or execution-prep.
+   - Read `project_profile` or `operator_policy` as context, not authority.
    - If the tenant or objective is ambiguous, return `needs_input`.
 
 2. Classify state from evidence.
@@ -79,6 +107,8 @@ the same governed lane, not separate backdoors.
      deployment, and incident signals.
 
 3. Route to governed lanes.
+   - Release questions route to `release` plus the project release profile and
+     existing release workflow/commands.
    - Audit questions route to `ledger`, `receipt-auditor`, `run-history-analyst`,
      or `least-privilege-auditor`.
    - Live communication routes through `send-as` and then a provider skill such
@@ -101,6 +131,8 @@ the same governed lane, not separate backdoors.
 5. Produce the operator packet.
    - Lead with the few issues an operator should act on now.
    - Name the exact lane for each proposed action.
+   - Include the existing execution interface as a handoff, not as a duplicated
+     implementation.
    - Include approval copy only when the operator could approve it safely.
    - Include verification steps that will prove the action happened.
 
@@ -140,6 +172,8 @@ Load only the reference needed for the objective:
   `references/providers.md`
 - Manager dashboard state, projections, and action catalog design:
   `references/dashboard.md`
+- Delegation, project profiles, CLI/workflow handoff, and dogfooding rules:
+  `references/delegation.md`
 
 ## Output schema
 
@@ -175,6 +209,14 @@ operator_packet:
         expected_receipt: string
         expected_effect: string | null
         readback: string
+      execution:
+        interface: skill | cli | hosted_api | workflow | provider_tool | manual
+        lane_ref: string
+        profile_ref: string | null
+        command_ref: string | null
+        workflow_ref: string | null
+        approval_gate: string | null
+        verifier_ref: string | null
   ordered_next_steps:
     - step: string
       lane: string
@@ -195,6 +237,8 @@ operator_packet:
 - Never claim a state is settled, sent, deployed, paid, or refunded without a
   receipt/effect/readback reference.
 - Never widen authority because a dashboard widget would be convenient.
+- Never duplicate an existing CLI command, workflow, hosted endpoint, or domain
+  skill in operator prose. Route to it.
 - Keep tenant-specific policy in tenant context. Keep this skill generic.
 
 ## Inputs
@@ -208,14 +252,15 @@ operator_packet:
 - `approval_context` (optional): existing operator approvals, denials, or
   policy gates.
 - `operator_policy` (optional): tenant-specific constraints and lane names.
+- `project_profile` (optional): project topology, existing interfaces, and
+  verification expectations. It is context, not authority.
 - `requested_action` (optional): preselected action lane or dashboard action id.
 
 ## Worked example
 
-Input: "Check Frantic payment readiness and tell me what to do next" with a
-dashboard snapshot showing runx healthy, Base/Arbitrum/Polygon x402 targets,
-three funded postings, no unfunded approved postings, and Stripe webhook status
-`needs_review`.
+Input: "Check payment readiness and tell me what to do next" with a dashboard
+snapshot showing runx healthy, Base/Arbitrum/Polygon x402 targets, three funded
+items, no unfunded approved items, and card webhook status `needs_review`.
 
 Output: `decision: ready`, money status `ok`, providers status
 `needs_attention`, one warning finding for Stripe webhook readiness, and one

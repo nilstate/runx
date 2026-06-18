@@ -1,0 +1,91 @@
+name: runx-operator-payment-status
+kind: skill
+target: ..
+runner: operate
+inputs:
+  objective: Check payment readiness and tell me what to do next.
+  tenant_ref: tenant:example
+  dashboard_snapshot:
+    health:
+      api: ok
+    money:
+      x402_targets:
+        - network: base
+          recommended: true
+        - network: arbitrum
+        - network: polygon
+      unfunded_approved_items: 0
+      funded_open_items: 3
+    communications:
+      pending_live_sends: 0
+    receipts:
+      latest_funding_receipt: hfr_example_funding
+  receipt_summary:
+    receipts:
+      - id: hfr_example_funding
+        status: verified
+        rail: x402
+        network: base
+  provider_status:
+    runx_api: ok
+    card_webhook: needs_review
+  approval_context:
+    approvals: []
+  operator_policy: >
+    x402 is primary. Card payments are secondary until webhook readiness is
+    re-verified.
+caller:
+  answers:
+    agent_task.runx-operator.output:
+      operator_packet:
+        decision: ready
+        tenant_ref: tenant:example
+        objective: Check payment readiness and tell me what to do next.
+        mode: read_only
+        dashboard:
+          health: ok
+          money: ok
+          communications: ok
+          providers: needs_attention
+          receipts: ok
+        findings:
+          - severity: warning
+            area: providers
+            summary: Card webhook readiness needs review, but x402 funding is healthy.
+            evidence_refs:
+              - provider_status.card_webhook
+        proposals:
+          - action_id: card_webhook_check
+            lane: provider.webhook_check
+            reason: The secondary card rail should not be trusted until webhook readiness is checked.
+            inputs_summary:
+              provider: card
+            consequence: read_only
+            approval_required: false
+            approval_prompt: null
+            blockers: []
+            verification:
+              expected_receipt: runx.provider.health_check.v1
+              expected_effect: null
+              readback: webhook delivery endpoint health and latest event status
+            execution:
+              interface: skill
+              lane_ref: runx-operator
+              profile_ref: null
+              command_ref: null
+              workflow_ref: null
+              approval_gate: null
+              verifier_ref: provider.webhook_check
+        ordered_next_steps:
+          - step: Run a card webhook health check before relying on card payouts.
+            lane: provider.webhook_check
+            requires_confirmation: false
+        refused_reasons: []
+        needs_input: []
+        success_checkpoint:
+          milestone: x402 funding ready
+          description: x402 funding has a verified receipt and no approved item is waiting on funding.
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
