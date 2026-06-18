@@ -51,23 +51,18 @@ pub(super) fn read_skill_package(
         })?),
         None => None,
     };
+    let package_files = if include_harness {
+        collect_publish_package_files(&markdown_path, profile_path.as_deref())?
+    } else {
+        Vec::new()
+    };
     let harness_package = if include_harness {
-        publish_harness_package(
-            &markdown_path,
-            profile_path.as_deref(),
-            &markdown,
-            profile_document.as_deref(),
-        )?
+        publish_harness_package(&markdown, profile_document.as_deref(), &package_files)?
     } else {
         PublishHarnessPackage {
             path: None,
             temp_dir: None,
         }
-    };
-    let package_files = if include_harness {
-        collect_publish_package_files(&markdown_path, profile_path.as_deref())?
-    } else {
-        Vec::new()
     };
     Ok(SkillPackage {
         markdown,
@@ -133,23 +128,10 @@ const MAX_REMOTE_PUBLISH_TOTAL_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_REMOTE_PUBLISH_FILE_COUNT: usize = 128;
 
 fn publish_harness_package(
-    markdown_path: &Path,
-    profile_path: Option<&Path>,
     markdown: &str,
     profile_document: Option<&str>,
+    package_files: &[HostedSkillPackageFile],
 ) -> Result<PublishHarnessPackage, RegistryCliError> {
-    let Some(profile_path) = profile_path else {
-        return Ok(PublishHarnessPackage {
-            path: None,
-            temp_dir: None,
-        });
-    };
-    if let Some(path) = colocated_package_harness_path(markdown_path, profile_path) {
-        return Ok(PublishHarnessPackage {
-            path: Some(path),
-            temp_dir: None,
-        });
-    }
     let Some(profile_document) = profile_document else {
         return Ok(PublishHarnessPackage {
             path: None,
@@ -157,7 +139,6 @@ fn publish_harness_package(
         });
     };
     let temp_dir = unique_temp_dir("runx-publish-profile-harness")?;
-    copy_publish_harness_sidecars(markdown_path, &temp_dir)?;
     fs::write(temp_dir.join("SKILL.md"), markdown).map_err(|error| {
         internal_error(format!(
             "failed to write publish harness skill fixture {}: {error}",
@@ -170,69 +151,27 @@ fn publish_harness_package(
             temp_dir.join("X.yaml").display()
         ))
     })?;
+    for file in package_files {
+        let destination = temp_dir.join(&file.path);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                internal_error(format!(
+                    "failed to create publish harness package directory {}: {error}",
+                    parent.display()
+                ))
+            })?;
+        }
+        fs::write(&destination, &file.content).map_err(|error| {
+            internal_error(format!(
+                "failed to write publish harness package file {}: {error}",
+                destination.display()
+            ))
+        })?;
+    }
     Ok(PublishHarnessPackage {
         path: Some(temp_dir.clone()),
         temp_dir: Some(temp_dir),
     })
-}
-
-fn copy_publish_harness_sidecars(
-    markdown_path: &Path,
-    temp_dir: &Path,
-) -> Result<(), RegistryCliError> {
-    if markdown_path.file_name().and_then(|name| name.to_str()) != Some("SKILL.md") {
-        return Ok(());
-    }
-    let Some(package_dir) = markdown_path.parent() else {
-        return Ok(());
-    };
-    copy_dir_contents(package_dir, temp_dir)
-}
-
-fn copy_dir_contents(source_dir: &Path, destination_dir: &Path) -> Result<(), RegistryCliError> {
-    for entry in fs::read_dir(source_dir).map_err(|error| {
-        internal_error(format!(
-            "failed to read publish harness package directory {}: {error}",
-            source_dir.display()
-        ))
-    })? {
-        let entry = entry.map_err(|error| {
-            internal_error(format!(
-                "failed to read publish harness package entry in {}: {error}",
-                source_dir.display()
-            ))
-        })?;
-        let entry_type = entry.file_type().map_err(|error| {
-            internal_error(format!(
-                "failed to inspect publish harness package entry {}: {error}",
-                entry.path().display()
-            ))
-        })?;
-        let destination = destination_dir.join(entry.file_name());
-        if entry_type.is_dir() {
-            fs::create_dir_all(&destination).map_err(|error| {
-                internal_error(format!(
-                    "failed to create publish harness package directory {}: {error}",
-                    destination.display()
-                ))
-            })?;
-            copy_dir_contents(&entry.path(), &destination)?;
-        } else if entry_type.is_file() {
-            fs::copy(entry.path(), &destination).map_err(|error| {
-                internal_error(format!(
-                    "failed to copy publish harness package entry {} to {}: {error}",
-                    entry.path().display(),
-                    destination.display()
-                ))
-            })?;
-        } else {
-            return Err(internal_error(format!(
-                "publish harness package entry {} is not a regular file or directory",
-                entry.path().display()
-            )));
-        }
-    }
-    Ok(())
 }
 
 fn collect_publish_package_files(
@@ -576,19 +515,6 @@ fn should_reject_remote_publish_file(relative: &str) -> bool {
         || lower.ends_with(".key")
         || lower.ends_with(".p12")
         || lower.ends_with(".pfx")
-}
-
-fn colocated_package_harness_path(markdown_path: &Path, profile_path: &Path) -> Option<PathBuf> {
-    let profile_file = profile_path.file_name()?.to_str()?;
-    if profile_file != "X.yaml" {
-        return None;
-    }
-    let markdown_dir = markdown_path.parent()?;
-    let profile_dir = profile_path.parent()?;
-    if markdown_dir != profile_dir {
-        return None;
-    }
-    Some(markdown_dir.to_path_buf())
 }
 
 fn publish_harness_receipt_dir() -> Result<PathBuf, RegistryCliError> {
