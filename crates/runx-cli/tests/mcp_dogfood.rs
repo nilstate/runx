@@ -144,6 +144,7 @@ fn spawn_mcp_server(args: &[String]) -> Result<McpProcess, Box<dyn std::error::E
     let mut child = command
         .current_dir(&repo_root)
         .env("RUNX_CWD", &repo_root)
+        .env("RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY", "local")
         .arg("mcp")
         .arg("serve")
         .args(args)
