@@ -3,12 +3,12 @@ use std::collections::BTreeMap;
 use base64::Engine;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use ring::signature::KeyPair;
-use runx_contracts::sha256_prefixed;
+use runx_contracts::{sha256_hex, sha256_prefixed};
 use runx_runtime::registry::{
     InstallCandidate, InstallError, InstallLocalSkillOptions, RegistryManifestSignature,
     RegistryManifestSigner, RegistryManifestSourceAuthority, RegistryManifestTrustEnvError,
-    RegistrySignedManifest, TrustTier, TrustedRegistryManifestKey, install_local_skill,
-    trusted_registry_manifest_keys_from_env,
+    RegistryPackageFile, RegistrySignedManifest, TrustTier, TrustedRegistryManifestKey,
+    install_local_skill, trusted_registry_manifest_keys_from_env,
 };
 use tempfile::tempdir;
 
@@ -38,6 +38,38 @@ fn trusted_signed_manifest_installs() -> Result<(), Box<dyn std::error::Error>> 
     assert_eq!(install.skill_id.as_deref(), Some("acme/echo"));
     assert_eq!(install.digest, skill_digest());
     assert!(install.destination.exists());
+    Ok(())
+}
+
+#[test]
+fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let mut candidate = install_candidate()?;
+    candidate.package_files = vec![RegistryPackageFile {
+        path: "run.mjs".to_owned(),
+        content: "console.log('installed');\n".to_owned(),
+    }];
+    candidate.package_digest = Some(package_digest(&candidate.package_files));
+
+    let install = install_local_skill(
+        &candidate,
+        &InstallLocalSkillOptions {
+            destination_root: temp.path().join("skills"),
+            expected_digest: None,
+            trusted_manifest_keys: trusted_manifest_keys()?,
+        },
+    )?;
+
+    let package_root = install.destination.parent().ok_or("missing package root")?;
+    assert_eq!(
+        std::fs::read_to_string(package_root.join("run.mjs"))?,
+        "console.log('installed');\n"
+    );
+
+    let mut tampered = candidate;
+    tampered.package_digest = Some("sha256:not-the-package".to_owned());
+    let error = install_error(&tampered, temp.path())?;
+    assert!(matches!(error, InstallError::PackageDigestMismatch { .. }));
     Ok(())
 }
 
@@ -341,6 +373,8 @@ fn install_candidate() -> Result<InstallCandidate, Box<dyn std::error::Error>> {
         profile_document: Some(
             include_str!("../../../fixtures/registry/install/echo-X.yaml").to_owned(),
         ),
+        package_files: Vec::new(),
+        package_digest: None,
         source: "runx-registry".to_owned(),
         source_label: "runx registry".to_owned(),
         r#ref: "acme/echo@1.0.0".to_owned(),
@@ -368,6 +402,24 @@ fn skill_digest() -> String {
 
 fn profile_digest() -> String {
     sha256_prefixed(include_str!("../../../fixtures/registry/install/echo-X.yaml").as_bytes())
+}
+
+fn package_digest(files: &[RegistryPackageFile]) -> String {
+    let mut sorted = files.to_vec();
+    sorted.sort_by(|left, right| left.path.cmp(&right.path));
+    let mut canonical = String::from("{\"files\":[");
+    for (index, file) in sorted.iter().enumerate() {
+        if index > 0 {
+            canonical.push(',');
+        }
+        canonical.push_str("{\"content\":");
+        canonical.push_str(&serde_json::to_string(&file.content).expect("string serializes"));
+        canonical.push_str(",\"path\":");
+        canonical.push_str(&serde_json::to_string(&file.path).expect("string serializes"));
+        canonical.push('}');
+    }
+    canonical.push_str("]}");
+    sha256_hex(canonical.as_bytes())
 }
 
 fn trusted_manifest_keys() -> Result<Vec<TrustedRegistryManifestKey>, Box<dyn std::error::Error>> {

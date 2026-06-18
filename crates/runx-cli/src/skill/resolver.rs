@@ -333,7 +333,11 @@ fn destination_root_for_cache(
         owner,
         name,
         version,
-        &cache_identity_digest(digest, identity.profile_digest.as_deref()),
+        &cache_identity_digest(
+            digest,
+            identity.profile_digest.as_deref(),
+            identity.package_digest.as_deref(),
+        ),
     ))
 }
 
@@ -355,6 +359,7 @@ fn registry_cache_identity(candidate: &InstallCandidate) -> Result<RegistryCache
             .or_else(|| Some(manifest.version.clone())),
         digest: Some(manifest.digest.clone()),
         profile_digest: manifest.profile_digest.clone(),
+        package_digest: candidate.package_digest.clone(),
     })
 }
 
@@ -364,6 +369,7 @@ struct RegistryCacheIdentity {
     version: Option<String>,
     digest: Option<String>,
     profile_digest: Option<String>,
+    package_digest: Option<String>,
 }
 
 fn canonicalize_candidate_ref(candidate: &mut InstallCandidate) {
@@ -372,8 +378,14 @@ fn canonicalize_candidate_ref(candidate: &mut InstallCandidate) {
     }
 }
 
-fn cache_identity_digest(digest: &str, profile_digest: Option<&str>) -> String {
-    sha256_prefixed(materialization_digest_marker(digest, profile_digest).as_bytes())
+fn cache_identity_digest(
+    digest: &str,
+    profile_digest: Option<&str>,
+    package_digest: Option<&str>,
+) -> String {
+    sha256_prefixed(
+        materialization_digest_marker(digest, profile_digest, package_digest).as_bytes(),
+    )
 }
 
 fn registry_source_fingerprint(target: &registry::RegistryTarget) -> String {
@@ -716,8 +728,8 @@ mod tests {
 
     #[test]
     fn cache_identity_includes_profile_digest() {
-        let without_profile = cache_identity_digest("sha256:abc", None);
-        let with_profile = cache_identity_digest("sha256:abc", Some("sha256:def"));
+        let without_profile = cache_identity_digest("sha256:abc", None, None);
+        let with_profile = cache_identity_digest("sha256:abc", Some("sha256:def"), None);
         assert_ne!(without_profile, with_profile);
         assert!(without_profile.starts_with("sha256:"));
         assert!(with_profile.starts_with("sha256:"));

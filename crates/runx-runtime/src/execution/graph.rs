@@ -307,6 +307,7 @@ fn materialize_registry_step_skill(
         materialization_digest_marker(
             &prefixed_digest(&resolution.digest),
             profile_digest.as_deref(),
+            resolution.package_digest.as_deref(),
         )
         .as_bytes(),
     );
@@ -324,6 +325,8 @@ fn materialize_registry_step_skill(
     let candidate = InstallCandidate {
         markdown: resolution.markdown,
         profile_document: resolution.profile_document,
+        package_files: resolution.package_files,
+        package_digest: resolution.package_digest,
         source: resolution.source,
         source_label: resolution.source_label,
         r#ref: format!("{}@{}", resolution.skill_id, resolution.version),

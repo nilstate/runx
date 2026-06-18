@@ -217,6 +217,12 @@ fn acquire_requires_installation_id_and_posts_default_channel()
     )?;
 
     assert_eq!(acquired.install_count, 1);
+    assert_eq!(
+        acquired.package_digest.as_deref(),
+        Some("sha256:fixture-package")
+    );
+    assert_eq!(acquired.package_files[0].path, "run.mjs");
+    assert_eq!(acquired.package_files[0].content, "console.log('echo');\n");
     assert!(transport.requests()[0].body.as_ref().is_some_and(|body| {
         body.contains("\"installation_id\":\"inst_1\"") && body.contains("\"channel\":\"cli\"")
     }));
@@ -404,8 +410,8 @@ fn ref_helpers_parse_cache_and_package_paths() {
             .join("1234567890abcdef")
     );
     assert_eq!(
-        materialization_digest_marker("sha256:abc", Some("sha256:def")),
-        "digest=sha256:abc\nprofile_digest=sha256:def\n"
+        materialization_digest_marker("sha256:abc", Some("sha256:def"), None),
+        "digest=sha256:abc\nprofile_digest=sha256:def\npackage_digest=\n"
     );
 }
 
@@ -432,6 +438,8 @@ fn install_candidate() -> Result<InstallCandidate, Box<dyn std::error::Error>> {
         profile_document: Some(
             include_str!("../../../fixtures/registry/install/echo-X.yaml").to_owned(),
         ),
+        package_files: Vec::new(),
+        package_digest: None,
         source: "runx-registry".to_owned(),
         source_label: "runx registry".to_owned(),
         r#ref: "acme/echo@1.0.0".to_owned(),

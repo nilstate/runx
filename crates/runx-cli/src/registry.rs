@@ -8,9 +8,9 @@ use runx_runtime::ConfigError;
 use runx_runtime::registry::{
     AcquireOptions, FileRegistryStore, IngestSkillOptions, InstallCandidate,
     InstallLocalSkillOptions, LocalRegistryClient, PublishSkillMarkdownOptions, RegistryClient,
-    RegistryManifestSourceAuthority, RegistryResolveOptions, RegistrySearchOptions,
-    RegistrySkillResolution, TrustTier, TrustedRegistryManifestKey, install_local_skill,
-    publish_skill_markdown, read_registry_skill, resolve_registry_skill,
+    RegistryManifestSourceAuthority, RegistryPackageFile, RegistryResolveOptions,
+    RegistrySearchOptions, RegistrySkillResolution, TrustTier, TrustedRegistryManifestKey,
+    install_local_skill, publish_skill_markdown, read_registry_skill, resolve_registry_skill,
     search_registry_with_options,
 };
 
@@ -320,6 +320,7 @@ fn run_publish(
                         owner: plan.owner,
                         version: plan.version,
                         profile_document: package.profile_document,
+                        package_files: package.package_files.into_iter().map(Into::into).collect(),
                         trust_tier: plan.trust_tier,
                         upsert: plan.upsert,
                         ..IngestSkillOptions::default()
@@ -407,6 +408,8 @@ fn candidate_from_resolution(
     InstallCandidate {
         markdown: resolution.markdown,
         profile_document: resolution.profile_document,
+        package_files: resolution.package_files,
+        package_digest: resolution.package_digest,
         source: resolution.source,
         source_label: resolution.source_label,
         r#ref: registry_ref.to_owned(),
@@ -428,6 +431,8 @@ fn candidate_from_acquired(
     InstallCandidate {
         markdown: acquired.markdown.clone(),
         profile_document: acquired.profile_document.clone(),
+        package_files: acquired.package_files.clone(),
+        package_digest: acquired.package_digest.clone(),
         source: "runx-registry".to_owned(),
         source_label: "runx registry".to_owned(),
         r#ref: registry_ref.to_owned(),
@@ -438,6 +443,15 @@ fn candidate_from_acquired(
         runner_names: acquired.runner_names.clone(),
         trust_tier: Some(acquired.trust_tier.clone()),
         manifest_source_authority: Some(source_authority),
+    }
+}
+
+impl From<package::HostedSkillPackageFile> for RegistryPackageFile {
+    fn from(file: package::HostedSkillPackageFile) -> Self {
+        Self {
+            path: file.path,
+            content: file.content,
+        }
     }
 }
 

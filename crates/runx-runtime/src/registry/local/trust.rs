@@ -344,6 +344,8 @@ pub(super) fn detail_for_version(
         signed_manifest: version.signed_manifest.clone(),
         markdown: version.markdown.clone(),
         profile_digest: version.profile_digest.clone(),
+        package_files: version.package_files.clone(),
+        package_digest: version.package_digest.clone(),
         runner_names: version.runner_names.clone(),
         source_type: version.source_type.clone(),
         trust_tier: version.trust_tier.clone(),

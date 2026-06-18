@@ -110,9 +110,11 @@ runx treats it like every other governed action, with no special-casing:
   cannot churn public versions indefinitely, even though the on-ramp stays open.
 - Hosted publishing reruns the submitted package harness. Failed harness cases
   stop the write before a registry row is created.
-- The registry row stores immutable `digest` and `profile_digest` values for the
-  published package. Signed run receipts and hosted verified-run evidence are
-  separate signals recorded when the skill is executed.
+- The registry row stores immutable `digest`, `profile_digest`, and
+  `package_digest` values for the published package. `runx add` installs the
+  same allowlisted package files that hosted runx validated. Signed run receipts
+  and hosted verified-run evidence are separate signals recorded when the skill
+  is executed.
 
 ## After you publish
 

@@ -1,6 +1,7 @@
 // rust-style-allow: large-file because local registry installs keep digest
 // validation, binding checks, conflict planning, and atomic writes in one
 // transaction module.
+use std::collections::BTreeSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -13,6 +14,7 @@ use runx_parser::{
 };
 use serde_json::{Value, json};
 
+use super::package_files::{registry_package_digest, validate_registry_package_file_path};
 use super::refs::safe_skill_package_parts;
 use super::source_authority::RegistryManifestSourceAuthority;
 use super::trust_anchor::{
@@ -20,12 +22,14 @@ use super::trust_anchor::{
     default_trusted_registry_manifest_keys, registry_manifest_key_allows,
     verify_registry_signed_manifest,
 };
-use super::types::{RegistrySignedManifest, TrustTier};
+use super::types::{RegistryPackageFile, RegistrySignedManifest, TrustTier};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InstallCandidate {
     pub markdown: String,
     pub profile_document: Option<String>,
+    pub package_files: Vec<RegistryPackageFile>,
+    pub package_digest: Option<String>,
     pub source: String,
     pub source_label: String,
     pub r#ref: String,
@@ -111,6 +115,14 @@ pub enum InstallError {
         expected: String,
         actual: String,
     },
+    #[error("package digest mismatch for {ref_name}: expected {expected}, received {actual}")]
+    PackageDigestMismatch {
+        ref_name: String,
+        expected: String,
+        actual: String,
+    },
+    #[error("registry package file is invalid for {ref_name}: {reason}")]
+    InvalidPackageFile { ref_name: String, reason: String },
     #[error("runner manifest skill '{manifest_skill}' does not match skill '{skill_name}'")]
     ManifestSkillMismatch {
         manifest_skill: String,
@@ -124,6 +136,8 @@ pub enum InstallError {
     ConflictingProfile(PathBuf),
     #[error("skill install runner manifest already exists with different content: {0}")]
     ConflictingRunnerManifest(PathBuf),
+    #[error("skill install package file already exists with different content: {0}")]
+    ConflictingPackageFile(PathBuf),
     #[error("io error at {path}: {source}")]
     Io { path: PathBuf, source: io::Error },
     #[error("failed to serialize profile state: {0}")]
@@ -140,6 +154,8 @@ pub fn install_local_skill(
         &paths,
         &validated.install.markdown,
         candidate.profile_document.as_deref(),
+        &candidate.package_files,
+        &candidate.r#ref,
         validated.next_profile_state.as_deref(),
     )?;
     commit_install_write_plan(
@@ -147,6 +163,7 @@ pub fn install_local_skill(
         &write_plan,
         &validated.install.markdown,
         candidate.profile_document.as_deref(),
+        &candidate.package_files,
         validated.next_profile_state.as_deref(),
     )?;
 
@@ -154,6 +171,7 @@ pub fn install_local_skill(
         status: if write_plan.writes_skill
             || write_plan.writes_profile_state
             || write_plan.writes_runner_manifest
+            || write_plan.package_files.iter().any(|file| file.write)
         {
             InstallStatus::Installed
         } else {
@@ -192,6 +210,13 @@ struct InstallWritePlan {
     writes_skill: bool,
     writes_profile_state: bool,
     writes_runner_manifest: bool,
+    package_files: Vec<PackageFileWritePlan>,
+}
+
+struct PackageFileWritePlan {
+    path: PathBuf,
+    content: String,
+    write: bool,
 }
 
 fn validate_install_candidate(
@@ -200,6 +225,7 @@ fn validate_install_candidate(
 ) -> Result<ValidatedLocalInstall, InstallError> {
     let actual_digest = verify_signed_manifest_anchor(candidate, options)?;
     let profile_digest = validate_candidate_profile_digest(candidate)?;
+    validate_candidate_package_digest(candidate)?;
     let origin = install_origin(candidate, &actual_digest, profile_digest.as_deref());
     let install = validate_skill_install(&candidate.markdown, origin)?;
     let runner_names = validate_install_binding_manifest(
@@ -337,6 +363,29 @@ fn validate_candidate_profile_digest(
         (None, None) => {}
     }
     Ok(profile_digest)
+}
+
+fn validate_candidate_package_digest(candidate: &InstallCandidate) -> Result<(), InstallError> {
+    let actual = registry_package_digest(&candidate.package_files);
+    match (actual.as_ref(), candidate.package_digest.as_ref()) {
+        (Some(actual), Some(expected)) if digest_matches(expected, actual) => Ok(()),
+        (Some(actual), Some(expected)) => Err(InstallError::PackageDigestMismatch {
+            ref_name: candidate.r#ref.clone(),
+            expected: expected.clone(),
+            actual: actual.clone(),
+        }),
+        (Some(actual), None) => Err(InstallError::PackageDigestMismatch {
+            ref_name: candidate.r#ref.clone(),
+            expected: "registry package digest".to_owned(),
+            actual: actual.clone(),
+        }),
+        (None, Some(expected)) => Err(InstallError::PackageDigestMismatch {
+            ref_name: candidate.r#ref.clone(),
+            expected: expected.clone(),
+            actual: "none".to_owned(),
+        }),
+        (None, None) => Ok(()),
+    }
 }
 
 fn validate_manifest_identity(
@@ -492,6 +541,8 @@ fn prepare_install_write_plan(
     paths: &InstallPaths,
     markdown: &str,
     profile_document: Option<&str>,
+    package_files: &[RegistryPackageFile],
+    ref_name: &str,
     next_profile_state: Option<&str>,
 ) -> Result<InstallWritePlan, InstallError> {
     let existing = read_optional(&paths.destination)?;
@@ -526,11 +577,40 @@ fn prepare_install_write_plan(
             return Err(InstallError::ConflictingRunnerManifest(path.clone()));
         }
     }
+    let mut seen_package_paths = BTreeSet::new();
+    let mut package_file_plans = Vec::with_capacity(package_files.len());
+    for file in package_files {
+        validate_registry_package_file_path(&file.path).map_err(|reason| {
+            InstallError::InvalidPackageFile {
+                ref_name: ref_name.to_owned(),
+                reason,
+            }
+        })?;
+        if !seen_package_paths.insert(file.path.clone()) {
+            return Err(InstallError::InvalidPackageFile {
+                ref_name: ref_name.to_owned(),
+                reason: format!("duplicate package file '{}'", file.path),
+            });
+        }
+        let path = paths.package_root.join(&file.path);
+        let existing = read_optional(&path)?;
+        if let Some(existing) = &existing {
+            if existing != &file.content {
+                return Err(InstallError::ConflictingPackageFile(path));
+            }
+        }
+        package_file_plans.push(PackageFileWritePlan {
+            path,
+            content: file.content.clone(),
+            write: existing.is_none(),
+        });
+    }
     Ok(InstallWritePlan {
         writes_skill: existing.is_none(),
         writes_profile_state: paths.profile_state_path.is_some() && existing_profile.is_none(),
         writes_runner_manifest: paths.runner_manifest_path.is_some()
             && existing_runner_manifest.is_none(),
+        package_files: package_file_plans,
     })
 }
 
@@ -539,8 +619,10 @@ fn commit_install_write_plan(
     write_plan: &InstallWritePlan,
     markdown: &str,
     profile_document: Option<&str>,
+    package_files: &[RegistryPackageFile],
     next_profile_state: Option<&str>,
 ) -> Result<(), InstallError> {
+    debug_assert_eq!(write_plan.package_files.len(), package_files.len());
     fs::create_dir_all(&paths.package_root).map_err(|source| InstallError::Io {
         path: paths.package_root.clone(),
         source,
@@ -566,6 +648,18 @@ fn commit_install_write_plan(
         profile_document,
     ) {
         write_atomic(path, document)?;
+    }
+    for file in &write_plan.package_files {
+        if !file.write {
+            continue;
+        }
+        if let Some(parent) = file.path.parent() {
+            fs::create_dir_all(parent).map_err(|source| InstallError::Io {
+                path: parent.to_path_buf(),
+                source,
+            })?;
+        }
+        write_atomic(&file.path, &file.content)?;
     }
     Ok(())
 }

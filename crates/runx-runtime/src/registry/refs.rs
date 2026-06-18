@@ -94,9 +94,14 @@ pub fn materialization_cache_path(
         .join(safe_path_part(&short))
 }
 
-pub fn materialization_digest_marker(digest: &str, profile_digest: Option<&str>) -> String {
+pub fn materialization_digest_marker(
+    digest: &str,
+    profile_digest: Option<&str>,
+    package_digest: Option<&str>,
+) -> String {
     let profile_digest = profile_digest.unwrap_or("");
-    format!("digest={digest}\nprofile_digest={profile_digest}\n")
+    let package_digest = package_digest.unwrap_or("");
+    format!("digest={digest}\nprofile_digest={profile_digest}\npackage_digest={package_digest}\n")
 }
 
 pub fn safe_skill_package_parts(

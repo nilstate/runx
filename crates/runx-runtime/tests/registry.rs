@@ -378,6 +378,8 @@ fn install_candidate() -> Result<InstallCandidate, Box<dyn std::error::Error>> {
     Ok(InstallCandidate {
         markdown: "---\nname: echo\n---\n# Echo\n".to_owned(),
         profile_document: None,
+        package_files: Vec::new(),
+        package_digest: None,
         source: "runx-registry".to_owned(),
         source_label: "runx registry".to_owned(),
         r#ref: "acme/echo@1.0.0".to_owned(),
@@ -426,6 +428,8 @@ fn acquisition(
         markdown: "---\nname: echo\n---\n# Echo\n".to_owned(),
         profile_document: None,
         profile_digest: None,
+        package_files: Vec::new(),
+        package_digest: None,
         runner_names: Vec::new(),
         trust_tier: TrustTier::Verified,
         publisher: RegistryPublisher {

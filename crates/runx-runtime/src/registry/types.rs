@@ -63,6 +63,12 @@ pub struct RegistrySignedManifest {
     pub signature: RegistryManifestSignature,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegistryPackageFile {
+    pub path: String,
+    pub content: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RegistryAttestation {
     pub kind: String,
@@ -154,6 +160,10 @@ pub struct RegistrySkillVersion {
     pub profile_document: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub package_files: Vec<RegistryPackageFile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_digest: Option<String>,
     pub runner_names: Vec<String>,
     pub source_type: String,
     pub trust_tier: TrustTier,
@@ -203,6 +213,10 @@ pub struct RegistrySkillResolution {
     pub profile_document: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub package_files: Vec<RegistryPackageFile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_digest: Option<String>,
     pub runner_names: Vec<String>,
     pub skill_id: String,
     pub name: String,
@@ -299,6 +313,10 @@ pub struct RegistrySkillDetail {
     pub markdown: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub package_files: Vec<RegistryPackageFile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_digest: Option<String>,
     pub runner_names: Vec<String>,
     pub source_type: String,
     pub trust_tier: TrustTier,
@@ -326,6 +344,10 @@ pub struct AcquiredRegistrySkill {
     pub profile_document: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub package_files: Vec<RegistryPackageFile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_digest: Option<String>,
     pub runner_names: Vec<String>,
     pub trust_tier: TrustTier,
     pub publisher: RegistryPublisher,

@@ -9,9 +9,11 @@ use runx_parser::{
 };
 use serde::Deserialize;
 
+use super::super::package_files::{normalize_registry_package_files, registry_package_digest};
 use super::super::scopes::required_scopes_from_skill_and_runner;
 use super::super::types::{
-    RegistryAttestation, RegistryPublisher, RegistrySkillVersion, RegistrySourceMetadata, TrustTier,
+    RegistryAttestation, RegistryPackageFile, RegistryPublisher, RegistrySkillVersion,
+    RegistrySourceMetadata, TrustTier,
 };
 use super::{IngestSkillOptions, LocalRegistryError, build_skill_id};
 use crate::registry::local::trust::{
@@ -30,8 +32,15 @@ pub fn build_registry_skill_version(
     let skill = validate_skill(raw)?;
     let digest = sha256_hex(markdown.as_bytes());
     let binding = build_binding_artifact(&skill, options.profile_document.as_deref())?;
+    let package_files = normalize_package_files(options.package_files.clone())?;
+    let package_digest = registry_package_digest(&package_files);
     let catalog = registry_catalog(binding.manifest.as_ref());
-    let defaults = registry_version_defaults(&digest, binding.digest.as_deref(), options);
+    let defaults = registry_version_defaults(
+        &digest,
+        binding.digest.as_deref(),
+        package_digest.as_deref(),
+        options,
+    );
     let manifest = binding.manifest.as_ref();
     let skill_id = build_skill_id(&defaults.owner, &skill.name)?;
     Ok(RegistrySkillVersion {
@@ -45,6 +54,8 @@ pub fn build_registry_skill_version(
         markdown: markdown.to_owned(),
         profile_document: options.profile_document.clone(),
         profile_digest: binding.digest,
+        package_files,
+        package_digest,
         runner_names: binding.runner_names,
         source_type: skill.source.source_type.as_str().to_owned(),
         trust_tier: defaults.trust_tier,
@@ -81,6 +92,7 @@ struct RegistryVersionDefaults {
 fn registry_version_defaults(
     digest: &str,
     profile_digest: Option<&str>,
+    package_digest: Option<&str>,
     options: &IngestSkillOptions,
 ) -> RegistryVersionDefaults {
     let owner = options.owner.clone().unwrap_or_else(|| "local".to_owned());
@@ -94,7 +106,7 @@ fn registry_version_defaults(
         .clone()
         .unwrap_or_else(|| derive_registry_trust_tier(&owner, None));
     let version = options.version.clone().unwrap_or_else(|| {
-        let seed = default_registry_version_seed(digest, profile_digest);
+        let seed = default_registry_version_seed(digest, profile_digest, package_digest);
         format!("sha-{}", seed.chars().take(12).collect::<String>())
     });
     let source_metadata = options.source_metadata.clone();
@@ -172,6 +184,24 @@ pub fn normalize_registry_skill_version(
     payload: RegistrySkillVersionPayload,
 ) -> Result<RegistrySkillVersion, LocalRegistryError> {
     let governance = normalize_registry_version_governance(&payload)?;
+    let package_files = normalize_package_files(payload.package_files.unwrap_or_default())?;
+    let computed_package_digest = registry_package_digest(&package_files);
+    if let (Some(declared), Some(computed)) = (&payload.package_digest, &computed_package_digest) {
+        if declared != computed {
+            return Err(LocalRegistryError::InvalidVersionPayload {
+                field: "registry_version.package_digest".to_owned(),
+                message: format!(
+                    "declared digest {declared} does not match package files {computed}"
+                ),
+            });
+        }
+    }
+    if payload.package_digest.is_some() && computed_package_digest.is_none() {
+        return Err(LocalRegistryError::InvalidVersionPayload {
+            field: "registry_version.package_digest".to_owned(),
+            message: "declared without package_files".to_owned(),
+        });
+    }
     Ok(RegistrySkillVersion {
         skill_id: required_string(payload.skill_id, "registry_version.skill_id")?,
         owner: governance.owner,
@@ -183,6 +213,8 @@ pub fn normalize_registry_skill_version(
         markdown: required_string(payload.markdown, "registry_version.markdown")?,
         profile_document: payload.profile_document,
         profile_digest: payload.profile_digest,
+        package_files,
+        package_digest: payload.package_digest.or(computed_package_digest),
         runner_names: payload.runner_names.unwrap_or_default(),
         source_type: required_string(payload.source_type, "registry_version.source_type")?,
         trust_tier: governance.trust_tier,
@@ -305,6 +337,8 @@ pub struct RegistrySkillVersionPayload {
     markdown: Option<String>,
     profile_document: Option<String>,
     profile_digest: Option<String>,
+    package_files: Option<Vec<RegistryPackageFile>>,
+    package_digest: Option<String>,
     runner_names: Option<Vec<String>>,
     source_type: Option<String>,
     trust_tier: Option<TrustTier>,
@@ -364,16 +398,30 @@ fn build_binding_artifact(
 pub(super) fn default_registry_version_seed(
     markdown_digest: &str,
     profile_digest: Option<&str>,
+    package_digest: Option<&str>,
 ) -> String {
-    match profile_digest {
-        Some(profile_digest) => sha256_hex(
+    match (profile_digest, package_digest) {
+        (None, None) => markdown_digest.to_owned(),
+        _ => sha256_hex(
             format!(
-                "{{\"markdown_digest\":\"{markdown_digest}\",\"profile_digest\":\"{profile_digest}\"}}"
+                "{{\"markdown_digest\":\"{markdown_digest}\",\"package_digest\":\"{}\",\"profile_digest\":\"{}\"}}",
+                package_digest.unwrap_or(""),
+                profile_digest.unwrap_or("")
             )
             .as_bytes(),
         ),
-        None => markdown_digest.to_owned(),
     }
+}
+
+fn normalize_package_files(
+    files: Vec<RegistryPackageFile>,
+) -> Result<Vec<RegistryPackageFile>, LocalRegistryError> {
+    normalize_registry_package_files(files).map_err(|message| {
+        LocalRegistryError::InvalidVersionPayload {
+            field: "registry_version.package_files".to_owned(),
+            message,
+        }
+    })
 }
 
 pub(super) fn default_registry_publisher(owner: &str) -> RegistryPublisher {

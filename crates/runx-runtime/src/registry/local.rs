@@ -28,6 +28,7 @@ pub struct IngestSkillOptions {
     pub version: Option<String>,
     pub created_at: Option<String>,
     pub profile_document: Option<String>,
+    pub package_files: Vec<super::types::RegistryPackageFile>,
     pub publisher: Option<RegistryPublisher>,
     pub trust_tier: Option<TrustTier>,
     pub attestations: Vec<RegistryAttestation>,
@@ -124,6 +125,7 @@ impl FileRegistryStore {
         if let Some(existing) = self.get_version(&version.skill_id, Some(&version.version))? {
             if existing.digest != version.digest
                 || existing.profile_digest != version.profile_digest
+                || existing.package_digest != version.package_digest
             {
                 if !options.upsert {
                     return Err(LocalRegistryError::VersionConflict {
@@ -272,7 +274,10 @@ pub fn create_registry_skill_version(
     let record = build_registry_skill_version(markdown, &options)?;
     let existing = store.get_version(&record.skill_id, Some(&record.version))?;
     if let Some(existing) = existing {
-        if existing.digest != record.digest || existing.profile_digest != record.profile_digest {
+        if existing.digest != record.digest
+            || existing.profile_digest != record.profile_digest
+            || existing.package_digest != record.package_digest
+        {
             if !options.upsert {
                 return Err(LocalRegistryError::VersionConflict {
                     skill_id: record.skill_id,
@@ -393,6 +398,8 @@ pub fn resolve_registry_skill(
             markdown: record.markdown,
             profile_document: record.profile_document,
             profile_digest: record.profile_digest,
+            package_files: record.package_files,
+            package_digest: record.package_digest,
             runner_names: record.runner_names,
             skill_id: record.skill_id,
             name: record.name,

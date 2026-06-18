@@ -2,6 +2,7 @@ mod http;
 mod index;
 mod install;
 mod local;
+mod package_files;
 mod payload;
 mod refs;
 pub(crate) mod scopes;
@@ -54,9 +55,9 @@ pub use trust_anchor::{
 pub use types::{
     AcquiredRegistrySkill, ProfileMode, PublishSkillMarkdownResult, PublishStatus,
     RegistryAttestation, RegistryLinkResolution, RegistryManifestSignature, RegistryManifestSigner,
-    RegistryPublishHarnessReport, RegistryPublisher, RegistrySearchResult, RegistrySignedManifest,
-    RegistrySkill, RegistrySkillDetail, RegistrySkillResolution, RegistrySkillVersion,
-    RegistrySourceMetadata, ResolvedRegistryRef, TrustSignal, TrustTier,
+    RegistryPackageFile, RegistryPublishHarnessReport, RegistryPublisher, RegistrySearchResult,
+    RegistrySignedManifest, RegistrySkill, RegistrySkillDetail, RegistrySkillResolution,
+    RegistrySkillVersion, RegistrySourceMetadata, ResolvedRegistryRef, TrustSignal, TrustTier,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -77,6 +78,11 @@ pub fn registry_install_receipt_metadata(input: RegistryInstallMetadataInput<'_>
         &mut metadata,
         "profile_digest",
         input.install.profile_digest.as_deref(),
+    );
+    insert_optional_string(
+        &mut metadata,
+        "package_digest",
+        input.candidate.package_digest.as_deref(),
     );
     insert_optional_string(
         &mut metadata,

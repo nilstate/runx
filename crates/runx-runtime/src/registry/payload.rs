@@ -5,8 +5,8 @@ use serde_json::{Map, Value};
 use super::http::RegistryClientError;
 use super::types::{
     AcquiredRegistrySkill, ProfileMode, RegistryAttestation, RegistryManifestSignature,
-    RegistryManifestSigner, RegistryPublisher, RegistrySearchResult, RegistrySignedManifest,
-    RegistrySkillDetail, RegistrySourceMetadata, TrustTier,
+    RegistryManifestSigner, RegistryPackageFile, RegistryPublisher, RegistrySearchResult,
+    RegistrySignedManifest, RegistrySkillDetail, RegistrySourceMetadata, TrustTier,
 };
 
 pub(crate) fn parse_search(
@@ -69,6 +69,8 @@ pub(crate) fn parse_read(
         signed_manifest: signed_manifest_field(skill, "signed_manifest", route, "$.skill")?,
         markdown: string_field(skill, "markdown", route, "$.skill")?,
         profile_digest: optional_string_field(skill, "profile_digest", route, "$.skill")?,
+        package_files: package_files_field(skill, "package_files", route, "$.skill")?,
+        package_digest: optional_string_field(skill, "package_digest", route, "$.skill")?,
         runner_names: string_array_field(skill, "runner_names", route, "$.skill")?,
         source_type: string_field(skill, "source_type", route, "$.skill")?,
         trust_tier: trust_tier_field(skill, "trust_tier", route, "$.skill")?,
@@ -116,6 +118,13 @@ pub(crate) fn parse_acquire(
         profile_digest: optional_string_field(
             acquisition,
             "profile_digest",
+            route,
+            "$.acquisition",
+        )?,
+        package_files: package_files_field(acquisition, "package_files", route, "$.acquisition")?,
+        package_digest: optional_string_field(
+            acquisition,
+            "package_digest",
             route,
             "$.acquisition",
         )?,
@@ -246,6 +255,29 @@ fn string_array_field(
         .map(|(index, value)| {
             value.as_str().map(ToOwned::to_owned).ok_or_else(|| {
                 contract_error(route, &format!("{base}[{index}]"), "expected string")
+            })
+        })
+        .collect()
+}
+
+fn package_files_field(
+    record: &Map<String, Value>,
+    field: &str,
+    route: &str,
+    path: &str,
+) -> Result<Vec<RegistryPackageFile>, RegistryClientError> {
+    let Some(value) = record.get(field) else {
+        return Ok(Vec::new());
+    };
+    let base = format!("{path}.{field}");
+    array(value, route, &base)?
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let file = object(value, route, &format!("{base}[{index}]"))?;
+            Ok(RegistryPackageFile {
+                path: string_field(file, "path", route, &format!("{base}[{index}]"))?,
+                content: string_field(file, "content", route, &format!("{base}[{index}]"))?,
             })
         })
         .collect()

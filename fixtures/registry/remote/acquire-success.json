@@ -10,6 +10,13 @@
     "markdown": "---\nname: echo\n---\n# Echo\n",
     "profile_document": "skill: echo\nrunners:\n  default:\n    type: agent\n    default: true\n",
     "profile_digest": "sha256:fixture-profile",
+    "package_files": [
+      {
+        "path": "run.mjs",
+        "content": "console.log('echo');\n"
+      }
+    ],
+    "package_digest": "sha256:fixture-package",
     "runner_names": ["default"],
     "trust_tier": "community",
     "publisher": {
