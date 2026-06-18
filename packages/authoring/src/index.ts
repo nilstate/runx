@@ -599,14 +599,25 @@ export function resolveRepoRoot(
   inputs: Readonly<Record<string, unknown>> = {},
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  return path.resolve(
+  return resolveRunxPath(
     String(
       inputs.repo_root
-        || inputs.fixture
-        || env.RUNX_CWD
-        || process.cwd(),
+      || inputs.fixture
+      || env.RUNX_CWD
+      || process.cwd(),
     ),
   );
+}
+
+function resolveRunxPath(value: string): string {
+  if (process.platform === "win32" && isPosixAbsolutePath(value)) {
+    return path.posix.normalize(value);
+  }
+  return path.resolve(value);
+}
+
+function isPosixAbsolutePath(value: string): boolean {
+  return value.startsWith("/") && !value.startsWith("//");
 }
 
 export function resolveInsideRepo(repoRoot: string, targetPath: string): string {
