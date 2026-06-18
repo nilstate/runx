@@ -4,6 +4,7 @@
 
 mod dispositions;
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -401,7 +402,7 @@ where
             source_kind: "graph runner without source.graph".to_owned(),
         })?;
     let graph = materialize_graph_inputs(graph, &invocation.inputs);
-    options.env = invocation.env.clone();
+    overlay_harness_env(&mut options, &invocation.env);
     options
         .env
         .entry(crate::execution::runner::RUNX_RUN_ID_ENV.to_owned())
@@ -615,7 +616,7 @@ fn run_graph_fixture<A>(
 where
     A: SkillAdapter,
 {
-    options.env.extend(fixture.env.clone());
+    overlay_harness_env(&mut options, &fixture.env);
     // Harness graph replays need a deterministic run_id so per-run governance
     // can resolve one, mirroring the production graph runner. Derived from the
     // graph so receipts stay reproducible; an explicit fixture env value still
@@ -783,4 +784,51 @@ fn resolve_target_path(fixture_path: &Path, target: &str) -> Result<PathBuf, Har
         });
     };
     Ok(parent.join(target))
+}
+
+fn overlay_harness_env(options: &mut RuntimeOptions, env: &BTreeMap<String, String>) {
+    options.env.extend(env.clone());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::overlay_harness_env;
+    use crate::credentials::CredentialDelivery;
+    use crate::effects::RuntimeEffectRegistry;
+    use crate::execution::runner::RuntimeOptions;
+    use crate::receipts::RuntimeReceiptSignatureConfig;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn overlay_harness_env_preserves_operator_env_and_allows_fixture_override() {
+        let mut options = RuntimeOptions {
+            created_at: "2026-05-18T00:00:00Z".to_owned(),
+            env: BTreeMap::from([
+                (
+                    "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY".to_owned(),
+                    "local".to_owned(),
+                ),
+                ("FIXTURE_OVERRIDE".to_owned(), "operator".to_owned()),
+            ]),
+            receipt_signature: RuntimeReceiptSignatureConfig::local_development(),
+            effects: RuntimeEffectRegistry::default(),
+            credential_delivery: CredentialDelivery::none(),
+        };
+        let fixture_env = BTreeMap::from([
+            ("FIXTURE_OVERRIDE".to_owned(), "fixture".to_owned()),
+            ("FIXTURE_ONLY".to_owned(), "fixture".to_owned()),
+        ]);
+
+        overlay_harness_env(&mut options, &fixture_env);
+
+        assert_eq!(
+            options.env.get("RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY"),
+            Some(&"local".to_owned())
+        );
+        assert_eq!(
+            options.env.get("FIXTURE_OVERRIDE"),
+            Some(&"fixture".to_owned())
+        );
+        assert_eq!(options.env.get("FIXTURE_ONLY"), Some(&"fixture".to_owned()));
+    }
 }
