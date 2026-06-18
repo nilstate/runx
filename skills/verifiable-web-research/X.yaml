@@ -1,0 +1,153 @@
+skill: verifiable-web-research
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: research
+harness:
+  cases:
+    - name: research-market-trend
+      inputs:
+        question: "What are the current trends in AI agent frameworks as of June 2026?"
+        scope: "developer tools, AI agents, June 2026"
+        source_requirements: 3
+        verification_level: detailed
+        output_format: report
+      caller:
+        answers:
+          agent_task.research.output:
+            research_findings:
+              - claim: "AI agent frameworks are shifting toward tool-use patterns"
+                evidence_chain:
+                  - source_url: "https://example.com/ai-agents-2026"
+                    access_date: "2026-06-18"
+                    excerpt: "Agent frameworks increasingly emphasize tool-use..."
+                    relevance: high
+                confidence: 0.85
+                finding: "Major frameworks now include built-in tool orchestration"
+              - claim: "MCP protocol adoption is growing"
+                evidence_chain:
+                  - source_url: "https://example.com/mcp-adoption"
+                    access_date: "2026-06-18"
+                    excerpt: "MCP has been adopted by over 50 tools..."
+                    relevance: high
+                confidence: 0.90
+                finding: "MCP becoming standard for tool interoperability"
+            evidence_chain:
+              - url: "https://example.com/ai-agents-2026"
+                access_date: "2026-06-18"
+                title: "AI Agent Frameworks in 2026"
+                content_excerpt: "Agent frameworks increasingly emphasize..."
+                source_type: primary
+                reliability: high
+              - url: "https://example.com/mcp-adoption"
+                access_date: "2026-06-18"
+                title: "MCP Protocol Adoption"
+                content_excerpt: "MCP has been adopted by over 50 tools..."
+                source_type: primary
+                reliability: high
+            methodology: |
+              Search conducted on 2026-06-18 using the following approach:
+              1. Initial search: "AI agent frameworks 2026 trends"
+              2. Source filtering: prioritized official docs and recent articles
+              3. Cross-verification: each claim verified against 2+ sources
+              4. Timestamp verification: all sources accessed within 24 hours
+            verification_guide: |
+              To verify these findings:
+              1. Visit each URL in the evidence chain
+              2. Confirm the content excerpt matches the current page
+              3. Check the access date against the Wayback Machine
+              4. Cross-reference claims with at least one additional source
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: research-fact-check
+      inputs:
+        question: "Is it true that Rust has overtaken Go in GitHub contributions?"
+        scope: "programming languages, GitHub activity, 2025-2026"
+        source_requirements: 3
+        verification_level: audit-ready
+      caller:
+        answers:
+          agent_task.research.output:
+            research_findings:
+              - claim: "Rust contributions have grown faster than Go"
+                evidence_chain:
+                  - source_url: "https://github.com/blog/statistics-2026"
+                    access_date: "2026-06-18"
+                    excerpt: "Rust PRs increased 45% year-over-year..."
+                    relevance: high
+                confidence: 0.75
+                finding: "Growth rate is higher but total volume still lower"
+            evidence_chain:
+              - url: "https://github.com/blog/statistics-2026"
+                access_date: "2026-06-18"
+                title: "GitHub Language Statistics 2026"
+                content_excerpt: "Rust PRs increased 45% year-over-year..."
+                source_type: primary
+                reliability: high
+            methodology: |
+              Audit-ready research conducted on 2026-06-18:
+              1. Primary source: GitHub official statistics
+              2. Secondary sources: Stack Overflow survey, TIOBE index
+              3. Each claim verified by 3 independent sources
+              4. Full methodology documented for reproducibility
+            verification_guide: |
+              Audit verification steps:
+              1. Access GitHub statistics page directly
+              2. Verify the cited percentages match current data
+              3. Cross-reference with Stack Overflow and TIOBE
+              4. Document any discrepancies found
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: research-needs-question
+      inputs: {}
+      expect:
+        status: needs_agent
+
+
+runners:
+  agent:
+    type: agent
+
+  research:
+    default: true
+    type: agent-task
+    agent: researcher
+    task: verifiable-research
+    outputs:
+      research_findings: array
+      evidence_chain: array
+      methodology: string
+      verification_guide: string
+    artifacts:
+      wrap_as: research_report
+      packet: runx.research.verifiable.v1
+    inputs:
+      question:
+        type: string
+        required: true
+        description: "The research question to answer."
+      scope:
+        type: string
+        required: false
+        description: "Boundaries for the research (time, geography, topic)."
+      source_requirements:
+        type: integer
+        required: false
+        description: "Minimum independent sources per claim."
+      verification_level:
+        type: string
+        required: false
+        description: "Evidence chain depth: basic, detailed, or audit-ready."
+      output_format:
+        type: string
+        required: false
+        description: "Output format: report, json, or markdown."

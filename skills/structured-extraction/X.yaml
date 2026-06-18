@@ -1,0 +1,165 @@
+skill: structured-extraction
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: extraction
+harness:
+  cases:
+    - name: extract-contact-info
+      inputs:
+        input: |
+          Hey, this is John Smith from Acme Corp. You can reach me at
+          john.smith@acme.com or call 555-0123. Our office is at
+          123 Main Street, Springfield, IL 62701. We're interested in
+          your enterprise plan.
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+            phone:
+              type: string
+            company:
+              type: string
+            address:
+              type: string
+            interest:
+              type: string
+        format: text
+      caller:
+        answers:
+          agent_task.extraction.output:
+            extracted_data:
+              name: John Smith
+              email: john.smith@acme.com
+              phone: "555-0123"
+              company: Acme Corp
+              address: "123 Main Street, Springfield, IL 62701"
+              interest: enterprise plan
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+                company:
+                  type: string
+                address:
+                  type: string
+                interest:
+                  type: string
+            confidence_scores:
+              name: 0.95
+              email: 0.99
+              phone: 0.90
+              company: 0.85
+              address: 0.88
+              interest: 0.80
+            extraction_notes:
+              - field: company
+                note: Inferred from email domain and context
+              - field: interest
+                note: Extracted from closing sentence
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: extract-missing-fields
+      inputs:
+        input: |
+          Order #12345 was shipped on Monday. Tracking: 1Z999AA10123456784.
+        schema:
+          type: object
+          properties:
+            order_id:
+              type: string
+            ship_date:
+              type: string
+            tracking:
+              type: string
+            carrier:
+              type: string
+            status:
+              type: string
+        format: text
+        strict: false
+      caller:
+        answers:
+          agent_task.extraction.output:
+            extracted_data:
+              order_id: "12345"
+              ship_date: Monday
+              tracking: 1Z999AA10123456784
+              carrier: null
+              status: null
+            confidence_scores:
+              order_id: 0.95
+              ship_date: 0.70
+              tracking: 0.99
+              carrier: 0.0
+              status: 0.0
+            extraction_notes:
+              - field: ship_date
+                note: Relative date without year; exact date cannot be determined
+              - field: carrier
+                note: Not mentioned in input
+              - field: status
+                note: Not mentioned in input
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: extraction-needs-input
+      inputs: {}
+      expect:
+        status: needs_agent
+
+
+runners:
+  agent:
+    type: agent
+
+  extraction:
+    default: true
+    type: agent-task
+    agent: extractor
+    task: extract
+    outputs:
+      extracted_data: object
+      schema: object
+      confidence_scores: object
+      extraction_notes: array
+    artifacts:
+      wrap_as: extraction_result
+      packet: runx.extraction.packet.v1
+    inputs:
+      input:
+        type: string
+        required: true
+        description: "Unstructured text or data to extract from."
+      schema:
+        type: json
+        required: true
+        description: "Target schema defining fields to extract."
+      format:
+        type: string
+        required: false
+        description: "Input format hint: text, json, html, or markdown."
+      language:
+        type: string
+        required: false
+        description: "Input language hint for better extraction."
+      strict:
+        type: boolean
+        required: false
+        description: "If true, fail when any field cannot be extracted."
