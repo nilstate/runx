@@ -33,7 +33,7 @@ use tempfile::TempDir;
 
 const PAID_ECHO_IDEMPOTENCY_KEY: &str = "payment:paid-echo-001";
 const PAID_ECHO_RAIL_SESSION_MATERIAL_REF: &str = "rail-session-material:mock:paid-echo-001";
-const IDEM_REF: &str = "idem-1";
+const X402_APPROVAL_IDEMPOTENCY_KEY: &str = "payment:x402-pay-approval-001";
 const X402_APPROVAL_PROOF_REF: &str = "receipt-proof:mock:x402-pay-approval-001";
 
 #[test]
@@ -1205,7 +1205,7 @@ fn x402_approval_supervisor_evidence() -> PaymentSupervisorSettlementEvidence {
         "merchant-123",
         125,
         "USD",
-        IDEM_REF,
+        X402_APPROVAL_IDEMPOTENCY_KEY,
     )
 }
 
@@ -1900,11 +1900,11 @@ fn fulfill_inputs(admission: FulfillAdmission) -> Option<Value> {
         }
         FulfillAdmission::MissingReservedPaymentAuthority => Some(json!({
             "spend_capability_ref": spend_capability_ref(),
-            "idempotency": { "key": IDEM_REF }
+            "idempotency": { "key": X402_APPROVAL_IDEMPOTENCY_KEY }
         })),
         FulfillAdmission::MissingSpendCapabilityRef => Some(json!({
             "reserved_payment_authority": reserved_payment_authority(2_500, true),
-            "idempotency": { "key": IDEM_REF }
+            "idempotency": { "key": X402_APPROVAL_IDEMPOTENCY_KEY }
         })),
         FulfillAdmission::MissingIdempotencyKey => Some(json!({
             "reserved_payment_authority": reserved_payment_authority(2_500, true),
@@ -1921,7 +1921,7 @@ fn valid_payment_inputs(child_max_per_call_units: u64, include_subset_proof: boo
     json!({
         "reserved_payment_authority": reserved_payment_authority(child_max_per_call_units, include_subset_proof),
         "spend_capability_ref": spend_capability_ref(),
-        "idempotency": { "key": IDEM_REF }
+        "idempotency": { "key": X402_APPROVAL_IDEMPOTENCY_KEY }
     })
 }
 
@@ -1946,7 +1946,7 @@ fn reserved_payment_authority(child_max_per_call_units: u64, include_subset_proo
             "child_harness_ref": child_harness_ref(),
             "act_id": "act_fulfill",
             "reservation_decision_id": "decision_payment_reservation",
-            "idempotency_key": IDEM_REF,
+            "idempotency_key": X402_APPROVAL_IDEMPOTENCY_KEY,
             "amount_minor": 125,
             "currency": "USD",
             "counterparty": "merchant-123",
