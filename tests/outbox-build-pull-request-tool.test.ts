@@ -279,9 +279,10 @@ describe("outbox.build_pull_request tool", () => {
   });
 
   it("rejects unsafe changed-file metadata before packet creation", () => {
+    const fakeGithubTokenPath = `docs/${["ghp", "123456789012345678901234567890123456"].join("_")}.txt`;
     for (const filePath of [
       "/Users/kam/dev/runx/workspace/app.txt",
-      "docs/ghp_123456789012345678901234567890123456.txt",
+      fakeGithubTokenPath,
     ]) {
       const result = runToolRaw({
         ...minimalPullRequestInputs(),

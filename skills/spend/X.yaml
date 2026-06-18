@@ -404,7 +404,7 @@ runners:
           scopes:
             - payment:spend
           mutation: true
-          idempotency_key: spend-x402-fulfill
+          idempotency_key: idem-fulfill
           inputs:
             payment_challenge: "{{payment_signal}}"
             rail_profile_ref: "{{rail_profile_ref}}"

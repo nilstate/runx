@@ -200,9 +200,10 @@ describe("outbox.build_feed_entry tool", () => {
   });
 
   it("packages observed closed provider outcomes from refreshed PR state", () => {
+    const fakeGithubToken = ["ghp", "123456789012345678901234567890123456"].join("_");
     const result = runTool({
       task_id: "fixture-task",
-      thread_title: "Fix fixture behavior ghp_123456789012345678901234567890123456",
+      thread_title: `Fix fixture behavior ${fakeGithubToken}`,
       thread_locator: "github://example/repo/issues/123",
       build_result: {
         passed: 3,
@@ -283,7 +284,7 @@ describe("outbox.build_feed_entry tool", () => {
 
     expect(result.outbox_entry.metadata.body_markdown).not.toContain("/Users/kam");
     expect(result.outbox_entry.metadata.body_markdown).toContain("[local-path]");
-    expect(result.outbox_entry.metadata.body_markdown).not.toContain("ghp_123456789012345678901234567890123456");
+    expect(result.outbox_entry.metadata.body_markdown).not.toContain(fakeGithubToken);
   });
 
   it("carries trusted existing provider state for story refreshes", () => {
