@@ -20,6 +20,7 @@ use runx_runtime::{
 };
 
 const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
 
 /// A minimal delivered-credential observation for the resolution tests, which
 /// assert on the delivered secret, not on the observation contents.
@@ -554,7 +555,12 @@ fn readonly_sandbox() -> SkillSandbox {
 }
 
 fn process_env() -> BTreeMap<String, String> {
-    std::env::vars().collect()
+    let mut env = std::env::vars().collect::<BTreeMap<_, _>>();
+    env.insert(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        "local".to_owned(),
+    );
+    env
 }
 
 fn repo_root() -> Result<PathBuf, RuntimeError> {
