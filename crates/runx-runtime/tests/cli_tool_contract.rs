@@ -38,9 +38,10 @@ fn process_sandbox_always_exposes_runx_cwd_to_skill_authors()
         ),
         &skill_dir,
         &JsonObject::new(),
-        &[(INIT_CWD_ENV.to_owned(), path_string(&workspace_dir)?)]
-            .into_iter()
-            .collect(),
+        &env_with_local_sandbox_fallback_and([(
+            INIT_CWD_ENV.to_owned(),
+            path_string(&workspace_dir)?,
+        )]),
     )?;
 
     assert_eq!(
@@ -163,9 +164,10 @@ fn workspace_cwd_policy_resolves_relative_source_cwd_from_skill_directory()
         ),
         &skill_dir,
         &JsonObject::new(),
-        &[(RUNX_CWD_ENV.to_owned(), path_string(&workspace_dir)?)]
-            .into_iter()
-            .collect(),
+        &env_with_local_sandbox_fallback_and([(
+            RUNX_CWD_ENV.to_owned(),
+            path_string(&workspace_dir)?,
+        )]),
     )?;
 
     assert_eq!(plan.cwd, sibling_dir);
@@ -210,7 +212,7 @@ fn relative_skill_directory_preserves_leading_parent_segments()
         ),
         skill_dir,
         &JsonObject::new(),
-        &std::env::vars().collect(),
+        &env_with_local_sandbox_fallback(),
     )?;
 
     assert_eq!(plan.cwd, skill_dir);
@@ -235,9 +237,7 @@ fn oversized_inputs_spill_to_path_and_omit_inline_json() -> Result<(), Box<dyn s
         &[("message".to_owned(), JsonValue::String(large.clone()))]
             .into_iter()
             .collect(),
-        &[("TMPDIR".to_owned(), path_string(&temp_dir)?)]
-            .into_iter()
-            .collect(),
+        &env_with_local_sandbox_fallback_and([("TMPDIR".to_owned(), path_string(&temp_dir)?)]),
     )?;
 
     assert!(!plan.env.contains_key("RUNX_INPUTS_JSON"));
@@ -653,6 +653,14 @@ fn env_with_local_sandbox_fallback() -> BTreeMap<String, String> {
         RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
         "local".to_owned(),
     );
+    env
+}
+
+fn env_with_local_sandbox_fallback_and(
+    entries: impl IntoIterator<Item = (String, String)>,
+) -> BTreeMap<String, String> {
+    let mut env = env_with_local_sandbox_fallback();
+    env.extend(entries);
     env
 }
 
