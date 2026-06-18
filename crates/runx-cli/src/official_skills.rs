@@ -177,8 +177,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/open-meteo-weather-forecast",
-        version: "sha-d7b120f9f519",
-        digest: "22cc733530d15b57195559eee75b209233ba0e4967efa94bb9a00a165cffd078",
+        version: "sha-5d9f95438c9a",
+        digest: "041e0ec18fa4b646b46b72d34662eabbbfbc43ab5a3a65423b49b3e94e81d159",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/overlay-generator",
