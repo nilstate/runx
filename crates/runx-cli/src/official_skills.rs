@@ -176,6 +176,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "382cdef84f660e7cfdc2dbbfd7e8382d204d1f4ee46ffa019549615f9c2f745c",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/open-meteo-weather-forecast",
+        version: "sha-d7b120f9f519",
+        digest: "22cc733530d15b57195559eee75b209233ba0e4967efa94bb9a00a165cffd078",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/overlay-generator",
         version: "sha-b5dc11a7088d",
         digest: "e19bbe8dc5f3bf732dc265a1808819587e67759fdf3014d89bc9bf6629400b18",
@@ -217,8 +222,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/release",
-        version: "sha-099590659f48",
-        digest: "70dc396c4018c6e84189e6d2e8345d5842b7639ac1c4e85aae215aa579275db7",
+        version: "sha-5e832bbf4d1c",
+        digest: "20b8f78fee305165f010e501d5349897a384f323a1b98dbef864dbbc763c5a07",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/research",
@@ -242,8 +247,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/runx-operator",
-        version: "sha-0686fd0cf9da",
-        digest: "35a949304b799c315657aa96a65028837e9f51a0a530f01b4d770897307a53f1",
+        version: "sha-da018df211a3",
+        digest: "1c8d199a5dd0812a09eb4e785bcd9bfd7af67ec0ef3227149bed1de150a47fff",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/sandbox-harden",
@@ -287,7 +292,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/spend",
-        version: "sha-5bcad3702670",
+        version: "sha-e5fd2bc16a0f",
         digest: "4b9810ee99bbbc58e467547595e0cdb7d67ad117f8cbba422b6e6e5e2b065fc5",
     },
     OfficialSkillLockEntry {

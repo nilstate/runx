@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const toolPath = path.resolve("tools/outbox/build_feed_entry/run.mjs");
+const fakeGithubToken = ["ghp", "123456789012345678901234567890123456"].join("_");
 
 describe("outbox.build_feed_entry tool", () => {
   it("packages a durable feed entry message with PR and merge-gate context", () => {
@@ -200,7 +201,6 @@ describe("outbox.build_feed_entry tool", () => {
   });
 
   it("packages observed closed provider outcomes from refreshed PR state", () => {
-    const fakeGithubToken = ["ghp", "123456789012345678901234567890123456"].join("_");
     const result = runTool({
       task_id: "fixture-task",
       thread_title: `Fix fixture behavior ${fakeGithubToken}`,
