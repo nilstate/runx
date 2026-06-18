@@ -774,7 +774,27 @@ impl GraphExecution {
             self.record_lifecycle(host, LifecycleEvent::step_failed(plan.step_id))?;
             let terminal =
                 plan.failure_mode != StepFailureMode::RecordAndContinue && !retry_remaining;
-            let message = run.output.stderr.clone();
+            // runx must never swallow a step error. A cli-tool failure reports
+            // detail on stderr, but the governed HTTP front captures a non-2xx
+            // response body on stdout with the status in metadata. Prefer stderr,
+            // then fall back to the status and body so the message is never empty.
+            let message = if run.output.stderr.trim().is_empty() {
+                let status = run
+                    .output
+                    .metadata
+                    .get("http_status")
+                    .and_then(|value| value.as_str())
+                    .map(|status| format!("status {status}: "))
+                    .unwrap_or_default();
+                let body = run.output.stdout.trim();
+                if body.is_empty() {
+                    format!("{status}step failed with no error output")
+                } else {
+                    format!("{status}{body}")
+                }
+            } else {
+                run.output.stderr.clone()
+            };
             // The failed run is recorded even on terminal failure so the run
             // list agrees with the journal's StepFailed event; a failed attempt
             // must never be silently absent from the execution record.
