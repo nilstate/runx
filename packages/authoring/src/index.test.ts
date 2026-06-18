@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -168,6 +168,23 @@ describe("@runxhq/authoring", () => {
 
   it("preserves POSIX absolute RUNX_CWD values on Windows hosts", () => {
     expect(resolveRepoRoot({}, { RUNX_CWD: "/tmp/project/../repo" } as NodeJS.ProcessEnv)).toBe("/tmp/repo");
+  });
+
+  it("rejects existing symlink targets that resolve outside the repo root", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-authoring-repo-root-"));
+    const repoRoot = path.join(tempDir, "repo");
+    const outsideFile = path.join(tempDir, "outside.txt");
+    const linkPath = path.join(repoRoot, "outside-link.txt");
+
+    try {
+      await mkdir(repoRoot);
+      await writeFile(outsideFile, "outside", "utf8");
+      await symlink(outsideFile, linkPath, "file");
+
+      expect(() => resolveInsideRepo(repoRoot, "outside-link.txt")).toThrow(/escapes repo_root/);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it("parses tool inputs from a spill file when RUNX_INPUTS_PATH is provided", async () => {
