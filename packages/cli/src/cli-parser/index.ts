@@ -643,13 +643,14 @@ function validateSandbox(value: unknown): SkillSandbox | undefined {
   }
   const record = requiredNullableRecord(value, "sandbox");
   const profile = requiredSandboxProfile(record.profile, "sandbox.profile");
+  const requireEnforcement = optionalNullableBoolean(record.require_enforcement, "sandbox.require_enforcement");
   const declaration = normalizeSandboxDeclaration({
     profile,
     cwdPolicy: optionalCwdPolicy(record.cwd_policy),
     envAllowlist: optionalNullableStringArray(record.env_allowlist, "sandbox.env_allowlist"),
     network: optionalNullableBoolean(record.network, "sandbox.network"),
     writablePaths: optionalNullableStringArray(record.writable_paths, "sandbox.writable_paths"),
-    requireEnforcement: optionalNullableBoolean(record.require_enforcement, "sandbox.require_enforcement"),
+    requireEnforcement,
   });
   return {
     profile: declaration.profile,
@@ -657,7 +658,7 @@ function validateSandbox(value: unknown): SkillSandbox | undefined {
     envAllowlist: declaration.envAllowlist,
     network: declaration.network,
     writablePaths: declaration.writablePaths,
-    requireEnforcement: declaration.requireEnforcement,
+    requireEnforcement,
     raw: record,
   };
 }
