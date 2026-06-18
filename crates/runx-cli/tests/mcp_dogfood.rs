@@ -15,7 +15,8 @@ const MCP_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 fn mcp_native_binary_dogfoods_streaming_skill_calls_and_receipts()
 -> Result<(), Box<dyn std::error::Error>> {
     let receipt_dir = TestTempDir::new("runx-mcp-dogfood-receipts")?;
-    let skill_path = repo_root()?.join("fixtures/skills/mcp-echo");
+    let skill_dir = write_unenforced_mcp_echo_skill()?;
+    let skill_path = skill_dir.path().to_path_buf();
     let mut server = spawn_mcp_server(&[
         skill_path.display().to_string(),
         "--receipt-dir".to_owned(),
@@ -358,6 +359,48 @@ fn path_text<'a>(value: &'a Value, path: &[&str]) -> Result<&'a str, Box<dyn std
 
 fn read_json_file(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
     Ok(serde_json::from_slice(&fs::read(path)?)?)
+}
+
+fn write_unenforced_mcp_echo_skill() -> Result<TestTempDir, Box<dyn std::error::Error>> {
+    let skill_dir = TestTempDir::new("runx-mcp-dogfood-skill")?;
+    let server_path = repo_root()?.join("fixtures/runtime/adapters/mcp/stdio-server.py");
+    let server_arg = serde_json::to_string(&server_path.display().to_string())?;
+    fs::write(
+        skill_dir.path().join("SKILL.md"),
+        format!(
+            r#"---
+name: mcp-echo
+description: Echo a message through a local MCP stdio fixture server.
+source:
+  type: mcp
+  server:
+    command: python3
+    args:
+      - {server_arg}
+  tool: echo
+  arguments:
+    message: "{{{{message}}}}"
+  timeout_seconds: 15
+  sandbox:
+    profile: readonly
+    cwd_policy: workspace
+    require_enforcement: false
+inputs:
+  message:
+    type: string
+    required: true
+    description: Message to echo through MCP
+runx:
+  input_resolution:
+    required:
+      - message
+---
+
+Echo the provided message through a local MCP server fixture.
+"#
+        ),
+    )?;
+    Ok(skill_dir)
 }
 
 fn repo_root() -> Result<PathBuf, Box<dyn std::error::Error>> {
