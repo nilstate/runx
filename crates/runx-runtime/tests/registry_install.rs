@@ -332,6 +332,38 @@ fn registry_install_rejects_official_key_from_non_official_source()
 }
 
 #[test]
+fn registry_install_accepts_official_source_signature_for_community_skill()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let mut candidate = install_candidate()?;
+    candidate.manifest_source_authority = Some(RegistryManifestSourceAuthority::OfficialRunx);
+    candidate.signed_manifest = Some(signed_manifest_with_dynamic_key(
+        "acme/echo",
+        "1.0.0",
+        &skill_digest(),
+        Some(&profile_digest()),
+        None,
+    )?);
+    let key_pair = dynamic_manifest_key_pair()?;
+
+    let install = install_local_skill(
+        &candidate,
+        &InstallLocalSkillOptions {
+            destination_root: temp.path().join("skills"),
+            expected_digest: None,
+            trusted_manifest_keys: vec![TrustedRegistryManifestKey::official_from_base64(
+                TEST_MANIFEST_KEY_ID.to_owned(),
+                &STANDARD.encode(key_pair.public_key().as_ref()),
+            )?],
+        },
+    )?;
+
+    assert_eq!(install.skill_id.as_deref(), Some("acme/echo"));
+    assert!(install.destination.exists());
+    Ok(())
+}
+
+#[test]
 fn registry_install_rejects_third_party_key_outside_owner_namespace()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;

@@ -340,8 +340,10 @@ The runtime injects each referenced `SKILL.md` as a generic
 `runx.skill.context` artifact in the agent invocation `current_context`. Local
 path refs resolve relative to the graph; registry refs require
 `RUNX_REGISTRY_DIR` and are read from the local registry, not fetched remotely at
-execution time. Context skills are bounded, digest-labeled, and presented to
-managed agents as untrusted advisory data.
+execution time. Explicit local/file registry sources are treated as user-owned
+local material: they are digest-checked, but they do not require hosted registry
+signatures. Context skills are bounded, digest-labeled, and presented to managed
+agents as untrusted advisory data.
 
 Graph steps can execute local-registry skills too:
 

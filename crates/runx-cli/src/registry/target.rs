@@ -63,21 +63,16 @@ impl RegistryTarget {
                 )
             }
             Self::Local {
-                registry_url: Some(registry_url),
+                registry_path,
+                source_kind,
                 ..
-            } if runx_runtime::registry::is_official_runx_registry_url(registry_url) => {
-                RegistryManifestSourceAuthority::OfficialRunx
-            }
-            Self::Local {
-                registry_url: Some(registry_url),
-                ..
-            } => runx_runtime::registry::registry_manifest_source_authority_from_registry_url(
-                registry_url,
-            ),
-            Self::Local { registry_path, .. } => {
-                runx_runtime::registry::registry_manifest_source_authority_from_registry_dir(
-                    &registry_path.to_string_lossy(),
-                )
+            } => {
+                let absolute =
+                    fs::canonicalize(registry_path).unwrap_or_else(|_| registry_path.to_path_buf());
+                RegistryManifestSourceAuthority::RegistrySource(match source_kind {
+                    LocalRegistrySourceKind::Local => format!("local:{}", absolute.display()),
+                    LocalRegistrySourceKind::File => format!("file:{}", absolute.display()),
+                })
             }
         }
     }

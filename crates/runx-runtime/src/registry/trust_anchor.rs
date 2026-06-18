@@ -200,9 +200,6 @@ pub fn registry_manifest_key_allows(
 ) -> Result<(), String> {
     match &key.scope {
         RegistryManifestTrustScope::OfficialRunx => {
-            if !skill_id.starts_with("runx/") {
-                return Err("official key may only sign runx/* skills".to_owned());
-            }
             if !matches!(
                 source_authority,
                 Some(RegistryManifestSourceAuthority::OfficialRunx)
@@ -210,6 +207,11 @@ pub fn registry_manifest_key_allows(
                 return Err(
                     "official key may only grant trust for the official runx registry source"
                         .to_owned(),
+                );
+            }
+            if matches!(trust_tier, TrustTier::FirstParty) && !skill_id.starts_with("runx/") {
+                return Err(
+                    "official key may only grant first_party trust to runx/* skills".to_owned(),
                 );
             }
             Ok(())

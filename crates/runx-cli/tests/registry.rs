@@ -235,9 +235,16 @@ fn registry_install_reports_typed_trust_anchor_errors() -> Result<(), Box<dyn st
 fn registry_local_install_accepts_unsigned_manifest() -> Result<(), Box<dyn std::error::Error>> {
     let root = temp_root("registry-local-unsigned");
     let registry_dir = publish_registry_fixture(&root)?;
+    mutate_registry_version(&registry_dir, |version| {
+        if let Some(object) = version.as_object_mut() {
+            object.remove("signed_manifest");
+        }
+        Ok(())
+    })?;
     let install_dir = root.join("installed");
 
     let install = runx_command()?
+        .env("RUNX_REGISTRY_URL", "https://runx.ai")
         .args([
             "registry",
             "install",
