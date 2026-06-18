@@ -75,6 +75,22 @@ Once USDC is on the target network in a wallet we hold keys for, every later mov
 (top-up, payout, sweep, round-trip) is free and gasless via the facilitator, with
 no further human step.
 
+## Paying out an accepted claim
+
+Settle only after a claim is delivered and accepted at its bar, to a known payout
+address, in this order:
+
+1. **Move the USDC**, gasless via the facilitator (the same EIP-3009 path as a top-up),
+   the funded house wallet to the payee's payout address. The returned on-chain tx is the
+   rail proof.
+2. **Record the board state** only after that tx exists. On Frantic the `gpayout` runner
+   records the payout with `payment_ref` set to the settlement reference (e.g.
+   `base:<txhash>`); it records, it never moves money, and the ref must already exist.
+
+Supplying the tx as proof settles a known address even when the payee has no registered
+payout identity in the read model. It does not loosen the stop condition below: if the
+destination is unknown (no identity on file and no known wallet), do not pay.
+
 ## Operator Packet Requirements
 
 For each payment proposal include:
