@@ -127,9 +127,9 @@ struct PublishHarnessPackage {
     temp_dir: Option<PathBuf>,
 }
 
-const MAX_REMOTE_PUBLISH_FILE_COUNT: usize = 200;
 const MAX_REMOTE_PUBLISH_FILE_BYTES: u64 = 512 * 1024;
 const MAX_REMOTE_PUBLISH_TOTAL_BYTES: u64 = 2 * 1024 * 1024;
+const MAX_REMOTE_PUBLISH_FILE_COUNT: usize = 128;
 
 fn publish_harness_package(
     markdown_path: &Path,
@@ -257,80 +257,87 @@ fn collect_publish_package_files(
             markdown_path.display()
         ))
     })?;
+    collect_allowed_publish_package_files(&package_dir, &markdown_path, profile_path.as_ref())
+}
+
+fn collect_allowed_publish_package_files(
+    package_dir: &Path,
+    markdown_path: &Path,
+    profile_path: Option<&PathBuf>,
+) -> Result<Vec<HostedSkillPackageFile>, RegistryCliError> {
     let mut files = Vec::new();
-    let mut total_bytes = 0;
-    collect_publish_package_files_from_dir(
-        &package_dir,
-        &package_dir,
-        &markdown_path,
-        profile_path.as_ref(),
+    let mut total_bytes = 0u64;
+    collect_allowed_publish_package_files_from_dir(
+        package_dir,
+        package_dir,
+        markdown_path,
+        profile_path,
         &mut files,
         &mut total_bytes,
     )?;
+    files.sort_by(|left, right| left.path.cmp(&right.path));
     Ok(files)
 }
 
-fn collect_publish_package_files_from_dir(
-    root: &Path,
-    directory: &Path,
+fn collect_allowed_publish_package_files_from_dir(
+    package_dir: &Path,
+    current_dir: &Path,
     markdown_path: &Path,
     profile_path: Option<&PathBuf>,
     files: &mut Vec<HostedSkillPackageFile>,
     total_bytes: &mut u64,
 ) -> Result<(), RegistryCliError> {
-    for entry in fs::read_dir(directory).map_err(|error| {
+    for entry in fs::read_dir(current_dir).map_err(|error| {
         internal_error(format!(
             "failed to read remote publish package directory {}: {error}",
-            directory.display()
+            current_dir.display()
         ))
     })? {
         let entry = entry.map_err(|error| {
             internal_error(format!(
                 "failed to read remote publish package entry in {}: {error}",
-                directory.display()
+                current_dir.display()
             ))
         })?;
-        let entry_type = entry.file_type().map_err(|error| {
+        let candidate = entry.path();
+        let metadata = fs::symlink_metadata(&candidate).map_err(|error| {
             internal_error(format!(
                 "failed to inspect remote publish package entry {}: {error}",
-                entry.path().display()
+                candidate.display()
             ))
         })?;
-        if entry_type.is_dir() {
-            if should_skip_remote_publish_dir(&entry.file_name().to_string_lossy()) {
-                continue;
+        let relative = publish_relative_path(package_dir, &candidate)?;
+        if metadata.file_type().is_dir() {
+            if should_descend_remote_publish_dir(&relative) {
+                collect_allowed_publish_package_files_from_dir(
+                    package_dir,
+                    &candidate,
+                    markdown_path,
+                    profile_path,
+                    files,
+                    total_bytes,
+                )?;
             }
-            collect_publish_package_files_from_dir(
-                root,
-                &entry.path(),
-                markdown_path,
-                profile_path,
-                files,
-                total_bytes,
-            )?;
             continue;
         }
-        if !entry_type.is_file() {
+        if !is_allowed_remote_publish_package_file(&relative) {
+            continue;
+        }
+        if !metadata.file_type().is_file() {
             return Err(internal_error(format!(
-                "remote publish package entry {} is not a regular file or directory",
-                entry.path().display()
+                "remote publish package file {} is not a regular file",
+                candidate.display()
             )));
         }
-        let canonical = fs::canonicalize(entry.path()).map_err(|error| {
+        let canonical = fs::canonicalize(&candidate).map_err(|error| {
             internal_error(format!(
-                "failed to canonicalize remote publish package entry {}: {error}",
-                entry.path().display()
+                "failed to canonicalize remote publish package file {}: {error}",
+                candidate.display()
             ))
         })?;
         if &canonical == markdown_path || Some(&canonical) == profile_path {
             continue;
         }
-        let metadata = fs::metadata(&canonical).map_err(|error| {
-            internal_error(format!(
-                "failed to inspect remote publish package file {}: {error}",
-                canonical.display()
-            ))
-        })?;
         if metadata.len() > MAX_REMOTE_PUBLISH_FILE_BYTES {
             return Err(internal_error(format!(
                 "remote publish package file {} exceeds {} bytes",
@@ -347,17 +354,9 @@ fn collect_publish_package_files_from_dir(
         }
         if files.len() >= MAX_REMOTE_PUBLISH_FILE_COUNT {
             return Err(internal_error(format!(
-                "remote publish package contains more than {} files",
-                MAX_REMOTE_PUBLISH_FILE_COUNT
+                "remote publish package cannot contain more than {MAX_REMOTE_PUBLISH_FILE_COUNT} package files"
             )));
         }
-        let relative = canonical.strip_prefix(root).map_err(|error| {
-            internal_error(format!(
-                "failed to compute remote publish relative path for {}: {error}",
-                canonical.display()
-            ))
-        })?;
-        let relative = relative_path_for_publish(relative)?;
         if should_reject_remote_publish_file(&relative) {
             return Err(internal_error(format!(
                 "remote publish package file {relative} looks like a secret or local credential; remove it before publishing"
@@ -377,8 +376,65 @@ fn collect_publish_package_files_from_dir(
     Ok(())
 }
 
-fn should_skip_remote_publish_dir(name: &str) -> bool {
-    matches!(name, ".git" | ".runx" | ".ssh" | "node_modules" | "target")
+fn publish_relative_path(package_dir: &Path, candidate: &Path) -> Result<String, RegistryCliError> {
+    let relative = candidate.strip_prefix(package_dir).map_err(|error| {
+        internal_error(format!(
+            "failed to relativize remote publish package entry {}: {error}",
+            candidate.display()
+        ))
+    })?;
+    Ok(relative
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/"))
+}
+
+fn should_descend_remote_publish_dir(relative: &str) -> bool {
+    let name = relative.rsplit('/').next().unwrap_or(relative);
+    !matches!(
+        name,
+        ".git"
+            | ".runx"
+            | ".scafld"
+            | ".ssh"
+            | "assets"
+            | "dist"
+            | "fixtures"
+            | "node_modules"
+            | "src"
+            | "target"
+    )
+}
+
+fn is_allowed_remote_publish_package_file(relative: &str) -> bool {
+    if relative.is_empty()
+        || relative
+            .split('/')
+            .any(|segment| segment.is_empty() || segment.starts_with('.'))
+    {
+        return false;
+    }
+    if relative.split('/').any(|segment| {
+        matches!(
+            segment,
+            "assets" | "dist" | "fixtures" | "node_modules" | "src" | "target"
+        )
+    }) {
+        return false;
+    }
+    let file_name = relative.rsplit('/').next().unwrap_or(relative);
+    if !relative.contains('/') && (file_name.ends_with(".mjs") || file_name.ends_with(".js")) {
+        return true;
+    }
+    if relative.contains("/references/") || relative.starts_with("references/") {
+        return file_name.ends_with(".md");
+    }
+    matches!(file_name, "SKILL.md" | "X.yaml" | "manifest.json")
+        || matches!(
+            file_name,
+            "run.mjs" | "run.js" | "harness.mjs" | "harness.js"
+        )
 }
 
 fn should_reject_remote_publish_file(relative: &str) -> bool {
@@ -404,30 +460,6 @@ fn should_reject_remote_publish_file(relative: &str) -> bool {
         || lower.ends_with(".key")
         || lower.ends_with(".p12")
         || lower.ends_with(".pfx")
-}
-
-fn relative_path_for_publish(path: &Path) -> Result<String, RegistryCliError> {
-    let relative = path
-        .components()
-        .map(|component| {
-            component.as_os_str().to_str().ok_or_else(|| {
-                internal_error("remote publish package paths must be UTF-8".to_owned())
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?
-        .join("/");
-    if relative.is_empty()
-        || relative.starts_with('/')
-        || relative
-            .split('/')
-            .any(|part| part.is_empty() || part == "." || part == "..")
-    {
-        return Err(internal_error(format!(
-            "remote publish package path is unsafe: {}",
-            path.display()
-        )));
-    }
-    Ok(relative)
 }
 
 fn colocated_package_harness_path(markdown_path: &Path, profile_path: &Path) -> Option<PathBuf> {
@@ -478,7 +510,10 @@ fn publish_harness_report(
 
 #[cfg(test)]
 mod tests {
-    use super::should_reject_remote_publish_file;
+    use super::{
+        collect_publish_package_files, should_reject_remote_publish_file, unique_temp_dir,
+    };
+    use std::fs;
 
     #[test]
     fn remote_publish_rejects_common_secret_file_names() {
@@ -501,11 +536,98 @@ mod tests {
 
     #[test]
     fn remote_publish_allows_normal_skill_sidecars() {
-        for path in ["run.mjs", "graph/quote/X.yaml", "fixtures/happy-path.yaml"] {
+        for path in ["run.mjs", "run.js", "harness.mjs", "harness.js"] {
             assert!(
                 !should_reject_remote_publish_file(path),
                 "{path} should remain publishable as a skill package sidecar"
             );
         }
+    }
+
+    #[test]
+    fn remote_publish_package_includes_consumed_skill_material()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let dir = unique_temp_dir("runx-publish-consumed-material-test")?;
+        fs::write(
+            dir.join("SKILL.md"),
+            "---\nname: sidecars\n---\n# Sidecars\n",
+        )?;
+        fs::write(dir.join("X.yaml"), "skill: sidecars\n")?;
+        fs::write(dir.join("run.mjs"), "console.log('run')\n")?;
+        fs::write(dir.join("harness.mjs"), "console.log('harness')\n")?;
+        fs::write(dir.join("inspect_repo.mjs"), "console.log('root runner')\n")?;
+        fs::write(dir.join("notes.txt"), "not packaged\n")?;
+
+        fs::create_dir_all(dir.join("context/review-rubric"))?;
+        fs::write(
+            dir.join("context/review-rubric/SKILL.md"),
+            "---\nname: review-rubric\n---\n# Review\n",
+        )?;
+        fs::write(
+            dir.join("context/review-rubric/X.yaml"),
+            "skill: review-rubric\ncatalog:\n  role: context\n",
+        )?;
+
+        fs::create_dir_all(dir.join("references"))?;
+        fs::write(dir.join("references/operator.md"), "# Operator\n")?;
+
+        fs::create_dir_all(dir.join("tools/frantic/post"))?;
+        fs::write(
+            dir.join("tools/frantic/post/manifest.json"),
+            "{\"schema\":\"runx.tool.manifest.v1\",\"name\":\"frantic.post\"}\n",
+        )?;
+        fs::write(
+            dir.join("tools/frantic/post/run.mjs"),
+            "console.log('tool')\n",
+        )?;
+        fs::create_dir_all(dir.join("tools/frantic/post/src"))?;
+        fs::write(
+            dir.join("tools/frantic/post/src/index.ts"),
+            "console.log('not packaged')\n",
+        )?;
+
+        fs::create_dir_all(dir.join("graph/quote"))?;
+        fs::write(
+            dir.join("graph/quote/SKILL.md"),
+            "---\nname: quote-stage\n---\n# Quote\n",
+        )?;
+        fs::write(dir.join("graph/quote/X.yaml"), "skill: quote-stage\n")?;
+        fs::write(dir.join("graph/quote/run.mjs"), "console.log('stage')\n")?;
+
+        fs::create_dir_all(dir.join("push-outbox"))?;
+        fs::write(
+            dir.join("push-outbox/SKILL.md"),
+            "---\nname: push-outbox\n---\n# Push\n",
+        )?;
+        fs::write(dir.join("push-outbox/manifest.json"), "{}\n")?;
+
+        fs::write(dir.join(".env"), "SECRET=not-packaged\n")?;
+        fs::create_dir_all(dir.join("fixtures"))?;
+        fs::write(dir.join("fixtures/happy-path.yaml"), "case: happy\n")?;
+
+        let files =
+            collect_publish_package_files(&dir.join("SKILL.md"), Some(&dir.join("X.yaml")))?;
+        let paths = files.into_iter().map(|file| file.path).collect::<Vec<_>>();
+
+        assert!(paths.contains(&"run.mjs".to_owned()));
+        assert!(paths.contains(&"harness.mjs".to_owned()));
+        assert!(paths.contains(&"inspect_repo.mjs".to_owned()));
+        assert!(paths.contains(&"context/review-rubric/SKILL.md".to_owned()));
+        assert!(paths.contains(&"context/review-rubric/X.yaml".to_owned()));
+        assert!(paths.contains(&"references/operator.md".to_owned()));
+        assert!(paths.contains(&"tools/frantic/post/manifest.json".to_owned()));
+        assert!(paths.contains(&"tools/frantic/post/run.mjs".to_owned()));
+        assert!(paths.contains(&"graph/quote/SKILL.md".to_owned()));
+        assert!(paths.contains(&"graph/quote/X.yaml".to_owned()));
+        assert!(paths.contains(&"graph/quote/run.mjs".to_owned()));
+        assert!(paths.contains(&"push-outbox/SKILL.md".to_owned()));
+        assert!(paths.contains(&"push-outbox/manifest.json".to_owned()));
+        assert!(!paths.contains(&"notes.txt".to_owned()));
+        assert!(!paths.contains(&".env".to_owned()));
+        assert!(!paths.contains(&"tools/frantic/post/src/index.ts".to_owned()));
+        assert!(!paths.contains(&"fixtures/happy-path.yaml".to_owned()));
+
+        let _ignored = fs::remove_dir_all(dir);
+        Ok(())
     }
 }

@@ -60,10 +60,30 @@ runx login
 runx registry publish ./skills/<your-skill>/SKILL.md --registry https://runx.ai
 ```
 
-For remote publishes the CLI sends `SKILL.md`, `X.yaml`, and bounded UTF-8
-sidecar files from the package directory. That lets hosted runx rerun the
-harness from the same package material instead of trusting a client-supplied
-summary. The local harness still runs first for fast feedback.
+For remote publishes the CLI sends a bounded skill package:
+
+- `SKILL.md` is the portable skill contract and is sent as the primary document.
+- `X.yaml`, when present, is the execution profile and is sent as the profile
+  document.
+- Package files are selected by a small allowlist that mirrors what runx can
+  consume from a skill package:
+  - root-level `.js` / `.mjs` runner files referenced by `X.yaml`;
+  - nested `SKILL.md` / `X.yaml` files for graph stages, context skills, and
+    local sub-skills called by the graph;
+  - `references/**/*.md` advisory markdown;
+  - `tools/**/manifest.json` plus minimal `tools/**/run.js` or `run.mjs`
+    runtimes for local tool manifests.
+
+Nothing else is package material. Fixtures, source trees, build output,
+`node_modules`, assets, dotfiles, local registry state, repo metadata, and random
+helper files are not uploaded. Secret-looking allowed file names such as `.env`,
+`.npmrc`, credentials JSON, private keys, and certificate/key bundles still fail
+the publish before any remote upload.
+
+This lets hosted runx rerun the harness from the same consumed skill material
+instead of trusting a client-supplied summary, while keeping local credentials,
+fixtures, source trees, and build trash out of the registry. The local harness
+still runs first for fast feedback.
 
 `runx login` opens the hosted sign-in flow and stores the returned public API
 token in the encrypted local config at `public.api_token`. Hosted CLI commands
