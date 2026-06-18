@@ -1900,11 +1900,11 @@ fn fulfill_inputs(admission: FulfillAdmission) -> Option<Value> {
         }
         FulfillAdmission::MissingReservedPaymentAuthority => Some(json!({
             "spend_capability_ref": spend_capability_ref(),
-            "idempotency": { "key": X402_APPROVAL_IDEMPOTENCY_KEY }
+            "idempotency": approval_idempotency(),
         })),
         FulfillAdmission::MissingSpendCapabilityRef => Some(json!({
             "reserved_payment_authority": reserved_payment_authority(2_500, true),
-            "idempotency": { "key": X402_APPROVAL_IDEMPOTENCY_KEY }
+            "idempotency": approval_idempotency(),
         })),
         FulfillAdmission::MissingIdempotencyKey => Some(json!({
             "reserved_payment_authority": reserved_payment_authority(2_500, true),
@@ -1921,8 +1921,17 @@ fn valid_payment_inputs(child_max_per_call_units: u64, include_subset_proof: boo
     json!({
         "reserved_payment_authority": reserved_payment_authority(child_max_per_call_units, include_subset_proof),
         "spend_capability_ref": spend_capability_ref(),
-        "idempotency": { "key": X402_APPROVAL_IDEMPOTENCY_KEY }
+        "idempotency": approval_idempotency()
     })
+}
+
+fn approval_idempotency() -> Value {
+    let mut idempotency = serde_json::Map::new();
+    idempotency.insert(
+        "key".to_owned(),
+        Value::String(X402_APPROVAL_IDEMPOTENCY_KEY.to_owned()),
+    );
+    Value::Object(idempotency)
 }
 
 fn valid_payment_inputs_with_payment_admission(
