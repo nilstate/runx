@@ -60,14 +60,14 @@ runners:
       name: open-meteo-weather-forecast
       steps:
         - id: locate
-          stage: locate
+          skill: graph/locate
           scopes:
             - runx:http:read
           inputs:
             name: $input.name
             count: "5"
         - id: forecast
-          stage: forecast
+          skill: graph/forecast
           scopes:
             - runx:http:read
           inputs:
@@ -93,14 +93,14 @@ runners:
       name: open-meteo-air-quality
       steps:
         - id: locate
-          stage: locate
+          skill: graph/locate
           scopes:
             - runx:http:read
           inputs:
             name: $input.name
             count: "5"
         - id: air_quality
-          stage: air_quality
+          skill: graph/air_quality
           scopes:
             - runx:http:read
           inputs:
