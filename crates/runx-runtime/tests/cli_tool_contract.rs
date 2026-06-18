@@ -20,6 +20,7 @@ use runx_runtime::{
 
 const MAX_INLINE_INPUTS_BYTES: usize = 48 * 1024;
 const MAX_INLINE_INPUT_VALUE_BYTES: usize = 8 * 1024;
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
 
 #[test]
 fn process_sandbox_always_exposes_runx_cwd_to_skill_authors()
@@ -641,9 +642,19 @@ fn invoke_node(
         resolved_inputs: JsonObject::new(),
         current_context: Vec::new(),
         skill_directory: skill_dir,
-        env: std::env::vars().collect(),
+        env: env_with_local_sandbox_fallback(),
         credential_delivery: CredentialDelivery::none(),
     })?)
+}
+
+#[cfg(feature = "cli-tool")]
+fn env_with_local_sandbox_fallback() -> BTreeMap<String, String> {
+    let mut env = std::env::vars().collect::<BTreeMap<_, _>>();
+    env.insert(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        "local".to_owned(),
+    );
+    env
 }
 
 fn sandbox(cwd_policy: CwdPolicy, profile: SandboxProfile) -> SkillSandbox {
