@@ -1,0 +1,16 @@
+name: open-meteo-air-quality-shanghai
+kind: skill
+target: ..
+runner: air_quality
+inputs:
+  name: Shanghai
+  latitude: "31.2222"
+  longitude: "121.4581"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: open-meteo-weather-forecast
+  source_case: open-meteo-air-quality-shanghai
+  source: skills-fixture

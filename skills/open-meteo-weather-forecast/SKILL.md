@@ -1,16 +1,18 @@
 ---
 name: open-meteo-weather-forecast
-description: Resolve a place and fetch a global forecast through governed, keyless Open-Meteo HTTP calls.
+description: Resolve a place and fetch global forecast and air-quality evidence through governed, keyless Open-Meteo HTTP calls.
 runx:
   category: weather
 ---
 
 # Open-Meteo Weather Forecast
 
-Fetch global place and forecast evidence through runx's governed HTTP front.
-The skill never performs an ad-hoc fetch. Each stage is a bounded, read-only
-HTTP runner whose endpoint, inputs, status, authority scope, and output packet
-are recorded in the sealed receipt. Open-Meteo requires no API key.
+Fetch global place, forecast, and air-quality evidence through runx's governed
+HTTP front. The skill never performs an ad-hoc fetch. Each stage is a bounded,
+read-only HTTP runner whose endpoint, inputs, status, authority scope, and
+output packet are recorded in the sealed receipt. Open-Meteo requires no API key
+and covers the whole globe, so this is the worldwide counterpart to the US-only
+`nws-weather-forecast` provider.
 
 ## Procedure
 
@@ -33,10 +35,15 @@ are recorded in the sealed receipt. Open-Meteo requires no API key.
 
 ## Output packets
 
-The two graph steps produce typed sealed packets:
+Two runners are exposed. The default `main` runner runs `locate` then
+`forecast`. The `air_quality` runner runs `locate` then `air_quality`. Each
+graph step produces a typed sealed packet:
 
 - `locate` produces Open-Meteo geocoding provider evidence.
 - `forecast` produces Open-Meteo forecast provider evidence.
+- `air_quality` produces Open-Meteo air-quality provider evidence (PM2.5, PM10,
+  carbon monoxide, nitrogen dioxide, sulphur dioxide, ozone, and the European
+  and US air-quality indices).
 
 Preserve provider metadata and receipt references when passing either packet to
 another skill. Do not convert provider evidence into high-stakes advice.
@@ -62,3 +69,7 @@ another skill. Do not convert provider evidence into high-stakes advice.
 3. Run `forecast` using the sealed latitude and longitude with
    `forecast_days: "3"`.
 4. Preserve both sealed receipts with the returned forecast evidence.
+
+## Credits
+
+Combined from two community contributions: the forecast skill (#63, @why123-boop) and the air-quality snapshot (#64, @yanziwei).

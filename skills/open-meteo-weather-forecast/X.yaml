@@ -23,6 +23,16 @@ harness:
         status: sealed
         receipt:
           schema: runx.receipt.v1
+    - name: open-meteo-air-quality-shanghai
+      runner: air_quality
+      inputs:
+        name: Shanghai
+        latitude: "31.2222"
+        longitude: "121.4581"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
 
 runners:
   main:
@@ -64,3 +74,35 @@ runners:
             latitude: $input.latitude
             longitude: $input.longitude
             forecast_days: $input.forecast_days
+  air_quality:
+    type: graph
+    inputs:
+      name:
+        type: string
+        required: true
+        description: City or place name to resolve.
+      latitude:
+        type: string
+        required: true
+        description: Decimal latitude selected from the location evidence.
+      longitude:
+        type: string
+        required: true
+        description: Decimal longitude selected from the location evidence.
+    graph:
+      name: open-meteo-air-quality
+      steps:
+        - id: locate
+          stage: locate
+          scopes:
+            - runx:http:read
+          inputs:
+            name: $input.name
+            count: "5"
+        - id: air_quality
+          stage: air_quality
+          scopes:
+            - runx:http:read
+          inputs:
+            latitude: $input.latitude
+            longitude: $input.longitude
