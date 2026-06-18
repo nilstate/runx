@@ -281,7 +281,8 @@ mod tests {
     }
 
     #[test]
-    fn namespaced_tool_ref_is_flattened_on_the_wire_and_restored_on_the_way_in() {
+    fn namespaced_tool_ref_is_flattened_on_the_wire_and_restored_on_the_way_in()
+    -> Result<(), String> {
         let stub = StubTransport {
             body:
                 r#"{"content":[{"type":"tool_use","id":"tu_1","name":"frantic_post","input":{}}]}"#
@@ -305,7 +306,7 @@ mod tests {
         );
         let uses = model
             .next_tool_uses(&[AgentTurn::User("go".to_owned())])
-            .expect("call succeeds");
+            .map_err(|error| format!("call should succeed: {error}"))?;
         // The model's flattened call maps back to the dotted runx tool ref.
         assert_eq!(uses.len(), 1);
         assert_eq!(uses[0].name, "frantic.post");
@@ -316,6 +317,7 @@ mod tests {
             body.contains("\"frantic_post\"") && !body.contains("frantic.post"),
             "tool must be offered flattened, never dotted; got: {body}"
         );
+        Ok(())
     }
 
     #[test]

@@ -130,7 +130,7 @@ fn tool_catalogs_ignore_ancestor_tool_roots_outside_workspace()
 "#,
     )?;
 
-    let error = inspect_tool(&ToolInspectOptions {
+    let error = match inspect_tool(&ToolInspectOptions {
         root: root.clone(),
         tool_ref: "docs.echo".to_owned(),
         source: None,
@@ -138,8 +138,10 @@ fn tool_catalogs_ignore_ancestor_tool_roots_outside_workspace()
         tool_roots: Vec::new(),
         fixture_catalog_enabled: false,
         allow_explicit_manifest_path: false,
-    })
-    .expect_err("ancestor tool root outside workspace should be ignored");
+    }) {
+        Ok(_) => return Err("ancestor tool root outside workspace should be ignored".into()),
+        Err(error) => error,
+    };
 
     assert!(
         error.to_string().contains("was not found"),
@@ -154,7 +156,7 @@ fn tool_catalogs_reject_absolute_explicit_manifest_path() -> Result<(), Box<dyn 
     let temp_root = copy_scaffold_fixture("reject_absolute_manifest_path")?;
     let manifest = temp_root.join("tools/docs/echo/manifest.json");
 
-    let error = inspect_tool(&ToolInspectOptions {
+    let error = match inspect_tool(&ToolInspectOptions {
         root: temp_root.clone(),
         tool_ref: manifest.to_string_lossy().into_owned(),
         source: None,
@@ -162,8 +164,10 @@ fn tool_catalogs_reject_absolute_explicit_manifest_path() -> Result<(), Box<dyn 
         tool_roots: Vec::new(),
         fixture_catalog_enabled: false,
         allow_explicit_manifest_path: true,
-    })
-    .expect_err("absolute explicit manifest path should be rejected");
+    }) {
+        Ok(_) => return Err("absolute explicit manifest path should be rejected".into()),
+        Err(error) => error,
+    };
 
     assert!(
         error
@@ -179,7 +183,7 @@ fn tool_catalogs_reject_parent_traversal_explicit_manifest_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp_root = copy_scaffold_fixture("reject_parent_manifest_path")?;
 
-    let error = inspect_tool(&ToolInspectOptions {
+    let error = match inspect_tool(&ToolInspectOptions {
         root: temp_root.clone(),
         tool_ref: "../outside/manifest.json".to_owned(),
         source: None,
@@ -187,8 +191,10 @@ fn tool_catalogs_reject_parent_traversal_explicit_manifest_path()
         tool_roots: Vec::new(),
         fixture_catalog_enabled: false,
         allow_explicit_manifest_path: true,
-    })
-    .expect_err("parent traversal explicit manifest path should be rejected");
+    }) {
+        Ok(_) => return Err("parent traversal explicit manifest path should be rejected".into()),
+        Err(error) => error,
+    };
 
     assert!(
         error

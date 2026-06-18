@@ -187,7 +187,11 @@ mod tests {
         let body: serde_json::Value =
             serde_json::from_str(requests[0].body.as_deref().unwrap_or_default())?;
         assert_eq!(body["markdown"], package.markdown);
-        assert_eq!(body["profile_document"], package.profile_document.unwrap());
+        let profile_document = package
+            .profile_document
+            .as_deref()
+            .ok_or("profile document missing")?;
+        assert_eq!(body["profile_document"], profile_document);
         assert_eq!(body["version"], "sha-123");
         assert_eq!(body["package_files"][0]["path"], "run.mjs");
         assert_eq!(
@@ -214,7 +218,12 @@ mod tests {
     impl Transport for StubTransport {
         fn send(&self, request: HttpRequest) -> Result<HttpResponse, RuntimeHttpError> {
             self.requests.borrow_mut().push(request);
-            Ok(self.response.borrow_mut().take().expect("stub response"))
+            self.response
+                .borrow_mut()
+                .take()
+                .ok_or_else(|| RuntimeHttpError::Transport {
+                    message: "missing stub response".to_owned(),
+                })
         }
     }
 }

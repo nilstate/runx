@@ -1,13 +1,16 @@
 // rust-style-allow: large-file - graph skill-front execution keeps nested skill
 // resolution, graph state projection, and receipt handoff together until the
 // graph runner/front boundary is split.
-use super::*;
+use super::{
+    GRAPH_SKILL_STATE_SCHEMA, SkillRunError, SkillRunOverrides, build_domain_act_frame,
+    contract_json_value, identifier_segment, invalid, needs_agent_output, sealed_output,
+};
 
 use std::path::PathBuf;
 
 use runx_contracts::{
-    JsonObject, JsonValue, ResolutionRequest, ResolutionResponse, ResolutionResponseActor,
-    sha256_hex,
+    ClosureDisposition, JsonObject, JsonValue, ResolutionRequest, ResolutionResponse,
+    ResolutionResponseActor, sha256_hex,
 };
 use runx_core::state_machine::GraphStatus;
 use runx_parser::{ExecutionGraph, SkillRunnerDefinition, SkillRunnerManifest};
@@ -33,7 +36,7 @@ use crate::execution::runner::{
     GraphCheckpoint, GraphRun, RUNX_RUN_ID_ENV, Runtime, RuntimeOptions,
 };
 use crate::host::Host;
-use crate::receipts::{RuntimeReceiptSignatureConfig, domain_act_receipt};
+use crate::receipts::{DomainActReceiptRequest, RuntimeReceiptSignatureConfig, domain_act_receipt};
 use crate::services::{ReceiptServices, WorkspaceEnv};
 
 use super::graph_state::{read_answers, read_graph_state, write_graph_state};
@@ -685,17 +688,19 @@ fn graph_domain_act_receipt(
     ) else {
         return Ok(None);
     };
-    let receipt = domain_act_receipt(
-        &identifier_segment(run_id),
-        "turn",
-        run.state.status == GraphStatus::Succeeded,
-        &crate::time::now_iso8601(),
-        ClosureDisposition::Closed,
-        "agent_act_closed".to_owned(),
-        "governed graph turn sealed".to_owned(),
+    let graph_name = identifier_segment(run_id);
+    let created_at = crate::time::now_iso8601();
+    let receipt = domain_act_receipt(DomainActReceiptRequest {
+        graph_name: &graph_name,
+        step_id: "turn",
+        succeeded: run.state.status == GraphStatus::Succeeded,
+        created_at: &created_at,
+        disposition: ClosureDisposition::Closed,
+        reason_code: "agent_act_closed".to_owned(),
+        seal_summary: "governed graph turn sealed".to_owned(),
         frame,
-        signature_config.signature_policy(),
-    )?;
+        signature_policy: signature_config.signature_policy(),
+    })?;
     Ok(Some(receipt))
 }
 

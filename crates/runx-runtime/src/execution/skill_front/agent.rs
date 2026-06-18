@@ -1,11 +1,15 @@
-use super::*;
+use super::{
+    SkillRunError, SkillRunOverrides, agent_invocation_source_type, agent_request,
+    answer_disposition, closure_disposition_label, contract_json_value, domain_act_frame,
+    identifier_segment, invalid, needs_agent_output, read_answer, seal_skill_answer, sealed_output,
+};
 
-use runx_contracts::ClosureDisposition;
+use runx_contracts::{ClosureDisposition, JsonObject, JsonValue};
 
 use crate::adapter::{InvocationStatus, SkillInvocation, SkillOutput};
 use crate::agent_invocation::agent_act_invocation_id;
 use crate::execution::orchestrator::SkillRunRequest;
-use crate::receipts::domain_act_receipt;
+use crate::receipts::{DomainActReceiptRequest, domain_act_receipt};
 use crate::services::{ReceiptServices, WorkspaceEnv};
 use runx_parser::{SkillRunnerDefinition, SkillRunnerManifest};
 
@@ -57,17 +61,20 @@ pub(super) fn execute_agent_skill_run(
     let receipt = match domain_act_frame(&invocation, &answer, governed_effect.as_ref()) {
         Some(frame) => {
             let label = closure_disposition_label(&disposition);
-            domain_act_receipt(
-                &identifier_segment(&run_id),
-                &identifier_segment(&runner.name),
-                disposition == ClosureDisposition::Closed,
-                &crate::time::now_iso8601(),
+            let created_at = crate::time::now_iso8601();
+            let graph_name = identifier_segment(&run_id);
+            let step_id = identifier_segment(&runner.name);
+            domain_act_receipt(DomainActReceiptRequest {
+                graph_name: &graph_name,
+                step_id: &step_id,
+                succeeded: disposition == ClosureDisposition::Closed,
+                created_at: &created_at,
                 disposition,
-                format!("agent_act_{label}"),
-                format!("agent act sealed ({label})"),
+                reason_code: format!("agent_act_{label}"),
+                seal_summary: format!("agent act sealed ({label})"),
                 frame,
-                receipts.signature_config().signature_policy(),
-            )?
+                signature_policy: receipts.signature_config().signature_policy(),
+            })?
         }
         None => seal_skill_answer(
             &run_id,

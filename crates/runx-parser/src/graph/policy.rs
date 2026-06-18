@@ -63,33 +63,40 @@ fn guard(raw_gate: &JsonValue, gate_field: &str) -> Result<GraphGuard, Validatio
 mod tests {
     use super::*;
 
-    fn policy_value(json: &str) -> JsonValue {
-        serde_json::from_str(json).expect("valid json")
+    fn policy_value(json: &str) -> Result<JsonValue, String> {
+        serde_json::from_str(json)
+            .map_err(|error| format!("valid json fixture failed to parse: {error}"))
     }
 
     #[test]
-    fn rejects_unknown_policy_field() {
+    fn rejects_unknown_policy_field() -> Result<(), String> {
         // A stale `transitions` key (the pre-rename name) must be rejected, not
         // silently dropped: dropping it would disable the gate it declares.
         let policy = policy_value(
             r#"{"transitions":[{"step":"fulfill","field":"approve-spend.data.approved","equals":true}]}"#,
-        );
-        let error = validate_graph_policy(Some(&policy), "policy")
-            .expect_err("unknown policy field must be rejected");
+        )?;
+        let error = match validate_graph_policy(Some(&policy), "policy") {
+            Ok(_) => return Err("unknown policy field must be rejected".to_owned()),
+            Err(error) => error,
+        };
         assert!(
             error.to_string().contains("transitions"),
             "error should name the unknown field, got: {error}"
         );
+        Ok(())
     }
 
     #[test]
-    fn accepts_guards_policy() {
+    fn accepts_guards_policy() -> Result<(), String> {
         let policy = policy_value(
             r#"{"guards":[{"step":"fulfill","field":"approve-spend.data.approved","equals":true}]}"#,
-        );
-        let parsed = validate_graph_policy(Some(&policy), "policy")
-            .expect("a guards policy must parse")
-            .expect("guards present");
+        )?;
+        let parsed = match validate_graph_policy(Some(&policy), "policy") {
+            Ok(Some(parsed)) => parsed,
+            Ok(None) => return Err("guards present".to_owned()),
+            Err(error) => return Err(format!("a guards policy must parse: {error}")),
+        };
         assert_eq!(parsed.guards.len(), 1);
+        Ok(())
     }
 }

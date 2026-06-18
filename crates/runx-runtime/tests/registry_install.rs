@@ -41,14 +41,14 @@ fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::
     let temp = tempdir()?;
     let mut candidate = install_candidate()?;
     candidate.package_files = package_files_fixture();
-    candidate.package_digest = Some(package_digest(&candidate.package_files));
+    candidate.package_digest = Some(package_digest(&candidate.package_files)?);
     candidate.signed_manifest = Some(signed_manifest(
         "acme/echo",
         "1.0.0",
         &skill_digest(),
         Some(&profile_digest()),
         candidate.package_digest.as_deref(),
-    ));
+    )?);
 
     let install = install_local_skill(
         &candidate,
@@ -93,7 +93,7 @@ fn package_files_must_be_bound_by_signed_manifest() -> Result<(), Box<dyn std::e
     let temp = tempdir()?;
     let mut candidate = install_candidate()?;
     candidate.package_files = package_files_fixture();
-    candidate.package_digest = Some(package_digest(&candidate.package_files));
+    candidate.package_digest = Some(package_digest(&candidate.package_files)?);
 
     let error = install_error(&candidate, temp.path())?;
 
@@ -135,7 +135,7 @@ fn unsigned_local_registry_candidate_installs() -> Result<(), Box<dyn std::error
     candidate.signed_manifest = None;
     candidate.profile_digest = Some(profile_digest());
     candidate.package_files = package_files_fixture();
-    candidate.package_digest = Some(package_digest(&candidate.package_files));
+    candidate.package_digest = Some(package_digest(&candidate.package_files)?);
     candidate.manifest_source_authority = Some(RegistryManifestSourceAuthority::RegistrySource(
         format!("local:{}", temp.path().join("registry").display()),
     ));
@@ -172,7 +172,7 @@ fn mismatched_manifest_identity_fails_closed() -> Result<(), Box<dyn std::error:
         &skill_digest(),
         Some(&profile_digest()),
         None,
-    ));
+    )?);
 
     let error = install_error(&candidate, temp.path())?;
 
@@ -484,7 +484,7 @@ fn install_candidate() -> Result<InstallCandidate, Box<dyn std::error::Error>> {
             &skill_digest(),
             Some(&profile_digest()),
             None,
-        )),
+        )?),
         profile_digest: None,
         runner_names: vec!["default".to_owned()],
         trust_tier: Some(TrustTier::Community),
@@ -527,7 +527,7 @@ fn package_files_fixture() -> Vec<RegistryPackageFile> {
     ]
 }
 
-fn package_digest(files: &[RegistryPackageFile]) -> String {
+fn package_digest(files: &[RegistryPackageFile]) -> Result<String, serde_json::Error> {
     let mut sorted = files.to_vec();
     sorted.sort_by(|left, right| left.path.cmp(&right.path));
     let mut canonical = String::from("{\"files\":[");
@@ -536,13 +536,13 @@ fn package_digest(files: &[RegistryPackageFile]) -> String {
             canonical.push(',');
         }
         canonical.push_str("{\"content\":");
-        canonical.push_str(&serde_json::to_string(&file.content).expect("string serializes"));
+        canonical.push_str(&serde_json::to_string(&file.content)?);
         canonical.push_str(",\"path\":");
-        canonical.push_str(&serde_json::to_string(&file.path).expect("string serializes"));
+        canonical.push_str(&serde_json::to_string(&file.path)?);
         canonical.push('}');
     }
     canonical.push_str("]}");
-    sha256_hex(canonical.as_bytes())
+    Ok(sha256_hex(canonical.as_bytes()))
 }
 
 fn trusted_manifest_keys() -> Result<Vec<TrustedRegistryManifestKey>, Box<dyn std::error::Error>> {
@@ -565,28 +565,8 @@ fn signed_manifest(
     digest: &str,
     profile_digest: Option<&str>,
     package_digest: Option<&str>,
-) -> RegistrySignedManifest {
-    let payload =
-        registry_manifest_payload(skill_id, version, digest, profile_digest, package_digest);
-    let signature = dynamic_manifest_key_pair()
-        .expect("static test manifest key should load")
-        .sign(payload.as_bytes());
-    RegistrySignedManifest {
-        schema: runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA.to_owned(),
-        skill_id: skill_id.to_owned(),
-        version: version.to_owned(),
-        digest: digest.to_owned(),
-        profile_digest: profile_digest.map(str::to_owned),
-        package_digest: package_digest.map(str::to_owned),
-        signer: RegistryManifestSigner {
-            id: TEST_MANIFEST_SIGNER_ID.to_owned(),
-            key_id: TEST_MANIFEST_KEY_ID.to_owned(),
-        },
-        signature: RegistryManifestSignature {
-            alg: "ed25519".to_owned(),
-            value: format!("base64:{}", URL_SAFE_NO_PAD.encode(signature.as_ref())),
-        },
-    }
+) -> Result<RegistrySignedManifest, Box<dyn std::error::Error>> {
+    signed_manifest_with_dynamic_key(skill_id, version, digest, profile_digest, package_digest)
 }
 
 fn signed_manifest_with_dynamic_key(

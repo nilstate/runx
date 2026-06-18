@@ -56,8 +56,8 @@ fn parses_publish_plan() -> Result<(), String> {
 #[test]
 // rust-style-allow: long-function - this regression asserts endpoint and token
 // precedence in one table-shaped flow so the cases stay visually adjacent.
-fn resolves_publish_endpoint_and_token_precedence() {
-    let temp = tempfile_dir().expect("tempdir");
+fn resolves_publish_endpoint_and_token_precedence() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile_dir()?;
     let mut env = BTreeMap::new();
     env.insert("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string());
     env.insert(
@@ -81,9 +81,7 @@ fn resolves_publish_endpoint_and_token_precedence() {
         "https://plan.runx.test"
     );
     assert_eq!(
-        resolve_publish_token(&plan, &env, &temp)
-            .expect("plan token")
-            .as_deref(),
+        resolve_publish_token(&plan, &env, &temp)?.as_deref(),
         Some("plan-token")
     );
 
@@ -97,9 +95,7 @@ fn resolves_publish_endpoint_and_token_precedence() {
         "https://env.runx.test"
     );
     assert_eq!(
-        resolve_publish_token(&env_plan, &env, &temp)
-            .expect("env token")
-            .as_deref(),
+        resolve_publish_token(&env_plan, &env, &temp)?.as_deref(),
         Some("public-token")
     );
 
@@ -111,17 +107,13 @@ fn resolves_publish_endpoint_and_token_precedence() {
         json: false,
     };
     assert_eq!(
-        resolve_publish_token(&empty_token_plan, &env, &temp)
-            .expect("empty plan token")
-            .as_deref(),
+        resolve_publish_token(&empty_token_plan, &env, &temp)?.as_deref(),
         Some("public-token")
     );
 
     env.insert("RUNX_PUBLIC_API_TOKEN".to_owned(), " ".to_owned());
     assert!(
-        resolve_publish_token(&empty_token_plan, &env, &temp)
-            .expect("blank public token with no stored token")
-            .is_none(),
+        resolve_publish_token(&empty_token_plan, &env, &temp)?.is_none(),
         "a blank public token with no stored login token resolves to no token"
     );
 
@@ -136,6 +128,7 @@ fn resolves_publish_endpoint_and_token_precedence() {
         resolve_public_api_base_url(&empty_url_plan, &BTreeMap::new()),
         "https://runx.ai"
     );
+    Ok(())
 }
 
 #[test]

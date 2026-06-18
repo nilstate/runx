@@ -294,7 +294,7 @@ fn collect_allowed_publish_package_files_from_dir(
                 candidate.display()
             ))
         })?;
-        if &canonical == markdown_path || Some(&canonical) == profile_path {
+        if canonical == markdown_path || profile_path == Some(&canonical) {
             continue;
         }
         if metadata.len() > MAX_REMOTE_PUBLISH_FILE_BYTES {

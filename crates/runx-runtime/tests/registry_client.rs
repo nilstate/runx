@@ -367,7 +367,7 @@ fn profile_digest_mismatch_leaves_no_partial_install() -> Result<(), Box<dyn std
         &skill_digest(),
         Some("sha256:wrong"),
         None,
-    ));
+    )?);
     let options = InstallLocalSkillOptions {
         destination_root: temp.path().join("skills"),
         expected_digest: None,
@@ -450,7 +450,7 @@ fn install_candidate() -> Result<InstallCandidate, Box<dyn std::error::Error>> {
             &skill_digest(),
             Some(&profile_digest()),
             None,
-        )),
+        )?),
         profile_digest: None,
         runner_names: vec!["default".to_owned()],
         trust_tier: Some(TrustTier::Community),
@@ -489,13 +489,11 @@ fn signed_manifest(
     digest: &str,
     profile_digest: Option<&str>,
     package_digest: Option<&str>,
-) -> RegistrySignedManifest {
+) -> Result<RegistrySignedManifest, Box<dyn std::error::Error>> {
     let payload =
         registry_manifest_payload(skill_id, version, digest, profile_digest, package_digest);
-    let signature = test_manifest_key_pair()
-        .expect("static test manifest key should load")
-        .sign(payload.as_bytes());
-    RegistrySignedManifest {
+    let signature = test_manifest_key_pair()?.sign(payload.as_bytes());
+    Ok(RegistrySignedManifest {
         schema: runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA.to_owned(),
         skill_id: skill_id.to_owned(),
         version: version.to_owned(),
@@ -510,7 +508,7 @@ fn signed_manifest(
             alg: "ed25519".to_owned(),
             value: format!("base64:{}", URL_SAFE_NO_PAD.encode(signature.as_ref())),
         },
-    }
+    })
 }
 
 fn registry_manifest_payload(

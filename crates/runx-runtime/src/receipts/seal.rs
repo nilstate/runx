@@ -656,6 +656,18 @@ pub(crate) struct DomainActFrame {
     pub previous: Option<Reference>,
 }
 
+pub(crate) struct DomainActReceiptRequest<'a> {
+    pub graph_name: &'a str,
+    pub step_id: &'a str,
+    pub succeeded: bool,
+    pub created_at: &'a str,
+    pub disposition: ClosureDisposition,
+    pub reason_code: String,
+    pub seal_summary: String,
+    pub frame: DomainActFrame,
+    pub signature_policy: RuntimeReceiptSignaturePolicy<'a>,
+}
+
 /// Seal a governed turn as its domain act. Reuses the generic receipt assembly
 /// (`build_receipt`/`seal`) but fills the act, decision, and authority from the
 /// trusted `DomainActFrame`. Transport (tool names, urls, status codes, tokens)
@@ -663,16 +675,19 @@ pub(crate) struct DomainActFrame {
 // rust-style-allow: long-function - domain-act receipt assembly binds act,
 // decision, authority, and signature policy in one auditable receipt boundary.
 pub(crate) fn domain_act_receipt(
-    graph_name: &str,
-    step_id: &str,
-    succeeded: bool,
-    created_at: &str,
-    disposition: ClosureDisposition,
-    reason_code: String,
-    seal_summary: String,
-    frame: DomainActFrame,
-    signature_policy: RuntimeReceiptSignaturePolicy<'_>,
+    request: DomainActReceiptRequest<'_>,
 ) -> Result<Receipt, RuntimeError> {
+    let DomainActReceiptRequest {
+        graph_name,
+        step_id,
+        succeeded,
+        created_at,
+        disposition,
+        reason_code,
+        seal_summary,
+        frame,
+        signature_policy,
+    } = request;
     let status = if succeeded {
         CriterionStatus::Verified
     } else {
