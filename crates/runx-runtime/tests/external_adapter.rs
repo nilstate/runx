@@ -458,7 +458,7 @@ esac
 
     let run = Runtime::new(
         ExternalAdapterSkillAdapter::default(),
-        RuntimeOptions::local_development(),
+        local_runtime_options_with_sandbox_fallback(),
     )
     .run_graph_file(&graph_path)?;
 
@@ -688,7 +688,7 @@ IFS= read -r _invocation
 
     let result = Runtime::new(
         ExternalAdapterSkillAdapter::default(),
-        RuntimeOptions::local_development(),
+        local_runtime_options_with_sandbox_fallback(),
     )
     .run_graph_file_with_host(&graph_path, &mut host);
 
@@ -855,6 +855,15 @@ IFS= read -r _invocation
 /bin/cat "$RUNX_RESPONSE_PATH"
 "#,
     )
+}
+
+fn local_runtime_options_with_sandbox_fallback() -> RuntimeOptions {
+    let mut options = RuntimeOptions::local_development();
+    options.env.insert(
+        "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY".to_owned(),
+        "local".to_owned(),
+    );
+    options
 }
 
 fn write_script(dir: &Path, body: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
