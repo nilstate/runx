@@ -1,10 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use runx_contracts::{JsonObject, JsonValue};
 use runx_runtime::registry::RegistryPublishHarnessReport;
 use serde::Serialize;
 
@@ -257,13 +258,20 @@ fn collect_publish_package_files(
             markdown_path.display()
         ))
     })?;
-    collect_allowed_publish_package_files(&package_dir, &markdown_path, profile_path.as_ref())
+    let consumed_root_scripts = consumed_root_scripts_from_profile(profile_path.as_ref())?;
+    collect_allowed_publish_package_files(
+        &package_dir,
+        &markdown_path,
+        profile_path.as_ref(),
+        &consumed_root_scripts,
+    )
 }
 
 fn collect_allowed_publish_package_files(
     package_dir: &Path,
     markdown_path: &Path,
     profile_path: Option<&PathBuf>,
+    consumed_root_scripts: &BTreeSet<String>,
 ) -> Result<Vec<HostedSkillPackageFile>, RegistryCliError> {
     let mut files = Vec::new();
     let mut total_bytes = 0u64;
@@ -272,6 +280,7 @@ fn collect_allowed_publish_package_files(
         package_dir,
         markdown_path,
         profile_path,
+        consumed_root_scripts,
         &mut files,
         &mut total_bytes,
     )?;
@@ -284,6 +293,7 @@ fn collect_allowed_publish_package_files_from_dir(
     current_dir: &Path,
     markdown_path: &Path,
     profile_path: Option<&PathBuf>,
+    consumed_root_scripts: &BTreeSet<String>,
     files: &mut Vec<HostedSkillPackageFile>,
     total_bytes: &mut u64,
 ) -> Result<(), RegistryCliError> {
@@ -314,13 +324,14 @@ fn collect_allowed_publish_package_files_from_dir(
                     &candidate,
                     markdown_path,
                     profile_path,
+                    consumed_root_scripts,
                     files,
                     total_bytes,
                 )?;
             }
             continue;
         }
-        if !is_allowed_remote_publish_package_file(&relative) {
+        if !is_allowed_remote_publish_package_file(&relative, consumed_root_scripts) {
             continue;
         }
         if !metadata.file_type().is_file() {
@@ -407,7 +418,10 @@ fn should_descend_remote_publish_dir(relative: &str) -> bool {
     )
 }
 
-fn is_allowed_remote_publish_package_file(relative: &str) -> bool {
+fn is_allowed_remote_publish_package_file(
+    relative: &str,
+    consumed_root_scripts: &BTreeSet<String>,
+) -> bool {
     if relative.is_empty()
         || relative
             .split('/')
@@ -425,7 +439,7 @@ fn is_allowed_remote_publish_package_file(relative: &str) -> bool {
     }
     let file_name = relative.rsplit('/').next().unwrap_or(relative);
     if !relative.contains('/') && (file_name.ends_with(".mjs") || file_name.ends_with(".js")) {
-        return true;
+        return consumed_root_scripts.contains(relative);
     }
     if relative.contains("/references/") || relative.starts_with("references/") {
         return file_name.ends_with(".md");
@@ -435,6 +449,108 @@ fn is_allowed_remote_publish_package_file(relative: &str) -> bool {
             file_name,
             "run.mjs" | "run.js" | "harness.mjs" | "harness.js"
         )
+}
+
+fn consumed_root_scripts_from_profile(
+    profile_path: Option<&PathBuf>,
+) -> Result<BTreeSet<String>, RegistryCliError> {
+    let Some(profile_path) = profile_path else {
+        return Ok(BTreeSet::new());
+    };
+    let document = fs::read_to_string(profile_path).map_err(|error| {
+        internal_error(format!(
+            "failed to read profile while selecting publish package files {}: {error}",
+            profile_path.display()
+        ))
+    })?;
+    let manifest = runx_parser::validate_runner_manifest(
+        runx_parser::parse_runner_manifest_yaml(&document).map_err(|error| {
+            internal_error(format!(
+                "failed to parse profile while selecting publish package files {}: {error}",
+                profile_path.display()
+            ))
+        })?,
+    )
+    .map_err(|error| {
+        internal_error(format!(
+            "failed to validate profile while selecting publish package files {}: {error}",
+            profile_path.display()
+        ))
+    })?;
+    let mut scripts = BTreeSet::new();
+    for runner in manifest.runners.values() {
+        collect_root_scripts_from_source(&runner.source, &mut scripts);
+    }
+    Ok(scripts)
+}
+
+fn collect_root_scripts_from_source(
+    source: &runx_parser::SkillSource,
+    scripts: &mut BTreeSet<String>,
+) {
+    collect_root_scripts_from_command(&source.command, &source.args, scripts);
+    if let Some(graph) = &source.graph {
+        for step in &graph.steps {
+            if let Some(run) = &step.run {
+                collect_root_scripts_from_run_object(run, scripts);
+            }
+        }
+    }
+}
+
+fn collect_root_scripts_from_run_object(run: &JsonObject, scripts: &mut BTreeSet<String>) {
+    let command = json_string(run.get("command"));
+    let args = run
+        .get("args")
+        .and_then(|value| match value {
+            JsonValue::Array(values) => Some(
+                values
+                    .iter()
+                    .filter_map(|value| match value {
+                        JsonValue::String(value) => Some(value.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+            _ => None,
+        })
+        .unwrap_or_default();
+    collect_root_scripts_from_command(&command, &args, scripts);
+}
+
+fn collect_root_scripts_from_command(
+    command: &Option<String>,
+    args: &[String],
+    scripts: &mut BTreeSet<String>,
+) {
+    if let Some(command) = command
+        && let Some(script) = normalize_consumed_root_script(command)
+    {
+        scripts.insert(script);
+    }
+    for arg in args {
+        if let Some(script) = normalize_consumed_root_script(arg) {
+            scripts.insert(script);
+        }
+    }
+}
+
+fn normalize_consumed_root_script(value: &str) -> Option<String> {
+    let script = value
+        .trim()
+        .strip_prefix("./")
+        .unwrap_or_else(|| value.trim());
+    if script.contains('/') || script.is_empty() {
+        return None;
+    }
+    (script.ends_with(".mjs") || script.ends_with(".js")).then(|| script.to_owned())
+}
+
+fn json_string(value: Option<&JsonValue>) -> Option<String> {
+    match value {
+        Some(JsonValue::String(value)) => Some(value.clone()),
+        _ => None,
+    }
 }
 
 fn should_reject_remote_publish_file(relative: &str) -> bool {
@@ -552,7 +668,24 @@ mod tests {
             dir.join("SKILL.md"),
             "---\nname: sidecars\n---\n# Sidecars\n",
         )?;
-        fs::write(dir.join("X.yaml"), "skill: sidecars\n")?;
+        fs::write(
+            dir.join("X.yaml"),
+            r#"skill: sidecars
+runners:
+  main:
+    default: true
+    type: graph
+    graph:
+      name: sidecars
+      steps:
+        - id: inspect
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - ./inspect_repo.mjs
+"#,
+        )?;
         fs::write(dir.join("run.mjs"), "console.log('run')\n")?;
         fs::write(dir.join("harness.mjs"), "console.log('harness')\n")?;
         fs::write(dir.join("inspect_repo.mjs"), "console.log('root runner')\n")?;
@@ -609,9 +742,9 @@ mod tests {
             collect_publish_package_files(&dir.join("SKILL.md"), Some(&dir.join("X.yaml")))?;
         let paths = files.into_iter().map(|file| file.path).collect::<Vec<_>>();
 
-        assert!(paths.contains(&"run.mjs".to_owned()));
-        assert!(paths.contains(&"harness.mjs".to_owned()));
         assert!(paths.contains(&"inspect_repo.mjs".to_owned()));
+        assert!(!paths.contains(&"run.mjs".to_owned()));
+        assert!(!paths.contains(&"harness.mjs".to_owned()));
         assert!(paths.contains(&"context/review-rubric/SKILL.md".to_owned()));
         assert!(paths.contains(&"context/review-rubric/X.yaml".to_owned()));
         assert!(paths.contains(&"references/operator.md".to_owned()));
