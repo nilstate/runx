@@ -45,10 +45,28 @@ fn trusted_signed_manifest_installs() -> Result<(), Box<dyn std::error::Error>> 
 fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let mut candidate = install_candidate()?;
-    candidate.package_files = vec![RegistryPackageFile {
-        path: "run.mjs".to_owned(),
-        content: "console.log('installed');\n".to_owned(),
-    }];
+    candidate.package_files = vec![
+        RegistryPackageFile {
+            path: "run.mjs".to_owned(),
+            content: "console.log('installed');\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "context/review-rubric/SKILL.md".to_owned(),
+            content: "---\nname: review-rubric\n---\n# Review\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "references/operator.md".to_owned(),
+            content: "# Operator\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "graph/stage/X.yaml".to_owned(),
+            content: "skill: stage\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "push-outbox/manifest.json".to_owned(),
+            content: "{}\n".to_owned(),
+        },
+    ];
     candidate.package_digest = Some(package_digest(&candidate.package_files));
 
     let install = install_local_skill(
@@ -64,6 +82,22 @@ fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::
     assert_eq!(
         std::fs::read_to_string(package_root.join("run.mjs"))?,
         "console.log('installed');\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(package_root.join("context/review-rubric/SKILL.md"))?,
+        "---\nname: review-rubric\n---\n# Review\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(package_root.join("references/operator.md"))?,
+        "# Operator\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(package_root.join("graph/stage/X.yaml"))?,
+        "skill: stage\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(package_root.join("push-outbox/manifest.json"))?,
+        "{}\n"
     );
 
     let mut tampered = candidate;
