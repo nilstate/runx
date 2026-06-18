@@ -230,7 +230,7 @@ pub fn list_local_history_with_checkpoints_and_policy(
     };
     let terminal_ids = all_rows
         .iter()
-        .map(|row| row.id.clone())
+        .flat_map(|row| [row.id.clone(), row.harness_id.clone()])
         .collect::<BTreeSet<_>>();
     let mut rows = all_rows
         .into_iter()

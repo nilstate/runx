@@ -1,9 +1,4 @@
 {
-  "history_order": [
-    "runx:receipt:hrn_rcpt_new",
-    "runx:receipt:hrn_rcpt_old"
-  ],
-  "journal_source_ref": "runx:receipt:hrn_rcpt_123",
   "projector_id": "runx-runtime.local-journal.v1",
   "paused_run": {
     "id": "gx_paused0000000000000000000000ab",

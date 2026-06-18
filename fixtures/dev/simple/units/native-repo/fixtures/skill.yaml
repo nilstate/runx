@@ -9,6 +9,8 @@ repo:
       hello from repo integration
 inputs:
   path: README.md
+env:
+  RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY: local
 expect:
   status: success
   output:

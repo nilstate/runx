@@ -1875,6 +1875,10 @@ fn native_graph_skill_run_rejects_unsigned_nested_registry_skill()
         "RUNX_REGISTRY_DIR".to_owned(),
         registry_dir.to_string_lossy().into_owned(),
     );
+    env.insert(
+        "RUNX_REGISTRY_URL".to_owned(),
+        "https://registry.example.test".to_owned(),
+    );
 
     let error = match run_skill(SkillRunRequest {
         skill_path: skill_dir,
