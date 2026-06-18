@@ -10,6 +10,8 @@ use runx_runtime::adapters::catalog::CatalogAdapter;
 use runx_runtime::{InvocationStatus, RuntimeError, SkillAdapter, SkillInvocation};
 use tempfile::tempdir;
 
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
+
 #[test]
 fn catalog_adapter_reports_missing_catalog_ref_as_user_failure() -> Result<(), RuntimeError> {
     let output = CatalogAdapter::fixture_catalog().invoke(invocation(None, JsonObject::new()))?;
@@ -110,7 +112,7 @@ fn catalog_adapter_prefers_local_manifest_before_fixture_catalog()
         Some("fixture.echo"),
         inputs,
         case_dir,
-        process_env(),
+        process_env_with_local_sandbox_fallback(),
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Success);
@@ -419,4 +421,13 @@ fn process_env() -> BTreeMap<String, String> {
     .into_iter()
     .filter_map(|key| std::env::var(key).ok().map(|value| (key.to_owned(), value)))
     .collect()
+}
+
+fn process_env_with_local_sandbox_fallback() -> BTreeMap<String, String> {
+    let mut env = process_env();
+    env.insert(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        "local".to_owned(),
+    );
+    env
 }
