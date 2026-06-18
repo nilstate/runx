@@ -125,6 +125,7 @@ pub fn verify_registry_signed_manifest<'a>(
         &manifest.version,
         &manifest.digest,
         manifest.profile_digest.as_deref(),
+        manifest.package_digest.as_deref(),
         &manifest.signer.id,
         &manifest.signer.key_id,
     );
@@ -275,12 +276,14 @@ fn registry_manifest_payload(
     version: &str,
     digest: &str,
     profile_digest: Option<&str>,
+    package_digest: Option<&str>,
     signer_id: &str,
     key_id: &str,
 ) -> String {
     format!(
-        "{REGISTRY_SIGNED_MANIFEST_SCHEMA}\nskill_id={skill_id}\nversion={version}\ndigest={digest}\nprofile_digest={}\nsigner_id={signer_id}\nkey_id={key_id}\n",
-        profile_digest.unwrap_or("")
+        "{REGISTRY_SIGNED_MANIFEST_SCHEMA}\nskill_id={skill_id}\nversion={version}\ndigest={digest}\nprofile_digest={}\npackage_digest={}\nsigner_id={signer_id}\nkey_id={key_id}\n",
+        profile_digest.unwrap_or(""),
+        package_digest.unwrap_or("")
     )
 }
 
@@ -292,6 +295,9 @@ fn validate_registry_manifest_payload_terms(
     validate_registry_manifest_payload_term(&manifest.digest)?;
     if let Some(profile_digest) = &manifest.profile_digest {
         validate_registry_manifest_payload_term(profile_digest)?;
+    }
+    if let Some(package_digest) = &manifest.package_digest {
+        validate_registry_manifest_payload_term(package_digest)?;
     }
     validate_registry_manifest_payload_term(&manifest.signer.id)?;
     validate_registry_manifest_payload_term(&manifest.signer.key_id)

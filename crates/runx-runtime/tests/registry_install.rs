@@ -14,12 +14,7 @@ use tempfile::tempdir;
 
 const TEST_MANIFEST_KEY_ID: &str = "runx-registry-test-key";
 const TEST_MANIFEST_SIGNER_ID: &str = "runx-registry-test-signer";
-const TEST_MANIFEST_PUBLIC_KEY_BASE64: &str = "K9U/1+6tuu9O5YfBO++MHrdr95NlPe1Okyg9XS7eWm0=";
 const DYNAMIC_MANIFEST_SEED: [u8; 32] = [7; 32];
-const TEST_MANIFEST_SIGNATURE: &str =
-    "base64:e-DzjjAZRv4inUscSd43cfT5287lIkvkM1YqgsFy1pZ9PkHEJCKp5Hm-zdlAY1D7ItVLNEw8HTM03lhgPk4hCg";
-const TEST_MANIFEST_OTHER_SKILL_SIGNATURE: &str =
-    "base64:h0WA5oT6vN3L5jQ76o79l533P3kE2tw1tphqgDcmmQu0_DcsfhPNAI05w1njHzyYib_CUnjPpYpx0c8MsJOMAw";
 
 #[test]
 fn trusted_signed_manifest_installs() -> Result<(), Box<dyn std::error::Error>> {
@@ -45,29 +40,15 @@ fn trusted_signed_manifest_installs() -> Result<(), Box<dyn std::error::Error>> 
 fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let mut candidate = install_candidate()?;
-    candidate.package_files = vec![
-        RegistryPackageFile {
-            path: "run.mjs".to_owned(),
-            content: "console.log('installed');\n".to_owned(),
-        },
-        RegistryPackageFile {
-            path: "context/review-rubric/SKILL.md".to_owned(),
-            content: "---\nname: review-rubric\n---\n# Review\n".to_owned(),
-        },
-        RegistryPackageFile {
-            path: "references/operator.md".to_owned(),
-            content: "# Operator\n".to_owned(),
-        },
-        RegistryPackageFile {
-            path: "graph/stage/X.yaml".to_owned(),
-            content: "skill: stage\n".to_owned(),
-        },
-        RegistryPackageFile {
-            path: "push-outbox/manifest.json".to_owned(),
-            content: "{}\n".to_owned(),
-        },
-    ];
+    candidate.package_files = package_files_fixture();
     candidate.package_digest = Some(package_digest(&candidate.package_files));
+    candidate.signed_manifest = Some(signed_manifest(
+        "acme/echo",
+        "1.0.0",
+        &skill_digest(),
+        Some(&profile_digest()),
+        candidate.package_digest.as_deref(),
+    ));
 
     let install = install_local_skill(
         &candidate,
@@ -108,6 +89,20 @@ fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::
 }
 
 #[test]
+fn package_files_must_be_bound_by_signed_manifest() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let mut candidate = install_candidate()?;
+    candidate.package_files = package_files_fixture();
+    candidate.package_digest = Some(package_digest(&candidate.package_files));
+
+    let error = install_error(&candidate, temp.path())?;
+
+    assert!(matches!(error, InstallError::PackageDigestMismatch { .. }));
+    assert!(!temp.path().join("skills").exists());
+    Ok(())
+}
+
+#[test]
 fn tampered_content_fails_against_signed_manifest() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let mut candidate = install_candidate()?;
@@ -142,7 +137,7 @@ fn mismatched_manifest_identity_fails_closed() -> Result<(), Box<dyn std::error:
         "1.0.0",
         &skill_digest(),
         Some(&profile_digest()),
-        TEST_MANIFEST_OTHER_SKILL_SIGNATURE,
+        None,
     ));
 
     let error = install_error(&candidate, temp.path())?;
@@ -238,6 +233,7 @@ fn malformed_signed_manifest_payload_fails_closed() -> Result<(), Box<dyn std::e
 fn registry_install_rejects_out_of_scope_manifest_key() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let candidate = install_candidate()?;
+    let public_key = manifest_public_key_base64()?;
     let error = match install_local_skill(
         &candidate,
         &InstallLocalSkillOptions {
@@ -245,7 +241,7 @@ fn registry_install_rejects_out_of_scope_manifest_key() -> Result<(), Box<dyn st
             expected_digest: None,
             trusted_manifest_keys: vec![TrustedRegistryManifestKey::official_from_base64(
                 TEST_MANIFEST_KEY_ID.to_owned(),
-                TEST_MANIFEST_PUBLIC_KEY_BASE64,
+                &public_key,
             )?],
         },
     ) {
@@ -274,6 +270,7 @@ fn registry_install_rejects_official_key_from_non_official_source()
         "1.0.0",
         &skill_digest(),
         Some(&profile_digest()),
+        None,
     )?);
     let key_pair = dynamic_manifest_key_pair()?;
     let error = match install_local_skill(
@@ -305,6 +302,7 @@ fn registry_install_rejects_third_party_key_outside_owner_namespace()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let candidate = install_candidate()?;
+    let public_key = manifest_public_key_base64()?;
     let error = match install_local_skill(
         &candidate,
         &InstallLocalSkillOptions {
@@ -312,7 +310,7 @@ fn registry_install_rejects_third_party_key_outside_owner_namespace()
             expected_digest: None,
             trusted_manifest_keys: vec![TrustedRegistryManifestKey::from_base64(
                 TEST_MANIFEST_KEY_ID.to_owned(),
-                TEST_MANIFEST_PUBLIC_KEY_BASE64,
+                &public_key,
                 "other".to_owned(),
                 "test-registry".to_owned(),
             )?],
@@ -419,7 +417,7 @@ fn install_candidate() -> Result<InstallCandidate, Box<dyn std::error::Error>> {
             "1.0.0",
             &skill_digest(),
             Some(&profile_digest()),
-            TEST_MANIFEST_SIGNATURE,
+            None,
         )),
         profile_digest: None,
         runner_names: vec!["default".to_owned()],
@@ -436,6 +434,31 @@ fn skill_digest() -> String {
 
 fn profile_digest() -> String {
     sha256_prefixed(include_str!("../../../fixtures/registry/install/echo-X.yaml").as_bytes())
+}
+
+fn package_files_fixture() -> Vec<RegistryPackageFile> {
+    vec![
+        RegistryPackageFile {
+            path: "run.mjs".to_owned(),
+            content: "console.log('installed');\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "context/review-rubric/SKILL.md".to_owned(),
+            content: "---\nname: review-rubric\n---\n# Review\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "references/operator.md".to_owned(),
+            content: "# Operator\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "graph/stage/X.yaml".to_owned(),
+            content: "skill: stage\n".to_owned(),
+        },
+        RegistryPackageFile {
+            path: "push-outbox/manifest.json".to_owned(),
+            content: "{}\n".to_owned(),
+        },
+    ]
 }
 
 fn package_digest(files: &[RegistryPackageFile]) -> String {
@@ -457,12 +480,17 @@ fn package_digest(files: &[RegistryPackageFile]) -> String {
 }
 
 fn trusted_manifest_keys() -> Result<Vec<TrustedRegistryManifestKey>, Box<dyn std::error::Error>> {
+    let public_key = manifest_public_key_base64()?;
     Ok(vec![TrustedRegistryManifestKey::from_base64(
         TEST_MANIFEST_KEY_ID.to_owned(),
-        TEST_MANIFEST_PUBLIC_KEY_BASE64,
+        &public_key,
         "acme".to_owned(),
         "test-registry".to_owned(),
     )?])
+}
+
+fn manifest_public_key_base64() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(STANDARD.encode(dynamic_manifest_key_pair()?.public_key().as_ref()))
 }
 
 fn signed_manifest(
@@ -470,21 +498,27 @@ fn signed_manifest(
     version: &str,
     digest: &str,
     profile_digest: Option<&str>,
-    signature: &str,
+    package_digest: Option<&str>,
 ) -> RegistrySignedManifest {
+    let payload =
+        registry_manifest_payload(skill_id, version, digest, profile_digest, package_digest);
+    let signature = dynamic_manifest_key_pair()
+        .expect("static test manifest key should load")
+        .sign(payload.as_bytes());
     RegistrySignedManifest {
         schema: runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA.to_owned(),
         skill_id: skill_id.to_owned(),
         version: version.to_owned(),
         digest: digest.to_owned(),
         profile_digest: profile_digest.map(str::to_owned),
+        package_digest: package_digest.map(str::to_owned),
         signer: RegistryManifestSigner {
             id: TEST_MANIFEST_SIGNER_ID.to_owned(),
             key_id: TEST_MANIFEST_KEY_ID.to_owned(),
         },
         signature: RegistryManifestSignature {
             alg: "ed25519".to_owned(),
-            value: signature.to_owned(),
+            value: format!("base64:{}", URL_SAFE_NO_PAD.encode(signature.as_ref())),
         },
     }
 }
@@ -494,16 +528,27 @@ fn signed_manifest_with_dynamic_key(
     version: &str,
     digest: &str,
     profile_digest: Option<&str>,
+    package_digest: Option<&str>,
 ) -> Result<RegistrySignedManifest, Box<dyn std::error::Error>> {
-    let payload = registry_manifest_payload(skill_id, version, digest, profile_digest);
+    let payload =
+        registry_manifest_payload(skill_id, version, digest, profile_digest, package_digest);
     let signature = dynamic_manifest_key_pair()?.sign(payload.as_bytes());
-    Ok(signed_manifest(
-        skill_id,
-        version,
-        digest,
-        profile_digest,
-        &format!("base64:{}", URL_SAFE_NO_PAD.encode(signature.as_ref())),
-    ))
+    Ok(RegistrySignedManifest {
+        schema: runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA.to_owned(),
+        skill_id: skill_id.to_owned(),
+        version: version.to_owned(),
+        digest: digest.to_owned(),
+        profile_digest: profile_digest.map(str::to_owned),
+        package_digest: package_digest.map(str::to_owned),
+        signer: RegistryManifestSigner {
+            id: TEST_MANIFEST_SIGNER_ID.to_owned(),
+            key_id: TEST_MANIFEST_KEY_ID.to_owned(),
+        },
+        signature: RegistryManifestSignature {
+            alg: "ed25519".to_owned(),
+            value: format!("base64:{}", URL_SAFE_NO_PAD.encode(signature.as_ref())),
+        },
+    })
 }
 
 fn registry_manifest_payload(
@@ -511,11 +556,13 @@ fn registry_manifest_payload(
     version: &str,
     digest: &str,
     profile_digest: Option<&str>,
+    package_digest: Option<&str>,
 ) -> String {
     format!(
-        "{}\nskill_id={skill_id}\nversion={version}\ndigest={digest}\nprofile_digest={}\nsigner_id={TEST_MANIFEST_SIGNER_ID}\nkey_id={TEST_MANIFEST_KEY_ID}\n",
+        "{}\nskill_id={skill_id}\nversion={version}\ndigest={digest}\nprofile_digest={}\npackage_digest={}\nsigner_id={TEST_MANIFEST_SIGNER_ID}\nkey_id={TEST_MANIFEST_KEY_ID}\n",
         runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA,
-        profile_digest.unwrap_or("")
+        profile_digest.unwrap_or(""),
+        package_digest.unwrap_or("")
     )
 }
 

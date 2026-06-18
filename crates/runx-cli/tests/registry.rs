@@ -491,7 +491,9 @@ fn signed_manifest(
         .ok_or("missing version")?;
     let digest = version_record["digest"].as_str().ok_or("missing digest")?;
     let profile_digest = version_record["profile_digest"].as_str();
-    let payload = registry_manifest_payload(skill_id, version, digest, profile_digest);
+    let package_digest = version_record["package_digest"].as_str();
+    let payload =
+        registry_manifest_payload(skill_id, version, digest, profile_digest, package_digest);
     let signature = test_manifest_key_pair()?.sign(payload.as_bytes());
     Ok(json!({
         "schema": runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA,
@@ -499,6 +501,7 @@ fn signed_manifest(
         "version": version,
         "digest": digest,
         "profile_digest": profile_digest,
+        "package_digest": package_digest,
         "signer": {
             "id": TEST_MANIFEST_SIGNER_ID,
             "key_id": TEST_MANIFEST_KEY_ID,
@@ -518,11 +521,13 @@ fn registry_manifest_payload(
     version: &str,
     digest: &str,
     profile_digest: Option<&str>,
+    package_digest: Option<&str>,
 ) -> String {
     format!(
-        "{}\nskill_id={skill_id}\nversion={version}\ndigest={digest}\nprofile_digest={}\nsigner_id={TEST_MANIFEST_SIGNER_ID}\nkey_id={TEST_MANIFEST_KEY_ID}\n",
+        "{}\nskill_id={skill_id}\nversion={version}\ndigest={digest}\nprofile_digest={}\npackage_digest={}\nsigner_id={TEST_MANIFEST_SIGNER_ID}\nkey_id={TEST_MANIFEST_KEY_ID}\n",
         runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA,
-        profile_digest.unwrap_or("")
+        profile_digest.unwrap_or(""),
+        package_digest.unwrap_or("")
     )
 }
 

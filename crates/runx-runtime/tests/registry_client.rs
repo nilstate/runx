@@ -1,6 +1,9 @@
 use std::cell::RefCell;
 use std::path::Path;
 
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use ring::signature::KeyPair;
 use runx_contracts::sha256_prefixed;
 use runx_runtime::registry::{
     AcquireOptions, HttpMethod, HttpRequest, HttpResponse, InstallCandidate, InstallError,
@@ -15,11 +18,7 @@ use tempfile::tempdir;
 
 const TEST_MANIFEST_KEY_ID: &str = "runx-registry-test-key";
 const TEST_MANIFEST_SIGNER_ID: &str = "runx-registry-test-signer";
-const TEST_MANIFEST_PUBLIC_KEY_BASE64: &str = "K9U/1+6tuu9O5YfBO++MHrdr95NlPe1Okyg9XS7eWm0=";
-const TEST_MANIFEST_SIGNATURE: &str =
-    "base64:e-DzjjAZRv4inUscSd43cfT5287lIkvkM1YqgsFy1pZ9PkHEJCKp5Hm-zdlAY1D7ItVLNEw8HTM03lhgPk4hCg";
-const TEST_MANIFEST_WRONG_PROFILE_SIGNATURE: &str =
-    "base64:_GiJCwBm23gsmhjC4lpLkz-wTSA-GJsJ68d1wW5-8bXvD8Wi9i0Bns0pBAuXY7pU9D4bfZ8JNAWdHCdxNGISBw";
+const TEST_MANIFEST_SEED: [u8; 32] = [7; 32];
 
 #[derive(Default)]
 struct MockTransport {
@@ -367,7 +366,7 @@ fn profile_digest_mismatch_leaves_no_partial_install() -> Result<(), Box<dyn std
         "1.0.0",
         &skill_digest(),
         Some("sha256:wrong"),
-        TEST_MANIFEST_WRONG_PROFILE_SIGNATURE,
+        None,
     ));
     let options = InstallLocalSkillOptions {
         destination_root: temp.path().join("skills"),
@@ -450,7 +449,7 @@ fn install_candidate() -> Result<InstallCandidate, Box<dyn std::error::Error>> {
             "1.0.0",
             &skill_digest(),
             Some(&profile_digest()),
-            TEST_MANIFEST_SIGNATURE,
+            None,
         )),
         profile_digest: None,
         runner_names: vec!["default".to_owned()],
@@ -470,12 +469,18 @@ fn profile_digest() -> String {
 }
 
 fn trusted_manifest_keys() -> Result<Vec<TrustedRegistryManifestKey>, Box<dyn std::error::Error>> {
+    let public_key = manifest_public_key_base64()?;
     Ok(vec![TrustedRegistryManifestKey::from_base64(
         TEST_MANIFEST_KEY_ID.to_owned(),
-        TEST_MANIFEST_PUBLIC_KEY_BASE64,
+        &public_key,
         "acme".to_owned(),
         "test-registry".to_owned(),
     )?])
+}
+
+fn manifest_public_key_base64() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(base64::engine::general_purpose::STANDARD
+        .encode(test_manifest_key_pair()?.public_key().as_ref()))
 }
 
 fn signed_manifest(
@@ -483,23 +488,50 @@ fn signed_manifest(
     version: &str,
     digest: &str,
     profile_digest: Option<&str>,
-    signature: &str,
+    package_digest: Option<&str>,
 ) -> RegistrySignedManifest {
+    let payload =
+        registry_manifest_payload(skill_id, version, digest, profile_digest, package_digest);
+    let signature = test_manifest_key_pair()
+        .expect("static test manifest key should load")
+        .sign(payload.as_bytes());
     RegistrySignedManifest {
         schema: runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA.to_owned(),
         skill_id: skill_id.to_owned(),
         version: version.to_owned(),
         digest: digest.to_owned(),
         profile_digest: profile_digest.map(str::to_owned),
+        package_digest: package_digest.map(str::to_owned),
         signer: RegistryManifestSigner {
             id: TEST_MANIFEST_SIGNER_ID.to_owned(),
             key_id: TEST_MANIFEST_KEY_ID.to_owned(),
         },
         signature: RegistryManifestSignature {
             alg: "ed25519".to_owned(),
-            value: signature.to_owned(),
+            value: format!("base64:{}", URL_SAFE_NO_PAD.encode(signature.as_ref())),
         },
     }
+}
+
+fn registry_manifest_payload(
+    skill_id: &str,
+    version: &str,
+    digest: &str,
+    profile_digest: Option<&str>,
+    package_digest: Option<&str>,
+) -> String {
+    format!(
+        "{}\nskill_id={skill_id}\nversion={version}\ndigest={digest}\nprofile_digest={}\npackage_digest={}\nsigner_id={TEST_MANIFEST_SIGNER_ID}\nkey_id={TEST_MANIFEST_KEY_ID}\n",
+        runx_runtime::registry::REGISTRY_SIGNED_MANIFEST_SCHEMA,
+        profile_digest.unwrap_or(""),
+        package_digest.unwrap_or("")
+    )
+}
+
+fn test_manifest_key_pair() -> Result<ring::signature::Ed25519KeyPair, std::io::Error> {
+    ring::signature::Ed25519KeyPair::from_seed_unchecked(&TEST_MANIFEST_SEED).map_err(|error| {
+        std::io::Error::other(format!("static registry manifest seed rejected: {error:?}"))
+    })
 }
 
 fn search_success_fixture() -> Result<serde_json::Value, serde_json::Error> {

@@ -407,6 +407,7 @@ fn signed_manifest_field(
         version: string_field(manifest, "version", route, &field_path)?,
         digest: string_field(manifest, "digest", route, &field_path)?,
         profile_digest: optional_string_field(manifest, "profile_digest", route, &field_path)?,
+        package_digest: optional_string_field(manifest, "package_digest", route, &field_path)?,
         signer: RegistryManifestSigner {
             id: string_field(signer, "id", route, &signer_path)?,
             key_id: string_field(signer, "key_id", route, &signer_path)?,

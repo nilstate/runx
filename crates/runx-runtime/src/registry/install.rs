@@ -367,6 +367,10 @@ fn validate_candidate_profile_digest(
 
 fn validate_candidate_package_digest(candidate: &InstallCandidate) -> Result<(), InstallError> {
     let actual = registry_package_digest(&candidate.package_files);
+    let signed = candidate
+        .signed_manifest
+        .as_ref()
+        .and_then(|manifest| manifest.package_digest.as_ref());
     match (actual.as_ref(), candidate.package_digest.as_ref()) {
         (Some(actual), Some(expected)) if digest_matches(expected, actual) => Ok(()),
         (Some(actual), Some(expected)) => Err(InstallError::PackageDigestMismatch {
@@ -378,6 +382,25 @@ fn validate_candidate_package_digest(candidate: &InstallCandidate) -> Result<(),
             ref_name: candidate.r#ref.clone(),
             expected: "registry package digest".to_owned(),
             actual: actual.clone(),
+        }),
+        (None, Some(expected)) => Err(InstallError::PackageDigestMismatch {
+            ref_name: candidate.r#ref.clone(),
+            expected: expected.clone(),
+            actual: "none".to_owned(),
+        }),
+        (None, None) => Ok(()),
+    }?;
+    match (candidate.package_digest.as_ref(), signed) {
+        (Some(declared), Some(expected)) if digest_matches(expected, declared) => Ok(()),
+        (Some(declared), Some(expected)) => Err(InstallError::PackageDigestMismatch {
+            ref_name: candidate.r#ref.clone(),
+            expected: expected.clone(),
+            actual: declared.clone(),
+        }),
+        (Some(declared), None) => Err(InstallError::PackageDigestMismatch {
+            ref_name: candidate.r#ref.clone(),
+            expected: "signed manifest package digest".to_owned(),
+            actual: declared.clone(),
         }),
         (None, Some(expected)) => Err(InstallError::PackageDigestMismatch {
             ref_name: candidate.r#ref.clone(),

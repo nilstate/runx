@@ -59,6 +59,8 @@ pub struct RegistrySignedManifest {
     pub digest: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub profile_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_digest: Option<String>,
     pub signer: RegistryManifestSigner,
     pub signature: RegistryManifestSignature,
 }
