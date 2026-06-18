@@ -31,8 +31,36 @@ source:
     );
     assert_eq!(sandbox.network, Some(true));
     assert!(sandbox.writable_paths.is_empty());
-    assert_eq!(sandbox.require_enforcement, Some(true));
+    assert_eq!(sandbox.require_enforcement, None);
     assert!(sandbox.raw.contains_key("profile"));
+    Ok(())
+}
+
+#[test]
+fn explicit_sandbox_enforcement_stays_author_owned() -> Result<(), String> {
+    let raw = parse_skill_markdown(
+        r#"---
+name: enforced-cli
+source:
+  type: cli-tool
+  command: node
+  sandbox:
+    profile: readonly
+    require_enforcement: true
+---
+# Enforced CLI
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let skill = validate_skill(raw).map_err(|error| error.to_string())?;
+
+    let sandbox = skill
+        .source
+        .sandbox
+        .ok_or_else(|| "expected sandbox".to_owned())?;
+
+    assert_eq!(sandbox.require_enforcement, Some(true));
+    assert!(sandbox.raw.contains_key("require_enforcement"));
     Ok(())
 }
 

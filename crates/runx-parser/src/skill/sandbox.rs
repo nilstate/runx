@@ -43,7 +43,7 @@ pub(super) fn validate_sandbox(
         env_allowlist: normalized.env_allowlist,
         network: Some(normalized.network),
         writable_paths: normalized.writable_paths,
-        require_enforcement: Some(normalized.require_enforcement),
+        require_enforcement,
         // TS currently preserves approvedEscalation only inside raw.
         approved_escalation: None,
         raw: record.clone(),
