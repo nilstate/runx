@@ -34,6 +34,8 @@ use runx_runtime::{
 const MANIFEST_SCHEMA: &str = "runx.external_adapter.manifest.v1";
 const RESPONSE_SCHEMA: &str = "runx.external_adapter.response.v1";
 const PROTOCOL_VERSION: &str = "runx.external_adapter.v1";
+const SANDBOX_FALLBACK_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
+const SANDBOX_FALLBACK_VALUE: &str = "local";
 
 #[test]
 fn external_adapter_process_supervisor_invokes_contract_process()
@@ -86,7 +88,10 @@ fn external_adapter_process_supervisor_allows_network_sandbox_intent()
     let mut manifest = manifest_for_script(&script)?;
     manifest.sandbox_intent.profile = "network".into();
     manifest.sandbox_intent.network = true;
-    let invocation = invocation_with_env([("RUNX_RESPONSE_PATH", path_string(&response_path)?)]);
+    let invocation = invocation_with_env([
+        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
+        local_sandbox_fallback_env(),
+    ]);
 
     let outcome = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation)?;
 
@@ -489,7 +494,10 @@ fn external_adapter_manifest_path_resolves_below_skill_directory()
     let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation_with_source(
         temp.path(),
         skill_source_manifest_path("external-adapter.manifest.json")?,
-        [("RUNX_RESPONSE_PATH", path_string(&response_path)?)],
+        [
+            ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
+            local_sandbox_fallback_env(),
+        ],
         CredentialDelivery::none(),
     )?)?;
 
@@ -860,10 +868,14 @@ IFS= read -r _invocation
 fn local_runtime_options_with_sandbox_fallback() -> RuntimeOptions {
     let mut options = RuntimeOptions::local_development();
     options.env.insert(
-        "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY".to_owned(),
-        "local".to_owned(),
+        SANDBOX_FALLBACK_ENV.to_owned(),
+        SANDBOX_FALLBACK_VALUE.to_owned(),
     );
     options
+}
+
+fn local_sandbox_fallback_env() -> (&'static str, String) {
+    (SANDBOX_FALLBACK_ENV, SANDBOX_FALLBACK_VALUE.to_owned())
 }
 
 fn write_script(dir: &Path, body: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
