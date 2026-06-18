@@ -170,8 +170,11 @@ impl LocalOrchestrator {
             runner: Some(runner.to_owned()),
             seeded_answers: None,
         };
-        let output =
-            super::skill_front::execute_skill_run_with_overrides(request, &overrides, &self.effects)?;
+        let output = super::skill_front::execute_skill_run_with_overrides(
+            request,
+            &overrides,
+            &self.effects,
+        )?;
         Ok(skill_result(output))
     }
 

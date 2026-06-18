@@ -30,7 +30,10 @@ fn delivered_observation() -> CredentialDeliveryObservation {
         request_id: "test-credential-request".into(),
         response_id: None,
         status: CredentialDeliveryObservationStatus::Delivered,
-        harness_ref: Reference::with_uri(ReferenceType::Harness, "runx:harness:test-credential-binding"),
+        harness_ref: Reference::with_uri(
+            ReferenceType::Harness,
+            "runx:harness:test-credential-binding",
+        ),
         host_ref: None,
         profile_id: "github-api-key".into(),
         provider: "github".into(),

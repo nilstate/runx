@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 
 use runx_contracts::{JsonObject, JsonValue};
 use runx_parser::{
-    SkillRunnerDefinition, SkillRunnerManifest, parse_runner_manifest_yaml, validate_runner_manifest,
+    SkillRunnerDefinition, SkillRunnerManifest, parse_runner_manifest_yaml,
+    validate_runner_manifest,
 };
 #[cfg(feature = "cli-tool")]
 use sha2::{Digest, Sha256};
