@@ -16,7 +16,7 @@ pub const RUNX_REGISTRY_MANIFEST_TRUST_OWNER_ENV: &str = "RUNX_REGISTRY_MANIFEST
 
 const RUNX_REGISTRY_MANIFEST_KEY_ID: &str = "runx-registry-ed25519-v1";
 const RUNX_REGISTRY_MANIFEST_PUBLIC_KEY_BASE64: &str =
-    "vacyj4d6LKwcrUK66mdH/BWHRy9haaDRQOtJEH+vOaY=";
+    "u770bVZvqF7ULrnxWeTeLTSOsEwlbIkoOQJEAVy98No=";
 const REGISTRY_MANIFEST_SIGNATURE_BASE64_PREFIX: &str = "base64:";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
