@@ -1,0 +1,45 @@
+name: fetch-metadata-within-allowlist
+kind: skill
+target: ..
+runner: web-fetch
+inputs:
+  url: https://www.rfc-editor.org/rfc/rfc9110.html
+  allowlist:
+    - www.rfc-editor.org
+    - rfc-editor.org
+  extract: metadata
+  max_bytes: 2000000
+caller:
+  answers:
+    agent_task.web-fetch.output:
+      fetch_result:
+        decision: ready
+        final_url: https://www.rfc-editor.org/rfc/rfc9110.html
+        status: 200
+        content_digest: sha256:d431760660ea44e130f6e919dab216df2d0b3a490567a98089267523368fe1e5
+        extract_mode: metadata
+        extracted:
+          title: "RFC 9110: HTTP Semantics"
+          description: null
+          canonical: null
+          declared_language: en
+          content_type: text/html
+        provenance:
+          fetched_at: "2026-06-17T11:45:00Z"
+          redirects: []
+          bytes: 1187554
+          truncated: false
+        policy:
+          allowlist_decision: allowed
+          attempted_host: www.rfc-editor.org
+          allowlist_checked:
+            - www.rfc-editor.org
+            - rfc-editor.org
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: web-fetch
+  source_case: fetch-metadata-within-allowlist
+  source: skills-fixture
