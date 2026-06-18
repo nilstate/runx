@@ -384,7 +384,7 @@ fn input_env_name_collisions_fail_closed() -> Result<(), Box<dyn std::error::Err
         ]
         .into_iter()
         .collect(),
-        &BTreeMap::new(),
+        &env_with_local_sandbox_fallback(),
     ) else {
         return Err("colliding input env names must fail closed".into());
     };
@@ -647,7 +647,6 @@ fn invoke_node(
     })?)
 }
 
-#[cfg(feature = "cli-tool")]
 fn env_with_local_sandbox_fallback() -> BTreeMap<String, String> {
     let mut env = std::env::vars().collect::<BTreeMap<_, _>>();
     env.insert(
