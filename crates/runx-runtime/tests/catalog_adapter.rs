@@ -121,6 +121,58 @@ fn catalog_adapter_prefers_local_manifest_before_fixture_catalog()
 }
 
 #[test]
+fn catalog_adapter_invokes_local_tool_with_declared_inputs_only()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    write_catalog_tool(
+        &temp.path().join("tools/test/exact-inputs"),
+        r#"{
+  "schema": "runx.tool.manifest.v1",
+  "name": "test.exact-inputs",
+  "source": {
+    "type": "cli-tool",
+    "command": "/bin/sh",
+    "args": ["./run.sh"],
+    "input_mode": "stdin"
+  },
+  "inputs": {
+    "message": { "type": "string", "required": true }
+  },
+  "scopes": ["test.exact-inputs"]
+}
+"#,
+        r#"raw="$(cat)"
+case "$raw" in
+  *persona*|*thread*) printf '%s\n' '{"error":"undeclared input reached tool"}'; exit 7 ;;
+  *'"message":"hello"'*) printf '%s\n' '{"ok":true}' ;;
+  *) printf '%s\n' '{"error":"declared input missing"}'; exit 8 ;;
+esac
+"#,
+    )?;
+    let mut inputs = JsonObject::new();
+    inputs.insert("message".to_owned(), JsonValue::String("hello".to_owned()));
+    inputs.insert(
+        "persona".to_owned(),
+        JsonValue::String("prompt-only".to_owned()),
+    );
+    inputs.insert(
+        "thread".to_owned(),
+        JsonValue::String("context-only".to_owned()),
+    );
+
+    let output = CatalogAdapter::default().invoke(invocation_in_directory(
+        Some("test.exact-inputs"),
+        inputs,
+        temp.path().to_path_buf(),
+        tool_root_env(temp.path()),
+    ))?;
+
+    assert_eq!(output.status, InvocationStatus::Success);
+    assert_eq!(output.stdout.trim(), r#"{"ok":true}"#);
+    Ok(())
+}
+
+#[test]
 fn catalog_adapter_wraps_local_tool_outputs_for_graph_context_paths()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;

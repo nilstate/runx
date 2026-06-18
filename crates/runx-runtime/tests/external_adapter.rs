@@ -27,8 +27,8 @@ use runx_runtime::adapters::external_adapter::{
 };
 use runx_runtime::{
     CredentialDelivery, CredentialDeliveryError, CredentialDeliveryProfile, Host,
-    InMemoryMaterialResolver, ResolvedCredentialMaterial, Runtime, RuntimeError, RuntimeOptions,
-    SkillAdapter, SkillInvocation,
+    InMemoryMaterialResolver, InvocationStatus, ResolvedCredentialMaterial, Runtime, RuntimeError,
+    RuntimeOptions, SkillAdapter, SkillInvocation,
 };
 
 const MANIFEST_SCHEMA: &str = "runx.external_adapter.manifest.v1";
@@ -755,6 +755,65 @@ fn external_adapter_skill_adapter_preserves_supervisor_fail_closed_response_mism
         RuntimeError::SkillFailed { message, .. }
             if message.contains("adapter_id") && message.contains("adapter.other")
     ));
+    Ok(())
+}
+
+#[test]
+fn external_adapter_skill_adapter_filters_ambient_env_from_invocation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let capture_path = temp.path().join("captured-invocation.json");
+    let response_path = temp.path().join("response.json");
+    let mut response = completed_response();
+    response.invocation_id = "external_adapter.external-smoke.invoke".to_owned();
+    fs::write(&response_path, serde_json::to_vec(&response)?)?;
+    let script = write_script(
+        temp.path(),
+        r#"set -eu
+IFS= read -r invocation
+printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
+/bin/cat "$RUNX_RESPONSE_PATH"
+"#,
+    )?;
+    let mut manifest = manifest_for_script(&script)?;
+    manifest.sandbox_intent.profile = "workspace-write".into();
+    manifest.sandbox_intent.writable_paths = Some(vec!["captured-invocation.json".into()]);
+
+    let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation(
+        temp.path(),
+        Some(manifest),
+        [
+            ("RUNX_CWD", path_string(temp.path())?),
+            (
+                "RUNX_CAPTURE_INVOCATION",
+                path_string(capture_path.as_path())?,
+            ),
+            ("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?),
+            ("RUNX_API_TOKEN", "do-not-forward-runx-token".to_owned()),
+            ("SECRET_TOKEN", "do-not-forward".to_owned()),
+        ],
+    )?)?;
+
+    assert_eq!(output.status, InvocationStatus::Success);
+    let captured: ExternalAdapterInvocation =
+        serde_json::from_slice(&fs::read(capture_path.as_path())?)?;
+    let scoped_env = captured
+        .env
+        .as_ref()
+        .ok_or("expected RUNX control env in external adapter invocation")?;
+    assert!(scoped_env.contains_key("RUNX_RESPONSE_PATH"));
+    assert!(
+        !scoped_env.contains_key("SECRET_TOKEN"),
+        "ambient shell secrets must not be forwarded to external adapters"
+    );
+    assert!(
+        !scoped_env.contains_key("RUNX_API_TOKEN"),
+        "secret-like RUNX env must not be forwarded to external adapters"
+    );
+    assert!(
+        !serde_json::to_string(&captured)?.contains("do-not-forward"),
+        "ambient secret value must not be serialized into adapter stdin"
+    );
     Ok(())
 }
 

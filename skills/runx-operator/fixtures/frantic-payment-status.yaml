@@ -1,0 +1,33 @@
+kind: skill
+target: ..
+runner: operate
+objective: Check Frantic payment readiness and tell me what to do next.
+tenant_ref: tenant:frantic
+dashboard_snapshot:
+  health:
+    api: ok
+  money:
+    x402_targets:
+      - network: base
+        recommended: true
+      - network: arbitrum
+      - network: polygon
+    unfunded_approved_postings: 0
+    funded_open_postings: 3
+  communications:
+    pending_live_sends: 0
+  receipts:
+    latest_funding_receipt: hfr_a1a4b34d30076835ce88807d391951ac
+receipt_summary:
+  receipts:
+    - id: hfr_a1a4b34d30076835ce88807d391951ac
+      status: verified
+      rail: x402
+      network: base
+provider_status:
+  runx_api: ok
+  stripe_connect_webhook: needs_review
+approval_context:
+  approvals: []
+operator_policy: >
+  x402 is primary. Stripe is secondary until webhook readiness is re-verified.

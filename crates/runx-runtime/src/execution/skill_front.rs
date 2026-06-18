@@ -16,9 +16,9 @@ use crate::adapter::{InvocationStatus, SkillInvocation, SkillOutput};
 use crate::agent_invocation::{AgentActInvocationSourceType, agent_act_resolution_request};
 use crate::effects::RuntimeEffectRegistry;
 use crate::execution::orchestrator::SkillRunRequest;
+use crate::execution::output_projection::project_step_output;
 use crate::receipts::signing::strip_receipt_signing_env;
 use crate::receipts::store::ReceiptStoreError;
-use crate::execution::output_projection::project_step_output;
 use crate::receipts::{
     DomainActFrame, RuntimeReceiptSignatureConfig, StepSeal, StepSealClosure, seal_step,
 };
@@ -96,6 +96,7 @@ pub(crate) fn execute_skill_run_with_overrides(
     let skill_dir = resolve_skill_dir(&request.skill_path)?;
     let manifest = load_runner_manifest(&skill_dir)?;
     let runner = selected_runner(&manifest, overrides.runner.as_deref())?;
+    let skill_env = workspace.skill_env_for_skill(&skill_dir);
     if runner.source.source_type == runx_parser::SourceKind::CliTool
         && request.local_credential.is_some()
     {
@@ -107,7 +108,7 @@ pub(crate) fn execute_skill_run_with_overrides(
         &skill_dir,
         runner,
         &request.inputs,
-        workspace.env(),
+        &skill_env,
         request.local_credential.as_ref(),
     )?;
     if runner.source.source_type == runx_parser::SourceKind::CliTool {
@@ -336,10 +337,7 @@ fn build_domain_act_frame(
 
     // Resolve a trusted input value (a uri) named by the act mapping into a ref.
     let input_ref = |map_key: Option<&str>, reference_type: ReferenceType| -> Option<Reference> {
-        let uri = inputs
-            .get(map_key?)
-            .and_then(JsonValue::as_str)?
-            .trim();
+        let uri = inputs.get(map_key?).and_then(JsonValue::as_str)?.trim();
         (!uri.is_empty()).then(|| Reference::with_uri(reference_type, uri.to_owned()))
     };
 
@@ -401,10 +399,11 @@ fn map_decision_choice(value: &str) -> Option<runx_contracts::DecisionChoice> {
     use runx_contracts::DecisionChoice;
     match value.trim().to_ascii_lowercase().as_str() {
         "decline" | "reject" | "rejected" | "deny" | "denied" => Some(DecisionChoice::Decline),
-        "close" | "accept" | "accepted" | "approve" | "approved" | "paid" | "settle" | "settled" => {
-            Some(DecisionChoice::Close)
+        "close" | "accept" | "accepted" | "approve" | "approved" | "paid" | "settle"
+        | "settled" => Some(DecisionChoice::Close),
+        "continue" | "claim" | "claimed" | "deliver" | "delivered" => {
+            Some(DecisionChoice::Continue)
         }
-        "continue" | "claim" | "claimed" | "deliver" | "delivered" => Some(DecisionChoice::Continue),
         "defer" | "deferred" => Some(DecisionChoice::Defer),
         "escalate" | "escalated" => Some(DecisionChoice::Escalate),
         "monitor" | "monitored" => Some(DecisionChoice::Monitor),

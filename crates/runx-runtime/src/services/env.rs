@@ -25,7 +25,7 @@ impl WorkspaceEnv {
         &self.cwd
     }
 
-    pub(crate) fn graph_env_for_skill(&self, skill_dir: &Path) -> BTreeMap<String, String> {
+    pub(crate) fn skill_env_for_skill(&self, skill_dir: &Path) -> BTreeMap<String, String> {
         let mut env = self.env.clone();
         for key in PROCESS_ENV_KEYS {
             if !env.contains_key(key)

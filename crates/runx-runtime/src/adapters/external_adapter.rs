@@ -563,11 +563,22 @@ fn invocation_cwd(request: &SkillInvocation) -> String {
 }
 
 fn invocation_env(env: &BTreeMap<String, String>) -> Option<JsonObject> {
-    (!env.is_empty()).then(|| {
-        env.iter()
-            .map(|(key, value)| (key.clone(), JsonValue::String(value.clone())))
-            .collect()
-    })
+    let scoped_env = env
+        .iter()
+        .filter(|(key, _value)| is_external_adapter_control_env(key))
+        .map(|(key, value)| (key.clone(), JsonValue::String(value.clone())))
+        .collect::<JsonObject>();
+    (!scoped_env.is_empty()).then_some(scoped_env)
+}
+
+fn is_external_adapter_control_env(key: &str) -> bool {
+    if !key.starts_with("RUNX_") {
+        return false;
+    }
+    let upper = key.to_ascii_uppercase();
+    !["SECRET", "TOKEN", "KEY", "PASSWORD", "CREDENTIAL"]
+        .iter()
+        .any(|marker| upper.contains(marker))
 }
 
 fn skill_output_from_outcome(

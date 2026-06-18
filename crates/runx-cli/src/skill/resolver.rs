@@ -266,7 +266,7 @@ fn materialize_trusted_registry_skill(
         })?;
     restore_runner_manifest_from_profile_state(&runnable_path)?;
     if cache_root == CacheRoot::Official {
-        sync_packaged_official_skill_assets(&runnable_path, skill_id, cwd, env)?;
+        sync_packaged_official_skill_assets(&runnable_path, skill_id)?;
     }
     Ok(ResolvedSkillRef {
         kind,
@@ -493,10 +493,8 @@ fn restore_runner_manifest_from_profile_state(skill_dir: &Path) -> Result<(), St
 fn sync_packaged_official_skill_assets(
     target_skill_dir: &Path,
     skill_id: &str,
-    cwd: &Path,
-    env: &BTreeMap<String, String>,
 ) -> Result<(), String> {
-    let Some(packaged_skill_dir) = packaged_official_skill_dir(skill_id, cwd, env)? else {
+    let Some(packaged_skill_dir) = packaged_official_skill_dir(skill_id)? else {
         return Ok(());
     };
     for entry in fs::read_dir(&packaged_skill_dir).map_err(|error| {
@@ -554,28 +552,16 @@ fn sync_packaged_official_skill_assets(
     Ok(())
 }
 
-fn packaged_official_skill_dir(
-    skill_id: &str,
-    cwd: &Path,
-    env: &BTreeMap<String, String>,
-) -> Result<Option<PathBuf>, String> {
+fn packaged_official_skill_dir(skill_id: &str) -> Result<Option<PathBuf>, String> {
     let (_owner, name) = split_skill_id(skill_id).map_err(|error| error.to_string())?;
-    Ok(packaged_official_skill_roots(cwd, env)
+    Ok(packaged_official_skill_roots()
         .into_iter()
         .map(|root| root.join(name))
         .find(|candidate| candidate.exists()))
 }
 
-fn packaged_official_skill_roots(cwd: &Path, env: &BTreeMap<String, String>) -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    if let Some(root) = env.get("RUNX_PACKAGED_SKILLS_DIR") {
-        roots.push(runx_runtime::resolve_path_from_user_input(
-            root, env, cwd, false,
-        ));
-    }
-    roots.push(registry::workspace_base(env, cwd).join("skills"));
-    roots.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../skills"));
-    roots
+fn packaged_official_skill_roots() -> Vec<PathBuf> {
+    vec![PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../skills")]
 }
 
 fn copy_dir_all(source: &Path, target: &Path) -> Result<(), String> {
@@ -735,6 +721,21 @@ mod tests {
         assert_ne!(without_profile, with_profile);
         assert!(without_profile.starts_with("sha256:"));
         assert!(with_profile.starts_with("sha256:"));
+    }
+
+    #[test]
+    fn official_packaged_skill_assets_do_not_use_workspace_shadow_roots() {
+        let roots = packaged_official_skill_roots();
+        let untrusted_project = Path::new("/tmp/untrusted-project");
+
+        assert!(
+            !roots.contains(&PathBuf::from("/tmp/untrusted-project/skills")),
+            "official skill companion assets must not be copied from the caller workspace"
+        );
+        assert!(
+            !roots.iter().any(|root| root.starts_with(untrusted_project)),
+            "official skill companion assets must not be copied from caller-controlled roots"
+        );
     }
 
     #[test]

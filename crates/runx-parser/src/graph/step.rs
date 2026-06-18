@@ -26,6 +26,7 @@ pub fn validate_step(
 
     let id = validate_step_id(raw_step, field, previous_step_ids)?;
     let target = validate_step_target(raw_step, field)?;
+    validate_step_tool_ref(&target.tool, field)?;
     let runner = validate_runner(raw_step, field, &target)?;
     let context = optional_string_object(raw_step.get("context"), &format!("{field}.context"))?
         .unwrap_or_default();
@@ -116,6 +117,20 @@ fn validate_allowed_tools(
         }
     }
     Ok(Some(allowed_tools))
+}
+
+fn validate_step_tool_ref(tool_ref: &Option<String>, field: &str) -> Result<(), ValidationError> {
+    let Some(tool_ref) = tool_ref else {
+        return Ok(());
+    };
+    let admission = admit_agent_tool_ref(tool_ref);
+    if !admission.allowed {
+        return Err(validation_error(format!(
+            "{field}.tool {tool_ref:?} is not an admissible catalog tool ref: {}.",
+            admission.reason
+        )));
+    }
+    Ok(())
 }
 
 fn validate_context_skills(

@@ -98,6 +98,25 @@ fn receipt_id_must_match_file_name() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn receipt_id_must_match_content_address() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let mut receipt = success_receipt()?;
+    receipt.id = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        .to_owned()
+        .into();
+    write_json(temp.path(), &receipt_file_name(&receipt.id), &receipt)?;
+    let store = LocalReceiptStore::new(temp.path());
+
+    let result = store.read_exact(&receipt.id);
+
+    assert!(matches!(
+        result,
+        Err(ReceiptStoreError::ReceiptProofInvalid { .. })
+    ));
+    Ok(())
+}
+
+#[test]
 fn exact_read_does_not_use_partial_or_suffix_lookup() -> Result<(), Box<dyn std::error::Error>> {
     let temp = TestDir::new()?;
     write_json(
@@ -164,6 +183,39 @@ fn exact_read_list_and_rebuild_index_succeed() -> Result<(), Box<dyn std::error:
     );
     assert_eq!(loaded_index.entries, index.entries);
     assert!(temp.path().join("index.json").exists());
+    Ok(())
+}
+
+#[test]
+fn list_and_index_ignore_non_receipt_json_files() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let receipt = success_receipt()?;
+    write_json(temp.path(), &receipt_file_name(&receipt.id), &receipt)?;
+    fs::write(temp.path().join("sealed.json"), "")?;
+    write_json(
+        temp.path(),
+        "answers.json",
+        &json!({
+            "answers": {}
+        }),
+    )?;
+    write_json(
+        temp.path(),
+        "sha256:not-a-digest.json",
+        &json!({
+            "schema": "runx.receipt.v1",
+            "id": "sha256:not-a-digest"
+        }),
+    )?;
+    let store = LocalReceiptStore::new(temp.path());
+
+    let listed = store.list()?;
+    let index = store.rebuild_index()?;
+
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, receipt.id);
+    assert_eq!(index.entries.len(), 1);
+    assert_eq!(index.entries[0].receipt_id, receipt.id);
     Ok(())
 }
 

@@ -358,6 +358,11 @@ fn collect_publish_package_files_from_dir(
             ))
         })?;
         let relative = relative_path_for_publish(relative)?;
+        if should_reject_remote_publish_file(&relative) {
+            return Err(internal_error(format!(
+                "remote publish package file {relative} looks like a secret or local credential; remove it before publishing"
+            )));
+        }
         let content = fs::read_to_string(&canonical).map_err(|error| {
             internal_error(format!(
                 "remote publish package file {} must be UTF-8 text: {error}",
@@ -373,7 +378,32 @@ fn collect_publish_package_files_from_dir(
 }
 
 fn should_skip_remote_publish_dir(name: &str) -> bool {
-    matches!(name, ".git" | ".runx" | "node_modules" | "target")
+    matches!(name, ".git" | ".runx" | ".ssh" | "node_modules" | "target")
+}
+
+fn should_reject_remote_publish_file(relative: &str) -> bool {
+    let Some(file_name) = relative.rsplit('/').next() else {
+        return true;
+    };
+    let lower = file_name.to_ascii_lowercase();
+    lower == ".env"
+        || lower.starts_with(".env.")
+        || matches!(
+            lower.as_str(),
+            ".npmrc"
+                | ".pypirc"
+                | ".netrc"
+                | "credentials.json"
+                | "credential.json"
+                | "secrets.json"
+                | "secret.json"
+                | "id_rsa"
+                | "id_ed25519"
+        )
+        || lower.ends_with(".pem")
+        || lower.ends_with(".key")
+        || lower.ends_with(".p12")
+        || lower.ends_with(".pfx")
 }
 
 fn relative_path_for_publish(path: &Path) -> Result<String, RegistryCliError> {
@@ -443,5 +473,39 @@ fn publish_harness_report(
         case_names: report.case_names,
         receipt_ids: report.receipt_ids,
         graph_case_count: report.graph_case_count,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_reject_remote_publish_file;
+
+    #[test]
+    fn remote_publish_rejects_common_secret_file_names() {
+        for path in [
+            ".env",
+            ".env.local",
+            ".npmrc",
+            "credentials.json",
+            "nested/secrets.json",
+            "private.pem",
+            "tls/client.key",
+            "id_ed25519",
+        ] {
+            assert!(
+                should_reject_remote_publish_file(path),
+                "{path} should not be publishable as a skill package sidecar"
+            );
+        }
+    }
+
+    #[test]
+    fn remote_publish_allows_normal_skill_sidecars() {
+        for path in ["run.mjs", "graph/quote/X.yaml", "fixtures/happy-path.yaml"] {
+            assert!(
+                !should_reject_remote_publish_file(path),
+                "{path} should remain publishable as a skill package sidecar"
+            );
+        }
     }
 }

@@ -252,6 +252,48 @@ fn native_skill_run_pauses_with_agent_act_request() -> Result<(), Box<dyn std::e
 }
 
 #[test]
+fn native_agent_task_skill_run_infers_bundled_tool_roots() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = tempdir()?;
+    let skill_dir = write_agent_task_skill(temp.path())?;
+    let bundled_tools = skill_dir.join("tools");
+    fs::create_dir_all(&bundled_tools)?;
+
+    let result = run_skill(SkillRunRequest {
+        skill_path: skill_dir,
+        receipt_dir: None,
+        run_id: None,
+        answers_path: None,
+        inputs: BTreeMap::new(),
+        env: BTreeMap::new(),
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+
+    let output = object(&result.output, "skill run result")?;
+    assert_eq!(string_field(output, "status"), Some("needs_agent"));
+    let request = object(
+        array_field(output, "requests")
+            .and_then(|requests| requests.first())
+            .ok_or("missing request")?,
+        "request",
+    )?;
+    let invocation = object_field(request, "invocation").ok_or("missing invocation")?;
+    let envelope = object_field(invocation, "envelope").ok_or("missing envelope")?;
+    let execution_location =
+        object_field(envelope, "execution_location").ok_or("missing execution_location")?;
+    let tool_roots = array_field(execution_location, "tool_roots").ok_or("missing tool_roots")?;
+    assert_eq!(
+        tool_roots.first(),
+        Some(&JsonValue::String(
+            bundled_tools.to_string_lossy().into_owned()
+        ))
+    );
+
+    Ok(())
+}
+
+#[test]
 fn native_skill_run_resumes_and_seals_receipt() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let skill_dir = write_agent_task_skill(temp.path())?;
@@ -1332,6 +1374,79 @@ fn native_graph_skill_run_resolves_agent_task_named_emit_context()
 
 #[cfg(feature = "catalog")]
 #[test]
+fn native_graph_skill_resume_preserves_initial_inputs_for_later_tool_steps()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let skill_dir = write_graph_agent_then_input_tool_skill(temp.path())?;
+    write_echo_tool(temp.path())?;
+    let receipt_dir = temp.path().join("receipts");
+    let tool_root = temp.path().join("tools");
+    let answers_path = temp.path().join("answers.json");
+    fs::write(
+        &answers_path,
+        serde_json::json!({
+            "answers": {
+                "agent_task.graph-author.output": {
+                    "result": {
+                        "accepted": true
+                    }
+                }
+            }
+        })
+        .to_string(),
+    )?;
+    let env = [(
+        "RUNX_TOOL_ROOTS".to_owned(),
+        tool_root.to_string_lossy().into_owned(),
+    )]
+    .into_iter()
+    .collect::<BTreeMap<_, _>>();
+    let initial_inputs = [(
+        "thread_title".to_owned(),
+        JsonValue::String("Graph tool bug".to_owned()),
+    )]
+    .into_iter()
+    .collect::<BTreeMap<_, _>>();
+
+    let pending = run_skill(SkillRunRequest {
+        skill_path: skill_dir.clone(),
+        receipt_dir: Some(receipt_dir.clone()),
+        run_id: None,
+        answers_path: None,
+        inputs: initial_inputs,
+        env: env.clone(),
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+    let pending_output = object(&pending.output, "pending graph input resume result")?;
+    assert_eq!(string_field(pending_output, "status"), Some("needs_agent"));
+    let run_id = string_field(pending_output, "run_id")
+        .ok_or("pending graph input resume result missing run_id")?
+        .to_owned();
+
+    let result = run_skill(SkillRunRequest {
+        skill_path: skill_dir,
+        receipt_dir: Some(receipt_dir),
+        run_id: Some(run_id),
+        answers_path: Some(answers_path),
+        inputs: BTreeMap::new(),
+        env,
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+
+    let output = object(&result.output, "graph input resume result")?;
+    assert_eq!(string_field(output, "status"), Some("sealed"));
+    let payload = object_field(output, "payload").ok_or("missing payload")?;
+    let echo_claim = step_claim(payload, "echo").ok_or("missing echo skill claim")?;
+    let echo = object_field(echo_claim, "echo").ok_or("missing echo")?;
+    assert_eq!(string_field(echo, "message"), Some("Graph tool bug"));
+
+    Ok(())
+}
+
+#[cfg(feature = "catalog")]
+#[test]
 fn native_graph_skill_run_resolves_agent_task_output_envelope_named_emit_context()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
@@ -2308,6 +2423,43 @@ runners:
           tool: test.echo
           context:
             message: author.fix_bundle.data.message
+"#,
+    )?;
+    Ok(skill_dir)
+}
+
+#[cfg(feature = "catalog")]
+fn write_graph_agent_then_input_tool_skill(
+    root: &Path,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = root.join("graph-agent-then-input-tool");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: graph-agent-then-input-tool\n---\n# Graph Agent Then Input Tool\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"
+skill: graph-agent-then-input-tool
+runners:
+  graph:
+    default: true
+    type: graph
+    graph:
+      name: graph-agent-then-input-tool
+      steps:
+        - id: author
+          run:
+            type: agent-task
+            agent: builder
+            task: graph-author
+            outputs:
+              result: object
+        - id: echo
+          tool: test.echo
+          inputs:
+            message: $input.thread_title
 "#,
     )?;
     Ok(skill_dir)

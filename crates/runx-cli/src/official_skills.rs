@@ -241,6 +241,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "1a1441365a20b74442998656478fc3d530f2d09f25f811d970b403a8a7920df4",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/runx-operator",
+        version: "sha-0686fd0cf9da",
+        digest: "35a949304b799c315657aa96a65028837e9f51a0a530f01b4d770897307a53f1",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/sandbox-harden",
         version: "sha-e5f346fbac0f",
         digest: "15676f191d6878edf96006b006ad78dda6c53f5128f7e3e84fa346941a635fdc",

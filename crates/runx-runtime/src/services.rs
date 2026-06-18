@@ -21,16 +21,34 @@ mod tests {
     use crate::services::{ReceiptServices, WorkspaceEnv};
 
     #[test]
-    fn graph_env_injects_workspace_and_project_paths() {
+    fn skill_env_injects_workspace_and_project_paths() {
         let workspace = WorkspaceEnv::new(BTreeMap::new(), PathBuf::from("/tmp/runx-work"));
 
-        let env = workspace.graph_env_for_skill(Path::new("/tmp/runx-work/skills/demo"));
+        let env = workspace.skill_env_for_skill(Path::new("/tmp/runx-work/skills/demo"));
 
         assert_eq!(env.get(RUNX_CWD_ENV), Some(&"/tmp/runx-work".to_owned()));
         assert_eq!(
             env.get(RUNX_PROJECT_DIR_ENV),
             Some(&"/tmp/runx-work".to_owned())
         );
+    }
+
+    #[test]
+    fn skill_env_infers_bundled_skill_tools() -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let skill_dir = temp.path().join("skills/demo");
+        let tools_dir = skill_dir.join("tools");
+        std::fs::create_dir_all(&tools_dir)?;
+        let workspace = WorkspaceEnv::new(BTreeMap::new(), temp.path().to_path_buf());
+
+        let env = workspace.skill_env_for_skill(&skill_dir);
+
+        let value = env
+            .get(crate::services::tool_roots::RUNX_TOOL_ROOTS_ENV)
+            .ok_or("RUNX_TOOL_ROOTS was not inferred")?;
+        let paths = std::env::split_paths(value).collect::<Vec<_>>();
+        assert_eq!(paths.first(), Some(&tools_dir));
+        Ok(())
     }
 
     #[test]

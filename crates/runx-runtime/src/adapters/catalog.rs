@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use runx_contracts::{JsonObject, JsonValue, sha256_hex};
-use runx_parser::{SkillArtifactContract, SkillSource};
+use runx_parser::{SkillArtifactContract, SkillInput, SkillSource};
 
 use crate::RuntimeError;
 use crate::adapter::{
@@ -144,6 +144,7 @@ pub(crate) fn resolve_and_invoke_local_tool(
     };
 
     let artifacts = resolution.tool.artifacts.clone();
+    let declared_inputs = resolution.tool.inputs.clone();
     let tool_name = resolution.tool.name.clone();
     let source_type = resolution.tool.source.source_type;
     let mut source = resolution.tool.source;
@@ -154,8 +155,8 @@ pub(crate) fn resolve_and_invoke_local_tool(
     let invocation = SkillInvocation {
         skill_name: tool_name,
         source,
-        inputs: request.inputs.clone(),
-        resolved_inputs: request.resolved_inputs.clone(),
+        inputs: declared_tool_inputs(request.inputs, &declared_inputs),
+        resolved_inputs: declared_tool_inputs(request.resolved_inputs, &declared_inputs),
         current_context: Vec::new(),
         skill_directory: tool_directory,
         env: request.env.clone(),
@@ -179,6 +180,16 @@ pub(crate) fn resolve_and_invoke_local_tool(
     };
     apply_local_tool_artifact_wrappers(&mut output, artifacts.as_ref())?;
     Ok(Some(output))
+}
+
+fn declared_tool_inputs(
+    inputs: &JsonObject,
+    declared: &BTreeMap<String, SkillInput>,
+) -> JsonObject {
+    declared
+        .keys()
+        .filter_map(|key| inputs.get(key).cloned().map(|value| (key.clone(), value)))
+        .collect()
 }
 
 fn apply_local_tool_artifact_wrappers(

@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use runx_contracts::{RECEIPT_SCHEMA, Receipt};
-use runx_receipts::{ReceiptProofContextProvider, verify_receipt_proof};
+use runx_receipts::{
+    ReceiptProofContextProvider, content_addressed_receipt_id, verify_receipt_proof,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -502,7 +504,14 @@ fn is_receipt_json_path(path: &Path) -> bool {
         && path
             .file_stem()
             .and_then(OsStr::to_str)
-            .is_some_and(|stem| receipt_file_name(stem).is_ok())
+            .is_some_and(is_receipt_id_stem)
+}
+
+fn is_receipt_id_stem(stem: &str) -> bool {
+    let Some(digest) = stem.strip_prefix("sha256:") else {
+        return false;
+    };
+    digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 fn read_receipt_file(
@@ -636,6 +645,23 @@ fn verify_stored_receipt_proof(
     receipt: &Receipt,
     signature_policy: RuntimeReceiptSignaturePolicy<'_>,
 ) -> Result<(), ReceiptStoreError> {
+    let expected_id = content_addressed_receipt_id(receipt).map_err(|error| {
+        ReceiptStoreError::ReceiptProofInvalid {
+            path: path.to_path_buf(),
+            receipt_id: receipt.id.to_string(),
+            message: format!("receipt content address could not be recomputed: {error}"),
+        }
+    })?;
+    if receipt.id != expected_id {
+        return Err(ReceiptStoreError::ReceiptProofInvalid {
+            path: path.to_path_buf(),
+            receipt_id: receipt.id.to_string(),
+            message: format!(
+                "receipt id must match content address: expected {expected_id}, got {}",
+                receipt.id
+            ),
+        });
+    }
     let proof_contexts = RuntimeReceiptProofContextProvider::new(signature_policy);
     let context = proof_contexts.proof_context(receipt);
     let verification = verify_receipt_proof(receipt, &context);

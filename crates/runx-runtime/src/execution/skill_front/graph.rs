@@ -12,7 +12,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::RuntimeError;
 #[cfg(any(
+    feature = "catalog",
     feature = "cli-tool",
+    feature = "external-adapter",
     feature = "http",
     feature = "thread-outbox-provider"
 ))]
@@ -52,15 +54,14 @@ pub(super) fn execute_graph_skill_run(
         .graph
         .clone()
         .ok_or_else(|| invalid("graph runner is missing source.graph"))?;
-    let graph_inputs = request
+    let request_graph_inputs = request
         .inputs
         .iter()
         .map(|(key, value)| (key.clone(), value.clone()))
         .collect::<JsonObject>();
-    let graph = materialize_graph_inputs(graph, &graph_inputs);
     let run_id = graph_run_id(request, runner)?;
     let skill_dir = resolve_skill_dir(&request.skill_path)?;
-    let mut env = workspace.graph_env_for_skill(&skill_dir);
+    let mut env = workspace.skill_env_for_skill(&skill_dir);
     env.insert(RUNX_RUN_ID_ENV.to_owned(), run_id.clone());
     let credential_delivery =
         credential_delivery_from_invocation(workspace.env(), request.local_credential.as_ref())?;
@@ -91,9 +92,31 @@ pub(super) fn execute_graph_skill_run(
             None => JsonObject::new(),
         },
     };
+    let mut resumed_state = if resume {
+        Some(read_graph_state(
+            request,
+            workspace,
+            receipts,
+            &run_id,
+            &runner.name,
+        )?)
+    } else {
+        None
+    };
+    let graph_inputs = resumed_state
+        .as_ref()
+        .map(|state| {
+            if state.graph_inputs.is_empty() {
+                request_graph_inputs.clone()
+            } else {
+                state.graph_inputs.clone()
+            }
+        })
+        .unwrap_or_else(|| request_graph_inputs.clone());
+    let graph = materialize_graph_inputs(graph, &graph_inputs);
     let mut host = SkillRunGraphHost::with_inline(answers, inline_resolver);
-    let mut checkpoint = if resume {
-        read_graph_state(request, workspace, receipts, &run_id, &runner.name)?.checkpoint
+    let mut checkpoint = if let Some(state) = resumed_state.take() {
+        state.checkpoint
     } else {
         runtime.run_graph_until_steps_with_host(&skill_dir, &graph, 0, &mut host)?
     };
@@ -146,6 +169,7 @@ pub(super) fn execute_graph_skill_run(
                         schema: GRAPH_SKILL_STATE_SCHEMA.to_owned(),
                         run_id: run_id.clone(),
                         runner_name: runner.name.clone(),
+                        graph_inputs: graph_inputs.clone(),
                         checkpoint: next_checkpoint.clone(),
                     },
                 )?;
@@ -161,6 +185,7 @@ pub(super) fn execute_graph_skill_run(
                         schema: GRAPH_SKILL_STATE_SCHEMA.to_owned(),
                         run_id: run_id.clone(),
                         runner_name: runner.name.clone(),
+                        graph_inputs: graph_inputs.clone(),
                         checkpoint: previous_checkpoint,
                     },
                 )?;
@@ -259,6 +284,8 @@ pub(super) struct GraphSkillRunState {
     pub(super) schema: String,
     pub(super) run_id: String,
     pub(super) runner_name: String,
+    #[serde(default)]
+    pub(super) graph_inputs: JsonObject,
     pub(super) checkpoint: GraphCheckpoint,
 }
 
@@ -428,8 +455,8 @@ impl InlineResolver {
             Some(config) if config.provider.as_str().eq_ignore_ascii_case("anthropic") => config,
             _ => return Ok(None),
         };
-        let transport =
-            ReqwestHttpTransport::new().map_err(|error| fail(format!("managed agent transport error: {error}")))?;
+        let transport = ReqwestHttpTransport::new()
+            .map_err(|error| fail(format!("managed agent transport error: {error}")))?;
         let resolver = AnthropicAgentResolver::new(
             transport,
             config.api_key,

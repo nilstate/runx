@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use runx_contracts::tools::{
     JsonPayload, RuntimeCommand, ToolBuildStatus, ToolInput, ToolInspectImportedFrom,
@@ -204,7 +204,7 @@ fn imported_runx(tool: &FixtureTool) -> ToolInspectRunx {
 fn resolve_local_manifest(options: &ToolInspectOptions) -> Result<PathBuf, ToolCatalogError> {
     if options.allow_explicit_manifest_path
         && let Some(path) =
-            explicit_manifest_path(&options.tool_ref, &options.search_from_directory)
+            explicit_manifest_path(&options.tool_ref, &options.search_from_directory)?
     {
         return Ok(path);
     }
@@ -225,21 +225,29 @@ fn resolve_local_manifest(options: &ToolInspectOptions) -> Result<PathBuf, ToolC
     )))
 }
 
-fn explicit_manifest_path(tool_ref: &str, search_from_directory: &Path) -> Option<PathBuf> {
+fn explicit_manifest_path(
+    tool_ref: &str,
+    search_from_directory: &Path,
+) -> Result<Option<PathBuf>, ToolCatalogError> {
     let candidate = Path::new(tool_ref);
-    let resolved = if candidate.is_absolute() {
-        candidate.to_path_buf()
-    } else {
-        search_from_directory.join(candidate)
-    };
+    if candidate.is_absolute()
+        || candidate
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(ToolCatalogError::InvalidRequest(
+            "Explicit tool manifest paths must be relative and must not contain '..'.".to_owned(),
+        ));
+    }
+    let resolved = search_from_directory.join(candidate);
     if resolved.is_file() {
-        return Some(resolved);
+        return Ok(Some(resolved));
     }
     let manifest = resolved.join("manifest.json");
     if manifest.is_file() {
-        return Some(manifest);
+        return Ok(Some(manifest));
     }
-    None
+    Ok(None)
 }
 
 fn tool_ref_segments(tool_ref: &str) -> Result<Vec<&str>, ToolCatalogError> {
@@ -258,9 +266,17 @@ fn tool_ref_segments(tool_ref: &str) -> Result<Vec<&str>, ToolCatalogError> {
 fn resolve_tool_roots(options: &ToolInspectOptions) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     push_existing_dirs(&mut roots, options.tool_roots.iter().cloned());
+    push_existing_dirs(&mut roots, [options.root.join("tools")]);
+    let root = options.root.as_path();
     let mut current = options.search_from_directory.clone();
+    if !current.starts_with(root) {
+        return roots;
+    }
     loop {
         push_existing_dirs(&mut roots, [current.join(".runx/tools")]);
+        if current == root {
+            break;
+        }
         let Some(parent) = current.parent().map(Path::to_path_buf) else {
             break;
         };
@@ -269,7 +285,6 @@ fn resolve_tool_roots(options: &ToolInspectOptions) -> Vec<PathBuf> {
         }
         current = parent;
     }
-    push_existing_dirs(&mut roots, [options.root.join("tools")]);
     roots
 }
 

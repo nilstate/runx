@@ -99,6 +99,107 @@ fn tool_catalogs_inspect_local_manifest() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[test]
+fn tool_catalogs_ignore_ancestor_tool_roots_outside_workspace()
+-> Result<(), Box<dyn std::error::Error>> {
+    let base = std::env::temp_dir()
+        .join("runx-tool-catalogs-tests")
+        .join(format!("ignore-ancestor-tool-roots-{}", std::process::id()));
+    if base.exists() {
+        fs::remove_dir_all(&base)?;
+    }
+    let root = base.join("workspace");
+    let skill_dir = root.join("skills/demo");
+    let malicious_tool_dir = base.join(".runx/tools/docs/echo");
+    fs::create_dir_all(&skill_dir)?;
+    fs::create_dir_all(&malicious_tool_dir)?;
+    fs::write(
+        malicious_tool_dir.join("manifest.json"),
+        r#"{
+  "schema": "runx.tool.manifest.v1",
+  "name": "docs.echo",
+  "description": "Ancestor outside the workspace.",
+  "source": {"type": "cli-tool", "command": "node", "args": ["./run.mjs"]},
+  "inputs": {},
+  "scopes": [],
+  "runtime": {"command": "node", "args": ["./run.mjs"]},
+  "output": {},
+  "source_hash": "sha256:ancestor",
+  "schema_hash": "sha256:ancestor",
+  "toolkit_version": "0.1.4"
+}
+"#,
+    )?;
+
+    let error = inspect_tool(&ToolInspectOptions {
+        root: root.clone(),
+        tool_ref: "docs.echo".to_owned(),
+        source: None,
+        search_from_directory: skill_dir,
+        tool_roots: Vec::new(),
+        fixture_catalog_enabled: false,
+        allow_explicit_manifest_path: false,
+    })
+    .expect_err("ancestor tool root outside workspace should be ignored");
+
+    assert!(
+        error.to_string().contains("was not found"),
+        "unexpected error: {error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn tool_catalogs_reject_absolute_explicit_manifest_path() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp_root = copy_scaffold_fixture("reject_absolute_manifest_path")?;
+    let manifest = temp_root.join("tools/docs/echo/manifest.json");
+
+    let error = inspect_tool(&ToolInspectOptions {
+        root: temp_root.clone(),
+        tool_ref: manifest.to_string_lossy().into_owned(),
+        source: None,
+        search_from_directory: temp_root,
+        tool_roots: Vec::new(),
+        fixture_catalog_enabled: false,
+        allow_explicit_manifest_path: true,
+    })
+    .expect_err("absolute explicit manifest path should be rejected");
+
+    assert!(
+        error
+            .to_string()
+            .contains("must be relative and must not contain '..'"),
+        "unexpected error: {error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn tool_catalogs_reject_parent_traversal_explicit_manifest_path()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp_root = copy_scaffold_fixture("reject_parent_manifest_path")?;
+
+    let error = inspect_tool(&ToolInspectOptions {
+        root: temp_root.clone(),
+        tool_ref: "../outside/manifest.json".to_owned(),
+        source: None,
+        search_from_directory: temp_root,
+        tool_roots: Vec::new(),
+        fixture_catalog_enabled: false,
+        allow_explicit_manifest_path: true,
+    })
+    .expect_err("parent traversal explicit manifest path should be rejected");
+
+    assert!(
+        error
+            .to_string()
+            .contains("must be relative and must not contain '..'"),
+        "unexpected error: {error}"
+    );
+    Ok(())
+}
+
+#[test]
 fn tool_catalogs_inspect_prefers_local_manifest_over_fixture_catalog()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp_root = copy_scaffold_fixture("inspect_local_precedence")?;

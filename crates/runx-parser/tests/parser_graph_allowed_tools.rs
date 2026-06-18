@@ -65,6 +65,31 @@ steps:
 }
 
 #[test]
+fn graph_rejects_path_like_tool_refs() -> Result<(), String> {
+    let error = validate_graph(
+        parse_graph_yaml(
+            r#"
+name: bad-tool-ref
+steps:
+  - id: read
+    tool: ../tools/read/manifest.json
+"#,
+        )
+        .map_err(|error| error.to_string())?,
+    )
+    .err()
+    .ok_or_else(|| "expected graph tool ref rejection".to_owned())?;
+
+    assert!(
+        error
+            .to_string()
+            .contains("not an admissible catalog tool ref"),
+        "{error}"
+    );
+    Ok(())
+}
+
+#[test]
 fn skill_rejects_path_like_allowed_tools() -> Result<(), String> {
     let raw = parse_skill_markdown(
         r#"---

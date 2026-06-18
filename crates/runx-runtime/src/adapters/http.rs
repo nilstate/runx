@@ -110,7 +110,7 @@ fn resolve_path_template(
                     "http url path placeholder {{{name}}} has no matching scalar input"
                 ))
             })?;
-        if value.is_empty() || value.contains(['/', '?', '#', '{', '}', ' ']) {
+        if value.is_empty() || value.contains(['/', '?', '#', '{', '}', ' ', '%']) {
             return Err(failure(format!(
                 "http url path placeholder {{{name}}} value is not a safe path segment: {value:?}"
             )));
@@ -518,6 +518,14 @@ mod tests {
         assert!(
             execute_http_call(&transport, &call, &inputs(&[("id", "a#b")])).is_err(),
             "a path value with a fragment delimiter must fail closed"
+        );
+        assert!(
+            execute_http_call(&transport, &call, &inputs(&[("id", "a%2Fb")])).is_err(),
+            "a path value with an encoded path delimiter must fail closed"
+        );
+        assert!(
+            execute_http_call(&transport, &call, &inputs(&[("id", "a%3Fb")])).is_err(),
+            "a path value with an encoded query delimiter must fail closed"
         );
     }
 
