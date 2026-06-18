@@ -1,0 +1,28 @@
+skill: open-meteo-air-quality
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/open-meteo-snapshot
+
+runners:
+  air_quality:
+    default: true
+    type: http
+    url: https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&current=pm10,pm2_5
+    method: GET
+    headers:
+      accept: "application/json"
+    inputs:
+      lat:
+        type: string
+        required: true
+        description: Decimal latitude.
+      lon:
+        type: string
+        required: true
+        description: Decimal longitude.
