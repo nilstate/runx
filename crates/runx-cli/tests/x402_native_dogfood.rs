@@ -292,7 +292,9 @@ fn run_harness_fixture(
 }
 
 fn native_command() -> Result<Command, Box<dyn std::error::Error>> {
-    crate::support::isolated_runx_command("x402-native-dogfood-test-key")
+    let mut command = crate::support::isolated_runx_command("x402-native-dogfood-test-key")?;
+    command.env("RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY", "local");
+    Ok(command)
 }
 
 fn assert_success(output: &Output) -> Result<(), Box<dyn std::error::Error>> {
