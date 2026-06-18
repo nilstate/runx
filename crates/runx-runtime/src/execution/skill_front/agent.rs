@@ -11,6 +11,9 @@ use runx_parser::{SkillRunnerDefinition, SkillRunnerManifest};
 
 use super::runner_manifest::write_skill_receipt;
 
+// rust-style-allow: long-function - one agent-front transaction resolves the
+// answer source, seals either a domain act or generic answer, and emits the
+// public skill output envelope.
 pub(super) fn execute_agent_skill_run(
     request: &SkillRunRequest,
     overrides: &SkillRunOverrides,
@@ -66,7 +69,13 @@ pub(super) fn execute_agent_skill_run(
                 receipts.signature_config().signature_policy(),
             )?
         }
-        None => seal_skill_answer(&run_id, runner, &stdout, disposition, receipts.signature_config())?,
+        None => seal_skill_answer(
+            &run_id,
+            runner,
+            &stdout,
+            disposition,
+            receipts.signature_config(),
+        )?,
     };
     write_skill_receipt(request, workspace, receipts, &receipt)?;
 

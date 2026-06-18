@@ -284,6 +284,37 @@
       ]
     },
     {
+      "id": "login",
+      "usage": "runx login [--provider github|google|gitlab] [--api-base-url url] [--allow-local-api] [--json]",
+      "aliases": [],
+      "requiredPositionals": [],
+      "flags": [
+        "--provider",
+        "--api-base-url",
+        "--allow-local-api",
+        "--json"
+      ],
+      "exitCodes": [
+        0,
+        1,
+        2,
+        64
+      ],
+      "parity": {
+        "humanOutput": "semantic",
+        "jsonOutput": "schema-exact",
+        "receipt": "none",
+        "sideEffect": "filesystem",
+        "surfaces": [
+          "config",
+          "cli-presentation"
+        ]
+      },
+      "cases": [
+        "login.validate"
+      ]
+    },
+    {
       "id": "policy.inspect",
       "usage": "runx policy inspect <policy.json>",
       "aliases": [],
@@ -345,7 +376,7 @@
     },
     {
       "id": "publish",
-      "usage": "runx publish <receipt.json> [--api-base-url url] [--token token] [--json]",
+      "usage": "runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]",
       "aliases": [],
       "requiredPositionals": [
         "<receipt.json>"
@@ -353,6 +384,7 @@
       "flags": [
         "--api-base-url",
         "--token",
+        "--allow-local-api",
         "--json"
       ],
       "exitCodes": [

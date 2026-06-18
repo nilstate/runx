@@ -1,5 +1,6 @@
 use runx_runtime::registry::{InstallStatus, RegistrySkillResolution, TrustTier};
 
+use super::remote_publish::HostedSkillPublishResult;
 use super::{RegistryCliError, RegistryCliOutput, internal_error};
 
 #[derive(serde::Serialize)]
@@ -33,8 +34,15 @@ pub(super) enum RegistryPayload {
         receipt_metadata: runx_contracts::JsonObject,
     },
     Publish {
-        publish: Box<serde_json::Value>,
+        publish: PublishPayload,
     },
+}
+
+#[derive(serde::Serialize)]
+#[serde(tag = "target", rename_all = "snake_case")]
+pub(super) enum PublishPayload {
+    Hosted(Box<HostedSkillPublishResult>),
+    Local(Box<runx_runtime::registry::PublishSkillMarkdownResult>),
 }
 
 #[derive(serde::Serialize)]

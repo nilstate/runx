@@ -34,9 +34,17 @@ pub(crate) fn registry_package_digest(files: &[RegistryPackageFile]) -> Option<S
             canonical.push(',');
         }
         canonical.push_str("{\"content\":");
-        canonical.push_str(&serde_json::to_string(&file.content).expect("string serializes"));
+        let content = match serde_json::to_string(&file.content) {
+            Ok(value) => value,
+            Err(_) => return None,
+        };
+        canonical.push_str(&content);
         canonical.push_str(",\"path\":");
-        canonical.push_str(&serde_json::to_string(&file.path).expect("string serializes"));
+        let path = match serde_json::to_string(&file.path) {
+            Ok(value) => value,
+            Err(_) => return None,
+        };
+        canonical.push_str(&path);
         canonical.push('}');
     }
     canonical.push_str("]}");

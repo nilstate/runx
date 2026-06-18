@@ -1,3 +1,6 @@
+// rust-style-allow: large-file - graph skill-front execution keeps nested skill
+// resolution, graph state projection, and receipt handoff together until the
+// graph runner/front boundary is split.
 use super::*;
 
 use std::path::PathBuf;

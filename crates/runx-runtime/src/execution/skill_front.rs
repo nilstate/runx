@@ -1,3 +1,6 @@
+// rust-style-allow: large-file - the skill front owns source-type dispatch,
+// domain-act frame construction, and shared sealed-output projection for all
+// first-class skill runners.
 //! The skill front: compiles a skill-run request into an execution (cli-tool,
 //! agent, or graph runner) and seals it through the shared act engine. This is
 //! one of the source-type "fronts" from `plans/governed-execution-layer.md`;
@@ -289,6 +292,9 @@ fn domain_act_frame(
 /// The core of [`domain_act_frame`], reusable by the graph path: build the domain
 /// act frame from a declared `act:` block, the trusted run inputs, the model's
 /// authored reason source, and the real governed effect.
+// rust-style-allow: long-function - act-frame construction is intentionally one
+// branch table so each declared field, input fallback, and governed-effect
+// reference is visible in one receipt-shaping pass.
 fn build_domain_act_frame(
     act: &ActDeclaration,
     inputs: &runx_contracts::JsonObject,

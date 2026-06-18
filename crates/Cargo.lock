@@ -1692,7 +1692,6 @@ dependencies = [
  "base64",
  "ring",
  "runx-contracts",
- "runx-parser",
  "runx-pay",
  "runx-receipts",
  "runx-runtime",

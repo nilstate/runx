@@ -596,6 +596,8 @@ fn install_paths(
     }
 }
 
+// rust-style-allow: long-function - install planning compares all destination
+// files before writing so package, profile, and lock updates remain atomic.
 fn prepare_install_write_plan(
     paths: &InstallPaths,
     markdown: &str,

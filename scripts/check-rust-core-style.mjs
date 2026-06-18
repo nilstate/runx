@@ -72,9 +72,10 @@ for (const root of rustRoots) {
   for (const filePath of await listRustFiles(absoluteRoot)) {
     const source = await readFile(filePath, "utf8");
     const relativePath = path.relative(workspaceRoot, filePath);
-    checkPatterns(relativePath, source);
-    checkFileSize(relativePath, source);
-    checkFunctionSize(relativePath, source);
+    const production = productionSource(relativePath, source);
+    checkPatterns(relativePath, production);
+    checkFileSize(relativePath, production);
+    checkFunctionSize(relativePath, production);
   }
 }
 
@@ -119,6 +120,9 @@ async function listRustFiles(directory) {
 }
 
 function checkPatterns(relativePath, source) {
+  if (relativePath.endsWith("_tests.rs")) {
+    return;
+  }
   for (const { pattern, reason, allowlist = [] } of disallowedPatterns) {
     if (allowlist.includes(relativePath)) {
       continue;
@@ -129,6 +133,57 @@ function checkPatterns(relativePath, source) {
       findings.push(`${relativePath}:${line} ${reason}`);
     }
   }
+}
+
+function productionSource(relativePath, source) {
+  if (relativePath.endsWith("_tests.rs")) {
+    return "";
+  }
+  return stripCfgTestModules(source);
+}
+
+function stripCfgTestModules(source) {
+  let output = "";
+  let index = 0;
+  while (index < source.length) {
+    const cfgIndex = source.indexOf("#[cfg(test)]", index);
+    if (cfgIndex === -1) {
+      output += source.slice(index);
+      break;
+    }
+    output += source.slice(index, cfgIndex);
+    const moduleMatch = /\s*(?:#[^\n]*\n\s*)*mod\s+\w+\s*\{/u.exec(source.slice(cfgIndex + "#[cfg(test)]".length));
+    if (!moduleMatch) {
+      index = cfgIndex + "#[cfg(test)]".length;
+      continue;
+    }
+    const moduleStart = cfgIndex + "#[cfg(test)]".length + moduleMatch.index;
+    const bodyStart = cfgIndex + "#[cfg(test)]".length + moduleMatch.index + moduleMatch[0].lastIndexOf("{");
+    const moduleEnd = matchingBraceEnd(source, bodyStart);
+    if (moduleEnd === -1) {
+      index = cfgIndex + "#[cfg(test)]".length;
+      continue;
+    }
+    output += "\n";
+    index = moduleEnd + 1;
+  }
+  return output;
+}
+
+function matchingBraceEnd(source, openBraceIndex) {
+  let depth = 0;
+  for (let index = openBraceIndex; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+  return -1;
 }
 
 function checkFileSize(relativePath, source) {

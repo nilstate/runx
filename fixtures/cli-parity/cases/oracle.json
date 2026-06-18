@@ -168,6 +168,15 @@
       ]
     },
     {
+      "id": "login.validate",
+      "commandId": "login",
+      "mode": "validate",
+      "proves": [
+        "config",
+        "cli-presentation"
+      ]
+    },
+    {
       "id": "policy.inspect.validate",
       "commandId": "policy.inspect",
       "mode": "validate",

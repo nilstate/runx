@@ -135,6 +135,17 @@ struct LoginStartResponse {
     poll_after_ms: Option<u64>,
 }
 
+#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+struct LoginStartRequest<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    provider: Option<&'a str>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+struct LoginCompleteRequest<'a> {
+    login_token: &'a str,
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 struct LoginCompleteResponse {
     status: String,
@@ -328,18 +339,17 @@ fn start_login_session<T: Transport>(
     base_url: &str,
     provider: Option<&str>,
 ) -> Result<LoginStartResponse, LoginHttpError> {
-    let mut body = serde_json::Map::new();
-    if let Some(provider) = provider.map(str::trim).filter(|value| !value.is_empty()) {
-        body.insert(
-            "provider".to_owned(),
-            serde_json::Value::String(provider.to_owned()),
-        );
-    }
+    let request = LoginStartRequest {
+        provider: provider.map(str::trim).filter(|value| !value.is_empty()),
+    };
     let response = transport.send(HttpRequest {
         method: HttpMethod::Post,
         url: format!("{}/v1/login/sessions", base_url.trim_end_matches('/')),
         headers: vec![RuntimeHttpHeader::new("content-type", "application/json")],
-        body: Some(serde_json::Value::Object(body).to_string()),
+        body: Some(
+            serde_json::to_string(&request)
+                .map_err(|error| LoginHttpError::InvalidJson(error.to_string()))?,
+        ),
     })?;
     json_response(response.status, &response.body)
 }
@@ -350,10 +360,8 @@ fn complete_login_session<T: Transport>(
     session_id: &str,
     login_token: &str,
 ) -> Result<LoginCompleteResponse, LoginHttpError> {
-    let body = serde_json::json!({
-        "login_token": login_token,
-    })
-    .to_string();
+    let body = serde_json::to_string(&LoginCompleteRequest { login_token })
+        .map_err(|error| LoginHttpError::InvalidJson(error.to_string()))?;
     let response = transport.send(HttpRequest {
         method: HttpMethod::Post,
         url: format!(

@@ -1,3 +1,6 @@
+// rust-style-allow: large-file - registry wire/domain types are kept together so
+// local, hosted, install, publish, trust, and signed-manifest envelopes evolve
+// under one serialization contract.
 use runx_contracts::JsonValue;
 use runx_contracts::maturity::MaturityTier;
 use serde::{Deserialize, Serialize};

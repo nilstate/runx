@@ -1,3 +1,6 @@
+// rust-style-allow: large-file - remote publish packaging owns skill sidecar
+// selection, temporary harness packaging, and regression fixtures until publish
+// splits into separate reader, selector, and harness modules.
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
@@ -11,6 +14,9 @@ use serde::Serialize;
 
 use super::{RegistryCliError, internal_error};
 
+// rust-style-allow: long-function - this is one package read transaction:
+// resolve the local subject, read its profile, select consumed sidecars, and
+// prepare the temporary harness package from the same inputs.
 pub(super) fn read_skill_package(
     subject: &str,
     profile: Option<&Path>,
@@ -227,6 +233,9 @@ fn collect_allowed_publish_package_files(
     Ok(files)
 }
 
+// rust-style-allow: long-function - the recursive selector keeps traversal,
+// size caps, secret-name rejection, and UTF-8 materialization in one auditable
+// package boundary.
 fn collect_allowed_publish_package_files_from_dir(
     package_dir: &Path,
     current_dir: &Path,
@@ -402,8 +411,8 @@ fn consumed_root_scripts_from_profile(
             profile_path.display()
         ))
     })?;
-    let manifest = runx_parser::validate_runner_manifest(
-        runx_parser::parse_runner_manifest_yaml(&document).map_err(|error| {
+    let manifest = runx_runtime::validate_runner_manifest(
+        runx_runtime::parse_runner_manifest_yaml(&document).map_err(|error| {
             internal_error(format!(
                 "failed to parse profile while selecting publish package files {}: {error}",
                 profile_path.display()
@@ -424,7 +433,7 @@ fn consumed_root_scripts_from_profile(
 }
 
 fn collect_root_scripts_from_source(
-    source: &runx_parser::SkillSource,
+    source: &runx_runtime::SkillSource,
     scripts: &mut BTreeSet<String>,
 ) {
     collect_root_scripts_from_command(&source.command, &source.args, scripts);

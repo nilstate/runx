@@ -1,3 +1,6 @@
+// rust-style-allow: large-file - skill schema vocabulary is intentionally
+// centralized so parser fixtures, contract mirrors, and runtime front validation
+// share one typed source of truth.
 use std::collections::BTreeMap;
 
 use runx_contracts::{ExecutionSemantics, JsonObject, JsonValue};

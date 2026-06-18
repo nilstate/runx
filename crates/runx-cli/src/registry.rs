@@ -1,3 +1,6 @@
+// rust-style-allow: large-file - native registry CLI keeps local and hosted
+// search/read/resolve/install/publish command wiring together so the command
+// matrix and output envelope stay auditable during the hosted-registry cutover.
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -254,6 +257,8 @@ fn run_install(
     )
 }
 
+// rust-style-allow: long-function - local and hosted publish share the same
+// package-read and harness gate before diverging at the storage boundary.
 fn run_publish(
     plan: RegistryPlan,
     target: RegistryTarget,
@@ -286,10 +291,7 @@ fn run_publish(
                 &output::RegistryEnvelope {
                     status: "success",
                     registry: output::RegistryPayload::Publish {
-                        publish: Box::new(
-                            serde_json::to_value(result)
-                                .map_err(|error| internal_error(error.to_string()))?,
-                        ),
+                        publish: output::PublishPayload::Hosted(Box::new(result)),
                     },
                 },
                 || "\n  registry publish  success\n\n".to_owned(),
@@ -334,10 +336,7 @@ fn run_publish(
                 &output::RegistryEnvelope {
                     status: "success",
                     registry: output::RegistryPayload::Publish {
-                        publish: Box::new(
-                            serde_json::to_value(result)
-                                .map_err(|error| internal_error(error.to_string()))?,
-                        ),
+                        publish: output::PublishPayload::Local(Box::new(result)),
                     },
                 },
                 || "\n  registry publish  success\n\n".to_owned(),

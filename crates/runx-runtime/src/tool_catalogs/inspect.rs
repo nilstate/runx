@@ -1,3 +1,6 @@
+// rust-style-allow: large-file - tool inspection keeps local manifest
+// resolution, fixture fallback, provenance, and JSON projection in one
+// read-only diagnostic surface.
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Component, Path, PathBuf};

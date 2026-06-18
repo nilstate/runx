@@ -660,6 +660,8 @@ pub(crate) struct DomainActFrame {
 /// (`build_receipt`/`seal`) but fills the act, decision, and authority from the
 /// trusted `DomainActFrame`. Transport (tool names, urls, status codes, tokens)
 /// never enters the receipt.
+// rust-style-allow: long-function - domain-act receipt assembly binds act,
+// decision, authority, and signature policy in one auditable receipt boundary.
 pub(crate) fn domain_act_receipt(
     graph_name: &str,
     step_id: &str,
@@ -746,7 +748,13 @@ pub(crate) fn domain_act_receipt(
             teardown_refs: Vec::new(),
         },
     };
-    let seal = seal(disposition, reason_code, seal_summary, created_at, vec![criterion]);
+    let seal = seal(
+        disposition,
+        reason_code,
+        seal_summary,
+        created_at,
+        vec![criterion],
+    );
     let mut receipt = build_receipt(BuildReceipt {
         id: step_receipt_id(graph_name, step_id, 1),
         graph_name,

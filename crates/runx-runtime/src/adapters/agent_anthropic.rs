@@ -1,3 +1,5 @@
+// rust-style-allow: large-file - the Anthropic adapter keeps request shaping,
+// tool-use parsing, and provider error mapping in one reviewed HTTP boundary.
 //! Anthropic provider [`ModelCaller`] for the managed-agent loop.
 //!
 //! Translates the provider-agnostic [`AgentTurn`] transcript into an Anthropic
@@ -281,8 +283,9 @@ mod tests {
     #[test]
     fn namespaced_tool_ref_is_flattened_on_the_wire_and_restored_on_the_way_in() {
         let stub = StubTransport {
-            body: r#"{"content":[{"type":"tool_use","id":"tu_1","name":"frantic_post","input":{}}]}"#
-                .to_owned(),
+            body:
+                r#"{"content":[{"type":"tool_use","id":"tu_1","name":"frantic_post","input":{}}]}"#
+                    .to_owned(),
             status: 200,
             requests: RefCell::new(Vec::new()),
         };

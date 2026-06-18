@@ -28,7 +28,6 @@ base64 = "0.22.1"
 ring = "0.17.14"
 runx-contracts.workspace = true
 runx-pay.workspace = true
-runx-parser.workspace = true
 runx-receipts.workspace = true
 runx-runtime = { workspace = true, features = ["cli-tool", "catalog", "mcp", "mcp-http-server", "external-adapter", "agent", "http", "thread-outbox-provider"] }
 serde.workspace = true

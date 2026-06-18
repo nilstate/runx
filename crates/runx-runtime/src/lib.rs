@@ -149,6 +149,7 @@ pub use runner::{
     RuntimeOptions, StepRun,
 };
 pub use runx_core::kernel_eval;
+pub use runx_parser::{SkillSource, parse_runner_manifest_yaml, validate_runner_manifest};
 pub use runx_receipts::ReceiptTreeConfig;
 pub use scaffold::{
     InitAction, InitGeneratedValues, RunxInitOptions, RunxInitResult, RunxNewOptions,
