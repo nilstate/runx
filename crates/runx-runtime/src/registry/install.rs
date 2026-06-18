@@ -223,9 +223,10 @@ fn validate_install_candidate(
     candidate: &InstallCandidate,
     options: &InstallLocalSkillOptions,
 ) -> Result<ValidatedLocalInstall, InstallError> {
-    let actual_digest = verify_signed_manifest_anchor(candidate, options)?;
-    let profile_digest = validate_candidate_profile_digest(candidate)?;
-    validate_candidate_package_digest(candidate)?;
+    let allow_unsigned_local = allows_unsigned_local_registry_candidate(candidate);
+    let actual_digest = verify_signed_manifest_anchor(candidate, options, allow_unsigned_local)?;
+    let profile_digest = validate_candidate_profile_digest(candidate, allow_unsigned_local)?;
+    validate_candidate_package_digest(candidate, allow_unsigned_local)?;
     let origin = install_origin(candidate, &actual_digest, profile_digest.as_deref());
     let install = validate_skill_install(&candidate.markdown, origin)?;
     let runner_names = validate_install_binding_manifest(
@@ -252,11 +253,26 @@ fn validate_install_candidate(
 fn verify_signed_manifest_anchor(
     candidate: &InstallCandidate,
     options: &InstallLocalSkillOptions,
+    allow_unsigned_local: bool,
 ) -> Result<String, InstallError> {
-    let manifest = candidate
-        .signed_manifest
-        .as_ref()
-        .ok_or_else(|| InstallError::UnsignedManifest(candidate.r#ref.clone()))?;
+    let Some(manifest) = candidate.signed_manifest.as_ref() else {
+        if allow_unsigned_local {
+            let actual_digest = sha256_prefixed(candidate.markdown.as_bytes());
+            if let Some(expected) = options
+                .expected_digest
+                .as_ref()
+                .filter(|expected| !digest_matches(expected, &actual_digest))
+            {
+                return Err(InstallError::DigestMismatch {
+                    ref_name: candidate.r#ref.clone(),
+                    expected: expected.clone(),
+                    actual: actual_digest,
+                });
+            }
+            return Ok(actual_digest);
+        }
+        return Err(InstallError::UnsignedManifest(candidate.r#ref.clone()));
+    };
     let trusted_keys = trusted_manifest_keys(options)?;
     let key = verify_registry_signed_manifest(manifest, &trusted_keys).map_err(|failure| {
         manifest_verification_error(candidate.r#ref.clone(), &manifest.signer.key_id, failure)
@@ -283,6 +299,14 @@ fn verify_signed_manifest_anchor(
         });
     }
     Ok(actual_digest)
+}
+
+fn allows_unsigned_local_registry_candidate(candidate: &InstallCandidate) -> bool {
+    matches!(
+        candidate.manifest_source_authority.as_ref(),
+        Some(RegistryManifestSourceAuthority::RegistrySource(source))
+            if source.starts_with("local:") || source.starts_with("file:")
+    )
 }
 
 fn validate_manifest_trust_scope(
@@ -328,6 +352,7 @@ fn trusted_manifest_keys(
 
 fn validate_candidate_profile_digest(
     candidate: &InstallCandidate,
+    allow_unsigned_local: bool,
 ) -> Result<Option<String>, InstallError> {
     let profile_digest = candidate
         .profile_document
@@ -336,7 +361,12 @@ fn validate_candidate_profile_digest(
     let expected_profile_digest = candidate
         .signed_manifest
         .as_ref()
-        .and_then(|manifest| manifest.profile_digest.as_ref());
+        .and_then(|manifest| manifest.profile_digest.as_ref())
+        .or_else(|| {
+            allow_unsigned_local
+                .then_some(candidate.profile_digest.as_ref())
+                .flatten()
+        });
     match (profile_digest.as_ref(), expected_profile_digest) {
         (Some(actual), Some(expected)) if digest_matches(expected, actual) => {}
         (Some(actual), Some(expected)) => {
@@ -365,7 +395,10 @@ fn validate_candidate_profile_digest(
     Ok(profile_digest)
 }
 
-fn validate_candidate_package_digest(candidate: &InstallCandidate) -> Result<(), InstallError> {
+fn validate_candidate_package_digest(
+    candidate: &InstallCandidate,
+    allow_unsigned_local: bool,
+) -> Result<(), InstallError> {
     let actual = registry_package_digest(&candidate.package_files);
     let signed = candidate
         .signed_manifest
@@ -390,6 +423,9 @@ fn validate_candidate_package_digest(candidate: &InstallCandidate) -> Result<(),
         }),
         (None, None) => Ok(()),
     }?;
+    if allow_unsigned_local && candidate.signed_manifest.is_none() {
+        return Ok(());
+    }
     match (candidate.package_digest.as_ref(), signed) {
         (Some(declared), Some(expected)) if digest_matches(expected, declared) => Ok(()),
         (Some(declared), Some(expected)) => Err(InstallError::PackageDigestMismatch {

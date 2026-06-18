@@ -129,6 +129,40 @@ fn unsigned_candidate_fails_closed() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn unsigned_local_registry_candidate_installs() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let mut candidate = install_candidate()?;
+    candidate.signed_manifest = None;
+    candidate.profile_digest = Some(profile_digest());
+    candidate.package_files = package_files_fixture();
+    candidate.package_digest = Some(package_digest(&candidate.package_files));
+    candidate.manifest_source_authority = Some(RegistryManifestSourceAuthority::RegistrySource(
+        format!("local:{}", temp.path().join("registry").display()),
+    ));
+
+    let install = install_local_skill(
+        &candidate,
+        &InstallLocalSkillOptions {
+            destination_root: temp.path().join("skills"),
+            expected_digest: None,
+            trusted_manifest_keys: Vec::new(),
+        },
+    )?;
+
+    let package_root = install.destination.parent().ok_or("missing package root")?;
+    assert_eq!(
+        std::fs::read_to_string(package_root.join("run.mjs"))?,
+        "console.log('installed');\n"
+    );
+    assert_eq!(install.digest, skill_digest());
+    assert_eq!(
+        install.profile_digest.as_deref(),
+        Some(profile_digest().as_str())
+    );
+    Ok(())
+}
+
+#[test]
 fn mismatched_manifest_identity_fails_closed() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let mut candidate = install_candidate()?;

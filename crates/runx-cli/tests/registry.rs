@@ -184,8 +184,7 @@ fn registry_install_versions_are_side_by_side() -> Result<(), Box<dyn std::error
 #[test]
 fn registry_install_reports_typed_trust_anchor_errors() -> Result<(), Box<dyn std::error::Error>> {
     type VersionMutator = fn(&mut serde_json::Value);
-    let cases: [(&str, VersionMutator); 4] = [
-        ("unsigned_manifest", remove_signed_manifest),
+    let cases: [(&str, VersionMutator); 3] = [
         ("unknown_key", |version| {
             version["signed_manifest"]["signer"]["key_id"] =
                 serde_json::Value::String("unknown-key".to_owned());
@@ -229,6 +228,44 @@ fn registry_install_reports_typed_trust_anchor_errors() -> Result<(), Box<dyn st
         );
     }
 
+    Ok(())
+}
+
+#[test]
+fn registry_local_install_accepts_unsigned_manifest() -> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("registry-local-unsigned");
+    let registry_dir = publish_registry_fixture(&root)?;
+    let install_dir = root.join("installed");
+
+    let install = runx_command()?
+        .args([
+            "registry",
+            "install",
+            "acme/echo@1.0.0",
+            "--registry-dir",
+            registry_dir.to_str().ok_or("non-utf8 registry dir")?,
+            "--to",
+            install_dir.to_str().ok_or("non-utf8 install dir")?,
+            "--json",
+        ])
+        .output()?;
+
+    assert_success_contains(
+        &install,
+        &[
+            "\"action\": \"install\"",
+            "\"skill_id\": \"acme/echo\"",
+            "\"status\": \"installed\"",
+        ],
+    )?;
+    assert!(
+        install_dir
+            .join("acme")
+            .join("echo")
+            .join("1.0.0")
+            .join("SKILL.md")
+            .exists()
+    );
     Ok(())
 }
 
@@ -365,12 +402,6 @@ fn registry_human_output_names_search_results() -> Result<(), Box<dyn std::error
     )?;
 
     Ok(())
-}
-
-fn remove_signed_manifest(version: &mut serde_json::Value) {
-    if let Some(object) = version.as_object_mut() {
-        object.remove("signed_manifest");
-    }
 }
 
 fn publish_registry_fixture(root: &std::path::Path) -> Result<PathBuf, Box<dyn std::error::Error>> {

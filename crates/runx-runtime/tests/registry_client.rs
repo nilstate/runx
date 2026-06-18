@@ -318,7 +318,7 @@ fn local_install_accepts_signed_registry_manifest() -> Result<(), Box<dyn std::e
 }
 
 #[test]
-fn local_install_requires_signed_registry_manifest() -> Result<(), Box<dyn std::error::Error>> {
+fn non_local_install_requires_signed_registry_manifest() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let mut candidate = install_candidate()?;
     candidate.signed_manifest = None;
