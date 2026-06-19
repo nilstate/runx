@@ -13,6 +13,9 @@ use runx_runtime::adapters::cli_tool::CliToolAdapter;
 use runx_runtime::credentials::CredentialDelivery;
 use serde::Deserialize;
 
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE: &str = "local";
+
 #[derive(Deserialize)]
 struct FixtureSuite {
     probe: String,
@@ -188,6 +191,10 @@ fn fixture_env(
     env.insert(RUNX_CWD_ENV.to_owned(), path_string(fixture_root)?);
     env.insert("RUNX_SENTINEL_PATH".to_owned(), path_string(sentinel_path)?);
     env.insert("TMPDIR".to_owned(), path_string(temp_dir)?);
+    env.insert(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE.to_owned(),
+    );
     Ok(env)
 }
 

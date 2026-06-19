@@ -703,6 +703,10 @@ fn oracle_env() -> Result<BTreeMap<String, String>, RuntimeError> {
         "RUNX_CWD".to_owned(),
         repo_root()?.to_string_lossy().into_owned(),
     );
+    env.insert(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE.to_owned(),
+    );
     Ok(env)
 }
 
