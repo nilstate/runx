@@ -8,7 +8,7 @@ fn license_boundary_guard_accepts_current_tree() -> Result<(), Box<dyn std::erro
     let root = repo_root();
     assert_success(
         Command::new("node")
-            .arg(".scafld/scripts/check-license-edges.mjs")
+            .arg("scripts/check-license-edges.mjs")
             .arg("--check")
             .arg("manifest-complete")
             .current_dir(&root)
@@ -16,7 +16,7 @@ fn license_boundary_guard_accepts_current_tree() -> Result<(), Box<dyn std::erro
     )?;
     assert_success(
         Command::new("node")
-            .arg(".scafld/scripts/check-license-edges.mjs")
+            .arg("scripts/check-license-edges.mjs")
             .arg("--check")
             .arg("identifiers")
             .current_dir(&root)
@@ -26,7 +26,7 @@ fn license_boundary_guard_accepts_current_tree() -> Result<(), Box<dyn std::erro
         Command::new("sh")
             .arg("-c")
             .arg(
-                "cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node .scafld/scripts/check-license-edges.mjs --check edges",
+                "cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node scripts/check-license-edges.mjs --check edges",
             )
             .current_dir(&root)
             .output()?,
@@ -45,7 +45,7 @@ fn license_boundary_guard_rejects_private_identifier_fixture()
     fs::copy(fixture, temp_dir.join("private_broker_violation.rs"))?;
 
     let output = Command::new("node")
-        .arg(".scafld/scripts/check-license-edges.mjs")
+        .arg("scripts/check-license-edges.mjs")
         .arg("--check")
         .arg("identifiers")
         .current_dir(&root)
@@ -95,7 +95,7 @@ fn license_boundary_guard_rejects_private_dependency_edge_fixture()
     .to_string();
 
     let mut child = Command::new("node")
-        .arg(".scafld/scripts/check-license-edges.mjs")
+        .arg("scripts/check-license-edges.mjs")
         .arg("--check")
         .arg("edges")
         .current_dir(&root)

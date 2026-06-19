@@ -100,9 +100,9 @@ jobs:
 
       - name: License boundary guard
         run: |
-          node .scafld/scripts/check-license-edges.mjs --check manifest-complete
-          node .scafld/scripts/check-license-edges.mjs --check identifiers
-          cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node .scafld/scripts/check-license-edges.mjs --check edges
+          node scripts/check-license-edges.mjs --check manifest-complete
+          node scripts/check-license-edges.mjs --check identifiers
+          cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node scripts/check-license-edges.mjs --check edges
           cargo test --manifest-path crates/Cargo.toml -p runx-runtime --all-features --test integration -- license_boundary
 
       - name: Rust kernel parity
