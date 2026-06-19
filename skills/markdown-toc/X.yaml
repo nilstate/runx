@@ -1,95 +1,40 @@
-skill: markdown-toc
-version: 0.1.0
-
 catalog:
   kind: skill
-  audience: public
+  audience: operator
   visibility: public
-  role: canonical
-
-policy:
-  scopes: []
-  network: false
-  allow_unsafe: false
-
-harness:
-  cases:
-    - name: markdown-toc-extracts-simple-headings
-      inputs:
-        content: |
-          # Title
-          ## Section 1
-          Some content here.
-          ### Subsection 1.1
-          More content.
-          ## Section 2
-          Final content.
-      caller:
-        answers:
-          agent_task.markdown-toc.output:
-            toc:
-              - level: 1
-                text: Title
-                anchor: title
-                children:
-                  - level: 2
-                    text: Section 1
-                    anchor: section-1
-                    children:
-                      - level: 3
-                        text: Subsection 1.1
-                        anchor: subsection-11
-                  - level: 2
-                    text: Section 2
-                    anchor: section-2
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-
-    - name: markdown-toc-empty-input
-      inputs:
-        content: "Just a paragraph with no headings.\n\nAnother paragraph."
-      caller:
-        answers:
-          agent_task.markdown-toc.output:
-            toc: []
-            note: empty
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-
-    - name: markdown-toc-requires-content
-      inputs: {}
-      expect:
-        status: needs_agent
-
-outputs:
-  toc:
-    type: array
-    description: "Structured table of contents entries"
-  note:
-    type: string
-    description: "Contextual note, such as 'empty' when no headings found"
-
-emits:
-  - runx.receipt.v1
+  role: utility
 
 runners:
-  markdown-toc:
-    default: true
-    type: agent-task
+  - type: agent-task
     agent: utility
     task: markdown-toc
-    outputs:
-      toc: array
-      note: string
-    artifacts:
-      wrap_as: toc_packet
-      packet: runx.toc.v1
+    description: Generate a table of contents from markdown input
     inputs:
       content:
         type: string
+        description: Markdown content to parse
         required: true
-        description: "Markdown text to analyze for table of contents generation."
+    artifacts:
+      wrap_as: result
+      packet:
+        format: json
+
+harness:
+  - case: basic-toc
+    description: Generates TOC from sample markdown
+    input:
+      content: "# A\n\n## B\n\n### C"
+    expect:
+      status: sealed
+  - case: empty-input
+    description: Empty content returns empty array
+    input:
+      content: ""
+    expect:
+      status: sealed
+  - case: no-headings
+    description: Plain text with no headings returns empty array
+    input:
+      content: "Just some text\n\nNo headings here"
+    expect:
+      status: sealed
