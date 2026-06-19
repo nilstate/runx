@@ -6,7 +6,9 @@
   "source": {
     "type": "cli-tool",
     "command": "node",
-    "args": ["./run.mjs"]
+    "args": [
+      "./run.mjs"
+    ]
   },
   "inputs": {
     "fixture_path": {
@@ -26,7 +28,9 @@
       "description": "Crossref bibliographic search query."
     }
   },
-  "scopes": ["crossref:works:read"],
+  "scopes": [
+    "crossref:works:read"
+  ],
   "runx": {
     "artifacts": {
       "named_emits": {
@@ -37,11 +41,15 @@
   },
   "runtime": {
     "command": "node",
-    "args": ["./run.mjs"]
+    "args": [
+      "./run.mjs"
+    ]
   },
   "output": {
     "packet": "runx.crossref.work_search_result.v1",
     "wrap_as": "crossref_work_search_result"
-  }
+  },
+  "source_hash": "sha256:f8160e43651785f7299809c734bce25eab4dd5d743734db1e5af72a12a4ba03d",
+  "schema_hash": "sha256:9fee520ccab3578e598a555f65762e989ca29462be81cf816a1ae9762208dcbf",
+  "toolkit_version": "0.1.4"
 }
-

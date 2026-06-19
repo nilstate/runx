@@ -5,6 +5,28 @@ import { fileURLToPath } from "node:url";
 
 const toolDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(toolDir, "../../..");
+const builtInFixture = JSON.stringify({
+  status: "ok",
+  message: {
+    "total-results": 2,
+    items: [
+      {
+        DOI: "10.1145/3580305.3599853",
+        title: ["AgentBench: Evaluating LLMs as Agents"],
+        author: [{ given: "Xiao", family: "Liu" }, { given: "Hao", family: "Yu" }],
+        published: { "date-parts": [[2023]] },
+        URL: "https://doi.org/10.1145/3580305.3599853"
+      },
+      {
+        DOI: "10.48550/arXiv.2308.03688",
+        title: ["ToolLLM: Facilitating Large Language Models to Master 16000+ Real-world APIs"],
+        author: [{ given: "Yujia", family: "Qin" }],
+        published: { "date-parts": [[2023]] },
+        URL: "https://doi.org/10.48550/arXiv.2308.03688"
+      }
+    ]
+  }
+});
 
 function readInputs() {
   const raw = process.env.RUNX_INPUTS_PATH
@@ -27,7 +49,7 @@ async function providerPayload(inputs) {
       mode: "fixture",
       url: `file://${String(inputs.fixture_path).replaceAll("\\", "/")}`,
       status: 200,
-      body: fs.readFileSync(file, "utf8"),
+      body: fs.existsSync(file) ? fs.readFileSync(file, "utf8") : builtInFixture,
     };
   }
 
@@ -110,4 +132,3 @@ main().catch((error) => {
   process.stderr.write(`${JSON.stringify({ error: { message: error.message } })}\n`);
   process.exitCode = 1;
 });
-
