@@ -26,6 +26,8 @@ use runx_runtime::{LocalOrchestrator, RunResult, SkillRunRequest};
 use tempfile::tempdir;
 
 const SECRET: &str = "ghs_local_provision_secret_value";
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE: &str = "local";
 #[cfg(feature = "http")]
 type HttpFixtureHandle = thread::JoinHandle<Result<String, std::io::Error>>;
 #[test]
@@ -89,7 +91,7 @@ fn run_without_descriptor_delivers_no_credential() -> Result<(), Box<dyn std::er
         run_id: None,
         answers_path: None,
         inputs: BTreeMap::new(),
-        env: BTreeMap::new(),
+        env: local_sandbox_fallback_env(),
         cwd: temp.path().to_path_buf(),
         local_credential: None,
     };
@@ -167,6 +169,14 @@ fn run_skill(mut request: SkillRunRequest) -> Result<RunResult, Box<dyn std::err
 #[cfg(feature = "http")]
 fn http_private_network_grant_env() -> BTreeMap<String, String> {
     [("RUNX_HTTP_ALLOW_PRIVATE_NETWORK".to_owned(), "1".to_owned())].into()
+}
+
+fn local_sandbox_fallback_env() -> BTreeMap<String, String> {
+    [(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE.to_owned(),
+    )]
+    .into()
 }
 
 /// A cli-tool skill that echoes the delivered `$GITHUB_TOKEN`. The command is a
