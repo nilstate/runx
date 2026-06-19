@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "runx.structured_extraction.result.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "source",
+    "extraction",
+    "validation",
+    "provenance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "runx.structured_extraction.result.v1"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "url",
+        "content_type",
+        "input_sha256",
+        "input_bytes"
+      ]
+    },
+    "extraction": {
+      "type": "object",
+      "required": [
+        "title",
+        "summary",
+        "items"
+      ]
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "schema_id",
+        "schema_sha256",
+        "valid",
+        "checks"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "mode",
+        "tool_version",
+        "output_payload_sha256"
+      ]
+    }
+  }
+}

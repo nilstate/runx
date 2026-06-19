@@ -1,0 +1,21 @@
+name: rfc9110-http-semantics
+lane: deterministic
+target:
+  kind: skill
+  ref: .
+runner: extract
+inputs:
+  input_path: "fixtures/rfc9110-http-semantics.html"
+  schema_path: "schemas/extraction.schema.json"
+  source_url: "https://www.rfc-editor.org/rfc/rfc9110.html"
+  content_type: "text/html"
+  max_items: 18
+expect:
+  status: success
+  outputs:
+    structured_extraction_result:
+      matches_packet: runx.structured_extraction.result.v1
+metadata:
+  public_skill: structured-extraction
+  source_case: rfc9110-http-semantics
+  source: p-40c7eb6c41
