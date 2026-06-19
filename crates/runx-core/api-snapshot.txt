@@ -36,7 +36,16 @@ pub use runx_core::policy::CredentialGrantReference
 pub use runx_core::policy::ScopeAdmission
 pub use runx_core::policy::ScopeAdmissionStatus
 pub mod runx_core::policy::authority_algebra
+pub struct runx_core::policy::authority_algebra::AuthorityEffectGuardDecision<'a>
+pub runx_core::policy::authority_algebra::AuthorityEffectGuardDecision::family: &'a str
+pub runx_core::policy::authority_algebra::AuthorityEffectGuardDecision::non_replay_required: bool
+pub runx_core::policy::authority_algebra::AuthorityEffectGuardDecision::proof_kinds: alloc::vec::Vec<runx_contracts::reference::ProofKind>
+pub runx_core::policy::authority_algebra::AuthorityEffectGuardDecision::receipt_before_success_required: bool
+pub fn runx_core::policy::authority_algebra::authority_effect_family<'a>(parent: &'a runx_contracts::authority::AuthorityTerm, child: &'a runx_contracts::authority::AuthorityTerm) -> core::option::Option<&'a str>
+pub fn runx_core::policy::authority_algebra::authority_effect_guard_required(term: &runx_contracts::authority::AuthorityTerm, family: &str, guard_kind: runx_contracts::authority::AuthorityEffectGuardKind) -> bool
+pub fn runx_core::policy::authority_algebra::authority_effect_proof_kinds(parent: &runx_contracts::authority::AuthorityTerm, child: &runx_contracts::authority::AuthorityTerm, family: &str) -> alloc::vec::Vec<runx_contracts::reference::ProofKind>
 pub fn runx_core::policy::authority_algebra::authority_term_has_verb(term: &runx_contracts::authority::AuthorityTerm, verb: runx_contracts::authority::AuthorityVerb) -> bool
+pub fn runx_core::policy::authority_algebra::evaluate_authority_effect_guards<'a>(parent: &'a runx_contracts::authority::AuthorityTerm, child: &'a runx_contracts::authority::AuthorityTerm, family: &'a str) -> runx_core::policy::authority_algebra::AuthorityEffectGuardDecision<'a>
 pub fn runx_core::policy::authority_algebra::items_subset<T: core::cmp::PartialEq>(child: &[T], parent: &[T]) -> bool
 pub fn runx_core::policy::authority_algebra::optional_bound_subset<T: core::cmp::Ord + core::marker::Copy>(child: core::option::Option<T>, parent: core::option::Option<T>) -> bool
 pub fn runx_core::policy::authority_algebra::optional_exact_or_narrower<T: core::cmp::Eq>(child: &core::option::Option<T>, parent: &core::option::Option<T>) -> bool
@@ -55,12 +64,16 @@ pub fn runx_core::policy::public_work::evaluate_public_pull_request_candidate(re
 pub fn runx_core::policy::public_work::normalize_public_work_policy(policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::RequiredPublicWorkPolicy
 pub mod runx_core::policy::sandbox
 pub fn runx_core::policy::sandbox::admit_sandbox(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>, options: &runx_core::policy::SandboxAdmissionOptions) -> runx_core::policy::SandboxAdmissionDecision
+pub fn runx_core::policy::sandbox::is_reserved_runx_sandbox_env_name(name: &str) -> bool
 pub fn runx_core::policy::sandbox::normalize_sandbox_declaration(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>) -> runx_core::policy::RequiredSandboxDeclaration
 pub fn runx_core::policy::sandbox::sandbox_requires_approval(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>) -> bool
 pub mod runx_core::policy::scope
 pub enum runx_core::policy::AdmissionDecision
 pub runx_core::policy::AdmissionDecision::Allow
 pub runx_core::policy::AdmissionDecision::Allow::reasons: alloc::vec::Vec<alloc::string::String>
+pub runx_core::policy::AdmissionDecision::AllowMarked
+pub runx_core::policy::AdmissionDecision::AllowMarked::norm_refs: alloc::vec::Vec<alloc::string::String>
+pub runx_core::policy::AdmissionDecision::AllowMarked::reasons: alloc::vec::Vec<alloc::string::String>
 pub runx_core::policy::AdmissionDecision::Deny
 pub runx_core::policy::AdmissionDecision::Deny::reasons: alloc::vec::Vec<alloc::string::String>
 pub enum runx_core::policy::CredentialBindingDecision
@@ -104,6 +117,11 @@ pub runx_core::policy::SandboxProfile::UnrestrictedLocalDev
 pub runx_core::policy::SandboxProfile::WorkspaceWrite
 impl runx_core::policy::SandboxProfile
 pub fn runx_core::policy::SandboxProfile::as_str(&self) -> &'static str
+pub struct runx_core::policy::AuthorityEffectGuardDecision<'a>
+pub runx_core::policy::AuthorityEffectGuardDecision::family: &'a str
+pub runx_core::policy::AuthorityEffectGuardDecision::non_replay_required: bool
+pub runx_core::policy::AuthorityEffectGuardDecision::proof_kinds: alloc::vec::Vec<runx_contracts::reference::ProofKind>
+pub runx_core::policy::AuthorityEffectGuardDecision::receipt_before_success_required: bool
 pub struct runx_core::policy::AuthorityProofApproval
 pub runx_core::policy::AuthorityProofApproval::approved: bool
 pub runx_core::policy::AuthorityProofApproval::gate: runx_core::policy::AuthorityProofApprovalGate
@@ -240,18 +258,30 @@ pub runx_core::policy::SandboxDeclaration::network: core::option::Option<bool>
 pub runx_core::policy::SandboxDeclaration::profile: runx_core::policy::SandboxProfile
 pub runx_core::policy::SandboxDeclaration::require_enforcement: core::option::Option<bool>
 pub runx_core::policy::SandboxDeclaration::writable_paths: core::option::Option<alloc::vec::Vec<alloc::string::String>>
+pub struct runx_core::policy::ToolRefAdmission
+pub runx_core::policy::ToolRefAdmission::allowed: bool
+pub runx_core::policy::ToolRefAdmission::reason: &'static str
+impl runx_core::policy::ToolRefAdmission
+pub const fn runx_core::policy::ToolRefAdmission::allow() -> Self
+pub const fn runx_core::policy::ToolRefAdmission::deny(reason: &'static str) -> Self
+pub fn runx_core::policy::admit_agent_tool_ref(value: &str) -> runx_core::policy::ToolRefAdmission
 pub fn runx_core::policy::admit_graph_step_scopes(request: &runx_core::policy::GraphScopeAdmissionRequest) -> runx_core::policy::GraphScopeAdmissionDecision
 pub fn runx_core::policy::admit_local_skill(skill: &runx_core::policy::LocalAdmissionSkill, options: &runx_core::policy::LocalAdmissionOptions) -> runx_core::policy::AdmissionDecision
 pub fn runx_core::policy::admit_retry_policy(request: &runx_core::policy::RetryAdmissionRequest) -> runx_core::policy::AdmissionDecision
 pub fn runx_core::policy::admit_sandbox(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>, options: &runx_core::policy::SandboxAdmissionOptions) -> runx_core::policy::SandboxAdmissionDecision
+pub fn runx_core::policy::authority_effect_family<'a>(parent: &'a runx_contracts::authority::AuthorityTerm, child: &'a runx_contracts::authority::AuthorityTerm) -> core::option::Option<&'a str>
+pub fn runx_core::policy::authority_effect_guard_required(term: &runx_contracts::authority::AuthorityTerm, family: &str, guard_kind: runx_contracts::authority::AuthorityEffectGuardKind) -> bool
+pub fn runx_core::policy::authority_effect_proof_kinds(parent: &runx_contracts::authority::AuthorityTerm, child: &runx_contracts::authority::AuthorityTerm, family: &str) -> alloc::vec::Vec<runx_contracts::reference::ProofKind>
 pub fn runx_core::policy::authority_term_has_verb(term: &runx_contracts::authority::AuthorityTerm, verb: runx_contracts::authority::AuthorityVerb) -> bool
 pub fn runx_core::policy::build_authority_proof(options: &runx_core::policy::BuildAuthorityProofOptions) -> runx_contracts::policy_proof::AuthorityProof
 pub fn runx_core::policy::build_authority_proof_metadata(options: &runx_core::policy::BuildAuthorityProofOptions) -> runx_core::policy::AuthorityProofMetadata
 pub fn runx_core::policy::build_local_scope_admission(auth: core::option::Option<&runx_contracts::json::JsonValue>, grants: &[runx_core::policy::LocalAdmissionGrant], options: &runx_core::policy::LocalScopeAdmissionOptions) -> runx_contracts::policy_proof::ScopeAdmission
 pub fn runx_core::policy::compute_maturity(signals: &runx_contracts::maturity::MaturitySignals) -> runx_contracts::maturity::MaturityTier
 pub fn runx_core::policy::default_public_work_policy() -> runx_core::policy::RequiredPublicWorkPolicy
+pub fn runx_core::policy::evaluate_authority_effect_guards<'a>(parent: &'a runx_contracts::authority::AuthorityTerm, child: &'a runx_contracts::authority::AuthorityTerm, family: &'a str) -> runx_core::policy::authority_algebra::AuthorityEffectGuardDecision<'a>
 pub fn runx_core::policy::evaluate_public_comment_opportunity(request: &runx_core::policy::PublicCommentOpportunityRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicCommentPolicyDecision
 pub fn runx_core::policy::evaluate_public_pull_request_candidate(request: &runx_core::policy::PublicPullRequestCandidateRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicPolicyDecision
+pub fn runx_core::policy::is_reserved_runx_sandbox_env_name(name: &str) -> bool
 pub fn runx_core::policy::normalize_public_work_policy(policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::RequiredPublicWorkPolicy
 pub fn runx_core::policy::normalize_sandbox_declaration(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>) -> runx_core::policy::RequiredSandboxDeclaration
 pub fn runx_core::policy::sandbox_requires_approval(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>) -> bool
@@ -299,6 +329,7 @@ pub enum runx_core::state_machine::GraphStepStatus
 pub runx_core::state_machine::GraphStepStatus::Failed
 pub runx_core::state_machine::GraphStepStatus::Pending
 pub runx_core::state_machine::GraphStepStatus::Running
+pub runx_core::state_machine::GraphStepStatus::Skipped
 pub runx_core::state_machine::GraphStepStatus::Succeeded
 pub enum runx_core::state_machine::SequentialGraphEvent
 pub runx_core::state_machine::SequentialGraphEvent::Complete
@@ -315,6 +346,9 @@ pub runx_core::state_machine::SequentialGraphEvent::StepFailed
 pub runx_core::state_machine::SequentialGraphEvent::StepFailed::at: alloc::string::String
 pub runx_core::state_machine::SequentialGraphEvent::StepFailed::error: alloc::string::String
 pub runx_core::state_machine::SequentialGraphEvent::StepFailed::step_id: alloc::string::String
+pub runx_core::state_machine::SequentialGraphEvent::StepSkipped
+pub runx_core::state_machine::SequentialGraphEvent::StepSkipped::at: alloc::string::String
+pub runx_core::state_machine::SequentialGraphEvent::StepSkipped::step_id: alloc::string::String
 pub runx_core::state_machine::SequentialGraphEvent::StepSucceeded
 pub runx_core::state_machine::SequentialGraphEvent::StepSucceeded::admission_witness: alloc::boxed::Box<runx_core::state_machine::StepAdmissionWitness>
 pub runx_core::state_machine::SequentialGraphEvent::StepSucceeded::at: alloc::string::String

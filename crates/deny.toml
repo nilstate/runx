@@ -22,7 +22,7 @@ multiple-versions = "allow"
 deny = [
   { name = "async-std", reason = "No async runtime exception is approved for the Rust parity workspace." },
   { name = "axum", reason = "No HTTP server framework exception is approved for the Rust parity workspace." },
-  { name = "clap", reason = "CLI parsing remains hand-rolled for the cargo-installed launcher boundary." },
+  { name = "clap", wrappers = ["criterion"], reason = "CLI parsing remains hand-rolled for the cargo-installed launcher boundary; criterion may use clap in dev-only benchmark tooling." },
   { name = "hyper", wrappers = ["reqwest", "hyper-rustls", "hyper-util", "runx-runtime"], reason = "Allowed as reqwest transport internals, and (runx-runtime, mcp-http-server feature) as the reviewed inbound server runtime driving rmcp's StreamableHttpService for the governed MCP-over-HTTP surface." },
   { name = "reqwest", wrappers = ["runx-runtime"], reason = "Approved only inside runx-runtime async-http; pure crates must not depend on the HTTP client." },
   # rmcp is intentionally not banned: it is the canonical protocol engine for
@@ -46,7 +46,7 @@ exceptions = [
   { name = "ring", version = "=0.17.14", allow = ["ISC"] },
   { name = "rustls-webpki", version = "=0.103.13", allow = ["ISC"] },
   { name = "untrusted", version = "=0.9.0", allow = ["ISC"] },
-  { name = "webpki-root-certs", version = "=1.0.7", allow = ["CDLA-Permissive-2.0"] },
+  { name = "webpki-root-certs", version = "=1.0.8", allow = ["CDLA-Permissive-2.0"] },
 ]
 
 [sources]

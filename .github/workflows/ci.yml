@@ -151,8 +151,11 @@ jobs:
           cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node scripts/check-license-edges.mjs --check edges
           cargo test --manifest-path crates/Cargo.toml -p runx-runtime --all-features --test integration -- license_boundary
 
-      - name: Rust kernel parity
-        run: node scripts/check-rust-kernel-parity.mjs
+      - name: Cargo policy
+        run: cargo deny --manifest-path crates/Cargo.toml check bans licenses sources
+
+      - name: Rust public API snapshot
+        run: node scripts/check-rust-kernel-parity.mjs --api-only
 
   checks:
     runs-on: ubuntu-latest
