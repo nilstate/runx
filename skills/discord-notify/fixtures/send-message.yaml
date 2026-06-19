@@ -1,0 +1,31 @@
+name: send-message
+target:
+  kind: skill
+  ref: .
+runner: send
+inputs:
+  proxy_host: "127.0.0.1:8732"
+  connection_id: "discord-user-123"
+  channel_id: "1234567890"
+  content: "Hello from runx!"
+caller:
+  approvals:
+    discord-notify.send.approval: true
+  answers:
+    agent_task.sign-receipt.output:
+      attestation:
+        action: discord outbound notify
+        claim: A message was posted to the discord channel.
+        principal: account:runx-user
+        evidence_refs:
+          - "mock_message_id"
+        signed: true
+        attestation_id: att_discord_notify_demo
+expect:
+  status: success
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: discord-notify
+  source_case: send-message
+  source: skills-fixture

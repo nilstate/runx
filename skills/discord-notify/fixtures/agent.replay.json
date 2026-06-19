@@ -1,0 +1,22 @@
+{
+  "schema": "runx.replay.v1",
+  "fixture": "echo-agent-replay",
+  "prompt_fingerprint": "sha256:399db18983f9116acb30e23a4bc65b8f11502067c0ee97ea4ae0a9442cea2f86",
+  "recorded_at": "1970-01-01T00:00:00.000Z",
+  "target": {
+    "kind": "skill",
+    "ref": "."
+  },
+  "status": "sealed",
+  "outputs": {
+    "echo_packet": {
+      "schema": "discord.notify.echo.v1",
+      "data": {
+        "message": "hello"
+      }
+    }
+  },
+  "usage": {
+    "mode": "scaffold"
+  }
+}

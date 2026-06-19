@@ -1,0 +1,27 @@
+{
+  "name": "discord-notify",
+  "version": "0.1.0",
+  "description": "Scaffolded runx skill package.",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "runx tool build --all --json",
+    "runx:list": "runx list --json",
+    "runx:doctor": "runx doctor --json",
+    "runx:dev": "runx dev --lane deterministic --json",
+    "prepublishOnly": "runx tool build --all --json && runx doctor --json"
+  },
+  "runx": {
+    "packets": [
+      "./dist/packets/*.schema.json"
+    ]
+  },
+  "devDependencies": {
+    "@runxhq/authoring": "^0.1.4",
+    "@runxhq/cli": "^0.5.22",
+    "@tsconfig/node20": "^20.1.6",
+    "tsx": "^4.20.6"
+  }
+}

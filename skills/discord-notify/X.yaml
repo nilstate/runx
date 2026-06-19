@@ -1,0 +1,89 @@
+skill: discord-notify
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: send-message
+      runner: send
+      inputs:
+        proxy_host: "127.0.0.1:8732"
+        connection_id: "discord-user-123"
+        channel_id: "1234567890"
+        content: "Hello from runx!"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  send:
+    default: true
+    type: graph
+    runx:
+      connector: nango/discord
+    inputs:
+      proxy_host:
+        type: string
+        required: false
+        default: "api.nango.dev"
+        description: Nango API host.
+      connection_id:
+        type: string
+        required: true
+        description: Nango connection ID.
+      channel_id:
+        type: string
+        required: true
+        description: Discord channel ID.
+      content:
+        type: string
+        required: true
+        description: Message content.
+    graph:
+      name: discord-notify
+      steps:
+        - id: approve-send
+          label: human approval before delivery
+          run:
+            type: approval
+          inputs:
+            gate_id: discord-notify.send.approval
+            reason: Approve sending message to Discord channel.
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+        - id: call
+          tool: discord.notify
+          scopes:
+            - discord:channel:write
+          inputs:
+            proxy_host: "$input.proxy_host"
+            connection_id: "$input.connection_id"
+            channel_id: "$input.channel_id"
+            content: "$input.content"
+          named_emits:
+            - runx.discord.notify.v1
+        - id: seal-run
+          label: seal the run to the ledger
+          skill: ../sign-receipt
+          runner: sign-receipt
+          scopes:
+            - runx:ledger:append
+          inputs:
+            action: discord outbound notify
+          context:
+            evidence: call.runx.discord.notify.v1.data
+      policy:
+        guards:
+          - step: call
+            field: approve-send.approval_decision.data.approved
+            equals: true
+          - step: seal-run
+            field: approve-send.approval_decision.data.approved
+            equals: true

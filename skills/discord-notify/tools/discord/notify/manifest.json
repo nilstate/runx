@@ -1,0 +1,54 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "discord.notify",
+  "version": "0.1.0",
+  "description": "Governed action to send a message to a Discord channel.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "channel_id": {
+      "type": "string",
+      "required": true
+    },
+    "connection_id": {
+      "type": "string",
+      "required": true
+    },
+    "content": {
+      "type": "string",
+      "required": true
+    },
+    "proxy_host": {
+      "type": "string",
+      "required": false,
+      "default": "api.nango.dev"
+    }
+  },
+  "scopes": [
+    "discord:write"
+  ],
+  "runx": {
+    "connector": "discord"
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.discord.send.v1",
+    "wrap_as": "send_receipt",
+    "named_emits": {
+      "message_sent": "runx.discord.message_sent.v1"
+    }
+  },
+  "source_hash": "sha256:da654f57fc0ec4a1a448b2a33df79f5115ef8f75a1afb577043d7f4076762964",
+  "schema_hash": "sha256:623f68d98fe019df03256365277961d8579425aebcec74e4cbd71045dc549e21",
+  "toolkit_version": "0.1.4"
+}

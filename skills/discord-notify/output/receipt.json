@@ -1,0 +1,70 @@
+{
+  "acts": [],
+  "authority": {
+    "actor_ref": {
+      "type": "principal",
+      "uri": "runx:principal:local_runtime"
+    },
+    "attenuation": {
+      "parent_authority_ref": null,
+      "subset_proof": null
+    },
+    "authority_proof_refs": [],
+    "enforcement": {
+      "profile_hash": "sha256:runtime-skeleton-enforcement",
+      "redaction_refs": [],
+      "setup_refs": [],
+      "teardown_refs": []
+    },
+    "grant_refs": [],
+    "scope_refs": [],
+    "terms": []
+  },
+  "canonicalization": "runx.receipt.c14n.v1",
+  "created_at": "2026-05-18T00:00:00Z",
+  "decisions": [],
+  "digest": "sha256:b7d8d649a052860ac4b210e141fa2b2a29dde4dedbca97af152309785a42c746",
+  "id": "sha256:e68234a43aa24626705f2853bf68c691e7be8466fe4af210ae0d3edd42c3191a",
+  "idempotency": {
+    "content_hash": "sha256:discord-send-graph-content",
+    "intent_key": "sha256:discord-send-graph-intent",
+    "trigger_fingerprint": "sha256:discord-send-graph-trigger"
+  },
+  "issuer": {
+    "kid": "runx-demo-key",
+    "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+    "type": "hosted"
+  },
+  "lineage": {
+    "children": [
+      {
+        "locator": "sha256:c22cd95598bd4450dcb26a53a7f1d774833d326b7314215f5225d5d1fefe35eb",
+        "type": "receipt",
+        "uri": "runx:receipt:sha256:93436b2638e5958d2305bc2d3a94db8f0b40ecd6aa3998a25db2f08ea9140475"
+      }
+    ],
+    "sync": []
+  },
+  "schema": "runx.receipt.v1",
+  "seal": {
+    "closed_at": "2026-05-18T00:00:00Z",
+    "criteria": [],
+    "disposition": "closed",
+    "last_observed_at": "2026-05-18T00:00:00Z",
+    "reason_code": "graph_closed",
+    "summary": "graph discord-send completed"
+  },
+  "signals": [],
+  "signature": {
+    "alg": "Ed25519",
+    "value": "base64:SpsXx6lqYl8LAhro2FQL3qZ2PyBQoJXcTszJKfpClbSkeLu74vI6g5Na-iOxBUuFnekh4DPceZfyS20Vz8H2Dg"
+  },
+  "subject": {
+    "commitments": [],
+    "kind": "graph",
+    "ref": {
+      "type": "harness",
+      "uri": "hrn_discord-send_graph"
+    }
+  }
+}

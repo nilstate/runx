@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/discord/notify/echo/v1.json",
+  "x-runx-packet-id": "discord.notify.echo.v1",
+  "type": "object",
+  "required": [
+    "message"
+  ],
+  "properties": {
+    "message": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

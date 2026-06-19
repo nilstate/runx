@@ -1,0 +1,79 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "status": "unchanged",
+      "skill_id": "local/discord-notify",
+      "name": "discord-notify",
+      "version": "sha-9eba6d235622",
+      "digest": "38f262cc47a0eb05eb1c177181cfcbc81f9a0111b1ddeefac8ef6de7266ea698",
+      "profile_digest": "a258befcd603924f75b03d32412b14aceef49a12200a14faceac9bea941a1c13",
+      "runner_names": [
+        "send"
+      ],
+      "source_type": "agent",
+      "harness": {
+        "status": "not_declared",
+        "case_count": 0,
+        "assertion_error_count": 0,
+        "assertion_errors": [],
+        "case_names": [],
+        "receipt_ids": [],
+        "graph_case_count": 0
+      },
+      "link": {
+        "link": "runx://skill/local%2Fdiscord-notify@sha-9eba6d235622",
+        "skill_id": "local/discord-notify",
+        "version": "sha-9eba6d235622",
+        "digest": "38f262cc47a0eb05eb1c177181cfcbc81f9a0111b1ddeefac8ef6de7266ea698",
+        "install_command": "runx add local/discord-notify@sha-9eba6d235622",
+        "run_command": "runx skill local/discord-notify@sha-9eba6d235622"
+      },
+      "record": {
+        "skill_id": "local/discord-notify",
+        "owner": "local",
+        "name": "discord-notify",
+        "description": "Planner for Discord notifications using the Nango connector.",
+        "version": "sha-9eba6d235622",
+        "digest": "38f262cc47a0eb05eb1c177181cfcbc81f9a0111b1ddeefac8ef6de7266ea698",
+        "markdown": "---\nname: discord-notify\ndescription: Planner for Discord notifications using the Nango connector.\n---\n\n# Discord Notify\n\nThis skill is an `agent-task` planner for the Discord Nango connector.\nThe skill emits the planned actions a connector lane would run.\n\n1. **Check Inputs:** Verify `provider_context`, `channel`, and `content`. If `provider_context` is missing, return `needs_agent`.\n2. **Emit Plan:** Construct a `notify_plan` that specifies the target `channel` and the `provider_actions` necessary to post the message using the Discord Nango connector.\n3. **Stop:** End the task and output the plan.\n\n## Emitted Plan Format\n\n```yaml\nnotify_plan:\n  decision: ready\n  principal: \"{{principal}}\"\n  channel:\n    ref: \"{{channel}}\"\n  content: \"{{content}}\"\n  provider_actions:\n    - action: post_message\n      via: \"{{provider_context.connector}}\"\n```\n",
+        "profile_document": "skill: discord-notify\nversion: \"0.1.0\"\n\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n\nrunners:\n  send:\n    default: true\n    type: graph\n    inputs:\n      proxy_host:\n        type: string\n        required: false\n        default: \"api.nango.dev\"\n        description: Nango API host.\n      connection_id:\n        type: string\n        required: true\n        description: Nango connection ID.\n      channel_id:\n        type: string\n        required: true\n        description: Discord channel ID.\n      content:\n        type: string\n        required: true\n        description: Message content.\n    runx:\n      connector: nango/discord\n    graph:\n      name: discord-send\n      steps:\n        - id: call\n          tool: discord.notify\n          inputs:\n            proxy_host: \"$input.proxy_host\"\n            connection_id: \"$input.connection_id\"\n            channel_id: \"$input.channel_id\"\n            content: \"$input.content\"\n",
+        "profile_digest": "a258befcd603924f75b03d32412b14aceef49a12200a14faceac9bea941a1c13",
+        "runner_names": [
+          "send"
+        ],
+        "source_type": "agent",
+        "trust_tier": "community",
+        "maturity": "alpha",
+        "catalog_kind": "skill",
+        "catalog_audience": "public",
+        "catalog_visibility": "public",
+        "attestations": [
+          {
+            "kind": "publisher",
+            "id": "publisher:local",
+            "status": "declared",
+            "summary": "local",
+            "issued_at": "2026-06-19T02:00:42.152Z",
+            "metadata": {
+              "publisher_handle": "local",
+              "publisher_id": "local",
+              "publisher_kind": "publisher",
+              "trust_tier": "community"
+            }
+          }
+        ],
+        "required_scopes": [],
+        "tags": [],
+        "publisher": {
+          "kind": "publisher",
+          "id": "local",
+          "handle": "local"
+        },
+        "created_at": "2026-06-19T01:50:52.622Z",
+        "updated_at": "2026-06-19T02:00:42.153Z"
+      }
+    }
+  }
+}

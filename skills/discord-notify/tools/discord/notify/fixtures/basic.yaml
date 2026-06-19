@@ -1,0 +1,9 @@
+name: basic
+target:
+  kind: tool
+  ref: discord.notify
+inputs:
+  proxy_host: "127.0.0.1:8732"
+  connection_id: "test-conn"
+  channel_id: "12345"
+  content: "hello world"
