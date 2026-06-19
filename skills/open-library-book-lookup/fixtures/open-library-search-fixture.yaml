@@ -1,0 +1,19 @@
+name: open-library-search-fixture
+lane: deterministic
+target:
+  kind: skill
+  ref: .
+runner: search
+inputs:
+  query: "the left hand of darkness"
+  limit: 2
+  fixture_path: "fixtures/open-library-search-response.json"
+expect:
+  status: success
+  outputs:
+    open_library_search_result:
+      matches_packet: runx.open_library.search_result.v1
+metadata:
+  public_skill: open-library-book-lookup
+  source_case: open-library-search-fixture
+  source: p-2fe96b012e

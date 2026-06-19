@@ -1,0 +1,35 @@
+name: open-library-search-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: open_library.search
+inputs:
+  query: "the left hand of darkness"
+  limit: 2
+  fixture_path: "fixtures/open-library-search-response.json"
+expect:
+  status: success
+  output:
+    matches_packet: runx.open_library.search_result.v1
+    subset:
+      decision: ready
+      provider: open-library
+      connector:
+        id: open-library-public-search
+        transport: nango
+        auth: none
+        scope_used: open-library:search:read
+      request:
+        method: GET
+        host: openlibrary.org
+        path: /search.json
+        query: "the left hand of darkness"
+        limit: 2
+      policy:
+        allowlist_decision: allowed
+        allowed_host: openlibrary.org
+        allowed_path: /search.json
+        allowed_method: GET
+        mutation_allowed: false
+        credential_material_allowed: false
+
