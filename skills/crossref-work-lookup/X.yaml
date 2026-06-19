@@ -1,0 +1,79 @@
+skill: crossref-work-lookup
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: branded
+  canonical_skill: runx/web-fetch
+  provider: crossref
+  runtime_path: nango
+
+connector_dependency:
+  id: crossref-public-works
+  provider: crossref
+  transport: nango
+  auth: none
+  base_url: https://api.crossref.org
+  docs: https://api.crossref.org/swagger-ui/index.html
+  scopes:
+    - crossref:works:read
+
+policy:
+  allow:
+    - provider: crossref
+      method: GET
+      host: api.crossref.org
+      path: /works
+      scope: crossref:works:read
+  deny:
+    - mutations
+    - credential_material
+    - private_user_data
+
+emits:
+  - name: crossref_work_search_result
+    packet: runx.crossref.work_search_result.v1
+
+harness:
+  cases:
+    - name: crossref-work-search-fixture
+      runner: search
+      inputs:
+        query: "governed agent runtime"
+        limit: 2
+        fixture_path: "fixtures/crossref-work-search-response.json"
+      expect:
+        status: sealed
+
+runners:
+  search:
+    default: true
+    type: graph
+    inputs:
+      query:
+        type: string
+        required: true
+        description: "Crossref bibliographic search query."
+      limit:
+        type: number
+        required: false
+        default: 3
+        description: "Maximum result count, capped at 10."
+      fixture_path:
+        type: string
+        required: false
+        description: "Package-relative fixture JSON for deterministic replay."
+    outputs:
+      crossref_work_search_result: object
+    graph:
+      name: crossref-work-lookup
+      steps:
+        - id: crossref_search
+          tool: crossref.search
+          inputs:
+            query: "$input.query"
+            limit: "$input.limit"
+            fixture_path: "$input.fixture_path"
+

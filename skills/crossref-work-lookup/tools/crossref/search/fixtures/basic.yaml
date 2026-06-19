@@ -1,0 +1,32 @@
+name: crossref-search-basic
+lane: deterministic
+target:
+  kind: tool
+  ref: crossref.search
+inputs:
+  query: "governed agent runtime"
+  limit: 2
+  fixture_path: "fixtures/crossref-work-search-response.json"
+expect:
+  status: success
+  output:
+    matches_packet: runx.crossref.work_search_result.v1
+    subset:
+      decision: ready
+      provider: crossref
+      connector:
+        id: crossref-public-works
+        transport: nango
+        auth: none
+        scope_used: crossref:works:read
+      request:
+        method: GET
+        host: api.crossref.org
+        path: /works
+        query: "governed agent runtime"
+        limit: 2
+      policy:
+        allowlist_decision: allowed
+        mutation_allowed: false
+        credential_material_allowed: false
+

@@ -1,0 +1,16 @@
+{
+  "name": "crossref-work-lookup",
+  "version": "0.1.0",
+  "description": "Governed Crossref scholarly work lookup connector for runx.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "runx tool build --all --json",
+    "doctor": "runx doctor --json",
+    "harness": "runx harness . --json"
+  },
+  "runx": {
+    "packets": []
+  }
+}
+

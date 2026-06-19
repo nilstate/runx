@@ -1,0 +1,19 @@
+name: crossref-work-search-fixture
+lane: deterministic
+target:
+  kind: skill
+  ref: .
+runner: search
+inputs:
+  query: "governed agent runtime"
+  limit: 2
+  fixture_path: "fixtures/crossref-work-search-response.json"
+expect:
+  status: success
+  outputs:
+    crossref_work_search_result:
+      matches_packet: runx.crossref.work_search_result.v1
+metadata:
+  public_skill: crossref-work-lookup
+  source_case: crossref-work-search-fixture
+

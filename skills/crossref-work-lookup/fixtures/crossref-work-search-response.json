@@ -1,0 +1,30 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "total-results": 2,
+    "items": [
+      {
+        "DOI": "10.1145/3580305.3599853",
+        "title": ["AgentBench: Evaluating LLMs as Agents"],
+        "author": [
+          {"given": "Xiao", "family": "Liu"},
+          {"given": "Hao", "family": "Yu"}
+        ],
+        "published": {"date-parts": [[2023]]},
+        "URL": "https://doi.org/10.1145/3580305.3599853"
+      },
+      {
+        "DOI": "10.48550/arXiv.2308.03688",
+        "title": ["ToolLLM: Facilitating Large Language Models to Master 16000+ Real-world APIs"],
+        "author": [
+          {"given": "Yujia", "family": "Qin"}
+        ],
+        "published": {"date-parts": [[2023]]},
+        "URL": "https://doi.org/10.48550/arXiv.2308.03688"
+      }
+    ]
+  }
+}
+

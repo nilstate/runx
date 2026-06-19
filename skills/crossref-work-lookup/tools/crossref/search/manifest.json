@@ -1,0 +1,47 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "crossref.search",
+  "version": "0.1.0",
+  "description": "Perform a bounded read-only Crossref works search through the declared connector.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "inputs": {
+    "fixture_path": {
+      "type": "string",
+      "required": false,
+      "description": "Package-relative fixture JSON for deterministic replay."
+    },
+    "limit": {
+      "type": "number",
+      "required": false,
+      "description": "Maximum result count, capped at 10.",
+      "default": 3
+    },
+    "query": {
+      "type": "string",
+      "required": true,
+      "description": "Crossref bibliographic search query."
+    }
+  },
+  "scopes": ["crossref:works:read"],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "crossref_work_search_result": "runx.crossref.work_search_result.v1"
+      },
+      "wrap_as": "crossref_work_search_result"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "output": {
+    "packet": "runx.crossref.work_search_result.v1",
+    "wrap_as": "crossref_work_search_result"
+  }
+}
+
