@@ -17,6 +17,9 @@ use runx_runtime::sandbox::SandboxPlan;
 use runx_runtime::{InvocationStatus, RuntimeError, SkillAdapter, SkillInvocation};
 use serde::Deserialize;
 
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
+const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE: &str = "local";
+
 #[test]
 fn mcp_argument_templates_map_structured_and_embedded_values() -> Result<(), RuntimeError> {
     let mut inputs = JsonObject::new();
@@ -522,6 +525,10 @@ fn sandbox_env_invocation(name: &str) -> Result<SkillInvocation, RuntimeError> {
     request
         .env
         .insert("RUNX_SECRET_VALUE".to_owned(), "secret".to_owned());
+    request.env.insert(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE.to_owned(),
+    );
     Ok(request)
 }
 
