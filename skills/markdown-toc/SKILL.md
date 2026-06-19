@@ -13,7 +13,7 @@ Extracts headings from markdown text and outputs a structured table of contents 
 ## Procedure
 
 1. Read markdown content from stdin or the `content` input
-2. Parse lines starting with `# `, `## `, `## `, `### `, `#### ` to extract heading level and text
+2. Parse lines starting with `# `, `## `, `### `, `#### `, `##### ` to extract heading level and text
 3. Build a nested tree preserving document order
 4. Output structured JSON with each heading's level, text, and anchor
 
@@ -54,11 +54,12 @@ Output:
 ]
 ```
 
-## Edge cases
+## Quality Profile
 
-| Input | Behavior |
-|-------|----------|
-| Empty content | Returns empty array |
-| No headings | Returns empty array |
-| Duplicate headings | Appends `-1`, `-2` suffixes |
-| Non-heading text | Ignored, only `#` lines are parsed |
+| Dimension | Assessment |
+|-----------|------------|
+| Correctness | Functions as a pure text parser — output matches markdown heading structure |
+| Observability | Returns structured JSON with clear level/text/anchor fields |
+| Safety | Read-only, no network or filesystem access needed |
+| Determinism | Same input always produces same output |
+| Robustness | Handles empty content, missing headings, duplicate anchors gracefully |

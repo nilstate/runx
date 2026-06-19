@@ -1,40 +1,48 @@
+skill: markdown-toc
+version: 1
+
 catalog:
   kind: skill
-  audience: operator
+  audience: public
   visibility: public
-  role: utility
+  role: canonical
 
 runners:
-  - type: agent-task
+  markdown-toc:
+    type: agent-task
     agent: utility
-    task: markdown-toc
-    description: Generate a table of contents from markdown input
+    description: Generate a table of contents from markdown content
     inputs:
       content:
         type: string
         description: Markdown content to parse
         required: true
+    outputs:
+      result:
+        type: json
+        description: Structured table of contents as JSON array
     artifacts:
       wrap_as: result
       packet:
         format: json
 
 harness:
-  - case: basic-toc
-    description: Generates TOC from sample markdown
-    input:
-      content: "# A\n\n## B\n\n### C"
-    expect:
-      status: sealed
-  - case: empty-input
-    description: Empty content returns empty array
-    input:
-      content: ""
-    expect:
-      status: sealed
-  - case: no-headings
-    description: Plain text with no headings returns empty array
-    input:
-      content: "Just some text\n\nNo headings here"
-    expect:
-      status: sealed
+  cases:
+    - name: basic-toc
+      description: Generates TOC from sample markdown
+      input:
+        content: "# A\n\n## B\n\n### C"
+      expect:
+        status: sealed
+    - name: empty-input
+      description: Empty content returns empty array
+      input:
+        content: ""
+      expect:
+        status: sealed
+    - name: no-headings
+      description: Plain text with no headings returns empty array
+      input:
+        content: "Just some text\n\nNo headings here"
+      expect:
+        status: sealed
