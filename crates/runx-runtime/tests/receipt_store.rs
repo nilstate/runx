@@ -201,7 +201,7 @@ fn list_and_index_ignore_non_receipt_json_files() -> Result<(), Box<dyn std::err
     )?;
     write_json(
         temp.path(),
-        "sha256:not-a-digest.json",
+        "sha256_not-a-digest.json",
         &json!({
             "schema": "runx.receipt.v1",
             "id": "sha256:not-a-digest"
@@ -340,7 +340,7 @@ fn write_receipt_commits_readable_receipt_and_index() -> Result<(), Box<dyn std:
     assert_eq!(stored.id, receipt.id);
     assert_eq!(index.entries.len(), 1);
     assert_eq!(index.entries[0].receipt_id, receipt.id);
-    assert!(store.root().join(format!("{}.json", receipt.id)).exists());
+    assert!(store.root().join(receipt_file_name(&receipt.id)).exists());
     assert!(store.root().join("index.json").exists());
     Ok(())
 }
@@ -358,7 +358,7 @@ fn write_receipt_rejects_invalid_proof_without_writing() -> Result<(), Box<dyn s
         result,
         Err(ReceiptStoreError::ReceiptProofInvalid { .. })
     ));
-    assert!(!store.root().join(format!("{}.json", receipt.id)).exists());
+    assert!(!store.root().join(receipt_file_name(&receipt.id)).exists());
     Ok(())
 }
 
@@ -576,7 +576,7 @@ fn skill_output(status: InvocationStatus) -> SkillOutput {
 }
 
 fn receipt_file_name(receipt_id: &str) -> String {
-    format!("{receipt_id}.json")
+    format!("{}.json", receipt_id.replace(':', "_"))
 }
 
 fn write_json<T: serde::Serialize>(

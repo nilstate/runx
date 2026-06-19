@@ -1,0 +1,55 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "open_library.search",
+  "version": "0.1.0",
+  "description": "Perform a bounded read-only Open Library book search through the declared connector dependency.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "inputs": {
+    "fixture_path": {
+      "type": "string",
+      "required": false,
+      "description": "Package-relative fixture JSON for deterministic harness replay."
+    },
+    "limit": {
+      "type": "number",
+      "required": false,
+      "description": "Maximum result count, capped at 10.",
+      "default": 3
+    },
+    "query": {
+      "type": "string",
+      "required": true,
+      "description": "Open Library search query."
+    }
+  },
+  "scopes": [
+    "open-library:search:read"
+  ],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "open_library_search_result": "runx.open_library.search_result.v1"
+      },
+      "wrap_as": "open_library_search_result"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "runx.open_library.search_result.v1",
+    "wrap_as": "open_library_search_result"
+  },
+  "source_hash": "sha256:441cd4ddda579b1daf011e5849cb99ff2dba3efdda143026c769def34c40adc8",
+  "schema_hash": "sha256:be265af7ca5377d466a759f089cc223302cdcd71713a2a24f165617c8629e31b",
+  "toolkit_version": "0.1.4"
+}

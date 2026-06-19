@@ -1,0 +1,26 @@
+{
+  "numFound": 2,
+  "start": 0,
+  "numFoundExact": true,
+  "docs": [
+    {
+      "key": "/works/OL31574W",
+      "title": "The Left Hand of Darkness",
+      "author_name": [
+        "Ursula K. Le Guin"
+      ],
+      "first_publish_year": 1969,
+      "edition_count": 95
+    },
+    {
+      "key": "/works/OL27396W",
+      "title": "The Dispossessed",
+      "author_name": [
+        "Ursula K. Le Guin"
+      ],
+      "first_publish_year": 1974,
+      "edition_count": 88
+    }
+  ]
+}
+

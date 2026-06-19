@@ -1,7 +1,7 @@
 // rust-style-allow: large-file -- local store read/write/index semantics stay
 // together until the receipt-store API finishes the hard-cutover review.
 use std::ffi::OsStr;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -126,10 +126,11 @@ impl LocalReceiptStore {
             if !is_receipt_json_path(&path) {
                 continue;
             }
-            let Some(receipt_id) = path.file_stem().and_then(OsStr::to_str) else {
+            let Some(file_stem) = path.file_stem().and_then(OsStr::to_str) else {
                 continue;
             };
-            receipts.push(read_receipt_file(&path, receipt_id, signature_policy)?);
+            let receipt_id = file_stem_to_receipt_id(file_stem);
+            receipts.push(read_receipt_file(&path, &receipt_id, signature_policy)?);
         }
         receipts.sort_by(|left, right| left.id.cmp(&right.id));
         Ok(receipts)
@@ -152,10 +153,11 @@ impl LocalReceiptStore {
             if !is_receipt_json_path(&path) {
                 continue;
             }
-            let Some(receipt_id) = path.file_stem().and_then(OsStr::to_str) else {
+            let Some(file_stem) = path.file_stem().and_then(OsStr::to_str) else {
                 continue;
             };
-            receipts.push(read_receipt_file_without_proof(&path, receipt_id)?);
+            let receipt_id = file_stem_to_receipt_id(file_stem);
+            receipts.push(read_receipt_file_without_proof(&path, &receipt_id)?);
         }
         receipts.sort_by(|left, right| left.id.cmp(&right.id));
         Ok(receipts)
@@ -201,7 +203,8 @@ impl LocalReceiptStore {
             .into_iter()
             .map(|receipt| ReceiptStoreIndexEntry {
                 receipt_id: receipt.id.to_string(),
-                file_name: format!("{}.json", receipt.id),
+                file_name: receipt_file_name(&receipt.id)
+                    .unwrap_or_else(|_| format!("{}.json", receipt.id)),
                 created_at: receipt.created_at.to_string(),
             })
             .collect::<Vec<_>>();
@@ -224,7 +227,8 @@ impl LocalReceiptStore {
             .iter()
             .map(|receipt| ReceiptStoreIndexEntry {
                 receipt_id: receipt.id.to_string(),
-                file_name: format!("{}.json", receipt.id),
+                file_name: receipt_file_name(&receipt.id)
+                    .unwrap_or_else(|_| format!("{}.json", receipt.id)),
                 created_at: receipt.created_at.to_string(),
             })
             .collect::<Vec<_>>();
@@ -492,7 +496,7 @@ fn receipt_file_name(receipt_id: &str) -> Result<String, ReceiptStoreError> {
             receipt_id: receipt_id.to_owned(),
         });
     }
-    Ok(format!("{receipt_id}.json"))
+    Ok(format!("{}.json", receipt_id_to_file_stem(receipt_id)))
 }
 
 fn is_receipt_json_path(path: &Path) -> bool {
@@ -508,10 +512,22 @@ fn is_receipt_json_path(path: &Path) -> bool {
 }
 
 fn is_receipt_id_stem(stem: &str) -> bool {
-    let Some(digest) = stem.strip_prefix("sha256:") else {
+    let receipt_id = file_stem_to_receipt_id(stem);
+    let Some(digest) = receipt_id.strip_prefix("sha256:") else {
         return false;
     };
     digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn receipt_id_to_file_stem(receipt_id: &str) -> String {
+    receipt_id.replace(':', "_")
+}
+
+fn file_stem_to_receipt_id(stem: &str) -> String {
+    if let Some(digest) = stem.strip_prefix("sha256_") {
+        return format!("sha256:{digest}");
+    }
+    stem.to_owned()
 }
 
 fn read_receipt_file(
@@ -728,7 +744,13 @@ fn write_temp_file(path: &Path, contents: &[u8], durable: bool) -> Result<(), st
 }
 
 fn sync_directory(path: &Path) -> Result<(), std::io::Error> {
-    File::open(path)?.sync_all()
+    #[cfg(windows)]
+    {
+        let _ = path;
+        return Ok(());
+    }
+    #[cfg(not(windows))]
+    std::fs::File::open(path)?.sync_all()
 }
 
 fn temp_file_name(file_name: &str) -> String {

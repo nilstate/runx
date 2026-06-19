@@ -340,7 +340,7 @@ fn native_skill_run_resumes_and_seals_receipt() -> Result<(), Box<dyn std::error
     let receipt_id = string_field(output, "receipt_id").ok_or("missing receipt_id")?;
     // Receipt ids are content-addressed (`id = hash(canonical_body)`).
     assert!(receipt_id.starts_with("sha256:"));
-    assert!(receipt_dir.join(format!("{receipt_id}.json")).exists());
+    assert!(receipt_dir.join(receipt_file_name(receipt_id)).exists());
 
     let receipt = crate::support::read_test_signed_receipt(&receipt_dir, receipt_id)?;
     assert_ne!(receipt.created_at, FIXTURE_CREATED_AT);
@@ -524,7 +524,7 @@ fn native_skill_run_uses_runtime_receipt_path_resolution() -> Result<(), Box<dyn
 
     let output = object(&result.output, "skill run result")?;
     let receipt_id = string_field(output, "receipt_id").ok_or("missing receipt_id")?;
-    assert!(env_receipt_dir.join(format!("{receipt_id}.json")).exists());
+    assert!(env_receipt_dir.join(receipt_file_name(receipt_id)).exists());
 
     Ok(())
 }
@@ -1710,10 +1710,14 @@ fn native_graph_skill_run_executes_nested_cli_tool_skill() -> Result<(), Box<dyn
     let nested_step_summary = object(&steps[0], "nested step summary")?;
     let nested_receipt_id =
         string_field(nested_step_summary, "receipt_id").ok_or("missing nested receipt id")?;
-    assert!(receipt_dir.join(format!("{root_receipt_id}.json")).exists());
     assert!(
         receipt_dir
-            .join(format!("{nested_receipt_id}.json"))
+            .join(receipt_file_name(root_receipt_id))
+            .exists()
+    );
+    assert!(
+        receipt_dir
+            .join(receipt_file_name(nested_receipt_id))
             .exists()
     );
 
@@ -2944,6 +2948,10 @@ fn string_field<'a>(object: &'a runx_contracts::JsonObject, field: &str) -> Opti
         Some(JsonValue::String(value)) => Some(value),
         _ => None,
     }
+}
+
+fn receipt_file_name(receipt_id: &str) -> String {
+    format!("{}.json", receipt_id.replace(':', "_"))
 }
 
 fn write_graph_when_branch_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {

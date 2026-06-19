@@ -1,0 +1,16 @@
+{
+  "name": "open-library-book-lookup",
+  "version": "0.1.0",
+  "description": "Runx connector skill for bounded Open Library book search.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "runx tool build --all --json",
+    "doctor": "runx doctor --json",
+    "harness": "runx harness . --json"
+  },
+  "runx": {
+    "packets": []
+  }
+}
+

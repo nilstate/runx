@@ -400,7 +400,7 @@ fn malformed_history_store_remains_typed_error() -> Result<(), Box<dyn std::erro
     fs::create_dir_all(temp.path())?;
     fs::write(
         temp.path()
-            .join(format!("{}.json", valid_content_receipt_id())),
+            .join(receipt_file_name(&valid_content_receipt_id())),
         "{",
     )?;
     let store = LocalReceiptStore::new(temp.path());
@@ -722,10 +722,14 @@ fn json_object(value: serde_json::Value) -> Result<runx_contracts::JsonObject, i
 fn write_receipt_json(dir: &Path, receipt: &Receipt) -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(dir)?;
     fs::write(
-        dir.join(format!("{}.json", receipt.id)),
+        dir.join(receipt_file_name(&receipt.id)),
         serde_json::to_string(receipt)?,
     )?;
     Ok(())
+}
+
+fn receipt_file_name(receipt_id: &str) -> String {
+    format!("{}.json", receipt_id.replace(':', "_"))
 }
 
 fn write_paused_ledger(
