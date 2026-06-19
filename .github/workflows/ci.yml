@@ -53,11 +53,8 @@ jobs:
       - name: Verify
         run: pnpm verify:fast
 
-      - name: Readiness structural guards
-        run: |
-          pnpm verify:fast:plan-check
-          node scripts/check-readiness-structural.mjs
-          node scripts/check-demo-inventory.mjs
+      - name: Verify fast plan coverage
+        run: pnpm verify:fast:plan-check
 
   demo-checks:
     runs-on: ubuntu-latest

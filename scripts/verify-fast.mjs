@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
@@ -33,7 +34,7 @@ const evalBinEnv = {
   RUNX_RECEIPT_SIGN_ISSUER_TYPE: process.env.RUNX_RECEIPT_SIGN_ISSUER_TYPE ?? "hosted",
 };
 const rustBuildEnv = {
-  CARGO_BUILD_JOBS: process.env.CARGO_BUILD_JOBS ?? "1",
+  CARGO_BUILD_JOBS: process.env.CARGO_BUILD_JOBS ?? defaultCargoBuildJobs(),
 };
 
 const results = [];
@@ -115,6 +116,11 @@ printSummaryAndExit();
 
 function step(name, command, args) {
   return { name, command, args };
+}
+
+function defaultCargoBuildJobs() {
+  const available = typeof os.availableParallelism === "function" ? os.availableParallelism() : os.cpus().length;
+  return String(Math.max(1, Math.min(available, 4)));
 }
 
 async function runSerialGroup(name, steps, envExtra = {}) {
