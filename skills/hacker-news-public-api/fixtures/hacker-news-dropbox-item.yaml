@@ -1,0 +1,14 @@
+name: hacker-news-dropbox-item
+kind: skill
+target: ..
+runner: item
+inputs:
+  item_id: "8863"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: hacker-news-public-api
+  source_case: hacker-news-dropbox-item
+  source: skills-fixture

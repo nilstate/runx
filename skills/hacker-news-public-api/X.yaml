@@ -1,0 +1,49 @@
+skill: hacker-news-public-api
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+  provider: hacker-news
+  runtime_path: cli-tool
+
+harness:
+  cases:
+    - name: hacker-news-dropbox-item
+      runner: item
+      inputs:
+        item_id: "8863"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  item:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+      - item
+    timeout_seconds: 15
+    inputs:
+      item_id:
+        type: string
+        required: true
+        description: Positive Hacker News item id.
+  topstories:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+      - topstories
+    timeout_seconds: 15
+    inputs:
+      limit:
+        type: string
+        required: false
+        default: "10"
+        description: Number of top-story ids to return, from 1 through 50.
