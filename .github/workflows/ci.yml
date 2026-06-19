@@ -123,7 +123,9 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           # Prebuilt binaries instead of compiling from source on every cache miss.
-          tool: cargo-nextest,cargo-deny,cargo-public-api
+          # cargo-public-api is snapshot-sensitive; keep this in sync with
+          # scripts/check-rust-kernel-parity.mjs.
+          tool: cargo-nextest,cargo-deny,cargo-public-api@0.51.0
 
       - name: Cargo cache
         # Same Rust-aware cache the cloud workflow uses for oss/crates: keys on the

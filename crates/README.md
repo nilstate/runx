@@ -61,7 +61,8 @@ The runtime crate owns those.
 
 For kernel parity, run `pnpm rust:check` from `oss/` or
 `node ../scripts/check-rust-kernel-parity.mjs` from `oss/crates/`. Install
-optional tools with `cargo install cargo-deny cargo-public-api` and
+optional tools with `cargo install cargo-deny` and
+`cargo install cargo-public-api --version 0.51.0`, plus
 `rustup toolchain install nightly --profile minimal`.
 
 Commit the single workspace lockfile at `crates/Cargo.lock`; the workspace

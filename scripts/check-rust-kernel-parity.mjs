@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const apiOnly = process.argv.includes("--api-only");
+const cargoPublicApiVersion = "0.51.0";
 
 const commands = apiOnly
   ? [checkPublicApiSnapshot]
@@ -41,15 +42,16 @@ function checkTooling() {
   if (spawnSync("cargo", ["deny", "--version"], { encoding: "utf8" }).status !== 0) {
     missing.push("cargo-deny");
   }
-  if (spawnSync("cargo", ["public-api", "--version"], { encoding: "utf8" }).status !== 0) {
+  if (!cargoPublicApiInstalled()) {
     missing.push("cargo-public-api");
   }
   if (missing.length === 0) {
+    checkCargoPublicApiVersion();
     return;
   }
   console.error(`missing Cargo parity tool(s): ${missing.join(", ")}`);
   console.error("Install optional Rust parity tools with:");
-  console.error("  cargo install cargo-deny cargo-public-api");
+  console.error(`  cargo install cargo-deny && cargo install cargo-public-api --version ${cargoPublicApiVersion}`);
   console.error("cargo-public-api also needs nightly rustdoc JSON:");
   console.error("  rustup toolchain install nightly --profile minimal");
   process.exit(1);
@@ -57,11 +59,12 @@ function checkTooling() {
 
 function checkPublicApiSnapshot() {
   checkCargo();
-  if (spawnSync("cargo", ["public-api", "--version"], { encoding: "utf8" }).status !== 0) {
+  if (!cargoPublicApiInstalled()) {
     console.error("missing Cargo parity tool: cargo-public-api");
-    console.error("Install it with: cargo install cargo-public-api");
+    console.error(`Install it with: cargo install cargo-public-api --version ${cargoPublicApiVersion}`);
     process.exit(1);
   }
+  checkCargoPublicApiVersion();
 
   const result = spawnSync(
     "cargo",
@@ -83,6 +86,28 @@ function checkPublicApiSnapshot() {
 
   console.error(`${expectedPath} is stale; regenerate with:`);
   console.error("  cargo public-api --manifest-path crates/runx-core/Cargo.toml -sss > crates/runx-core/api-snapshot.txt");
+  process.exit(1);
+}
+
+function cargoPublicApiInstalled() {
+  return spawnSync("cargo", ["public-api", "--version"], { encoding: "utf8" }).status === 0;
+}
+
+function checkCargoPublicApiVersion() {
+  const result = spawnSync("cargo", ["public-api", "--version"], { encoding: "utf8" });
+  if (result.status !== 0) {
+    process.stderr.write(result.stderr);
+    process.exit(result.status ?? 1);
+  }
+
+  const actual = result.stdout.trim();
+  const expected = `cargo-public-api ${cargoPublicApiVersion}`;
+  if (actual === expected) {
+    return;
+  }
+
+  console.error(`cargo-public-api version mismatch: expected ${expected}, got ${actual}`);
+  console.error(`Install the pinned snapshot tool with: cargo install cargo-public-api --version ${cargoPublicApiVersion}`);
   process.exit(1);
 }
 
