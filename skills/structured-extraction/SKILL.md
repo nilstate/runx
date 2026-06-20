@@ -1,3 +1,18 @@
+---
+name: structured-extraction
+description: Extract schema-validated JSON from messy HTML or text fixtures with digest-bound provenance.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - tools/structured/extract/run.mjs
+runx:
+  tags:
+    - extraction
+    - schema-validation
+    - provenance
+---
+
 # Structured Extraction
 
 Use this skill to turn messy HTML or text into schema-validated JSON with

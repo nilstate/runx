@@ -316,6 +316,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "2bfa94189cd3b7084a3b29e1f83de2d0787d28c5f0c962a15bac76155c24d95f",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/structured-extraction",
+        version: "sha-f14902374e11",
+        digest: "ebe37921d3b9cb63aa1ca5232a8075607d3b4ad541af4c1bc901ace749ea404f",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/taste-profile",
         version: "sha-30ae4695f7a2",
         digest: "bebc7d42b982295105d1da03ea392f1384977269adf1705905e1833e73dc78ae",
