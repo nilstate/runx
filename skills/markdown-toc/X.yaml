@@ -7,7 +7,52 @@ catalog:
   visibility: public
   role: canonical
 
+runx:
+  mutating: false
+  idempotency:
+    key: content_sha256
+  scopes:
+    - markdown.read
+  policy:
+    data_classification: public
+    network:
+      forbidden:
+        - all
+    verifier_notes:
+      - Output is deterministic based solely on input markdown content.
+      - The tool is read-only and stateless.
+  artifacts:
+    emits:
+      - markdown_toc_result
+
 runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - markdown.read
+    policy:
+      reads:
+        - markdown text input
+      writes:
+        - stdout JSON
+      disallows:
+        - network access
+        - filesystem access (except RUNX_INPUTS_PATH)
+        - executing arbitrary code
+    inputs:
+      content:
+        type: string
+        required: true
+        description: Markdown content to parse into a table of contents.
+    outputs:
+      toc:
+        type: json
+        description: Structured table of contents as a JSON array of {level, text, anchor} objects.
   markdown-toc:
     type: agent-task
     agent: utility
@@ -21,28 +66,36 @@ runners:
       result:
         type: json
         description: Structured table of contents as JSON array
-    artifacts:
-      wrap_as: result
-      packet:
-        format: json
 
 harness:
   cases:
     - name: basic-toc
-      description: Generates TOC from sample markdown
-      input:
+      runner: default
+      inputs:
         content: "# A\n\n## B\n\n### C"
       expect:
         status: sealed
     - name: empty-input
-      description: Empty content returns empty array
-      input:
+      runner: default
+      inputs:
         content: ""
       expect:
         status: sealed
     - name: no-headings
-      description: Plain text with no headings returns empty array
-      input:
+      runner: default
+      inputs:
         content: "Just some text\n\nNo headings here"
+      expect:
+        status: sealed
+    - name: duplicate-headings
+      runner: default
+      inputs:
+        content: "# Title\n\n## Duplicate\n\n## Duplicate"
+      expect:
+        status: sealed
+    - name: code-block-skip
+      runner: default
+      inputs:
+        content: "# Real\n\n```\n# Not a heading\n```\n\n## Another"
       expect:
         status: sealed

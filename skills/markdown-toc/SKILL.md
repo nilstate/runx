@@ -63,3 +63,20 @@ Output:
 | Safety | Read-only, no network or filesystem access needed |
 | Determinism | Same input always produces same output |
 | Robustness | Handles empty content, missing headings, duplicate anchors gracefully |
+
+## CLI Runner
+
+The skill includes a `run.mjs` Node.js CLI tool. Invoke it via the `default` runner:
+
+```bash
+RUNX_INPUTS_JSON='{"content":"# Hello\n\n## World"}' node run.mjs
+```
+
+Output:
+
+```json
+[
+  { "level": 1, "text": "Hello", "anchor": "hello" },
+  { "level": 2, "text": "World", "anchor": "world" }
+]
+```
