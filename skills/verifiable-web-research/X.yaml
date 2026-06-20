@@ -1,0 +1,122 @@
+skill: verifiable-web-research
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: verifiable-research-detailed
+      inputs:
+        objective: What is the current pricing model and key features of the top 3 open-source AI agent frameworks?
+        domain: AI developer tools
+        verification_level: detailed
+        target_entities:
+          - langchain
+          - crewai
+          - autogen
+        max_sources: 5
+      caller:
+        answers:
+          agent_task.research.output:
+            verifiable_research_packet:
+              objective: What is the current pricing model and key features of the top 3 open-source AI agent frameworks?
+              scope: AI developer tools, open-source agent frameworks
+              verification_level: detailed
+              summary: LangChain, CrewAI, and AutoGen are all open-source with optional hosted offerings. LangChain has LangSmith for observability with a freemium model. CrewAI offers CrewAI Enterprise. AutoGen is fully open-source backed by Microsoft.
+              claims:
+                - claim: LangChain is open-source under MIT license and offers LangSmith as an optional hosted platform.
+                  source_url: https://www.langchain.com
+                  confidence: verified
+                  confidence_reasoning: Official website confirms MIT license and LangSmith offering.
+                - claim: CrewAI is an open-source multi-agent framework.
+                  source_url: https://www.crewai.com
+                  confidence: verified
+                  confidence_reasoning: Official documentation confirms open-source multi-agent architecture.
+              open_questions:
+                - Exact pricing tiers for enterprise offerings may change frequently.
+              verification_guide:
+                overview: Re-fetch each source URL and confirm the extract still matches.
+                steps:
+                  - action: Fetch https://www.langchain.com and verify MIT license mention
+                    target: langchain.com
+                    expected: MIT license confirmed, LangSmith offering visible
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: verifiable-research-missing-objective
+      inputs: {}
+      expect:
+        status: needs_agent
+
+    - name: verifiable-research-basic-level
+      inputs:
+        objective: Is the runx CLI available on crates.io?
+        domain: developer tools
+        verification_level: basic
+        target_entities:
+          - runx
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: verifiable-research-audit-ready
+      inputs:
+        objective: Compare the security policies of the top 3 package managers.
+        domain: software supply chain security
+        verification_level: audit_ready
+        max_sources: 8
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  agent:
+    type: agent
+
+  research:
+    default: true
+    type: agent-task
+    agent: researcher
+    task: verifiable-web-research
+    outputs:
+      verifiable_research_packet: object
+    artifacts:
+      wrap_as: verifiable_research_packet
+      packet: runx.research.verifiable.v1
+    runx:
+      category: research
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "Research question to answer from live web sources."
+      domain:
+        type: string
+        required: false
+        description: "Topic area or industry to bound the web search."
+      verification_level:
+        type: string
+        required: false
+        default: "detailed"
+        description: "Reproducibility level: basic, detailed, or audit_ready."
+      target_entities:
+        type: json
+        required: false
+        description: "Specific products, companies, repos, or topics to focus on."
+      max_sources:
+        type: number
+        required: false
+        default: 10
+        description: "Maximum number of web sources to retrieve."
+      operator_context:
+        type: string
+        required: false
+        description: "Additional constraints or context shaping source selection."
