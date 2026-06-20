@@ -31,6 +31,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "08cefe802c15e5be7d32ae9a363a6c42168e86f7fab92890e5ce5c994af367c9",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/dependency-cve-audit",
+        version: "sha-e9e461e41ea3",
+        digest: "c19ec9fdeb088daab950b7c2e1f3757880de9702e31e40b57e2f65c0c4033348",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/design-skill",
         version: "sha-0353a69bc33f",
         digest: "da1eae6fa3016c24dd3347082fe8639577a0b169ebfa63050f0df145e448b82b",

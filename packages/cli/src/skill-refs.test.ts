@@ -14,6 +14,7 @@ const publicOfficialCatalogSkills = [
   "charge",
   "content-pipeline",
   "deep-research-brief",
+  "dependency-cve-audit",
   "design-skill",
   "dispute-respond",
   "draft-content",
