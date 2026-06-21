@@ -3,14 +3,14 @@
   "signature_mode": "production",
   "trees": [
     {
-      "root_receipt_id": "sha256:41397e6fe62e76f640dc610deaf4b69516c6358f1861c7fb5a99ebba3c7398f4",
+      "root_receipt_id": "sha256:b2491f638ab2c2cdd650904818ded887460a5e228b1ec48a66352b265452770e",
       "receipt_count": 1,
       "parent_missing": null,
       "valid": true,
       "findings": []
     },
     {
-      "root_receipt_id": "sha256:cd162229fef38b6ecfd7122097029994265a569e5101c1c52fa1898d6f67b3d7",
+      "root_receipt_id": "sha256:d97564cb43f0d76a4dd6172551eae41b3457adaa20d530d45fd30ecb088af2a7",
       "receipt_count": 1,
       "parent_missing": null,
       "valid": true,

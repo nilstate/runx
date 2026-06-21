@@ -3,11 +3,11 @@
   "store_label": ".runx/frantic-receipts/least-privilege-plan",
   "receipts": [
     {
-      "id": "sha256:3164f29586193e5e6387a0adacadd35fc815d4020404fd132b7933d400ad9771",
-      "receipt_ref": "runx:receipt:sha256:3164f29586193e5e6387a0adacadd35fc815d4020404fd132b7933d400ad9771",
+      "id": "sha256:db744b9c7bd7db78366fcb7d2d7b2e236593048ad8d9e4f56af13c2067429705",
+      "receipt_ref": "runx:receipt:sha256:db744b9c7bd7db78366fcb7d2d7b2e236593048ad8d9e4f56af13c2067429705",
       "name": "hrn_run_plan_b67ad847a502_plan",
       "status": "closed",
-      "created_at": "2026-06-21T23:31:44.334Z",
+      "created_at": "2026-06-21T23:38:29.328Z",
       "harness_id": "hrn_run_plan_b67ad847a502_plan",
       "harness_state": "sealed",
       "summary": "cli-tool plan completed",
@@ -21,11 +21,11 @@
       }
     },
     {
-      "id": "sha256:15c9076b612d9c7af1aae1e085fd19b15b04fb8eab9b020990a2556c64b15d24",
-      "receipt_ref": "runx:receipt:sha256:15c9076b612d9c7af1aae1e085fd19b15b04fb8eab9b020990a2556c64b15d24",
+      "id": "sha256:11022f97d9a63ab5a33a59e780db2ef7bddac876b8702e3629309c3f3f9f3e0b",
+      "receipt_ref": "runx:receipt:sha256:11022f97d9a63ab5a33a59e780db2ef7bddac876b8702e3629309c3f3f9f3e0b",
       "name": "hrn_run_plan_210068573a0d_plan",
       "status": "closed",
-      "created_at": "2026-06-21T23:31:44.299Z",
+      "created_at": "2026-06-21T23:38:29.291Z",
       "harness_id": "hrn_run_plan_210068573a0d_plan",
       "harness_state": "sealed",
       "summary": "cli-tool plan completed",
