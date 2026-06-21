@@ -16,6 +16,8 @@ jobs:
       RUNX_RECEIPT_SIGN_KID: frantic-github-actions-public-test-key
       RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
       RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+      RUNX_RECEIPT_VERIFY_KID: frantic-github-actions-public-test-key
+      RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64: IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,29 +33,36 @@ jobs:
         run: corepack enable
 
       - name: Prepare evidence directory
-        run: mkdir -p docs/frantic/runx-harness .runx/frantic-receipts/meeting-prep .runx/frantic-receipts/standup-digest
+        run: |
+          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+            mkdir -p "docs/frantic/runx-harness/${skill}/receipts" ".runx/frantic-receipts/${skill}"
+          done
 
       - name: Record runx version
         run: pnpm dlx @runxhq/cli@0.6.6 --version | tee docs/frantic/runx-harness/runx-version.txt
 
-      - name: Run meeting-prep harness
+      - name: Run skill harnesses
         run: |
-          pnpm dlx @runxhq/cli@0.6.6 harness ./skills/meeting-prep \
-            --receipt-dir .runx/frantic-receipts/meeting-prep \
-            --json | tee docs/frantic/runx-harness/meeting-prep-verification.json
-
-      - name: Run standup-digest harness
-        run: |
-          pnpm dlx @runxhq/cli@0.6.6 harness ./skills/standup-digest \
-            --receipt-dir .runx/frantic-receipts/standup-digest \
-            --json | tee docs/frantic/runx-harness/standup-digest-verification.json
+          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+            pnpm dlx @runxhq/cli@0.6.6 harness "./skills/${skill}" \
+              --receipt-dir ".runx/frantic-receipts/${skill}" \
+              --json | tee "docs/frantic/runx-harness/${skill}/harness.json"
+          done
 
       - name: Write receipt indexes
         run: |
-          pnpm dlx @runxhq/cli@0.6.6 history --receipt-dir .runx/frantic-receipts/meeting-prep --json \
-            > docs/frantic/runx-harness/meeting-prep-receipts.json
-          pnpm dlx @runxhq/cli@0.6.6 history --receipt-dir .runx/frantic-receipts/standup-digest --json \
-            > docs/frantic/runx-harness/standup-digest-receipts.json
+          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+            pnpm dlx @runxhq/cli@0.6.6 history --receipt-dir ".runx/frantic-receipts/${skill}" --json \
+              > "docs/frantic/runx-harness/${skill}/receipt-history.json"
+            cp .runx/frantic-receipts/${skill}/*.json "docs/frantic/runx-harness/${skill}/receipts/"
+          done
+
+      - name: Verify sealed receipts
+        run: |
+          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+            pnpm dlx @runxhq/cli@0.6.6 verify --receipt-dir ".runx/frantic-receipts/${skill}" --json \
+              > "docs/frantic/runx-harness/${skill}/runx-verify.json"
+          done
 
       - name: Write review report
         run: |
@@ -61,9 +70,12 @@ jobs:
             echo "# Frantic runx harness evidence"
             echo
             echo "- Official CLI: $(cat docs/frantic/runx-harness/runx-version.txt)"
-            echo "- meeting-prep: docs/frantic/runx-harness/meeting-prep-verification.json"
-            echo "- standup-digest: docs/frantic/runx-harness/standup-digest-verification.json"
-            echo "- Receipt indexes are committed beside the verification JSON files."
+            echo "- meeting-prep: docs/frantic/runx-harness/meeting-prep/harness.json"
+            echo "- standup-digest: docs/frantic/runx-harness/standup-digest/harness.json"
+            echo "- receipt-evidence-bundle: docs/frantic/runx-harness/receipt-evidence-bundle/harness.json"
+            echo "- inbox-triage: docs/frantic/runx-harness/inbox-triage/harness.json"
+            echo "- least-privilege-plan: docs/frantic/runx-harness/least-privilege-plan/harness.json"
+            echo "- Receipt indexes, receipt JSON files, and runx verify reports are committed beside each harness output."
             echo "- Signing key is a public deterministic CI key for reproducible harness evidence; no private tokens or payout data are used."
           } > docs/frantic/runx-harness/report.md
 
