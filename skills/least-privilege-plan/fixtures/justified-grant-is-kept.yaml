@@ -1,0 +1,85 @@
+name: justified-grant-is-kept
+kind: skill
+target: ..
+runner: plan
+inputs:
+  subject: release-notes-reader
+  policy:
+    id: release-notes-policy-v2
+    digest: "sha256:dbe852c7efb4b560"
+    grants:
+      - id: release-repo-read
+        scopes:
+          - repo.read
+        purpose: Read merged pull requests and tags for release notes.
+  run_history:
+    window: 2026-06-01/2026-06-15
+    receipt_ids:
+      - runx:receipt:rx-release-201
+      - runx:receipt:rx-release-202
+    observed_effects:
+      - id: merged-pr-read-201
+        grant_id: release-repo-read
+        scope: repo.read
+        receipt_ref: runx:receipt:rx-release-201
+      - id: tag-read-202
+        grant_id: release-repo-read
+        scope: repo.read
+        receipt_ref: runx:receipt:rx-release-202
+    unused_scopes: []
+  objective: Confirm the grant is already minimal before renewal.
+caller:
+  answers:
+    agent_task.least-privilege-plan.output:
+      plan:
+        status: ready
+        subject: release-notes-reader
+        policy:
+          id: release-notes-policy-v2
+          digest: "sha256:dbe852c7efb4b560"
+        run_history:
+          receipt_ids:
+            - runx:receipt:rx-release-201
+            - runx:receipt:rx-release-202
+          window: 2026-06-01/2026-06-15
+        recommendations:
+          - grant_id: release-repo-read
+            recommendation: keep
+            current_scopes:
+              - repo.read
+            proposed_scopes:
+              - repo.read
+            evidence:
+              observed_effects:
+                - merged-pr-read-201
+                - tag-read-202
+              unused_scopes: []
+              receipt_refs:
+                - runx:receipt:rx-release-201
+                - runx:receipt:rx-release-202
+              policy_refs:
+                - release-notes-policy-v2.grants.release-repo-read.purpose
+              missing: []
+            rationale: The declared purpose requires repository reads and both receipts exercised repo.read; no narrower scope in the supplied policy covers those effects.
+            risk_notes:
+              - The subject retains read access to repository content covered by repo.read.
+        summary:
+          keep: 1
+          reduce: 0
+          revoke: 0
+          needs_human_review: 0
+        read_only: true
+      recommendations:
+        - grant_id: release-repo-read
+          recommendation: keep
+      verdict: ready
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: least-privilege-plan
+  source_case: justified-grant-is-kept
+  source: skills-fixture

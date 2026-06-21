@@ -1,0 +1,162 @@
+{
+  "schema": "runx.least_privilege_plan.local_evidence.v1",
+  "delivery_ready": false,
+  "summary": "Local implementation and validation evidence for the least-privilege-plan skill. Local receipt verification passed with matching trusted key material. Hosted publication, public PR URLs, and hosted dogfood execution remain pending external approval.",
+  "source": {
+    "repository": "https://github.com/runxhq/runx",
+    "base_revision": "ec8e16af1e69af61f6686cb55e46b47b9b507262",
+    "branch": "bounty/37-least-privilege-plan",
+    "package_name": "least-privilege-plan",
+    "version": "0.1.0"
+  },
+  "observations": [
+    "npx @runxhq/cli@0.6.13 --version returned runx-cli 0.6.13.",
+    "The branch was rebased onto runxhq/runx revision ec8e16af1e69af61f6686cb55e46b47b9b507262 (cli-v0.6.13) before final local validation.",
+    "The native parser accepted skills/least-privilege-plan/SKILL.md with name least-privilege-plan and source type agent.",
+    "The native parser accepted skills/least-privilege-plan/X.yaml with runner plan and two inline harness cases.",
+    "Policy support-release-policy-v4 with digest sha256:7cb20ac68f63d1ad declared grants repo-access, billing-access, and production-break-glass.",
+    "Observed effects issue-read-101 and release-notes-read-102 exercised repo.read; unused scopes were repo.write, billing.refund, and production.deploy.",
+    "The plan recommended reduce for repo-access, revoke for billing-access, and needs_human_review for production-break-glass because policy reserves it for approved incident response.",
+    "Policy release-notes-policy-v2 with digest sha256:dbe852c7efb4b560 declared release-repo-read; observed effects merged-pr-read-201 and tag-read-202 justified the keep recommendation.",
+    "runx harness skills/least-privilege-plan passed over-broad-grants-produce-reductions and sealed receipt sha256:57aab827c43332d9f4ab747515277f701e28058d6661060e0ba123c8135fef8c.",
+    "runx harness skills/least-privilege-plan passed justified-grant-is-kept and sealed receipt sha256:8f1a93e7c2f1bd81698523f71e8cd4805961910d544993a25898c25122c7a21c.",
+    "The official-skill catalog check accepted least-privilege-plan as an internal canonical package.",
+    "corepack pnpm typecheck completed successfully.",
+    "corepack pnpm test:fast passed 277 tests across 28 files on cli-v0.6.13.",
+    "Focused official catalog checks passed 12 tests; CLI receipt verification passed 13 tests; runtime receipt signing passed 7 tests.",
+    "Local registry publication succeeded for local-bounty/least-privilege-plan@0.1.0 with skill digest a49e04cd076ebf3497cdc7d7a0dd7fadb3432a74b661dadf4edf916365725153, profile digest 31732944e603053b68d83b67248a60928edc6b684e8de8f939b46339f8490926, and package digest 832cb9c405bb380d474579697baffd2ba5bba4bbb34732ef514268ed9b849223.",
+    "The final local registry publish gate reran both inline harness cases successfully and sealed receipts sha256:0a698ee4ec5789f3545f4fdab783e7c1ae94fc6908bab1beb504b36714662f39 and sha256:6cceb33dc7989f8f8f5ea962f6db5db6a601e995720c822fcf42c6b37a53d033.",
+    "Local registry read resolved the published metadata with the native local-registry form: runx registry read local-bounty/least-privilege-plan --version 0.1.0 --json.",
+    "A clean local-registry install succeeded and materialized the plan runner.",
+    "An isolated harness run sealed receipts sha256:9a75353edc00f030aeb9fc787e60a15a53a35c1c40010b3bdbfa32c1b348d5ad and sha256:d8e5d9bf880b82fdec4fcc907a040fbeb811bd90da9d8bbd2df80fb8e1cea2bf.",
+    "The checkout CLI verified both isolated receipts in production mode with the matching trusted Ed25519 public key; digest, content address, and signature checks were valid with no findings.",
+    "A direct local dogfood flow used runx skill followed by runx resume and sealed receipt sha256:5107a785eb7054030af4566dab08de73787d5099b8c8b07ce414da4c0f85b84b for policy support-release-policy-v4.",
+    "The dogfood receipt verification verdict in references/verification.json is valid with valid digest, content address, and production-mode signature checks and no findings.",
+    "The hosted publisher owner, registry ref, public_url, pr_url, source_url, raw x_yaml, raw skill_md, hosted verification_json, receipt_ref, and report URLs remain pending and must all bind to the same public source revision after external writes are approved."
+  ],
+  "checks": {
+    "runx_version": {
+      "status": "passed",
+      "command": "npx -y @runxhq/cli@0.6.13 --version",
+      "output": "runx-cli 0.6.13"
+    },
+    "native_parser": {
+      "status": "passed",
+      "skill_name": "least-privilege-plan",
+      "runner_names": [
+        "plan"
+      ],
+      "inline_harness_case_count": 2
+    },
+    "local_harness": {
+      "status": "passed",
+      "case_count": 2,
+      "case_names": [
+        "over-broad-grants-produce-reductions",
+        "justified-grant-is-kept"
+      ],
+      "receipt_ids": [
+        "sha256:57aab827c43332d9f4ab747515277f701e28058d6661060e0ba123c8135fef8c",
+        "sha256:8f1a93e7c2f1bd81698523f71e8cd4805961910d544993a25898c25122c7a21c"
+      ]
+    },
+    "catalog_contract": {
+      "status": "passed",
+      "checks": [
+        "internal canonical package classification",
+        "generated official lock entry",
+        "standalone bounty fixtures retained beside inline publish cases"
+      ]
+    },
+    "fast_test_suite": {
+      "status": "passed",
+      "test_files": 28,
+      "tests": 277,
+      "command": "corepack pnpm test:fast"
+    },
+    "typecheck": {
+      "status": "passed",
+      "command": "corepack pnpm typecheck"
+    },
+    "local_registry_publish": {
+      "status": "passed",
+      "registry_ref": "local-bounty/least-privilege-plan@0.1.0",
+      "digest": "a49e04cd076ebf3497cdc7d7a0dd7fadb3432a74b661dadf4edf916365725153",
+      "profile_digest": "31732944e603053b68d83b67248a60928edc6b684e8de8f939b46339f8490926",
+      "package_digest": "832cb9c405bb380d474579697baffd2ba5bba4bbb34732ef514268ed9b849223",
+      "harness_status": "passed",
+      "harness_receipt_ids": [
+        "sha256:0a698ee4ec5789f3545f4fdab783e7c1ae94fc6908bab1beb504b36714662f39",
+        "sha256:6cceb33dc7989f8f8f5ea962f6db5db6a601e995720c822fcf42c6b37a53d033"
+      ]
+    },
+    "local_registry_read": {
+      "status": "passed",
+      "command": "RUNX_REGISTRY_DIR=<local-registry> runx registry read local-bounty/least-privilege-plan --version 0.1.0 --json",
+      "resolved_version": "0.1.0",
+      "package_digest": "832cb9c405bb380d474579697baffd2ba5bba4bbb34732ef514268ed9b849223"
+    },
+    "clean_install": {
+      "status": "passed",
+      "command": "RUNX_REGISTRY_DIR=<local-registry> runx add local-bounty/least-privilege-plan@0.1.0 --json"
+    },
+    "receipt_verification": {
+      "status": "passed",
+      "digest_status": "valid",
+      "content_address_status": "valid",
+      "signature_status": "valid",
+      "signature_mode": "production",
+      "finding_count": 0,
+      "receipt_ids": [
+        "sha256:9a75353edc00f030aeb9fc787e60a15a53a35c1c40010b3bdbfa32c1b348d5ad",
+        "sha256:d8e5d9bf880b82fdec4fcc907a040fbeb811bd90da9d8bbd2df80fb8e1cea2bf"
+      ],
+      "command": "RUNX_RECEIPT_VERIFY_KID=<matching-kid> RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=<matching-public-key> runx verify --receipt <receipt-path> --json",
+      "lineage_status": "unverified",
+      "lineage_note": "Single-receipt verification does not prove receipt-tree lineage.",
+      "next_step": "Generate and verify the required hosted dogfood receipt after publish, using the hosted verification material returned by runx."
+    },
+    "local_dogfood_run": {
+      "status": "passed",
+      "flow": [
+        "runx skill skills/least-privilege-plan plan <bounded inputs> --receipt-dir <dir> --json",
+        "runx resume run_agent_task-least-privilege-plan-output <answers.json> --receipt-dir <dir> --json",
+        "runx verify --receipt <receipt-path> --json"
+      ],
+      "policy_id": "support-release-policy-v4",
+      "policy_digest": "sha256:7cb20ac68f63d1ad",
+      "receipt_id": "sha256:5107a785eb7054030af4566dab08de73787d5099b8c8b07ce414da4c0f85b84b",
+      "verdict": "valid",
+      "verification_json": "skills/least-privilege-plan/references/verification.json"
+    },
+    "hosted_registry_harness": {
+      "status": "pending",
+      "reason": "The equivalent local registry publish gate passed, but hosted publish is an external write and was not performed."
+    },
+    "hosted_dogfood_run": {
+      "status": "pending",
+      "reason": "The public registry ref and hosted runner are not available until publish."
+    }
+  },
+  "pending_artifacts": {
+    "public_url": null,
+    "source_url": null,
+    "pr_url": null,
+    "x_yaml": null,
+    "skill_md": null,
+    "evidence_json": null,
+    "verification_json": null,
+    "receipt_ref": null,
+    "report": null
+  },
+  "local_artifacts": {
+    "evidence_json": "skills/least-privilege-plan/references/evidence.json",
+    "verification_json": "skills/least-privilege-plan/references/verification.json",
+    "report": "skills/least-privilege-plan/references/report.md"
+  },
+  "credential_hygiene": {
+    "tokens_in_artifacts": false,
+    "secrets_in_artifacts": false,
+    "external_credentials_used": false
+  }
+}

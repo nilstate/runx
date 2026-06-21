@@ -1,0 +1,252 @@
+skill: least-privilege-plan
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: canonical
+harness:
+  cases:
+    - name: over-broad-grants-produce-reductions
+      runner: plan
+      inputs:
+        subject: support-release-agent
+        policy:
+          id: support-release-policy-v4
+          digest: "sha256:7cb20ac68f63d1ad"
+          grants:
+            - id: repo-access
+              scopes:
+                - repo.read
+                - repo.write
+            - id: billing-access
+              scopes:
+                - billing.refund
+            - id: production-break-glass
+              scopes:
+                - production.deploy
+              reserved_for: approved incident response
+        run_history:
+          window: 2026-05-01/2026-05-31
+          receipt_ids:
+            - runx:receipt:rx-support-101
+            - runx:receipt:rx-support-102
+          observed_effects:
+            - id: issue-read-101
+              grant_id: repo-access
+              scope: repo.read
+              receipt_ref: runx:receipt:rx-support-101
+            - id: release-notes-read-102
+              grant_id: repo-access
+              scope: repo.read
+              receipt_ref: runx:receipt:rx-support-102
+          unused_scopes:
+            - repo.write
+            - billing.refund
+            - production.deploy
+        objective: Reduce standing authority before renewing the grants.
+      caller:
+        answers:
+          agent_task.least-privilege-plan.output:
+            plan:
+              status: needs_human_review
+              subject: support-release-agent
+              policy:
+                id: support-release-policy-v4
+                digest: "sha256:7cb20ac68f63d1ad"
+              run_history:
+                receipt_ids:
+                  - runx:receipt:rx-support-101
+                  - runx:receipt:rx-support-102
+                window: 2026-05-01/2026-05-31
+              recommendations:
+                - grant_id: repo-access
+                  recommendation: reduce
+                  current_scopes:
+                    - repo.read
+                    - repo.write
+                  proposed_scopes:
+                    - repo.read
+                  evidence:
+                    observed_effects:
+                      - issue-read-101
+                      - release-notes-read-102
+                    unused_scopes:
+                      - repo.write
+                    receipt_refs:
+                      - runx:receipt:rx-support-101
+                      - runx:receipt:rx-support-102
+                    policy_refs:
+                      - support-release-policy-v4.grants.repo-access
+                    missing: []
+                  rationale: Both successful effects were reads and no effect exercised repo.write.
+                  risk_notes:
+                    - A future repository write would require a separately reviewed grant.
+                - grant_id: billing-access
+                  recommendation: revoke
+                  current_scopes:
+                    - billing.refund
+                  proposed_scopes: []
+                  evidence:
+                    observed_effects: []
+                    unused_scopes:
+                      - billing.refund
+                    receipt_refs:
+                      - runx:receipt:rx-support-101
+                      - runx:receipt:rx-support-102
+                    policy_refs:
+                      - support-release-policy-v4.grants.billing-access
+                    missing: []
+                  rationale: The bounded history records billing.refund as unused and policy declares no reserved purpose.
+                  risk_notes:
+                    - Refund work would stop until an operator approves a new billing grant.
+                - grant_id: production-break-glass
+                  recommendation: needs_human_review
+                  current_scopes:
+                    - production.deploy
+                  proposed_scopes:
+                    - production.deploy
+                  evidence:
+                    observed_effects: []
+                    unused_scopes:
+                      - production.deploy
+                    receipt_refs:
+                      - runx:receipt:rx-support-101
+                      - runx:receipt:rx-support-102
+                    policy_refs:
+                      - support-release-policy-v4.grants.production-break-glass.reserved_for
+                    missing:
+                      - operator decision on whether the incident-response reservation remains required
+                  rationale: History shows no deployment use, but policy reserves the grant for incident response.
+                  risk_notes:
+                    - Keeping the grant preserves broad production authority.
+                    - Revoking it could block the approved incident-response path.
+              summary:
+                keep: 0
+                reduce: 1
+                revoke: 1
+                needs_human_review: 1
+              read_only: true
+            recommendations:
+              - grant_id: repo-access
+                recommendation: reduce
+              - grant_id: billing-access
+                recommendation: revoke
+              - grant_id: production-break-glass
+                recommendation: needs_human_review
+            verdict: needs_human_review
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: justified-grant-is-kept
+      runner: plan
+      inputs:
+        subject: release-notes-reader
+        policy:
+          id: release-notes-policy-v2
+          digest: "sha256:dbe852c7efb4b560"
+          grants:
+            - id: release-repo-read
+              scopes:
+                - repo.read
+              purpose: Read merged pull requests and tags for release notes.
+        run_history:
+          window: 2026-06-01/2026-06-15
+          receipt_ids:
+            - runx:receipt:rx-release-201
+            - runx:receipt:rx-release-202
+          observed_effects:
+            - id: merged-pr-read-201
+              grant_id: release-repo-read
+              scope: repo.read
+              receipt_ref: runx:receipt:rx-release-201
+            - id: tag-read-202
+              grant_id: release-repo-read
+              scope: repo.read
+              receipt_ref: runx:receipt:rx-release-202
+          unused_scopes: []
+        objective: Confirm the grant is already minimal before renewal.
+      caller:
+        answers:
+          agent_task.least-privilege-plan.output:
+            plan:
+              status: ready
+              subject: release-notes-reader
+              policy:
+                id: release-notes-policy-v2
+                digest: "sha256:dbe852c7efb4b560"
+              run_history:
+                receipt_ids:
+                  - runx:receipt:rx-release-201
+                  - runx:receipt:rx-release-202
+                window: 2026-06-01/2026-06-15
+              recommendations:
+                - grant_id: release-repo-read
+                  recommendation: keep
+                  current_scopes:
+                    - repo.read
+                  proposed_scopes:
+                    - repo.read
+                  evidence:
+                    observed_effects:
+                      - merged-pr-read-201
+                      - tag-read-202
+                    unused_scopes: []
+                    receipt_refs:
+                      - runx:receipt:rx-release-201
+                      - runx:receipt:rx-release-202
+                    policy_refs:
+                      - release-notes-policy-v2.grants.release-repo-read.purpose
+                    missing: []
+                  rationale: Policy requires repository reads and both receipts exercised repo.read.
+                  risk_notes:
+                    - The subject retains read access to repository content covered by repo.read.
+              summary:
+                keep: 1
+                reduce: 0
+                revoke: 0
+                needs_human_review: 0
+              read_only: true
+            recommendations:
+              - grant_id: release-repo-read
+                recommendation: keep
+            verdict: ready
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+runners:
+  plan:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: least-privilege-plan
+    outputs:
+      plan: object
+      recommendations: array
+      verdict: string
+    runx:
+      category: security
+    inputs:
+      subject:
+        type: string
+        required: true
+        description: The principal, skill, service, or workload whose grants are under review.
+      policy:
+        type: json
+        required: true
+        description: Declared policy with identity, grant ids, scopes, and reserved requirements.
+      run_history:
+        type: json
+        required: true
+        description: Bounded receipt-derived history with observed effects, exercised scopes, and unused scopes.
+      objective:
+        type: string
+        required: false
+        description: Operator intent that focuses the least-privilege review.
