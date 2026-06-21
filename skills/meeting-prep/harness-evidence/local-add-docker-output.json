@@ -1,0 +1,35 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "local",
+    "ref": "local/meeting-prep@sha-e57f470494f5",
+    "install": {
+      "status": "installed",
+      "destination": "/work/third_party/runx/skills/local/meeting-prep/sha-e57f470494f5/SKILL.md",
+      "skill_name": "meeting-prep",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "local/meeting-prep",
+      "version": "sha-e57f470494f5",
+      "digest": "sha256:32871000e1002ffdba537ac316078e44a8046c754819057b485c32e25d275c83",
+      "profile_digest": "sha256:aeb177bfd9dbbe0f59d54f8cd5871799483c9b160263315ae41d37bdc8b9bedd",
+      "profile_state_path": "/work/third_party/runx/skills/local/meeting-prep/sha-e57f470494f5/.runx/profile.json",
+      "runner_names": [
+        "prep"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/work/third_party/runx/skills/local/meeting-prep/sha-e57f470494f5/SKILL.md",
+      "digest": "sha256:32871000e1002ffdba537ac316078e44a8046c754819057b485c32e25d275c83",
+      "profile_digest": "sha256:aeb177bfd9dbbe0f59d54f8cd5871799483c9b160263315ae41d37bdc8b9bedd",
+      "ref": "local/meeting-prep@sha-e57f470494f5",
+      "skill_id": "local/meeting-prep",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-e57f470494f5"
+    }
+  }
+}

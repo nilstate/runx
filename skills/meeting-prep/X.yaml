@@ -1,0 +1,234 @@
+skill: meeting-prep
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: meeting-prep-product-review-ready
+      inputs:
+        calendar_event:
+          id: evt_product_review_2026_06_22
+          title: "Product review: onboarding activation"
+          starts_at: "2026-06-22T16:00:00Z"
+          duration_minutes: 45
+          attendees:
+            - name: Maya Chen
+              role: Product lead
+            - name: Omar Ruiz
+              role: Growth engineering
+            - name: Priya Shah
+              role: Customer success
+        attendee_notes:
+          - id: attendee_note_maya
+            attendee: Maya Chen
+            note: "Maya wants a decision on whether to keep the invite-code experiment in the launch scope."
+          - id: attendee_note_omar
+            attendee: Omar Ruiz
+            note: "Omar can support instrumentation this week, but only if event naming is settled."
+        prior_thread_snippets:
+          - id: thread_001
+            source: product-thread
+            snippet: "Activation rose from 42% to 48% after the guided checklist, but invite-code users still drop during workspace setup."
+          - id: thread_002
+            source: support-thread
+            snippet: "Three design partners asked for clearer onboarding ownership before a wider rollout."
+          - id: thread_003
+            source: analytics-thread
+            snippet: "The workspace_created and first_invite_sent events disagree for 17% of invite-code sessions."
+        public_links: []
+        prep_objective: "Prepare a bounded operator brief for the review meeting."
+        constraints:
+          cite_only_supplied_context: true
+          do_not_invent_attendee_history: true
+      caller:
+        answers:
+          agent_task.meeting-prep.output:
+            decision: ready
+            meeting:
+              title: "Product review: onboarding activation"
+              starts_at: "2026-06-22T16:00:00Z"
+              prep_scope: "calendar event, attendee notes, and three supplied thread snippets"
+            agenda:
+              - topic: "Decide launch scope for the invite-code experiment"
+                why: "Maya asked for a scope decision before launch."
+                citations:
+                  - attendee_note_maya
+              - topic: "Resolve analytics naming before engineering starts"
+                why: "Instrumentation support depends on settled event names."
+                citations:
+                  - attendee_note_omar
+                  - thread_003
+              - topic: "Review workspace setup drop-off"
+                why: "Invite-code users still drop during workspace setup."
+                citations:
+                  - thread_001
+            decisions:
+              - decision_needed: "Keep or remove invite-code onboarding from launch scope."
+                owner: "Product lead"
+                citations:
+                  - attendee_note_maya
+              - decision_needed: "Choose the canonical event names for workspace setup and first invite."
+                owner: "Growth engineering"
+                citations:
+                  - attendee_note_omar
+                  - thread_003
+            risks:
+              - risk: "Activation lift may not hold for invite-code users if workspace setup remains unclear."
+                severity: medium
+                citations:
+                  - thread_001
+              - risk: "Analytics disagreement can hide whether the experiment is improving onboarding."
+                severity: high
+                citations:
+                  - thread_003
+            questions:
+              - question: "Which setup step is responsible for the invite-code drop-off?"
+                citations:
+                  - thread_001
+              - question: "Who owns the customer-facing explanation of onboarding responsibilities?"
+                citations:
+                  - thread_002
+            follow_ups:
+              - item: "Ask engineering to reconcile workspace_created and first_invite_sent before launch."
+                owner: "Growth engineering"
+                citations:
+                  - attendee_note_omar
+                  - thread_003
+              - item: "Ask customer success to turn design partner onboarding questions into a short launch FAQ."
+                owner: "Customer success"
+                citations:
+                  - thread_002
+            citations:
+              - id: attendee_note_maya
+                type: attendee_note
+                claim_supported: "Maya wants a launch-scope decision."
+              - id: attendee_note_omar
+                type: attendee_note
+                claim_supported: "Instrumentation support depends on settled event names."
+              - id: thread_001
+                type: supplied_snippet
+                claim_supported: "Activation improved overall, while invite-code users still drop during setup."
+              - id: thread_002
+                type: supplied_snippet
+                claim_supported: "Design partners asked for clearer onboarding ownership."
+              - id: thread_003
+                type: supplied_snippet
+                claim_supported: "Two onboarding events disagree for invite-code sessions."
+            missing_context:
+              - "No private calendar history, inbox history, or CRM context was available."
+              - "No public links were supplied or read for this run."
+            stop_conditions: []
+            receipt_notes:
+              authority: bounded-context-only
+              mutation: false
+              public_links_read: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: meeting-prep-insufficient-context-stop
+      inputs:
+        calendar_event:
+          id: evt_board_sync_2026_06_23
+          title: "Board prep sync"
+          starts_at: "2026-06-23T18:00:00Z"
+          duration_minutes: 30
+          attendees:
+            - name: External attendee
+              role: unknown
+        attendee_notes: []
+        prior_thread_snippets: []
+        public_links: []
+        prep_objective: "Prepare the meeting brief."
+        constraints:
+          cite_only_supplied_context: true
+          do_not_invent_attendee_history: true
+      caller:
+        answers:
+          agent_task.meeting-prep.output:
+            decision: needs_context
+            meeting:
+              title: "Board prep sync"
+              starts_at: "2026-06-23T18:00:00Z"
+              prep_scope: "calendar event title only"
+            agenda: []
+            decisions: []
+            risks: []
+            questions:
+              - question: "What source snippets, agenda notes, or public links should bound this brief?"
+                citations: []
+            follow_ups:
+              - item: "Provide attendee notes, prior thread snippets, or public links before generating prep."
+                owner: "caller"
+                citations: []
+            citations: []
+            missing_context:
+              - "No attendee notes were supplied."
+              - "No prior thread snippets were supplied."
+              - "No public links were supplied or read."
+              - "The calendar title alone is insufficient to infer agenda, decisions, risks, or attendee history."
+            stop_conditions:
+              - "insufficient_context"
+            receipt_notes:
+              authority: bounded-context-only
+              mutation: false
+              public_links_read: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  prep:
+    default: true
+    type: agent-task
+    agent: operator
+    task: meeting-prep
+    outputs:
+      decision: string
+      meeting: object
+      agenda: array
+      decisions: array
+      risks: array
+      questions: array
+      follow_ups: array
+      citations: array
+      missing_context: array
+      stop_conditions: array
+      receipt_notes: object
+    artifacts:
+      wrap_as: meeting_prep_brief
+      packet: runx.ops.meeting_prep_brief.v1
+    runx:
+      category: ops
+    inputs:
+      calendar_event:
+        type: json
+        required: true
+        description: "Bounded calendar event details such as title, time, attendees, and organizer notes."
+      attendee_notes:
+        type: json
+        required: false
+        description: "Caller-supplied notes about attendees, roles, asks, constraints, or preferences."
+      prior_thread_snippets:
+        type: json
+        required: false
+        description: "Redacted thread snippets with ids; claims may cite only these snippets."
+      public_links:
+        type: json
+        required: false
+        description: "Optional public links with fetched excerpts and read status."
+      prep_objective:
+        type: string
+        required: false
+        description: "What the caller needs from the meeting prep."
+      constraints:
+        type: json
+        required: false
+        description: "Citation, privacy, and stop-condition constraints."

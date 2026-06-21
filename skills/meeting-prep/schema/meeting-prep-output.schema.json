@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://runx.ai/schemas/meeting-prep-output.schema.json",
+  "title": "Meeting Prep Brief",
+  "type": "object",
+  "required": [
+    "decision",
+    "meeting",
+    "agenda",
+    "decisions",
+    "risks",
+    "questions",
+    "follow_ups",
+    "citations",
+    "missing_context",
+    "stop_conditions",
+    "receipt_notes"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["ready", "needs_context", "refused"]
+    },
+    "meeting": {
+      "type": "object",
+      "required": ["title", "starts_at", "prep_scope"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "starts_at": { "type": "string", "minLength": 1 },
+        "prep_scope": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "agenda": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/citedAgendaItem" }
+    },
+    "decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/citedDecision" }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/citedRisk" }
+    },
+    "questions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/citedQuestion" }
+    },
+    "follow_ups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/citedFollowUp" }
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "claim_supported"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": {
+            "type": "string",
+            "enum": [
+              "calendar_event",
+              "attendee_note",
+              "supplied_snippet",
+              "public_link"
+            ]
+          },
+          "claim_supported": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "missing_context": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "stop_conditions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "receipt_notes": {
+      "type": "object",
+      "required": ["authority", "mutation", "public_links_read"],
+      "properties": {
+        "authority": { "const": "bounded-context-only" },
+        "mutation": { "const": false },
+        "public_links_read": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "citationRefs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "citedAgendaItem": {
+      "type": "object",
+      "required": ["topic", "why", "citations"],
+      "properties": {
+        "topic": { "type": "string", "minLength": 1 },
+        "why": { "type": "string", "minLength": 1 },
+        "citations": { "$ref": "#/$defs/citationRefs" }
+      },
+      "additionalProperties": false
+    },
+    "citedDecision": {
+      "type": "object",
+      "required": ["decision_needed", "owner", "citations"],
+      "properties": {
+        "decision_needed": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "citations": { "$ref": "#/$defs/citationRefs" }
+      },
+      "additionalProperties": false
+    },
+    "citedRisk": {
+      "type": "object",
+      "required": ["risk", "severity", "citations"],
+      "properties": {
+        "risk": { "type": "string", "minLength": 1 },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+        "citations": { "$ref": "#/$defs/citationRefs" }
+      },
+      "additionalProperties": false
+    },
+    "citedQuestion": {
+      "type": "object",
+      "required": ["question", "citations"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1 },
+        "citations": { "$ref": "#/$defs/citationRefs" }
+      },
+      "additionalProperties": false
+    },
+    "citedFollowUp": {
+      "type": "object",
+      "required": ["item", "owner", "citations"],
+      "properties": {
+        "item": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "citations": { "$ref": "#/$defs/citationRefs" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

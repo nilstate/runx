@@ -1,0 +1,58 @@
+name: meeting-prep-insufficient-context-stop
+kind: skill
+target: ..
+runner: prep
+inputs:
+  calendar_event:
+    id: evt_board_sync_2026_06_23
+    title: "Board prep sync"
+    starts_at: "2026-06-23T18:00:00Z"
+    duration_minutes: 30
+    attendees:
+      - name: External attendee
+        role: unknown
+  attendee_notes: []
+  prior_thread_snippets: []
+  public_links: []
+  prep_objective: "Prepare the meeting brief."
+  constraints:
+    cite_only_supplied_context: true
+    do_not_invent_attendee_history: true
+caller:
+  answers:
+    agent_task.meeting-prep.output:
+      decision: needs_context
+      meeting:
+        title: "Board prep sync"
+        starts_at: "2026-06-23T18:00:00Z"
+        prep_scope: "calendar event title only"
+      agenda: []
+      decisions: []
+      risks: []
+      questions:
+        - question: "What source snippets, agenda notes, or public links should bound this brief?"
+          citations: []
+      follow_ups:
+        - item: "Provide attendee notes, prior thread snippets, or public links before generating prep."
+          owner: "caller"
+          citations: []
+      citations: []
+      missing_context:
+        - "No attendee notes were supplied."
+        - "No prior thread snippets were supplied."
+        - "No public links were supplied or read."
+        - "The calendar title alone is insufficient to infer agenda, decisions, risks, or attendee history."
+      stop_conditions:
+        - "insufficient_context"
+      receipt_notes:
+        authority: bounded-context-only
+        mutation: false
+        public_links_read: []
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: meeting-prep
+  source_case: meeting-prep-insufficient-context-stop
+  source: p-f400e96ef5

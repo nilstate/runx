@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "meeting-prep-product-review-ready",
+    "meeting-prep-insufficient-context-stop"
+  ],
+  "receipt_ids": [
+    "sha256:abca4b4297786bfcf7ff797ed7bbe069e465780b3d4e62a4b032ce536c283706",
+    "sha256:d0101b09d060eb62795d0ca4e6b915bc63dba8605816499b446db8fbd317319f"
+  ],
+  "graph_case_count": 0
+}
