@@ -1,0 +1,38 @@
+name: duplicate-noisy-input
+kind: skill
+target: ..
+runner: digest
+inputs:
+  team: Runtime
+  window: "2026-06-21"
+  work_events:
+    - id: pr-22-a
+      external_ref: pr-22
+      kind: pull_request
+      title: Ship registry retry handling
+      status: merged
+      timestamp: "2026-06-21T08:00:00Z"
+      url: https://github.com/runxhq/runx/pull/22
+    - id: pr-22-b
+      external_ref: pr-22
+      kind: note
+      title: Ship registry retry handling
+      status: done
+      timestamp: "2026-06-21T08:03:00Z"
+      url: https://github.com/runxhq/runx/pull/22
+    - id: risk-1
+      kind: note
+      title: Risk: hosted registry latency is still slipping publish checks
+      status: watch
+      timestamp: "2026-06-21T08:30:00Z"
+  output_dir: artifacts/duplicate-noisy-input
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: standup-digest
+  source_case: duplicate-noisy-input
+  source: skills-fixture

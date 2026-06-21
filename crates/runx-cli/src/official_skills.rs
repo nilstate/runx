@@ -311,6 +311,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "054798d4b29958f90300ea940c94b73233c0d5c5ff19e7156278b31e99e68475",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/standup-digest",
+        version: "sha-e37b6636b611",
+        digest: "45c6989cf11e67230a879d8d4ae1d439213b9a7834a5159f85c7dca86c10adc0",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/stripe-charge",
         version: "sha-fac92c49fa9b",
         digest: "34b04a5ba67c0de4e682519cd1a6c160e097a08b3c5eaf4537441e709d3ba982",

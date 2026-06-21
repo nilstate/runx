@@ -420,6 +420,13 @@
     "catalog_role": "context"
   },
   {
+    "skill_id": "runx/standup-digest",
+    "version": "sha-e37b6636b611",
+    "digest": "45c6989cf11e67230a879d8d4ae1d439213b9a7834a5159f85c7dca86c10adc0",
+    "catalog_visibility": "internal",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/stripe-charge",
     "version": "sha-fac92c49fa9b",
     "digest": "34b04a5ba67c0de4e682519cd1a6c160e097a08b3c5eaf4537441e709d3ba982",

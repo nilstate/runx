@@ -1,0 +1,37 @@
+name: sealed-digest
+kind: skill
+target: ..
+runner: digest
+inputs:
+  team: Payments
+  window: "2026-06-21"
+  work_events:
+    - id: pr-12
+      kind: pull_request
+      title: Merge billing retry fix
+      status: merged
+      timestamp: "2026-06-21T09:00:00Z"
+      url: https://github.com/acme/app/pull/12
+    - id: ci-9
+      kind: build
+      title: Release candidate build failed on migration test
+      status: failed
+      timestamp: "2026-06-21T09:20:00Z"
+      url: https://ci.example/build/9
+    - id: issue-77
+      kind: issue
+      title: Follow up with design on invoice copy
+      status: pending
+      timestamp: "2026-06-21T10:00:00Z"
+      url: https://github.com/acme/app/issues/77
+  output_dir: artifacts/sealed-digest
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: standup-digest
+  source_case: sealed-digest
+  source: skills-fixture

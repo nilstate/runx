@@ -1,0 +1,73 @@
+skill: standup-digest
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: canonical
+
+runx:
+  mutating: false
+  scopes:
+    - work-events.read
+  policy:
+    data_classification: bounded_work_metadata
+    network:
+      allowed: []
+      forbidden:
+        - private issue fetches
+        - repository mutations
+        - notification sends
+    verifier_notes:
+      - Every digest item must cite input event ids.
+      - Duplicate events are collapsed by stable source keys.
+      - The skill emits a digest only; downstream notification is a separate approval-gated skill.
+  artifacts:
+    emits:
+      - standup_digest
+      - evidence_json
+      - report_md
+    wrap_as: standup_digest_packet
+
+runners:
+  digest:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - work-events.read
+    policy:
+      reads:
+        - caller-supplied GitHub, issue, build, and note events
+      writes:
+        - evidence.json when output_dir is provided
+        - report.md when output_dir is provided
+      disallows:
+        - fetching extra private context
+        - posting to chat or issue threads
+        - inventing source links or timestamps
+    inputs:
+      work_events:
+        type: json
+        required: true
+        description: Array of bounded work events with id, kind, title, status, timestamp, url, and optional labels.
+      team:
+        type: string
+        required: false
+        description: Team or project label for the digest.
+      window:
+        type: string
+        required: false
+        description: Human-readable digest window.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill package for evidence.json and report.md.
+    outputs:
+      standup_digest: object
+      evidence_json: object
+      report_md: string
