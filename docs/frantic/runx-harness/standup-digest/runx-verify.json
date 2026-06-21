@@ -1,0 +1,22 @@
+{
+  "receipt_dir": "/home/runner/work/runx/runx/.runx/frantic-receipts/standup-digest",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:08fc155828bf42ac631b21ef300f5fcadba7cadac45bd85896ad4722f90af0df",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    },
+    {
+      "root_receipt_id": "sha256:6d0aca5fd8155f55b30629e95217da66dfb0338c892e36850dfb5828eadbfd4d",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

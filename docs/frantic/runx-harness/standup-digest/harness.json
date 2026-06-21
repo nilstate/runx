@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "standup-digest-sealed-digest",
+    "standup-digest-duplicate-noisy-input"
+  ],
+  "receipt_ids": [
+    "sha256:6d0aca5fd8155f55b30629e95217da66dfb0338c892e36850dfb5828eadbfd4d",
+    "sha256:08fc155828bf42ac631b21ef300f5fcadba7cadac45bd85896ad4722f90af0df"
+  ],
+  "graph_case_count": 0
+}

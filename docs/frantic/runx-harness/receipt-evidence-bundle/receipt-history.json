@@ -1,0 +1,43 @@
+{
+  "projector_id": "runx-runtime.local-history.v1",
+  "store_label": ".runx/frantic-receipts/receipt-evidence-bundle",
+  "receipts": [
+    {
+      "id": "sha256:03006203c54c5089f893ddd86fe89ed951a7daa1220571ef7a28143b5f709a60",
+      "receipt_ref": "runx:receipt:sha256:03006203c54c5089f893ddd86fe89ed951a7daa1220571ef7a28143b5f709a60",
+      "name": "hrn_run_bundle_8d509b17f690_bundle",
+      "status": "closed",
+      "created_at": "2026-06-21T23:28:04.513Z",
+      "harness_id": "hrn_run_bundle_8d509b17f690_bundle",
+      "harness_state": "sealed",
+      "summary": "cli-tool bundle completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "verified"
+      }
+    },
+    {
+      "id": "sha256:a4639cc036290a7b72a363a5a443893190eafcdf05934989b4b993f03ebf91f2",
+      "receipt_ref": "runx:receipt:sha256:a4639cc036290a7b72a363a5a443893190eafcdf05934989b4b993f03ebf91f2",
+      "name": "hrn_run_bundle_d885a74719b9_bundle",
+      "status": "closed",
+      "created_at": "2026-06-21T23:28:04.477Z",
+      "harness_id": "hrn_run_bundle_d885a74719b9_bundle",
+      "harness_state": "sealed",
+      "summary": "cli-tool bundle completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "verified"
+      }
+    }
+  ],
+  "pendingRuns": []
+}

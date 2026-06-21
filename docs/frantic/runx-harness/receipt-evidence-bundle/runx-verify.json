@@ -1,0 +1,22 @@
+{
+  "receipt_dir": "/home/runner/work/runx/runx/.runx/frantic-receipts/receipt-evidence-bundle",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:03006203c54c5089f893ddd86fe89ed951a7daa1220571ef7a28143b5f709a60",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    },
+    {
+      "root_receipt_id": "sha256:a4639cc036290a7b72a363a5a443893190eafcdf05934989b4b993f03ebf91f2",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

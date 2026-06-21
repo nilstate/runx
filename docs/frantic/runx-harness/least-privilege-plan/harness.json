@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "least-privilege-over-broad-grant",
+    "least-privilege-justified-grant"
+  ],
+  "receipt_ids": [
+    "sha256:97702fe05d7d5fb662c628edf72f71f604f4e9e4b0e0f0ad1ef5aa57dc09bf19",
+    "sha256:577552b265e1165380f0aa872e066025c4e960032d779cda77cab006a8505a4d"
+  ],
+  "graph_case_count": 0
+}

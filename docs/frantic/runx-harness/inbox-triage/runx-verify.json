@@ -1,0 +1,22 @@
+{
+  "receipt_dir": "/home/runner/work/runx/runx/.runx/frantic-receipts/inbox-triage",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:956a8939b8b60e37810f337a25ac73391058bd7a28069db7f0de09723b340c21",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    },
+    {
+      "root_receipt_id": "sha256:9a5773abf9a1caff1ed732ece68cfbb2d87b185618b4df82306f1bb297882927",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

@@ -1,0 +1,43 @@
+{
+  "projector_id": "runx-runtime.local-history.v1",
+  "store_label": ".runx/frantic-receipts/inbox-triage",
+  "receipts": [
+    {
+      "id": "sha256:9a5773abf9a1caff1ed732ece68cfbb2d87b185618b4df82306f1bb297882927",
+      "receipt_ref": "runx:receipt:sha256:9a5773abf9a1caff1ed732ece68cfbb2d87b185618b4df82306f1bb297882927",
+      "name": "hrn_run_triage_e9b509298fd5_triage",
+      "status": "closed",
+      "created_at": "2026-06-21T23:28:04.950Z",
+      "harness_id": "hrn_run_triage_e9b509298fd5_triage",
+      "harness_state": "sealed",
+      "summary": "cli-tool triage completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "verified"
+      }
+    },
+    {
+      "id": "sha256:956a8939b8b60e37810f337a25ac73391058bd7a28069db7f0de09723b340c21",
+      "receipt_ref": "runx:receipt:sha256:956a8939b8b60e37810f337a25ac73391058bd7a28069db7f0de09723b340c21",
+      "name": "hrn_run_triage_a9bbeb5c70cc_triage",
+      "status": "closed",
+      "created_at": "2026-06-21T23:28:04.916Z",
+      "harness_id": "hrn_run_triage_a9bbeb5c70cc_triage",
+      "harness_state": "sealed",
+      "summary": "cli-tool triage completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "verified"
+      }
+    }
+  ],
+  "pendingRuns": []
+}

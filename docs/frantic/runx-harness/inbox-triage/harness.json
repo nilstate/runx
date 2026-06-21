@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "inbox-triage-happy-path",
+    "inbox-triage-sensitive-stop"
+  ],
+  "receipt_ids": [
+    "sha256:956a8939b8b60e37810f337a25ac73391058bd7a28069db7f0de09723b340c21",
+    "sha256:9a5773abf9a1caff1ed732ece68cfbb2d87b185618b4df82306f1bb297882927"
+  ],
+  "graph_case_count": 0
+}
