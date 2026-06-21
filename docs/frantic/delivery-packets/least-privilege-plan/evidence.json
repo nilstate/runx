@@ -6,7 +6,7 @@
     "payout_usd":  12,
     "skill":  "least-privilege-plan",
     "package_name":  "least-privilege-plan",
-    "source_revision":  "edaa9b013686128d4f35b8509b32a38a6b99a3ba",
+    "source_revision":  "b309bd6a2c55d15fe8c2d24f5ab51aff66aaba4f",
     "runx_cli_version":  "runx-cli 0.6.6",
     "pr_url":  "https://github.com/runxhq/runx/pull/107",
     "source_url":  "https://github.com/rohitmulani63-ops/runx/tree/codex/frantic-skills-pack",
@@ -62,5 +62,7 @@
                      "runx registry publish/login identity is still required for final public_url",
                      "Frantic claim/delivery requires agent_token; token was not accessed or logged",
                      "payout/bank/wallet/Stripe/ID/OTP/private-info actions remain intentionally untouched"
-                 ]
+                 ],
+    "workflow_run_url":  "https://github.com/rohitmulani63-ops/runx/actions/runs/27921156084",
+    "evidence_refreshed_at":  "2026-06-21T23:47:22Z"
 }

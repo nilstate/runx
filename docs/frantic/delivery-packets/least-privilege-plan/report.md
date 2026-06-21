@@ -34,3 +34,10 @@
 2. Replace public_url in packet.txt with live registry listing.
 3. Re-run Frantic preflight.
 4. Claim/deliver through the approved Frantic agent flow.
+
+## Latest public verification
+
+- Source revision: b309bd6a2c55d15fe8c2d24f5ab51aff66aaba4f
+- Latest workflow run: https://github.com/rohitmulani63-ops/runx/actions/runs/27921156084
+- Refreshed at: 2026-06-21T23:47:22Z
+
