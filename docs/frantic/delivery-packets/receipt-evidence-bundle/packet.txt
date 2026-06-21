@@ -1,0 +1,9 @@
+﻿public_url=PENDING_RUNX_REGISTRY_PUBLISH_FOR_receipt-evidence-bundle
+source_url=https://github.com/rohitmulani63-ops/runx/tree/codex/frantic-skills-pack
+pr_url=https://github.com/runxhq/runx/pull/107
+x_yaml=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/receipt-evidence-bundle/X.yaml
+skill_md=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/receipt-evidence-bundle/SKILL.md
+evidence_json=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/delivery-packets/receipt-evidence-bundle/evidence.json
+verification_json=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/receipt-evidence-bundle/runx-verify.json
+receipt_ref=runx:receipt:sha256:5ada0adb02706cc1b5c1cd337a46ddd815ca6cf8e0ff55be9acc19266734630e
+report=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/delivery-packets/receipt-evidence-bundle/report.md

@@ -1,0 +1,66 @@
+﻿{
+    "schema":  "jarvis.frantic.delivery_evidence.v1",
+    "status":  "ready_except_registry_publish_and_frantic_agent_delivery",
+    "bounty_number":  29,
+    "bounty_title":  "runx skill: dependency advisory graph",
+    "payout_usd":  15,
+    "skill":  "dependency-advisory-graph",
+    "package_name":  "dependency-advisory-graph",
+    "source_revision":  "edaa9b013686128d4f35b8509b32a38a6b99a3ba",
+    "runx_cli_version":  "runx-cli 0.6.6",
+    "pr_url":  "https://github.com/runxhq/runx/pull/107",
+    "source_url":  "https://github.com/rohitmulani63-ops/runx/tree/codex/frantic-skills-pack",
+    "x_yaml":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/dependency-advisory-graph/X.yaml",
+    "skill_md":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/dependency-advisory-graph/SKILL.md",
+    "verification_json":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/dependency-advisory-graph/runx-verify.json",
+    "harness_json":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/dependency-advisory-graph/harness.json",
+    "receipt_history_json":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/dependency-advisory-graph/receipt-history.json",
+    "receipt_ref":  "runx:receipt:sha256:cd162229fef38b6ecfd7122097029994265a569e5101c1c52fa1898d6f67b3d7",
+    "github_actions_run":  "https://github.com/rohitmulani63-ops/runx/actions/runs/27920991415",
+    "public_url_status":  "pending_runx_registry_publish",
+    "public_url_required":  "https://runx.ai/x/\u003cowner\u003e/\u003cpackage\u003e@\u003cversion\u003e",
+    "claim_delivery_status":  "pending_frantic_agent_token_and_identity_flow",
+    "eligibility":  "locked_until_one_successful_paid_bounty",
+    "action_mode":  "queue_after_unlock",
+    "observations":  [
+                         {
+                             "claim_type":  "runx_skill_bounty",
+                             "summary":  "Skill package exists in public PR branch with SKILL.md, X.yaml, runner, harness evidence, and public receipt artifacts.",
+                             "evidence_url":  "https://github.com/runxhq/runx/pull/107"
+                         },
+                         {
+                             "claim_type":  "runx_cli_version",
+                             "summary":  "Official runx CLI version recorded as runx-cli 0.6.6.",
+                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/runx-version.txt"
+                         },
+                         {
+                             "claim_type":  "harness",
+                             "summary":  "Harness status passed with 2 cases and 0 assertion errors.",
+                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/dependency-advisory-graph/harness.json"
+                         },
+                         {
+                             "claim_type":  "runx_verify",
+                             "summary":  "runx verify valid=True, signature_mode=production.",
+                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/dependency-advisory-graph/runx-verify.json"
+                         },
+                         {
+                             "claim_type":  "receipt_history",
+                             "summary":  "Receipt history contains 2 receipts; statuses: verified, verified.",
+                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/dependency-advisory-graph/receipt-history.json"
+                         },
+                         {
+                             "claim_type":  "false_positive_guard",
+                             "summary":  "Final Frantic delivery intentionally not submitted until registry public_url and agent delivery credential are available; this avoids unverifiable or misleading delivery.",
+                             "evidence_url":  "https://gofrantic.com/SKILL.md"
+                         }
+                     ],
+    "harness_cases":  [
+                          "dependency-advisory-exact-match",
+                          "dependency-advisory-clean-manifest"
+                      ],
+    "blockers":  [
+                     "runx registry publish/login identity is still required for final public_url",
+                     "Frantic claim/delivery requires agent_token; token was not accessed or logged",
+                     "payout/bank/wallet/Stripe/ID/OTP/private-info actions remain intentionally untouched"
+                 ]
+}

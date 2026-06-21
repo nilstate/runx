@@ -1,0 +1,9 @@
+﻿public_url=PENDING_RUNX_REGISTRY_PUBLISH_FOR_inbox-triage
+source_url=https://github.com/rohitmulani63-ops/runx/tree/codex/frantic-skills-pack
+pr_url=https://github.com/runxhq/runx/pull/107
+x_yaml=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/inbox-triage/X.yaml
+skill_md=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/inbox-triage/SKILL.md
+evidence_json=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/delivery-packets/inbox-triage/evidence.json
+verification_json=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/inbox-triage/runx-verify.json
+receipt_ref=runx:receipt:sha256:8a44480231e48b3ed00f641ee94d469c9ab5464bdf0b173f33531fd023e5fe98
+report=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/delivery-packets/inbox-triage/report.md

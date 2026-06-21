@@ -1,0 +1,9 @@
+﻿public_url=PENDING_RUNX_REGISTRY_PUBLISH_FOR_dependency-advisory-graph
+source_url=https://github.com/rohitmulani63-ops/runx/tree/codex/frantic-skills-pack
+pr_url=https://github.com/runxhq/runx/pull/107
+x_yaml=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/dependency-advisory-graph/X.yaml
+skill_md=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/skills/dependency-advisory-graph/SKILL.md
+evidence_json=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/delivery-packets/dependency-advisory-graph/evidence.json
+verification_json=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/dependency-advisory-graph/runx-verify.json
+receipt_ref=runx:receipt:sha256:cd162229fef38b6ecfd7122097029994265a569e5101c1c52fa1898d6f67b3d7
+report=https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/delivery-packets/dependency-advisory-graph/report.md
