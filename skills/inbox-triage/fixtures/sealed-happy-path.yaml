@@ -1,0 +1,33 @@
+name: sealed-happy-path
+kind: skill
+target: ..
+runner: triage
+inputs:
+  inbox_packet:
+    - id: msg-1
+      from: alex@example.com
+      subject: Invoice correction
+      body: Can you confirm the updated invoice by Friday?
+      timestamp: "2026-06-21T09:00:00Z"
+      labels:
+        - billing
+  sender_metadata:
+    alex@example.com:
+      trusted: true
+  operator_policy:
+    approval_gate: send-as
+    signature: Arbaz
+    allowed_intents:
+      - billing
+      - support
+  output_dir: artifacts/sealed-happy-path
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: inbox-triage
+  source_case: sealed-happy-path
+  source: skills-fixture

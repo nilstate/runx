@@ -91,6 +91,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "10e3aa69cb5fdca2202c881e3f18b7cc54b2b4b4ec9f625bec5d8335924d9b3e",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/inbox-triage",
+        version: "sha-72298be17960",
+        digest: "b026b4fc2135093dcf40711bc889b926406db1aa50522a4f6ed4aaa18776d7b7",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/issue-intake",
         version: "sha-15369469618b",
         digest: "cc964980fe249ac3633e7b30c664648f0df9406a0254ede9bb0e3cbcdebdd603",

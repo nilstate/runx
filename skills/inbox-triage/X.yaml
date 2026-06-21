@@ -1,0 +1,75 @@
+skill: inbox-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: canonical
+
+runx:
+  mutating: false
+  scopes:
+    - inbox.packet.read
+  policy:
+    data_classification: bounded_inbox_metadata
+    network:
+      allowed: []
+      forbidden:
+        - private mailbox fetches
+        - email sends
+        - CRM mutations
+    verifier_notes:
+      - The skill consumes fixture-style bounded inbox packets only.
+      - Draft replies are proposals, never sent messages.
+      - Any send must be represented as an explicit gated_send_proposal.
+  artifacts:
+    emits:
+      - inbox_triage
+      - evidence_json
+      - report_md
+    wrap_as: inbox_triage_packet
+
+runners:
+  triage:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - inbox.packet.read
+    policy:
+      reads:
+        - caller-supplied bounded inbox packet
+        - caller-supplied sender metadata
+        - caller-supplied operator policy
+      writes:
+        - evidence.json when output_dir is provided
+        - report.md when output_dir is provided
+      disallows:
+        - sending email
+        - fetching private mailbox context
+        - drafting replies for missing sender or body
+    inputs:
+      inbox_packet:
+        type: json
+        required: true
+        description: Array of bounded inbox messages with id, from, subject, body, timestamp, and optional labels.
+      sender_metadata:
+        type: json
+        required: false
+        description: Optional sender trust metadata by sender email or message id.
+      operator_policy:
+        type: json
+        required: false
+        description: Reply policy including allowed intents, blocked terms, approval gate, and signature.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill package for evidence.json and report.md.
+    outputs:
+      inbox_triage: object
+      evidence_json: object
+      report_md: string

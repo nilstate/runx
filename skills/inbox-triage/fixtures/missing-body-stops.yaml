@@ -1,0 +1,23 @@
+name: missing-body-stops
+kind: skill
+target: ..
+runner: triage
+inputs:
+  inbox_packet:
+    - id: msg-2
+      from: sam@example.com
+      subject: Urgent support request
+      timestamp: "2026-06-21T09:05:00Z"
+  operator_policy:
+    approval_gate: send-as
+    signature: Arbaz
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: inbox-triage
+  source_case: missing-body-stops
+  source: skills-fixture
