@@ -1,0 +1,13 @@
+name: meeting-prep-insufficient-context-fixture
+kind: skill
+target: ..
+runner: meeting-prep
+inputs:
+  objective: Prepare me for the meeting.
+expect:
+  status: needs_agent
+metadata:
+  public_skill: meeting-prep
+  source_case: insufficient-context
+  source: skills-fixture
+

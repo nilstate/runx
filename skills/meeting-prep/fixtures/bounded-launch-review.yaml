@@ -1,0 +1,93 @@
+name: meeting-prep-bounded-launch-review-fixture
+kind: skill
+target: ..
+runner: meeting-prep
+inputs:
+  objective: Prepare a 30-minute launch-readiness meeting that resolves the two known blockers.
+  calendar_event:
+    id: event_launch_review
+    title: Launch readiness review
+    starts_at: 2026-06-24T15:00:00Z
+    duration_minutes: 30
+    attendees:
+      - product-lead
+      - design-partner
+    description: Decide whether the integration can enter limited availability.
+  attendee_notes:
+    - id: attendee_note_product
+      attendee: product-lead
+      note: Owns the launch decision and needs a rollback owner before approval.
+  prior_thread_snippets:
+    - id: thread_blockers
+      text: "The design partner reports two blockers: webhook retries can duplicate work, and the audit export is missing request ids."
+    - id: thread_validation
+      text: Staging passed the normal-path integration test on build 1842; failure-path verification is still open.
+  public_links:
+    - id: public_runbook
+      url: https://example.com/integration-runbook
+      note: Public rollback and incident-response runbook selected by the caller.
+  constraints:
+    final_send_requires_human: true
+caller:
+  answers:
+    agent_task.meeting-prep.output:
+      agenda:
+        - topic: Confirm scope and success criterion
+          minutes: 5
+          citations:
+            - event_launch_review
+        - topic: Resolve duplicate webhook work and request-id evidence gaps
+          minutes: 15
+          citations:
+            - thread_blockers
+            - thread_validation
+        - topic: Assign rollback owner and make launch decision
+          minutes: 10
+          citations:
+            - attendee_note_product
+            - public_runbook
+      decisions:
+        - decision: Whether to enter limited availability
+          status: needs_decision
+          citations:
+            - event_launch_review
+        - decision: Who owns rollback execution
+          status: needs_decision
+          citations:
+            - attendee_note_product
+      risks:
+        - risk: Webhook retries may duplicate work.
+          citations:
+            - thread_blockers
+        - risk: Failure-path verification is incomplete.
+          citations:
+            - thread_validation
+      questions:
+        - What evidence will prove duplicate retry handling is safe?
+        - Can request ids be added to the audit export before launch?
+      follow_ups:
+        - action: Record the launch decision and rollback owner after human review.
+          owner: meeting-owner
+      citations:
+        - id: event_launch_review
+          kind: calendar_event
+        - id: attendee_note_product
+          kind: attendee_note
+        - id: thread_blockers
+          kind: thread_snippet
+        - id: thread_validation
+          kind: thread_snippet
+        - id: public_runbook
+          kind: public_link
+      missing_context:
+        - No private attendee history was supplied or inferred.
+      verdict: ready_for_human_review
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: meeting-prep
+  source_case: bounded-launch-review
+  source: skills-fixture
+
