@@ -41,3 +41,10 @@
 - Latest workflow run: https://github.com/rohitmulani63-ops/runx/actions/runs/27921156084
 - Refreshed at: 2026-06-21T23:47:22Z
 
+## RunX registry listing
+
+- Public URL: https://runx.ai/x/rohitmulani63-ops/meeting-prep@sha-81163d9984c0
+- Registry ref: rohitmulani63-ops/meeting-prep@sha-81163d9984c0
+- URL-as-publish source: https://github.com/rohitmulani63-ops/runx/tree/publish/frantic-meeting-prep-20260622
+- Refreshed at: 2026-06-21T23:57:23Z
+
