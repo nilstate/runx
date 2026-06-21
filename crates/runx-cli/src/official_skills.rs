@@ -126,6 +126,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "244df5dd8eed7900d1987c76060893d3c9cd65f420c5b8c177b19fa4e0b81ac2",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/least-privilege-plan",
+        version: "sha-3320c8427d2d",
+        digest: "6877b441b6b56eadc8c2400ec18c425fdc43833dfcf6169d0e1d099ae47f3619",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/ledger",
         version: "sha-7c6f3e865af7",
         digest: "6845a268b5b5b8bd2e0e73ec7dbdd8079fab88c6c0b47e0f169f89784051c3f5",

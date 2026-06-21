@@ -1,0 +1,30 @@
+name: justified-grant
+kind: skill
+target: ..
+runner: plan
+inputs:
+  policy:
+    policy_id: issue-triage-v1
+    required_scopes:
+      - repo:read
+  run_history:
+    - grant_id: grant-triage
+      granted_scopes:
+        - repo:read
+      observed_effects:
+        - scope: repo:read
+          operation: read
+          evidence_ref: runx:receipt:repo-read
+      evidence_refs:
+        - runx:receipt:repo-read
+  output_dir: artifacts/justified-grant
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: least-privilege-plan
+  source_case: justified-grant
+  source: skills-fixture

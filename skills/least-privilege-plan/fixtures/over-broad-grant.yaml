@@ -1,0 +1,39 @@
+name: over-broad-grant
+kind: skill
+target: ..
+runner: plan
+inputs:
+  policy:
+    policy_id: campaign-send-v1
+    required_scopes:
+      - email:send
+    optional_scopes:
+      - repo:write
+      - payment:spend
+  run_history:
+    - grant_id: grant-campaign
+      granted_scopes:
+        - email:send
+        - repo:write
+        - payment:spend
+      observed_effects:
+        - scope: email:send
+          operation: send
+          evidence_ref: runx:receipt:email-send
+        - scope: repo:read
+          operation: read
+          evidence_ref: runx:receipt:repo-read
+      evidence_refs:
+        - runx:receipt:email-send
+        - runx:receipt:repo-read
+  output_dir: artifacts/over-broad-grant
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: least-privilege-plan
+  source_case: over-broad-grant
+  source: skills-fixture

@@ -1,0 +1,70 @@
+skill: least-privilege-plan
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: canonical
+
+runx:
+  mutating: false
+  scopes:
+    - grants.read
+    - receipts.read
+  policy:
+    data_classification: authority_metadata
+    network:
+      allowed: []
+      forbidden:
+        - grant mutation
+        - live secret inspection
+    verifier_notes:
+      - Recommendations cite declared policy, observed effects, unused scopes, or missing evidence.
+      - The skill emits a plan only; grant changes require a separate approval-gated action.
+  artifacts:
+    emits:
+      - least_privilege_plan
+      - evidence_json
+      - report_md
+    wrap_as: least_privilege_plan_packet
+
+runners:
+  plan:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - grants.read
+      - receipts.read
+    policy:
+      reads:
+        - caller-supplied grant policy
+        - caller-supplied bounded run history
+      writes:
+        - evidence.json when output_dir is provided
+        - report.md when output_dir is provided
+      disallows:
+        - mutating grants
+        - widening authority
+        - reading live secrets
+    inputs:
+      policy:
+        type: json
+        required: true
+        description: Declared policy with policy_id, required_scopes, optional allowed_resources, and review thresholds.
+      run_history:
+        type: json
+        required: true
+        description: Array of bounded run records with grant_id, granted_scopes, observed_effects, and evidence refs.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill package for evidence.json and report.md.
+    outputs:
+      least_privilege_plan: object
+      evidence_json: object
+      report_md: string
