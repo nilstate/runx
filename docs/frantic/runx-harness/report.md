@@ -4,6 +4,7 @@
 - meeting-prep: docs/frantic/runx-harness/meeting-prep/harness.json
 - standup-digest: docs/frantic/runx-harness/standup-digest/harness.json
 - receipt-evidence-bundle: docs/frantic/runx-harness/receipt-evidence-bundle/harness.json
+- dependency-advisory-graph: docs/frantic/runx-harness/dependency-advisory-graph/harness.json
 - inbox-triage: docs/frantic/runx-harness/inbox-triage/harness.json
 - least-privilege-plan: docs/frantic/runx-harness/least-privilege-plan/harness.json
 - Receipt indexes, receipt JSON files, and runx verify reports are committed beside each harness output.

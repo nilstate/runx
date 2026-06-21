@@ -3,11 +3,11 @@
   "store_label": ".runx/frantic-receipts/meeting-prep",
   "receipts": [
     {
-      "id": "sha256:85277cee049a52b18e4252de59d3195d0db209ba6f76611c04849aaef66d4cad",
-      "receipt_ref": "runx:receipt:sha256:85277cee049a52b18e4252de59d3195d0db209ba6f76611c04849aaef66d4cad",
+      "id": "sha256:b5452acbead3bb3065c59b32afd1b05e8bcd1995b6d22811ab7925ac1817fda7",
+      "receipt_ref": "runx:receipt:sha256:b5452acbead3bb3065c59b32afd1b05e8bcd1995b6d22811ab7925ac1817fda7",
       "name": "hrn_run_prep_1312a9f865b7_prep",
       "status": "closed",
-      "created_at": "2026-06-21T23:28:03.625Z",
+      "created_at": "2026-06-21T23:31:42.174Z",
       "harness_id": "hrn_run_prep_1312a9f865b7_prep",
       "harness_state": "sealed",
       "summary": "cli-tool prep completed",
@@ -21,11 +21,11 @@
       }
     },
     {
-      "id": "sha256:7f11dc1642e1b086334b8452d4d6c950cf3d99fcea2e82ee7628d4358e8e3458",
-      "receipt_ref": "runx:receipt:sha256:7f11dc1642e1b086334b8452d4d6c950cf3d99fcea2e82ee7628d4358e8e3458",
+      "id": "sha256:6885601d85000a4ecda60dd16ae924ef72c412edd956c94adbbcc94ca7245d9c",
+      "receipt_ref": "runx:receipt:sha256:6885601d85000a4ecda60dd16ae924ef72c412edd956c94adbbcc94ca7245d9c",
       "name": "hrn_run_prep_1f96ad52cabf_prep",
       "status": "closed",
-      "created_at": "2026-06-21T23:28:03.588Z",
+      "created_at": "2026-06-21T23:31:42.139Z",
       "harness_id": "hrn_run_prep_1f96ad52cabf_prep",
       "harness_state": "sealed",
       "summary": "cli-tool prep completed",

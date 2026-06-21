@@ -1,0 +1,43 @@
+{
+  "projector_id": "runx-runtime.local-history.v1",
+  "store_label": ".runx/frantic-receipts/dependency-advisory-graph",
+  "receipts": [
+    {
+      "id": "sha256:cd162229fef38b6ecfd7122097029994265a569e5101c1c52fa1898d6f67b3d7",
+      "receipt_ref": "runx:receipt:sha256:cd162229fef38b6ecfd7122097029994265a569e5101c1c52fa1898d6f67b3d7",
+      "name": "hrn_run_graph_2be501518296_graph",
+      "status": "closed",
+      "created_at": "2026-06-21T23:31:43.469Z",
+      "harness_id": "hrn_run_graph_2be501518296_graph",
+      "harness_state": "sealed",
+      "summary": "cli-tool graph completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "verified"
+      }
+    },
+    {
+      "id": "sha256:41397e6fe62e76f640dc610deaf4b69516c6358f1861c7fb5a99ebba3c7398f4",
+      "receipt_ref": "runx:receipt:sha256:41397e6fe62e76f640dc610deaf4b69516c6358f1861c7fb5a99ebba3c7398f4",
+      "name": "hrn_run_graph_ba1d5649cf95_graph",
+      "status": "closed",
+      "created_at": "2026-06-21T23:31:43.435Z",
+      "harness_id": "hrn_run_graph_ba1d5649cf95_graph",
+      "harness_state": "sealed",
+      "summary": "cli-tool graph completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "verified"
+      }
+    }
+  ],
+  "pendingRuns": []
+}

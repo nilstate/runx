@@ -1,16 +1,16 @@
 {
-  "receipt_dir": "/home/runner/work/runx/runx/.runx/frantic-receipts/standup-digest",
+  "receipt_dir": "/home/runner/work/runx/runx/.runx/frantic-receipts/dependency-advisory-graph",
   "signature_mode": "production",
   "trees": [
     {
-      "root_receipt_id": "sha256:7049a34167516b1d99f6ff92b148680a7b95e3634516875a5b56bbce5b94d2f2",
+      "root_receipt_id": "sha256:41397e6fe62e76f640dc610deaf4b69516c6358f1861c7fb5a99ebba3c7398f4",
       "receipt_count": 1,
       "parent_missing": null,
       "valid": true,
       "findings": []
     },
     {
-      "root_receipt_id": "sha256:7e8c989ea52facfc942aeeddaf22c9408693e590204167e0d0fd91c11973ee11",
+      "root_receipt_id": "sha256:cd162229fef38b6ecfd7122097029994265a569e5101c1c52fa1898d6f67b3d7",
       "receipt_count": 1,
       "parent_missing": null,
       "valid": true,
