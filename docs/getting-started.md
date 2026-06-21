@@ -3,24 +3,37 @@
 This walkthrough proves the local runx path with one small skill. It uses the
 checked-in `examples/hello-world` package so the commands stay tied to the repo.
 
+Choose one path:
+
+- End user: install a released CLI with `npm i -g @runxhq/cli`,
+  `curl -fsSL https://runx.ai/install | sh`, or
+  `irm runx.ai/install.ps1 | iex` on Windows PowerShell.
+- Contributor: clone this repo and run the Cargo build commands below from the
+  repository root.
+- No-install smoke test: run `npx @runxhq/cli new docs-demo`.
+
 ## Prerequisites
 
 - Rust 1.85 or newer for the native CLI path.
 - Node.js 20 or newer for the checked-in `hello-world` runner command. No
   TypeScript install is required for the native CLI path.
+- The published `@runxhq/cli` launcher supports Node 18+; the full workspace
+  requires Node 20+.
 - pnpm 10 or newer only when exercising the npm wrapper or TypeScript package
   tests.
 
-Build the native CLI from the OSS workspace:
+Build the native CLI from the repository root:
 
 ```bash
-cd oss
 cargo build --manifest-path crates/Cargo.toml -p runx-cli
 ```
 
 ## Run The Example
 
 Run the skill directly through the CLI:
+
+The next three signing variables use a public demo key so the local smoke test
+can produce a verifiable receipt. Do not reuse them for production receipts.
 
 ```bash
 export RUNX_RECEIPT_SIGN_KID=runx-demo-key

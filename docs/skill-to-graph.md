@@ -104,7 +104,6 @@ The gates are intentionally narrow:
 Use the graph harness as the executable contract:
 
 ```bash
-cd oss
 cargo build --manifest-path crates/Cargo.toml -p runx-cli
 crates/target/debug/runx harness examples/hello-graph/harness.yaml --json
 ```

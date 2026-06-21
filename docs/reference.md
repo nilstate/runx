@@ -12,7 +12,6 @@ The npm CLI package is `@runxhq/cli` and exposes the `runx` binary.
 Start with the checked-in hello-world skill:
 
 ```bash
-cd oss
 cargo build --manifest-path crates/Cargo.toml -p runx-cli
 export RUNX_RECEIPT_SIGN_KID=runx-demo-key
 export RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
@@ -79,7 +78,7 @@ Contributor setup, test selection, and commit sign-off rules are in
 For a live creator workflow, link the global `runx` binary to this checkout once:
 
 ```bash
-pnpm --dir oss cli:link-global
+pnpm cli:link-global
 ```
 
 Then invoke the linked `runx` binary from anywhere. Use explicit paths outside
@@ -88,8 +87,8 @@ a runx workspace; bare skill names resolve from the current workspace's
 
 ```bash
 runx --help
-runx skill /path/to/runx/oss/fixtures/skills/echo --message hello --json
-cd /path/to/runx/oss
+runx skill /path/to/runx/fixtures/skills/echo --message hello --json
+cd /path/to/runx
 runx skill ./skills/design-skill --objective "build sourcey docs skill" --json
 ```
 
@@ -119,8 +118,8 @@ With `agent.provider`, `agent.model`, and `agent.api_key` configured, the CLI
 can now resolve managed agent work directly. Deterministic tools, approvals,
 and required human inputs keep their existing local behavior.
 
-The global link points at `oss/packages/cli` in this checkout. Rebuild with
-`pnpm --dir oss build`; do not reinstall.
+The global link points at `packages/cli` in this checkout. Rebuild with
+`pnpm build`; do not reinstall.
 
 ## Package Topology
 
@@ -468,9 +467,9 @@ coverage.
 ## Build And Pack
 
 ```bash
-pnpm --dir oss build
-pnpm --dir oss test tests/cli-package.test.ts
-cd oss/packages/cli
+pnpm build
+pnpm test tests/cli-package.test.ts
+cd packages/cli
 npm pack --dry-run --json
 ```
 

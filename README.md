@@ -37,8 +37,12 @@ Install the CLI:
 
 ```bash
 npm i -g @runxhq/cli
-# or: curl -fsSL https://runx.ai/install | sh
+# macOS/Linux: curl -fsSL https://runx.ai/install | sh
+# Windows PowerShell: irm runx.ai/install.ps1 | iex
 ```
+
+The published `@runxhq/cli` launcher supports Node 18+. Building the full
+repository workspace requires Node 20+.
 
 Then choose how you want to run skills.
 
