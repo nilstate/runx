@@ -1,0 +1,85 @@
+skill: meeting-prep
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: meeting-prep-sealed-prep
+      runner: prep
+      inputs:
+        event:
+          id: evt_1
+          title: Launch readiness review
+          starts_at: "2026-06-21T15:00:00Z"
+        attendee_notes:
+          - id: note_1
+            summary: Mira asked to decide launch go/no-go and flagged a risk around QA coverage.
+        thread_snippets:
+          - id: thread_1
+            summary: Prior thread says blockers are the demo video and final pricing review.
+        public_links:
+          - id: link_1
+            url: https://example.com/public-roadmap
+            title: Public roadmap
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: meeting-prep-insufficient-context
+      runner: prep
+      inputs:
+        event:
+          title: Untitled sync
+        attendee_notes: []
+        thread_snippets: []
+        public_links: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  prep:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      status: string
+      agenda: object
+      decisions: object
+      risks: object
+      questions: object
+      follow_ups: object
+      citations: object
+      evidence: object
+    artifacts:
+      wrap_as: meeting_prep_packet
+      packet: runx.ops.meeting_prep.v1
+    inputs:
+      event:
+        type: json
+        required: true
+        description: Bounded calendar event data.
+      attendee_notes:
+        type: json
+        required: false
+        description: Bounded attendee or objective notes.
+      thread_snippets:
+        type: json
+        required: false
+        description: Bounded prior discussion snippets.
+      public_links:
+        type: json
+        required: false
+        description: Public links already approved for use.
+      constraints:
+        type: json
+        required: false
+        description: Operator constraints and meeting style.
