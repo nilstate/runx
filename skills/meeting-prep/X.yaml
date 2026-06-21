@@ -1,0 +1,126 @@
+skill: meeting-prep
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: meeting-prep-full-context
+      inputs:
+        meeting_context:
+          calendar_event:
+            title: Sprint Review
+            time: "2026-06-22T10:00:00Z"
+            description: Weekly sprint review with frontend and backend teams
+          attendee_notes:
+            - attendee: Alice
+              notes: Frontend PRs ready for review
+            - attendee: Bob
+              notes: Backend deployment blocked on DB migration
+          thread_snippets:
+            - source: slack-thread-123
+              snippet: DB migration script has a foreign key conflict with users table
+          public_links: []
+      caller:
+        answers:
+          agent_task.meeting-prep.output:
+            prep_brief:
+              agenda:
+                - Demos: Alice to demo frontend PRs
+                - Blockers: Bob's DB migration foreign key conflict
+                - Rollback plan: Agree on migration rollback strategy
+              decisions:
+                - Frontend PRs to be reviewed and merged before standup
+                - Rollback DB migration if foreign key conflict cannot be resolved within 2 hours
+              risks:
+                - Foreign key conflict blocks deployment pipeline
+                - Migration rollback may lose schema changes made this sprint
+              questions:
+                - What is the rollback strategy for the DB migration?
+                - Do we need a hotfix or can we wait until next sprint?
+              follow_ups:
+                - Alice: Create frontend PR review tickets
+                - Bob: Document migration conflict resolution options
+                - Team: Schedule spike session on migration if not resolved by EOD
+              citations:
+                - slack-thread-123
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: meeting-prep-missing-context
+      inputs:
+        meeting_context:
+          calendar_event:
+            title: Standup
+            time: "2026-06-22T09:00:00Z"
+            description: Daily standup
+          attendee_notes: []
+          thread_snippets: []
+          public_links: []
+      caller:
+        answers:
+          agent_task.meeting-prep.output:
+            prep_brief:
+              error: "Insufficient context: only calendar_event provided without attendee_notes, thread_snippets, or public_links. Cannot prepare meeting brief without additional context."
+              agenda: []
+              decisions: []
+              risks: []
+              questions: []
+              follow_ups: []
+              citations: []
+      expect:
+        status: sealed
+
+runners:
+  meeting-prep:
+    default: true
+    type: agent-task
+    agent: productivity
+    task: meeting-prep
+    inputs:
+      meeting_context:
+        type: object
+        required: true
+        description: Meeting context packet with calendar_event, attendee_notes, thread_snippets, public_links
+    outputs:
+      prep_brief:
+        type: object
+        description: Meeting prep brief with agenda, decisions, risks, questions, follow_ups, citations
+        properties:
+          error:
+            type: string
+          agenda:
+            type: array
+            items:
+              type: string
+          decisions:
+            type: array
+            items:
+              type: string
+          risks:
+            type: array
+            items:
+              type: string
+          questions:
+            type: array
+            items:
+              type: string
+          follow_ups:
+            type: array
+            items:
+              type: string
+          citations:
+            type: array
+            items:
+              type: string
+    artifacts:
+      wrap_as: prep_brief_packet
+      packet: runx.meeting_prep.v1
+    runx:
+      category: productivity
