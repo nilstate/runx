@@ -1,0 +1,77 @@
+name: Frantic runx harness evidence
+
+on:
+  push:
+    branches:
+      - codex/frantic-skills-pack
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    env:
+      RUNX_RECEIPT_SIGN_KID: frantic-github-actions-public-test-key
+      RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+      RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: codex/frantic-skills-pack
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Prepare evidence directory
+        run: mkdir -p docs/frantic/runx-harness .runx/frantic-receipts/meeting-prep .runx/frantic-receipts/standup-digest
+
+      - name: Record runx version
+        run: pnpm dlx @runxhq/cli@0.6.6 --version | tee docs/frantic/runx-harness/runx-version.txt
+
+      - name: Run meeting-prep harness
+        run: |
+          pnpm dlx @runxhq/cli@0.6.6 harness ./skills/meeting-prep \
+            --receipt-dir .runx/frantic-receipts/meeting-prep \
+            --json | tee docs/frantic/runx-harness/meeting-prep-verification.json
+
+      - name: Run standup-digest harness
+        run: |
+          pnpm dlx @runxhq/cli@0.6.6 harness ./skills/standup-digest \
+            --receipt-dir .runx/frantic-receipts/standup-digest \
+            --json | tee docs/frantic/runx-harness/standup-digest-verification.json
+
+      - name: Write receipt indexes
+        run: |
+          pnpm dlx @runxhq/cli@0.6.6 history --receipt-dir .runx/frantic-receipts/meeting-prep --json \
+            > docs/frantic/runx-harness/meeting-prep-receipts.json
+          pnpm dlx @runxhq/cli@0.6.6 history --receipt-dir .runx/frantic-receipts/standup-digest --json \
+            > docs/frantic/runx-harness/standup-digest-receipts.json
+
+      - name: Write review report
+        run: |
+          {
+            echo "# Frantic runx harness evidence"
+            echo
+            echo "- Official CLI: $(cat docs/frantic/runx-harness/runx-version.txt)"
+            echo "- meeting-prep: docs/frantic/runx-harness/meeting-prep-verification.json"
+            echo "- standup-digest: docs/frantic/runx-harness/standup-digest-verification.json"
+            echo "- Receipt indexes are committed beside the verification JSON files."
+            echo "- Signing key is a public deterministic CI key for reproducible harness evidence; no private tokens or payout data are used."
+          } > docs/frantic/runx-harness/report.md
+
+      - name: Commit generated evidence
+        run: |
+          git config user.name "Jarvis-Codex"
+          git config user.email "oneaipremium101@gmail.com"
+          git add docs/frantic/runx-harness
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(frantic): add runx harness evidence"
+          git push origin HEAD:codex/frantic-skills-pack
