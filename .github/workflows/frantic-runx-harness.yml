@@ -34,7 +34,7 @@ jobs:
 
       - name: Prepare evidence directory
         run: |
-          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+          for skill in meeting-prep standup-digest receipt-evidence-bundle dependency-advisory-graph inbox-triage least-privilege-plan; do
             mkdir -p "docs/frantic/runx-harness/${skill}/receipts" ".runx/frantic-receipts/${skill}"
           done
 
@@ -43,7 +43,7 @@ jobs:
 
       - name: Run skill harnesses
         run: |
-          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+          for skill in meeting-prep standup-digest receipt-evidence-bundle dependency-advisory-graph inbox-triage least-privilege-plan; do
             pnpm dlx @runxhq/cli@0.6.6 harness "./skills/${skill}" \
               --receipt-dir ".runx/frantic-receipts/${skill}" \
               --json | tee "docs/frantic/runx-harness/${skill}/harness.json"
@@ -51,7 +51,7 @@ jobs:
 
       - name: Write receipt indexes
         run: |
-          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+          for skill in meeting-prep standup-digest receipt-evidence-bundle dependency-advisory-graph inbox-triage least-privilege-plan; do
             pnpm dlx @runxhq/cli@0.6.6 history --receipt-dir ".runx/frantic-receipts/${skill}" --json \
               > "docs/frantic/runx-harness/${skill}/receipt-history.json"
             for receipt in .runx/frantic-receipts/${skill}/*.json; do
@@ -62,7 +62,7 @@ jobs:
 
       - name: Verify sealed receipts
         run: |
-          for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
+          for skill in meeting-prep standup-digest receipt-evidence-bundle dependency-advisory-graph inbox-triage least-privilege-plan; do
             pnpm dlx @runxhq/cli@0.6.6 verify --receipt-dir ".runx/frantic-receipts/${skill}" --json \
               > "docs/frantic/runx-harness/${skill}/runx-verify.json"
           done
@@ -76,6 +76,7 @@ jobs:
             echo "- meeting-prep: docs/frantic/runx-harness/meeting-prep/harness.json"
             echo "- standup-digest: docs/frantic/runx-harness/standup-digest/harness.json"
             echo "- receipt-evidence-bundle: docs/frantic/runx-harness/receipt-evidence-bundle/harness.json"
+            echo "- dependency-advisory-graph: docs/frantic/runx-harness/dependency-advisory-graph/harness.json"
             echo "- inbox-triage: docs/frantic/runx-harness/inbox-triage/harness.json"
             echo "- least-privilege-plan: docs/frantic/runx-harness/least-privilege-plan/harness.json"
             echo "- Receipt indexes, receipt JSON files, and runx verify reports are committed beside each harness output."

@@ -1,0 +1,96 @@
+skill: dependency-advisory-graph
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: dependency-advisory-exact-match
+      runner: graph
+      inputs:
+        manifest:
+          ecosystem: npm
+          dependencies:
+            lodash: 4.17.20
+            undici: 6.19.8
+        advisories:
+          - package: lodash
+            ecosystem: npm
+            affected_versions:
+              - 4.17.20
+            advisory_id: GHSA-35jh-r3h4-6jhm
+            evidence_url: https://github.com/advisories/GHSA-35jh-r3h4-6jhm
+            advisory_source: GitHub Advisory Database
+            retrieved_at: "2026-06-21T00:00:00Z"
+            severity: high
+            fix_version: 4.17.21
+        graph_receipt: runx:receipt:graph-demo-001
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: dependency-advisory-clean-manifest
+      runner: graph
+      inputs:
+        manifest:
+          ecosystem: npm
+          dependencies:
+            lodash: 4.17.21
+        advisories:
+          - package: lodash
+            ecosystem: npm
+            affected_versions:
+              - 4.17.20
+            advisory_id: GHSA-35jh-r3h4-6jhm
+            evidence_url: https://github.com/advisories/GHSA-35jh-r3h4-6jhm
+            advisory_source: GitHub Advisory Database
+            retrieved_at: "2026-06-21T00:00:00Z"
+            severity: high
+            fix_version: 4.17.21
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  graph:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      status: string
+      package: string
+      installed_version: string
+      advisory_id: string
+      evidence_url: string
+      advisory_source: string
+      retrieved_at: string
+      severity: string
+      fix_version: string
+      confidence: string
+      graph_receipt: string
+      evidence: object
+      findings: object
+    artifacts:
+      wrap_as: dependency_advisory_graph_packet
+      packet: runx.security.dependency_advisory_graph.v1
+    inputs:
+      manifest:
+        type: json
+        required: true
+        description: Dependency manifest with ecosystem and dependencies.
+      advisories:
+        type: json
+        required: true
+        description: Advisory records with exact affected versions and evidence URLs.
+      graph_receipt:
+        type: string
+        required: false
+        description: Receipt ref from an upstream vulnerability or research graph.
+
