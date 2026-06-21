@@ -54,7 +54,10 @@ jobs:
           for skill in meeting-prep standup-digest receipt-evidence-bundle inbox-triage least-privilege-plan; do
             pnpm dlx @runxhq/cli@0.6.6 history --receipt-dir ".runx/frantic-receipts/${skill}" --json \
               > "docs/frantic/runx-harness/${skill}/receipt-history.json"
-            cp .runx/frantic-receipts/${skill}/*.json "docs/frantic/runx-harness/${skill}/receipts/"
+            for receipt in .runx/frantic-receipts/${skill}/*.json; do
+              safe_name="$(basename "$receipt" | tr ':' '_')"
+              cp "$receipt" "docs/frantic/runx-harness/${skill}/receipts/${safe_name}"
+            done
           done
 
       - name: Verify sealed receipts
