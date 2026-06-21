@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MeetingPrepBrief",
+  "description": "Output schema for the meeting-prep bounded-context skill",
+  "type": "object",
+  "required": ["decision", "meeting", "citations", "receipt_notes"],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["ready", "needs_context", "refused"],
+      "description": "Whether the skill has enough context to produce a brief"
+    },
+    "meeting": {
+      "type": "object",
+      "required": ["title", "starts_at"],
+      "properties": {
+        "title": { "type": "string" },
+        "starts_at": { "type": "string", "format": "date-time" },
+        "prep_scope": { "type": "string" }
+      }
+    },
+    "agenda": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "topic": { "type": "string" },
+          "why": { "type": "string" },
+          "citations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "decision_needed": { "type": "string" },
+          "owner": { "type": "string" },
+          "citations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "risk": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+          "citations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string" },
+          "citations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "follow_ups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": { "type": "string" },
+          "owner": { "type": "string" },
+          "citations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["calendar_event", "attendee_note", "supplied_snippet", "public_link"] },
+          "claim_supported": { "type": "string" }
+        },
+        "required": ["id", "type", "claim_supported"]
+      }
+    },
+    "missing_context": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "stop_conditions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "receipt_notes": {
+      "type": "object",
+      "properties": {
+        "authority": { "type": "string" },
+        "mutation": { "type": "boolean" },
+        "public_links_read": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["authority", "mutation"]
+    }
+  }
+}

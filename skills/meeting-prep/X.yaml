@@ -1,0 +1,146 @@
+skill: meeting-prep
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: meeting-prep-product-review-ready
+      runner: prep
+      inputs:
+        calendar_event:
+          id: evt_product_review_2026_06_22
+          title: "Product review: onboarding activation"
+          starts_at: "2026-06-22T16:00:00Z"
+          duration_minutes: 45
+          attendees:
+            - name: Maya Chen
+              role: Product lead
+            - name: Omar Ruiz
+              role: Growth engineering
+            - name: Priya Shah
+              role: Customer success
+        attendee_notes:
+          - id: attendee_note_maya
+            attendee: Maya Chen
+            note: "Maya wants a decision on whether to keep the invite-code experiment in the launch scope."
+          - id: attendee_note_omar
+            attendee: Omar Ruiz
+            note: "Omar can support instrumentation this week, but only if event naming is settled."
+        prior_thread_snippets:
+          - id: thread_001
+            source: product-thread
+            snippet: "Activation rose from 42% to 48% after the guided checklist, but invite-code users still drop during workspace setup."
+          - id: thread_002
+            source: support-thread
+            snippet: "Three design partners asked for clearer onboarding ownership before a wider rollout."
+          - id: thread_003
+            source: analytics-thread
+            snippet: "The workspace_created and first_invite_sent events disagree for 17% of invite-code sessions."
+        public_links: []
+        prep_objective: "Prepare a bounded operator brief for the review meeting."
+        constraints:
+          cite_only_supplied_context: true
+          do_not_invent_attendee_history: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: meeting-prep-insufficient-context-stop
+      runner: prep
+      inputs:
+        calendar_event:
+          id: evt_board_sync_2026_06_23
+          title: "Board prep sync"
+          starts_at: "2026-06-23T18:00:00Z"
+          duration_minutes: 30
+          attendees:
+            - name: External attendee
+              role: unknown
+        attendee_notes: []
+        prior_thread_snippets: []
+        public_links: []
+        prep_objective: "Prepare the meeting brief."
+        constraints:
+          cite_only_supplied_context: true
+          do_not_invent_attendee_history: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  prep:
+    default: true
+    type: agent-task
+    agent: productivity
+    task: meeting-prep
+    outputs:
+      decision:
+        type: string
+        description: "ready | needs_context | refused"
+      meeting:
+        type: object
+        description: "Meeting identity — title, starts_at, prep_scope"
+      agenda:
+        type: array
+        description: "Proposed agenda items with citations"
+      decisions:
+        type: array
+        description: "Decisions needed with owners and citations"
+      risks:
+        type: array
+        description: "Risks with severity and citations"
+      questions:
+        type: array
+        description: "Open questions with citations"
+      follow_ups:
+        type: array
+        description: "Action items with owners and citations"
+      citations:
+        type: array
+        description: "Evidence index linking claims to sources"
+      missing_context:
+        type: array
+        description: "Named gaps where no source was provided"
+      stop_conditions:
+        type: array
+        description: "Conditions that would stop brief generation"
+      receipt_notes:
+        type: object
+        description: "Run metadata for receipt sealing"
+    artifacts:
+      wrap_as: meeting_prep_brief
+      packet: runx.ops.meeting_prep_brief.v1
+    runx:
+      category: productivity
+    inputs:
+      calendar_event:
+        type: json
+        required: true
+        description: "Bounded calendar event — title, time, attendees, organizer notes"
+      attendee_notes:
+        type: json
+        required: false
+        description: "Caller-supplied notes about attendees, roles, asks, constraints"
+      prior_thread_snippets:
+        type: json
+        required: false
+        description: "Redacted thread snippets with ids; cite only these"
+      public_links:
+        type: json
+        required: false
+        description: "Public links with fetched excerpts and read status"
+      prep_objective:
+        type: string
+        required: false
+        description: "What the caller needs from the meeting prep"
+      constraints:
+        type: json
+        required: false
+        description: "Citation, privacy, and stop-condition constraints"
