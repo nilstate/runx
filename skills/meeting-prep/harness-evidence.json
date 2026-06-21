@@ -1,0 +1,36 @@
+{
+  "schema": "runx.harness.evidence.v1",
+  "skill": "meeting-prep",
+  "version": "0.1.0",
+  "tested_package_commit": "dcfac83a89df0ff3d72618399c97beb9dbe24325",
+  "environment": {
+    "runner": "ubuntu-latest",
+    "node": "22",
+    "runx_version": "runx-cli 0.6.8"
+  },
+  "command": "runx harness ./skills/meeting-prep --json",
+  "result": {
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "meeting-prep-bounded-launch-review",
+      "meeting-prep-stops-without-event-context"
+    ],
+    "receipt_ids": [
+      "sha256:979dc21f6734ef851bfafd28f8de124ca16cf2cabfabbcaaa54fecce0a1906b9"
+    ],
+    "graph_case_count": 0
+  },
+  "discovery": {
+    "status": "ok",
+    "fixtures": 2,
+    "harness_cases": 2
+  },
+  "public_proof": {
+    "workflow_run": "https://github.com/belljinwo-jpg/runx/actions/runs/27921358635",
+    "job": "https://github.com/belljinwo-jpg/runx/actions/runs/27921358635/job/82615534248",
+    "conclusion": "success"
+  }
+}
