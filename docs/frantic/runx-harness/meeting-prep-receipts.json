@@ -1,0 +1,43 @@
+{
+  "projector_id": "runx-runtime.local-history.v1",
+  "store_label": ".runx/frantic-receipts/meeting-prep",
+  "receipts": [
+    {
+      "id": "sha256:5f14fa4795eaba98df42af6d68e72dbe69d358e50edb58c7f8ab13b9f603da75",
+      "receipt_ref": "runx:receipt:sha256:5f14fa4795eaba98df42af6d68e72dbe69d358e50edb58c7f8ab13b9f603da75",
+      "name": "hrn_run_prep_1312a9f865b7_prep",
+      "status": "closed",
+      "created_at": "2026-06-21T23:16:24.025Z",
+      "harness_id": "hrn_run_prep_1312a9f865b7_prep",
+      "harness_state": "sealed",
+      "summary": "cli-tool prep completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "invalid"
+      }
+    },
+    {
+      "id": "sha256:d4d2b17a1b142cbb6eb49a5abfc240d7c1aed93d2119255602ea380482d85806",
+      "receipt_ref": "runx:receipt:sha256:d4d2b17a1b142cbb6eb49a5abfc240d7c1aed93d2119255602ea380482d85806",
+      "name": "hrn_run_prep_1f96ad52cabf_prep",
+      "status": "closed",
+      "created_at": "2026-06-21T23:16:23.991Z",
+      "harness_id": "hrn_run_prep_1f96ad52cabf_prep",
+      "harness_state": "sealed",
+      "summary": "cli-tool prep completed",
+      "source_type": "hosted",
+      "actors": [
+        "runx:principal:local_runtime"
+      ],
+      "artifact_types": [],
+      "verification": {
+        "status": "invalid"
+      }
+    }
+  ],
+  "pendingRuns": []
+}
