@@ -23,13 +23,16 @@
     "eligibility":  "eligible_now_limited_paid",
     "action_mode":  "claim_and_deliver_after_registry_publish",
     "observations":  [
-                         {
-                             "claim_type":  "runx_skill_bounty",
-                             "summary":  "Skill package exists in public PR branch with SKILL.md, X.yaml, runner, harness evidence, and public receipt artifacts.",
-                             "evidence_url":  "https://github.com/runxhq/runx/pull/107"
-                         },
-                         "public_url=https://runx.ai/x/rohitmulani63-ops/meeting-prep@sha-81163d9984c0",
-                         "registry_ref=rohitmulani63-ops/meeting-prep@sha-81163d9984c0"
+                         "runx_cli_version=runx-cli 0.6.6 recorded in the public harness evidence packet.",
+                         "package_name=meeting-prep and registry_ref=rohitmulani63-ops/meeting-prep@sha-81163d9984c0 match the Frantic #27 requested package name.",
+                         "public_url=https://runx.ai/x/rohitmulani63-ops/meeting-prep@sha-81163d9984c0 resolves as a live RunX community registry listing.",
+                         "pr_url=https://github.com/runxhq/runx/pull/107 contains skills/meeting-prep/SKILL.md, skills/meeting-prep/X.yaml, and runner material in a public PR.",
+                         "x_yaml and skill_md are raw fetchable URLs from the public PR branch and describe the same meeting-prep package contract.",
+                         "harness evidence contains two cases: meeting-prep-sealed-prep and meeting-prep-insufficient-context.",
+                         "verification_json is public and records runx verify valid=true for the meeting-prep receipt evidence.",
+                         "receipt_ref=runx:receipt:sha256:b5452acbead3bb3065c59b32afd1b05e8bcd1995b6d22811ab7925ac1817fda7 is included for reviewer traceability.",
+                         "privacy behavior is explicit: the skill cites only supplied snippets/public links and returns needs_more_context instead of inventing private attendee history.",
+                         "report explains install, source, verification, and review path for a new reviewer without requiring private context or secrets."
                      ],
     "harness_cases":  [
                           "meeting-prep-sealed-prep",
@@ -48,6 +51,8 @@
     "registry_version":  "sha-81163d9984c0",
     "registry_publish_source_url":  "https://github.com/rohitmulani63-ops/runx/tree/publish/frantic-meeting-prep-20260622",
     "registry_publish_method":  "runx URL-as-publish from focused public GitHub branch",
-    "frantic_preflight_status":  "pending_after_public_url_refresh",
-    "public_url_refreshed_at":  "2026-06-21T23:57:23Z"
+    "frantic_preflight_status":  "pending_after_structured_evidence_refresh",
+    "public_url_refreshed_at":  "2026-06-21T23:57:23Z",
+    "summary":  "The meeting-prep package is a bounded RunX skill for Frantic bounty #27. It prepares a source-cited meeting brief only from supplied event, attendee note, thread snippet, and approved public-link context. The package is present in RunX PR #107, has raw X.yaml and SKILL.md URLs from the public PR branch, has public Ubuntu harness and runx verify evidence, has a sealed receipt reference, and is now reachable as a RunX community registry listing at rohitmulani63-ops/meeting-prep@sha-81163d9984c0.",
+    "structured_evidence_refreshed_at":  "2026-06-21T23:58:28Z"
 }
