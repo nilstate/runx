@@ -1,0 +1,21 @@
+{
+  "work_events": [
+    {
+      "id": "pr_1",
+      "type": "github_pr",
+      "title": "Merged Prefect template",
+      "status": "merged",
+      "timestamp": "2026-06-20T08:00:00Z"
+    },
+    {
+      "id": "ci_1",
+      "type": "build",
+      "title": "Windows build failed",
+      "summary": "CI failed and needs approval to rerun."
+    }
+  ],
+  "digest_policy": {
+    "period": "2026-06-20"
+  }
+}
+

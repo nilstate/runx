@@ -1,0 +1,22 @@
+{
+  "inbox_packet": {
+    "source": "fixture:launch-inbox",
+    "messages": [
+      {
+        "id": "msg_1",
+        "from": "customer@example.test",
+        "subject": "Question about launch call",
+        "body": "Can you confirm the agenda and whether tomorrow still works?"
+      }
+    ]
+  },
+  "sender_metadata": {
+    "name": "Operator",
+    "role": "founder"
+  },
+  "operator_policy": {
+    "signature": "Operator Team",
+    "final_send_requires_human": true
+  }
+}
+

@@ -1,0 +1,33 @@
+{
+  "receipt_refs": [
+    "runx:receipt:rx_valid_001"
+  ],
+  "verify_results": [
+    {
+      "receipt_ref": "runx:receipt:rx_valid_001",
+      "verdict": "valid"
+    }
+  ],
+  "receipt_summaries": [
+    {
+      "receipt_ref": "runx:receipt:rx_valid_001",
+      "authority": {
+        "scopes": [
+          "repo.read"
+        ]
+      },
+      "effects": [
+        {
+          "id": "read_1",
+          "scope": "repo.read"
+        }
+      ]
+    }
+  ],
+  "artifact_links": [
+    {
+      "url": "https://github.com/example/repo/pull/1"
+    }
+  ]
+}
+

@@ -1,0 +1,79 @@
+skill: least-privilege-plan
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: least-privilege-over-broad-grant
+      runner: plan
+      inputs:
+        run_history_packet:
+          grants:
+            - id: grant_repo
+              scope: repo:*
+            - id: grant_delete
+              scope: repo:delete
+          observed_effects:
+            - id: fx_read
+              scope: repo:read
+              summary: Read issue metadata.
+        declared_policy:
+          id: policy_public_triage
+          required_scopes: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: least-privilege-justified-grant
+      runner: plan
+      inputs:
+        run_history_packet:
+          grants:
+            - id: grant_read
+              scope: repo:read
+          observed_effects:
+            - id: fx_read
+              scope: repo:read
+              summary: Read issue metadata.
+        declared_policy:
+          id: policy_read_only
+          required_scopes:
+            - repo:read
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  plan:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      status: string
+      keep: object
+      reduce: object
+      revoke: object
+      needs_human_review: object
+      evidence: object
+      reviewer_notes: object
+    artifacts:
+      wrap_as: least_privilege_plan_packet
+      packet: runx.security.least_privilege_plan.v1
+    inputs:
+      run_history_packet:
+        type: json
+        required: true
+        description: Bounded grant and observed-effect packet.
+      declared_policy:
+        type: json
+        required: true
+        description: Policy id, required scopes, and review constraints.
+

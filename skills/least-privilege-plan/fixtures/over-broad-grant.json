@@ -1,0 +1,26 @@
+{
+  "run_history_packet": {
+    "grants": [
+      {
+        "id": "grant_repo",
+        "scope": "repo:*"
+      },
+      {
+        "id": "grant_delete",
+        "scope": "repo:delete"
+      }
+    ],
+    "observed_effects": [
+      {
+        "id": "fx_read",
+        "scope": "repo:read",
+        "summary": "Read issue metadata."
+      }
+    ]
+  },
+  "declared_policy": {
+    "id": "policy_public_triage",
+    "required_scopes": []
+  }
+}
+

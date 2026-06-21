@@ -1,0 +1,79 @@
+skill: receipt-evidence-bundle
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: receipt-evidence-valid-receipt
+      runner: bundle
+      inputs:
+        receipt_refs:
+          - runx:receipt:rx_valid_001
+        verify_results:
+          - receipt_ref: runx:receipt:rx_valid_001
+            verdict: valid
+        receipt_summaries:
+          - receipt_ref: runx:receipt:rx_valid_001
+            authority:
+              scopes:
+                - repo.read
+            effects:
+              - id: read_1
+                scope: repo.read
+        artifact_links:
+          - url: https://github.com/example/repo/pull/1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: receipt-evidence-malformed-ref
+      runner: bundle
+      inputs:
+        receipt_refs:
+          - not-a-runx-receipt
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  bundle:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      status: string
+      verified_facts: object
+      inferred_facts: object
+      missing_evidence: object
+      reviewer_actions: object
+      redactions: object
+      evidence: object
+    artifacts:
+      wrap_as: receipt_evidence_bundle_packet
+      packet: runx.receipt.evidence_bundle.v1
+    inputs:
+      receipt_refs:
+        type: json
+        required: false
+        description: Array of runx receipt references.
+      receipt_summaries:
+        type: json
+        required: false
+        description: Sanitized receipt summaries and effects.
+      verify_results:
+        type: json
+        required: false
+        description: runx verify output already produced by a governed step.
+      artifact_links:
+        type: json
+        required: false
+        description: Public artifacts to bind to the evidence bundle.
+

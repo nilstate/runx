@@ -1,0 +1,79 @@
+skill: inbox-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: inbox-triage-happy-path
+      runner: triage
+      inputs:
+        inbox_packet:
+          source: fixture:launch-inbox
+          messages:
+            - id: msg_1
+              from: customer@example.test
+              subject: Question about launch call
+              body: Can you confirm the agenda and whether tomorrow still works?
+        sender_metadata:
+          name: Operator
+          role: founder
+        operator_policy:
+          signature: Operator Team
+          final_send_requires_human: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: inbox-triage-sensitive-stop
+      runner: triage
+      inputs:
+        inbox_packet:
+          source: fixture:sensitive
+          messages:
+            - id: msg_sensitive
+              from: account@example.test
+              subject: Password reset and bank account
+              body: Please reset my password and update my bank account today.
+        sender_metadata:
+          role: support lead
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  triage:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      status: string
+      classification: object
+      triage_queue: object
+      draft_reply: object
+      gated_send_proposal: object
+      evidence: object
+    artifacts:
+      wrap_as: inbox_triage_packet
+      packet: runx.ops.inbox_triage.v1
+    inputs:
+      inbox_packet:
+        type: json
+        required: true
+        description: Redacted inbox packet with bounded messages.
+      sender_metadata:
+        type: json
+        required: true
+        description: Operator or sender metadata used for draft context.
+      operator_policy:
+        type: json
+        required: false
+        description: Tone, signature, and send policy.
+

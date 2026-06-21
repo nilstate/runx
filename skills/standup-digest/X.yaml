@@ -1,0 +1,81 @@
+skill: standup-digest
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: standup-digest-sealed-digest
+      runner: digest
+      inputs:
+        work_events:
+          - id: pr_1
+            type: github_pr
+            title: Merged Prefect template
+            status: merged
+            timestamp: "2026-06-20T08:00:00Z"
+          - id: ci_1
+            type: build
+            title: Windows build failed
+            summary: CI failed and needs approval to rerun.
+          - id: note_1
+            type: note
+            title: Follow up with maintainer
+            summary: Next action is review feedback tomorrow.
+        digest_policy:
+          period: "2026-06-20"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: standup-digest-duplicate-noisy-input
+      runner: digest
+      inputs:
+        work_events:
+          - id: dup_1
+            title: Merged docs PR
+            status: merged
+          - id: dup_1
+            title: Merged docs PR
+            status: merged
+          - id: noise_1
+            title: FYI
+            summary: No action.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  digest:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      status: string
+      period: string
+      shipped: object
+      blockers: object
+      risks: object
+      next_actions: object
+      source_map: object
+      evidence: object
+    artifacts:
+      wrap_as: standup_digest_packet
+      packet: runx.ops.standup_digest.v1
+    inputs:
+      work_events:
+        type: json
+        required: true
+        description: Bounded GitHub, issue, build, and note events.
+      digest_policy:
+        type: json
+        required: false
+        description: Period and grouping preferences.
+

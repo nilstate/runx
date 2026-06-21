@@ -1,0 +1,20 @@
+{
+  "work_events": [
+    {
+      "id": "dup_1",
+      "title": "Merged docs PR",
+      "status": "merged"
+    },
+    {
+      "id": "dup_1",
+      "title": "Merged docs PR",
+      "status": "merged"
+    },
+    {
+      "id": "noise_1",
+      "title": "FYI",
+      "summary": "No action."
+    }
+  ]
+}
+

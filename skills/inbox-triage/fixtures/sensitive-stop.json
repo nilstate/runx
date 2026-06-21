@@ -1,0 +1,17 @@
+{
+  "inbox_packet": {
+    "source": "fixture:sensitive",
+    "messages": [
+      {
+        "id": "msg_sensitive",
+        "from": "account@example.test",
+        "subject": "Password reset and bank account",
+        "body": "Please reset my password and update my bank account today."
+      }
+    ]
+  },
+  "sender_metadata": {
+    "role": "support lead"
+  }
+}
+
