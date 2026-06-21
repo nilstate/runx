@@ -1,0 +1,76 @@
+skill: verifiable-web-research
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: verifiable-web-research-cited-answer
+      runner: research
+      inputs:
+        research_question: Which bounty page is the source of truth?
+        source_snapshots:
+          - id: src_1
+            url: https://github.com/runxhq/runx/issues/77
+            title: runx skill verifiable web research
+            excerpt: Funded bounty on Frantic. Claim and deliver on Frantic; the bounty page is the destination.
+            observed_at: "2026-06-20T12:00:00Z"
+          - id: src_2
+            url: https://gofrantic.com/bounties/p-b5e7d3b9b4
+            title: Frantic bounty page
+            excerpt: Frantic pays for reproducible proof, not effort.
+            observed_at: "2026-06-20T12:01:00Z"
+        research_policy:
+          min_sources: 2
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: verifiable-web-research-needs-evidence
+      runner: research
+      inputs:
+        research_question: Is this currently funded?
+        source_snapshots: []
+        research_policy:
+          min_sources: 1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  research:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      status: string
+      answer: string
+      claims: object
+      source_table: object
+      citation_map: object
+      verification_gaps: object
+      evidence: object
+    artifacts:
+      wrap_as: verifiable_web_research_packet
+      packet: runx.research.verifiable_web_research.v1
+    inputs:
+      research_question:
+        type: string
+        required: true
+        description: The bounded research question.
+      source_snapshots:
+        type: json
+        required: true
+        description: Public source snapshots already approved for use.
+      research_policy:
+        type: json
+        required: false
+        description: Minimum source count, freshness, and answer style.
+

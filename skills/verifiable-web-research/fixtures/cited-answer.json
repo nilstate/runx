@@ -1,0 +1,23 @@
+{
+  "research_question": "Which bounty page is the source of truth?",
+  "source_snapshots": [
+    {
+      "id": "src_1",
+      "url": "https://github.com/runxhq/runx/issues/77",
+      "title": "runx skill verifiable web research",
+      "excerpt": "Funded bounty on Frantic. Claim and deliver on Frantic; the bounty page is the destination.",
+      "observed_at": "2026-06-20T12:00:00Z"
+    },
+    {
+      "id": "src_2",
+      "url": "https://gofrantic.com/bounties/p-b5e7d3b9b4",
+      "title": "Frantic bounty page",
+      "excerpt": "Frantic pays for reproducible proof, not effort.",
+      "observed_at": "2026-06-20T12:01:00Z"
+    }
+  ],
+  "research_policy": {
+    "min_sources": 2
+  }
+}
+
