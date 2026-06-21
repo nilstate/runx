@@ -1,0 +1,33 @@
+name: valid-receipt-bundle
+kind: skill
+target: ..
+runner: bundle
+inputs:
+  receipt_ref: runx:receipt:sha256:abc123
+  verification_json:
+    receipt_ref: runx:receipt:sha256:abc123
+    verdict: pass
+    signature_valid: true
+    receipt_sha256: abc123
+  artifact_links:
+    - kind: report
+      url: https://example.com/report.md
+      sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+      public: true
+      summary: Reviewer-facing report.
+    - kind: private-run-log
+      private: true
+      digest: sha256:private-log-digest
+      payload: "redacted private payload"
+  reviewer_context: Frantic payout review for a runx-backed delivery.
+  output_dir: artifacts/valid-receipt-bundle
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: receipt-evidence-bundle
+  source_case: valid-receipt-bundle
+  source: skills-fixture

@@ -1,0 +1,84 @@
+skill: receipt-evidence-bundle
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: canonical
+
+runx:
+  mutating: false
+  scopes:
+    - receipts.read
+    - artifacts.read
+  policy:
+    data_classification: receipt_metadata
+    network:
+      allowed: []
+      forbidden:
+        - private artifact fetches
+        - credential-bearing payload fetches
+    verifier_notes:
+      - Receipt refs are accepted only as explicit runx receipt references.
+      - Verification JSON is consumed as evidence; the skill does not invent a passing verdict.
+      - Private artifact payloads are summarized by digest or redaction note, not copied.
+  artifacts:
+    emits:
+      - receipt_evidence_bundle
+      - evidence_json
+      - report_md
+    wrap_as: receipt_evidence_bundle_packet
+
+runners:
+  bundle:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - receipts.read
+      - artifacts.read
+    policy:
+      reads:
+        - receipt references supplied by the caller
+        - caller-supplied runx verify JSON
+        - caller-supplied artifact metadata
+      writes:
+        - evidence.json when output_dir is provided
+        - report.md when output_dir is provided
+      disallows:
+        - fetching private artifacts
+        - exposing raw secrets or private payload bodies
+        - treating missing verification as a pass
+    inputs:
+      receipt_ref:
+        type: string
+        required: false
+        description: Single runx receipt reference.
+      receipt_refs:
+        type: json
+        required: false
+        description: Array of one or more runx receipt references.
+      verification_json:
+        type: json
+        required: false
+        description: Parsed runx verify JSON or an array of verification records.
+      artifact_links:
+        type: json
+        required: false
+        description: Optional artifact metadata objects with url, kind, sha256, digest, private, or summary fields.
+      reviewer_context:
+        type: string
+        required: false
+        description: Review purpose, payout gate, merge gate, or handoff context.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill package for evidence.json and report.md.
+    outputs:
+      receipt_evidence_bundle: object
+      evidence_json: object
+      report_md: string

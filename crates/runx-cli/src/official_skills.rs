@@ -221,6 +221,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "155c522fb8e029bc4bd83863ea0960e23a8936c47977b70052aa9b119675d61e",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/receipt-evidence-bundle",
+        version: "sha-67bf7677692e",
+        digest: "5a763f30744aac5aefbf5d01967077f810f8a094768f4a8085e602109db0e6a5",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/redact-pii",
         version: "sha-987fc5a99db4",
         digest: "200d22c5e671b89e0ac8b837564c3a27e17ba6eb5bf93c80277966e981cf2b52",
