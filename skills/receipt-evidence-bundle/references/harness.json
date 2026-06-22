@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "valid-parent-child-bundle",
+    "malformed-reference-is-refused",
+    "unverifiable-receipt-is-refused"
+  ],
+  "receipt_ids": [
+    "sha256:63deddf28a3f5712f3109bf81bd8e59b9daa972e2b90878a1d839467ae360157",
+    "sha256:69da7699eea32bae99c4210024305e31f15d2781633e9ba8cf8d530dbed7c6c9",
+    "sha256:2f9025361f33836be8118d23252102e875272a3455997b8e74be3a3e99038317"
+  ],
+  "graph_case_count": 0
+}

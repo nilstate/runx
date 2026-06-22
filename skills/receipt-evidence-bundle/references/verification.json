@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/zjs/runx-frantic-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:63deddf28a3f5712f3109bf81bd8e59b9daa972e2b90878a1d839467ae360157",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

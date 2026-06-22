@@ -1,0 +1,20 @@
+name: malformed-receipt-ref
+kind: skill
+target: ..
+runner: bundle
+inputs:
+  receipt_refs:
+    - not-a-runx-receipt
+  verification_results: []
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: receipt-evidence-bundle
+  source_case: malformed-receipt-ref
+  source: skills-fixture
+

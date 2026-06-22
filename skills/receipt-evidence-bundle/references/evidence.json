@@ -1,0 +1,59 @@
+{
+  "schema": "runx.skill_evidence.v1",
+  "summary": "Receipt Evidence Bundle turns caller-verified runx receipts into a redacted, reviewer-safe packet that separates proven facts, bounded lineage inferences, missing evidence, and replayable reviewer actions.",
+  "observations": [
+    {
+      "claim": "The supported CLI used for verification is runx-cli 0.6.13.",
+      "evidence": "runx --version returned runx-cli 0.6.13."
+    },
+    {
+      "claim": "The package owner is the GitHub publisher zdfgu113.",
+      "evidence": "The source branch is hosted in zdfgu113/runx."
+    },
+    {
+      "claim": "The package name and version are receipt-evidence-bundle 0.1.0.",
+      "evidence": "SKILL.md and X.yaml declare the same package identity."
+    },
+    {
+      "claim": "The harness contains three executable cases.",
+      "evidence": "references/harness.json records case_count 3 and status passed."
+    },
+    {
+      "claim": "Malformed receipt references are refused.",
+      "evidence": "The malformed-reference-is-refused harness case passed with the expected failure receipt."
+    },
+    {
+      "claim": "Unverifiable receipts are refused.",
+      "evidence": "The unverifiable-receipt-is-refused harness case passed with the expected failure receipt."
+    },
+    {
+      "claim": "A valid parent-child input produces a sealed evidence bundle.",
+      "evidence": "The valid-parent-child-bundle harness case passed and produced a signed receipt."
+    },
+    {
+      "claim": "The runner recursively redacts secret-bearing fields.",
+      "evidence": "The valid harness input includes a bearer token under bearer_token; the runner replaces sensitive-key values before fact extraction."
+    },
+    {
+      "claim": "The dogfood receipt is cryptographically valid.",
+      "evidence": "references/verification.json records valid true with no findings."
+    },
+    {
+      "claim": "The implementation, execution profile, harness output, dogfood receipt, verification result, and reviewer report are public-source artifacts.",
+      "evidence": "They are stored together under skills/receipt-evidence-bundle in the source branch."
+    }
+  ],
+  "commands": [
+    "runx --version",
+    "runx harness ./skills/receipt-evidence-bundle --receipt-dir /home/zjs/runx-frantic-receipts --json",
+    "runx verify <receipt-ref> --receipt-dir /home/zjs/runx-frantic-receipts --json"
+  ],
+  "artifacts": {
+    "source_branch": "https://github.com/zdfgu113/runx/tree/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle",
+    "registry_target": "https://runx.ai/x/zdfgu113/receipt-evidence-bundle",
+    "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle/SKILL.md",
+    "verification_json": "https://raw.githubusercontent.com/zdfgu113/runx/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle/references/verification.json",
+    "receipt_ref": "sha256:63deddf28a3f5712f3109bf81bd8e59b9daa972e2b90878a1d839467ae360157"
+  }
+}

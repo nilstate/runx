@@ -1,0 +1,51 @@
+name: valid-receipt-bundle
+kind: skill
+target: ..
+runner: bundle
+inputs:
+  receipt_refs:
+    - runx:receipt:demo-parent
+    - runx:receipt:demo-child
+  verification_results:
+    - receipt_ref: runx:receipt:demo-parent
+      verdict: valid
+      receipt:
+        schema: runx.receipt.v1
+        id: runx:receipt:demo-parent
+        state: sealed
+        disposition: closed
+        reason_code: process_closed
+        authority:
+          kid: runx-demo-key
+          grant_digest: sha256:demo-grant
+          scopes:
+            - repo.read
+          bearer_token: Bearer fixture-secret-value
+    - receipt_ref: runx:receipt:demo-child
+      verdict: valid
+      receipt:
+        schema: runx.receipt.v1
+        id: runx:receipt:demo-child
+        parent_receipt_id: runx:receipt:demo-parent
+        state: sealed
+        disposition: closed
+        reason_code: process_closed
+        authority:
+          kid: runx-demo-key
+          scopes:
+            - receipt.verify
+  artifact_links:
+    source_url: https://github.com/runxhq/runx
+    report: https://example.test/reviewer-report
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: receipt-evidence-bundle
+  source_case: valid-receipt-bundle
+  source: skills-fixture
+

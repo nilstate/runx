@@ -1,0 +1,24 @@
+name: unverifiable-receipt-ref
+kind: skill
+target: ..
+runner: bundle
+inputs:
+  receipt_refs:
+    - runx:receipt:failed-demo
+  verification_results:
+    - receipt_ref: runx:receipt:failed-demo
+      verdict: invalid
+      receipt:
+        schema: runx.receipt.v1
+        id: runx:receipt:failed-demo
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: receipt-evidence-bundle
+  source_case: unverifiable-receipt-ref
+  source: skills-fixture
