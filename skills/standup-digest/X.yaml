@@ -1,0 +1,111 @@
+skill: standup-digest
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed-digest
+      inputs:
+        work_events:
+          team: runx
+          window:
+            start: "2026-06-20T00:00:00Z"
+            end: "2026-06-21T00:00:00Z"
+          events:
+            - id: evt-pr-42
+              type: pull_request
+              title: "Ship deterministic receipt verifier"
+              status: merged
+              timestamp: "2026-06-20T16:10:00Z"
+              url: "https://github.com/runxhq/runx/pull/42"
+              owner: ada
+            - id: evt-ci-77
+              type: ci
+              title: "Registry integration test is failing"
+              status: failed
+              timestamp: "2026-06-20T17:20:00Z"
+              url: "https://github.com/runxhq/runx/actions/runs/77"
+              labels: [blocker]
+              owner: lin
+            - id: evt-issue-9
+              type: issue
+              title: "Confirm registry rollback owner"
+              status: open
+              timestamp: "2026-06-20T18:30:00Z"
+              url: "https://github.com/runxhq/runx/issues/9"
+              labels: [risk]
+              owner: sam
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: duplicate-noisy-input
+      inputs:
+        work_events:
+          team: runx
+          window:
+            start: "2026-06-20T00:00:00Z"
+            end: "2026-06-21T00:00:00Z"
+          events:
+            - id: evt-pr-51
+              type: pull_request
+              title: "Add hosted harness example"
+              status: merged
+              timestamp: "2026-06-20T12:00:00Z"
+              url: "https://github.com/runxhq/runx/pull/51"
+            - id: evt-pr-51-copy
+              type: notification
+              title: "Add hosted harness example"
+              status: merged
+              timestamp: "2026-06-20T12:00:00Z"
+              url: "https://github.com/runxhq/runx/pull/51"
+            - id: evt-chat-12
+              type: message
+              title: "Need a reviewer for the registry docs"
+              status: open
+              timestamp: "2026-06-20T13:15:00Z"
+              labels: [next-action]
+            - type: message
+              title: "Untraceable noise is ignored"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  digest:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      work_events:
+        type: json
+        required: true
+        description: "A bounded object containing team, window, and traceable work events."
+      policy:
+        type: json
+        required: false
+        description: "Optional labels and statuses used to classify blockers, risks, shipped work, and next actions."
+    outputs:
+      shipped: array
+      blockers: array
+      risks: array
+      next_actions: array
+      source_map: object
+      digest_meta: object
+    artifacts:
+      wrap_as: standup_digest_packet
+      packet: runx.standup_digest.v1
+

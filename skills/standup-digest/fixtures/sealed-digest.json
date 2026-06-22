@@ -1,0 +1,29 @@
+{
+  "work_events": {
+    "team": "runx",
+    "window": {
+      "start": "2026-06-20T00:00:00Z",
+      "end": "2026-06-21T00:00:00Z"
+    },
+    "events": [
+      {
+        "id": "evt-pr-42",
+        "type": "pull_request",
+        "title": "Ship deterministic receipt verifier",
+        "status": "merged",
+        "timestamp": "2026-06-20T16:10:00Z",
+        "url": "https://github.com/runxhq/runx/pull/42"
+      },
+      {
+        "id": "evt-ci-77",
+        "type": "ci",
+        "title": "Registry integration test is failing",
+        "status": "failed",
+        "timestamp": "2026-06-20T17:20:00Z",
+        "url": "https://github.com/runxhq/runx/actions/runs/77",
+        "labels": ["blocker"]
+      }
+    ]
+  }
+}
+

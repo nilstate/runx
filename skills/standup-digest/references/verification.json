@@ -1,0 +1,30 @@
+{
+  "schema": "runx.skill_verification.v1",
+  "generated_at": "2026-06-22T07:18:00Z",
+  "cli_version": "runx-cli 0.6.13",
+  "doctor": {
+    "status": "success",
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0
+  },
+  "local_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0
+  },
+  "receipt_verification": [
+    {
+      "receipt_id": "sha256:13ce49d1cb905c0887de133a7da128acf0aba96072b8d3980225e6dcfd4d85fa",
+      "valid": true,
+      "findings": []
+    },
+    {
+      "receipt_id": "sha256:347fcb4f5e410a817a779e6f024e9fa32ee9d09b5431f70b17e562a618a1795c",
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "side_effects": []
+}
+

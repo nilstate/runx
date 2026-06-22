@@ -1,0 +1,32 @@
+{
+  "schema": "runx.skill_harness_evidence.v1",
+  "generated_at": "2026-06-22T07:18:00Z",
+  "cli": {
+    "binary": "runx",
+    "version": "runx-cli 0.6.13"
+  },
+  "command": "runx harness skills/standup-digest --receipt-dir ./local-harness --json",
+  "result": {
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "sealed-digest",
+      "duplicate-noisy-input"
+    ],
+    "receipt_ids": [
+      "sha256:13ce49d1cb905c0887de133a7da128acf0aba96072b8d3980225e6dcfd4d85fa",
+      "sha256:347fcb4f5e410a817a779e6f024e9fa32ee9d09b5431f70b17e562a618a1795c"
+    ],
+    "graph_case_count": 0
+  },
+  "observations": {
+    "event_counts": "Both cases report input, accepted, unique, collapsed duplicate, and ignored counts.",
+    "dedupe": "Duplicate source URL plus normalized title is collapsed while all source event IDs, timestamps, and links are retained.",
+    "source_mapping": "Every digest item has a source_map entry with event IDs, timestamps, and links.",
+    "blocker_criteria": "Default blocker statuses are blocked, failed, and failing; default blocker labels are blocker and blocked.",
+    "receipt": "Both harness receipts are sealed and independently signature-verifiable."
+  }
+}
+

@@ -1,0 +1,34 @@
+{
+  "work_events": {
+    "team": "runx",
+    "events": [
+      {
+        "id": "evt-pr-51",
+        "type": "pull_request",
+        "title": "Add hosted harness example",
+        "status": "merged",
+        "timestamp": "2026-06-20T12:00:00Z",
+        "url": "https://github.com/runxhq/runx/pull/51"
+      },
+      {
+        "id": "evt-pr-51-copy",
+        "type": "notification",
+        "title": "Add hosted harness example",
+        "status": "merged",
+        "timestamp": "2026-06-20T12:00:00Z",
+        "url": "https://github.com/runxhq/runx/pull/51"
+      },
+      {
+        "id": "evt-chat-12",
+        "type": "message",
+        "title": "Need a reviewer for the registry docs",
+        "status": "open",
+        "labels": ["next-action"]
+      },
+      {
+        "type": "message",
+        "title": "Untraceable noise is ignored"
+      }
+    ]
+  }
+}
