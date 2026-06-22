@@ -65,6 +65,7 @@ const publicCatalogPackages = [
   "slack-notify",
   "sourcey",
   "spend",
+  "standup-digest",
   "sql-analyst",
   "stripe-pay",
   "taste-profile",

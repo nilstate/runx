@@ -1,0 +1,131 @@
+name: duplicate-noisy-input-collapsed
+kind: skill
+target: ..
+runner: digest
+inputs:
+  objective: Prepare the engineering standup from today's bounded work events.
+  time_window: 2026-06-22
+  events:
+    - id: pr-731-merged
+      source: github
+      kind: pr_merged
+      ts: "2026-06-22T08:10:00Z"
+      link: https://github.com/runxhq/runx/pull/731
+      work_item: pr-731
+      summary: PR 731 merged to main
+    - id: deploy-731-green
+      source: build
+      kind: deploy_green
+      ts: "2026-06-22T08:25:00Z"
+      link: https://ci.example.com/runs/deploy-731-green
+      work_item: release-731
+      summary: Main deploy after PR 731 completed successfully
+    - id: ci-728-fail-a
+      source: build
+      kind: build_failed
+      ts: "2026-06-22T09:02:00Z"
+      link: https://ci.example.com/runs/728-a
+      work_item: pr-728
+      summary: PR 728 failed the same schema validation check
+    - id: ci-728-fail-b
+      source: build
+      kind: build_failed
+      ts: "2026-06-22T09:07:00Z"
+      link: https://ci.example.com/runs/728-b
+      work_item: pr-728
+      summary: PR 728 failed the same schema validation check
+    - id: note-dep-approval
+      source: note
+      kind: operator_note
+      ts: "2026-06-22T09:20:00Z"
+      work_item: dep-upgrade
+      summary: Dependency upgrade still needs approval before merge
+caller:
+  answers:
+    agent_task.standup-digest.output:
+      shipped:
+        - item_id: shipped-pr-731
+          summary: PR 731 merged and the follow-on deploy completed cleanly.
+          event_ids:
+            - pr-731-merged
+            - deploy-731-green
+      blockers:
+        - item_id: blocker-pr-728
+          summary: PR 728 is still blocked by a repeated schema validation failure.
+          reason: Two duplicate CI failures show the same unresolved check outcome.
+          event_ids:
+            - ci-728-fail-a
+            - ci-728-fail-b
+      risks:
+        - item_id: risk-dep-upgrade
+          summary: The dependency upgrade can slip if approval does not clear soon.
+          event_ids:
+            - note-dep-approval
+      next_actions:
+        - item_id: next-pr-728
+          summary: Fix the schema validation failure on PR 728 and rerun CI.
+          owner: engineering
+          event_ids:
+            - ci-728-fail-a
+            - ci-728-fail-b
+        - item_id: next-dep-upgrade
+          summary: Get approval on the dependency upgrade before the next merge window.
+          owner: maintainer
+          event_ids:
+            - note-dep-approval
+      source_map:
+        - item_id: shipped-pr-731
+          section: shipped
+          event_ids:
+            - pr-731-merged
+            - deploy-731-green
+          source_timestamps:
+            - "2026-06-22T08:10:00Z"
+            - "2026-06-22T08:25:00Z"
+          source_links:
+            - https://github.com/runxhq/runx/pull/731
+            - https://ci.example.com/runs/deploy-731-green
+        - item_id: blocker-pr-728
+          section: blockers
+          event_ids:
+            - ci-728-fail-a
+            - ci-728-fail-b
+          source_timestamps:
+            - "2026-06-22T09:02:00Z"
+            - "2026-06-22T09:07:00Z"
+          source_links:
+            - https://ci.example.com/runs/728-a
+            - https://ci.example.com/runs/728-b
+        - item_id: risk-dep-upgrade
+          section: risks
+          event_ids:
+            - note-dep-approval
+          source_timestamps:
+            - "2026-06-22T09:20:00Z"
+          source_links: []
+        - item_id: next-pr-728
+          section: next_actions
+          event_ids:
+            - ci-728-fail-a
+            - ci-728-fail-b
+          source_timestamps:
+            - "2026-06-22T09:02:00Z"
+            - "2026-06-22T09:07:00Z"
+          source_links:
+            - https://ci.example.com/runs/728-a
+            - https://ci.example.com/runs/728-b
+        - item_id: next-dep-upgrade
+          section: next_actions
+          event_ids:
+            - note-dep-approval
+          source_timestamps:
+            - "2026-06-22T09:20:00Z"
+          source_links: []
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: standup-digest
+  source_case: duplicate-noisy-input-collapsed
+  source: skills-fixture

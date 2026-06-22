@@ -1,0 +1,100 @@
+name: sealed-digest-from-bounded-events
+kind: skill
+target: ..
+runner: digest
+inputs:
+  objective: Prepare the product and engineering standup from today's bounded work events.
+  time_window: 2026-06-22
+  constraints:
+    blocker_policy: Only call something blocked when it cannot progress without another action.
+  events:
+    - id: issue-643-claim
+      source: github
+      kind: review_claim_submitted
+      ts: "2026-06-22T07:40:00Z"
+      link: https://github.com/ramimbo/mergework/issues/643
+      work_item: review-bounty-643
+      summary: Review bounty claim was submitted for issue 643
+    - id: pr-742-pushed
+      source: github
+      kind: pr_pushed
+      ts: "2026-06-22T08:00:00Z"
+      link: https://github.com/ramimbo/mergework/pull/742
+      work_item: pr-742
+      summary: Maintenance update for PR 742 was pushed
+    - id: pr-742-approved
+      source: github
+      kind: pr_review
+      ts: "2026-06-22T08:18:00Z"
+      link: https://github.com/ramimbo/mergework/pull/742
+      work_item: pr-742
+      summary: PR 742 received approval after the maintenance update
+    - id: note-follow-up
+      source: note
+      kind: operator_note
+      ts: "2026-06-22T08:35:00Z"
+      work_item: review-bounty-643
+      summary: Follow up on payout state if the claim has not advanced by tonight
+caller:
+  answers:
+    agent_task.standup-digest.output:
+      shipped:
+        - item_id: shipped-pr-742
+          summary: PR 742 advanced through a maintenance push and earned approval.
+          event_ids:
+            - pr-742-pushed
+            - pr-742-approved
+      blockers: []
+      risks:
+        - item_id: risk-review-643
+          summary: Review bounty 643 may stall if payout state does not advance after the submitted claim.
+          event_ids:
+            - issue-643-claim
+            - note-follow-up
+      next_actions:
+        - item_id: next-review-643
+          summary: Check the payout state for review bounty 643 tonight and escalate only if it is still pending.
+          owner: operator
+          event_ids:
+            - issue-643-claim
+            - note-follow-up
+      source_map:
+        - item_id: shipped-pr-742
+          section: shipped
+          event_ids:
+            - pr-742-pushed
+            - pr-742-approved
+          source_timestamps:
+            - "2026-06-22T08:00:00Z"
+            - "2026-06-22T08:18:00Z"
+          source_links:
+            - https://github.com/ramimbo/mergework/pull/742
+            - https://github.com/ramimbo/mergework/pull/742
+        - item_id: risk-review-643
+          section: risks
+          event_ids:
+            - issue-643-claim
+            - note-follow-up
+          source_timestamps:
+            - "2026-06-22T07:40:00Z"
+            - "2026-06-22T08:35:00Z"
+          source_links:
+            - https://github.com/ramimbo/mergework/issues/643
+        - item_id: next-review-643
+          section: next_actions
+          event_ids:
+            - issue-643-claim
+            - note-follow-up
+          source_timestamps:
+            - "2026-06-22T07:40:00Z"
+            - "2026-06-22T08:35:00Z"
+          source_links:
+            - https://github.com/ramimbo/mergework/issues/643
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: standup-digest
+  source_case: sealed-digest-from-bounded-events
+  source: skills-fixture

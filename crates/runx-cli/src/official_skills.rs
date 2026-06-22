@@ -286,6 +286,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "4b9810ee99bbbc58e467547595e0cdb7d67ad117f8cbba422b6e6e5e2b065fc5",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/standup-digest",
+        version: "sha-5483f4908528",
+        digest: "591a1a4562cdba5d48e2733d3c7f848944578c33c81e6bc998bc5c45bd9e63aa",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/sql-analyst",
         version: "sha-95e6fba89c33",
         digest: "054798d4b29958f90300ea940c94b73233c0d5c5ff19e7156278b31e99e68475",

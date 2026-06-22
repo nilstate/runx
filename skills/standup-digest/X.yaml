@@ -1,0 +1,43 @@
+skill: standup-digest
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+runners:
+  digest:
+    default: true
+    type: agent-task
+    agent: operator
+    task: standup-digest
+    outputs:
+      shipped: array
+      blockers: array
+      risks: array
+      next_actions: array
+      source_map: array
+    artifacts:
+      wrap_as: standup_digest_packet
+      packet: runx.ops.standup_digest.v1
+    runx:
+      category: ops
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "Operator goal for this standup digest."
+      events:
+        type: json
+        required: true
+        description: "Bounded work events with ids, kinds, summaries, timestamps, and optional links."
+      constraints:
+        type: json
+        required: false
+        description: "Optional operator rules for tone, owner naming, or blocker policy."
+      time_window:
+        type: string
+        required: false
+        description: "Reporting window label such as today or an ISO date."
