@@ -1,0 +1,166 @@
+﻿{
+    "status":  "success",
+    "skill":  {
+                  "skill_id":  "rohitmulani63-ops/dependency-advisory-graph",
+                  "owner":  "rohitmulani63-ops",
+                  "owner_handle":  "@rohitmulani63-ops",
+                  "owner_verified":  false,
+                  "trust_tier":  "community",
+                  "maturity":  "alpha",
+                  "name":  "dependency-advisory-graph",
+                  "description":  "Match dependency manifests to advisory evidence with exact package and version checks.",
+                  "catalog_kind":  "skill",
+                  "version":  "sha-f31eb820ba53",
+                  "created_at":  "2026-06-22T00:03:34.244Z",
+                  "updated_at":  "2026-06-22T00:03:34.251Z",
+                  "source_type":  "cli-tool",
+                  "profile_mode":  "profiled",
+                  "runner_names":  [
+                                       "graph"
+                                   ],
+                  "required_scopes":  [
+
+                                      ],
+                  "tags":  [
+
+                           ],
+                  "category":  "security",
+                  "category_label":  "SECURITY",
+                  "trust_signals":  [
+                                        {
+                                            "id":  "digest",
+                                            "label":  "Immutable digest",
+                                            "status":  "verified",
+                                            "value":  "sha256:f1aee00b79dad10f537e291afabcf29c16562cd9683add3fb7ffba6a910b08e3"
+                                        },
+                                        {
+                                            "id":  "trust_tier",
+                                            "label":  "Trust tier",
+                                            "status":  "declared",
+                                            "value":  "community"
+                                        },
+                                        {
+                                            "id":  "publisher",
+                                            "label":  "Publisher identity",
+                                            "status":  "declared",
+                                            "value":  "rohitmulani63-ops"
+                                        },
+                                        {
+                                            "id":  "provenance",
+                                            "label":  "Source provenance",
+                                            "status":  "verified",
+                                            "value":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a"
+                                        },
+                                        {
+                                            "id":  "source_type",
+                                            "label":  "Execution source",
+                                            "status":  "declared",
+                                            "value":  "cli-tool"
+                                        },
+                                        {
+                                            "id":  "scopes",
+                                            "label":  "Required scopes",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runtime",
+                                            "label":  "Runtime requirements",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runner_metadata",
+                                            "label":  "Materialized binding",
+                                            "status":  "verified",
+                                            "value":  "1 runner(s), binding sha256:a8b6e9b2542561064229a5038193cd017fdfd3e9803b9843e5d32b2341aed853"
+                                        }
+                                    ],
+                  "install_count":  0,
+                  "verified_run_count":  0,
+                  "page_url":  "https://runx.ai/x/rohitmulani63-ops/dependency-advisory-graph@sha-f31eb820ba53",
+                  "install_command":  "runx add rohitmulani63-ops/dependency-advisory-graph@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "run_command":  "runx skill rohitmulani63-ops/dependency-advisory-graph@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "catalog_visibility":  "public",
+                  "publisher":  {
+                                    "kind":  "publisher",
+                                    "id":  "rohitmulani63-ops",
+                                    "handle":  "rohitmulani63-ops"
+                                },
+                  "attestations":  [
+                                       {
+                                           "kind":  "publisher",
+                                           "id":  "publisher:rohitmulani63-ops",
+                                           "status":  "declared",
+                                           "summary":  "rohitmulani63-ops",
+                                           "issued_at":  "2026-06-22T00:03:34.244Z",
+                                           "metadata":  {
+                                                            "publisher_id":  "rohitmulani63-ops",
+                                                            "publisher_kind":  "publisher",
+                                                            "publisher_handle":  "rohitmulani63-ops",
+                                                            "trust_tier":  "community"
+                                                        }
+                                       },
+                                       {
+                                           "kind":  "source",
+                                           "id":  "github_source",
+                                           "status":  "verified",
+                                           "summary":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                           "source":  "https://github.com/rohitmulani63-ops/runx",
+                                           "issued_at":  "2026-06-22T00:03:34.244Z",
+                                           "metadata":  {
+                                                            "repo":  "rohitmulani63-ops/runx",
+                                                            "ref":  "main",
+                                                            "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                                            "event":  "push",
+                                                            "skill_path":  "skills/dependency-advisory-graph/SKILL.md",
+                                                            "profile_path":  "skills/dependency-advisory-graph/X.yaml"
+                                                        }
+                                       }
+                                   ],
+                  "digest":  "f1aee00b79dad10f537e291afabcf29c16562cd9683add3fb7ffba6a910b08e3",
+                  "profile_digest":  "a8b6e9b2542561064229a5038193cd017fdfd3e9803b9843e5d32b2341aed853",
+                  "markdown":  "---\nname: dependency-advisory-graph\ndescription: Match dependency manifests to advisory evidence with exact package and version checks.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nrunx:\n  category: security\n---\n\n# Dependency Advisory Graph\n\nProduce a reviewer-safe advisory packet for one dependency manifest.\n\nThis skill is intentionally conservative. It only reports a finding when the\npackage name, ecosystem, and installed version exactly match supplied advisory\nevidence. Package-name-only matches are treated as insufficient evidence.\n\n## Procedure\n\n1. Read one manifest and one advisory list.\n2. Normalize dependency names, ecosystems, and versions.\n3. Match only exact installed versions against advisory `affected_versions`.\n4. Emit a clean or unknown result when no exact version match exists.\n5. Preserve the advisory source URL, retrieved timestamp, and optional graph\n   receipt so a reviewer can trace the evidence.\n\n## Inputs\n\n- `manifest`: dependency manifest with `ecosystem` and `dependencies`.\n- `advisories`: advisory records with package, affected versions, and source.\n- `graph_receipt`: optional receipt ref from an upstream research graph.\n\n## Outputs\n\n- `package`, `installed_version`, `advisory_id`, `evidence_url`.\n- `advisory_source`, `retrieved_at`, `severity`, `fix_version`.\n- `confidence`, `graph_receipt`, `findings`, and `evidence`.\n\n",
+                  "profile_document":  "skill: dependency-advisory-graph\nversion: \"0.1.0\"\n\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n\nharness:\n  cases:\n    - name: dependency-advisory-exact-match\n      runner: graph\n      inputs:\n        manifest:\n          ecosystem: npm\n          dependencies:\n            lodash: 4.17.20\n            undici: 6.19.8\n        advisories:\n          - package: lodash\n            ecosystem: npm\n            affected_versions:\n              - 4.17.20\n            advisory_id: GHSA-35jh-r3h4-6jhm\n            evidence_url: https://github.com/advisories/GHSA-35jh-r3h4-6jhm\n            advisory_source: GitHub Advisory Database\n            retrieved_at: \"2026-06-21T00:00:00Z\"\n            severity: high\n            fix_version: 4.17.21\n        graph_receipt: runx:receipt:graph-demo-001\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n    - name: dependency-advisory-clean-manifest\n      runner: graph\n      inputs:\n        manifest:\n          ecosystem: npm\n          dependencies:\n            lodash: 4.17.21\n        advisories:\n          - package: lodash\n            ecosystem: npm\n            affected_versions:\n              - 4.17.20\n            advisory_id: GHSA-35jh-r3h4-6jhm\n            evidence_url: https://github.com/advisories/GHSA-35jh-r3h4-6jhm\n            advisory_source: GitHub Advisory Database\n            retrieved_at: \"2026-06-21T00:00:00Z\"\n            severity: high\n            fix_version: 4.17.21\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n\nrunners:\n  graph:\n    default: true\n    type: cli-tool\n    command: node\n    args:\n      - run.mjs\n    outputs:\n      status: string\n      package: string\n      installed_version: string\n      advisory_id: string\n      evidence_url: string\n      advisory_source: string\n      retrieved_at: string\n      severity: string\n      fix_version: string\n      confidence: string\n      graph_receipt: string\n      evidence: object\n      findings: object\n    artifacts:\n      wrap_as: dependency_advisory_graph_packet\n      packet: runx.security.dependency_advisory_graph.v1\n    inputs:\n      manifest:\n        type: json\n        required: true\n        description: Dependency manifest with ecosystem and dependencies.\n      advisories:\n        type: json\n        required: true\n        description: Advisory records with exact affected versions and evidence URLs.\n      graph_receipt:\n        type: string\n        required: false\n        description: Receipt ref from an upstream vulnerability or research graph.\n\n",
+                  "harness":  {
+                                  "status":  "not_recorded",
+                                  "declared_case_count":  2,
+                                  "declared_cases":  [
+                                                         {
+                                                             "name":  "dependency-advisory-exact-match",
+                                                             "runner":  "graph",
+                                                             "expected_status":  "sealed"
+                                                         },
+                                                         {
+                                                             "name":  "dependency-advisory-clean-manifest",
+                                                             "runner":  "graph",
+                                                             "expected_status":  "sealed"
+                                                         }
+                                                     ],
+                                  "case_count":  2,
+                                  "receipt_ids":  [
+
+                                                  ],
+                                  "recent_runs":  [
+
+                                                  ]
+                              },
+                  "recent_activity":  [
+
+                                      ],
+                  "source":  {
+                                 "provider":  "github",
+                                 "repo":  "rohitmulani63-ops/runx",
+                                 "repo_url":  "https://github.com/rohitmulani63-ops/runx",
+                                 "skill_path":  "skills/dependency-advisory-graph/SKILL.md",
+                                 "profile_path":  "skills/dependency-advisory-graph/X.yaml",
+                                 "ref":  "main",
+                                 "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                 "default_branch":  "main",
+                                 "event":  "push",
+                                 "immutable":  false,
+                                 "live":  true,
+                                 "tombstoned":  false
+                             }
+              }
+}

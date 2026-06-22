@@ -1,0 +1,166 @@
+﻿{
+    "status":  "success",
+    "skill":  {
+                  "skill_id":  "rohitmulani63-ops/inbox-triage",
+                  "owner":  "rohitmulani63-ops",
+                  "owner_handle":  "@rohitmulani63-ops",
+                  "owner_verified":  false,
+                  "trust_tier":  "community",
+                  "maturity":  "alpha",
+                  "name":  "inbox-triage",
+                  "description":  "Triage a bounded inbox packet, choose the safe next action, and draft one reviewed reply without sending anything.",
+                  "catalog_kind":  "skill",
+                  "version":  "sha-f31eb820ba53",
+                  "created_at":  "2026-06-22T00:03:34.257Z",
+                  "updated_at":  "2026-06-22T00:03:34.275Z",
+                  "source_type":  "cli-tool",
+                  "profile_mode":  "profiled",
+                  "runner_names":  [
+                                       "triage"
+                                   ],
+                  "required_scopes":  [
+
+                                      ],
+                  "tags":  [
+
+                           ],
+                  "category":  "ops",
+                  "category_label":  "OPS",
+                  "trust_signals":  [
+                                        {
+                                            "id":  "digest",
+                                            "label":  "Immutable digest",
+                                            "status":  "verified",
+                                            "value":  "sha256:45ee583a1372e5dac0c6ae0b939b028e24b54b7ea4a0015ace9db1c1a482ac83"
+                                        },
+                                        {
+                                            "id":  "trust_tier",
+                                            "label":  "Trust tier",
+                                            "status":  "declared",
+                                            "value":  "community"
+                                        },
+                                        {
+                                            "id":  "publisher",
+                                            "label":  "Publisher identity",
+                                            "status":  "declared",
+                                            "value":  "rohitmulani63-ops"
+                                        },
+                                        {
+                                            "id":  "provenance",
+                                            "label":  "Source provenance",
+                                            "status":  "verified",
+                                            "value":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a"
+                                        },
+                                        {
+                                            "id":  "source_type",
+                                            "label":  "Execution source",
+                                            "status":  "declared",
+                                            "value":  "cli-tool"
+                                        },
+                                        {
+                                            "id":  "scopes",
+                                            "label":  "Required scopes",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runtime",
+                                            "label":  "Runtime requirements",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runner_metadata",
+                                            "label":  "Materialized binding",
+                                            "status":  "verified",
+                                            "value":  "1 runner(s), binding sha256:a11ab2a2bec341ff68e8a0138012973e591b9f1e68b04b9a517a00b6b159e61f"
+                                        }
+                                    ],
+                  "install_count":  0,
+                  "verified_run_count":  0,
+                  "page_url":  "https://runx.ai/x/rohitmulani63-ops/inbox-triage@sha-f31eb820ba53",
+                  "install_command":  "runx add rohitmulani63-ops/inbox-triage@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "run_command":  "runx skill rohitmulani63-ops/inbox-triage@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "catalog_visibility":  "public",
+                  "publisher":  {
+                                    "kind":  "publisher",
+                                    "id":  "rohitmulani63-ops",
+                                    "handle":  "rohitmulani63-ops"
+                                },
+                  "attestations":  [
+                                       {
+                                           "kind":  "publisher",
+                                           "id":  "publisher:rohitmulani63-ops",
+                                           "status":  "declared",
+                                           "summary":  "rohitmulani63-ops",
+                                           "issued_at":  "2026-06-22T00:03:34.257Z",
+                                           "metadata":  {
+                                                            "publisher_id":  "rohitmulani63-ops",
+                                                            "publisher_kind":  "publisher",
+                                                            "publisher_handle":  "rohitmulani63-ops",
+                                                            "trust_tier":  "community"
+                                                        }
+                                       },
+                                       {
+                                           "kind":  "source",
+                                           "id":  "github_source",
+                                           "status":  "verified",
+                                           "summary":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                           "source":  "https://github.com/rohitmulani63-ops/runx",
+                                           "issued_at":  "2026-06-22T00:03:34.257Z",
+                                           "metadata":  {
+                                                            "repo":  "rohitmulani63-ops/runx",
+                                                            "ref":  "main",
+                                                            "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                                            "event":  "push",
+                                                            "skill_path":  "skills/inbox-triage/SKILL.md",
+                                                            "profile_path":  "skills/inbox-triage/X.yaml"
+                                                        }
+                                       }
+                                   ],
+                  "digest":  "45ee583a1372e5dac0c6ae0b939b028e24b54b7ea4a0015ace9db1c1a482ac83",
+                  "profile_digest":  "a11ab2a2bec341ff68e8a0138012973e591b9f1e68b04b9a517a00b6b159e61f",
+                  "markdown":  "---\nname: inbox-triage\ndescription: Triage a bounded inbox packet, choose the safe next action, and draft one reviewed reply without sending anything.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nrunx:\n  category: ops\n---\n\n# Inbox Triage\n\nTurn a redacted inbox packet into a priority queue and one safe reply draft.\n\nThis skill is intentionally narrow. It reads only the provided inbox packet,\nsender metadata, and operator policy. It never opens a mailbox, sends email,\nchanges labels, mutates accounts, or claims private account state.\n\n## Procedure\n\n1. Require `inbox_packet.messages` and `sender_metadata`.\n2. Normalize each message into a bounded summary.\n3. Classify each message as `replyable`, `scheduling`, `informational`,\n   `needs_context`, or `unsafe_or_sensitive`.\n4. Build a priority queue with evidence references to message ids.\n5. Draft one reply only when the best message is safe and supported by the\n   supplied context.\n6. Return a send gate that always requires human approval.\n\n## Stop conditions\n\nReturn `needs_input` when the inbox packet is missing, empty, or the sender\nmetadata does not identify the operator. Return a no-send proposal when the\nbest candidate involves account access, passwords, OTPs, payment details,\nlegal terms, or private-state changes.\n\n## Inputs\n\n- `inbox_packet`: object with `messages`.\n- `sender_metadata`: object with operator name, role, or email.\n- `operator_policy`: optional signature, tone, and send rules.\n\n## Outputs\n\n- `classification`: queue-level counts.\n- `triage_queue`: message-level classes, reasons, and evidence refs.\n- `draft_reply`: proposed reply or stop reason.\n- `gated_send_proposal`: explicit send-as approval gate.\n- `evidence`: counts, redaction, and side-effect proof.\n\n",
+                  "profile_document":  "skill: inbox-triage\nversion: \"0.1.0\"\n\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n\nharness:\n  cases:\n    - name: inbox-triage-happy-path\n      runner: triage\n      inputs:\n        inbox_packet:\n          source: fixture:launch-inbox\n          messages:\n            - id: msg_1\n              from: customer@example.test\n              subject: Question about launch call\n              body: Can you confirm the agenda and whether tomorrow still works?\n        sender_metadata:\n          name: Operator\n          role: founder\n        operator_policy:\n          signature: Operator Team\n          final_send_requires_human: true\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n    - name: inbox-triage-sensitive-stop\n      runner: triage\n      inputs:\n        inbox_packet:\n          source: fixture:sensitive\n          messages:\n            - id: msg_sensitive\n              from: account@example.test\n              subject: Password reset and bank account\n              body: Please reset my password and update my bank account today.\n        sender_metadata:\n          role: support lead\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n\nrunners:\n  triage:\n    default: true\n    type: cli-tool\n    command: node\n    args:\n      - run.mjs\n    outputs:\n      status: string\n      classification: object\n      triage_queue: object\n      draft_reply: object\n      gated_send_proposal: object\n      evidence: object\n    artifacts:\n      wrap_as: inbox_triage_packet\n      packet: runx.ops.inbox_triage.v1\n    inputs:\n      inbox_packet:\n        type: json\n        required: true\n        description: Redacted inbox packet with bounded messages.\n      sender_metadata:\n        type: json\n        required: true\n        description: Operator or sender metadata used for draft context.\n      operator_policy:\n        type: json\n        required: false\n        description: Tone, signature, and send policy.\n\n",
+                  "harness":  {
+                                  "status":  "not_recorded",
+                                  "declared_case_count":  2,
+                                  "declared_cases":  [
+                                                         {
+                                                             "name":  "inbox-triage-happy-path",
+                                                             "runner":  "triage",
+                                                             "expected_status":  "sealed"
+                                                         },
+                                                         {
+                                                             "name":  "inbox-triage-sensitive-stop",
+                                                             "runner":  "triage",
+                                                             "expected_status":  "sealed"
+                                                         }
+                                                     ],
+                                  "case_count":  2,
+                                  "receipt_ids":  [
+
+                                                  ],
+                                  "recent_runs":  [
+
+                                                  ]
+                              },
+                  "recent_activity":  [
+
+                                      ],
+                  "source":  {
+                                 "provider":  "github",
+                                 "repo":  "rohitmulani63-ops/runx",
+                                 "repo_url":  "https://github.com/rohitmulani63-ops/runx",
+                                 "skill_path":  "skills/inbox-triage/SKILL.md",
+                                 "profile_path":  "skills/inbox-triage/X.yaml",
+                                 "ref":  "main",
+                                 "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                 "default_branch":  "main",
+                                 "event":  "push",
+                                 "immutable":  false,
+                                 "live":  true,
+                                 "tombstoned":  false
+                             }
+              }
+}

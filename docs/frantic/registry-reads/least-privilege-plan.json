@@ -1,0 +1,166 @@
+﻿{
+    "status":  "success",
+    "skill":  {
+                  "skill_id":  "rohitmulani63-ops/least-privilege-plan",
+                  "owner":  "rohitmulani63-ops",
+                  "owner_handle":  "@rohitmulani63-ops",
+                  "owner_verified":  false,
+                  "trust_tier":  "community",
+                  "maturity":  "alpha",
+                  "name":  "least-privilege-plan",
+                  "description":  "Convert grant history and observed effects into a reviewable least-privilege plan.",
+                  "catalog_kind":  "skill",
+                  "version":  "sha-f31eb820ba53",
+                  "created_at":  "2026-06-22T00:03:34.292Z",
+                  "updated_at":  "2026-06-22T00:03:34.297Z",
+                  "source_type":  "cli-tool",
+                  "profile_mode":  "profiled",
+                  "runner_names":  [
+                                       "plan"
+                                   ],
+                  "required_scopes":  [
+
+                                      ],
+                  "tags":  [
+
+                           ],
+                  "category":  "security",
+                  "category_label":  "SECURITY",
+                  "trust_signals":  [
+                                        {
+                                            "id":  "digest",
+                                            "label":  "Immutable digest",
+                                            "status":  "verified",
+                                            "value":  "sha256:a998eb9999815c843e9ee26f4c36960250fd6d4a41f666695d871b5e2fb852b7"
+                                        },
+                                        {
+                                            "id":  "trust_tier",
+                                            "label":  "Trust tier",
+                                            "status":  "declared",
+                                            "value":  "community"
+                                        },
+                                        {
+                                            "id":  "publisher",
+                                            "label":  "Publisher identity",
+                                            "status":  "declared",
+                                            "value":  "rohitmulani63-ops"
+                                        },
+                                        {
+                                            "id":  "provenance",
+                                            "label":  "Source provenance",
+                                            "status":  "verified",
+                                            "value":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a"
+                                        },
+                                        {
+                                            "id":  "source_type",
+                                            "label":  "Execution source",
+                                            "status":  "declared",
+                                            "value":  "cli-tool"
+                                        },
+                                        {
+                                            "id":  "scopes",
+                                            "label":  "Required scopes",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runtime",
+                                            "label":  "Runtime requirements",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runner_metadata",
+                                            "label":  "Materialized binding",
+                                            "status":  "verified",
+                                            "value":  "1 runner(s), binding sha256:becb189fe6f8b87961f2f3fb7a8759ceb87ad6606850ac35752273a0f57b5ad1"
+                                        }
+                                    ],
+                  "install_count":  0,
+                  "verified_run_count":  0,
+                  "page_url":  "https://runx.ai/x/rohitmulani63-ops/least-privilege-plan@sha-f31eb820ba53",
+                  "install_command":  "runx add rohitmulani63-ops/least-privilege-plan@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "run_command":  "runx skill rohitmulani63-ops/least-privilege-plan@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "catalog_visibility":  "public",
+                  "publisher":  {
+                                    "kind":  "publisher",
+                                    "id":  "rohitmulani63-ops",
+                                    "handle":  "rohitmulani63-ops"
+                                },
+                  "attestations":  [
+                                       {
+                                           "kind":  "publisher",
+                                           "id":  "publisher:rohitmulani63-ops",
+                                           "status":  "declared",
+                                           "summary":  "rohitmulani63-ops",
+                                           "issued_at":  "2026-06-22T00:03:34.292Z",
+                                           "metadata":  {
+                                                            "publisher_id":  "rohitmulani63-ops",
+                                                            "publisher_kind":  "publisher",
+                                                            "publisher_handle":  "rohitmulani63-ops",
+                                                            "trust_tier":  "community"
+                                                        }
+                                       },
+                                       {
+                                           "kind":  "source",
+                                           "id":  "github_source",
+                                           "status":  "verified",
+                                           "summary":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                           "source":  "https://github.com/rohitmulani63-ops/runx",
+                                           "issued_at":  "2026-06-22T00:03:34.292Z",
+                                           "metadata":  {
+                                                            "repo":  "rohitmulani63-ops/runx",
+                                                            "ref":  "main",
+                                                            "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                                            "event":  "push",
+                                                            "skill_path":  "skills/least-privilege-plan/SKILL.md",
+                                                            "profile_path":  "skills/least-privilege-plan/X.yaml"
+                                                        }
+                                       }
+                                   ],
+                  "digest":  "a998eb9999815c843e9ee26f4c36960250fd6d4a41f666695d871b5e2fb852b7",
+                  "profile_digest":  "becb189fe6f8b87961f2f3fb7a8759ceb87ad6606850ac35752273a0f57b5ad1",
+                  "markdown":  "---\nname: least-privilege-plan\ndescription: Convert grant history and observed effects into a reviewable least-privilege plan.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nrunx:\n  category: security\n---\n\n# Least-Privilege Plan\n\nRead a bounded grant history packet and propose which scopes to keep, reduce,\nrevoke, or send to human review.\n\nThis skill does not change grants. It emits a plan for an operator or a later\ngoverned grant-change lane.\n\n## Procedure\n\n1. Require `run_history_packet.grants`.\n2. Compare each grant against `observed_effects`.\n3. Keep grants that were used or explicitly required by policy.\n4. Reduce wildcard grants when all observed effects fit one narrower scope.\n5. Revoke unused grants that are not required by policy.\n6. Defer unknown or unparsable scopes to human review.\n\n## Inputs\n\n- `run_history_packet`: grants and observed effects.\n- `declared_policy`: policy id, required scopes, and review constraints.\n\n## Outputs\n\n- `keep`: justified grants.\n- `reduce`: grants with narrower proposals.\n- `revoke`: unused grants.\n- `needs_human_review`: scopes with unknown semantics.\n- `evidence`: policy digest, grant ids, observed effect counts, and unused scopes.\n\n",
+                  "profile_document":  "skill: least-privilege-plan\nversion: \"0.1.0\"\n\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n\nharness:\n  cases:\n    - name: least-privilege-over-broad-grant\n      runner: plan\n      inputs:\n        run_history_packet:\n          grants:\n            - id: grant_repo\n              scope: repo:*\n            - id: grant_delete\n              scope: repo:delete\n          observed_effects:\n            - id: fx_read\n              scope: repo:read\n              summary: Read issue metadata.\n        declared_policy:\n          id: policy_public_triage\n          required_scopes: []\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n    - name: least-privilege-justified-grant\n      runner: plan\n      inputs:\n        run_history_packet:\n          grants:\n            - id: grant_read\n              scope: repo:read\n          observed_effects:\n            - id: fx_read\n              scope: repo:read\n              summary: Read issue metadata.\n        declared_policy:\n          id: policy_read_only\n          required_scopes:\n            - repo:read\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n\nrunners:\n  plan:\n    default: true\n    type: cli-tool\n    command: node\n    args:\n      - run.mjs\n    outputs:\n      status: string\n      keep: object\n      reduce: object\n      revoke: object\n      needs_human_review: object\n      evidence: object\n      reviewer_notes: object\n    artifacts:\n      wrap_as: least_privilege_plan_packet\n      packet: runx.security.least_privilege_plan.v1\n    inputs:\n      run_history_packet:\n        type: json\n        required: true\n        description: Bounded grant and observed-effect packet.\n      declared_policy:\n        type: json\n        required: true\n        description: Policy id, required scopes, and review constraints.\n\n",
+                  "harness":  {
+                                  "status":  "not_recorded",
+                                  "declared_case_count":  2,
+                                  "declared_cases":  [
+                                                         {
+                                                             "name":  "least-privilege-over-broad-grant",
+                                                             "runner":  "plan",
+                                                             "expected_status":  "sealed"
+                                                         },
+                                                         {
+                                                             "name":  "least-privilege-justified-grant",
+                                                             "runner":  "plan",
+                                                             "expected_status":  "sealed"
+                                                         }
+                                                     ],
+                                  "case_count":  2,
+                                  "receipt_ids":  [
+
+                                                  ],
+                                  "recent_runs":  [
+
+                                                  ]
+                              },
+                  "recent_activity":  [
+
+                                      ],
+                  "source":  {
+                                 "provider":  "github",
+                                 "repo":  "rohitmulani63-ops/runx",
+                                 "repo_url":  "https://github.com/rohitmulani63-ops/runx",
+                                 "skill_path":  "skills/least-privilege-plan/SKILL.md",
+                                 "profile_path":  "skills/least-privilege-plan/X.yaml",
+                                 "ref":  "main",
+                                 "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                 "default_branch":  "main",
+                                 "event":  "push",
+                                 "immutable":  false,
+                                 "live":  true,
+                                 "tombstoned":  false
+                             }
+              }
+}

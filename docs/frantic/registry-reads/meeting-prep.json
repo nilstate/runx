@@ -1,0 +1,166 @@
+﻿{
+    "status":  "success",
+    "skill":  {
+                  "skill_id":  "rohitmulani63-ops/meeting-prep",
+                  "owner":  "rohitmulani63-ops",
+                  "owner_handle":  "@rohitmulani63-ops",
+                  "owner_verified":  false,
+                  "trust_tier":  "community",
+                  "maturity":  "alpha",
+                  "name":  "meeting-prep",
+                  "description":  "Prepare a source-cited meeting brief from bounded event, note, thread, and public-link context.",
+                  "catalog_kind":  "skill",
+                  "version":  "sha-81163d9984c0",
+                  "created_at":  "2026-06-21T23:56:12.733Z",
+                  "updated_at":  "2026-06-21T23:56:12.737Z",
+                  "source_type":  "cli-tool",
+                  "profile_mode":  "profiled",
+                  "runner_names":  [
+                                       "prep"
+                                   ],
+                  "required_scopes":  [
+
+                                      ],
+                  "tags":  [
+
+                           ],
+                  "category":  "ops",
+                  "category_label":  "OPS",
+                  "trust_signals":  [
+                                        {
+                                            "id":  "digest",
+                                            "label":  "Immutable digest",
+                                            "status":  "verified",
+                                            "value":  "sha256:8e7b3ad489ea036a078baf898809741f89fc66d691a82da14e39dfc4f7d1e539"
+                                        },
+                                        {
+                                            "id":  "trust_tier",
+                                            "label":  "Trust tier",
+                                            "status":  "declared",
+                                            "value":  "community"
+                                        },
+                                        {
+                                            "id":  "publisher",
+                                            "label":  "Publisher identity",
+                                            "status":  "declared",
+                                            "value":  "rohitmulani63-ops"
+                                        },
+                                        {
+                                            "id":  "provenance",
+                                            "label":  "Source provenance",
+                                            "status":  "verified",
+                                            "value":  "github:rohitmulani63-ops/runx@81163d9984c0afe1f75eb16bfb8ec596cf9c8b77"
+                                        },
+                                        {
+                                            "id":  "source_type",
+                                            "label":  "Execution source",
+                                            "status":  "declared",
+                                            "value":  "cli-tool"
+                                        },
+                                        {
+                                            "id":  "scopes",
+                                            "label":  "Required scopes",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runtime",
+                                            "label":  "Runtime requirements",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runner_metadata",
+                                            "label":  "Materialized binding",
+                                            "status":  "verified",
+                                            "value":  "1 runner(s), binding sha256:5274b270663d3c9ea3f114825808d57a46deeb052f5a0442cbfe98dfc4fb76cd"
+                                        }
+                                    ],
+                  "install_count":  0,
+                  "verified_run_count":  0,
+                  "page_url":  "https://runx.ai/x/rohitmulani63-ops/meeting-prep@sha-81163d9984c0",
+                  "install_command":  "runx add rohitmulani63-ops/meeting-prep@sha-81163d9984c0 --registry https://api.runx.ai",
+                  "run_command":  "runx skill rohitmulani63-ops/meeting-prep@sha-81163d9984c0 --registry https://api.runx.ai",
+                  "catalog_visibility":  "public",
+                  "publisher":  {
+                                    "kind":  "publisher",
+                                    "id":  "rohitmulani63-ops",
+                                    "handle":  "rohitmulani63-ops"
+                                },
+                  "attestations":  [
+                                       {
+                                           "kind":  "publisher",
+                                           "id":  "publisher:rohitmulani63-ops",
+                                           "status":  "declared",
+                                           "summary":  "rohitmulani63-ops",
+                                           "issued_at":  "2026-06-21T23:56:12.733Z",
+                                           "metadata":  {
+                                                            "publisher_id":  "rohitmulani63-ops",
+                                                            "publisher_kind":  "publisher",
+                                                            "publisher_handle":  "rohitmulani63-ops",
+                                                            "trust_tier":  "community"
+                                                        }
+                                       },
+                                       {
+                                           "kind":  "source",
+                                           "id":  "github_source",
+                                           "status":  "verified",
+                                           "summary":  "github:rohitmulani63-ops/runx@81163d9984c0afe1f75eb16bfb8ec596cf9c8b77",
+                                           "source":  "https://github.com/rohitmulani63-ops/runx",
+                                           "issued_at":  "2026-06-21T23:56:12.733Z",
+                                           "metadata":  {
+                                                            "repo":  "rohitmulani63-ops/runx",
+                                                            "ref":  "main",
+                                                            "sha":  "81163d9984c0afe1f75eb16bfb8ec596cf9c8b77",
+                                                            "event":  "push",
+                                                            "skill_path":  "skills/meeting-prep/SKILL.md",
+                                                            "profile_path":  "skills/meeting-prep/X.yaml"
+                                                        }
+                                       }
+                                   ],
+                  "digest":  "8e7b3ad489ea036a078baf898809741f89fc66d691a82da14e39dfc4f7d1e539",
+                  "profile_digest":  "5274b270663d3c9ea3f114825808d57a46deeb052f5a0442cbfe98dfc4fb76cd",
+                  "markdown":  "---\nname: meeting-prep\ndescription: Prepare a source-cited meeting brief from bounded event, note, thread, and public-link context.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nrunx:\n  category: ops\n---\n\n# Meeting Prep\n\nPrepare a meeting brief from only the supplied context. The skill does not\nclaim private history, read calendars, or fetch links. It cites the provided\nsource ids for every agenda item, risk, decision, and follow-up.\n\n## Procedure\n\n1. Require an event title and at least one bounded source.\n2. Normalize attendee notes, thread snippets, and public links.\n3. Draft agenda items from explicit evidence.\n4. Extract decisions, risks, questions, and follow-ups.\n5. Stop with `needs_more_context` instead of inventing missing context.\n\n## Inputs\n\n- `event`: calendar event title and timing.\n- `attendee_notes`: bounded notes.\n- `thread_snippets`: bounded prior discussion snippets.\n- `public_links`: public links already approved for use.\n- `constraints`: optional operator preferences.\n\n## Outputs\n\n- `agenda`, `decisions`, `risks`, `questions`, `follow_ups`.\n- `citations`: source ids backing the brief.\n- `evidence`: event title, bounded source count, and privacy proof.\n",
+                  "profile_document":  "skill: meeting-prep\nversion: \"0.1.0\"\n\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n\nharness:\n  cases:\n    - name: meeting-prep-sealed-prep\n      runner: prep\n      inputs:\n        event:\n          id: evt_1\n          title: Launch readiness review\n          starts_at: \"2026-06-21T15:00:00Z\"\n        attendee_notes:\n          - id: note_1\n            summary: Mira asked to decide launch go/no-go and flagged a risk around QA coverage.\n        thread_snippets:\n          - id: thread_1\n            summary: Prior thread says blockers are the demo video and final pricing review.\n        public_links:\n          - id: link_1\n            url: https://example.com/public-roadmap\n            title: Public roadmap\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n    - name: meeting-prep-insufficient-context\n      runner: prep\n      inputs:\n        event:\n          title: Untitled sync\n        attendee_notes: []\n        thread_snippets: []\n        public_links: []\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n\nrunners:\n  prep:\n    default: true\n    type: cli-tool\n    command: node\n    args:\n      - run.mjs\n    outputs:\n      status: string\n      agenda: object\n      decisions: object\n      risks: object\n      questions: object\n      follow_ups: object\n      citations: object\n      evidence: object\n    artifacts:\n      wrap_as: meeting_prep_packet\n      packet: runx.ops.meeting_prep.v1\n    inputs:\n      event:\n        type: json\n        required: true\n        description: Bounded calendar event data.\n      attendee_notes:\n        type: json\n        required: false\n        description: Bounded attendee or objective notes.\n      thread_snippets:\n        type: json\n        required: false\n        description: Bounded prior discussion snippets.\n      public_links:\n        type: json\n        required: false\n        description: Public links already approved for use.\n      constraints:\n        type: json\n        required: false\n        description: Operator constraints and meeting style.\n",
+                  "harness":  {
+                                  "status":  "not_recorded",
+                                  "declared_case_count":  2,
+                                  "declared_cases":  [
+                                                         {
+                                                             "name":  "meeting-prep-sealed-prep",
+                                                             "runner":  "prep",
+                                                             "expected_status":  "sealed"
+                                                         },
+                                                         {
+                                                             "name":  "meeting-prep-insufficient-context",
+                                                             "runner":  "prep",
+                                                             "expected_status":  "sealed"
+                                                         }
+                                                     ],
+                                  "case_count":  2,
+                                  "receipt_ids":  [
+
+                                                  ],
+                                  "recent_runs":  [
+
+                                                  ]
+                              },
+                  "recent_activity":  [
+
+                                      ],
+                  "source":  {
+                                 "provider":  "github",
+                                 "repo":  "rohitmulani63-ops/runx",
+                                 "repo_url":  "https://github.com/rohitmulani63-ops/runx",
+                                 "skill_path":  "skills/meeting-prep/SKILL.md",
+                                 "profile_path":  "skills/meeting-prep/X.yaml",
+                                 "ref":  "main",
+                                 "sha":  "81163d9984c0afe1f75eb16bfb8ec596cf9c8b77",
+                                 "default_branch":  "main",
+                                 "event":  "push",
+                                 "immutable":  false,
+                                 "live":  true,
+                                 "tombstoned":  false
+                             }
+              }
+}

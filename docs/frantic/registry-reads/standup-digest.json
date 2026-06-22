@@ -1,0 +1,166 @@
+﻿{
+    "status":  "success",
+    "skill":  {
+                  "skill_id":  "rohitmulani63-ops/standup-digest",
+                  "owner":  "rohitmulani63-ops",
+                  "owner_handle":  "@rohitmulani63-ops",
+                  "owner_verified":  false,
+                  "trust_tier":  "community",
+                  "maturity":  "alpha",
+                  "name":  "standup-digest",
+                  "description":  "Convert bounded work events into a source-mapped standup digest.",
+                  "catalog_kind":  "skill",
+                  "version":  "sha-f31eb820ba53",
+                  "created_at":  "2026-06-22T00:03:34.323Z",
+                  "updated_at":  "2026-06-22T00:03:34.328Z",
+                  "source_type":  "cli-tool",
+                  "profile_mode":  "profiled",
+                  "runner_names":  [
+                                       "digest"
+                                   ],
+                  "required_scopes":  [
+
+                                      ],
+                  "tags":  [
+
+                           ],
+                  "category":  "ops",
+                  "category_label":  "OPS",
+                  "trust_signals":  [
+                                        {
+                                            "id":  "digest",
+                                            "label":  "Immutable digest",
+                                            "status":  "verified",
+                                            "value":  "sha256:bb8be041aeebb880a37294c6e41010071a4ee75a470f89776046936586a12301"
+                                        },
+                                        {
+                                            "id":  "trust_tier",
+                                            "label":  "Trust tier",
+                                            "status":  "declared",
+                                            "value":  "community"
+                                        },
+                                        {
+                                            "id":  "publisher",
+                                            "label":  "Publisher identity",
+                                            "status":  "declared",
+                                            "value":  "rohitmulani63-ops"
+                                        },
+                                        {
+                                            "id":  "provenance",
+                                            "label":  "Source provenance",
+                                            "status":  "verified",
+                                            "value":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a"
+                                        },
+                                        {
+                                            "id":  "source_type",
+                                            "label":  "Execution source",
+                                            "status":  "declared",
+                                            "value":  "cli-tool"
+                                        },
+                                        {
+                                            "id":  "scopes",
+                                            "label":  "Required scopes",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runtime",
+                                            "label":  "Runtime requirements",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runner_metadata",
+                                            "label":  "Materialized binding",
+                                            "status":  "verified",
+                                            "value":  "1 runner(s), binding sha256:cae149b3bc1ebec1682fe7a8cc9b7a056eb3bd2d80cd53e86685207eaa89954c"
+                                        }
+                                    ],
+                  "install_count":  0,
+                  "verified_run_count":  0,
+                  "page_url":  "https://runx.ai/x/rohitmulani63-ops/standup-digest@sha-f31eb820ba53",
+                  "install_command":  "runx add rohitmulani63-ops/standup-digest@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "run_command":  "runx skill rohitmulani63-ops/standup-digest@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "catalog_visibility":  "public",
+                  "publisher":  {
+                                    "kind":  "publisher",
+                                    "id":  "rohitmulani63-ops",
+                                    "handle":  "rohitmulani63-ops"
+                                },
+                  "attestations":  [
+                                       {
+                                           "kind":  "publisher",
+                                           "id":  "publisher:rohitmulani63-ops",
+                                           "status":  "declared",
+                                           "summary":  "rohitmulani63-ops",
+                                           "issued_at":  "2026-06-22T00:03:34.323Z",
+                                           "metadata":  {
+                                                            "publisher_id":  "rohitmulani63-ops",
+                                                            "publisher_kind":  "publisher",
+                                                            "publisher_handle":  "rohitmulani63-ops",
+                                                            "trust_tier":  "community"
+                                                        }
+                                       },
+                                       {
+                                           "kind":  "source",
+                                           "id":  "github_source",
+                                           "status":  "verified",
+                                           "summary":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                           "source":  "https://github.com/rohitmulani63-ops/runx",
+                                           "issued_at":  "2026-06-22T00:03:34.323Z",
+                                           "metadata":  {
+                                                            "repo":  "rohitmulani63-ops/runx",
+                                                            "ref":  "main",
+                                                            "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                                            "event":  "push",
+                                                            "skill_path":  "skills/standup-digest/SKILL.md",
+                                                            "profile_path":  "skills/standup-digest/X.yaml"
+                                                        }
+                                       }
+                                   ],
+                  "digest":  "bb8be041aeebb880a37294c6e41010071a4ee75a470f89776046936586a12301",
+                  "profile_digest":  "cae149b3bc1ebec1682fe7a8cc9b7a056eb3bd2d80cd53e86685207eaa89954c",
+                  "markdown":  "---\nname: standup-digest\ndescription: Convert bounded work events into a source-mapped standup digest.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nrunx:\n  category: ops\n---\n\n# Standup Digest\n\nGroup bounded work events into shipped work, blockers, risks, and next actions.\nEvery output item maps back to the event ids it came from.\n\nThis skill does not read calendars, GitHub, Slack, or inboxes directly. A caller\nmust provide the bounded event packet.\n\n## Procedure\n\n1. Require `work_events`.\n2. Normalize event ids, titles, timestamps, links, and summaries.\n3. Remove duplicate event ids.\n4. Classify shipped items, blockers, risks, and next actions.\n5. Emit a `source_map` for every digest item.\n\n## Inputs\n\n- `work_events`: array or object containing bounded events.\n- `digest_policy`: optional period and grouping preferences.\n\n## Outputs\n\n- `shipped`, `blockers`, `risks`, `next_actions`.\n- `source_map`: digest item to input event mapping.\n- `evidence`: event counts, duplicate count, and classification rules.\n\n",
+                  "profile_document":  "skill: standup-digest\nversion: \"0.1.0\"\n\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n\nharness:\n  cases:\n    - name: standup-digest-sealed-digest\n      runner: digest\n      inputs:\n        work_events:\n          - id: pr_1\n            type: github_pr\n            title: Merged Prefect template\n            status: merged\n            timestamp: \"2026-06-20T08:00:00Z\"\n          - id: ci_1\n            type: build\n            title: Windows build failed\n            summary: CI failed and needs approval to rerun.\n          - id: note_1\n            type: note\n            title: Follow up with maintainer\n            summary: Next action is review feedback tomorrow.\n        digest_policy:\n          period: \"2026-06-20\"\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n    - name: standup-digest-duplicate-noisy-input\n      runner: digest\n      inputs:\n        work_events:\n          - id: dup_1\n            title: Merged docs PR\n            status: merged\n          - id: dup_1\n            title: Merged docs PR\n            status: merged\n          - id: noise_1\n            title: FYI\n            summary: No action.\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n\nrunners:\n  digest:\n    default: true\n    type: cli-tool\n    command: node\n    args:\n      - run.mjs\n    outputs:\n      status: string\n      period: string\n      shipped: object\n      blockers: object\n      risks: object\n      next_actions: object\n      source_map: object\n      evidence: object\n    artifacts:\n      wrap_as: standup_digest_packet\n      packet: runx.ops.standup_digest.v1\n    inputs:\n      work_events:\n        type: json\n        required: true\n        description: Bounded GitHub, issue, build, and note events.\n      digest_policy:\n        type: json\n        required: false\n        description: Period and grouping preferences.\n\n",
+                  "harness":  {
+                                  "status":  "not_recorded",
+                                  "declared_case_count":  2,
+                                  "declared_cases":  [
+                                                         {
+                                                             "name":  "standup-digest-sealed-digest",
+                                                             "runner":  "digest",
+                                                             "expected_status":  "sealed"
+                                                         },
+                                                         {
+                                                             "name":  "standup-digest-duplicate-noisy-input",
+                                                             "runner":  "digest",
+                                                             "expected_status":  "sealed"
+                                                         }
+                                                     ],
+                                  "case_count":  2,
+                                  "receipt_ids":  [
+
+                                                  ],
+                                  "recent_runs":  [
+
+                                                  ]
+                              },
+                  "recent_activity":  [
+
+                                      ],
+                  "source":  {
+                                 "provider":  "github",
+                                 "repo":  "rohitmulani63-ops/runx",
+                                 "repo_url":  "https://github.com/rohitmulani63-ops/runx",
+                                 "skill_path":  "skills/standup-digest/SKILL.md",
+                                 "profile_path":  "skills/standup-digest/X.yaml",
+                                 "ref":  "main",
+                                 "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                 "default_branch":  "main",
+                                 "event":  "push",
+                                 "immutable":  false,
+                                 "live":  true,
+                                 "tombstoned":  false
+                             }
+              }
+}

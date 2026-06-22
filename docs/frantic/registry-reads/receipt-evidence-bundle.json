@@ -1,0 +1,166 @@
+﻿{
+    "status":  "success",
+    "skill":  {
+                  "skill_id":  "rohitmulani63-ops/receipt-evidence-bundle",
+                  "owner":  "rohitmulani63-ops",
+                  "owner_handle":  "@rohitmulani63-ops",
+                  "owner_verified":  false,
+                  "trust_tier":  "community",
+                  "maturity":  "alpha",
+                  "name":  "receipt-evidence-bundle",
+                  "description":  "Convert receipt refs, verify output, and artifacts into a reviewer-safe evidence bundle.",
+                  "catalog_kind":  "skill",
+                  "version":  "sha-f31eb820ba53",
+                  "created_at":  "2026-06-22T00:03:34.309Z",
+                  "updated_at":  "2026-06-22T00:03:34.317Z",
+                  "source_type":  "cli-tool",
+                  "profile_mode":  "profiled",
+                  "runner_names":  [
+                                       "bundle"
+                                   ],
+                  "required_scopes":  [
+
+                                      ],
+                  "tags":  [
+
+                           ],
+                  "category":  "security",
+                  "category_label":  "SECURITY",
+                  "trust_signals":  [
+                                        {
+                                            "id":  "digest",
+                                            "label":  "Immutable digest",
+                                            "status":  "verified",
+                                            "value":  "sha256:fd57bf3b84574ae18719274b3e34b89a15c395893cbc7eb2dc20b81161d81bad"
+                                        },
+                                        {
+                                            "id":  "trust_tier",
+                                            "label":  "Trust tier",
+                                            "status":  "declared",
+                                            "value":  "community"
+                                        },
+                                        {
+                                            "id":  "publisher",
+                                            "label":  "Publisher identity",
+                                            "status":  "declared",
+                                            "value":  "rohitmulani63-ops"
+                                        },
+                                        {
+                                            "id":  "provenance",
+                                            "label":  "Source provenance",
+                                            "status":  "verified",
+                                            "value":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a"
+                                        },
+                                        {
+                                            "id":  "source_type",
+                                            "label":  "Execution source",
+                                            "status":  "declared",
+                                            "value":  "cli-tool"
+                                        },
+                                        {
+                                            "id":  "scopes",
+                                            "label":  "Required scopes",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runtime",
+                                            "label":  "Runtime requirements",
+                                            "status":  "not_declared",
+                                            "value":  "none declared"
+                                        },
+                                        {
+                                            "id":  "runner_metadata",
+                                            "label":  "Materialized binding",
+                                            "status":  "verified",
+                                            "value":  "1 runner(s), binding sha256:18808d294d7b636616f15a22a5faa589cb00f8de0da240673a3f1bb2ab8fabcb"
+                                        }
+                                    ],
+                  "install_count":  0,
+                  "verified_run_count":  0,
+                  "page_url":  "https://runx.ai/x/rohitmulani63-ops/receipt-evidence-bundle@sha-f31eb820ba53",
+                  "install_command":  "runx add rohitmulani63-ops/receipt-evidence-bundle@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "run_command":  "runx skill rohitmulani63-ops/receipt-evidence-bundle@sha-f31eb820ba53 --registry https://api.runx.ai",
+                  "catalog_visibility":  "public",
+                  "publisher":  {
+                                    "kind":  "publisher",
+                                    "id":  "rohitmulani63-ops",
+                                    "handle":  "rohitmulani63-ops"
+                                },
+                  "attestations":  [
+                                       {
+                                           "kind":  "publisher",
+                                           "id":  "publisher:rohitmulani63-ops",
+                                           "status":  "declared",
+                                           "summary":  "rohitmulani63-ops",
+                                           "issued_at":  "2026-06-22T00:03:34.309Z",
+                                           "metadata":  {
+                                                            "publisher_id":  "rohitmulani63-ops",
+                                                            "publisher_kind":  "publisher",
+                                                            "publisher_handle":  "rohitmulani63-ops",
+                                                            "trust_tier":  "community"
+                                                        }
+                                       },
+                                       {
+                                           "kind":  "source",
+                                           "id":  "github_source",
+                                           "status":  "verified",
+                                           "summary":  "github:rohitmulani63-ops/runx@f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                           "source":  "https://github.com/rohitmulani63-ops/runx",
+                                           "issued_at":  "2026-06-22T00:03:34.309Z",
+                                           "metadata":  {
+                                                            "repo":  "rohitmulani63-ops/runx",
+                                                            "ref":  "main",
+                                                            "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                                            "event":  "push",
+                                                            "skill_path":  "skills/receipt-evidence-bundle/SKILL.md",
+                                                            "profile_path":  "skills/receipt-evidence-bundle/X.yaml"
+                                                        }
+                                       }
+                                   ],
+                  "digest":  "fd57bf3b84574ae18719274b3e34b89a15c395893cbc7eb2dc20b81161d81bad",
+                  "profile_digest":  "18808d294d7b636616f15a22a5faa589cb00f8de0da240673a3f1bb2ab8fabcb",
+                  "markdown":  "---\nname: receipt-evidence-bundle\ndescription: Convert receipt refs, verify output, and artifacts into a reviewer-safe evidence bundle.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nrunx:\n  category: security\n---\n\n# Receipt Evidence Bundle\n\nPrepare a compact evidence bundle for review from receipt refs, supplied verify\nresults, sanitized receipt summaries, and public artifact links.\n\nThe skill separates verified facts from inferred facts and lists missing\nevidence. It redacts email-like or token-like material from summaries.\n\n## Procedure\n\n1. Require at least one receipt ref or sanitized receipt summary.\n2. Refuse malformed receipt refs.\n3. Consume supplied `runx verify` output when available.\n4. Summarize public artifact links.\n5. Emit reviewer actions for missing verification.\n\n## Inputs\n\n- `receipt_refs`: runx receipt references.\n- `receipt_summaries`: sanitized receipt summaries.\n- `verify_results`: supplied runx verify outputs.\n- `artifact_links`: public links to bind to the evidence bundle.\n\n## Outputs\n\n- `verified_facts`, `inferred_facts`, `missing_evidence`.\n- `reviewer_actions` and `redactions`.\n- `evidence`: count and verification status.\n\n",
+                  "profile_document":  "skill: receipt-evidence-bundle\nversion: \"0.1.0\"\n\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n\nharness:\n  cases:\n    - name: receipt-evidence-valid-receipt\n      runner: bundle\n      inputs:\n        receipt_refs:\n          - runx:receipt:rx_valid_001\n        verify_results:\n          - receipt_ref: runx:receipt:rx_valid_001\n            verdict: valid\n        receipt_summaries:\n          - receipt_ref: runx:receipt:rx_valid_001\n            authority:\n              scopes:\n                - repo.read\n            effects:\n              - id: read_1\n                scope: repo.read\n        artifact_links:\n          - url: https://github.com/example/repo/pull/1\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n    - name: receipt-evidence-malformed-ref\n      runner: bundle\n      inputs:\n        receipt_refs:\n          - not-a-runx-receipt\n      expect:\n        status: sealed\n        receipt:\n          schema: runx.receipt.v1\n\nrunners:\n  bundle:\n    default: true\n    type: cli-tool\n    command: node\n    args:\n      - run.mjs\n    outputs:\n      status: string\n      verified_facts: object\n      inferred_facts: object\n      missing_evidence: object\n      reviewer_actions: object\n      redactions: object\n      evidence: object\n    artifacts:\n      wrap_as: receipt_evidence_bundle_packet\n      packet: runx.receipt.evidence_bundle.v1\n    inputs:\n      receipt_refs:\n        type: json\n        required: false\n        description: Array of runx receipt references.\n      receipt_summaries:\n        type: json\n        required: false\n        description: Sanitized receipt summaries and effects.\n      verify_results:\n        type: json\n        required: false\n        description: runx verify output already produced by a governed step.\n      artifact_links:\n        type: json\n        required: false\n        description: Public artifacts to bind to the evidence bundle.\n\n",
+                  "harness":  {
+                                  "status":  "not_recorded",
+                                  "declared_case_count":  2,
+                                  "declared_cases":  [
+                                                         {
+                                                             "name":  "receipt-evidence-valid-receipt",
+                                                             "runner":  "bundle",
+                                                             "expected_status":  "sealed"
+                                                         },
+                                                         {
+                                                             "name":  "receipt-evidence-malformed-ref",
+                                                             "runner":  "bundle",
+                                                             "expected_status":  "sealed"
+                                                         }
+                                                     ],
+                                  "case_count":  2,
+                                  "receipt_ids":  [
+
+                                                  ],
+                                  "recent_runs":  [
+
+                                                  ]
+                              },
+                  "recent_activity":  [
+
+                                      ],
+                  "source":  {
+                                 "provider":  "github",
+                                 "repo":  "rohitmulani63-ops/runx",
+                                 "repo_url":  "https://github.com/rohitmulani63-ops/runx",
+                                 "skill_path":  "skills/receipt-evidence-bundle/SKILL.md",
+                                 "profile_path":  "skills/receipt-evidence-bundle/X.yaml",
+                                 "ref":  "main",
+                                 "sha":  "f31eb820ba539c92f5a0b10aabe64c9ac87fcf2a",
+                                 "default_branch":  "main",
+                                 "event":  "push",
+                                 "immutable":  false,
+                                 "live":  true,
+                                 "tombstoned":  false
+                             }
+              }
+}
