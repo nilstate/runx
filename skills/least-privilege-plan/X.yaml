@@ -1,0 +1,45 @@
+skill: least-privilege-plan
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+runners:
+  plan:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      grant_plan: object
+      plan_summary: array
+      verdict: string
+    artifacts:
+      wrap_as: least_privilege_plan_packet
+      packet: runx.security.least_privilege_plan.v1
+    inputs:
+      subject:
+        type: string
+        required: false
+        description: "Label for what is being planned: a skill id, grant id, or principal."
+      grants:
+        type: json
+        required: true
+        description: The grants to evaluate against observed usage.
+      run_history:
+        type: json
+        required: true
+        description: "Receipt-derived run history: for each grant or resource, the actions actually exercised."
+      policy_constraints:
+        type: json
+        required: false
+        description: Reserved grants, compliance constraints, or human-approved exceptions.
+      objective:
+        type: string
+        required: false
+        description: Operator intent that focuses the plan.
+sandbox:
+  profile: readonly
+  cwd_policy: skill-directory

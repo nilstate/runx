@@ -1,0 +1,51 @@
+name: minimal-grants-unchanged
+kind: skill
+target: ..
+runner: plan
+inputs:
+  subject: analytics/daily-report
+  grants:
+    - reports:read:daily
+    - reports:write:daily
+  run_history:
+    receipt_ids:
+      - rx_301
+      - rx_302
+    observed:
+      - grant: reports:read:daily
+        count: 14
+        refs:
+          - rx_301:step_1
+          - rx_302:step_1
+      - grant: reports:write:daily
+        count: 7
+        refs:
+          - rx_301:step_3
+          - rx_302:step_3
+  objective: Verify the report generator grant is already minimal.
+caller:
+  answers:
+    agent_task.least-privilege-plan.output:
+      grant_plan:
+        subject: analytics/daily-report
+        grant_plan:
+          - declared_grant: reports:read:daily
+            classification: keep
+            rationale: Observed receipt usage exercised this exact authority.
+            operational_risk: None.
+          - declared_grant: reports:write:daily
+            classification: keep
+            rationale: Observed receipt usage exercised this exact authority.
+            operational_risk: None.
+      plan_summary: []
+      verdict: "no_change: observed usage matches the declared grants"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: least-privilege-plan
+  source_case: minimal-grants-unchanged
+  source: skills-fixture

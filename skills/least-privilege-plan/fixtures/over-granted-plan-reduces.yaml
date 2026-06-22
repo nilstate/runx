@@ -1,0 +1,90 @@
+name: over-granted-plan-reduces
+kind: skill
+target: ..
+runner: plan
+inputs:
+  subject: ops/deploy-pipeline
+  grants:
+    - cluster:deploy:production
+    - cluster:deploy:staging
+    - "secrets:read:*"
+    - "secrets:write:*"
+    - "logs:read:*"
+  run_history:
+    receipt_ids:
+      - rx_201
+      - rx_202
+      - rx_203
+    observed:
+      - grant: cluster:deploy:staging
+        count: 12
+        refs:
+          - rx_201:step_2
+          - rx_202:step_2
+          - rx_203:step_2
+      - grant: secrets:read:deploy-keys
+        count: 12
+        refs:
+          - rx_201:step_1
+          - rx_202:step_1
+          - rx_203:step_1
+      - grant: "logs:read:deploy-logs"
+        count: 8
+        refs:
+          - rx_201:step_4
+          - rx_203:step_4
+  objective: Tighten the deploy pipeline to the narrowest grant set before production hardening.
+caller:
+  answers:
+    agent_task.least-privilege-plan.output:
+      grant_plan:
+        subject: ops/deploy-pipeline
+        grant_plan:
+          - declared_grant: cluster:deploy:production
+            classification: revoke
+            rationale: No receipt exercised production deploy authority across 3 observed runs.
+            operational_risk: "Low — a future production deploy would re-request the grant."
+          - declared_grant: cluster:deploy:staging
+            classification: keep
+            rationale: All 12 observed deploys targeted staging; grant is exercised as declared.
+            operational_risk: None.
+          - declared_grant: "secrets:read:*"
+            classification: reduce
+            proposed_grant: secrets:read:deploy-keys
+            rationale: All 12 observed reads targeted deploy-keys only; wildcard is over-broad.
+            operational_risk: "Low — a new secret path would re-request the broader grant."
+          - declared_grant: "secrets:write:*"
+            classification: revoke
+            rationale: No receipt exercised secrets write authority.
+            operational_risk: "Low — removal cannot break observed behavior."
+          - declared_grant: "logs:read:*"
+            classification: reduce
+            proposed_grant: "logs:read:deploy-logs"
+            rationale: All 8 observed reads matched the deploy-logs path.
+            operational_risk: "Low — reading other log namespaces would re-request the broader grant."
+      plan_summary:
+        - action: revoke
+          grant: cluster:deploy:production
+          rationale: No cited receipt exercised this authority.
+        - action: revoke
+          grant: "secrets:write:*"
+          rationale: No cited receipt exercised this authority.
+        - action: reduce
+          from: "secrets:read:*"
+          to: secrets:read:deploy-keys
+          rationale: Observed use fits the narrower grant.
+        - action: reduce
+          from: "logs:read:*"
+          to: "logs:read:deploy-logs"
+          rationale: Observed use fits the narrower grant.
+      verdict: "over-privileged: revoke 2, reduce 2"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: least-privilege-plan
+  source_case: over-granted-plan-reduces
+  source: skills-fixture
