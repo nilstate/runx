@@ -1,0 +1,55 @@
+{
+  "schema": "dependency_advisory_graph.local_harness_evidence.v1",
+  "runx_cli": "runx-cli 0.6.13",
+  "cases": [
+    {
+      "name": "nodegoat-direct-production",
+      "status": "passed",
+      "command": "RUNX_INPUTS_PATH=fixtures/nodegoat.inputs.json node run.mjs",
+      "summary": {
+        "dependencies_scanned": 16,
+        "packages_with_findings": 6,
+        "findings": 13
+      },
+      "typed_findings": 13,
+      "graph_edges": 13,
+      "validation": {
+        "valid": true,
+        "every_finding_has_exact_version": true,
+        "every_finding_has_reference": true,
+        "every_finding_has_advisory_id": true,
+        "zero_false_hit_control": "Each OSV request uses only the exact package name and version read from the lockfile; no broad package-name-only findings, inferred ranges, or guessed versions are reported."
+      }
+    },
+    {
+      "name": "clean-lockfile-no-findings",
+      "status": "passed",
+      "command": "RUNX_INPUTS_PATH=fixtures/clean.inputs.json node run.mjs",
+      "summary": {
+        "dependencies_scanned": 0,
+        "packages_with_findings": 0,
+        "findings": 0
+      },
+      "typed_findings": 0,
+      "graph_edges": 0,
+      "validation": {
+        "valid": true,
+        "every_finding_has_exact_version": true,
+        "every_finding_has_reference": true,
+        "every_finding_has_advisory_id": true,
+        "zero_false_hit_control": "Each OSV request uses only the exact package name and version read from the lockfile; no broad package-name-only findings, inferred ranges, or guessed versions are reported."
+      }
+    },
+    {
+      "name": "missing-lockfile-stop",
+      "status": "passed",
+      "command": "RUNX_INPUTS_JSON='{\"target_name\":\"Missing lockfile fixture\",\"target_repo\":\"local-fixture\",\"target_ref\":\"missing-lockfile-v1\",\"scan_scope\":\"direct\",\"include_dev\":false}' node run.mjs",
+      "expected_status": "failure",
+      "observed_error": "package_lock_path or package_lock_url is required",
+      "summary": {
+        "purpose": "Proves the skill stops instead of fabricating an advisory graph when no lockfile source is provided."
+      }
+    }
+  ],
+  "note": "Local direct case evidence; registry publish is expected to run hosted harness for the same X.yaml cases, including the intentional missing-lockfile stop case."
+}

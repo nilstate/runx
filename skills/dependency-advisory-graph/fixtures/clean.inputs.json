@@ -1,0 +1,9 @@
+{
+  "target_name": "Clean local fixture",
+  "target_repo": "local-fixture",
+  "target_ref": "clean-package-lock-v1",
+  "package_lock_path": "fixtures/empty-package-lock.json",
+  "scan_scope": "direct",
+  "include_dev": false,
+  "output_dir": "artifacts/clean"
+}

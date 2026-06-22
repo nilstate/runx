@@ -1,0 +1,75 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@runxhq/cli':
+        specifier: ^0.6.2
+        version: 0.6.2
+
+packages:
+
+  '@runxhq/cli-darwin-arm64@0.6.2':
+    resolution: {integrity: sha512-sql1xgRlDrMxBjvCr3luTKU4nc8toLVQv0MaohPB2SqogJu3o+l589sOjs5zR7Wb7xwWorogmWbzDZ5Fvi2z2Q==}
+    engines: {node: '>=18'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@runxhq/cli-darwin-x64@0.6.2':
+    resolution: {integrity: sha512-qQMgAta1nXRBQo3zJ7DU11OY4XU9zr/ZnZMdD7pJETxPKcJxr9DTNtsJnNo+XW0aBSgUrJCjeGoBPFWHZYyVrQ==}
+    engines: {node: '>=18'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@runxhq/cli-linux-arm64@0.6.2':
+    resolution: {integrity: sha512-A86rWr89QXej9TMDJYngMeJKvYT8lSdLMrykyElcS3dg0NWhwL9EoP5An0T92NLMfpOOUvIDgtjWEMCmfFT2CQ==}
+    engines: {node: '>=18'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@runxhq/cli-linux-x64@0.6.2':
+    resolution: {integrity: sha512-wfMuqCX3OYpFnMqALoAPQN7L6CE5qbZs4HgxBaAfzKI2wtfrmtoG0kA5jy88outoX6ZQZBmBizrpanfqgbctVQ==}
+    engines: {node: '>=18'}
+    cpu: [x64]
+    os: [linux]
+
+  '@runxhq/cli-win32-x64@0.6.2':
+    resolution: {integrity: sha512-XZon0iGBRXfMaFgcotz0qx2cX0pwJ7LK1EEjv+R6xLevXc/XAeyXsemZMiyHsBsMxOlDgdUXurX+k0XUEc9YtA==}
+    engines: {node: '>=18'}
+    cpu: [x64]
+    os: [win32]
+
+  '@runxhq/cli@0.6.2':
+    resolution: {integrity: sha512-FcnhE6OutMn60WwtrNLBJ1B9PBedMYqzrBGHYcNz3Gcc8BUaVwn5ptVCialzKBBVJPge4V/krRAexSmSTF3dUg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+snapshots:
+
+  '@runxhq/cli-darwin-arm64@0.6.2':
+    optional: true
+
+  '@runxhq/cli-darwin-x64@0.6.2':
+    optional: true
+
+  '@runxhq/cli-linux-arm64@0.6.2':
+    optional: true
+
+  '@runxhq/cli-linux-x64@0.6.2':
+    optional: true
+
+  '@runxhq/cli-win32-x64@0.6.2':
+    optional: true
+
+  '@runxhq/cli@0.6.2':
+    optionalDependencies:
+      '@runxhq/cli-darwin-arm64': 0.6.2
+      '@runxhq/cli-darwin-x64': 0.6.2
+      '@runxhq/cli-linux-arm64': 0.6.2
+      '@runxhq/cli-linux-x64': 0.6.2
+      '@runxhq/cli-win32-x64': 0.6.2

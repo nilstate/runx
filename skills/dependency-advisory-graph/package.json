@@ -1,0 +1,16 @@
+{
+  "name": "dependency-advisory-graph",
+  "version": "0.1.0",
+  "description": "Governed runx skill that builds an exact-version dependency advisory graph.",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dogfood": "RUNX_INPUTS_PATH=fixtures/nodegoat.inputs.json node run.mjs",
+    "dogfood:clean": "RUNX_INPUTS_PATH=fixtures/clean.inputs.json node run.mjs"
+  },
+  "devDependencies": {
+    "@runxhq/cli": "^0.6.2"
+  }
+}
