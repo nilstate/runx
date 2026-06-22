@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "over-broad-grant-plan",
+    "justified-grant-plan",
+    "missing-grants-fails-closed"
+  ],
+  "receipt_ids": [
+    "sha256:b6d55381ae059d0325aeadfb0f5721c6bbecf29b82adc889ee46058a5abbcf4a",
+    "sha256:4e018f04cfc115662e499a0cb7c8e47777648f0d06be40aa7d093dee63d7923d",
+    "sha256:c6a7506ece63c90fb2a4b66e90de687a51e2000c719a53951e5da0331f44f48a"
+  ],
+  "graph_case_count": 0
+}

@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/tmp/runx-least-privilege-plan-dogfood-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:9cf478c16863cb9c70c72713830af33805764ed229e321cac3a7b256a009d854",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

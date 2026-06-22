@@ -1,0 +1,8 @@
+{
+  "policy_id": "runx-policy-demo-v1",
+  "review_rules": {
+    "wildcard_reduction_allowed": true,
+    "require_human_review_for_denied_secret": true
+  },
+  "reserved_grants": ["grant-breakglass"]
+}

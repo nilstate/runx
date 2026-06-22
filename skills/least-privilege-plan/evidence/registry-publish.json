@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "lubuseb/least-privilege-plan",
+      "owner": "lubuseb",
+      "name": "least-privilege-plan",
+      "version": "sha-e2d0eec62745",
+      "digest": "09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
+      "profile_digest": "f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea",
+      "trust_tier": "community",
+      "install_command": "runx add lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai",
+      "run_command": "runx skill lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/lubuseb/least-privilege-plan"
+    }
+  }
+}

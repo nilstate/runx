@@ -1,0 +1,1352 @@
+{
+  "closure": {
+    "closed_at": "2026-06-22T14:31:33.747Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool default completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "evidence_json": {
+        "artifact": "least-privilege-plan",
+        "observations": {
+          "grant_ids": [
+            "grant-read-all",
+            "grant-write-issues",
+            "grant-delete",
+            "grant-secret-prod",
+            "grant-breakglass"
+          ],
+          "observed_effects": [
+            {
+              "effect_id": "e-read-issue",
+              "grant_id": "grant-read-all",
+              "receipt_ref": "runx:receipt:sha256:111#read_issue",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81",
+              "status": "success",
+              "verb": "repo.read"
+            },
+            {
+              "effect_id": "e-write-comment",
+              "grant_id": "grant-write-issues",
+              "receipt_ref": "runx:receipt:sha256:222#comment",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+              "status": "success",
+              "verb": "repo.write"
+            },
+            {
+              "effect_id": "e-secret-denied",
+              "grant_id": "grant-secret-prod",
+              "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+              "resource": "prod/frantic-agent-token",
+              "status": "denied",
+              "verb": "secret.read"
+            }
+          ],
+          "policy_digest": "sha256:f9de1472ae8508bc4c5d5989263eaee7b7a5b749fb769089eedd6436f0f5adf9",
+          "policy_id": "runx-policy-demo-v1",
+          "receipt_refs": [
+            "runx:receipt:sha256:111",
+            "runx:receipt:sha256:222"
+          ],
+          "recommendations": [
+            {
+              "evidence_refs": [
+                "runx:receipt:sha256:111#read_issue"
+              ],
+              "grant_id": "grant-read-all",
+              "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+              "recommendation": "reduce"
+            },
+            {
+              "evidence_refs": [
+                "runx:receipt:sha256:222#comment"
+              ],
+              "grant_id": "grant-write-issues",
+              "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+              "recommendation": "reduce"
+            },
+            {
+              "evidence_refs": [],
+              "grant_id": "grant-delete",
+              "proposed_scope": null,
+              "recommendation": "revoke"
+            },
+            {
+              "evidence_refs": [
+                "runx:receipt:sha256:222#secret_denied"
+              ],
+              "grant_id": "grant-secret-prod",
+              "proposed_scope": null,
+              "recommendation": "needs_human_review"
+            },
+            {
+              "evidence_refs": [],
+              "grant_id": "grant-breakglass",
+              "proposed_scope": null,
+              "recommendation": "keep"
+            }
+          ],
+          "run_history_digest": "sha256:7aa9061a8fcb3de014fc3d813dffaae8ccf7eada3faa207932124e173f62a965",
+          "subject": "skills/sourcey-docs",
+          "unused_scopes": [
+            {
+              "grant_id": "grant-delete",
+              "scope": "repo.delete:github/LubuSeb/sourcey-demo/*"
+            }
+          ]
+        },
+        "schema": "frantic.delivery.evidence.v1"
+      },
+      "plan": {
+        "objective": "Hosted dogfood least privilege plan for Frantic bounty 37.",
+        "policy_id": "runx-policy-demo-v1",
+        "proposed_grants": [
+          {
+            "grant_id": "grant-read-all",
+            "scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+            "source": "reduce"
+          },
+          {
+            "grant_id": "grant-write-issues",
+            "scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+            "source": "reduce"
+          },
+          {
+            "grant_id": "grant-breakglass",
+            "scope": "incident.breakglass:runx/*",
+            "source": "keep"
+          }
+        ],
+        "recommendations": [
+          {
+            "current_scope": "repo.read:github/LubuSeb/sourcey-demo/*",
+            "evidence_refs": [
+              "runx:receipt:sha256:111#read_issue"
+            ],
+            "grant_id": "grant-read-all",
+            "missing_evidence": [],
+            "observed_effects": [
+              {
+                "effect_id": "e-read-issue",
+                "receipt_ref": "runx:receipt:sha256:111#read_issue",
+                "resource": "github/LubuSeb/sourcey-demo/issues/81",
+                "status": "success",
+                "verb": "repo.read"
+              }
+            ],
+            "policy_input_refs": [
+              "policy:repo-read"
+            ],
+            "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+            "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+            "recommendation": "reduce",
+            "risk_notes": [
+              "The reduced scope preserves only the cited resources from this evidence packet."
+            ],
+            "unused_scopes": [
+              "repo.read:github/LubuSeb/sourcey-demo/*"
+            ]
+          },
+          {
+            "current_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/*",
+            "evidence_refs": [
+              "runx:receipt:sha256:222#comment"
+            ],
+            "grant_id": "grant-write-issues",
+            "missing_evidence": [],
+            "observed_effects": [
+              {
+                "effect_id": "e-write-comment",
+                "receipt_ref": "runx:receipt:sha256:222#comment",
+                "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+                "status": "success",
+                "verb": "repo.write"
+              }
+            ],
+            "policy_input_refs": [
+              "policy:issue-write"
+            ],
+            "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+            "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+            "recommendation": "reduce",
+            "risk_notes": [
+              "The reduced scope preserves only the cited resources from this evidence packet."
+            ],
+            "unused_scopes": [
+              "repo.write:github/LubuSeb/sourcey-demo/issues/*"
+            ]
+          },
+          {
+            "current_scope": "repo.delete:github/LubuSeb/sourcey-demo/*",
+            "evidence_refs": [],
+            "grant_id": "grant-delete",
+            "missing_evidence": [],
+            "observed_effects": [],
+            "policy_input_refs": [
+              "policy:delete"
+            ],
+            "proposed_scope": null,
+            "rationale": "No successful observed effect exercised this grant in the supplied run history.",
+            "recommendation": "revoke",
+            "risk_notes": [
+              "Revocation is safe only for the supplied evidence window; future workloads may require new authority."
+            ],
+            "unused_scopes": [
+              "repo.delete:github/LubuSeb/sourcey-demo/*"
+            ]
+          },
+          {
+            "current_scope": "secret.read:prod/*",
+            "evidence_refs": [
+              "runx:receipt:sha256:222#secret_denied"
+            ],
+            "grant_id": "grant-secret-prod",
+            "missing_evidence": [
+              "Only a denied check exists; policy owner must decide whether this reserved secret scope is still required."
+            ],
+            "observed_effects": [
+              {
+                "effect_id": "e-secret-denied",
+                "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+                "resource": "prod/frantic-agent-token",
+                "status": "denied",
+                "verb": "secret.read"
+              }
+            ],
+            "policy_input_refs": [
+              "policy:secret-breakglass"
+            ],
+            "proposed_scope": null,
+            "rationale": "The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.",
+            "recommendation": "needs_human_review",
+            "risk_notes": [
+              "Do not revoke or reduce this grant automatically until the missing evidence is resolved."
+            ],
+            "unused_scopes": [
+              "secret.read:prod/*"
+            ]
+          },
+          {
+            "current_scope": "incident.breakglass:runx/*",
+            "evidence_refs": [],
+            "grant_id": "grant-breakglass",
+            "missing_evidence": [],
+            "observed_effects": [],
+            "policy_input_refs": [
+              "policy:reserved"
+            ],
+            "proposed_scope": null,
+            "rationale": "The declared policy marks this grant as reserved or break-glass authority.",
+            "recommendation": "keep",
+            "risk_notes": [
+              "Reserved grants remain broad by policy; schedule a separate human review if that posture changes."
+            ],
+            "unused_scopes": [
+              "incident.breakglass:runx/*"
+            ]
+          }
+        ],
+        "safeguards": {
+          "mutates_grants": false,
+          "network_required": false,
+          "read_only": true,
+          "secrets_required": false
+        },
+        "schema": "runx.security.least_privilege_plan.v1",
+        "source_receipts": [
+          "runx:receipt:sha256:111",
+          "runx:receipt:sha256:222"
+        ],
+        "status": "needs_human_review",
+        "subject": "skills/sourcey-docs",
+        "summary": {
+          "grant_count": 5,
+          "observed_effect_count": 3,
+          "recommendation_counts": {
+            "keep": 1,
+            "needs_human_review": 1,
+            "reduce": 2,
+            "revoke": 1
+          }
+        }
+      },
+      "recommendations": [
+        {
+          "current_scope": "repo.read:github/LubuSeb/sourcey-demo/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:111#read_issue"
+          ],
+          "grant_id": "grant-read-all",
+          "missing_evidence": [],
+          "observed_effects": [
+            {
+              "effect_id": "e-read-issue",
+              "receipt_ref": "runx:receipt:sha256:111#read_issue",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81",
+              "status": "success",
+              "verb": "repo.read"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:repo-read"
+          ],
+          "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+          "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+          "recommendation": "reduce",
+          "risk_notes": [
+            "The reduced scope preserves only the cited resources from this evidence packet."
+          ],
+          "unused_scopes": [
+            "repo.read:github/LubuSeb/sourcey-demo/*"
+          ]
+        },
+        {
+          "current_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:222#comment"
+          ],
+          "grant_id": "grant-write-issues",
+          "missing_evidence": [],
+          "observed_effects": [
+            {
+              "effect_id": "e-write-comment",
+              "receipt_ref": "runx:receipt:sha256:222#comment",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+              "status": "success",
+              "verb": "repo.write"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:issue-write"
+          ],
+          "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+          "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+          "recommendation": "reduce",
+          "risk_notes": [
+            "The reduced scope preserves only the cited resources from this evidence packet."
+          ],
+          "unused_scopes": [
+            "repo.write:github/LubuSeb/sourcey-demo/issues/*"
+          ]
+        },
+        {
+          "current_scope": "repo.delete:github/LubuSeb/sourcey-demo/*",
+          "evidence_refs": [],
+          "grant_id": "grant-delete",
+          "missing_evidence": [],
+          "observed_effects": [],
+          "policy_input_refs": [
+            "policy:delete"
+          ],
+          "proposed_scope": null,
+          "rationale": "No successful observed effect exercised this grant in the supplied run history.",
+          "recommendation": "revoke",
+          "risk_notes": [
+            "Revocation is safe only for the supplied evidence window; future workloads may require new authority."
+          ],
+          "unused_scopes": [
+            "repo.delete:github/LubuSeb/sourcey-demo/*"
+          ]
+        },
+        {
+          "current_scope": "secret.read:prod/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:222#secret_denied"
+          ],
+          "grant_id": "grant-secret-prod",
+          "missing_evidence": [
+            "Only a denied check exists; policy owner must decide whether this reserved secret scope is still required."
+          ],
+          "observed_effects": [
+            {
+              "effect_id": "e-secret-denied",
+              "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+              "resource": "prod/frantic-agent-token",
+              "status": "denied",
+              "verb": "secret.read"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:secret-breakglass"
+          ],
+          "proposed_scope": null,
+          "rationale": "The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.",
+          "recommendation": "needs_human_review",
+          "risk_notes": [
+            "Do not revoke or reduce this grant automatically until the missing evidence is resolved."
+          ],
+          "unused_scopes": [
+            "secret.read:prod/*"
+          ]
+        },
+        {
+          "current_scope": "incident.breakglass:runx/*",
+          "evidence_refs": [],
+          "grant_id": "grant-breakglass",
+          "missing_evidence": [],
+          "observed_effects": [],
+          "policy_input_refs": [
+            "policy:reserved"
+          ],
+          "proposed_scope": null,
+          "rationale": "The declared policy marks this grant as reserved or break-glass authority.",
+          "recommendation": "keep",
+          "risk_notes": [
+            "Reserved grants remain broad by policy; schedule a separate human review if that posture changes."
+          ],
+          "unused_scopes": [
+            "incident.breakglass:runx/*"
+          ]
+        }
+      ],
+      "report": "# least-privilege-plan report\n\nSubject: skills/sourcey-docs\nPolicy: runx-policy-demo-v1\nStatus: needs_human_review\nReceipts: runx:receipt:sha256:111, runx:receipt:sha256:222\n\n## Recommendations\n- reduce: grant-read-all repo.read:github/LubuSeb/sourcey-demo/* -> repo.read:github/LubuSeb/sourcey-demo/issues/81 (Successful observed effects fit a narrower resource path than the current wildcard grant.)\n- reduce: grant-write-issues repo.write:github/LubuSeb/sourcey-demo/issues/* -> repo.write:github/LubuSeb/sourcey-demo/issues/81/comments (Successful observed effects fit a narrower resource path than the current wildcard grant.)\n- revoke: grant-delete repo.delete:github/LubuSeb/sourcey-demo/* (No successful observed effect exercised this grant in the supplied run history.)\n- needs_human_review: grant-secret-prod secret.read:prod/* (The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.)\n- keep: grant-breakglass incident.breakglass:runx/* (The declared policy marks this grant as reserved or break-glass authority.)\n\nRead-only: true; mutates grants: false."
+    },
+    "stderr": "",
+    "stdout": "{\n  \"plan\": {\n    \"schema\": \"runx.security.least_privilege_plan.v1\",\n    \"status\": \"needs_human_review\",\n    \"subject\": \"skills/sourcey-docs\",\n    \"objective\": \"Hosted dogfood least privilege plan for Frantic bounty 37.\",\n    \"policy_id\": \"runx-policy-demo-v1\",\n    \"source_receipts\": [\n      \"runx:receipt:sha256:111\",\n      \"runx:receipt:sha256:222\"\n    ],\n    \"recommendations\": [\n      {\n        \"grant_id\": \"grant-read-all\",\n        \"current_scope\": \"repo.read:github/LubuSeb/sourcey-demo/*\",\n        \"recommendation\": \"reduce\",\n        \"proposed_scope\": \"repo.read:github/LubuSeb/sourcey-demo/issues/81\",\n        \"observed_effects\": [\n          {\n            \"effect_id\": \"e-read-issue\",\n            \"verb\": \"repo.read\",\n            \"resource\": \"github/LubuSeb/sourcey-demo/issues/81\",\n            \"status\": \"success\",\n            \"receipt_ref\": \"runx:receipt:sha256:111#read_issue\"\n          }\n        ],\n        \"policy_input_refs\": [\n          \"policy:repo-read\"\n        ],\n        \"unused_scopes\": [\n          \"repo.read:github/LubuSeb/sourcey-demo/*\"\n        ],\n        \"missing_evidence\": [],\n        \"evidence_refs\": [\n          \"runx:receipt:sha256:111#read_issue\"\n        ],\n        \"rationale\": \"Successful observed effects fit a narrower resource path than the current wildcard grant.\",\n        \"risk_notes\": [\n          \"The reduced scope preserves only the cited resources from this evidence packet.\"\n        ]\n      },\n      {\n        \"grant_id\": \"grant-write-issues\",\n        \"current_scope\": \"repo.write:github/LubuSeb/sourcey-demo/issues/*\",\n        \"recommendation\": \"reduce\",\n        \"proposed_scope\": \"repo.write:github/LubuSeb/sourcey-demo/issues/81/comments\",\n        \"observed_effects\": [\n          {\n            \"effect_id\": \"e-write-comment\",\n            \"verb\": \"repo.write\",\n            \"resource\": \"github/LubuSeb/sourcey-demo/issues/81/comments\",\n            \"status\": \"success\",\n            \"receipt_ref\": \"runx:receipt:sha256:222#comment\"\n          }\n        ],\n        \"policy_input_refs\": [\n          \"policy:issue-write\"\n        ],\n        \"unused_scopes\": [\n          \"repo.write:github/LubuSeb/sourcey-demo/issues/*\"\n        ],\n        \"missing_evidence\": [],\n        \"evidence_refs\": [\n          \"runx:receipt:sha256:222#comment\"\n        ],\n        \"rationale\": \"Successful observed effects fit a narrower resource path than the current wildcard grant.\",\n        \"risk_notes\": [\n          \"The reduced scope preserves only the cited resources from this evidence packet.\"\n        ]\n      },\n      {\n        \"grant_id\": \"grant-delete\",\n        \"current_scope\": \"repo.delete:github/LubuSeb/sourcey-demo/*\",\n        \"recommendation\": \"revoke\",\n        \"proposed_scope\": null,\n        \"observed_effects\": [],\n        \"policy_input_refs\": [\n          \"policy:delete\"\n        ],\n        \"unused_scopes\": [\n          \"repo.delete:github/LubuSeb/sourcey-demo/*\"\n        ],\n        \"missing_evidence\": [],\n        \"evidence_refs\": [],\n        \"rationale\": \"No successful observed effect exercised this grant in the supplied run history.\",\n        \"risk_notes\": [\n          \"Revocation is safe only for the supplied evidence window; future workloads may require new authority.\"\n        ]\n      },\n      {\n        \"grant_id\": \"grant-secret-prod\",\n        \"current_scope\": \"secret.read:prod/*\",\n        \"recommendation\": \"needs_human_review\",\n        \"proposed_scope\": null,\n        \"observed_effects\": [\n          {\n            \"effect_id\": \"e-secret-denied\",\n            \"verb\": \"secret.read\",\n            \"resource\": \"prod/frantic-agent-token\",\n            \"status\": \"denied\",\n            \"receipt_ref\": \"runx:receipt:sha256:222#secret_denied\"\n          }\n        ],\n        \"policy_input_refs\": [\n          \"policy:secret-breakglass\"\n        ],\n        \"unused_scopes\": [\n          \"secret.read:prod/*\"\n        ],\n        \"missing_evidence\": [\n          \"Only a denied check exists; policy owner must decide whether this reserved secret scope is still required.\"\n        ],\n        \"evidence_refs\": [\n          \"runx:receipt:sha256:222#secret_denied\"\n        ],\n        \"rationale\": \"The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.\",\n        \"risk_notes\": [\n          \"Do not revoke or reduce this grant automatically until the missing evidence is resolved.\"\n        ]\n      },\n      {\n        \"grant_id\": \"grant-breakglass\",\n        \"current_scope\": \"incident.breakglass:runx/*\",\n        \"recommendation\": \"keep\",\n        \"proposed_scope\": null,\n        \"observed_effects\": [],\n        \"policy_input_refs\": [\n          \"policy:reserved\"\n        ],\n        \"unused_scopes\": [\n          \"incident.breakglass:runx/*\"\n        ],\n        \"missing_evidence\": [],\n        \"evidence_refs\": [],\n        \"rationale\": \"The declared policy marks this grant as reserved or break-glass authority.\",\n        \"risk_notes\": [\n          \"Reserved grants remain broad by policy; schedule a separate human review if that posture changes.\"\n        ]\n      }\n    ],\n    \"proposed_grants\": [\n      {\n        \"grant_id\": \"grant-read-all\",\n        \"scope\": \"repo.read:github/LubuSeb/sourcey-demo/issues/81\",\n        \"source\": \"reduce\"\n      },\n      {\n        \"grant_id\": \"grant-write-issues\",\n        \"scope\": \"repo.write:github/LubuSeb/sourcey-demo/issues/81/comments\",\n        \"source\": \"reduce\"\n      },\n      {\n        \"grant_id\": \"grant-breakglass\",\n        \"scope\": \"incident.breakglass:runx/*\",\n        \"source\": \"keep\"\n      }\n    ],\n    \"summary\": {\n      \"grant_count\": 5,\n      \"observed_effect_count\": 3,\n      \"recommendation_counts\": {\n        \"keep\": 1,\n        \"reduce\": 2,\n        \"revoke\": 1,\n        \"needs_human_review\": 1\n      }\n    },\n    \"safeguards\": {\n      \"read_only\": true,\n      \"mutates_grants\": false,\n      \"network_required\": false,\n      \"secrets_required\": false\n    }\n  },\n  \"recommendations\": [\n    {\n      \"grant_id\": \"grant-read-all\",\n      \"current_scope\": \"repo.read:github/LubuSeb/sourcey-demo/*\",\n      \"recommendation\": \"reduce\",\n      \"proposed_scope\": \"repo.read:github/LubuSeb/sourcey-demo/issues/81\",\n      \"observed_effects\": [\n        {\n          \"effect_id\": \"e-read-issue\",\n          \"verb\": \"repo.read\",\n          \"resource\": \"github/LubuSeb/sourcey-demo/issues/81\",\n          \"status\": \"success\",\n          \"receipt_ref\": \"runx:receipt:sha256:111#read_issue\"\n        }\n      ],\n      \"policy_input_refs\": [\n        \"policy:repo-read\"\n      ],\n      \"unused_scopes\": [\n        \"repo.read:github/LubuSeb/sourcey-demo/*\"\n      ],\n      \"missing_evidence\": [],\n      \"evidence_refs\": [\n        \"runx:receipt:sha256:111#read_issue\"\n      ],\n      \"rationale\": \"Successful observed effects fit a narrower resource path than the current wildcard grant.\",\n      \"risk_notes\": [\n        \"The reduced scope preserves only the cited resources from this evidence packet.\"\n      ]\n    },\n    {\n      \"grant_id\": \"grant-write-issues\",\n      \"current_scope\": \"repo.write:github/LubuSeb/sourcey-demo/issues/*\",\n      \"recommendation\": \"reduce\",\n      \"proposed_scope\": \"repo.write:github/LubuSeb/sourcey-demo/issues/81/comments\",\n      \"observed_effects\": [\n        {\n          \"effect_id\": \"e-write-comment\",\n          \"verb\": \"repo.write\",\n          \"resource\": \"github/LubuSeb/sourcey-demo/issues/81/comments\",\n          \"status\": \"success\",\n          \"receipt_ref\": \"runx:receipt:sha256:222#comment\"\n        }\n      ],\n      \"policy_input_refs\": [\n        \"policy:issue-write\"\n      ],\n      \"unused_scopes\": [\n        \"repo.write:github/LubuSeb/sourcey-demo/issues/*\"\n      ],\n      \"missing_evidence\": [],\n      \"evidence_refs\": [\n        \"runx:receipt:sha256:222#comment\"\n      ],\n      \"rationale\": \"Successful observed effects fit a narrower resource path than the current wildcard grant.\",\n      \"risk_notes\": [\n        \"The reduced scope preserves only the cited resources from this evidence packet.\"\n      ]\n    },\n    {\n      \"grant_id\": \"grant-delete\",\n      \"current_scope\": \"repo.delete:github/LubuSeb/sourcey-demo/*\",\n      \"recommendation\": \"revoke\",\n      \"proposed_scope\": null,\n      \"observed_effects\": [],\n      \"policy_input_refs\": [\n        \"policy:delete\"\n      ],\n      \"unused_scopes\": [\n        \"repo.delete:github/LubuSeb/sourcey-demo/*\"\n      ],\n      \"missing_evidence\": [],\n      \"evidence_refs\": [],\n      \"rationale\": \"No successful observed effect exercised this grant in the supplied run history.\",\n      \"risk_notes\": [\n        \"Revocation is safe only for the supplied evidence window; future workloads may require new authority.\"\n      ]\n    },\n    {\n      \"grant_id\": \"grant-secret-prod\",\n      \"current_scope\": \"secret.read:prod/*\",\n      \"recommendation\": \"needs_human_review\",\n      \"proposed_scope\": null,\n      \"observed_effects\": [\n        {\n          \"effect_id\": \"e-secret-denied\",\n          \"verb\": \"secret.read\",\n          \"resource\": \"prod/frantic-agent-token\",\n          \"status\": \"denied\",\n          \"receipt_ref\": \"runx:receipt:sha256:222#secret_denied\"\n        }\n      ],\n      \"policy_input_refs\": [\n        \"policy:secret-breakglass\"\n      ],\n      \"unused_scopes\": [\n        \"secret.read:prod/*\"\n      ],\n      \"missing_evidence\": [\n        \"Only a denied check exists; policy owner must decide whether this reserved secret scope is still required.\"\n      ],\n      \"evidence_refs\": [\n        \"runx:receipt:sha256:222#secret_denied\"\n      ],\n      \"rationale\": \"The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.\",\n      \"risk_notes\": [\n        \"Do not revoke or reduce this grant automatically until the missing evidence is resolved.\"\n      ]\n    },\n    {\n      \"grant_id\": \"grant-breakglass\",\n      \"current_scope\": \"incident.breakglass:runx/*\",\n      \"recommendation\": \"keep\",\n      \"proposed_scope\": null,\n      \"observed_effects\": [],\n      \"policy_input_refs\": [\n        \"policy:reserved\"\n      ],\n      \"unused_scopes\": [\n        \"incident.breakglass:runx/*\"\n      ],\n      \"missing_evidence\": [],\n      \"evidence_refs\": [],\n      \"rationale\": \"The declared policy marks this grant as reserved or break-glass authority.\",\n      \"risk_notes\": [\n        \"Reserved grants remain broad by policy; schedule a separate human review if that posture changes.\"\n      ]\n    }\n  ],\n  \"evidence_json\": {\n    \"schema\": \"frantic.delivery.evidence.v1\",\n    \"artifact\": \"least-privilege-plan\",\n    \"observations\": {\n      \"policy_id\": \"runx-policy-demo-v1\",\n      \"policy_digest\": \"sha256:f9de1472ae8508bc4c5d5989263eaee7b7a5b749fb769089eedd6436f0f5adf9\",\n      \"run_history_digest\": \"sha256:7aa9061a8fcb3de014fc3d813dffaae8ccf7eada3faa207932124e173f62a965\",\n      \"subject\": \"skills/sourcey-docs\",\n      \"grant_ids\": [\n        \"grant-read-all\",\n        \"grant-write-issues\",\n        \"grant-delete\",\n        \"grant-secret-prod\",\n        \"grant-breakglass\"\n      ],\n      \"observed_effects\": [\n        {\n          \"effect_id\": \"e-read-issue\",\n          \"grant_id\": \"grant-read-all\",\n          \"verb\": \"repo.read\",\n          \"resource\": \"github/LubuSeb/sourcey-demo/issues/81\",\n          \"status\": \"success\",\n          \"receipt_ref\": \"runx:receipt:sha256:111#read_issue\"\n        },\n        {\n          \"effect_id\": \"e-write-comment\",\n          \"grant_id\": \"grant-write-issues\",\n          \"verb\": \"repo.write\",\n          \"resource\": \"github/LubuSeb/sourcey-demo/issues/81/comments\",\n          \"status\": \"success\",\n          \"receipt_ref\": \"runx:receipt:sha256:222#comment\"\n        },\n        {\n          \"effect_id\": \"e-secret-denied\",\n          \"grant_id\": \"grant-secret-prod\",\n          \"verb\": \"secret.read\",\n          \"resource\": \"prod/frantic-agent-token\",\n          \"status\": \"denied\",\n          \"receipt_ref\": \"runx:receipt:sha256:222#secret_denied\"\n        }\n      ],\n      \"unused_scopes\": [\n        {\n          \"grant_id\": \"grant-delete\",\n          \"scope\": \"repo.delete:github/LubuSeb/sourcey-demo/*\"\n        }\n      ],\n      \"recommendations\": [\n        {\n          \"grant_id\": \"grant-read-all\",\n          \"recommendation\": \"reduce\",\n          \"proposed_scope\": \"repo.read:github/LubuSeb/sourcey-demo/issues/81\",\n          \"evidence_refs\": [\n            \"runx:receipt:sha256:111#read_issue\"\n          ]\n        },\n        {\n          \"grant_id\": \"grant-write-issues\",\n          \"recommendation\": \"reduce\",\n          \"proposed_scope\": \"repo.write:github/LubuSeb/sourcey-demo/issues/81/comments\",\n          \"evidence_refs\": [\n            \"runx:receipt:sha256:222#comment\"\n          ]\n        },\n        {\n          \"grant_id\": \"grant-delete\",\n          \"recommendation\": \"revoke\",\n          \"proposed_scope\": null,\n          \"evidence_refs\": []\n        },\n        {\n          \"grant_id\": \"grant-secret-prod\",\n          \"recommendation\": \"needs_human_review\",\n          \"proposed_scope\": null,\n          \"evidence_refs\": [\n            \"runx:receipt:sha256:222#secret_denied\"\n          ]\n        },\n        {\n          \"grant_id\": \"grant-breakglass\",\n          \"recommendation\": \"keep\",\n          \"proposed_scope\": null,\n          \"evidence_refs\": []\n        }\n      ],\n      \"receipt_refs\": [\n        \"runx:receipt:sha256:111\",\n        \"runx:receipt:sha256:222\"\n      ]\n    }\n  },\n  \"report\": \"# least-privilege-plan report\\n\\nSubject: skills/sourcey-docs\\nPolicy: runx-policy-demo-v1\\nStatus: needs_human_review\\nReceipts: runx:receipt:sha256:111, runx:receipt:sha256:222\\n\\n## Recommendations\\n- reduce: grant-read-all repo.read:github/LubuSeb/sourcey-demo/* -> repo.read:github/LubuSeb/sourcey-demo/issues/81 (Successful observed effects fit a narrower resource path than the current wildcard grant.)\\n- reduce: grant-write-issues repo.write:github/LubuSeb/sourcey-demo/issues/* -> repo.write:github/LubuSeb/sourcey-demo/issues/81/comments (Successful observed effects fit a narrower resource path than the current wildcard grant.)\\n- revoke: grant-delete repo.delete:github/LubuSeb/sourcey-demo/* (No successful observed effect exercised this grant in the supplied run history.)\\n- needs_human_review: grant-secret-prod secret.read:prod/* (The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.)\\n- keep: grant-breakglass incident.breakglass:runx/* (The declared policy marks this grant as reserved or break-glass authority.)\\n\\nRead-only: true; mutates grants: false.\"\n}\n",
+    "structured_output": {
+      "evidence_json": {
+        "artifact": "least-privilege-plan",
+        "observations": {
+          "grant_ids": [
+            "grant-read-all",
+            "grant-write-issues",
+            "grant-delete",
+            "grant-secret-prod",
+            "grant-breakglass"
+          ],
+          "observed_effects": [
+            {
+              "effect_id": "e-read-issue",
+              "grant_id": "grant-read-all",
+              "receipt_ref": "runx:receipt:sha256:111#read_issue",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81",
+              "status": "success",
+              "verb": "repo.read"
+            },
+            {
+              "effect_id": "e-write-comment",
+              "grant_id": "grant-write-issues",
+              "receipt_ref": "runx:receipt:sha256:222#comment",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+              "status": "success",
+              "verb": "repo.write"
+            },
+            {
+              "effect_id": "e-secret-denied",
+              "grant_id": "grant-secret-prod",
+              "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+              "resource": "prod/frantic-agent-token",
+              "status": "denied",
+              "verb": "secret.read"
+            }
+          ],
+          "policy_digest": "sha256:f9de1472ae8508bc4c5d5989263eaee7b7a5b749fb769089eedd6436f0f5adf9",
+          "policy_id": "runx-policy-demo-v1",
+          "receipt_refs": [
+            "runx:receipt:sha256:111",
+            "runx:receipt:sha256:222"
+          ],
+          "recommendations": [
+            {
+              "evidence_refs": [
+                "runx:receipt:sha256:111#read_issue"
+              ],
+              "grant_id": "grant-read-all",
+              "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+              "recommendation": "reduce"
+            },
+            {
+              "evidence_refs": [
+                "runx:receipt:sha256:222#comment"
+              ],
+              "grant_id": "grant-write-issues",
+              "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+              "recommendation": "reduce"
+            },
+            {
+              "evidence_refs": [],
+              "grant_id": "grant-delete",
+              "proposed_scope": null,
+              "recommendation": "revoke"
+            },
+            {
+              "evidence_refs": [
+                "runx:receipt:sha256:222#secret_denied"
+              ],
+              "grant_id": "grant-secret-prod",
+              "proposed_scope": null,
+              "recommendation": "needs_human_review"
+            },
+            {
+              "evidence_refs": [],
+              "grant_id": "grant-breakglass",
+              "proposed_scope": null,
+              "recommendation": "keep"
+            }
+          ],
+          "run_history_digest": "sha256:7aa9061a8fcb3de014fc3d813dffaae8ccf7eada3faa207932124e173f62a965",
+          "subject": "skills/sourcey-docs",
+          "unused_scopes": [
+            {
+              "grant_id": "grant-delete",
+              "scope": "repo.delete:github/LubuSeb/sourcey-demo/*"
+            }
+          ]
+        },
+        "schema": "frantic.delivery.evidence.v1"
+      },
+      "plan": {
+        "objective": "Hosted dogfood least privilege plan for Frantic bounty 37.",
+        "policy_id": "runx-policy-demo-v1",
+        "proposed_grants": [
+          {
+            "grant_id": "grant-read-all",
+            "scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+            "source": "reduce"
+          },
+          {
+            "grant_id": "grant-write-issues",
+            "scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+            "source": "reduce"
+          },
+          {
+            "grant_id": "grant-breakglass",
+            "scope": "incident.breakglass:runx/*",
+            "source": "keep"
+          }
+        ],
+        "recommendations": [
+          {
+            "current_scope": "repo.read:github/LubuSeb/sourcey-demo/*",
+            "evidence_refs": [
+              "runx:receipt:sha256:111#read_issue"
+            ],
+            "grant_id": "grant-read-all",
+            "missing_evidence": [],
+            "observed_effects": [
+              {
+                "effect_id": "e-read-issue",
+                "receipt_ref": "runx:receipt:sha256:111#read_issue",
+                "resource": "github/LubuSeb/sourcey-demo/issues/81",
+                "status": "success",
+                "verb": "repo.read"
+              }
+            ],
+            "policy_input_refs": [
+              "policy:repo-read"
+            ],
+            "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+            "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+            "recommendation": "reduce",
+            "risk_notes": [
+              "The reduced scope preserves only the cited resources from this evidence packet."
+            ],
+            "unused_scopes": [
+              "repo.read:github/LubuSeb/sourcey-demo/*"
+            ]
+          },
+          {
+            "current_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/*",
+            "evidence_refs": [
+              "runx:receipt:sha256:222#comment"
+            ],
+            "grant_id": "grant-write-issues",
+            "missing_evidence": [],
+            "observed_effects": [
+              {
+                "effect_id": "e-write-comment",
+                "receipt_ref": "runx:receipt:sha256:222#comment",
+                "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+                "status": "success",
+                "verb": "repo.write"
+              }
+            ],
+            "policy_input_refs": [
+              "policy:issue-write"
+            ],
+            "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+            "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+            "recommendation": "reduce",
+            "risk_notes": [
+              "The reduced scope preserves only the cited resources from this evidence packet."
+            ],
+            "unused_scopes": [
+              "repo.write:github/LubuSeb/sourcey-demo/issues/*"
+            ]
+          },
+          {
+            "current_scope": "repo.delete:github/LubuSeb/sourcey-demo/*",
+            "evidence_refs": [],
+            "grant_id": "grant-delete",
+            "missing_evidence": [],
+            "observed_effects": [],
+            "policy_input_refs": [
+              "policy:delete"
+            ],
+            "proposed_scope": null,
+            "rationale": "No successful observed effect exercised this grant in the supplied run history.",
+            "recommendation": "revoke",
+            "risk_notes": [
+              "Revocation is safe only for the supplied evidence window; future workloads may require new authority."
+            ],
+            "unused_scopes": [
+              "repo.delete:github/LubuSeb/sourcey-demo/*"
+            ]
+          },
+          {
+            "current_scope": "secret.read:prod/*",
+            "evidence_refs": [
+              "runx:receipt:sha256:222#secret_denied"
+            ],
+            "grant_id": "grant-secret-prod",
+            "missing_evidence": [
+              "Only a denied check exists; policy owner must decide whether this reserved secret scope is still required."
+            ],
+            "observed_effects": [
+              {
+                "effect_id": "e-secret-denied",
+                "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+                "resource": "prod/frantic-agent-token",
+                "status": "denied",
+                "verb": "secret.read"
+              }
+            ],
+            "policy_input_refs": [
+              "policy:secret-breakglass"
+            ],
+            "proposed_scope": null,
+            "rationale": "The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.",
+            "recommendation": "needs_human_review",
+            "risk_notes": [
+              "Do not revoke or reduce this grant automatically until the missing evidence is resolved."
+            ],
+            "unused_scopes": [
+              "secret.read:prod/*"
+            ]
+          },
+          {
+            "current_scope": "incident.breakglass:runx/*",
+            "evidence_refs": [],
+            "grant_id": "grant-breakglass",
+            "missing_evidence": [],
+            "observed_effects": [],
+            "policy_input_refs": [
+              "policy:reserved"
+            ],
+            "proposed_scope": null,
+            "rationale": "The declared policy marks this grant as reserved or break-glass authority.",
+            "recommendation": "keep",
+            "risk_notes": [
+              "Reserved grants remain broad by policy; schedule a separate human review if that posture changes."
+            ],
+            "unused_scopes": [
+              "incident.breakglass:runx/*"
+            ]
+          }
+        ],
+        "safeguards": {
+          "mutates_grants": false,
+          "network_required": false,
+          "read_only": true,
+          "secrets_required": false
+        },
+        "schema": "runx.security.least_privilege_plan.v1",
+        "source_receipts": [
+          "runx:receipt:sha256:111",
+          "runx:receipt:sha256:222"
+        ],
+        "status": "needs_human_review",
+        "subject": "skills/sourcey-docs",
+        "summary": {
+          "grant_count": 5,
+          "observed_effect_count": 3,
+          "recommendation_counts": {
+            "keep": 1,
+            "needs_human_review": 1,
+            "reduce": 2,
+            "revoke": 1
+          }
+        }
+      },
+      "recommendations": [
+        {
+          "current_scope": "repo.read:github/LubuSeb/sourcey-demo/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:111#read_issue"
+          ],
+          "grant_id": "grant-read-all",
+          "missing_evidence": [],
+          "observed_effects": [
+            {
+              "effect_id": "e-read-issue",
+              "receipt_ref": "runx:receipt:sha256:111#read_issue",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81",
+              "status": "success",
+              "verb": "repo.read"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:repo-read"
+          ],
+          "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+          "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+          "recommendation": "reduce",
+          "risk_notes": [
+            "The reduced scope preserves only the cited resources from this evidence packet."
+          ],
+          "unused_scopes": [
+            "repo.read:github/LubuSeb/sourcey-demo/*"
+          ]
+        },
+        {
+          "current_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:222#comment"
+          ],
+          "grant_id": "grant-write-issues",
+          "missing_evidence": [],
+          "observed_effects": [
+            {
+              "effect_id": "e-write-comment",
+              "receipt_ref": "runx:receipt:sha256:222#comment",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+              "status": "success",
+              "verb": "repo.write"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:issue-write"
+          ],
+          "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+          "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+          "recommendation": "reduce",
+          "risk_notes": [
+            "The reduced scope preserves only the cited resources from this evidence packet."
+          ],
+          "unused_scopes": [
+            "repo.write:github/LubuSeb/sourcey-demo/issues/*"
+          ]
+        },
+        {
+          "current_scope": "repo.delete:github/LubuSeb/sourcey-demo/*",
+          "evidence_refs": [],
+          "grant_id": "grant-delete",
+          "missing_evidence": [],
+          "observed_effects": [],
+          "policy_input_refs": [
+            "policy:delete"
+          ],
+          "proposed_scope": null,
+          "rationale": "No successful observed effect exercised this grant in the supplied run history.",
+          "recommendation": "revoke",
+          "risk_notes": [
+            "Revocation is safe only for the supplied evidence window; future workloads may require new authority."
+          ],
+          "unused_scopes": [
+            "repo.delete:github/LubuSeb/sourcey-demo/*"
+          ]
+        },
+        {
+          "current_scope": "secret.read:prod/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:222#secret_denied"
+          ],
+          "grant_id": "grant-secret-prod",
+          "missing_evidence": [
+            "Only a denied check exists; policy owner must decide whether this reserved secret scope is still required."
+          ],
+          "observed_effects": [
+            {
+              "effect_id": "e-secret-denied",
+              "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+              "resource": "prod/frantic-agent-token",
+              "status": "denied",
+              "verb": "secret.read"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:secret-breakglass"
+          ],
+          "proposed_scope": null,
+          "rationale": "The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.",
+          "recommendation": "needs_human_review",
+          "risk_notes": [
+            "Do not revoke or reduce this grant automatically until the missing evidence is resolved."
+          ],
+          "unused_scopes": [
+            "secret.read:prod/*"
+          ]
+        },
+        {
+          "current_scope": "incident.breakglass:runx/*",
+          "evidence_refs": [],
+          "grant_id": "grant-breakglass",
+          "missing_evidence": [],
+          "observed_effects": [],
+          "policy_input_refs": [
+            "policy:reserved"
+          ],
+          "proposed_scope": null,
+          "rationale": "The declared policy marks this grant as reserved or break-glass authority.",
+          "recommendation": "keep",
+          "risk_notes": [
+            "Reserved grants remain broad by policy; schedule a separate human review if that posture changes."
+          ],
+          "unused_scopes": [
+            "incident.breakglass:runx/*"
+          ]
+        }
+      ],
+      "report": "# least-privilege-plan report\n\nSubject: skills/sourcey-docs\nPolicy: runx-policy-demo-v1\nStatus: needs_human_review\nReceipts: runx:receipt:sha256:111, runx:receipt:sha256:222\n\n## Recommendations\n- reduce: grant-read-all repo.read:github/LubuSeb/sourcey-demo/* -> repo.read:github/LubuSeb/sourcey-demo/issues/81 (Successful observed effects fit a narrower resource path than the current wildcard grant.)\n- reduce: grant-write-issues repo.write:github/LubuSeb/sourcey-demo/issues/* -> repo.write:github/LubuSeb/sourcey-demo/issues/81/comments (Successful observed effects fit a narrower resource path than the current wildcard grant.)\n- revoke: grant-delete repo.delete:github/LubuSeb/sourcey-demo/* (No successful observed effect exercised this grant in the supplied run history.)\n- needs_human_review: grant-secret-prod secret.read:prod/* (The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.)\n- keep: grant-breakglass incident.breakglass:runx/* (The declared policy marks this grant as reserved or break-glass authority.)\n\nRead-only: true; mutates grants: false."
+    }
+  },
+  "payload": {
+    "evidence_json": {
+      "artifact": "least-privilege-plan",
+      "observations": {
+        "grant_ids": [
+          "grant-read-all",
+          "grant-write-issues",
+          "grant-delete",
+          "grant-secret-prod",
+          "grant-breakglass"
+        ],
+        "observed_effects": [
+          {
+            "effect_id": "e-read-issue",
+            "grant_id": "grant-read-all",
+            "receipt_ref": "runx:receipt:sha256:111#read_issue",
+            "resource": "github/LubuSeb/sourcey-demo/issues/81",
+            "status": "success",
+            "verb": "repo.read"
+          },
+          {
+            "effect_id": "e-write-comment",
+            "grant_id": "grant-write-issues",
+            "receipt_ref": "runx:receipt:sha256:222#comment",
+            "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+            "status": "success",
+            "verb": "repo.write"
+          },
+          {
+            "effect_id": "e-secret-denied",
+            "grant_id": "grant-secret-prod",
+            "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+            "resource": "prod/frantic-agent-token",
+            "status": "denied",
+            "verb": "secret.read"
+          }
+        ],
+        "policy_digest": "sha256:f9de1472ae8508bc4c5d5989263eaee7b7a5b749fb769089eedd6436f0f5adf9",
+        "policy_id": "runx-policy-demo-v1",
+        "receipt_refs": [
+          "runx:receipt:sha256:111",
+          "runx:receipt:sha256:222"
+        ],
+        "recommendations": [
+          {
+            "evidence_refs": [
+              "runx:receipt:sha256:111#read_issue"
+            ],
+            "grant_id": "grant-read-all",
+            "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+            "recommendation": "reduce"
+          },
+          {
+            "evidence_refs": [
+              "runx:receipt:sha256:222#comment"
+            ],
+            "grant_id": "grant-write-issues",
+            "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+            "recommendation": "reduce"
+          },
+          {
+            "evidence_refs": [],
+            "grant_id": "grant-delete",
+            "proposed_scope": null,
+            "recommendation": "revoke"
+          },
+          {
+            "evidence_refs": [
+              "runx:receipt:sha256:222#secret_denied"
+            ],
+            "grant_id": "grant-secret-prod",
+            "proposed_scope": null,
+            "recommendation": "needs_human_review"
+          },
+          {
+            "evidence_refs": [],
+            "grant_id": "grant-breakglass",
+            "proposed_scope": null,
+            "recommendation": "keep"
+          }
+        ],
+        "run_history_digest": "sha256:7aa9061a8fcb3de014fc3d813dffaae8ccf7eada3faa207932124e173f62a965",
+        "subject": "skills/sourcey-docs",
+        "unused_scopes": [
+          {
+            "grant_id": "grant-delete",
+            "scope": "repo.delete:github/LubuSeb/sourcey-demo/*"
+          }
+        ]
+      },
+      "schema": "frantic.delivery.evidence.v1"
+    },
+    "plan": {
+      "objective": "Hosted dogfood least privilege plan for Frantic bounty 37.",
+      "policy_id": "runx-policy-demo-v1",
+      "proposed_grants": [
+        {
+          "grant_id": "grant-read-all",
+          "scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+          "source": "reduce"
+        },
+        {
+          "grant_id": "grant-write-issues",
+          "scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+          "source": "reduce"
+        },
+        {
+          "grant_id": "grant-breakglass",
+          "scope": "incident.breakglass:runx/*",
+          "source": "keep"
+        }
+      ],
+      "recommendations": [
+        {
+          "current_scope": "repo.read:github/LubuSeb/sourcey-demo/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:111#read_issue"
+          ],
+          "grant_id": "grant-read-all",
+          "missing_evidence": [],
+          "observed_effects": [
+            {
+              "effect_id": "e-read-issue",
+              "receipt_ref": "runx:receipt:sha256:111#read_issue",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81",
+              "status": "success",
+              "verb": "repo.read"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:repo-read"
+          ],
+          "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+          "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+          "recommendation": "reduce",
+          "risk_notes": [
+            "The reduced scope preserves only the cited resources from this evidence packet."
+          ],
+          "unused_scopes": [
+            "repo.read:github/LubuSeb/sourcey-demo/*"
+          ]
+        },
+        {
+          "current_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:222#comment"
+          ],
+          "grant_id": "grant-write-issues",
+          "missing_evidence": [],
+          "observed_effects": [
+            {
+              "effect_id": "e-write-comment",
+              "receipt_ref": "runx:receipt:sha256:222#comment",
+              "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+              "status": "success",
+              "verb": "repo.write"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:issue-write"
+          ],
+          "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+          "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+          "recommendation": "reduce",
+          "risk_notes": [
+            "The reduced scope preserves only the cited resources from this evidence packet."
+          ],
+          "unused_scopes": [
+            "repo.write:github/LubuSeb/sourcey-demo/issues/*"
+          ]
+        },
+        {
+          "current_scope": "repo.delete:github/LubuSeb/sourcey-demo/*",
+          "evidence_refs": [],
+          "grant_id": "grant-delete",
+          "missing_evidence": [],
+          "observed_effects": [],
+          "policy_input_refs": [
+            "policy:delete"
+          ],
+          "proposed_scope": null,
+          "rationale": "No successful observed effect exercised this grant in the supplied run history.",
+          "recommendation": "revoke",
+          "risk_notes": [
+            "Revocation is safe only for the supplied evidence window; future workloads may require new authority."
+          ],
+          "unused_scopes": [
+            "repo.delete:github/LubuSeb/sourcey-demo/*"
+          ]
+        },
+        {
+          "current_scope": "secret.read:prod/*",
+          "evidence_refs": [
+            "runx:receipt:sha256:222#secret_denied"
+          ],
+          "grant_id": "grant-secret-prod",
+          "missing_evidence": [
+            "Only a denied check exists; policy owner must decide whether this reserved secret scope is still required."
+          ],
+          "observed_effects": [
+            {
+              "effect_id": "e-secret-denied",
+              "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+              "resource": "prod/frantic-agent-token",
+              "status": "denied",
+              "verb": "secret.read"
+            }
+          ],
+          "policy_input_refs": [
+            "policy:secret-breakglass"
+          ],
+          "proposed_scope": null,
+          "rationale": "The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.",
+          "recommendation": "needs_human_review",
+          "risk_notes": [
+            "Do not revoke or reduce this grant automatically until the missing evidence is resolved."
+          ],
+          "unused_scopes": [
+            "secret.read:prod/*"
+          ]
+        },
+        {
+          "current_scope": "incident.breakglass:runx/*",
+          "evidence_refs": [],
+          "grant_id": "grant-breakglass",
+          "missing_evidence": [],
+          "observed_effects": [],
+          "policy_input_refs": [
+            "policy:reserved"
+          ],
+          "proposed_scope": null,
+          "rationale": "The declared policy marks this grant as reserved or break-glass authority.",
+          "recommendation": "keep",
+          "risk_notes": [
+            "Reserved grants remain broad by policy; schedule a separate human review if that posture changes."
+          ],
+          "unused_scopes": [
+            "incident.breakglass:runx/*"
+          ]
+        }
+      ],
+      "safeguards": {
+        "mutates_grants": false,
+        "network_required": false,
+        "read_only": true,
+        "secrets_required": false
+      },
+      "schema": "runx.security.least_privilege_plan.v1",
+      "source_receipts": [
+        "runx:receipt:sha256:111",
+        "runx:receipt:sha256:222"
+      ],
+      "status": "needs_human_review",
+      "subject": "skills/sourcey-docs",
+      "summary": {
+        "grant_count": 5,
+        "observed_effect_count": 3,
+        "recommendation_counts": {
+          "keep": 1,
+          "needs_human_review": 1,
+          "reduce": 2,
+          "revoke": 1
+        }
+      }
+    },
+    "recommendations": [
+      {
+        "current_scope": "repo.read:github/LubuSeb/sourcey-demo/*",
+        "evidence_refs": [
+          "runx:receipt:sha256:111#read_issue"
+        ],
+        "grant_id": "grant-read-all",
+        "missing_evidence": [],
+        "observed_effects": [
+          {
+            "effect_id": "e-read-issue",
+            "receipt_ref": "runx:receipt:sha256:111#read_issue",
+            "resource": "github/LubuSeb/sourcey-demo/issues/81",
+            "status": "success",
+            "verb": "repo.read"
+          }
+        ],
+        "policy_input_refs": [
+          "policy:repo-read"
+        ],
+        "proposed_scope": "repo.read:github/LubuSeb/sourcey-demo/issues/81",
+        "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+        "recommendation": "reduce",
+        "risk_notes": [
+          "The reduced scope preserves only the cited resources from this evidence packet."
+        ],
+        "unused_scopes": [
+          "repo.read:github/LubuSeb/sourcey-demo/*"
+        ]
+      },
+      {
+        "current_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/*",
+        "evidence_refs": [
+          "runx:receipt:sha256:222#comment"
+        ],
+        "grant_id": "grant-write-issues",
+        "missing_evidence": [],
+        "observed_effects": [
+          {
+            "effect_id": "e-write-comment",
+            "receipt_ref": "runx:receipt:sha256:222#comment",
+            "resource": "github/LubuSeb/sourcey-demo/issues/81/comments",
+            "status": "success",
+            "verb": "repo.write"
+          }
+        ],
+        "policy_input_refs": [
+          "policy:issue-write"
+        ],
+        "proposed_scope": "repo.write:github/LubuSeb/sourcey-demo/issues/81/comments",
+        "rationale": "Successful observed effects fit a narrower resource path than the current wildcard grant.",
+        "recommendation": "reduce",
+        "risk_notes": [
+          "The reduced scope preserves only the cited resources from this evidence packet."
+        ],
+        "unused_scopes": [
+          "repo.write:github/LubuSeb/sourcey-demo/issues/*"
+        ]
+      },
+      {
+        "current_scope": "repo.delete:github/LubuSeb/sourcey-demo/*",
+        "evidence_refs": [],
+        "grant_id": "grant-delete",
+        "missing_evidence": [],
+        "observed_effects": [],
+        "policy_input_refs": [
+          "policy:delete"
+        ],
+        "proposed_scope": null,
+        "rationale": "No successful observed effect exercised this grant in the supplied run history.",
+        "recommendation": "revoke",
+        "risk_notes": [
+          "Revocation is safe only for the supplied evidence window; future workloads may require new authority."
+        ],
+        "unused_scopes": [
+          "repo.delete:github/LubuSeb/sourcey-demo/*"
+        ]
+      },
+      {
+        "current_scope": "secret.read:prod/*",
+        "evidence_refs": [
+          "runx:receipt:sha256:222#secret_denied"
+        ],
+        "grant_id": "grant-secret-prod",
+        "missing_evidence": [
+          "Only a denied check exists; policy owner must decide whether this reserved secret scope is still required."
+        ],
+        "observed_effects": [
+          {
+            "effect_id": "e-secret-denied",
+            "receipt_ref": "runx:receipt:sha256:222#secret_denied",
+            "resource": "prod/frantic-agent-token",
+            "status": "denied",
+            "verb": "secret.read"
+          }
+        ],
+        "policy_input_refs": [
+          "policy:secret-breakglass"
+        ],
+        "proposed_scope": null,
+        "rationale": "The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.",
+        "recommendation": "needs_human_review",
+        "risk_notes": [
+          "Do not revoke or reduce this grant automatically until the missing evidence is resolved."
+        ],
+        "unused_scopes": [
+          "secret.read:prod/*"
+        ]
+      },
+      {
+        "current_scope": "incident.breakglass:runx/*",
+        "evidence_refs": [],
+        "grant_id": "grant-breakglass",
+        "missing_evidence": [],
+        "observed_effects": [],
+        "policy_input_refs": [
+          "policy:reserved"
+        ],
+        "proposed_scope": null,
+        "rationale": "The declared policy marks this grant as reserved or break-glass authority.",
+        "recommendation": "keep",
+        "risk_notes": [
+          "Reserved grants remain broad by policy; schedule a separate human review if that posture changes."
+        ],
+        "unused_scopes": [
+          "incident.breakglass:runx/*"
+        ]
+      }
+    ],
+    "report": "# least-privilege-plan report\n\nSubject: skills/sourcey-docs\nPolicy: runx-policy-demo-v1\nStatus: needs_human_review\nReceipts: runx:receipt:sha256:111, runx:receipt:sha256:222\n\n## Recommendations\n- reduce: grant-read-all repo.read:github/LubuSeb/sourcey-demo/* -> repo.read:github/LubuSeb/sourcey-demo/issues/81 (Successful observed effects fit a narrower resource path than the current wildcard grant.)\n- reduce: grant-write-issues repo.write:github/LubuSeb/sourcey-demo/issues/* -> repo.write:github/LubuSeb/sourcey-demo/issues/81/comments (Successful observed effects fit a narrower resource path than the current wildcard grant.)\n- revoke: grant-delete repo.delete:github/LubuSeb/sourcey-demo/* (No successful observed effect exercised this grant in the supplied run history.)\n- needs_human_review: grant-secret-prod secret.read:prod/* (The grant has missing or denied evidence that could change the attenuation decision; a policy owner must review it.)\n- keep: grant-breakglass incident.breakglass:runx/* (The declared policy marks this grant as reserved or break-glass authority.)\n\nRead-only: true; mutates grants: false."
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-22T14:31:33.747Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-22T14:31:33.747Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:a63037f85cb3d49f57a81b2c83cbd2b4407c1f7e9652b19077b365147d0664a1",
+    "id": "sha256:fd396e6bf878658a9d3c745a5c4d228c95bc6c45008a298cb2bbe2d2f2b13d5f",
+    "idempotency": {
+      "content_hash": "sha256:run_default_799e8544dbfd-default-content",
+      "intent_key": "sha256:run_default_799e8544dbfd-default-intent",
+      "trigger_fingerprint": "sha256:run_default_799e8544dbfd-default-trigger"
+    },
+    "issuer": {
+      "kid": "local:bountybar-frantic-runx-22-20260618192655",
+      "public_key_sha256": "sha256:afae74faf1b1b104b27d788bee2dd0982052af89a1ae30b3282f1a14b0707871",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-22T14:31:33.747Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-22T14:31:33.747Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:l50JZnqIVzm865x_KGQ2iBSY7RfIyUI5YsiK1p4onLdzTcaDzL5q7Ig8nR5W1KUiaPNLE2YrHq2QtpOeiNQtDw"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_default_799e8544dbfd_default"
+      }
+    }
+  },
+  "receipt_id": "sha256:fd396e6bf878658a9d3c745a5c4d228c95bc6c45008a298cb2bbe2d2f2b13d5f",
+  "registry_provenance": {
+    "digest": "sha256:09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
+    "profile_digest": "sha256:f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "lubuseb/least-privilege-plan",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-e2d0eec62745"
+  },
+  "run_id": "run_default_799e8544dbfd",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "least-privilege-plan",
+  "status": "sealed"
+}

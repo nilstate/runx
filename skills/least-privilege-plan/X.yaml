@@ -1,0 +1,171 @@
+skill: least-privilege-plan
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  side_effects: none
+  grant_mutation: denied
+  network_during_run: denied
+  secrets_required: false
+  filesystem:
+    read: []
+    write: []
+
+harness:
+  cases:
+    - name: over-broad-grant-plan
+      runner: default
+      inputs:
+        objective: "Prepare a hosted skill for grant reduction before renewal."
+        policy:
+          policy_id: runx-policy-demo-v1
+          review_rules:
+            wildcard_reduction_allowed: true
+            require_human_review_for_denied_secret: true
+          reserved_grants:
+            - grant-breakglass
+        run_history_packet:
+          subject: skills/sourcey-docs
+          policy_id: runx-policy-demo-v1
+          receipt_refs:
+            - runx:receipt:sha256:111
+            - runx:receipt:sha256:222
+          grants:
+            - grant_id: grant-read-all
+              scope: repo.read:github/LubuSeb/sourcey-demo/*
+              declared_policy_ref: policy:repo-read
+            - grant_id: grant-write-issues
+              scope: repo.write:github/LubuSeb/sourcey-demo/issues/*
+              declared_policy_ref: policy:issue-write
+            - grant_id: grant-delete
+              scope: repo.delete:github/LubuSeb/sourcey-demo/*
+              declared_policy_ref: policy:delete
+            - grant_id: grant-secret-prod
+              scope: secret.read:prod/*
+              declared_policy_ref: policy:secret-breakglass
+            - grant_id: grant-breakglass
+              scope: incident.breakglass:runx/*
+              declared_policy_ref: policy:reserved
+          observed_effects:
+            - effect_id: e-read-issue
+              grant_id: grant-read-all
+              verb: repo.read
+              resource: github/LubuSeb/sourcey-demo/issues/81
+              status: success
+              receipt_ref: runx:receipt:sha256:111#read_issue
+            - effect_id: e-write-comment
+              grant_id: grant-write-issues
+              verb: repo.write
+              resource: github/LubuSeb/sourcey-demo/issues/81/comments
+              status: success
+              receipt_ref: runx:receipt:sha256:222#comment
+            - effect_id: e-secret-denied
+              grant_id: grant-secret-prod
+              verb: secret.read
+              resource: prod/frantic-agent-token
+              status: denied
+              receipt_ref: runx:receipt:sha256:222#secret_denied
+          missing_evidence:
+            - grant_id: grant-secret-prod
+              reason: "Only a denied check exists; policy owner must decide whether this reserved secret scope is still required."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: justified-grant-plan
+      runner: default
+      inputs:
+        objective: "Check that observed usage justifies the current production grant."
+        policy:
+          policy_id: runx-policy-justified-v1
+          review_rules:
+            wildcard_reduction_allowed: true
+          reserved_grants: []
+        run_history_packet:
+          subject: skills/receipt-verifier
+          policy_id: runx-policy-justified-v1
+          receipt_refs:
+            - runx:receipt:sha256:333
+          grants:
+            - grant_id: grant-receipt-read
+              scope: receipt.read:runx/receipts/sha256:333
+              declared_policy_ref: policy:receipt-read
+            - grant_id: grant-output-read
+              scope: artifact.read:runx/outputs/plan.json
+              declared_policy_ref: policy:artifact-read
+          observed_effects:
+            - effect_id: e-receipt-read
+              grant_id: grant-receipt-read
+              verb: receipt.read
+              resource: runx/receipts/sha256:333
+              status: success
+              receipt_ref: runx:receipt:sha256:333#receipt_read
+            - effect_id: e-output-read
+              grant_id: grant-output-read
+              verb: artifact.read
+              resource: runx/outputs/plan.json
+              status: success
+              receipt_ref: runx:receipt:sha256:333#artifact_read
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: missing-grants-fails-closed
+      runner: default
+      inputs:
+        objective: "Reject incomplete run history packets instead of guessing authority."
+        policy:
+          policy_id: runx-policy-invalid-v1
+          review_rules:
+            wildcard_reduction_allowed: true
+          reserved_grants: []
+        run_history_packet:
+          subject: skills/incomplete
+          policy_id: runx-policy-invalid-v1
+          receipt_refs: []
+          observed_effects: []
+      expect:
+        status: failure
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    input_mode: stdin
+    args:
+      - run.mjs
+    outputs:
+      plan: object
+      recommendations: array
+      evidence_json: object
+      report: string
+    artifacts:
+      wrap_as: least_privilege_plan_packet
+      packet: runx.security.least_privilege_plan.v1
+    inputs:
+      run_history_packet:
+        type: json
+        required: true
+        description: Bounded run history containing grant ids, scopes, effects, receipt refs, and missing evidence.
+      policy:
+        type: json
+        required: true
+        description: Declared least-privilege policy.
+      objective:
+        type: string
+        required: false
+        description: Operator intent for the review.
