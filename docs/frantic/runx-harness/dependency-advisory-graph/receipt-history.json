@@ -3,11 +3,11 @@
   "store_label": ".runx/frantic-receipts/dependency-advisory-graph",
   "receipts": [
     {
-      "id": "sha256:b2491f638ab2c2cdd650904818ded887460a5e228b1ec48a66352b265452770e",
-      "receipt_ref": "runx:receipt:sha256:b2491f638ab2c2cdd650904818ded887460a5e228b1ec48a66352b265452770e",
+      "id": "sha256:b389d21e640a0da109c72dfc1207b874c1fd477faba1bb3f7336351ac6c7c798",
+      "receipt_ref": "runx:receipt:sha256:b389d21e640a0da109c72dfc1207b874c1fd477faba1bb3f7336351ac6c7c798",
       "name": "hrn_run_graph_2be501518296_graph",
       "status": "closed",
-      "created_at": "2026-06-21T23:38:28.451Z",
+      "created_at": "2026-06-22T00:24:32.054Z",
       "harness_id": "hrn_run_graph_2be501518296_graph",
       "harness_state": "sealed",
       "summary": "cli-tool graph completed",
@@ -21,11 +21,11 @@
       }
     },
     {
-      "id": "sha256:d97564cb43f0d76a4dd6172551eae41b3457adaa20d530d45fd30ecb088af2a7",
-      "receipt_ref": "runx:receipt:sha256:d97564cb43f0d76a4dd6172551eae41b3457adaa20d530d45fd30ecb088af2a7",
+      "id": "sha256:592b59e2e113f2b4d220e2d056ec733bdae7cb99dd6c24f4600543dad1620423",
+      "receipt_ref": "runx:receipt:sha256:592b59e2e113f2b4d220e2d056ec733bdae7cb99dd6c24f4600543dad1620423",
       "name": "hrn_run_graph_ba1d5649cf95_graph",
       "status": "closed",
-      "created_at": "2026-06-21T23:38:28.417Z",
+      "created_at": "2026-06-22T00:24:32.016Z",
       "harness_id": "hrn_run_graph_ba1d5649cf95_graph",
       "harness_state": "sealed",
       "summary": "cli-tool graph completed",

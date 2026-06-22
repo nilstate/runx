@@ -8,8 +8,8 @@
     "receipt-evidence-malformed-ref"
   ],
   "receipt_ids": [
-    "sha256:f8aa22049908252d7ff02ba34824b0947092dfb5762abe447753c1304b11b4c8",
-    "sha256:f6baa1f6042c2103bcfdf4b51c943c4900f537b089862d9b10119c542b0d54c8"
+    "sha256:dc05638741b26eb74fd11bc84ebe92fbb20b0ec3c2f98cfa2c32d2d0d3085f8f",
+    "sha256:e3fe33a25b4e4db51cc9f1179d45f2b4b472a09439c41bea098542bf5ab77fb2"
   ],
   "graph_case_count": 0
 }

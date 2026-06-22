@@ -3,11 +3,11 @@
   "store_label": ".runx/frantic-receipts/standup-digest",
   "receipts": [
     {
-      "id": "sha256:9a89990c0c1a382ff455db1b8c5271b1e5df9a5510b351ab132fe5cf496fff7e",
-      "receipt_ref": "runx:receipt:sha256:9a89990c0c1a382ff455db1b8c5271b1e5df9a5510b351ab132fe5cf496fff7e",
+      "id": "sha256:d784dbecd219229734e0ddbbcb652a05a303125eefb5947baf0dfdbc414865ae",
+      "receipt_ref": "runx:receipt:sha256:d784dbecd219229734e0ddbbcb652a05a303125eefb5947baf0dfdbc414865ae",
       "name": "hrn_run_digest_c691c0dba313_digest",
       "status": "closed",
-      "created_at": "2026-06-21T23:38:27.573Z",
+      "created_at": "2026-06-22T00:24:31.174Z",
       "harness_id": "hrn_run_digest_c691c0dba313_digest",
       "harness_state": "sealed",
       "summary": "cli-tool digest completed",
@@ -21,11 +21,11 @@
       }
     },
     {
-      "id": "sha256:124ac6d9f07e7d081a75f24cfdda710ede6d911b6cee4756b5febb05b14ef1f9",
-      "receipt_ref": "runx:receipt:sha256:124ac6d9f07e7d081a75f24cfdda710ede6d911b6cee4756b5febb05b14ef1f9",
+      "id": "sha256:181823c26445c1b2f78a42c1948502320a62187be5667d808f8f27cd59a2cbee",
+      "receipt_ref": "runx:receipt:sha256:181823c26445c1b2f78a42c1948502320a62187be5667d808f8f27cd59a2cbee",
       "name": "hrn_run_digest_b05fd37cddb5_digest",
       "status": "closed",
-      "created_at": "2026-06-21T23:38:27.535Z",
+      "created_at": "2026-06-22T00:24:31.138Z",
       "harness_id": "hrn_run_digest_b05fd37cddb5_digest",
       "harness_state": "sealed",
       "summary": "cli-tool digest completed",
