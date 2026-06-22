@@ -1,0 +1,29 @@
+﻿{
+  "schema": "frantic.runx-love.evidence.v1",
+  "bounty_number": 49,
+  "bounty_title": "Give runx some love",
+  "payout_usd": 0,
+  "status": "prepared_preflight_only",
+  "action_mode": "goodwill_delivery_after_private_token_claim",
+  "public_url": "https://github.com/runxhq/runx/pull/107",
+  "pr_url": "https://github.com/runxhq/runx/pull/107",
+  "support_action_type": "useful public pull request and verification report",
+  "summary": "Public PR #107 adds a six-package Frantic/runx workbench with reproducible skill packages, registry references, harness evidence, receipt references, install checks, and delivery packets. This is useful to maintainers and future contributors because it shows concrete runx skill patterns and reviewer-checkable evidence.",
+  "why_useful": [
+    "Shows real examples of runx skill packages with X.yaml, SKILL.md, fixtures, and harness evidence.",
+    "Keeps proof public and stranger-checkable through GitHub, runx registry links, receipt refs, and reports.",
+    "Demonstrates how Frantic deliveries can be prepared without private data, screenshots-only proof, or token leakage.",
+    "Gives maintainers reviewable material for improving the runx skill and delivery workflow."
+  ],
+  "privacy": {
+    "private_tokens_included": false,
+    "payout_or_wallet_details_included": false,
+    "screenshots_only": false,
+    "publicly_fetchable": true
+  },
+  "observations": [
+    "The support action is a real public PR, not a star-only or duplicate promotion.",
+    "The PR is tied to runx usage directly and includes concrete examples future contributors can inspect.",
+    "Final Frantic claim/delivery still requires agent_token, so this packet is prepared but not submitted from Codex under the no-private-info rule."
+  ]
+}
