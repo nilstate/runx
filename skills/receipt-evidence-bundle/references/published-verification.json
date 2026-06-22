@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/zjs/runx-published-dogfood",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:01ddd962bb2f82226db4069708a92fe011591863288bb1e919e21aefc922aeb7",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

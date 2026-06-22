@@ -36,11 +36,15 @@
     },
     {
       "claim": "The dogfood receipt is cryptographically valid.",
-      "evidence": "references/verification.json records valid true with no findings."
+      "evidence": "references/verification.json and references/published-verification.json record valid true with no findings."
     },
     {
       "claim": "The implementation, execution profile, harness output, dogfood receipt, verification result, and reviewer report are public-source artifacts.",
       "evidence": "They are stored together under skills/receipt-evidence-bundle in the source branch."
+    },
+    {
+      "claim": "The hosted registry package was installed and executed successfully.",
+      "evidence": "references/published-dogfood.json records registry provenance for zdfgu113/receipt-evidence-bundle@sha-10906284d6d7 and a sealed run."
     }
   ],
   "commands": [
@@ -50,10 +54,12 @@
   ],
   "artifacts": {
     "source_branch": "https://github.com/zdfgu113/runx/tree/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle",
+    "pr_url": "https://github.com/runxhq/runx/pull/117",
     "registry_target": "https://runx.ai/x/zdfgu113/receipt-evidence-bundle",
+    "registry_ref": "zdfgu113/receipt-evidence-bundle@sha-10906284d6d7",
     "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle/X.yaml",
     "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle/SKILL.md",
-    "verification_json": "https://raw.githubusercontent.com/zdfgu113/runx/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle/references/verification.json",
-    "receipt_ref": "sha256:63deddf28a3f5712f3109bf81bd8e59b9daa972e2b90878a1d839467ae360157"
+    "verification_json": "https://raw.githubusercontent.com/zdfgu113/runx/codex/receipt-evidence-bundle/skills/receipt-evidence-bundle/references/published-verification.json",
+    "receipt_ref": "sha256:01ddd962bb2f82226db4069708a92fe011591863288bb1e919e21aefc922aeb7"
   }
 }

@@ -1,0 +1,299 @@
+{
+  "closure": {
+    "closed_at": "2026-06-22T14:18:45.072Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool bundle completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "artifact_links": {},
+      "inferred_facts": [
+        {
+          "basis": "No verified receipt names another supplied receipt as its parent; ordering is not inferred.",
+          "inference": "no_supplied_cross_receipt_lineage"
+        }
+      ],
+      "missing_evidence": [
+        "No optional public artifact links were supplied."
+      ],
+      "receipt_count": 1,
+      "redactions": [],
+      "reviewer_actions": [
+        {
+          "action": "replay_receipt_verification",
+          "command": "runx verify --receipt <file-for-runx:receipt:published-demo> --json",
+          "receipt_ref": "runx:receipt:published-demo"
+        }
+      ],
+      "summary": "Verified 1 runx receipt and prepared a reviewer-safe evidence bundle with explicit lineage, authority, gaps, actions, and redaction notes.",
+      "verdict": "verified",
+      "verified_facts": [
+        {
+          "authority_evidence": {
+            "admitted_scopes": [
+              "receipt.verify"
+            ],
+            "grant_digest": null,
+            "kid": "runx-demo-key"
+          },
+          "disposition": null,
+          "lineage": {
+            "parent_receipt_id": null,
+            "root_receipt_id": null
+          },
+          "reason_code": null,
+          "receipt_id": "runx:receipt:published-demo",
+          "receipt_ref": "runx:receipt:published-demo",
+          "schema": "runx.receipt.v1",
+          "state": "sealed",
+          "verify_verdict": "valid"
+        }
+      ]
+    },
+    "stderr": "",
+    "stdout": "{\n  \"summary\": \"Verified 1 runx receipt and prepared a reviewer-safe evidence bundle with explicit lineage, authority, gaps, actions, and redaction notes.\",\n  \"verdict\": \"verified\",\n  \"receipt_count\": 1,\n  \"verified_facts\": [\n    {\n      \"receipt_ref\": \"runx:receipt:published-demo\",\n      \"verify_verdict\": \"valid\",\n      \"receipt_id\": \"runx:receipt:published-demo\",\n      \"schema\": \"runx.receipt.v1\",\n      \"state\": \"sealed\",\n      \"disposition\": null,\n      \"reason_code\": null,\n      \"lineage\": {\n        \"parent_receipt_id\": null,\n        \"root_receipt_id\": null\n      },\n      \"authority_evidence\": {\n        \"kid\": \"runx-demo-key\",\n        \"grant_digest\": null,\n        \"admitted_scopes\": [\n          \"receipt.verify\"\n        ]\n      }\n    }\n  ],\n  \"inferred_facts\": [\n    {\n      \"inference\": \"no_supplied_cross_receipt_lineage\",\n      \"basis\": \"No verified receipt names another supplied receipt as its parent; ordering is not inferred.\"\n    }\n  ],\n  \"missing_evidence\": [\n    \"No optional public artifact links were supplied.\"\n  ],\n  \"reviewer_actions\": [\n    {\n      \"action\": \"replay_receipt_verification\",\n      \"receipt_ref\": \"runx:receipt:published-demo\",\n      \"command\": \"runx verify --receipt <file-for-runx:receipt:published-demo> --json\"\n    }\n  ],\n  \"redactions\": [],\n  \"artifact_links\": {}\n}\n",
+    "structured_output": {
+      "artifact_links": {},
+      "inferred_facts": [
+        {
+          "basis": "No verified receipt names another supplied receipt as its parent; ordering is not inferred.",
+          "inference": "no_supplied_cross_receipt_lineage"
+        }
+      ],
+      "missing_evidence": [
+        "No optional public artifact links were supplied."
+      ],
+      "receipt_count": 1,
+      "redactions": [],
+      "reviewer_actions": [
+        {
+          "action": "replay_receipt_verification",
+          "command": "runx verify --receipt <file-for-runx:receipt:published-demo> --json",
+          "receipt_ref": "runx:receipt:published-demo"
+        }
+      ],
+      "summary": "Verified 1 runx receipt and prepared a reviewer-safe evidence bundle with explicit lineage, authority, gaps, actions, and redaction notes.",
+      "verdict": "verified",
+      "verified_facts": [
+        {
+          "authority_evidence": {
+            "admitted_scopes": [
+              "receipt.verify"
+            ],
+            "grant_digest": null,
+            "kid": "runx-demo-key"
+          },
+          "disposition": null,
+          "lineage": {
+            "parent_receipt_id": null,
+            "root_receipt_id": null
+          },
+          "reason_code": null,
+          "receipt_id": "runx:receipt:published-demo",
+          "receipt_ref": "runx:receipt:published-demo",
+          "schema": "runx.receipt.v1",
+          "state": "sealed",
+          "verify_verdict": "valid"
+        }
+      ]
+    }
+  },
+  "payload": {
+    "artifact_links": {},
+    "inferred_facts": [
+      {
+        "basis": "No verified receipt names another supplied receipt as its parent; ordering is not inferred.",
+        "inference": "no_supplied_cross_receipt_lineage"
+      }
+    ],
+    "missing_evidence": [
+      "No optional public artifact links were supplied."
+    ],
+    "receipt_count": 1,
+    "redactions": [],
+    "reviewer_actions": [
+      {
+        "action": "replay_receipt_verification",
+        "command": "runx verify --receipt <file-for-runx:receipt:published-demo> --json",
+        "receipt_ref": "runx:receipt:published-demo"
+      }
+    ],
+    "summary": "Verified 1 runx receipt and prepared a reviewer-safe evidence bundle with explicit lineage, authority, gaps, actions, and redaction notes.",
+    "verdict": "verified",
+    "verified_facts": [
+      {
+        "authority_evidence": {
+          "admitted_scopes": [
+            "receipt.verify"
+          ],
+          "grant_digest": null,
+          "kid": "runx-demo-key"
+        },
+        "disposition": null,
+        "lineage": {
+          "parent_receipt_id": null,
+          "root_receipt_id": null
+        },
+        "reason_code": null,
+        "receipt_id": "runx:receipt:published-demo",
+        "receipt_ref": "runx:receipt:published-demo",
+        "schema": "runx.receipt.v1",
+        "state": "sealed",
+        "verify_verdict": "valid"
+      }
+    ]
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-22T14:18:45.072Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_bundle",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step bundle",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step bundle",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-22T14:18:45.072Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_bundle",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node bundle",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_bundle",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:bcc19467da32a5b7c7ba0079aba4b98e78c1cd813556d652c6f7c8a15874e153",
+    "id": "sha256:01ddd962bb2f82226db4069708a92fe011591863288bb1e919e21aefc922aeb7",
+    "idempotency": {
+      "content_hash": "sha256:run_bundle_4136c9c3b673-bundle-content",
+      "intent_key": "sha256:run_bundle_4136c9c3b673-bundle-intent",
+      "trigger_fingerprint": "sha256:run_bundle_4136c9c3b673-bundle-trigger"
+    },
+    "issuer": {
+      "kid": "runx-demo-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-22T14:18:45.072Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-22T14:18:45.072Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool bundle completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:7k7Kb7jUZH6a-1-ayKgQivI6PRqm0sOQnBryaiB9d_2smf501JEweawZvn267GP24f3rt66mZCMojqFVfEtaDQ"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_bundle_4136c9c3b673_bundle"
+      }
+    }
+  },
+  "receipt_id": "sha256:01ddd962bb2f82226db4069708a92fe011591863288bb1e919e21aefc922aeb7",
+  "registry_provenance": {
+    "digest": "sha256:97d31d5f48ddfdbde5d0fc3f0e7cf702e6dd8fd0a6447eab7c3ac6049faf4c96",
+    "profile_digest": "sha256:d72c4d15d31c84b08324039b83ebc2ba2b44af6585be3a5b8baeb057dcc5297b",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "zdfgu113/receipt-evidence-bundle",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-10906284d6d7"
+  },
+  "run_id": "run_bundle_4136c9c3b673",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "receipt-evidence-bundle",
+  "status": "sealed"
+}
