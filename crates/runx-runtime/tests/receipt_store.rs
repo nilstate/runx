@@ -340,8 +340,29 @@ fn write_receipt_commits_readable_receipt_and_index() -> Result<(), Box<dyn std:
     assert_eq!(stored.id, receipt.id);
     assert_eq!(index.entries.len(), 1);
     assert_eq!(index.entries[0].receipt_id, receipt.id);
-    assert!(store.root().join(format!("{}.json", receipt.id)).exists());
+    assert!(store.root().join(receipt_file_name(&receipt.id)).exists());
     assert!(store.root().join("index.json").exists());
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn write_receipt_maps_colon_receipt_ids_to_windows_safe_file_names()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let store = LocalReceiptStore::new(temp.path().join("windows-receipts"));
+    let receipt = success_receipt()?;
+
+    store.write_receipt(&receipt)?;
+
+    let file_name = receipt_file_name(&receipt.id);
+    assert!(file_name.contains("%3A"));
+    assert!(!file_name.contains(':'));
+    assert_eq!(store.read_exact(&receipt.id)?.id, receipt.id);
+    assert_eq!(store.list()?.len(), 1);
+    assert_eq!(store.load_index()?.entries[0].receipt_id, receipt.id);
+    assert_eq!(store.rebuild_index()?.entries[0].file_name, file_name);
+    assert!(store.root().join(file_name).exists());
     Ok(())
 }
 
@@ -576,7 +597,17 @@ fn skill_output(status: InvocationStatus) -> SkillOutput {
 }
 
 fn receipt_file_name(receipt_id: &str) -> String {
-    format!("{receipt_id}.json")
+    format!("{}.json", receipt_file_stem(receipt_id))
+}
+
+#[cfg(windows)]
+fn receipt_file_stem(receipt_id: &str) -> String {
+    receipt_id.replace('%', "%25").replace(':', "%3A")
+}
+
+#[cfg(not(windows))]
+fn receipt_file_stem(receipt_id: &str) -> String {
+    receipt_id.to_owned()
 }
 
 fn write_json<T: serde::Serialize>(

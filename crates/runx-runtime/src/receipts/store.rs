@@ -1,7 +1,9 @@
 // rust-style-allow: large-file -- local store read/write/index semantics stay
 // together until the receipt-store API finishes the hard-cutover review.
 use std::ffi::OsStr;
-use std::fs::{self, File, OpenOptions};
+#[cfg(not(windows))]
+use std::fs::File;
+use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -126,10 +128,14 @@ impl LocalReceiptStore {
             if !is_receipt_json_path(&path) {
                 continue;
             }
-            let Some(receipt_id) = path.file_stem().and_then(OsStr::to_str) else {
+            let Some(receipt_id) = path
+                .file_stem()
+                .and_then(OsStr::to_str)
+                .and_then(receipt_id_from_file_stem)
+            else {
                 continue;
             };
-            receipts.push(read_receipt_file(&path, receipt_id, signature_policy)?);
+            receipts.push(read_receipt_file(&path, &receipt_id, signature_policy)?);
         }
         receipts.sort_by(|left, right| left.id.cmp(&right.id));
         Ok(receipts)
@@ -152,10 +158,14 @@ impl LocalReceiptStore {
             if !is_receipt_json_path(&path) {
                 continue;
             }
-            let Some(receipt_id) = path.file_stem().and_then(OsStr::to_str) else {
+            let Some(receipt_id) = path
+                .file_stem()
+                .and_then(OsStr::to_str)
+                .and_then(receipt_id_from_file_stem)
+            else {
                 continue;
             };
-            receipts.push(read_receipt_file_without_proof(&path, receipt_id)?);
+            receipts.push(read_receipt_file_without_proof(&path, &receipt_id)?);
         }
         receipts.sort_by(|left, right| left.id.cmp(&right.id));
         Ok(receipts)
@@ -199,12 +209,15 @@ impl LocalReceiptStore {
         let entries = self
             .list_with_policy(signature_policy)?
             .into_iter()
-            .map(|receipt| ReceiptStoreIndexEntry {
-                receipt_id: receipt.id.to_string(),
-                file_name: format!("{}.json", receipt.id),
-                created_at: receipt.created_at.to_string(),
+            .map(|receipt| {
+                let receipt_id = receipt.id.to_string();
+                Ok(ReceiptStoreIndexEntry {
+                    file_name: receipt_file_name(&receipt_id)?,
+                    receipt_id,
+                    created_at: receipt.created_at.to_string(),
+                })
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, ReceiptStoreError>>()?;
         let index = ReceiptStoreIndex {
             schema: RECEIPT_STORE_INDEX_SCHEMA.to_owned(),
             generated_at: generated_at_nanos(),
@@ -222,12 +235,15 @@ impl LocalReceiptStore {
         let listed = self.list_with_policy(signature_policy)?;
         let listed_entries = listed
             .iter()
-            .map(|receipt| ReceiptStoreIndexEntry {
-                receipt_id: receipt.id.to_string(),
-                file_name: format!("{}.json", receipt.id),
-                created_at: receipt.created_at.to_string(),
+            .map(|receipt| {
+                let receipt_id = receipt.id.to_string();
+                Ok(ReceiptStoreIndexEntry {
+                    file_name: receipt_file_name(&receipt_id)?,
+                    receipt_id,
+                    created_at: receipt.created_at.to_string(),
+                })
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, ReceiptStoreError>>()?;
         if listed_entries != index.entries {
             return Err(ReceiptStoreError::ReceiptIndexStale {
                 path: self.index_path(),
@@ -492,7 +508,7 @@ fn receipt_file_name(receipt_id: &str) -> Result<String, ReceiptStoreError> {
             receipt_id: receipt_id.to_owned(),
         });
     }
-    Ok(format!("{receipt_id}.json"))
+    Ok(format!("{}.json", receipt_id_to_file_stem(receipt_id)))
 }
 
 fn is_receipt_json_path(path: &Path) -> bool {
@@ -504,7 +520,8 @@ fn is_receipt_json_path(path: &Path) -> bool {
         && path
             .file_stem()
             .and_then(OsStr::to_str)
-            .is_some_and(is_receipt_id_stem)
+            .and_then(receipt_id_from_file_stem)
+            .is_some_and(|receipt_id| is_receipt_id_stem(&receipt_id))
 }
 
 fn is_receipt_id_stem(stem: &str) -> bool {
@@ -512,6 +529,27 @@ fn is_receipt_id_stem(stem: &str) -> bool {
         return false;
     };
     digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+#[cfg(windows)]
+fn receipt_id_to_file_stem(receipt_id: &str) -> String {
+    receipt_id.replace('%', "%25").replace(':', "%3A")
+}
+
+#[cfg(not(windows))]
+fn receipt_id_to_file_stem(receipt_id: &str) -> String {
+    receipt_id.to_owned()
+}
+
+#[cfg(windows)]
+fn receipt_id_from_file_stem(stem: &str) -> Option<String> {
+    let receipt_id = stem.replace("%3A", ":").replace("%25", "%");
+    (receipt_id_to_file_stem(&receipt_id) == stem).then_some(receipt_id)
+}
+
+#[cfg(not(windows))]
+fn receipt_id_from_file_stem(stem: &str) -> Option<String> {
+    Some(stem.to_owned())
 }
 
 fn read_receipt_file(
@@ -727,8 +765,14 @@ fn write_temp_file(path: &Path, contents: &[u8], durable: bool) -> Result<(), st
     Ok(())
 }
 
+#[cfg(not(windows))]
 fn sync_directory(path: &Path) -> Result<(), std::io::Error> {
     File::open(path)?.sync_all()
+}
+
+#[cfg(windows)]
+fn sync_directory(_path: &Path) -> Result<(), std::io::Error> {
+    Ok(())
 }
 
 fn temp_file_name(file_name: &str) -> String {
