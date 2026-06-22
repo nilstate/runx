@@ -221,6 +221,25 @@ harness:
           schema: runx.receipt.v1
           state: sealed
           disposition: closed
+
+    - name: missing-policy-needs-agent
+      runner: plan
+      inputs:
+        subject: support-release-agent
+        run_history:
+          window: 2026-05-01/2026-05-31
+          receipt_ids:
+            - runx:receipt:rx-support-101
+          observed_effects:
+            - id: issue-read-101
+              grant_id: repo-access
+              scope: repo.read
+              receipt_ref: runx:receipt:rx-support-101
+          unused_scopes:
+            - repo.write
+        objective: Review standing authority without a declared policy.
+      expect:
+        status: needs_agent
 runners:
   plan:
     default: true

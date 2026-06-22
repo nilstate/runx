@@ -132,7 +132,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/least-privilege-plan",
-        version: "sha-3b16161f95c9",
+        version: "sha-e184f988e172",
         digest: "a49e04cd076ebf3497cdc7d7a0dd7fadb3432a74b661dadf4edf916365725153",
     },
     OfficialSkillLockEntry {

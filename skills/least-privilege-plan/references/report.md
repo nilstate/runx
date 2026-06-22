@@ -25,7 +25,7 @@ grant, policy, credential, provider, or repository mutation.
 - Skill digest:
   `a49e04cd076ebf3497cdc7d7a0dd7fadb3432a74b661dadf4edf916365725153`
 - Profile digest:
-  `31732944e603053b68d83b67248a60928edc6b684e8de8f939b46339f8490926`
+  `2007a15c6f82dcccba4322d482d8d4c2d952fed6e7375eef26261f47b106e76f`
 - Validated base: `ec8e16af1e69af61f6686cb55e46b47b9b507262`
   (`cli-v0.6.13`)
 
@@ -42,10 +42,15 @@ grant, policy, credential, provider, or repository mutation.
 - retaining `repo.read` when policy requires it and two receipts exercise it;
 - preserving the residual authority in the risk notes.
 
-Both fixtures sealed local receipts:
+`missing-policy-needs-agent` covers:
 
-- `sha256:57aab827c43332d9f4ab747515277f701e28058d6661060e0ba123c8135fef8c`
-- `sha256:8f1a93e7c2f1bd81698523f71e8cd4805961910d544993a25898c25122c7a21c`
+- stopping before analysis when the required declared policy is absent;
+- returning the harness-level `needs_agent` disposition without mutating grants.
+
+The two successful cases sealed local receipts:
+
+- `sha256:27d340118e4d0207b0f6ee7ce213f5908d011620837f802facada3dcde518322`
+- `sha256:07bf8a0b49a5eaeae469ce6198fc0e2c33d6dff4b41cc01f80b43806e194e18e`
 
 An additional isolated run sealed:
 
@@ -69,11 +74,11 @@ Result: `runx-cli 0.6.13`.
 runx harness skills/least-privilege-plan --json
 ```
 
-Result: passed, 2 cases, 0 assertion errors.
+Result: passed, 3 cases, 0 assertion errors.
 
-The registry publish gate also reran both inline cases and passed. The exact
-publish-gate receipt ids are recorded in `evidence.json`, which is not part of
-the published package digest.
+The local registry publish gate also reran all three inline cases and passed.
+The exact publish-gate receipt ids are recorded in `evidence.json`, which is
+not part of the published package digest.
 
 The official catalog check accepted the package as `internal` and `canonical`.
 The standalone fixtures remain checked in beside the inline publish cases.
@@ -173,8 +178,8 @@ runx verify --receipt <receipt.json> --json
 This local work is not a complete bounty delivery. The following actions remain
 pending because they publish, push, or submit external state:
 
-1. Claim the bounty through the approved Frantic agent flow.
-2. Push the branch and open the public PR.
+1. Wait for Frantic bounty #37 to expose a valid claim or delivery slot.
+2. Push this harness fix to the existing public PR.
 3. Publish the exact package name under the authenticated runx publisher.
 4. Confirm the hosted registry harness passes.
 5. Install and run the published package on a real bounded policy/history input.
