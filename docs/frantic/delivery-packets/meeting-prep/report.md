@@ -48,3 +48,9 @@
 - URL-as-publish source: https://github.com/rohitmulani63-ops/runx/tree/publish/frantic-meeting-prep-20260622
 - Refreshed at: 2026-06-21T23:57:23Z
 
+## Clean install check
+
+- Command: unx add rohitmulani63-ops/meeting-prep@sha-81163d9984c0 --registry https://api.runx.ai --installation-id frantic-meeting-prep-check --json`r
+- Result: success
+- Install evidence: docs/frantic/install-checks/meeting-prep.json
+

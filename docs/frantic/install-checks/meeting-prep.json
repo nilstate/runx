@@ -1,0 +1,22 @@
+﻿{
+    "schema":  "jarvis.frantic.install_check.v1",
+    "checked_at":  "2026-06-22T00:10:49Z",
+    "skill":  "meeting-prep",
+    "bounty_number":  27,
+    "command":  "runx add rohitmulani63-ops/meeting-prep@sha-81163d9984c0 --registry https://api.runx.ai --installation-id frantic-meeting-prep-check --json",
+    "status":  "success",
+    "ref":  "rohitmulani63-ops/meeting-prep@sha-81163d9984c0",
+    "skill_id":  "rohitmulani63-ops/meeting-prep",
+    "version":  "sha-81163d9984c0",
+    "digest":  "sha256:8e7b3ad489ea036a078baf898809741f89fc66d691a82da14e39dfc4f7d1e539",
+    "profile_digest":  "sha256:5274b270663d3c9ea3f114825808d57a46deeb052f5a0442cbfe98dfc4fb76cd",
+    "trust_tier":  "community",
+    "runner_names":  [
+                         "prep"
+                     ],
+    "notes":  [
+                  "Checked in a throwaway local folder.",
+                  "No private token, payout, wallet, bank, Stripe, ID, or OTP used.",
+                  "Destination path omitted from public packet to avoid machine-local path noise."
+              ]
+}
