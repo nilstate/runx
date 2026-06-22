@@ -1,0 +1,48 @@
+name: digest-with-source-map
+kind: skill
+target: ..
+runner: digest
+inputs:
+  work_events:
+    team: Runtime Ops
+    window: "2026-06-21"
+    events:
+      - id: gh-pr-118
+        type: pull_request
+        status: merged
+        title: Retry guard merged for registry publish
+        timestamp: "2026-06-21T09:20:00Z"
+        url: https://github.com/runxhq/runx/pull/118
+        actor: maintainer
+      - id: build-442
+        type: build
+        status: failed
+        title: Hosted harness failed on registry smoke
+        body: "Pipeline failed because RUNX_REGISTRY_URL was missing; blocked until staging secret is restored."
+        labels:
+          - blocked
+        timestamp: "2026-06-21T10:02:00Z"
+        url: https://ci.example.test/build/442
+        owner: ops
+      - id: note-77
+        type: note
+        title: Payment migration rollback owner still unclear
+        body: "Risk: rollback owner is not assigned before launch rehearsal. Next: assign owner in release plan."
+        labels:
+          - risk
+        timestamp: "2026-06-21T11:30:00Z"
+        owner: release
+  policy:
+    team: Runtime Ops
+    window: "2026-06-21"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: standup-digest
+  source_case: digest-with-source-map
+  source: skills-fixture

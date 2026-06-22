@@ -1,0 +1,24 @@
+{
+  "summary": "Local runx harness replay passed for the standup-digest digest and duplicate/noisy-input fixtures.",
+  "runx_cli": "runx-cli 0.6.13",
+  "signing_key_id": "standup-digest-local-validation",
+  "fixtures": [
+    {
+      "name": "digest-with-source-map",
+      "path": "skills/standup-digest/fixtures/digest-with-source-map.yaml",
+      "receipt_ref": "runx:receipt:sha256:e339a54f649e295712ce8cfc52c8aa6f176cc46ae36248f28752af476fe0a731",
+      "verdict": "passed"
+    },
+    {
+      "name": "dedupes-noisy-input",
+      "path": "skills/standup-digest/fixtures/dedupes-noisy-input.yaml",
+      "receipt_ref": "runx:receipt:sha256:e726db530cafc124f01247673e901404a416d666edf4bf9a12273d3ddda1f643",
+      "verdict": "passed"
+    }
+  ],
+  "commands": [
+    "npx.cmd --yes @runxhq/cli harness skills\\standup-digest\\fixtures\\digest-with-source-map.yaml --json",
+    "npx.cmd --yes @runxhq/cli harness skills\\standup-digest\\fixtures\\dedupes-noisy-input.yaml --json"
+  ],
+  "known_gap": "Directory-level harness replay on this Windows npm path can report a local receipt-store OS error, so the public evidence records the two external fixture harnesses that sealed successfully."
+}

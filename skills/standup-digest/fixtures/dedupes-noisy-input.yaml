@@ -1,0 +1,43 @@
+name: dedupes-noisy-input
+kind: skill
+target: ..
+runner: digest
+inputs:
+  work_events:
+    team: Runtime Ops
+    window: "2026-06-21"
+    events:
+      - id: issue-19
+        type: issue
+        status: open
+        title: Needs review before docs release
+        body: Follow up with docs owner after review requested.
+        timestamp: "2026-06-21T08:10:00Z"
+        url: https://github.com/runxhq/runx/issues/19
+        owner: docs
+      - id: issue-19-copy
+        type: issue
+        status: open
+        title: Needs review before docs release
+        body: Follow up with docs owner after review requested.
+        timestamp: "2026-06-21T08:10:00Z"
+        url: https://github.com/runxhq/runx/issues/19
+        owner: docs
+      - type: note
+        title: Missing id should be skipped
+      - id: empty-body
+        type: note
+  policy:
+    team: Runtime Ops
+    window: "2026-06-21"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: standup-digest
+  source_case: dedupes-noisy-input
+  source: skills-fixture

@@ -1,0 +1,158 @@
+skill: standup-digest
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: digest-with-source-map
+      runner: digest
+      inputs:
+        work_events:
+          team: Runtime Ops
+          window: "2026-06-21"
+          events:
+            - id: gh-pr-118
+              type: pull_request
+              status: merged
+              title: Retry guard merged for registry publish
+              timestamp: "2026-06-21T09:20:00Z"
+              url: https://github.com/runxhq/runx/pull/118
+              actor: maintainer
+            - id: build-442
+              type: build
+              status: failed
+              title: Hosted harness failed on registry smoke
+              body: "Pipeline failed because RUNX_REGISTRY_URL was missing; blocked until staging secret is restored."
+              labels:
+                - blocked
+              timestamp: "2026-06-21T10:02:00Z"
+              url: https://ci.example.test/build/442
+              owner: ops
+            - id: note-77
+              type: note
+              title: Payment migration rollback owner still unclear
+              body: "Risk: rollback owner is not assigned before launch rehearsal. Next: assign owner in release plan."
+              labels:
+                - risk
+              timestamp: "2026-06-21T11:30:00Z"
+              owner: release
+        policy:
+          team: Runtime Ops
+          window: "2026-06-21"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: dedupes-noisy-input
+      runner: digest
+      inputs:
+        work_events:
+          team: Runtime Ops
+          window: "2026-06-21"
+          events:
+            - id: issue-19
+              type: issue
+              status: open
+              title: Needs review before docs release
+              body: Follow up with docs owner after review requested.
+              timestamp: "2026-06-21T08:10:00Z"
+              url: https://github.com/runxhq/runx/issues/19
+              owner: docs
+            - id: issue-19-copy
+              type: issue
+              status: open
+              title: Needs review before docs release
+              body: Follow up with docs owner after review requested.
+              timestamp: "2026-06-21T08:10:00Z"
+              url: https://github.com/runxhq/runx/issues/19
+              owner: docs
+            - type: note
+              title: Missing id should be skipped
+            - id: empty-body
+              type: note
+        policy:
+          team: Runtime Ops
+          window: "2026-06-21"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: missing-work-events-fails
+      runner: digest
+      inputs:
+        policy:
+          team: Runtime Ops
+          window: "2026-06-21"
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runx:
+  mutating: false
+  category: ops
+  scopes:
+    - work_events.read
+  policy:
+    data_classification: bounded_work_events
+    network:
+      allowed: []
+      forbidden:
+        - private repositories
+        - issue trackers outside the provided packet
+        - chat systems outside the provided packet
+    verifier_notes:
+      - Every digest item must cite one or more input event ids.
+      - The runner is deterministic and does not fetch external state.
+
+runners:
+  digest:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - work_events.read
+    policy:
+      reads:
+        - bounded GitHub, issue, build, and note events supplied by the caller
+      writes: []
+      disallows:
+        - fetching live project state
+        - posting to chat
+        - mutating issues or pull requests
+        - inventing uncited work items
+    artifacts:
+      wrap_as: standup_digest_packet
+      packet: runx.ops.standup_digest.v1
+    inputs:
+      work_events:
+        type: json
+        required: true
+        description: Bounded work event packet with events that include id, type, title/body, timestamp, and optional url.
+      policy:
+        type: json
+        required: false
+        description: Digest policy, including team name, reporting window, and blocker labels.
+    outputs:
+      shipped: object
+      blockers: object
+      risks: object
+      next_actions: object
+      source_map: object
+      digest_meta: object
