@@ -1,5 +1,6 @@
 {
   "schema": "runx.inbox_triage.evidence.v1",
+  "summary": "Published runx package lubuseb/inbox-triage@sha-f0bf31ce9a26 was built with runx-cli 0.6.13, clean-installed from the registry, exercised through local and registry dogfood runs, and verified with sealed receipts while preserving a strict human-approval send gate.",
   "package": {
     "owner": "lubuseb",
     "name": "inbox-triage",
@@ -28,7 +29,49 @@
     "registry_dogfood": "runx skill lubuseb/inbox-triage@sha-f0bf31ce9a26 triage --registry https://api.runx.ai --input-json inbox_packet=<fixture> --input-json operator_policy=<fixture> --json",
     "registry_verify": "runx verify --receipt-dir /tmp/runx-inbox-triage-registry-dogfood-receipts --json"
   },
-  "observations": {
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "status": "verified",
+      "detail": "runx --version returned runx-cli 0.6.13, satisfying the posted minimum CLI version."
+    },
+    {
+      "name": "published_package_identity",
+      "status": "verified",
+      "detail": "The published package is lubuseb/inbox-triage@sha-f0bf31ce9a26 with package name inbox-triage and public URL https://runx.ai/x/lubuseb/inbox-triage@sha-f0bf31ce9a26."
+    },
+    {
+      "name": "source_and_pr_artifacts",
+      "status": "verified",
+      "detail": "Public PR https://github.com/runxhq/runx/pull/116 contains skills/inbox-triage/X.yaml, skills/inbox-triage/SKILL.md, fixtures, runner, and evidence files; delivery refs pin raw X.yaml and SKILL.md to the PR head commit."
+    },
+    {
+      "name": "local_harness",
+      "status": "passed",
+      "detail": "runx harness skills/inbox-triage --json passed three cases: safe-product-question, unsafe-send-request, and missing-body-fails."
+    },
+    {
+      "name": "clean_install_and_registry_read",
+      "status": "passed",
+      "detail": "runx add lubuseb/inbox-triage@sha-f0bf31ce9a26 and runx registry read both resolved the published registry package and digests."
+    },
+    {
+      "name": "registry_dogfood_receipt",
+      "status": "verified",
+      "detail": "Registry dogfood run produced runx:receipt:sha256:e367216e48190b7b406dafc6b503ee2a98d90e9210de2e66d2024ed2a966699a and runx verify reported valid true."
+    },
+    {
+      "name": "schema_and_output_contract",
+      "status": "verified",
+      "detail": "The skill accepts bounded inbox_packet and operator_policy inputs and emits classification, triage_queue, draft_reply, gated_send_proposal, and evidence fields."
+    },
+    {
+      "name": "send_gate",
+      "status": "verified",
+      "detail": "The skill never sends email or connects to a mailbox; safe drafts require human approval through gated_send_proposal and unsafe send-bypass requests are blocked."
+    }
+  ],
+  "observation_details": {
     "schema_validation": "X.yaml declares required json inputs inbox_packet and operator_policy, and runner outputs classification, triage_queue, draft_reply, gated_send_proposal, and evidence.",
     "local_harness_status": "passed",
     "local_harness_case_count": 3,
