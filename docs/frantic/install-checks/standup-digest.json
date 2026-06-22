@@ -1,0 +1,22 @@
+﻿{
+    "schema":  "jarvis.frantic.install_check.v1",
+    "checked_at":  "2026-06-22T00:14:35Z",
+    "skill":  "standup-digest",
+    "bounty_number":  36,
+    "command":  "runx add rohitmulani63-ops/standup-digest@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-standup-digest-check --json",
+    "status":  "success",
+    "ref":  "rohitmulani63-ops/standup-digest@sha-f31eb820ba53",
+    "skill_id":  "rohitmulani63-ops/standup-digest",
+    "version":  "sha-f31eb820ba53",
+    "digest":  "sha256:bb8be041aeebb880a37294c6e41010071a4ee75a470f89776046936586a12301",
+    "profile_digest":  "sha256:cae149b3bc1ebec1682fe7a8cc9b7a056eb3bd2d80cd53e86685207eaa89954c",
+    "trust_tier":  "community",
+    "runner_names":  [
+                         "digest"
+                     ],
+    "notes":  [
+                  "Checked in a throwaway local folder.",
+                  "No private token, payout, wallet, bank, Stripe, ID, or OTP used.",
+                  "Destination path omitted from public packet to avoid machine-local path noise."
+              ]
+}

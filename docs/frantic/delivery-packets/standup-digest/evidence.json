@@ -32,7 +32,8 @@
                          "verification_json is public and records runx verify output for the package receipt evidence.",
                          "receipt_ref is included for reviewer traceability and links the work to sealed evidence.",
                          "the package avoids secrets/private data and uses bounded public/operator-provided inputs only.",
-                         "report explains install, source, verification, and review path for a new reviewer without requiring private context."
+                         "report explains install, source, verification, and review path for a new reviewer without requiring private context.",
+                         "clean_install_check=runx add rohitmulani63-ops/standup-digest@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-standup-digest-check --json returned status=success."
                      ],
     "harness_cases":  [
                           "standup-digest-sealed-digest",
@@ -54,5 +55,7 @@
     "registry_publish_method":  "runx URL-as-publish from focused public GitHub branch",
     "frantic_preflight_status":  "pending_after_public_url_refresh",
     "public_url_refreshed_at":  "2026-06-22T00:04:14Z",
-    "structured_evidence_refreshed_at":  "2026-06-22T00:04:14Z"
+    "structured_evidence_refreshed_at":  "2026-06-22T00:04:14Z",
+    "clean_install_status":  "success",
+    "clean_install_checked_at":  "2026-06-22T00:14:35Z"
 }

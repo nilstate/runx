@@ -1,0 +1,22 @@
+﻿{
+    "schema":  "jarvis.frantic.install_check.v1",
+    "checked_at":  "2026-06-22T00:14:35Z",
+    "skill":  "inbox-triage",
+    "bounty_number":  34,
+    "command":  "runx add rohitmulani63-ops/inbox-triage@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-inbox-triage-check --json",
+    "status":  "success",
+    "ref":  "rohitmulani63-ops/inbox-triage@sha-f31eb820ba53",
+    "skill_id":  "rohitmulani63-ops/inbox-triage",
+    "version":  "sha-f31eb820ba53",
+    "digest":  "sha256:45ee583a1372e5dac0c6ae0b939b028e24b54b7ea4a0015ace9db1c1a482ac83",
+    "profile_digest":  "sha256:a11ab2a2bec341ff68e8a0138012973e591b9f1e68b04b9a517a00b6b159e61f",
+    "trust_tier":  "community",
+    "runner_names":  [
+                         "triage"
+                     ],
+    "notes":  [
+                  "Checked in a throwaway local folder.",
+                  "No private token, payout, wallet, bank, Stripe, ID, or OTP used.",
+                  "Destination path omitted from public packet to avoid machine-local path noise."
+              ]
+}

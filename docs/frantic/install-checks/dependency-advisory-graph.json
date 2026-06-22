@@ -1,0 +1,22 @@
+﻿{
+    "schema":  "jarvis.frantic.install_check.v1",
+    "checked_at":  "2026-06-22T00:14:35Z",
+    "skill":  "dependency-advisory-graph",
+    "bounty_number":  29,
+    "command":  "runx add rohitmulani63-ops/dependency-advisory-graph@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-dependency-advisory-graph-check --json",
+    "status":  "success",
+    "ref":  "rohitmulani63-ops/dependency-advisory-graph@sha-f31eb820ba53",
+    "skill_id":  "rohitmulani63-ops/dependency-advisory-graph",
+    "version":  "sha-f31eb820ba53",
+    "digest":  "sha256:f1aee00b79dad10f537e291afabcf29c16562cd9683add3fb7ffba6a910b08e3",
+    "profile_digest":  "sha256:a8b6e9b2542561064229a5038193cd017fdfd3e9803b9843e5d32b2341aed853",
+    "trust_tier":  "community",
+    "runner_names":  [
+                         "graph"
+                     ],
+    "notes":  [
+                  "Checked in a throwaway local folder.",
+                  "No private token, payout, wallet, bank, Stripe, ID, or OTP used.",
+                  "Destination path omitted from public packet to avoid machine-local path noise."
+              ]
+}

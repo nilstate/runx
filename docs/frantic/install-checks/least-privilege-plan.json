@@ -1,0 +1,22 @@
+﻿{
+    "schema":  "jarvis.frantic.install_check.v1",
+    "checked_at":  "2026-06-22T00:14:35Z",
+    "skill":  "least-privilege-plan",
+    "bounty_number":  37,
+    "command":  "runx add rohitmulani63-ops/least-privilege-plan@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-least-privilege-plan-check --json",
+    "status":  "success",
+    "ref":  "rohitmulani63-ops/least-privilege-plan@sha-f31eb820ba53",
+    "skill_id":  "rohitmulani63-ops/least-privilege-plan",
+    "version":  "sha-f31eb820ba53",
+    "digest":  "sha256:a998eb9999815c843e9ee26f4c36960250fd6d4a41f666695d871b5e2fb852b7",
+    "profile_digest":  "sha256:becb189fe6f8b87961f2f3fb7a8759ceb87ad6606850ac35752273a0f57b5ad1",
+    "trust_tier":  "community",
+    "runner_names":  [
+                         "plan"
+                     ],
+    "notes":  [
+                  "Checked in a throwaway local folder.",
+                  "No private token, payout, wallet, bank, Stripe, ID, or OTP used.",
+                  "Destination path omitted from public packet to avoid machine-local path noise."
+              ]
+}

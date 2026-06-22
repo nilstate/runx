@@ -48,3 +48,9 @@
 - URL-as-publish source: https://github.com/rohitmulani63-ops/runx/tree/publish/frantic-five-pack-20260622
 - Refreshed at: 2026-06-22T00:04:14Z
 
+## Clean install check
+
+- Command: unx add rohitmulani63-ops/dependency-advisory-graph@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-dependency-advisory-graph-check --json`r
+- Result: success
+- Install evidence: docs/frantic/install-checks/dependency-advisory-graph.json
+

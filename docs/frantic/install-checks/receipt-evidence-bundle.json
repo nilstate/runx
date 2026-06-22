@@ -1,0 +1,22 @@
+﻿{
+    "schema":  "jarvis.frantic.install_check.v1",
+    "checked_at":  "2026-06-22T00:14:35Z",
+    "skill":  "receipt-evidence-bundle",
+    "bounty_number":  28,
+    "command":  "runx add rohitmulani63-ops/receipt-evidence-bundle@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-receipt-evidence-bundle-check --json",
+    "status":  "success",
+    "ref":  "rohitmulani63-ops/receipt-evidence-bundle@sha-f31eb820ba53",
+    "skill_id":  "rohitmulani63-ops/receipt-evidence-bundle",
+    "version":  "sha-f31eb820ba53",
+    "digest":  "sha256:fd57bf3b84574ae18719274b3e34b89a15c395893cbc7eb2dc20b81161d81bad",
+    "profile_digest":  "sha256:18808d294d7b636616f15a22a5faa589cb00f8de0da240673a3f1bb2ab8fabcb",
+    "trust_tier":  "community",
+    "runner_names":  [
+                         "bundle"
+                     ],
+    "notes":  [
+                  "Checked in a throwaway local folder.",
+                  "No private token, payout, wallet, bank, Stripe, ID, or OTP used.",
+                  "Destination path omitted from public packet to avoid machine-local path noise."
+              ]
+}
