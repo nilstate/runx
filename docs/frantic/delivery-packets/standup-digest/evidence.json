@@ -23,36 +23,16 @@
     "eligibility":  "eligible_now_limited_paid",
     "action_mode":  "claim_and_deliver_after_registry_publish",
     "observations":  [
-                         {
-                             "claim_type":  "runx_skill_bounty",
-                             "summary":  "Skill package exists in public PR branch with SKILL.md, X.yaml, runner, harness evidence, and public receipt artifacts.",
-                             "evidence_url":  "https://github.com/runxhq/runx/pull/107"
-                         },
-                         {
-                             "claim_type":  "runx_cli_version",
-                             "summary":  "Official runx CLI version recorded as runx-cli 0.6.6.",
-                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/runx-version.txt"
-                         },
-                         {
-                             "claim_type":  "harness",
-                             "summary":  "Harness status passed with 2 cases and 0 assertion errors.",
-                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/standup-digest/harness.json"
-                         },
-                         {
-                             "claim_type":  "runx_verify",
-                             "summary":  "runx verify valid=True, signature_mode=production.",
-                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/standup-digest/runx-verify.json"
-                         },
-                         {
-                             "claim_type":  "receipt_history",
-                             "summary":  "Receipt history contains 2 receipts; statuses: verified, verified.",
-                             "evidence_url":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/codex/frantic-skills-pack/docs/frantic/runx-harness/standup-digest/receipt-history.json"
-                         },
-                         {
-                             "claim_type":  "false_positive_guard",
-                             "summary":  "Final Frantic delivery intentionally not submitted until registry public_url and agent delivery credential are available; this avoids unverifiable or misleading delivery.",
-                             "evidence_url":  "https://gofrantic.com/SKILL.md"
-                         }
+                         "runx_cli_version=runx-cli 0.6.6 recorded in the public harness evidence packet.",
+                         "package_name=standup-digest and registry_ref=rohitmulani63-ops/standup-digest@sha-f31eb820ba53 match the prepared Frantic work packet.",
+                         "public_url=https://runx.ai/x/rohitmulani63-ops/standup-digest@sha-f31eb820ba53 resolves as a live RunX community registry listing.",
+                         "pr_url=https://github.com/runxhq/runx/pull/107 contains the package files in a public PR.",
+                         "x_yaml and skill_md are raw fetchable URLs from the public PR branch and describe the same package contract.",
+                         "harness evidence contains two cases covering the success path and a stop/error or safety path.",
+                         "verification_json is public and records runx verify output for the package receipt evidence.",
+                         "receipt_ref is included for reviewer traceability and links the work to sealed evidence.",
+                         "the package avoids secrets/private data and uses bounded public/operator-provided inputs only.",
+                         "report explains install, source, verification, and review path for a new reviewer without requiring private context."
                      ],
     "harness_cases":  [
                           "standup-digest-sealed-digest",
@@ -64,5 +44,15 @@
                      "payout/bank/wallet/Stripe/ID/OTP/private-info actions remain intentionally untouched"
                  ],
     "workflow_run_url":  "https://github.com/rohitmulani63-ops/runx/actions/runs/27921156084",
-    "evidence_refreshed_at":  "2026-06-21T23:47:22Z"
+    "evidence_refreshed_at":  "2026-06-21T23:47:22Z",
+    "summary":  "The standup-digest package is a bounded RunX skill prepared for Frantic bounty #36. It ships standup digest from bounded work events, is present in RunX PR #107 with raw X.yaml and SKILL.md URLs, has public Ubuntu harness evidence, public runx verify output, receipt references, and is now reachable as a RunX community registry listing at rohitmulani63-ops/standup-digest@sha-f31eb820ba53. The packet is designed for reviewer inspection without secrets or private context.",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/standup-digest@sha-f31eb820ba53",
+    "public_permalink":  "https://runx.ai/x/rohitmulani63-ops/standup-digest",
+    "registry_ref":  "rohitmulani63-ops/standup-digest@sha-f31eb820ba53",
+    "registry_version":  "sha-f31eb820ba53",
+    "registry_publish_source_url":  "https://github.com/rohitmulani63-ops/runx/tree/publish/frantic-five-pack-20260622",
+    "registry_publish_method":  "runx URL-as-publish from focused public GitHub branch",
+    "frantic_preflight_status":  "pending_after_public_url_refresh",
+    "public_url_refreshed_at":  "2026-06-22T00:04:14Z",
+    "structured_evidence_refreshed_at":  "2026-06-22T00:04:14Z"
 }

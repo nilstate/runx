@@ -41,3 +41,10 @@
 - Latest workflow run: https://github.com/rohitmulani63-ops/runx/actions/runs/27921156084
 - Refreshed at: 2026-06-21T23:47:22Z
 
+## RunX registry listing
+
+- Public URL: https://runx.ai/x/rohitmulani63-ops/inbox-triage@sha-f31eb820ba53
+- Registry ref: rohitmulani63-ops/inbox-triage@sha-f31eb820ba53
+- URL-as-publish source: https://github.com/rohitmulani63-ops/runx/tree/publish/frantic-five-pack-20260622
+- Refreshed at: 2026-06-22T00:04:14Z
+
