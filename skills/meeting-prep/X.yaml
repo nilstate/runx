@@ -63,19 +63,8 @@ harness:
           attendee_notes: []
           thread_snippets: []
           public_links: []
-      caller:
-        answers:
-          agent_task.meeting-prep.output:
-            prep_brief:
-              error: "Insufficient context: only calendar_event provided without attendee_notes, thread_snippets, or public_links. Cannot prepare meeting brief without additional context."
-              agenda: []
-              decisions: []
-              risks: []
-              questions: []
-              follow_ups: []
-              citations: []
       expect:
-        status: sealed
+        status: needs_agent
 
 runners:
   meeting-prep:
@@ -89,36 +78,7 @@ runners:
         required: true
         description: Meeting context packet with calendar_event, attendee_notes, thread_snippets, public_links
     outputs:
-      prep_brief:
-        type: object
-        description: Meeting prep brief with agenda, decisions, risks, questions, follow_ups, citations
-        properties:
-          error:
-            type: string
-          agenda:
-            type: array
-            items:
-              type: string
-          decisions:
-            type: array
-            items:
-              type: string
-          risks:
-            type: array
-            items:
-              type: string
-          questions:
-            type: array
-            items:
-              type: string
-          follow_ups:
-            type: array
-            items:
-              type: string
-          citations:
-            type: array
-            items:
-              type: string
+      prep_brief: object
     artifacts:
       wrap_as: prep_brief_packet
       packet: runx.meeting_prep.v1
