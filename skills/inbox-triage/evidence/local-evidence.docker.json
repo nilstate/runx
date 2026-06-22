@@ -1,0 +1,82 @@
+{
+  "schema": "frantic.local_evidence.v1",
+  "runx_version": "runx-cli 0.6.13",
+  "node_version": "v20.20.2",
+  "harness": {
+    "status": "passed",
+    "case_count": 6,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "inbox-triage-happy-path-drafts-gated-reply",
+      "inbox-triage-stops-on-missing-sender",
+      "inbox-triage-stops-on-missing-body",
+      "inbox-triage-refuses-auto-send",
+      "inbox-triage-ready-on-digest-only",
+      "inbox-triage-stops-when-commitments-not-allowed"
+    ],
+    "receipt_ids": [
+      "sha256:57f2d9f1f8b79a9c36d89e89a0f7a137c50f40f5d6eff3e46fe0d1de43c687f9",
+      "sha256:4b60f3266970630bfdaaaadeaf5a6ad7cfc41d6e543a1742f7f63b35b5130a1a",
+      "sha256:b969ea5ab5c05cc18f33bdb16044c020dbd37c1ab7c92f86a7d6283b28a43a57",
+      "sha256:335a004673087d83d47273da8aca85c02db4668cc4b7ba606f2046137aa64b4e",
+      "sha256:27ee2ee121e0d1c961808da328e4d8818a6423f6e0a4d3f8703556dd3b368e4a",
+      "sha256:804bfe223012918274674f9188ca7af0d517acd7b0feb4d50f075c4bd429ec3e"
+    ],
+    "graph_case_count": 0
+  },
+  "semantic_smoke": {
+    "status": "passed",
+    "checks": [
+      {
+        "name": "schema",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "happy_ready",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "classification_labels",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "missing_sender_stops",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "missing_body_stops",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "auto_send_refused",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "digest_ready_no_draft",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "commitment_disallowed_stops",
+        "ok": true,
+        "details": {}
+      }
+    ]
+  },
+  "receipt_files_count": 6,
+  "receipt_ids": [
+    "sha256:57f2d9f1f8b79a9c36d89e89a0f7a137c50f40f5d6eff3e46fe0d1de43c687f9",
+    "sha256:4b60f3266970630bfdaaaadeaf5a6ad7cfc41d6e543a1742f7f63b35b5130a1a",
+    "sha256:b969ea5ab5c05cc18f33bdb16044c020dbd37c1ab7c92f86a7d6283b28a43a57",
+    "sha256:335a004673087d83d47273da8aca85c02db4668cc4b7ba606f2046137aa64b4e",
+    "sha256:27ee2ee121e0d1c961808da328e4d8818a6423f6e0a4d3f8703556dd3b368e4a",
+    "sha256:804bfe223012918274674f9188ca7af0d517acd7b0feb4d50f075c4bd429ec3e"
+  ]
+}

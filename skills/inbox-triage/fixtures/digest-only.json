@@ -1,0 +1,27 @@
+{
+  "objective": "Classify a bounded digest-only packet without drafting.",
+  "inbox_packet": {
+    "packet_id": "inbox-digest-only-demo",
+    "messages": [
+      {
+        "id": "msg-digest-001",
+        "received_at": "2026-06-22T09:30:00Z",
+        "from": "noreply@example.net",
+        "subject": "Weekly product digest",
+        "body": "Here are this week's product links."
+      }
+    ]
+  },
+  "sender_metadata": {
+    "noreply@example.net": {
+      "relationship": "automated digest",
+      "allowed_topics": [
+        "weekly product digest"
+      ]
+    }
+  },
+  "operator_policy": {
+    "reply_style": "concise and factual",
+    "send_gate": "send-as.explicit-operator-approval"
+  }
+}

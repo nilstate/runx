@@ -1,0 +1,11 @@
+public_url=https://runx.ai/x/<owner>/inbox-triage@0.1.0
+source_url=https://github.com/<owner>/runx/tree/<commit>
+pr_url=https://github.com/runxhq/runx/pull/<number>
+x_yaml=https://raw.githubusercontent.com/<owner>/runx/<commit>/skills/inbox-triage/X.yaml
+skill_md=https://raw.githubusercontent.com/<owner>/runx/<commit>/skills/inbox-triage/SKILL.md
+runner=https://raw.githubusercontent.com/<owner>/runx/<commit>/skills/inbox-triage/run.mjs
+evidence_json=https://raw.githubusercontent.com/<owner>/runx/<commit>/skills/inbox-triage/evidence/local-evidence.docker.json
+verification_json=https://raw.githubusercontent.com/<owner>/runx/<commit>/skills/inbox-triage/evidence/local-harness.docker.json
+smoke_json=https://raw.githubusercontent.com/<owner>/runx/<commit>/skills/inbox-triage/evidence/local-smoke.json
+receipt_refs=sha256:96936c9e66b2f9bbf72e1b7229fd53c6aa1fc2faa77051dd348339b57c1983ae,sha256:360a053a5e0de01edffd3be6bccfc2202c052c5a456704b08ac755a6a389329a,sha256:3b2c812578868b48fbc36dab87448eb5f6b4c0d4aa0bf49f6aec96247b1ba66f,sha256:fe07522bdf96de3a5bb0e8634a4e1ed2213f53a793ecf8280bc76474b40f6086,sha256:feb78b596c7681d0410ff549b5f71f03018d8a4efd46eff86f95db117db5fa63,sha256:8d98771ef2fff8bc27bb6ea974cc80507c4bda35da1b36e318a816c45ea7efa2
+report=https://raw.githubusercontent.com/<owner>/runx/<commit>/skills/inbox-triage/evidence/report.local.md

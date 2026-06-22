@@ -1,0 +1,30 @@
+{
+  "objective": "Draft only when the policy allows the fixed safe commitments.",
+  "inbox_packet": {
+    "packet_id": "inbox-commitment-demo",
+    "messages": [
+      {
+        "id": "msg-commitment-001",
+        "received_at": "2026-06-22T09:40:00Z",
+        "from": "dana@example.com",
+        "subject": "Re: Launch checklist review",
+        "body": "Can you confirm whether the launch checklist is ready today?"
+      }
+    ]
+  },
+  "sender_metadata": {
+    "dana@example.com": {
+      "relationship": "project collaborator",
+      "allowed_topics": [
+        "launch checklist"
+      ]
+    }
+  },
+  "operator_policy": {
+    "reply_style": "concise and factual",
+    "allowed_commitments": [
+      "acknowledge receipt"
+    ],
+    "send_gate": "send-as.explicit-operator-approval"
+  }
+}

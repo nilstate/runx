@@ -1,0 +1,64 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "hehee9/inbox-triage",
+    "skill": {
+      "skill_id": "hehee9/inbox-triage",
+      "owner": "hehee9",
+      "name": "inbox-triage",
+      "description": "Classify a bounded inbox packet, draft a safe reply, and stop at an explicit send-as approval proposal.",
+      "category": "ops",
+      "version": "sha-fe96ae7c876b",
+      "digest": "29fdfea40e708a014762477638a095b0978b966ae0a23e788be3482a4f469ea0",
+      "markdown": "---\nname: inbox-triage\ndescription: Classify a bounded inbox packet, draft a safe reply, and stop at an explicit send-as approval proposal.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nrunx:\n  category: ops\n---\n\n# Inbox Triage\n\nTurn a bounded inbox packet into a safe operator handoff: message\nclassification, a triage queue, a draft reply, and a gated send proposal.\n\nThis skill uses caller-provided fixture data or an explicit inbox packet. It\ndoes not connect to private mailboxes, infer hidden history, or send messages.\nAny outbound action is represented as a proposal that a separate send-as skill\nor human operator must approve.\n\nThe default runner is deterministic and local. It reads only the supplied JSON\ninputs, validates sender/body/policy safety, writes optional local artifacts\ninside the skill directory, and emits one JSON packet.\n\n## Quality Profile\n\n- Purpose: help an operator process a small inbox packet without granting send\n  authority.\n- Audience: operators who need daily inbox triage and maintainers reviewing\n  whether the skill preserves consent boundaries.\n- Artifact contract: emit an `inbox_triage_packet` containing classification,\n  `triage_queue`, `draft_reply`, and `gated_send_proposal`.\n- Evidence bar: every classification and draft must cite the supplied message\n  id, sender metadata, body, and operator policy. Missing body, missing sender,\n  or unsafe reply instructions are stop conditions.\n- Voice bar: concise operator language with clear action labels and no claims\n  that private context was read.\n- Safety bar: never send, schedule, archive, delete, unsubscribe, or mutate an\n  inbox. Propose a send-as handoff only when the policy permits drafting.\n\n## Inputs\n\n- `inbox_packet` (required): bounded message packet with `messages`.\n- `sender_metadata` (required): known sender facts keyed by message or address.\n- `operator_policy` (required): reply style, allowed topics, and send gates.\n- `objective` (optional): operator goal for this triage run.\n\n## Output\n\nThe default runner returns:\n\n- `classification`: per-message labels such as `needs_reply`, `waiting`,\n  `calendar`, `finance`, `noise`, or `unsafe`.\n- `triage_queue`: ordered next actions with reasons and source message ids.\n- `draft_reply`: a draft body and citations, or `null` when drafting is unsafe.\n- `gated_send_proposal`: the explicit send-as handoff packet. It must have\n  `requires_approval: true` and must never claim that a message was sent.\n- `decision`: `ready`, `needs_more_evidence`, or `refused`.\n\n## Stop Conditions\n\nReturn `needs_more_evidence` when:\n\n- a message has no sender address or sender metadata,\n- a message body is missing or redacted beyond useful review,\n- the operator policy forbids drafting for the topic,\n- the requested reply would leak private data, bypass approval, impersonate the\n  operator, make financial/legal commitments, or send automatically.\n\nReturn `refused` when `operator_policy.auto_send` is true or when policy asks\nthe skill to bypass the send-as gate.\n\n## Send-As Composition\n\nThis skill composes with send-as by producing only a proposal:\n\n```json\n{\n  \"requires_approval\": true,\n  \"proposed_channel\": \"email\",\n  \"to\": \"sender@example.com\",\n  \"subject\": \"Re: ...\",\n  \"body\": \"...\",\n  \"approval_gate\": \"send-as.explicit-operator-approval\"\n}\n```\n\nA separate send-as runner or human operator must verify the recipient, content,\nand authority before any outbound effect happens.\n",
+      "profile_digest": "9e6e228ab924cb1f34ab00a836c02fc148b791358eb0dde9e4e0ef1c27fcfa17",
+      "runner_names": [
+        "triage"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "publisher",
+        "id": "hehee9",
+        "handle": "hehee9"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:hehee9",
+          "status": "declared",
+          "summary": "hehee9",
+          "issued_at": "2026-06-22T11:28:40.974Z",
+          "metadata": {
+            "publisher_handle": "hehee9",
+            "publisher_id": "hehee9",
+            "publisher_kind": "publisher",
+            "trust_tier": "community"
+          }
+        },
+        {
+          "kind": "source",
+          "id": "github_source",
+          "status": "verified",
+          "summary": "github:hehee9/runx-inbox-triage-skill@fe96ae7c876b39d45eec21ccc32806c0af56708f",
+          "source": "https://github.com/hehee9/runx-inbox-triage-skill",
+          "issued_at": "2026-06-22T11:28:40.974Z",
+          "metadata": {
+            "event": "push",
+            "profile_path": "skills/inbox-triage/X.yaml",
+            "ref": "main",
+            "repo": "hehee9/runx-inbox-triage-skill",
+            "sha": "fe96ae7c876b39d45eec21ccc32806c0af56708f",
+            "skill_path": "skills/inbox-triage/SKILL.md"
+          }
+        }
+      ],
+      "install_command": "runx add hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai",
+      "run_command": "runx skill hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai"
+    }
+  }
+}

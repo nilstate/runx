@@ -1,0 +1,45 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "schema",
+      "ok": true,
+      "details": {}
+    },
+    {
+      "name": "happy_ready",
+      "ok": true,
+      "details": {}
+    },
+    {
+      "name": "classification_labels",
+      "ok": true,
+      "details": {}
+    },
+    {
+      "name": "missing_sender_stops",
+      "ok": true,
+      "details": {}
+    },
+    {
+      "name": "missing_body_stops",
+      "ok": true,
+      "details": {}
+    },
+    {
+      "name": "auto_send_refused",
+      "ok": true,
+      "details": {}
+    },
+    {
+      "name": "digest_ready_no_draft",
+      "ok": true,
+      "details": {}
+    },
+    {
+      "name": "commitment_disallowed_stops",
+      "ok": true,
+      "details": {}
+    }
+  ]
+}

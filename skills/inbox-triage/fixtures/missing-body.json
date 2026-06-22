@@ -1,0 +1,30 @@
+{
+  "objective": "Draft a reply only if the packet includes enough message evidence.",
+  "inbox_packet": {
+    "packet_id": "inbox-missing-body-demo",
+    "messages": [
+      {
+        "id": "msg-missing-body-001",
+        "received_at": "2026-06-22T09:12:00Z",
+        "from": "sam@example.com",
+        "subject": "Can you approve this?"
+      }
+    ]
+  },
+  "sender_metadata": {
+    "sam@example.com": {
+      "relationship": "project collaborator",
+      "allowed_topics": [
+        "approval request"
+      ]
+    }
+  },
+  "operator_policy": {
+    "reply_style": "concise and factual",
+    "forbidden_commitments": [
+      "final approval",
+      "financial or legal promises"
+    ],
+    "send_gate": "send-as.explicit-operator-approval"
+  }
+}

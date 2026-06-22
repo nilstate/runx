@@ -1,0 +1,10 @@
+{
+  "schema": "runx.doctor.v1",
+  "status": "success",
+  "summary": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0
+  },
+  "diagnostics": []
+}

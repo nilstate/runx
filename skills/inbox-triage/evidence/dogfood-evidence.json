@@ -1,0 +1,677 @@
+{
+  "schema": "frantic.dogfood_evidence.v1",
+  "runx_version": "runx-cli 0.6.13",
+  "registry_ref": "hehee9/inbox-triage@sha-fe96ae7c876b",
+  "public_url": "https://runx.ai/x/hehee9/inbox-triage@sha-fe96ae7c876b",
+  "source_url": "https://github.com/hehee9/runx-inbox-triage-skill",
+  "install_command": "runx add hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai",
+  "dogfood_command": "runx skill hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai --json --receipt-dir <temp_receipt_dir>",
+  "verify_command": "RUNX_RECEIPT_VERIFY_KID=inbox-triage-dogfood-key RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=<fixture_public_key> runx verify --receipt dogfood-receipt.json --json",
+  "add": {
+    "status": "success",
+    "registry": {
+      "action": "install",
+      "source": "remote",
+      "ref": "hehee9/inbox-triage@sha-fe96ae7c876b",
+      "install": {
+        "status": "installed",
+        "destination": "/tmp/runx-install/hehee9/inbox-triage/sha-fe96ae7c876b/SKILL.md",
+        "skill_name": "inbox-triage",
+        "source": "runx-registry",
+        "source_label": "runx registry",
+        "skill_id": "hehee9/inbox-triage",
+        "version": "sha-fe96ae7c876b",
+        "digest": "sha256:29fdfea40e708a014762477638a095b0978b966ae0a23e788be3482a4f469ea0",
+        "profile_digest": "sha256:9e6e228ab924cb1f34ab00a836c02fc148b791358eb0dde9e4e0ef1c27fcfa17",
+        "profile_state_path": "/tmp/runx-install/hehee9/inbox-triage/sha-fe96ae7c876b/.runx/profile.json",
+        "runner_names": [
+          "triage"
+        ],
+        "trust_tier": "community"
+      },
+      "receipt_metadata": {
+        "destination": "/tmp/runx-install/hehee9/inbox-triage/sha-fe96ae7c876b/SKILL.md",
+        "digest": "sha256:29fdfea40e708a014762477638a095b0978b966ae0a23e788be3482a4f469ea0",
+        "install_count": 1,
+        "package_digest": "5445c77ca90c018c7894148535215332a777559f7df5a45653e07df00002efcc",
+        "profile_digest": "sha256:9e6e228ab924cb1f34ab00a836c02fc148b791358eb0dde9e4e0ef1c27fcfa17",
+        "publisher": {
+          "handle": "hehee9",
+          "id": "hehee9",
+          "kind": "publisher"
+        },
+        "ref": "hehee9/inbox-triage@sha-fe96ae7c876b",
+        "skill_id": "hehee9/inbox-triage",
+        "source_label": "runx registry",
+        "status": "installed",
+        "trust_tier": "community",
+        "version": "sha-fe96ae7c876b"
+      }
+    }
+  },
+  "run": {
+    "closure": {
+      "closed_at": "2026-06-22T11:30:17.856Z",
+      "disposition": "closed",
+      "reason_code": "process_closed",
+      "summary": "cli-tool triage completed"
+    },
+    "execution": {
+      "exit_code": 0,
+      "skill_claim": {
+        "classification": [
+          {
+            "intent": "coordination",
+            "labels": [
+              "needs_reply",
+              "time_sensitive"
+            ],
+            "message_id": "msg-001",
+            "priority": "high",
+            "rationale": "coordination message can be drafted for approval from supplied context.",
+            "replyable": true,
+            "risk": "medium"
+          },
+          {
+            "intent": "digest",
+            "labels": [
+              "no_reply",
+              "digest"
+            ],
+            "message_id": "msg-002",
+            "priority": "low",
+            "rationale": "Automated digest or newsletter with no requested action.",
+            "replyable": false,
+            "risk": "medium"
+          }
+        ],
+        "decision": "ready",
+        "draft_reply": {
+          "body": "Thanks for the note.\nI have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item.\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\nI will avoid marking anything final until that review is complete.",
+          "citations": [
+            "msg-001 subject/body supplied in inbox_packet",
+            "operator_policy requires explicit send gate",
+            "inbox-triage safety bar forbids automatic sending"
+          ],
+          "message_id": "msg-001",
+          "subject": "Re: Launch checklist review"
+        },
+        "evidence_json": {
+          "classification": [
+            {
+              "intent": "coordination",
+              "labels": [
+                "needs_reply",
+                "time_sensitive"
+              ],
+              "message_id": "msg-001",
+              "priority": "high",
+              "rationale": "coordination message can be drafted for approval from supplied context.",
+              "replyable": true,
+              "risk": "medium"
+            },
+            {
+              "intent": "digest",
+              "labels": [
+                "no_reply",
+                "digest"
+              ],
+              "message_id": "msg-002",
+              "priority": "low",
+              "rationale": "Automated digest or newsletter with no requested action.",
+              "replyable": false,
+              "risk": "medium"
+            }
+          ],
+          "decision": "ready",
+          "draft_reply": {
+            "body": "Thanks for the note.\nI have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item.\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\nI will avoid marking anything final until that review is complete.",
+            "citations": [
+              "msg-001 subject/body supplied in inbox_packet",
+              "operator_policy requires explicit send gate",
+              "inbox-triage safety bar forbids automatic sending"
+            ],
+            "message_id": "msg-001",
+            "subject": "Re: Launch checklist review"
+          },
+          "gated_send_proposal": {
+            "approval_gate": "send-as.explicit-operator-approval",
+            "body_ref": "draft_reply.msg-001",
+            "proposed_channel": "email",
+            "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+            "requires_approval": true,
+            "status": "proposed_not_sent",
+            "subject": "Re: Launch checklist review",
+            "to": "dana@example.com"
+          },
+          "inbox_packet": {
+            "message_count": 2,
+            "packet_id": "inbox-demo-2026-06-22"
+          },
+          "objective": "Prepare the safest next reply for the operator's morning queue.",
+          "schema": "runx.inbox.triage.v1",
+          "stop_conditions": [],
+          "triage_queue": [
+            {
+              "action": "draft_reply_for_operator_review",
+              "message_id": "msg-001",
+              "priority": "high",
+              "rank": 1,
+              "reason": "coordination message can be drafted for approval from supplied context."
+            },
+            {
+              "action": "no_reply",
+              "message_id": "msg-002",
+              "priority": "low",
+              "rank": 2,
+              "reason": "Automated digest or newsletter with no requested action."
+            }
+          ]
+        },
+        "gated_send_proposal": {
+          "approval_gate": "send-as.explicit-operator-approval",
+          "body_ref": "draft_reply.msg-001",
+          "proposed_channel": "email",
+          "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+          "requires_approval": true,
+          "status": "proposed_not_sent",
+          "subject": "Re: Launch checklist review",
+          "to": "dana@example.com"
+        },
+        "inbox_packet": {
+          "message_count": 2,
+          "packet_id": "inbox-demo-2026-06-22"
+        },
+        "objective": "Prepare the safest next reply for the operator's morning queue.",
+        "report_md": "# Inbox Triage Report\n\nDecision: ready\nMessages: 2\n\n## Classification\n- msg-001: needs_reply, time_sensitive; high; coordination message can be drafted for approval from supplied context.\n- msg-002: no_reply, digest; low; Automated digest or newsletter with no requested action.\n\n## Queue\n- 1. msg-001: draft_reply_for_operator_review (coordination message can be drafted for approval from supplied context.)\n- 2. msg-002: no_reply (Automated digest or newsletter with no requested action.)\n\n## Draft\n- Re: Launch checklist review: Thanks for the note. I have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item. I will send the final update only after the operator confirms the status and approves the send-as handoff. I will avoid marking anything final until that review is complete.\n\n## Send Gate\n- proposed_not_sent: send-as.explicit-operator-approval\n\n## Stop Conditions\n- None.\n\n",
+        "schema": "runx.inbox.triage.v1",
+        "stop_conditions": [],
+        "triage_queue": [
+          {
+            "action": "draft_reply_for_operator_review",
+            "message_id": "msg-001",
+            "priority": "high",
+            "rank": 1,
+            "reason": "coordination message can be drafted for approval from supplied context."
+          },
+          {
+            "action": "no_reply",
+            "message_id": "msg-002",
+            "priority": "low",
+            "rank": 2,
+            "reason": "Automated digest or newsletter with no requested action."
+          }
+        ]
+      },
+      "stderr": "",
+      "stdout": "{\n  \"schema\": \"runx.inbox.triage.v1\",\n  \"decision\": \"ready\",\n  \"objective\": \"Prepare the safest next reply for the operator's morning queue.\",\n  \"inbox_packet\": {\n    \"packet_id\": \"inbox-demo-2026-06-22\",\n    \"message_count\": 2\n  },\n  \"classification\": [\n    {\n      \"message_id\": \"msg-001\",\n      \"labels\": [\n        \"needs_reply\",\n        \"time_sensitive\"\n      ],\n      \"intent\": \"coordination\",\n      \"priority\": \"high\",\n      \"risk\": \"medium\",\n      \"replyable\": true,\n      \"rationale\": \"coordination message can be drafted for approval from supplied context.\"\n    },\n    {\n      \"message_id\": \"msg-002\",\n      \"labels\": [\n        \"no_reply\",\n        \"digest\"\n      ],\n      \"intent\": \"digest\",\n      \"priority\": \"low\",\n      \"risk\": \"medium\",\n      \"replyable\": false,\n      \"rationale\": \"Automated digest or newsletter with no requested action.\"\n    }\n  ],\n  \"triage_queue\": [\n    {\n      \"rank\": 1,\n      \"message_id\": \"msg-001\",\n      \"action\": \"draft_reply_for_operator_review\",\n      \"reason\": \"coordination message can be drafted for approval from supplied context.\",\n      \"priority\": \"high\"\n    },\n    {\n      \"rank\": 2,\n      \"message_id\": \"msg-002\",\n      \"action\": \"no_reply\",\n      \"reason\": \"Automated digest or newsletter with no requested action.\",\n      \"priority\": \"low\"\n    }\n  ],\n  \"draft_reply\": {\n    \"message_id\": \"msg-001\",\n    \"subject\": \"Re: Launch checklist review\",\n    \"body\": \"Thanks for the note.\\nI have the supplied context for \\\"Re: Launch checklist review\\\" and will treat it as a coordination item.\\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\\nI will avoid marking anything final until that review is complete.\",\n    \"citations\": [\n      \"msg-001 subject/body supplied in inbox_packet\",\n      \"operator_policy requires explicit send gate\",\n      \"inbox-triage safety bar forbids automatic sending\"\n    ]\n  },\n  \"gated_send_proposal\": {\n    \"requires_approval\": true,\n    \"approval_gate\": \"send-as.explicit-operator-approval\",\n    \"proposed_channel\": \"email\",\n    \"to\": \"dana@example.com\",\n    \"subject\": \"Re: Launch checklist review\",\n    \"body_ref\": \"draft_reply.msg-001\",\n    \"status\": \"proposed_not_sent\",\n    \"reason\": \"Draft is ready only for send-as or human approval; no outbound effect occurred.\"\n  },\n  \"stop_conditions\": [],\n  \"evidence_json\": {\n    \"schema\": \"runx.inbox.triage.v1\",\n    \"decision\": \"ready\",\n    \"objective\": \"Prepare the safest next reply for the operator's morning queue.\",\n    \"inbox_packet\": {\n      \"packet_id\": \"inbox-demo-2026-06-22\",\n      \"message_count\": 2\n    },\n    \"classification\": [\n      {\n        \"message_id\": \"msg-001\",\n        \"labels\": [\n          \"needs_reply\",\n          \"time_sensitive\"\n        ],\n        \"intent\": \"coordination\",\n        \"priority\": \"high\",\n        \"risk\": \"medium\",\n        \"replyable\": true,\n        \"rationale\": \"coordination message can be drafted for approval from supplied context.\"\n      },\n      {\n        \"message_id\": \"msg-002\",\n        \"labels\": [\n          \"no_reply\",\n          \"digest\"\n        ],\n        \"intent\": \"digest\",\n        \"priority\": \"low\",\n        \"risk\": \"medium\",\n        \"replyable\": false,\n        \"rationale\": \"Automated digest or newsletter with no requested action.\"\n      }\n    ],\n    \"triage_queue\": [\n      {\n        \"rank\": 1,\n        \"message_id\": \"msg-001\",\n        \"action\": \"draft_reply_for_operator_review\",\n        \"reason\": \"coordination message can be drafted for approval from supplied context.\",\n        \"priority\": \"high\"\n      },\n      {\n        \"rank\": 2,\n        \"message_id\": \"msg-002\",\n        \"action\": \"no_reply\",\n        \"reason\": \"Automated digest or newsletter with no requested action.\",\n        \"priority\": \"low\"\n      }\n    ],\n    \"draft_reply\": {\n      \"message_id\": \"msg-001\",\n      \"subject\": \"Re: Launch checklist review\",\n      \"body\": \"Thanks for the note.\\nI have the supplied context for \\\"Re: Launch checklist review\\\" and will treat it as a coordination item.\\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\\nI will avoid marking anything final until that review is complete.\",\n      \"citations\": [\n        \"msg-001 subject/body supplied in inbox_packet\",\n        \"operator_policy requires explicit send gate\",\n        \"inbox-triage safety bar forbids automatic sending\"\n      ]\n    },\n    \"gated_send_proposal\": {\n      \"requires_approval\": true,\n      \"approval_gate\": \"send-as.explicit-operator-approval\",\n      \"proposed_channel\": \"email\",\n      \"to\": \"dana@example.com\",\n      \"subject\": \"Re: Launch checklist review\",\n      \"body_ref\": \"draft_reply.msg-001\",\n      \"status\": \"proposed_not_sent\",\n      \"reason\": \"Draft is ready only for send-as or human approval; no outbound effect occurred.\"\n    },\n    \"stop_conditions\": []\n  },\n  \"report_md\": \"# Inbox Triage Report\\n\\nDecision: ready\\nMessages: 2\\n\\n## Classification\\n- msg-001: needs_reply, time_sensitive; high; coordination message can be drafted for approval from supplied context.\\n- msg-002: no_reply, digest; low; Automated digest or newsletter with no requested action.\\n\\n## Queue\\n- 1. msg-001: draft_reply_for_operator_review (coordination message can be drafted for approval from supplied context.)\\n- 2. msg-002: no_reply (Automated digest or newsletter with no requested action.)\\n\\n## Draft\\n- Re: Launch checklist review: Thanks for the note. I have the supplied context for \\\"Re: Launch checklist review\\\" and will treat it as a coordination item. I will send the final update only after the operator confirms the status and approves the send-as handoff. I will avoid marking anything final until that review is complete.\\n\\n## Send Gate\\n- proposed_not_sent: send-as.explicit-operator-approval\\n\\n## Stop Conditions\\n- None.\\n\\n\"\n}\n",
+      "structured_output": {
+        "classification": [
+          {
+            "intent": "coordination",
+            "labels": [
+              "needs_reply",
+              "time_sensitive"
+            ],
+            "message_id": "msg-001",
+            "priority": "high",
+            "rationale": "coordination message can be drafted for approval from supplied context.",
+            "replyable": true,
+            "risk": "medium"
+          },
+          {
+            "intent": "digest",
+            "labels": [
+              "no_reply",
+              "digest"
+            ],
+            "message_id": "msg-002",
+            "priority": "low",
+            "rationale": "Automated digest or newsletter with no requested action.",
+            "replyable": false,
+            "risk": "medium"
+          }
+        ],
+        "decision": "ready",
+        "draft_reply": {
+          "body": "Thanks for the note.\nI have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item.\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\nI will avoid marking anything final until that review is complete.",
+          "citations": [
+            "msg-001 subject/body supplied in inbox_packet",
+            "operator_policy requires explicit send gate",
+            "inbox-triage safety bar forbids automatic sending"
+          ],
+          "message_id": "msg-001",
+          "subject": "Re: Launch checklist review"
+        },
+        "evidence_json": {
+          "classification": [
+            {
+              "intent": "coordination",
+              "labels": [
+                "needs_reply",
+                "time_sensitive"
+              ],
+              "message_id": "msg-001",
+              "priority": "high",
+              "rationale": "coordination message can be drafted for approval from supplied context.",
+              "replyable": true,
+              "risk": "medium"
+            },
+            {
+              "intent": "digest",
+              "labels": [
+                "no_reply",
+                "digest"
+              ],
+              "message_id": "msg-002",
+              "priority": "low",
+              "rationale": "Automated digest or newsletter with no requested action.",
+              "replyable": false,
+              "risk": "medium"
+            }
+          ],
+          "decision": "ready",
+          "draft_reply": {
+            "body": "Thanks for the note.\nI have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item.\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\nI will avoid marking anything final until that review is complete.",
+            "citations": [
+              "msg-001 subject/body supplied in inbox_packet",
+              "operator_policy requires explicit send gate",
+              "inbox-triage safety bar forbids automatic sending"
+            ],
+            "message_id": "msg-001",
+            "subject": "Re: Launch checklist review"
+          },
+          "gated_send_proposal": {
+            "approval_gate": "send-as.explicit-operator-approval",
+            "body_ref": "draft_reply.msg-001",
+            "proposed_channel": "email",
+            "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+            "requires_approval": true,
+            "status": "proposed_not_sent",
+            "subject": "Re: Launch checklist review",
+            "to": "dana@example.com"
+          },
+          "inbox_packet": {
+            "message_count": 2,
+            "packet_id": "inbox-demo-2026-06-22"
+          },
+          "objective": "Prepare the safest next reply for the operator's morning queue.",
+          "schema": "runx.inbox.triage.v1",
+          "stop_conditions": [],
+          "triage_queue": [
+            {
+              "action": "draft_reply_for_operator_review",
+              "message_id": "msg-001",
+              "priority": "high",
+              "rank": 1,
+              "reason": "coordination message can be drafted for approval from supplied context."
+            },
+            {
+              "action": "no_reply",
+              "message_id": "msg-002",
+              "priority": "low",
+              "rank": 2,
+              "reason": "Automated digest or newsletter with no requested action."
+            }
+          ]
+        },
+        "gated_send_proposal": {
+          "approval_gate": "send-as.explicit-operator-approval",
+          "body_ref": "draft_reply.msg-001",
+          "proposed_channel": "email",
+          "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+          "requires_approval": true,
+          "status": "proposed_not_sent",
+          "subject": "Re: Launch checklist review",
+          "to": "dana@example.com"
+        },
+        "inbox_packet": {
+          "message_count": 2,
+          "packet_id": "inbox-demo-2026-06-22"
+        },
+        "objective": "Prepare the safest next reply for the operator's morning queue.",
+        "report_md": "# Inbox Triage Report\n\nDecision: ready\nMessages: 2\n\n## Classification\n- msg-001: needs_reply, time_sensitive; high; coordination message can be drafted for approval from supplied context.\n- msg-002: no_reply, digest; low; Automated digest or newsletter with no requested action.\n\n## Queue\n- 1. msg-001: draft_reply_for_operator_review (coordination message can be drafted for approval from supplied context.)\n- 2. msg-002: no_reply (Automated digest or newsletter with no requested action.)\n\n## Draft\n- Re: Launch checklist review: Thanks for the note. I have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item. I will send the final update only after the operator confirms the status and approves the send-as handoff. I will avoid marking anything final until that review is complete.\n\n## Send Gate\n- proposed_not_sent: send-as.explicit-operator-approval\n\n## Stop Conditions\n- None.\n\n",
+        "schema": "runx.inbox.triage.v1",
+        "stop_conditions": [],
+        "triage_queue": [
+          {
+            "action": "draft_reply_for_operator_review",
+            "message_id": "msg-001",
+            "priority": "high",
+            "rank": 1,
+            "reason": "coordination message can be drafted for approval from supplied context."
+          },
+          {
+            "action": "no_reply",
+            "message_id": "msg-002",
+            "priority": "low",
+            "rank": 2,
+            "reason": "Automated digest or newsletter with no requested action."
+          }
+        ]
+      }
+    },
+    "payload": {
+      "classification": [
+        {
+          "intent": "coordination",
+          "labels": [
+            "needs_reply",
+            "time_sensitive"
+          ],
+          "message_id": "msg-001",
+          "priority": "high",
+          "rationale": "coordination message can be drafted for approval from supplied context.",
+          "replyable": true,
+          "risk": "medium"
+        },
+        {
+          "intent": "digest",
+          "labels": [
+            "no_reply",
+            "digest"
+          ],
+          "message_id": "msg-002",
+          "priority": "low",
+          "rationale": "Automated digest or newsletter with no requested action.",
+          "replyable": false,
+          "risk": "medium"
+        }
+      ],
+      "decision": "ready",
+      "draft_reply": {
+        "body": "Thanks for the note.\nI have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item.\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\nI will avoid marking anything final until that review is complete.",
+        "citations": [
+          "msg-001 subject/body supplied in inbox_packet",
+          "operator_policy requires explicit send gate",
+          "inbox-triage safety bar forbids automatic sending"
+        ],
+        "message_id": "msg-001",
+        "subject": "Re: Launch checklist review"
+      },
+      "evidence_json": {
+        "classification": [
+          {
+            "intent": "coordination",
+            "labels": [
+              "needs_reply",
+              "time_sensitive"
+            ],
+            "message_id": "msg-001",
+            "priority": "high",
+            "rationale": "coordination message can be drafted for approval from supplied context.",
+            "replyable": true,
+            "risk": "medium"
+          },
+          {
+            "intent": "digest",
+            "labels": [
+              "no_reply",
+              "digest"
+            ],
+            "message_id": "msg-002",
+            "priority": "low",
+            "rationale": "Automated digest or newsletter with no requested action.",
+            "replyable": false,
+            "risk": "medium"
+          }
+        ],
+        "decision": "ready",
+        "draft_reply": {
+          "body": "Thanks for the note.\nI have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item.\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\nI will avoid marking anything final until that review is complete.",
+          "citations": [
+            "msg-001 subject/body supplied in inbox_packet",
+            "operator_policy requires explicit send gate",
+            "inbox-triage safety bar forbids automatic sending"
+          ],
+          "message_id": "msg-001",
+          "subject": "Re: Launch checklist review"
+        },
+        "gated_send_proposal": {
+          "approval_gate": "send-as.explicit-operator-approval",
+          "body_ref": "draft_reply.msg-001",
+          "proposed_channel": "email",
+          "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+          "requires_approval": true,
+          "status": "proposed_not_sent",
+          "subject": "Re: Launch checklist review",
+          "to": "dana@example.com"
+        },
+        "inbox_packet": {
+          "message_count": 2,
+          "packet_id": "inbox-demo-2026-06-22"
+        },
+        "objective": "Prepare the safest next reply for the operator's morning queue.",
+        "schema": "runx.inbox.triage.v1",
+        "stop_conditions": [],
+        "triage_queue": [
+          {
+            "action": "draft_reply_for_operator_review",
+            "message_id": "msg-001",
+            "priority": "high",
+            "rank": 1,
+            "reason": "coordination message can be drafted for approval from supplied context."
+          },
+          {
+            "action": "no_reply",
+            "message_id": "msg-002",
+            "priority": "low",
+            "rank": 2,
+            "reason": "Automated digest or newsletter with no requested action."
+          }
+        ]
+      },
+      "gated_send_proposal": {
+        "approval_gate": "send-as.explicit-operator-approval",
+        "body_ref": "draft_reply.msg-001",
+        "proposed_channel": "email",
+        "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+        "requires_approval": true,
+        "status": "proposed_not_sent",
+        "subject": "Re: Launch checklist review",
+        "to": "dana@example.com"
+      },
+      "inbox_packet": {
+        "message_count": 2,
+        "packet_id": "inbox-demo-2026-06-22"
+      },
+      "objective": "Prepare the safest next reply for the operator's morning queue.",
+      "report_md": "# Inbox Triage Report\n\nDecision: ready\nMessages: 2\n\n## Classification\n- msg-001: needs_reply, time_sensitive; high; coordination message can be drafted for approval from supplied context.\n- msg-002: no_reply, digest; low; Automated digest or newsletter with no requested action.\n\n## Queue\n- 1. msg-001: draft_reply_for_operator_review (coordination message can be drafted for approval from supplied context.)\n- 2. msg-002: no_reply (Automated digest or newsletter with no requested action.)\n\n## Draft\n- Re: Launch checklist review: Thanks for the note. I have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item. I will send the final update only after the operator confirms the status and approves the send-as handoff. I will avoid marking anything final until that review is complete.\n\n## Send Gate\n- proposed_not_sent: send-as.explicit-operator-approval\n\n## Stop Conditions\n- None.\n\n",
+      "schema": "runx.inbox.triage.v1",
+      "stop_conditions": [],
+      "triage_queue": [
+        {
+          "action": "draft_reply_for_operator_review",
+          "message_id": "msg-001",
+          "priority": "high",
+          "rank": 1,
+          "reason": "coordination message can be drafted for approval from supplied context."
+        },
+        {
+          "action": "no_reply",
+          "message_id": "msg-002",
+          "priority": "low",
+          "rank": 2,
+          "reason": "Automated digest or newsletter with no requested action."
+        }
+      ]
+    },
+    "receipt": {
+      "acts": [
+        {
+          "artifact_refs": [],
+          "closure": {
+            "closed_at": "2026-06-22T11:30:17.856Z",
+            "disposition": "closed",
+            "reason_code": "process_exit",
+            "summary": "cli-tool exited successfully"
+          },
+          "criterion_bindings": [
+            {
+              "criterion_id": "process_exit",
+              "evidence_refs": [],
+              "status": "verified",
+              "summary": "cli-tool exited successfully",
+              "verification_refs": []
+            }
+          ],
+          "form": "observation",
+          "id": "act_triage",
+          "intent": {
+            "constraints": [],
+            "derived_from": [],
+            "legitimacy": "Runtime graph execution was admitted by the local harness",
+            "purpose": "Run graph step triage",
+            "success_criteria": [
+              {
+                "criterion_id": "process_exit",
+                "required": true,
+                "statement": "cli-tool exits successfully"
+              }
+            ]
+          },
+          "source_refs": [],
+          "summary": "Executed graph step triage",
+          "target_refs": []
+        }
+      ],
+      "authority": {
+        "actor_ref": {
+          "type": "principal",
+          "uri": "runx:principal:local_runtime"
+        },
+        "attenuation": {
+          "parent_authority_ref": null,
+          "subset_proof": null
+        },
+        "authority_proof_refs": [],
+        "enforcement": {
+          "profile_hash": "sha256:runtime-skeleton-enforcement",
+          "redaction_refs": [],
+          "setup_refs": [],
+          "teardown_refs": []
+        },
+        "grant_refs": [],
+        "scope_refs": [],
+        "terms": []
+      },
+      "canonicalization": "runx.receipt.c14n.v1",
+      "created_at": "2026-06-22T11:30:17.856Z",
+      "decisions": [
+        {
+          "artifact_refs": [],
+          "choice": "open",
+          "closure": null,
+          "decision_id": "dec_triage",
+          "inputs": {
+            "opportunity_refs": [],
+            "selection_ref": null,
+            "signal_refs": [],
+            "target_ref": null
+          },
+          "justification": {
+            "evidence_refs": [],
+            "summary": "runtime graph planner selected this node"
+          },
+          "proposed_intent": {
+            "constraints": [],
+            "derived_from": [],
+            "legitimacy": "Local graph execution requested this node",
+            "purpose": "Open runtime node triage",
+            "success_criteria": []
+          },
+          "selected_act_id": "act_triage",
+          "selected_harness_ref": null
+        }
+      ],
+      "digest": "sha256:1f7e77bbf0160bb617aef6ec3606a4c9d45514259ff32aa15c210f41f9927f85",
+      "id": "sha256:360ca9fd983cd49b26487bf0f880b3c6daedef1f720fb116c0579ded00b26c87",
+      "idempotency": {
+        "content_hash": "sha256:run_triage_c4a116d4e033-triage-content",
+        "intent_key": "sha256:run_triage_c4a116d4e033-triage-intent",
+        "trigger_fingerprint": "sha256:run_triage_c4a116d4e033-triage-trigger"
+      },
+      "issuer": {
+        "kid": "inbox-triage-dogfood-key",
+        "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+        "type": "hosted"
+      },
+      "lineage": {
+        "children": [],
+        "sync": []
+      },
+      "schema": "runx.receipt.v1",
+      "seal": {
+        "closed_at": "2026-06-22T11:30:17.856Z",
+        "criteria": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "disposition": "closed",
+        "last_observed_at": "2026-06-22T11:30:17.856Z",
+        "reason_code": "process_closed",
+        "summary": "cli-tool triage completed"
+      },
+      "signals": [],
+      "signature": {
+        "alg": "Ed25519",
+        "value": "base64:czBF2bowwKWb8Q5Kbo-ihcTkg8oLjXHn8CVzjaUpkIjIiSik-OkMgHQ2qMYc8eF7u7X5Gmv-USAmNd_RgHzZDQ"
+      },
+      "subject": {
+        "commitments": [],
+        "kind": "skill",
+        "ref": {
+          "type": "harness",
+          "uri": "hrn_run_triage_c4a116d4e033_triage"
+        }
+      }
+    },
+    "receipt_id": "sha256:360ca9fd983cd49b26487bf0f880b3c6daedef1f720fb116c0579ded00b26c87",
+    "registry_provenance": {
+      "digest": "sha256:29fdfea40e708a014762477638a095b0978b966ae0a23e788be3482a4f469ea0",
+      "profile_digest": "sha256:9e6e228ab924cb1f34ab00a836c02fc148b791358eb0dde9e4e0ef1c27fcfa17",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "skill_id": "hehee9/inbox-triage",
+      "trust_state": "trusted",
+      "trust_tier": "community",
+      "version": "sha-fe96ae7c876b"
+    },
+    "run_id": "run_triage_c4a116d4e033",
+    "schema": "runx.skill_run.v1",
+    "skill_name": "inbox-triage",
+    "status": "sealed"
+  },
+  "verify": {
+    "schema": "runx.verify_verdict.v1",
+    "receipt_id": "sha256:360ca9fd983cd49b26487bf0f880b3c6daedef1f720fb116c0579ded00b26c87",
+    "valid": true,
+    "digest": {
+      "status": "valid",
+      "expected": "sha256:1f7e77bbf0160bb617aef6ec3606a4c9d45514259ff32aa15c210f41f9927f85",
+      "actual": "sha256:1f7e77bbf0160bb617aef6ec3606a4c9d45514259ff32aa15c210f41f9927f85"
+    },
+    "content_address": {
+      "status": "valid",
+      "expected": "sha256:360ca9fd983cd49b26487bf0f880b3c6daedef1f720fb116c0579ded00b26c87",
+      "actual": "sha256:360ca9fd983cd49b26487bf0f880b3c6daedef1f720fb116c0579ded00b26c87"
+    },
+    "signature": {
+      "mode": "production",
+      "status": "valid",
+      "kid": "inbox-triage-dogfood-key"
+    },
+    "lineage": {
+      "status": "unverified",
+      "message": "single receipt verification cannot prove receipt-tree lineage"
+    },
+    "findings": []
+  },
+  "receipt_ref": "runx:receipt:sha256:360ca9fd983cd49b26487bf0f880b3c6daedef1f720fb116c0579ded00b26c87"
+}

@@ -1,0 +1,42 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "hehee9/inbox-triage@sha-fe96ae7c876b",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/runx-install/hehee9/inbox-triage/sha-fe96ae7c876b/SKILL.md",
+      "skill_name": "inbox-triage",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "hehee9/inbox-triage",
+      "version": "sha-fe96ae7c876b",
+      "digest": "sha256:29fdfea40e708a014762477638a095b0978b966ae0a23e788be3482a4f469ea0",
+      "profile_digest": "sha256:9e6e228ab924cb1f34ab00a836c02fc148b791358eb0dde9e4e0ef1c27fcfa17",
+      "profile_state_path": "/tmp/runx-install/hehee9/inbox-triage/sha-fe96ae7c876b/.runx/profile.json",
+      "runner_names": [
+        "triage"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/runx-install/hehee9/inbox-triage/sha-fe96ae7c876b/SKILL.md",
+      "digest": "sha256:29fdfea40e708a014762477638a095b0978b966ae0a23e788be3482a4f469ea0",
+      "install_count": 1,
+      "package_digest": "5445c77ca90c018c7894148535215332a777559f7df5a45653e07df00002efcc",
+      "profile_digest": "sha256:9e6e228ab924cb1f34ab00a836c02fc148b791358eb0dde9e4e0ef1c27fcfa17",
+      "publisher": {
+        "handle": "hehee9",
+        "id": "hehee9",
+        "kind": "publisher"
+      },
+      "ref": "hehee9/inbox-triage@sha-fe96ae7c876b",
+      "skill_id": "hehee9/inbox-triage",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-fe96ae7c876b"
+    }
+  }
+}

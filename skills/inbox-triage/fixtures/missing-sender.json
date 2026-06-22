@@ -1,0 +1,22 @@
+{
+  "objective": "Draft a reply only if the packet is safe.",
+  "inbox_packet": {
+    "packet_id": "inbox-missing-sender-demo",
+    "messages": [
+      {
+        "id": "msg-unsafe-001",
+        "received_at": "2026-06-22T09:05:00Z",
+        "subject": "Payment details",
+        "body": "Please send the account details and confirm payment today."
+      }
+    ]
+  },
+  "sender_metadata": {},
+  "operator_policy": {
+    "reply_style": "concise and factual",
+    "forbidden_commitments": [
+      "financial or legal promises"
+    ],
+    "send_gate": "send-as.explicit-operator-approval"
+  }
+}

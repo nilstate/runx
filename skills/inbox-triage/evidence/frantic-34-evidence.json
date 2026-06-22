@@ -1,0 +1,224 @@
+{
+  "schema": "frantic.delivery_evidence.v1",
+  "bounty": 34,
+  "package": {
+    "owner": "hehee9",
+    "name": "inbox-triage",
+    "version": "sha-fe96ae7c876b",
+    "registry_ref": "hehee9/inbox-triage@sha-fe96ae7c876b",
+    "public_url": "https://runx.ai/x/hehee9/inbox-triage@sha-fe96ae7c876b",
+    "source_url": "https://github.com/hehee9/runx-inbox-triage-skill/tree/fe96ae7c876b39d45eec21ccc32806c0af56708f",
+    "pr_url": "https://github.com/runxhq/runx/pull/113",
+    "raw_x_yaml": "https://raw.githubusercontent.com/hehee9/runx/frantic-34-inbox-triage/skills/inbox-triage/X.yaml",
+    "raw_skill_md": "https://raw.githubusercontent.com/hehee9/runx/frantic-34-inbox-triage/skills/inbox-triage/SKILL.md",
+    "registry_digest": "29fdfea40e708a014762477638a095b0978b966ae0a23e788be3482a4f469ea0",
+    "profile_digest": "9e6e228ab924cb1f34ab00a836c02fc148b791358eb0dde9e4e0ef1c27fcfa17",
+    "publisher_owner": "hehee9",
+    "publish_method": "Hosted public index from GitHub source URL after runx Connect OAuth was unavailable; registry listing is live and registry read resolves from https://api.runx.ai."
+  },
+  "versions": {
+    "runx_cli": "runx-cli 0.6.13",
+    "node": "v20.20.2"
+  },
+  "local_harness": {
+    "command": "runx harness /work/skills/inbox-triage --json --receipt-dir <temp_receipt_dir>",
+    "status": "passed",
+    "case_count": 6,
+    "assertion_error_count": 0,
+    "case_names": [
+      "inbox-triage-happy-path-drafts-gated-reply",
+      "inbox-triage-stops-on-missing-sender",
+      "inbox-triage-stops-on-missing-body",
+      "inbox-triage-refuses-auto-send",
+      "inbox-triage-ready-on-digest-only",
+      "inbox-triage-stops-when-commitments-not-allowed"
+    ],
+    "receipt_ids": [
+      "sha256:57f2d9f1f8b79a9c36d89e89a0f7a137c50f40f5d6eff3e46fe0d1de43c687f9",
+      "sha256:4b60f3266970630bfdaaaadeaf5a6ad7cfc41d6e543a1742f7f63b35b5130a1a",
+      "sha256:b969ea5ab5c05cc18f33bdb16044c020dbd37c1ab7c92f86a7d6283b28a43a57",
+      "sha256:335a004673087d83d47273da8aca85c02db4668cc4b7ba606f2046137aa64b4e",
+      "sha256:27ee2ee121e0d1c961808da328e4d8818a6423f6e0a4d3f8703556dd3b368e4a",
+      "sha256:804bfe223012918274674f9188ca7af0d517acd7b0feb4d50f075c4bd429ec3e"
+    ]
+  },
+  "hosted_registry": {
+    "read_status": "success",
+    "trust_tier": "community",
+    "install_command": "runx add hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai",
+    "run_command": "runx skill hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai",
+    "source_attestation": {
+      "kind": "source",
+      "id": "github_source",
+      "status": "verified",
+      "summary": "github:hehee9/runx-inbox-triage-skill@fe96ae7c876b39d45eec21ccc32806c0af56708f",
+      "source": "https://github.com/hehee9/runx-inbox-triage-skill",
+      "issued_at": "2026-06-22T11:28:40.974Z",
+      "metadata": {
+        "event": "push",
+        "profile_path": "skills/inbox-triage/X.yaml",
+        "ref": "main",
+        "repo": "hehee9/runx-inbox-triage-skill",
+        "sha": "fe96ae7c876b39d45eec21ccc32806c0af56708f",
+        "skill_path": "skills/inbox-triage/SKILL.md"
+      }
+    },
+    "harness_status": "passed according to the live runx registry listing, which reports 6 harness cases on the public page."
+  },
+  "dogfood": {
+    "install_command": "runx add hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai",
+    "dogfood_command": "runx skill hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai --json --receipt-dir <temp_receipt_dir>",
+    "verify_command": "RUNX_RECEIPT_VERIFY_KID=inbox-triage-dogfood-key RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI= runx verify --receipt dogfood-receipt.json --json",
+    "run_status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:360ca9fd983cd49b26487bf0f880b3c6daedef1f720fb116c0579ded00b26c87",
+    "verify_valid": true,
+    "verify_signature_status": "valid",
+    "classification_labels": [
+      {
+        "message_id": "msg-001",
+        "labels": [
+          "needs_reply",
+          "time_sensitive"
+        ]
+      },
+      {
+        "message_id": "msg-002",
+        "labels": [
+          "no_reply",
+          "digest"
+        ]
+      }
+    ],
+    "draft_output": {
+      "body": "Thanks for the note.\nI have the supplied context for \"Re: Launch checklist review\" and will treat it as a coordination item.\nI will send the final update only after the operator confirms the status and approves the send-as handoff.\nI will avoid marking anything final until that review is complete.",
+      "citations": [
+        "msg-001 subject/body supplied in inbox_packet",
+        "operator_policy requires explicit send gate",
+        "inbox-triage safety bar forbids automatic sending"
+      ],
+      "message_id": "msg-001",
+      "subject": "Re: Launch checklist review"
+    },
+    "gated_send_proposal": {
+      "approval_gate": "send-as.explicit-operator-approval",
+      "body_ref": "draft_reply.msg-001",
+      "proposed_channel": "email",
+      "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+      "requires_approval": true,
+      "status": "proposed_not_sent",
+      "subject": "Re: Launch checklist review",
+      "to": "dana@example.com"
+    },
+    "stop_condition_example": [
+      {
+        "name": "missing_sender_stops",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "missing_body_stops",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "auto_send_refused",
+        "ok": true,
+        "details": {}
+      },
+      {
+        "name": "commitment_disallowed_stops",
+        "ok": true,
+        "details": {}
+      }
+    ]
+  },
+  "safety": {
+    "private_mailbox_access": false,
+    "sends_email": false,
+    "outbound_boundary": "The skill emits gated_send_proposal.requires_approval=true and status=proposed_not_sent. A separate send-as runner or human operator must approve before any outbound effect.",
+    "synthetic_fixture_only": true
+  },
+  "linked_artifacts": {
+    "verification_json": "https://raw.githubusercontent.com/hehee9/runx/frantic-34-inbox-triage/skills/inbox-triage/evidence/dogfood-verify.json",
+    "dogfood_receipt": "https://raw.githubusercontent.com/hehee9/runx/frantic-34-inbox-triage/skills/inbox-triage/evidence/dogfood-receipt.json",
+    "local_evidence": "https://raw.githubusercontent.com/hehee9/runx/frantic-34-inbox-triage/skills/inbox-triage/evidence/local-evidence.docker.json",
+    "report": "https://raw.githubusercontent.com/hehee9/runx/frantic-34-inbox-triage/skills/inbox-triage/evidence/frantic-34-report.md"
+  },
+  "summary": "Published hehee9/inbox-triage@sha-fe96ae7c876b for Frantic bounty #34 with a public runx listing, PR #113, raw package files, local 0.6.13 harness evidence, clean install evidence, a dogfood run, a sealed receipt, and a valid receipt verification verdict.",
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.6.13",
+      "evidence": "runx-version.txt and local-evidence.docker.json record runx-cli 0.6.13."
+    },
+    {
+      "name": "local_harness_passed",
+      "value": "passed",
+      "evidence": "Harness passed 6 cases with 0 assertion errors."
+    },
+    {
+      "name": "hosted_registry_resolves",
+      "value": "success",
+      "evidence": "registry read resolves hehee9/inbox-triage@sha-fe96ae7c876b from https://api.runx.ai with package and profile digests."
+    },
+    {
+      "name": "clean_install_succeeded",
+      "value": "runx add hehee9/inbox-triage@sha-fe96ae7c876b --registry https://api.runx.ai",
+      "evidence": "dogfood-add.json records a successful registry install into a clean temporary destination."
+    },
+    {
+      "name": "dogfood_run_sealed",
+      "value": "sealed",
+      "evidence": "dogfood-run.json records a sealed run for hehee9/inbox-triage@sha-fe96ae7c876b."
+    },
+    {
+      "name": "receipt_verified",
+      "value": true,
+      "evidence": "dogfood-verify.json records valid=true with digest, content address, and signature all valid."
+    },
+    {
+      "name": "classification_labels",
+      "value": [
+        {
+          "message_id": "msg-001",
+          "labels": [
+            "needs_reply",
+            "time_sensitive"
+          ]
+        },
+        {
+          "message_id": "msg-002",
+          "labels": [
+            "no_reply",
+            "digest"
+          ]
+        }
+      ],
+      "evidence": "The dogfood run classified msg-001 as needs_reply/time_sensitive and msg-002 as no_reply/digest."
+    },
+    {
+      "name": "gated_send_proposal",
+      "value": {
+        "approval_gate": "send-as.explicit-operator-approval",
+        "body_ref": "draft_reply.msg-001",
+        "proposed_channel": "email",
+        "reason": "Draft is ready only for send-as or human approval; no outbound effect occurred.",
+        "requires_approval": true,
+        "status": "proposed_not_sent",
+        "subject": "Re: Launch checklist review",
+        "to": "dana@example.com"
+      },
+      "evidence": "The happy-path proposal requires approval, uses send-as.explicit-operator-approval, and remains proposed_not_sent."
+    },
+    {
+      "name": "stop_paths_covered",
+      "value": [
+        "inbox-triage-stops-on-missing-sender",
+        "inbox-triage-stops-on-missing-body",
+        "inbox-triage-refuses-auto-send",
+        "inbox-triage-stops-when-commitments-not-allowed"
+      ],
+      "evidence": "The harness covers missing sender, missing body, auto-send refusal, and disallowed commitment stop paths."
+    }
+  ]
+}
