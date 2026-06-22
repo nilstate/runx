@@ -3,41 +3,41 @@
   "registry": {
     "action": "install",
     "source": "remote",
-    "ref": "lubuseb/least-privilege-plan@sha-e2d0eec62745",
+    "ref": "lubuseb/least-privilege-plan@sha-2ed0e113ff52",
     "install": {
       "status": "installed",
-      "destination": "/tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-e2d0eec62745/SKILL.md",
+      "destination": "/tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-2ed0e113ff52/SKILL.md",
       "skill_name": "least-privilege-plan",
       "source": "runx-registry",
       "source_label": "runx registry",
       "skill_id": "lubuseb/least-privilege-plan",
-      "version": "sha-e2d0eec62745",
+      "version": "sha-2ed0e113ff52",
       "digest": "sha256:09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
-      "profile_digest": "sha256:f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea",
-      "profile_state_path": "/tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-e2d0eec62745/.runx/profile.json",
+      "profile_digest": "sha256:259c08c1e5725838b9cd593e7a595c883ad10a4ed8d8b2107bfb3cd712977d4e",
+      "profile_state_path": "/tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-2ed0e113ff52/.runx/profile.json",
       "runner_names": [
         "default"
       ],
       "trust_tier": "community"
     },
     "receipt_metadata": {
-      "destination": "/tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-e2d0eec62745/SKILL.md",
+      "destination": "/tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-2ed0e113ff52/SKILL.md",
       "digest": "sha256:09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
       "install_count": 1,
-      "package_digest": "56702fe284f54bf0a115550c773b53328e803a0f452d1b93106d8002493c6534",
-      "profile_digest": "sha256:f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea",
+      "package_digest": "a25cc87d7f6078709b7f7af1e7485d67257b428d3d26a895e2395ab7bcb4867e",
+      "profile_digest": "sha256:259c08c1e5725838b9cd593e7a595c883ad10a4ed8d8b2107bfb3cd712977d4e",
       "publisher": {
         "display_name": "LubuSeb",
         "handle": "lubuseb",
         "id": "user_53f00ae7ec2363e37ac6ff68",
         "kind": "user"
       },
-      "ref": "lubuseb/least-privilege-plan@sha-e2d0eec62745",
+      "ref": "lubuseb/least-privilege-plan@sha-2ed0e113ff52",
       "skill_id": "lubuseb/least-privilege-plan",
       "source_label": "runx registry",
       "status": "installed",
       "trust_tier": "community",
-      "version": "sha-e2d0eec62745"
+      "version": "sha-2ed0e113ff52"
     }
   }
 }

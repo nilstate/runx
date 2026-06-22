@@ -5,11 +5,11 @@
   "package": {
     "owner": "lubuseb",
     "name": "least-privilege-plan",
-    "version": "sha-e2d0eec62745",
-    "registry_ref": "lubuseb/least-privilege-plan@sha-e2d0eec62745",
-    "public_url": "https://runx.ai/x/lubuseb/least-privilege-plan@sha-e2d0eec62745",
+    "version": "sha-2ed0e113ff52",
+    "registry_ref": "lubuseb/least-privilege-plan@sha-2ed0e113ff52",
+    "public_url": "https://runx.ai/x/lubuseb/least-privilege-plan@sha-2ed0e113ff52",
     "digest": "09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
-    "profile_digest": "f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea"
+    "profile_digest": "259c08c1e5725838b9cd593e7a595c883ad10a4ed8d8b2107bfb3cd712977d4e"
   },
   "source": {
     "pr_url": "https://github.com/runxhq/runx/pull/118",
@@ -19,8 +19,8 @@
   },
   "runtime": {
     "runx_version": "runx-cli 0.6.13",
-    "receipt_ref": "runx:receipt:sha256:fd396e6bf878658a9d3c745a5c4d228c95bc6c45008a298cb2bbe2d2f2b13d5f",
-    "receipt_id": "sha256:fd396e6bf878658a9d3c745a5c4d228c95bc6c45008a298cb2bbe2d2f2b13d5f",
+    "receipt_ref": "runx:receipt:sha256:434a5446b2f7d85b35a2ff9ec70ba48d25c8bf06b8cb64f0f79ff4a576f33d77",
+    "receipt_id": "sha256:434a5446b2f7d85b35a2ff9ec70ba48d25c8bf06b8cb64f0f79ff4a576f33d77",
     "verify_verdict": "valid",
     "signature_mode": "production"
   },
@@ -28,7 +28,7 @@
     {
       "name": "published_registry_package",
       "status": "passed",
-      "detail": "runx registry publish completed successfully for lubuseb/least-privilege-plan@sha-e2d0eec62745 on https://api.runx.ai.",
+      "detail": "runx registry publish completed successfully for lubuseb/least-privilege-plan@sha-2ed0e113ff52 on https://api.runx.ai.",
       "evidence_ref": "registry-publish.json"
     },
     {
@@ -46,7 +46,7 @@
     {
       "name": "hosted_harness",
       "status": "passed",
-      "detail": "The installed registry package passed over-broad-grant-plan, justified-grant-plan, and missing-grants-fails-closed harness cases.",
+      "detail": "The installed registry package passed over-broad-grant-plan, justified-grant-plan, missing-grants-fails-closed, invalid-effect-status-fails-closed, and policy-mismatch-fails-closed harness cases.",
       "evidence_ref": "hosted-harness.json"
     },
     {
@@ -58,13 +58,13 @@
     {
       "name": "dogfood_run",
       "status": "sealed",
-      "detail": "runx skill lubuseb/least-privilege-plan@sha-e2d0eec62745 produced keep, reduce, revoke, and needs_human_review recommendations for the over-broad fixture.",
+      "detail": "runx skill lubuseb/least-privilege-plan@sha-2ed0e113ff52 produced keep, reduce, revoke, and needs_human_review recommendations for the over-broad fixture.",
       "evidence_ref": "hosted-dogfood-output.json"
     },
     {
       "name": "dogfood_receipt_verified",
       "status": "passed",
-      "detail": "runx verify accepted receipt sha256:fd396e6bf878658a9d3c745a5c4d228c95bc6c45008a298cb2bbe2d2f2b13d5f with valid=true and no findings.",
+      "detail": "runx verify accepted receipt sha256:434a5446b2f7d85b35a2ff9ec70ba48d25c8bf06b8cb64f0f79ff4a576f33d77 with valid=true and no findings.",
       "evidence_ref": "hosted-verification.json"
     },
     {
@@ -84,10 +84,10 @@
     "npx --yes @runxhq/cli@latest --version",
     "npx --yes @runxhq/cli@latest harness /mnt/f/BountyBar/repos/runx/skills/least-privilege-plan --json",
     "npx --yes @runxhq/cli@latest registry publish /mnt/f/BountyBar/repos/runx/skills/least-privilege-plan/SKILL.md --registry https://api.runx.ai --json",
-    "npx --yes @runxhq/cli@latest registry read lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai --json",
-    "npx --yes @runxhq/cli@latest add lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai --to /tmp/runx-least-privilege-plan-clean-install --json",
-    "npx --yes @runxhq/cli@latest harness /tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-e2d0eec62745 --json",
-    "npx --yes @runxhq/cli@latest skill lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai --input-json run_history_packet=<fixture> --input-json policy=<fixture> --json",
+    "npx --yes @runxhq/cli@latest registry read lubuseb/least-privilege-plan@sha-2ed0e113ff52 --registry https://api.runx.ai --json",
+    "npx --yes @runxhq/cli@latest add lubuseb/least-privilege-plan@sha-2ed0e113ff52 --registry https://api.runx.ai --to /tmp/runx-least-privilege-plan-clean-install --json",
+    "npx --yes @runxhq/cli@latest harness /tmp/runx-least-privilege-plan-clean-install/lubuseb/least-privilege-plan/sha-2ed0e113ff52 --json",
+    "npx --yes @runxhq/cli@latest skill lubuseb/least-privilege-plan@sha-2ed0e113ff52 --registry https://api.runx.ai --input-json run_history_packet=<fixture> --input-json policy=<fixture> --json",
     "npx --yes @runxhq/cli@latest verify --receipt-dir /tmp/runx-least-privilege-plan-hosted-dogfood-receipts --json"
   ]
 }

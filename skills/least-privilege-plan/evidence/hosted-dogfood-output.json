@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-06-22T14:31:33.747Z",
+    "closed_at": "2026-06-22T14:38:42.900Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool default completed"
@@ -1203,7 +1203,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-06-22T14:31:33.747Z",
+          "closed_at": "2026-06-22T14:38:42.900Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -1258,7 +1258,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-06-22T14:31:33.747Z",
+    "created_at": "2026-06-22T14:38:42.900Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -1286,8 +1286,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:a63037f85cb3d49f57a81b2c83cbd2b4407c1f7e9652b19077b365147d0664a1",
-    "id": "sha256:fd396e6bf878658a9d3c745a5c4d228c95bc6c45008a298cb2bbe2d2f2b13d5f",
+    "digest": "sha256:50484eb4284019f8a3050efedd4ff8d07c9b09f82c503e67a404bd8758a1b541",
+    "id": "sha256:434a5446b2f7d85b35a2ff9ec70ba48d25c8bf06b8cb64f0f79ff4a576f33d77",
     "idempotency": {
       "content_hash": "sha256:run_default_799e8544dbfd-default-content",
       "intent_key": "sha256:run_default_799e8544dbfd-default-intent",
@@ -1304,7 +1304,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-06-22T14:31:33.747Z",
+      "closed_at": "2026-06-22T14:38:42.900Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -1315,14 +1315,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-06-22T14:31:33.747Z",
+      "last_observed_at": "2026-06-22T14:38:42.900Z",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:l50JZnqIVzm865x_KGQ2iBSY7RfIyUI5YsiK1p4onLdzTcaDzL5q7Ig8nR5W1KUiaPNLE2YrHq2QtpOeiNQtDw"
+      "value": "base64:beTqJciXTFi0qnMl6g8rPCLpImEpTSUJTcNoqNBYH7e8klQF1i1MmBdSSNkfxBdd6KEZjXb3IbR3bG3N-YQwDQ"
     },
     "subject": {
       "commitments": [],
@@ -1333,17 +1333,17 @@
       }
     }
   },
-  "receipt_id": "sha256:fd396e6bf878658a9d3c745a5c4d228c95bc6c45008a298cb2bbe2d2f2b13d5f",
+  "receipt_id": "sha256:434a5446b2f7d85b35a2ff9ec70ba48d25c8bf06b8cb64f0f79ff4a576f33d77",
   "registry_provenance": {
     "digest": "sha256:09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
-    "profile_digest": "sha256:f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea",
+    "profile_digest": "sha256:259c08c1e5725838b9cd593e7a595c883ad10a4ed8d8b2107bfb3cd712977d4e",
     "registry_key_id": "runx-registry-ed25519-v1",
     "registry_source": "remote https://api.runx.ai",
     "registry_source_fingerprint": "ba1ac16b631195fd",
     "skill_id": "lubuseb/least-privilege-plan",
     "trust_state": "trusted",
     "trust_tier": "community",
-    "version": "sha-e2d0eec62745"
+    "version": "sha-2ed0e113ff52"
   },
   "run_id": "run_default_799e8544dbfd",
   "schema": "runx.skill_run.v1",

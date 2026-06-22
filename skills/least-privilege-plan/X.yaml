@@ -140,6 +140,62 @@ harness:
       expect:
         status: failure
 
+    - name: invalid-effect-status-fails-closed
+      runner: default
+      inputs:
+        objective: "Reject malformed observed effect status instead of treating it as success."
+        policy:
+          policy_id: runx-policy-invalid-status-v1
+          review_rules:
+            wildcard_reduction_allowed: true
+          reserved_grants: []
+        run_history_packet:
+          subject: skills/status-check
+          policy_id: runx-policy-invalid-status-v1
+          receipt_refs:
+            - runx:receipt:sha256:badstatus
+          grants:
+            - grant_id: grant-read
+              scope: repo.read:github/LubuSeb/sourcey-demo/*
+              declared_policy_ref: policy:repo-read
+          observed_effects:
+            - effect_id: e-failed
+              grant_id: grant-read
+              verb: repo.read
+              resource: github/LubuSeb/sourcey-demo/issues/81
+              status: failed
+              receipt_ref: runx:receipt:sha256:badstatus#read
+      expect:
+        status: failure
+
+    - name: policy-mismatch-fails-closed
+      runner: default
+      inputs:
+        objective: "Reject history packets bound to a different policy id."
+        policy:
+          policy_id: runx-policy-declared-v1
+          review_rules:
+            wildcard_reduction_allowed: true
+          reserved_grants: []
+        run_history_packet:
+          subject: skills/policy-mismatch
+          policy_id: runx-policy-history-v1
+          receipt_refs:
+            - runx:receipt:sha256:mismatch
+          grants:
+            - grant_id: grant-read
+              scope: repo.read:github/LubuSeb/sourcey-demo/issues/81
+              declared_policy_ref: policy:repo-read
+          observed_effects:
+            - effect_id: e-read
+              grant_id: grant-read
+              verb: repo.read
+              resource: github/LubuSeb/sourcey-demo/issues/81
+              status: success
+              receipt_ref: runx:receipt:sha256:mismatch#read
+      expect:
+        status: failure
+
 runners:
   default:
     default: true

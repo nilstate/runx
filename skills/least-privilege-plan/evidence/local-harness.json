@@ -1,17 +1,21 @@
 {
   "status": "passed",
-  "case_count": 3,
+  "case_count": 5,
   "assertion_error_count": 0,
   "assertion_errors": [],
   "case_names": [
     "over-broad-grant-plan",
     "justified-grant-plan",
-    "missing-grants-fails-closed"
+    "missing-grants-fails-closed",
+    "invalid-effect-status-fails-closed",
+    "policy-mismatch-fails-closed"
   ],
   "receipt_ids": [
-    "sha256:b6d55381ae059d0325aeadfb0f5721c6bbecf29b82adc889ee46058a5abbcf4a",
-    "sha256:4e018f04cfc115662e499a0cb7c8e47777648f0d06be40aa7d093dee63d7923d",
-    "sha256:c6a7506ece63c90fb2a4b66e90de687a51e2000c719a53951e5da0331f44f48a"
+    "sha256:528dc0578170ed9e84d02594681d3b32ff5507126251724002ccb00895f91fdc",
+    "sha256:1b26af95abe63a45f0435dd94f456ccd91cd79b3722e82eb0f12b68f19d356f6",
+    "sha256:d3b898bef617c61bda97f989dd774a6213958974f55e3ffaec14708906d2d25b",
+    "sha256:f9ccd81249919052b7289653fdd890577f580a63d2bc9fc7bb6d07ec70bd30b6",
+    "sha256:9986f6adc387c0ecdd3e80636dcdfb17d31c854392603a0f792bc38708ac5f56"
   ],
   "graph_case_count": 0
 }

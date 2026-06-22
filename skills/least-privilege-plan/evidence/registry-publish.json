@@ -8,12 +8,12 @@
       "skill_id": "lubuseb/least-privilege-plan",
       "owner": "lubuseb",
       "name": "least-privilege-plan",
-      "version": "sha-e2d0eec62745",
+      "version": "sha-2ed0e113ff52",
       "digest": "09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
-      "profile_digest": "f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea",
+      "profile_digest": "259c08c1e5725838b9cd593e7a595c883ad10a4ed8d8b2107bfb3cd712977d4e",
       "trust_tier": "community",
-      "install_command": "runx add lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai",
-      "run_command": "runx skill lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai",
+      "install_command": "runx add lubuseb/least-privilege-plan@sha-2ed0e113ff52 --registry https://api.runx.ai",
+      "run_command": "runx skill lubuseb/least-privilege-plan@sha-2ed0e113ff52 --registry https://api.runx.ai",
       "public_url": "https://runx.ai/x/lubuseb/least-privilege-plan"
     }
   }

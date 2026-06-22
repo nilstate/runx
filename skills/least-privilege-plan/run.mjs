@@ -7,7 +7,14 @@ const policy = requireObject(inputs.policy, "policy");
 const objective = stringValue(inputs.objective) || "Produce a least-privilege grant plan.";
 
 const subject = stringValue(history.subject) || "unknown-subject";
-const policyId = stringValue(history.policy_id) || stringValue(policy.policy_id) || "unknown-policy";
+const historyPolicyId = stringValue(history.policy_id);
+const declaredPolicyId = stringValue(policy.policy_id);
+if (!historyPolicyId) throw new Error("run_history_packet.policy_id is required");
+if (!declaredPolicyId) throw new Error("policy.policy_id is required");
+if (historyPolicyId !== declaredPolicyId) {
+  throw new Error("run_history_packet.policy_id must match policy.policy_id");
+}
+const policyId = declaredPolicyId;
 const grants = normalizeGrants(history.grants);
 const effects = normalizeEffects(history.observed_effects);
 const missingEvidence = normalizeMissingEvidence(history.missing_evidence);
@@ -246,7 +253,7 @@ function normalizeEffects(value) {
       grant_id: stringValue(effect.grant_id) || "",
       verb: stringValue(effect.verb) || "",
       resource: stringValue(effect.resource) || "",
-      status: normalizeStatus(effect.status),
+      status: normalizeStatus(effect.status, index),
       receipt_ref: stringValue(effect.receipt_ref) || "",
     };
   });
@@ -262,10 +269,11 @@ function normalizeMissingEvidence(value) {
   });
 }
 
-function normalizeStatus(value) {
-  const normalized = stringValue(value) || "success";
+function normalizeStatus(value, index) {
+  const normalized = stringValue(value);
+  if (!normalized) throw new Error(`observed_effects[${index}].status is required`);
   if (["success", "denied", "dry_run"].includes(normalized)) return normalized;
-  return "success";
+  throw new Error(`observed_effects[${index}].status must be success, denied, or dry_run`);
 }
 
 function renderReport(plan) {

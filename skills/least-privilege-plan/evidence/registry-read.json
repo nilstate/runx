@@ -3,17 +3,17 @@
   "registry": {
     "action": "read",
     "source": "remote",
-    "ref": "lubuseb/least-privilege-plan@sha-e2d0eec62745",
+    "ref": "lubuseb/least-privilege-plan@sha-2ed0e113ff52",
     "skill": {
       "skill_id": "lubuseb/least-privilege-plan",
       "owner": "lubuseb",
       "name": "least-privilege-plan",
       "description": "Produce a read-only least-privilege grant plan from bounded run history and a declared policy.",
       "category": "security",
-      "version": "sha-e2d0eec62745",
+      "version": "sha-2ed0e113ff52",
       "digest": "09c761cf110265d8e5ddc4453fb4cff90cd5b775920557cd4eda384ae20af471",
       "markdown": "---\nname: least-privilege-plan\ndescription: Produce a read-only least-privilege grant plan from bounded run history and a declared policy.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\n  input_mode: stdin\n  cwd: .\n  timeout_seconds: 30\ninputs:\n  run_history_packet:\n    type: json\n    required: true\n    description: Bounded run history containing grants, observed effects, receipt refs, and missing-evidence notes.\n  policy:\n    type: json\n    required: true\n    description: Declared least-privilege policy with grant metadata, reserved scopes, and review rules.\n  objective:\n    type: string\n    required: false\n    description: Optional operator intent for the plan.\nrunx:\n  category: security\n  input_resolution:\n    required:\n      - run_history_packet\n      - policy\n---\n\n# least-privilege-plan\n\nUse this skill when an operator needs a read-only plan for narrowing granted\nauthority after one or more runs. The skill compares a bounded run history\npacket against a declared policy and emits keep, reduce, revoke, and\nneeds_human_review recommendations with cited evidence.\n\nThe skill does not mutate grants, write credentials, call provider APIs, or infer\nauthority from broad task success. Every recommendation cites exact observed\neffects, policy inputs, unused scopes, or missing evidence so a reviewer can\napply the plan separately.\n\n## Inputs\n\n- `run_history_packet`: bounded JSON with `subject`, `policy_id`, `grants`,\n  `observed_effects`, `receipt_refs`, and optional `missing_evidence`.\n- `policy`: declared JSON policy with grant metadata, reserved scopes, wildcard\n  rules, and review thresholds.\n- `objective`: optional operator intent.\n\n## Output\n\nThe runner returns JSON with:\n\n- `plan`: the typed least-privilege plan.\n- `recommendations`: one recommendation per grant.\n- `evidence_json`: a compact evidence object suitable for external review.\n- `report`: a human-readable summary.\n\nRecommendation actions are exactly `keep`, `reduce`, `revoke`, and\n`needs_human_review`.",
-      "profile_digest": "f71005f3f3f5a85109980dc5fde8f427ceee0ec34ae315410954292574516dea",
+      "profile_digest": "259c08c1e5725838b9cd593e7a595c883ad10a4ed8d8b2107bfb3cd712977d4e",
       "runner_names": [
         "default"
       ],
@@ -33,7 +33,7 @@
           "id": "publisher:user_53f00ae7ec2363e37ac6ff68",
           "status": "declared",
           "summary": "LubuSeb",
-          "issued_at": "2026-06-22T14:30:00.811Z",
+          "issued_at": "2026-06-22T14:38:27.637Z",
           "metadata": {
             "publisher_display_name": "LubuSeb",
             "publisher_handle": "lubuseb",
@@ -43,8 +43,8 @@
           }
         }
       ],
-      "install_command": "runx add lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai",
-      "run_command": "runx skill lubuseb/least-privilege-plan@sha-e2d0eec62745 --registry https://api.runx.ai"
+      "install_command": "runx add lubuseb/least-privilege-plan@sha-2ed0e113ff52 --registry https://api.runx.ai",
+      "run_command": "runx skill lubuseb/least-privilege-plan@sha-2ed0e113ff52 --registry https://api.runx.ai"
     }
   }
 }
