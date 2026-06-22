@@ -1,0 +1,345 @@
+{
+  "closure": {
+    "closed_at": "2026-06-22T13:39:19.012Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool triage completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "classification": {
+        "confidence": 0.88,
+        "label": "product_question",
+        "matched_signals": [
+          "how do i",
+          "setup",
+          "configure"
+        ],
+        "rationale": "The message asks a bounded setup or product-use question.",
+        "urgency": "normal"
+      },
+      "draft_reply": {
+        "body": "Hi Ana,\n\nFor ExampleDesk integrations, confirm the endpoint or API key is scoped to the environment you are testing, retry one minimal request, and save the response body if it still fails.\n\nBefore this is sent, an operator should confirm the thread context and approve the send-as handoff. This skill has not sent the message.\n\nThanks,\nExampleDesk Support",
+        "proposed": true,
+        "subject": "Re: Webhook setup question",
+        "to": "ana@example.test"
+      },
+      "evidence": {
+        "body_present": true,
+        "latest_message_id": "msg-d1",
+        "live_send_attempted": false,
+        "message_count": 1,
+        "private_mailbox_access": false,
+        "sender_metadata_present": true,
+        "source": "fixture:dogfood-product-question",
+        "taxonomy_coverage": [
+          "product_question",
+          "bug_report",
+          "billing",
+          "account_access",
+          "abuse",
+          "unsafe_send_request",
+          "unknown"
+        ],
+        "thread_id": "thr-dogfood-001"
+      },
+      "gated_send_proposal": {
+        "approval_required": true,
+        "blocked_reason": null,
+        "channel": "email",
+        "content_digest": "sha256:a579b388c6f7f50d44334d9b23de5cf488539337b29ea8c8eb956ecd1e13f7bd",
+        "decision": "requires_human_approval",
+        "handoff_requirements": [
+          "Bind the principal and provider account in send-as.",
+          "Bind the recipient and content digest before approval.",
+          "Require human approval before delivery.",
+          "Record provider send evidence after any approved send."
+        ],
+        "principal_ref": "team:exampledesk-support",
+        "provider_action": "compose_review_then_send_after_approval",
+        "recipient": "ana@example.test",
+        "send_as_skill": "send-as"
+      },
+      "triage_queue": {
+        "cited_message_ids": [
+          "msg-d1"
+        ],
+        "missing_context": [],
+        "name": "support.reply_drafts",
+        "priority": "normal",
+        "reason": "Safe product question with enough context for a draft."
+      }
+    },
+    "stderr": "",
+    "stdout": "{\n  \"classification\": {\n    \"label\": \"product_question\",\n    \"confidence\": 0.88,\n    \"urgency\": \"normal\",\n    \"matched_signals\": [\n      \"how do i\",\n      \"setup\",\n      \"configure\"\n    ],\n    \"rationale\": \"The message asks a bounded setup or product-use question.\"\n  },\n  \"triage_queue\": {\n    \"name\": \"support.reply_drafts\",\n    \"priority\": \"normal\",\n    \"reason\": \"Safe product question with enough context for a draft.\",\n    \"cited_message_ids\": [\n      \"msg-d1\"\n    ],\n    \"missing_context\": []\n  },\n  \"draft_reply\": {\n    \"proposed\": true,\n    \"to\": \"ana@example.test\",\n    \"subject\": \"Re: Webhook setup question\",\n    \"body\": \"Hi Ana,\\n\\nFor ExampleDesk integrations, confirm the endpoint or API key is scoped to the environment you are testing, retry one minimal request, and save the response body if it still fails.\\n\\nBefore this is sent, an operator should confirm the thread context and approve the send-as handoff. This skill has not sent the message.\\n\\nThanks,\\nExampleDesk Support\"\n  },\n  \"gated_send_proposal\": {\n    \"decision\": \"requires_human_approval\",\n    \"send_as_skill\": \"send-as\",\n    \"approval_required\": true,\n    \"principal_ref\": \"team:exampledesk-support\",\n    \"channel\": \"email\",\n    \"recipient\": \"ana@example.test\",\n    \"content_digest\": \"sha256:a579b388c6f7f50d44334d9b23de5cf488539337b29ea8c8eb956ecd1e13f7bd\",\n    \"provider_action\": \"compose_review_then_send_after_approval\",\n    \"blocked_reason\": null,\n    \"handoff_requirements\": [\n      \"Bind the principal and provider account in send-as.\",\n      \"Bind the recipient and content digest before approval.\",\n      \"Require human approval before delivery.\",\n      \"Record provider send evidence after any approved send.\"\n    ]\n  },\n  \"evidence\": {\n    \"source\": \"fixture:dogfood-product-question\",\n    \"thread_id\": \"thr-dogfood-001\",\n    \"message_count\": 1,\n    \"latest_message_id\": \"msg-d1\",\n    \"sender_metadata_present\": true,\n    \"body_present\": true,\n    \"private_mailbox_access\": false,\n    \"live_send_attempted\": false,\n    \"taxonomy_coverage\": [\n      \"product_question\",\n      \"bug_report\",\n      \"billing\",\n      \"account_access\",\n      \"abuse\",\n      \"unsafe_send_request\",\n      \"unknown\"\n    ]\n  }\n}\n",
+    "structured_output": {
+      "classification": {
+        "confidence": 0.88,
+        "label": "product_question",
+        "matched_signals": [
+          "how do i",
+          "setup",
+          "configure"
+        ],
+        "rationale": "The message asks a bounded setup or product-use question.",
+        "urgency": "normal"
+      },
+      "draft_reply": {
+        "body": "Hi Ana,\n\nFor ExampleDesk integrations, confirm the endpoint or API key is scoped to the environment you are testing, retry one minimal request, and save the response body if it still fails.\n\nBefore this is sent, an operator should confirm the thread context and approve the send-as handoff. This skill has not sent the message.\n\nThanks,\nExampleDesk Support",
+        "proposed": true,
+        "subject": "Re: Webhook setup question",
+        "to": "ana@example.test"
+      },
+      "evidence": {
+        "body_present": true,
+        "latest_message_id": "msg-d1",
+        "live_send_attempted": false,
+        "message_count": 1,
+        "private_mailbox_access": false,
+        "sender_metadata_present": true,
+        "source": "fixture:dogfood-product-question",
+        "taxonomy_coverage": [
+          "product_question",
+          "bug_report",
+          "billing",
+          "account_access",
+          "abuse",
+          "unsafe_send_request",
+          "unknown"
+        ],
+        "thread_id": "thr-dogfood-001"
+      },
+      "gated_send_proposal": {
+        "approval_required": true,
+        "blocked_reason": null,
+        "channel": "email",
+        "content_digest": "sha256:a579b388c6f7f50d44334d9b23de5cf488539337b29ea8c8eb956ecd1e13f7bd",
+        "decision": "requires_human_approval",
+        "handoff_requirements": [
+          "Bind the principal and provider account in send-as.",
+          "Bind the recipient and content digest before approval.",
+          "Require human approval before delivery.",
+          "Record provider send evidence after any approved send."
+        ],
+        "principal_ref": "team:exampledesk-support",
+        "provider_action": "compose_review_then_send_after_approval",
+        "recipient": "ana@example.test",
+        "send_as_skill": "send-as"
+      },
+      "triage_queue": {
+        "cited_message_ids": [
+          "msg-d1"
+        ],
+        "missing_context": [],
+        "name": "support.reply_drafts",
+        "priority": "normal",
+        "reason": "Safe product question with enough context for a draft."
+      }
+    }
+  },
+  "payload": {
+    "classification": {
+      "confidence": 0.88,
+      "label": "product_question",
+      "matched_signals": [
+        "how do i",
+        "setup",
+        "configure"
+      ],
+      "rationale": "The message asks a bounded setup or product-use question.",
+      "urgency": "normal"
+    },
+    "draft_reply": {
+      "body": "Hi Ana,\n\nFor ExampleDesk integrations, confirm the endpoint or API key is scoped to the environment you are testing, retry one minimal request, and save the response body if it still fails.\n\nBefore this is sent, an operator should confirm the thread context and approve the send-as handoff. This skill has not sent the message.\n\nThanks,\nExampleDesk Support",
+      "proposed": true,
+      "subject": "Re: Webhook setup question",
+      "to": "ana@example.test"
+    },
+    "evidence": {
+      "body_present": true,
+      "latest_message_id": "msg-d1",
+      "live_send_attempted": false,
+      "message_count": 1,
+      "private_mailbox_access": false,
+      "sender_metadata_present": true,
+      "source": "fixture:dogfood-product-question",
+      "taxonomy_coverage": [
+        "product_question",
+        "bug_report",
+        "billing",
+        "account_access",
+        "abuse",
+        "unsafe_send_request",
+        "unknown"
+      ],
+      "thread_id": "thr-dogfood-001"
+    },
+    "gated_send_proposal": {
+      "approval_required": true,
+      "blocked_reason": null,
+      "channel": "email",
+      "content_digest": "sha256:a579b388c6f7f50d44334d9b23de5cf488539337b29ea8c8eb956ecd1e13f7bd",
+      "decision": "requires_human_approval",
+      "handoff_requirements": [
+        "Bind the principal and provider account in send-as.",
+        "Bind the recipient and content digest before approval.",
+        "Require human approval before delivery.",
+        "Record provider send evidence after any approved send."
+      ],
+      "principal_ref": "team:exampledesk-support",
+      "provider_action": "compose_review_then_send_after_approval",
+      "recipient": "ana@example.test",
+      "send_as_skill": "send-as"
+    },
+    "triage_queue": {
+      "cited_message_ids": [
+        "msg-d1"
+      ],
+      "missing_context": [],
+      "name": "support.reply_drafts",
+      "priority": "normal",
+      "reason": "Safe product question with enough context for a draft."
+    }
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-22T13:39:19.012Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_triage",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step triage",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step triage",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-22T13:39:19.012Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_triage",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node triage",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_triage",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:68dc265991ee560cb6c9b7d56c3734309e18e632df54e592d7c6c065dddec3ec",
+    "id": "sha256:d22aaaaca460f02124a79334da30541860e9c8af795a1f7231439362c80adbc9",
+    "idempotency": {
+      "content_hash": "sha256:run_triage_7740b91cf9c8-triage-content",
+      "intent_key": "sha256:run_triage_7740b91cf9c8-triage-intent",
+      "trigger_fingerprint": "sha256:run_triage_7740b91cf9c8-triage-trigger"
+    },
+    "issuer": {
+      "kid": "inbox-triage-local",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-22T13:39:19.012Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-22T13:39:19.012Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool triage completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:qWgP1Yc61S2rsGXBHPK8c8SqwEZNFD4cLEsjQO8aFqs5d7R2O94Yi3CfkhuAI7raqHCWd7P9NVMzngjdJaaSBw"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_triage_7740b91cf9c8_triage"
+      }
+    }
+  },
+  "receipt_id": "sha256:d22aaaaca460f02124a79334da30541860e9c8af795a1f7231439362c80adbc9",
+  "run_id": "run_triage_7740b91cf9c8",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "inbox-triage",
+  "status": "sealed"
+}

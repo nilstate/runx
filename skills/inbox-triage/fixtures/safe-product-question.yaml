@@ -1,0 +1,34 @@
+name: safe-product-question
+kind: skill
+target: ..
+runner: triage
+inputs:
+  inbox_packet:
+    thread_id: thr-100
+    source: fixture:safe-product-question
+    received_at: "2026-06-22T12:00:00Z"
+    messages:
+      - id: msg-1
+        from:
+          name: Mira Holm
+          email: mira@example.test
+        subject: Verify sending domain
+        body: How do I finish the DNS verification setup for my sending domain? I added the SPF and DKIM records.
+  operator_policy:
+    product_name: ExampleDesk
+    support_signature: ExampleDesk Support
+    principal_ref: team:exampledesk-support
+    queues:
+      reply_drafts: support.reply_drafts
+      manual_review: support.manual_review
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: inbox-triage
+  source_case: safe-product-question
+  source: skills-fixture

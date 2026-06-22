@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "lubuseb/inbox-triage@sha-f0bf31ce9a26",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/runx-inbox-triage-clean-install/skills/lubuseb/inbox-triage/sha-f0bf31ce9a26/SKILL.md",
+      "skill_name": "inbox-triage",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "lubuseb/inbox-triage",
+      "version": "sha-f0bf31ce9a26",
+      "digest": "sha256:ba303eec50e638c44b47fa1d57cf0340dad2fce731221c506f9693b9321daa5e",
+      "profile_digest": "sha256:397db042e57fda919af3b421604876120de847b0eaf9746294f7b1309210c4a6",
+      "profile_state_path": "/tmp/runx-inbox-triage-clean-install/skills/lubuseb/inbox-triage/sha-f0bf31ce9a26/.runx/profile.json",
+      "runner_names": [
+        "triage"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/runx-inbox-triage-clean-install/skills/lubuseb/inbox-triage/sha-f0bf31ce9a26/SKILL.md",
+      "digest": "sha256:ba303eec50e638c44b47fa1d57cf0340dad2fce731221c506f9693b9321daa5e",
+      "install_count": 1,
+      "package_digest": "720c9f4168d1615ef41cb2c2096e06df20c79543bce020553742b97e18f5a4f6",
+      "profile_digest": "sha256:397db042e57fda919af3b421604876120de847b0eaf9746294f7b1309210c4a6",
+      "publisher": {
+        "display_name": "LubuSeb",
+        "handle": "lubuseb",
+        "id": "user_53f00ae7ec2363e37ac6ff68",
+        "kind": "user"
+      },
+      "ref": "lubuseb/inbox-triage@sha-f0bf31ce9a26",
+      "skill_id": "lubuseb/inbox-triage",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-f0bf31ce9a26"
+    }
+  }
+}

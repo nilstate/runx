@@ -1,0 +1,32 @@
+name: missing-body-fails
+kind: skill
+target: ..
+runner: triage
+inputs:
+  inbox_packet:
+    thread_id: thr-300
+    source: fixture:missing-body-fails
+    received_at: "2026-06-22T12:10:00Z"
+    messages:
+      - id: msg-12
+        from:
+          name: Noa Singh
+          email: noa@example.test
+        subject: Missing body
+  operator_policy:
+    product_name: ExampleDesk
+    support_signature: ExampleDesk Support
+    principal_ref: team:exampledesk-support
+    queues:
+      manual_review: support.manual_review
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: inbox-triage
+  source_case: missing-body-fails
+  source: skills-fixture

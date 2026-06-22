@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/tmp/runx-inbox-triage-registry-dogfood-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:e367216e48190b7b406dafc6b503ee2a98d90e9210de2e66d2024ed2a966699a",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

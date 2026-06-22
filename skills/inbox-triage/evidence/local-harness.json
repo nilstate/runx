@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "safe-product-question",
+    "unsafe-send-request",
+    "missing-body-fails"
+  ],
+  "receipt_ids": [
+    "sha256:3286aa6216af23ced7b346581da250d28fd8879287b64dc8b327afadb4875be6",
+    "sha256:fd7bbc2e2bfc5eb5ced68e7123d3b8fc498da5dc33bef9147086c76f915bce3b",
+    "sha256:0fdbbe371c89604e8fb9350559e439f4e51a8ef2651ae8dd4449ac07ae3a6187"
+  ],
+  "graph_case_count": 0
+}
