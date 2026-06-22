@@ -50,7 +50,7 @@
 
 ## Clean install check
 
-- Command: unx add rohitmulani63-ops/inbox-triage@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-inbox-triage-check --json`r
+- Command: `runx add rohitmulani63-ops/inbox-triage@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-inbox-triage-check --json`
 - Result: success
 - Install evidence: docs/frantic/install-checks/inbox-triage.json
 

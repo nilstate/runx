@@ -50,7 +50,7 @@
 
 ## Clean install check
 
-- Command: unx add rohitmulani63-ops/least-privilege-plan@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-least-privilege-plan-check --json`r
+- Command: `runx add rohitmulani63-ops/least-privilege-plan@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-least-privilege-plan-check --json`
 - Result: success
 - Install evidence: docs/frantic/install-checks/least-privilege-plan.json
 

@@ -50,7 +50,7 @@
 
 ## Clean install check
 
-- Command: unx add rohitmulani63-ops/receipt-evidence-bundle@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-receipt-evidence-bundle-check --json`r
+- Command: `runx add rohitmulani63-ops/receipt-evidence-bundle@sha-f31eb820ba53 --registry https://api.runx.ai --installation-id frantic-receipt-evidence-bundle-check --json`
 - Result: success
 - Install evidence: docs/frantic/install-checks/receipt-evidence-bundle.json
 
