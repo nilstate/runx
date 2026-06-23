@@ -73,6 +73,19 @@ harness:
           disposition: closed
           reason_code: process_closed
 
+    - name: missing-knowledge-pack-fails-closed
+      runner: default
+      inputs:
+        objective: "Fail closed when grounding sources are absent."
+        questionnaire:
+          - id: q1
+            section: compliance
+            question: "Are you ISO 27001 certified?"
+        knowledge_pack:
+          sources: []
+      expect:
+        status: failure
+
 runners:
   default:
     default: true

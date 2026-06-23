@@ -1,15 +1,17 @@
 {
   "status": "passed",
-  "case_count": 2,
+  "case_count": 3,
   "assertion_error_count": 0,
   "assertion_errors": [],
   "case_names": [
     "cited-security-questionnaire-answers",
-    "unsupported-certification-is-gap"
+    "unsupported-certification-is-gap",
+    "missing-knowledge-pack-fails-closed"
   ],
   "receipt_ids": [
-    "sha256:0981dc3e02dfdf781ec36ec8491276c7ff3019685cbcdc9484cc891008f86a1a",
-    "sha256:bf4f0f576eaad7228c7b23e8d73d0737f5b03d9b1939aca25141dff76af52620"
+    "sha256:25e83c91fbc6518568cbceea6e1eba4008c66a6aa948c7be3020b0b810278d1b",
+    "sha256:890534895c208cd19908179cc33b077b3a793df109020aad35c7ee457cbe7e1a",
+    "sha256:ce19f957d334d3ed8b4f5b5a25b44d13198d0928f442adcfc8ebcc3cd24ded05"
   ],
   "graph_case_count": 0
 }

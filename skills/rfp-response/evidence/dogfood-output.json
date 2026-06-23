@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-06-23T05:10:42.304Z",
+    "closed_at": "2026-06-23T05:12:41.192Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool default completed"
@@ -210,7 +210,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-06-23T05:10:42.304Z",
+          "closed_at": "2026-06-23T05:12:41.192Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -265,7 +265,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-06-23T05:10:42.304Z",
+    "created_at": "2026-06-23T05:12:41.192Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -293,8 +293,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:2f1ce9d4c84c70e45f6b35cb9ada20286fc692c6dffaec2f07ca6467471eaf0a",
-    "id": "sha256:40987dbccf56a96603e2331e1591e2b3aaa94df07ea8cb8bd32c7c25623d7196",
+    "digest": "sha256:b2d0368ee5469619477aa4f85f7c1153218a8a017bfcf07373daed59313861bb",
+    "id": "sha256:6303ab1d488d60b75465c3dd2d7886eb5c15ec78739388a53a21eb1383d3b7ae",
     "idempotency": {
       "content_hash": "sha256:run_default_ce6bab504068-default-content",
       "intent_key": "sha256:run_default_ce6bab504068-default-intent",
@@ -311,7 +311,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-06-23T05:10:42.304Z",
+      "closed_at": "2026-06-23T05:12:41.192Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -322,14 +322,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-06-23T05:10:42.304Z",
+      "last_observed_at": "2026-06-23T05:12:41.192Z",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:PTGPm-0YrxF9S39qgeUJtXKYZDlRDFQncD3hSJPdq6kKtXCd82kq8jTbeQueyTAQehwfWEjuv8EaUviRbD--Dg"
+      "value": "base64:IAGF8Uzho2YNmOKlreOks-GR_T02Z0BrfO-TT2JmBGLkdRDzsv84dcv4Rn5E4atY-QO19vIV9AusU20EIT3ICQ"
     },
     "subject": {
       "commitments": [],
@@ -340,7 +340,7 @@
       }
     }
   },
-  "receipt_id": "sha256:40987dbccf56a96603e2331e1591e2b3aaa94df07ea8cb8bd32c7c25623d7196",
+  "receipt_id": "sha256:6303ab1d488d60b75465c3dd2d7886eb5c15ec78739388a53a21eb1383d3b7ae",
   "run_id": "run_default_ce6bab504068",
   "schema": "runx.skill_run.v1",
   "skill_name": "rfp-response",

@@ -1,0 +1,7 @@
+{
+  "status": "failure",
+  "error": {
+    "message": "remote registry publish failed [skill_harness_incomplete]: Publish harness must include a stop/error case such as needs_agent, policy_denied, failure, or escalated.",
+    "code": "registry_error"
+  }
+}
