@@ -1,0 +1,84 @@
+skill: contract-review
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: cited-redlines
+      inputs:
+        contract:
+          id: msa-example
+          clauses:
+            - id: term-1
+              type: termination
+              title: Termination
+              text: Either party may terminate for convenience with 90 days written notice.
+            - id: liability-1
+              type: liability
+              title: Limitation of Liability
+              text: Vendor liability is unlimited for every category of damages.
+        playbook:
+          id: commercial-terms-v1
+          rules:
+            - id: termination-notice
+              clause_type: termination
+              requirement: Notice must not exceed 30 days.
+              max_days: 30
+              severity: medium
+              proposed_text: Either party may terminate for convenience with 30 days written notice.
+            - id: liability-cap
+              clause_type: liability
+              requirement: Liability must contain an express monetary cap.
+              require_cap: true
+              severity: high
+              proposed_text: Aggregate liability will not exceed fees paid in the preceding 12 months.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuse-non-contract
+      inputs:
+        contract:
+          id: lunch-note
+          text: Soup, salad, and coffee are available today.
+        playbook:
+          id: commercial-terms-v1
+          rules:
+            - id: termination-notice
+              clause_type: termination
+              requirement: Notice must not exceed 30 days.
+      expect:
+        status: failure
+
+runners:
+  review:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      contract:
+        type: json
+        required: true
+        description: "Contract text or explicitly supplied clauses."
+      playbook:
+        type: json
+        required: true
+        description: "The only acceptable-terms rules the review may apply."
+    outputs:
+      clauses: array
+      redlines: array
+      risk_summary: object
+    artifacts:
+      wrap_as: contract_review_packet
+      packet: runx.contract_review.v1
+

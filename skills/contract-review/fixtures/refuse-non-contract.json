@@ -1,0 +1,16 @@
+{
+  "contract": {
+    "id": "lunch-note",
+    "text": "Soup, salad, and coffee are available today."
+  },
+  "playbook": {
+    "id": "commercial-terms-v1",
+    "rules": [
+      {
+        "id": "termination-notice",
+        "clause_type": "termination",
+        "requirement": "Notice must not exceed 30 days."
+      }
+    ]
+  }
+}

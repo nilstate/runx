@@ -1,0 +1,41 @@
+{
+  "schema": "runx.contract_review.harness_evidence.v1",
+  "generated_at": "2026-06-23T05:38:00Z",
+  "cli_version": "runx-cli 0.6.13",
+  "command": "runx harness skills/contract-review --receipt-dir ./local-harness --json",
+  "result": {
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "case_names": [
+      "cited-redlines",
+      "refuse-non-contract"
+    ],
+    "receipt_ids": [
+      "sha256:1d5c524b4feca791d75a4d3d7a66db8310bf83461eb4b730c532ba70d4bf5700",
+      "sha256:6c64d599c1a815b8514d4402c5e0012a0a13cc652533b7b7c0f0f2d394ea72cd"
+    ]
+  },
+  "observations": {
+    "clauses": [
+      "term-1",
+      "liability-1"
+    ],
+    "redlines": [
+      {
+        "rule_id": "liability-cap",
+        "clause_id": "liability-1",
+        "citation": "Liability must contain an express monetary cap."
+      },
+      {
+        "rule_id": "termination-notice",
+        "clause_id": "term-1",
+        "citation": "Notice must not exceed 30 days."
+      }
+    ],
+    "risk_summary": "high: one high and one medium redline",
+    "refusal": "A lunch note exits with failure instead of fabricating contract clauses.",
+    "effects": []
+  }
+}
+

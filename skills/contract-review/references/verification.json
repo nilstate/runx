@@ -1,0 +1,22 @@
+{
+  "schema": "runx.contract_review.verification.v1",
+  "generated_at": "2026-06-23T05:38:00Z",
+  "cli_version": "runx-cli 0.6.13",
+  "doctor": {
+    "status": "success",
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0
+  },
+  "local_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "cited-redlines",
+      "refuse-non-contract"
+    ]
+  },
+  "read_only": true,
+  "effects_emitted": []
+}
+

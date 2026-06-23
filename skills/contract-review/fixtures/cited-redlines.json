@@ -1,0 +1,41 @@
+{
+  "contract": {
+    "id": "msa-example",
+    "clauses": [
+      {
+        "id": "term-1",
+        "type": "termination",
+        "title": "Termination",
+        "text": "Either party may terminate for convenience with 90 days written notice."
+      },
+      {
+        "id": "liability-1",
+        "type": "liability",
+        "title": "Limitation of Liability",
+        "text": "Vendor liability is unlimited for every category of damages."
+      }
+    ]
+  },
+  "playbook": {
+    "id": "commercial-terms-v1",
+    "rules": [
+      {
+        "id": "termination-notice",
+        "clause_type": "termination",
+        "requirement": "Notice must not exceed 30 days.",
+        "max_days": 30,
+        "severity": "medium",
+        "proposed_text": "Either party may terminate for convenience with 30 days written notice."
+      },
+      {
+        "id": "liability-cap",
+        "clause_type": "liability",
+        "requirement": "Liability must contain an express monetary cap.",
+        "require_cap": true,
+        "severity": "high",
+        "proposed_text": "Aggregate liability will not exceed fees paid in the preceding 12 months."
+      }
+    ]
+  }
+}
+
