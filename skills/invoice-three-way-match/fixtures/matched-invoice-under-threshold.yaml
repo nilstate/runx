@@ -1,0 +1,51 @@
+name: matched-invoice-under-threshold
+kind: skill
+target: ..
+runner: decide
+inputs:
+  invoice:
+    invoice_number: INV-2026-0101
+    vendor: Northwind Software
+    po_number: PO-2026-044
+    receipt_number: GR-2026-044
+    currency: USD
+    total: 1800
+    line_items:
+      - sku: SAAS-SEATS
+        description: Platform seats
+        category: software
+        quantity: 3
+        unit_price: 600
+        amount: 1800
+  po:
+    po_number: PO-2026-044
+    vendor: Northwind Software
+    currency: USD
+    line_items:
+      - sku: SAAS-SEATS
+        description: Platform seats
+        category: software
+        quantity: 3
+        unit_price: 600
+        amount: 1800
+  goods_receipt:
+    receipt_number: GR-2026-044
+    po_number: PO-2026-044
+    vendor: Northwind Software
+    line_items:
+      - sku: SAAS-SEATS
+        description: Platform seats
+        quantity_received: 3
+  policy:
+    auto_approve_under: 2500
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: invoice-three-way-match
+  source_case: matched-invoice-under-threshold
+  source: skills-fixture

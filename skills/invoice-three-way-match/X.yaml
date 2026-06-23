@@ -1,0 +1,135 @@
+skill: invoice-three-way-match
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: matched-invoice-under-threshold-yields-proposal
+      inputs:
+        invoice:
+          invoice_number: INV-2026-0101
+          vendor: Northwind Software
+          po_number: PO-2026-044
+          receipt_number: GR-2026-044
+          currency: USD
+          total: 1800
+          line_items:
+            - sku: SAAS-SEATS
+              description: Platform seats
+              category: software
+              quantity: 3
+              unit_price: 600
+              amount: 1800
+        po:
+          po_number: PO-2026-044
+          vendor: Northwind Software
+          currency: USD
+          line_items:
+            - sku: SAAS-SEATS
+              description: Platform seats
+              category: software
+              quantity: 3
+              unit_price: 600
+              amount: 1800
+        goods_receipt:
+          receipt_number: GR-2026-044
+          po_number: PO-2026-044
+          vendor: Northwind Software
+          line_items:
+            - sku: SAAS-SEATS
+              description: Platform seats
+              quantity_received: 3
+        policy:
+          auto_approve_under: 2500
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: unmatched-receipt-refuses-with-exceptions
+      inputs:
+        invoice:
+          invoice_number: INV-2026-0102
+          vendor: Northwind Software
+          po_number: PO-2026-045
+          receipt_number: GR-2026-045
+          currency: USD
+          total: 3200
+          line_items:
+            - sku: SAAS-SEATS
+              description: Platform seats
+              category: software
+              quantity: 4
+              unit_price: 800
+              amount: 3200
+        po:
+          po_number: PO-2026-045
+          vendor: Northwind Software
+          currency: USD
+          line_items:
+            - sku: SAAS-SEATS
+              description: Platform seats
+              category: software
+              quantity: 4
+              unit_price: 800
+              amount: 3200
+        goods_receipt:
+          receipt_number: GR-2026-045
+          po_number: PO-2026-045
+          vendor: Northwind Software
+          line_items:
+            - sku: SAAS-SEATS
+              description: Platform seats
+              quantity_received: 2
+        policy:
+          auto_approve_under: 2500
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      summary: string
+      extracted: json
+      match: json
+      gl_coding: json
+      payment_proposal: json
+      exceptions: json
+    artifacts:
+      wrap_as: invoice_three_way_match_decision
+      packet: runx.invoice_three_way_match.v1
+    inputs:
+      invoice:
+        type: json
+        required: true
+        description: Invoice object with invoice number, vendor, PO number, total, currency, and line items.
+      po:
+        type: json
+        required: true
+        description: Purchase order object with vendor, currency, PO number, and ordered line items.
+      goods_receipt:
+        type: json
+        required: true
+        description: Goods receipt object with PO number, receipt reference, and received line quantities.
+      policy:
+        type: json
+        required: true
+        description: Matching policy with auto_approve_under threshold in invoice currency units.

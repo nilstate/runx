@@ -1,0 +1,51 @@
+name: unmatched-receipt-refused
+kind: skill
+target: ..
+runner: decide
+inputs:
+  invoice:
+    invoice_number: INV-2026-0102
+    vendor: Northwind Software
+    po_number: PO-2026-045
+    receipt_number: GR-2026-045
+    currency: USD
+    total: 3200
+    line_items:
+      - sku: SAAS-SEATS
+        description: Platform seats
+        category: software
+        quantity: 4
+        unit_price: 800
+        amount: 3200
+  po:
+    po_number: PO-2026-045
+    vendor: Northwind Software
+    currency: USD
+    line_items:
+      - sku: SAAS-SEATS
+        description: Platform seats
+        category: software
+        quantity: 4
+        unit_price: 800
+        amount: 3200
+  goods_receipt:
+    receipt_number: GR-2026-045
+    po_number: PO-2026-045
+    vendor: Northwind Software
+    line_items:
+      - sku: SAAS-SEATS
+        description: Platform seats
+        quantity_received: 2
+  policy:
+    auto_approve_under: 2500
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: invoice-three-way-match
+  source_case: unmatched-receipt-refused
+  source: skills-fixture
