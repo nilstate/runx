@@ -1,0 +1,18 @@
+name: off-allowlist-denied
+input:
+  prospect:
+    company: Acme Logistics
+    contact: VP Operations
+  icp:
+    offer: governed workflows
+    pain: manual queues
+  source_allowlist:
+    - acme.example
+  sources:
+    - url: https://evil.example/post
+      title: Untrusted source
+      excerpt: This source should not be used because its host is outside the allowlist.
+expect:
+  decision:
+    status: policy_denied
+  sequence: []

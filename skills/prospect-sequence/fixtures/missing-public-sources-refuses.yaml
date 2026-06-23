@@ -1,0 +1,15 @@
+name: missing-public-sources-refuses
+input:
+  prospect:
+    company: PrivateCo
+    contact: Revenue Operations
+  icp:
+    offer: governed outreach planning
+    pain: unverified account context
+  source_allowlist:
+    - private.example
+  sources: []
+expect:
+  decision:
+    status: needs_agent
+  sequence: []

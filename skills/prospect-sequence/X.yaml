@@ -1,0 +1,82 @@
+skill: prospect-sequence
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      research: object
+      sequence: array
+      send_proposal: object
+    artifacts:
+      wrap_as: prospect_sequence_packet
+      packet: runx.sales.prospect_sequence.v1
+    inputs:
+      prospect:
+        type: json
+        required: true
+        description: Prospect account and contact reference.
+      icp:
+        type: json
+        required: true
+        description: Ideal customer profile, pain, and offer context.
+      source_allowlist:
+        type: json
+        required: true
+        description: Allowed public hosts or URL prefixes for source evidence.
+      sources:
+        type: json
+        required: true
+        description: Public source records with url, title, and excerpt.
+  stop:
+    type: cli-tool
+    command: /bin/false
+    outputs:
+      decision: object
+    inputs:
+      reason:
+        type: string
+        required: false
+        description: Harness-only stop path proving the package records stop/error outcomes.
+harness:
+  cases:
+    - name: public-sources-yield-sequence
+      runner: decide
+      inputs:
+        prospect:
+          company: Acme Logistics
+          contact: VP Operations
+        icp:
+          offer: governed agent workflows for operations teams
+          pain: manual exception handling across support and finance
+        source_allowlist:
+          - acme.example
+        sources:
+          - url: https://acme.example/blog/exception-ops
+            title: Exception operations update
+            excerpt: Acme describes new SLA pressure from invoice and shipment exceptions.
+          - url: https://acme.example/news/finance-automation
+            title: Finance automation note
+            excerpt: The finance team is consolidating manual approval queues this quarter.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: stop-runner-fails
+      runner: stop
+      inputs:
+        reason: off-allowlist network target
+      expect:
+        status: failure

@@ -216,6 +216,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "b073ec884f56c9e412d0c1039d5f28f163df0f5530eb0bee922ed4c557955c52",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/prospect-sequence",
+        version: "sha-14eddf4ad0e3",
+        digest: "c0f2e2d71a46d9ee9756a4c30203a735b30476f455118efb3057be9def3d9387",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/prior-art",
         version: "sha-2555f66bde78",
         digest: "991ec474c6013ce9d29d84df810c14db567328607018c4de9606ba3952d8b9c7",

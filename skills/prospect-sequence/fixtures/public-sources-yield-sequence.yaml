@@ -1,0 +1,26 @@
+name: public-sources-yield-sequence
+input:
+  prospect:
+    company: Acme Logistics
+    contact: VP Operations
+  icp:
+    offer: governed agent workflows for operations teams
+    pain: manual exception handling across support and finance
+  source_allowlist:
+    - acme.example
+  sources:
+    - url: https://acme.example/blog/exception-ops
+      title: Exception operations update
+      excerpt: Acme describes new SLA pressure from invoice and shipment exceptions.
+    - url: https://acme.example/news/finance-automation
+      title: Finance automation note
+      excerpt: The finance team is consolidating manual approval queues this quarter.
+expect:
+  decision:
+    status: sealed
+  sequence:
+    min_items: 3
+  send_proposal:
+    effect: send-as
+    gated: true
+    sends_directly: false
