@@ -1,9 +1,21 @@
 {
   "schema": "runx.dunning_ladder.verification.v1",
-  "generated_at": "2026-06-23T05:56:00Z",
+  "generated_at": "2026-06-23T05:58:00Z",
   "cli_version": "runx-cli 0.6.13",
   "doctor": {"status": "success", "errors": 0, "warnings": 0},
   "harness": {"status": "passed", "case_count": 2},
+  "published_package": {
+    "ref": "luismireles12/dunning-ladder@sha-c3ca3eb81b17",
+    "public_url": "https://runx.ai/x/luismireles12/dunning-ladder@sha-c3ca3eb81b17",
+    "registry_read": "success",
+    "clean_install": "success",
+    "hosted_harness": "passed"
+  },
+  "dogfood": {
+    "receipt_id": "sha256:d3da84c3ef48e3d67a5f0e5c0a89f9025e0ff485962d4af4f8de92c6b99a727b",
+    "status": "sealed",
+    "verify_valid": true,
+    "findings": []
+  },
   "effects_emitted": []
 }
-

@@ -1,0 +1,113 @@
+{
+  "schema": "frantic.evidence.v1",
+  "summary": "Published dunning-ladder package chose an eligible second reminder under a three-step cap, emitted only a human-gated send-as proposal, demonstrated escalation at the cap, and produced a sealed receipt that verifies as valid.",
+  "observations": [
+    {
+      "id": "cli-version",
+      "command": "runx --version",
+      "output": "runx-cli 0.6.13",
+      "details": {"publisher_owner": "luismireles12", "package_name": "dunning-ladder"}
+    },
+    {
+      "id": "source-provenance",
+      "command": "gh pr view 130 --repo runxhq/runx",
+      "output": "Public PR contains package, fixtures, and harness evidence.",
+      "details": {
+        "pr_url": "https://github.com/runxhq/runx/pull/130",
+        "source_url": "https://github.com/luismireles12/runx/tree/feat/dunning-ladder/skills/dunning-ladder",
+        "x_yaml": "https://raw.githubusercontent.com/luismireles12/runx/feat/dunning-ladder/skills/dunning-ladder/X.yaml",
+        "skill_md": "https://raw.githubusercontent.com/luismireles12/runx/feat/dunning-ladder/skills/dunning-ladder/SKILL.md",
+        "verification_json": "https://raw.githubusercontent.com/luismireles12/runx/feat/dunning-ladder/skills/dunning-ladder/references/verification.json"
+      }
+    },
+    {
+      "id": "local-harness",
+      "command": "runx harness skills/dunning-ladder --json",
+      "output": "passed: 2 cases, 0 assertion errors",
+      "details": {
+        "cases": [
+          {"name": "within-cap-reminder-proposal", "status": "sealed"},
+          {"name": "refuse-at-cadence-cap", "status": "refused"}
+        ]
+      }
+    },
+    {
+      "id": "publish",
+      "command": "runx registry publish ./skills/dunning-ladder/SKILL.md --registry https://api.runx.ai --json",
+      "output": "published",
+      "details": {
+        "version": "sha-c3ca3eb81b17",
+        "registry_ref": "luismireles12/dunning-ladder@sha-c3ca3eb81b17",
+        "public_url": "https://runx.ai/x/luismireles12/dunning-ladder@sha-c3ca3eb81b17",
+        "hosted_harness_status": "passed"
+      }
+    },
+    {
+      "id": "registry-read",
+      "command": "runx registry read luismireles12/dunning-ladder@sha-c3ca3eb81b17 --registry https://api.runx.ai --json",
+      "output": "status: success; owner: luismireles12",
+      "details": {
+        "digest": "9ccc4ba3d7c7a327d2668547162621044629c0d8bed552d9291fd1eb6fcb8a9b",
+        "profile_digest": "afdbafad1612ebf25c97e3a602429cb0b9f1ada59b91206c123d5fb07ea6ee8b"
+      }
+    },
+    {
+      "id": "clean-install",
+      "command": "runx add luismireles12/dunning-ladder@sha-c3ca3eb81b17 --registry https://api.runx.ai --to ./clean-install --json",
+      "output": "status: installed",
+      "details": {"install_count": 1}
+    },
+    {
+      "id": "chosen-step",
+      "command": "run published package with 21 aging days and one reminder sent",
+      "output": "step 2 / propose_reminder",
+      "details": {"step": 2, "reminders_sent": 1, "cap": 3, "cap_remaining_after_proposal": 1}
+    },
+    {
+      "id": "reminder-proposal",
+      "command": "inspect dogfood reminder_proposal",
+      "output": "email firm-reminder proposed via send-as",
+      "details": {
+        "channel": "email",
+        "template": "firm-reminder",
+        "content_digest": "sha256:baed65314b883e39fa576062a9576001a603ab58eb13c95e64c61b0216475c3e",
+        "gate": "requires_human_approval",
+        "effects_emitted": []
+      }
+    },
+    {
+      "id": "cap-state",
+      "command": "inspect decision and cap harness case",
+      "output": "within-cap proposal succeeds; at-cap run refuses",
+      "details": {"cap": 3, "at_cap_action": "operator_escalation_no_reminder"}
+    },
+    {
+      "id": "escalation-path",
+      "command": "inspect escalation output",
+      "output": "accounts_receivable_operator",
+      "details": {"path": "accounts_receivable_operator", "at_cap_required": true}
+    },
+    {
+      "id": "receipt-verification",
+      "command": "runx verify sha256:d3da84c3ef48e3d67a5f0e5c0a89f9025e0ff485962d4af4f8de92c6b99a727b --receipt-dir ./published-dogfood --json",
+      "output": "valid: true",
+      "details": {
+        "signature_mode": "production",
+        "findings": [],
+        "receipt_ref": "runx:receipt:sha256:d3da84c3ef48e3d67a5f0e5c0a89f9025e0ff485962d4af4f8de92c6b99a727b"
+      }
+    }
+  ],
+  "dogfood": {
+    "package": "luismireles12/dunning-ladder@sha-c3ca3eb81b17",
+    "input": "Synthetic overdue receivable at 21 days with one reminder already sent and a three-step capped policy.",
+    "command": "runx skill luismireles12/dunning-ladder@sha-c3ca3eb81b17 --registry https://api.runx.ai ... --json",
+    "receipt_ref": "runx:receipt:sha256:d3da84c3ef48e3d67a5f0e5c0a89f9025e0ff485962d4af4f8de92c6b99a727b",
+    "verify_verdict": "valid: true",
+    "harness_cases": [
+      {"name": "within-cap-reminder-proposal", "status": "sealed"},
+      {"name": "refuse-at-cadence-cap", "status": "refused"}
+    ]
+  }
+}
+
