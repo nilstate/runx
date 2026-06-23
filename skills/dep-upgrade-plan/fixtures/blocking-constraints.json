@@ -1,0 +1,16 @@
+{
+  "constraints": {
+    "express": {
+      "blocked": ["4.20.0"],
+      "notes": "Blocked by framework compatibility freeze."
+    },
+    "lodash": {
+      "blocked": ["4.17.21"],
+      "notes": "Blocked by release freeze."
+    },
+    "debug": {
+      "blocked": ["4.3.1"],
+      "notes": "Blocked by major-version policy."
+    }
+  }
+}

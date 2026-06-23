@@ -1,0 +1,31 @@
+{
+  "advisories": [
+    {
+      "package": "express",
+      "current": "4.16.4",
+      "fixed": "4.20.0",
+      "severity": "low",
+      "advisory": "GHSA-qw6h-vgh9-j6wx",
+      "source": "https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx",
+      "breaking": "Stays on Express 4.x; review response.redirect behavior and middleware compatibility."
+    },
+    {
+      "package": "lodash",
+      "current": "4.17.19",
+      "fixed": "4.17.21",
+      "severity": "high",
+      "advisory": "GHSA-35jh-r3h4-6jhm",
+      "source": "https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm",
+      "breaking": "Patch-level update; no breaking change indicated by supplied notes."
+    },
+    {
+      "package": "debug",
+      "current": "2.6.8",
+      "fixed": "4.3.1",
+      "severity": "medium",
+      "advisory": "GHSA-9vvw-cc9w-f27h",
+      "source": "supplied fixture advisory",
+      "breaking": "Major update from 2.x to 4.x; verify namespace formatting and transitive consumer compatibility."
+    }
+  ]
+}

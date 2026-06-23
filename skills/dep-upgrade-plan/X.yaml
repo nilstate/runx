@@ -1,0 +1,152 @@
+skill: dep-upgrade-plan
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  idempotency:
+    key: lockfile_sha256
+  scopes:
+    - dependencies.read
+    - dependency_plan.write
+  policy:
+    data_classification: public_dependency_metadata
+    network:
+      allowed:
+        - https://raw.githubusercontent.com/
+      forbidden:
+        - private repositories
+        - package installation
+        - source code execution
+    verifier_notes:
+      - The skill proposes upgrades only from supplied advisory and constraint evidence.
+      - The skill never edits package manifests or installs dependencies.
+      - The dogfood receipt must come from a post-publish registry skill run.
+  artifacts:
+    emits:
+      - dependency_upgrade_plan
+      - evidence_json
+      - report_md
+    wrap_as: dependency_upgrade_plan_packet
+
+harness:
+  cases:
+    - name: fixture-ranked-plan
+      runner: default
+      inputs:
+        target_name: Fixture Shop
+        target_repo: https://github.com/RYDE-PLAY/runx-fixture-shop
+        target_ref: fixture-lock-v1
+        lockfile_json: |
+          {"name":"fixture-shop","version":"1.0.0","lockfileVersion":3,"requires":true,"packages":{"":{"name":"fixture-shop","version":"1.0.0","dependencies":{"express":"4.16.4","lodash":"4.17.19","debug":"2.6.8"}},"node_modules/express":{"version":"4.16.4","resolved":"https://registry.npmjs.org/express/-/express-4.16.4.tgz"},"node_modules/lodash":{"version":"4.17.19","resolved":"https://registry.npmjs.org/lodash/-/lodash-4.17.19.tgz"},"node_modules/debug":{"version":"2.6.8","resolved":"https://registry.npmjs.org/debug/-/debug-2.6.8.tgz"}}}
+        advisories_json: |
+          {"advisories":[{"package":"express","current":"4.16.4","fixed":"4.20.0","severity":"low","advisory":"GHSA-qw6h-vgh9-j6wx","source":"https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx","breaking":"Stays on Express 4.x; review response.redirect behavior and middleware compatibility."},{"package":"lodash","current":"4.17.19","fixed":"4.17.21","severity":"high","advisory":"GHSA-35jh-r3h4-6jhm","source":"https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm","breaking":"Patch-level update; no breaking change indicated by supplied notes."},{"package":"debug","current":"2.6.8","fixed":"4.3.1","severity":"medium","advisory":"GHSA-9vvw-cc9w-f27h","source":"supplied fixture advisory","breaking":"Major update from 2.x to 4.x; verify namespace formatting and transitive consumer compatibility."}]}
+        constraints_json: |
+          {"constraints":{"express":{"allowed":["4.20.0"],"max_major":4,"notes":"Stay on Express 4 until the next application framework migration."},"lodash":{"allowed":["4.17.21"],"max_major":4,"notes":"Patch-only update allowed in the current release train."},"debug":{"blocked":["4.3.1"],"max_major":2,"notes":"debug 4.x is blocked until transitive consumers are tested."}}}
+        output_dir: artifacts/fixture
+      expect:
+        status: sealed
+    - name: all-upgrades-blocked-refusal
+      runner: default
+      inputs:
+        target_name: Fixture Shop
+        target_repo: https://github.com/RYDE-PLAY/runx-fixture-shop
+        target_ref: fixture-lock-v1
+        lockfile_json: |
+          {"name":"fixture-shop","version":"1.0.0","lockfileVersion":3,"requires":true,"packages":{"":{"name":"fixture-shop","version":"1.0.0","dependencies":{"express":"4.16.4","lodash":"4.17.19","debug":"2.6.8"}},"node_modules/express":{"version":"4.16.4","resolved":"https://registry.npmjs.org/express/-/express-4.16.4.tgz"},"node_modules/lodash":{"version":"4.17.19","resolved":"https://registry.npmjs.org/lodash/-/lodash-4.17.19.tgz"},"node_modules/debug":{"version":"2.6.8","resolved":"https://registry.npmjs.org/debug/-/debug-2.6.8.tgz"}}}
+        advisories_json: |
+          {"advisories":[{"package":"express","current":"4.16.4","fixed":"4.20.0","severity":"low","advisory":"GHSA-qw6h-vgh9-j6wx","source":"https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx","breaking":"Stays on Express 4.x; review response.redirect behavior and middleware compatibility."},{"package":"lodash","current":"4.17.19","fixed":"4.17.21","severity":"high","advisory":"GHSA-35jh-r3h4-6jhm","source":"https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm","breaking":"Patch-level update; no breaking change indicated by supplied notes."},{"package":"debug","current":"2.6.8","fixed":"4.3.1","severity":"medium","advisory":"GHSA-9vvw-cc9w-f27h","source":"supplied fixture advisory","breaking":"Major update from 2.x to 4.x; verify namespace formatting and transitive consumer compatibility."}]}
+        constraints_json: |
+          {"constraints":{"express":{"blocked":["4.20.0"],"notes":"Blocked by framework compatibility freeze."},"lodash":{"blocked":["4.17.21"],"notes":"Blocked by release freeze."},"debug":{"blocked":["4.3.1"],"notes":"Blocked by major-version policy."}}}
+        output_dir: artifacts/refused
+      expect:
+        status: failure
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - dependencies.read
+      - dependency_plan.write
+    policy:
+      reads:
+        - public npm package lockfiles
+        - public advisory facts
+        - public release constraints
+      calls:
+        - optional public raw lockfile fetch
+      writes:
+        - dependency upgrade evidence
+        - reviewer report
+      disallows:
+        - installing target packages
+        - executing target project code
+        - mutating package manifests
+        - using private repository contents
+    inputs:
+      target_name:
+        type: string
+        required: true
+        description: Human-readable project name.
+      target_repo:
+        type: string
+        required: true
+        description: Public source repository URL.
+      target_ref:
+        type: string
+        required: false
+        description: Immutable commit, tag, or release reference.
+      lockfile_path:
+        type: string
+        required: false
+        description: Local package-lock.json path inside the skill directory.
+      lockfile_json:
+        type: string
+        required: false
+        description: package-lock.json contents as a JSON string.
+      lockfile_url:
+        type: string
+        required: false
+        description: Public HTTPS package-lock.json URL.
+      advisories_path:
+        type: string
+        required: false
+        description: Local JSON advisory facts path inside the skill directory.
+      advisories_url:
+        type: string
+        required: false
+        description: Public HTTPS URL for advisory facts JSON.
+      advisories_json:
+        type: string
+        required: false
+        description: Advisory facts as a JSON string.
+      constraints_path:
+        type: string
+        required: false
+        description: Local JSON constraints path inside the skill directory.
+      constraints_url:
+        type: string
+        required: false
+        description: Public HTTPS URL for constraints JSON.
+      constraints_json:
+        type: string
+        required: false
+        description: Constraints as a JSON string.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill directory where artifacts should be written.
+    outputs:
+      dependency_upgrade_plan: object
+      evidence_json: object
+      report_md: string

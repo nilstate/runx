@@ -1,0 +1,71 @@
+{
+  "schema": "dep.upgrade.plan.evidence.v1",
+  "summary": "Dependency upgrade plan for Fixture Shop produced 2 ranked upgrade(s) from 3 advisory record(s), with exact from/to versions, breaking-change notes, enforced constraints, and no package installation or target code execution.",
+  "observations": [
+    {
+      "name": "lockfile_sha256",
+      "status": "pass",
+      "evidence": "17716a543730ad8ac0bca4ea6bd7a475fd4277baa0bda4b624962cad757166c9"
+    },
+    {
+      "name": "ranked_plan",
+      "status": "pass",
+      "evidence": "lodash 4.17.19->4.17.21 high; express 4.16.4->4.20.0 low"
+    },
+    {
+      "name": "breaking_change_notes",
+      "status": "pass",
+      "evidence": "lodash: Patch-level update; no breaking change indicated by supplied notes. | express: Stays on Express 4.x; review response.redirect behavior and middleware compatibility."
+    },
+    {
+      "name": "advisory_sources",
+      "status": "pass",
+      "evidence": "lodash: GHSA-35jh-r3h4-6jhm https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm | express: GHSA-qw6h-vgh9-j6wx https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx"
+    },
+    {
+      "name": "constraints_enforced",
+      "status": "pass",
+      "evidence": "[{\"package\":\"debug\",\"from\":\"2.6.8\",\"to\":\"4.3.1\",\"reason\":\"target 4.3.1 is explicitly blocked\"}]"
+    },
+    {
+      "name": "read_only_policy",
+      "status": "pass",
+      "evidence": "target_code_executed=false; packages_installed=false; package manifests are not modified"
+    }
+  ],
+  "plan": [
+    {
+      "pkg": "lodash",
+      "from": "4.17.19",
+      "to": "4.17.21",
+      "risk": "high",
+      "breaking": "Patch-level update; no breaking change indicated by supplied notes.",
+      "advisory": "GHSA-35jh-r3h4-6jhm",
+      "advisory_source": "https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm",
+      "severity": "high",
+      "constraint_note": "Patch-only update allowed in the current release train."
+    },
+    {
+      "pkg": "express",
+      "from": "4.16.4",
+      "to": "4.20.0",
+      "risk": "low",
+      "breaking": "Stays on Express 4.x; review response.redirect behavior and middleware compatibility.",
+      "advisory": "GHSA-qw6h-vgh9-j6wx",
+      "advisory_source": "https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx",
+      "severity": "low",
+      "constraint_note": "Stay on Express 4 until the next application framework migration."
+    }
+  ],
+  "changelog": [
+    "lodash: 4.17.19 -> 4.17.21 (high); Patch-level update; no breaking change indicated by supplied notes.",
+    "express: 4.16.4 -> 4.20.0 (low); Stays on Express 4.x; review response.redirect behavior and middleware compatibility."
+  ],
+  "validation": {
+    "every_entry_has_exact_from_to": true,
+    "every_entry_has_breaking_note": true,
+    "constraints_enforced": true,
+    "target_code_executed": false,
+    "packages_installed": false
+  }
+}
