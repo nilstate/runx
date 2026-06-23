@@ -1,0 +1,278 @@
+skill: invoice-three-way-match
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: invoice-three-way-full-match
+      inputs:
+        meeting_context:
+          invoice:
+            vendor: "TechParts Inc."
+            invoice_number: "INV-2024-1001"
+            date: "2024-07-01"
+            due_date: "2024-07-30"
+            line_items:
+              - description: "USB-C hub 7-in-1"
+                quantity: 20
+                unit_price: 25.00
+                total: 500.00
+                category: "electronics"
+              - description: "HDMI cable 3m"
+                quantity: 30
+                unit_price: 8.00
+                total: 240.00
+                category: "cables"
+            subtotal: 740.00
+            tax: 59.20
+            total: 799.20
+          purchase_order:
+            po_number: "PO-2024-0500"
+            vendor: "TechParts Inc."
+            date: "2024-06-20"
+            line_items:
+              - description: "USB-C hub 7-in-1"
+                quantity: 20
+                unit_price: 25.00
+                total: 500.00
+              - description: "HDMI cable 3m"
+                quantity: 30
+                unit_price: 8.00
+                total: 240.00
+          goods_receipt:
+            receipt_number: "GR-2024-0300"
+            date: "2024-06-28"
+            received_items:
+              - description: "USB-C hub 7-in-1"
+                quantity_received: 20
+              - description: "HDMI cable 3m"
+                quantity_received: 30
+          gl_codes:
+            category_to_account:
+              electronics: "GL-5300"
+              cables: "GL-5305"
+      caller:
+        answers:
+          agent_task.invoice-three-way-match.output:
+            prep_brief:
+              approval_status: "approved"
+              matched_lines:
+                - line_number: 1
+                  description: "USB-C hub 7-in-1"
+                  invoice_amount: 500.00
+                  po_amount: 500.00
+                  receipt_qty: 20
+                  match_status: "matched"
+                  gl_account: "GL-5300"
+                - line_number: 2
+                  description: "HDMI cable 3m"
+                  invoice_amount: 240.00
+                  po_amount: 240.00
+                  receipt_qty: 30
+                  match_status: "matched"
+                  gl_account: "GL-5305"
+              exceptions: []
+              total_matched_amount: 740.00
+              total_exception_amount: 0
+              gl_summary:
+                - account: "GL-5300"
+                  description: "Electronics"
+                  amount: 500.00
+                - account: "GL-5305"
+                  description: "Cables"
+                  amount: 240.00
+              approval_recommendation: "Full approval recommended. All three-way match criteria satisfied. Invoice total $799.20 matches PO and goods receipt. No discrepancies found."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: invoice-three-way-partial-exception
+      inputs:
+        meeting_context:
+          invoice:
+            vendor: "OfficeMax Direct"
+            invoice_number: "INV-2024-2002"
+            date: "2024-07-05"
+            due_date: "2024-08-04"
+            line_items:
+              - description: "Stapler heavy duty"
+                quantity: 15
+                unit_price: 22.00
+                total: 330.00
+                category: "office_supplies"
+              - description: "Whiteboard marker set"
+                quantity: 25
+                unit_price: 5.50
+                total: 137.50
+                category: "office_supplies"
+            subtotal: 467.50
+            tax: 37.40
+            total: 504.90
+          purchase_order:
+            po_number: "PO-2024-0600"
+            vendor: "OfficeMax Direct"
+            date: "2024-06-25"
+            line_items:
+              - description: "Stapler heavy duty"
+                quantity: 15
+                unit_price: 20.00
+                total: 300.00
+              - description: "Whiteboard marker set"
+                quantity: 25
+                unit_price: 5.50
+                total: 137.50
+          goods_receipt:
+            receipt_number: "GR-2024-0350"
+            date: "2024-07-03"
+            received_items:
+              - description: "Stapler heavy duty"
+                quantity_received: 14
+              - description: "Whiteboard marker set"
+                quantity_received: 25
+          gl_codes:
+            category_to_account:
+              office_supplies: "GL-5100"
+      caller:
+        answers:
+          agent_task.invoice-three-way-match.output:
+            prep_brief:
+              approval_status: "conditional"
+              matched_lines:
+                - line_number: 1
+                  description: "Stapler heavy duty"
+                  invoice_amount: 330.00
+                  po_amount: 300.00
+                  receipt_qty: 14
+                  match_status: "price_mismatch"
+                  gl_account: "GL-5100"
+                - line_number: 2
+                  description: "Whiteboard marker set"
+                  invoice_amount: 137.50
+                  po_amount: 137.50
+                  receipt_qty: 25
+                  match_status: "matched"
+                  gl_account: "GL-5100"
+              exceptions:
+                - type: "price_mismatch"
+                  line_number: 1
+                  description: "Stapler heavy duty"
+                  expected: "$20.00 per unit (PO)"
+                  actual: "$22.00 per unit (invoice)"
+                  severity: "medium"
+                - type: "quantity_mismatch"
+                  line_number: 1
+                  description: "Stapler heavy duty"
+                  expected: "15 received (invoice qty)"
+                  actual: "14 received (goods receipt)"
+                  severity: "medium"
+              total_matched_amount: 137.50
+              total_exception_amount: 330.00
+              gl_summary:
+                - account: "GL-5100"
+                  description: "Office supplies"
+                  amount: 467.50
+              approval_recommendation: "Conditional approval recommended. Stapler heavy duty has price variance and quantity discrepancy. Whiteboard markers fully matched. Contact vendor for price correction."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: invoice-three-way-missing-po
+      inputs:
+        meeting_context:
+          invoice:
+            vendor: "Unknown Vendor LLC"
+            invoice_number: "INV-2024-3003"
+            date: "2024-07-10"
+            due_date: "2024-08-09"
+            line_items:
+              - description: "Server rack mount kit"
+                quantity: 2
+                unit_price: 450.00
+                total: 900.00
+                category: "hardware"
+            subtotal: 900.00
+            tax: 72.00
+            total: 972.00
+          purchase_order:
+            po_number: "PO-2024-9999"
+            vendor: "Unknown Vendor LLC"
+            date: "2024-07-01"
+            line_items:
+              - description: "Server rack mount kit"
+                quantity: 2
+                unit_price: 450.00
+                total: 900.00
+          goods_receipt:
+            receipt_number: "GR-2024-0400"
+            date: "2024-07-08"
+            received_items:
+              - description: "Server rack mount kit"
+                quantity_received: 0
+          gl_codes:
+            category_to_account:
+              office_supplies: "GL-5100"
+      caller:
+        answers:
+          agent_task.invoice-three-way-match.output:
+            prep_brief:
+              approval_status: "rejected"
+              matched_lines:
+                - line_number: 1
+                  description: "Server rack mount kit"
+                  invoice_amount: 900.00
+                  po_amount: 900.00
+                  receipt_qty: 0
+                  match_status: "quantity_mismatch"
+                  gl_account: "unmapped"
+              exceptions:
+                - type: "quantity_mismatch"
+                  line_number: 1
+                  description: "Server rack mount kit"
+                  expected: "2 received (PO qty)"
+                  actual: "0 received (goods receipt)"
+                  severity: "high"
+                - type: "category_unmapped"
+                  line_number: 1
+                  description: "Server rack mount kit"
+                  expected: "GL code for category 'hardware'"
+                  actual: "no mapping found"
+                  severity: "high"
+              total_matched_amount: 0
+              total_exception_amount: 900.00
+              gl_summary: []
+              approval_recommendation: "Payment rejected. Goods receipt shows 0 units received and category 'hardware' has no GL mapping. Hold until receipt confirmed and GL coding provided."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  invoice-three-way-match:
+    default: true
+    type: agent-task
+    agent: business
+    task: invoice-three-way-match
+    inputs:
+      meeting_context:
+        type: object
+        required: true
+        description: |
+          Invoice data, purchase order, goods receipt, and GL code mappings.
+          Fields: invoice (vendor, invoice_number, date, line_items with description/quantity/unit_price/total/category),
+          purchase_order (po_number, vendor, line_items),
+          goods_receipt (receipt_number, received_items),
+          gl_codes (category_to_account mapping).
+    outputs:
+      prep_brief: object
+    artifacts:
+      wrap_as: prep_brief_packet
+      packet: runx.invoice_three_way_match.v1
+    runx:
+      category: business

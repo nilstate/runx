@@ -1,0 +1,36 @@
+{
+  "meeting_context": {
+    "invoice": {
+      "vendor": "Unknown Vendor LLC",
+      "invoice_number": "INV-2024-3003",
+      "date": "2024-07-10",
+      "due_date": "2024-08-09",
+      "line_items": [
+        { "description": "Server rack mount kit", "quantity": 2, "unit_price": 450.00, "total": 900.00, "category": "hardware" }
+      ],
+      "subtotal": 900.00,
+      "tax": 72.00,
+      "total": 972.00
+    },
+    "purchase_order": {
+      "po_number": "PO-2024-9999",
+      "vendor": "Unknown Vendor LLC",
+      "date": "2024-07-01",
+      "line_items": [
+        { "description": "Server rack mount kit", "quantity": 2, "unit_price": 450.00, "total": 900.00 }
+      ]
+    },
+    "goods_receipt": {
+      "receipt_number": "GR-2024-0400",
+      "date": "2024-07-08",
+      "received_items": [
+        { "description": "Server rack mount kit", "quantity_received": 0 }
+      ]
+    },
+    "gl_codes": {
+      "category_to_account": {
+        "office_supplies": "GL-5100"
+      }
+    }
+  }
+}

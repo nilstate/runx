@@ -1,0 +1,17 @@
+{
+  "prep_brief": {
+    "approval_status": "approved",
+    "matched_lines": [
+      { "line_number": 1, "description": "USB-C hub 7-in-1", "invoice_amount": 500.00, "po_amount": 500.00, "receipt_qty": 20, "match_status": "matched", "gl_account": "GL-5300" },
+      { "line_number": 2, "description": "HDMI cable 3m", "invoice_amount": 240.00, "po_amount": 240.00, "receipt_qty": 30, "match_status": "matched", "gl_account": "GL-5305" }
+    ],
+    "exceptions": [],
+    "total_matched_amount": 740.00,
+    "total_exception_amount": 0,
+    "gl_summary": [
+      { "account": "GL-5300", "description": "Electronics", "amount": 500.00 },
+      { "account": "GL-5305", "description": "Cables", "amount": 240.00 }
+    ],
+    "approval_recommendation": "Full approval recommended. All three-way match criteria satisfied. Invoice total $799.20 including tax matches PO and goods receipt. No discrepancies found."
+  }
+}

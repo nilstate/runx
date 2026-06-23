@@ -1,0 +1,19 @@
+{
+  "prep_brief": {
+    "approval_status": "conditional",
+    "matched_lines": [
+      { "line_number": 1, "description": "Stapler heavy duty", "invoice_amount": 330.00, "po_amount": 300.00, "receipt_qty": 14, "match_status": "price_mismatch", "gl_account": "GL-5100" },
+      { "line_number": 2, "description": "Whiteboard marker set", "invoice_amount": 137.50, "po_amount": 137.50, "receipt_qty": 25, "match_status": "matched", "gl_account": "GL-5100" }
+    ],
+    "exceptions": [
+      { "type": "price_mismatch", "line_number": 1, "description": "Stapler heavy duty", "expected": "$20.00 per unit (PO)", "actual": "$22.00 per unit (invoice)", "severity": "medium" },
+      { "type": "quantity_mismatch", "line_number": 1, "description": "Stapler heavy duty", "expected": "15 received (invoice qty)", "actual": "14 received (goods receipt)", "severity": "medium" }
+    ],
+    "total_matched_amount": 137.50,
+    "total_exception_amount": 330.00,
+    "gl_summary": [
+      { "account": "GL-5100", "description": "Office supplies", "amount": 467.50 }
+    ],
+    "approval_recommendation": "Conditional approval recommended. Stapler heavy duty has a $2.00/unit price variance (10%) and quantity short by 1 unit. Whiteboard markers fully matched. Recommend contacting vendor for price correction and confirming receipt discrepancy."
+  }
+}

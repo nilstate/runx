@@ -1,0 +1,16 @@
+{
+  "prep_brief": {
+    "approval_status": "rejected",
+    "matched_lines": [
+      { "line_number": 1, "description": "Server rack mount kit", "invoice_amount": 900.00, "po_amount": 900.00, "receipt_qty": 0, "match_status": "quantity_mismatch", "gl_account": "unmapped" }
+    ],
+    "exceptions": [
+      { "type": "quantity_mismatch", "line_number": 1, "description": "Server rack mount kit", "expected": "2 received (PO qty)", "actual": "0 received (goods receipt)", "severity": "high" },
+      { "type": "category_unmapped", "line_number": 1, "description": "Server rack mount kit", "expected": "GL code for category 'hardware'", "actual": "no mapping found", "severity": "high" }
+    ],
+    "total_matched_amount": 0,
+    "total_exception_amount": 900.00,
+    "gl_summary": [],
+    "approval_recommendation": "Payment rejected. The goods receipt shows 0 units received for server rack mount kit, and the category 'hardware' has no GL account mapping. Hold payment until goods receipt is confirmed and GL coding is provided."
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "meeting_context": {
+    "invoice": {
+      "vendor": "OfficeMax Direct",
+      "invoice_number": "INV-2024-2002",
+      "date": "2024-07-05",
+      "due_date": "2024-08-04",
+      "line_items": [
+        { "description": "Stapler heavy duty", "quantity": 15, "unit_price": 22.00, "total": 330.00, "category": "office_supplies" },
+        { "description": "Whiteboard marker set", "quantity": 25, "unit_price": 5.50, "total": 137.50, "category": "office_supplies" }
+      ],
+      "subtotal": 467.50,
+      "tax": 37.40,
+      "total": 504.90
+    },
+    "purchase_order": {
+      "po_number": "PO-2024-0600",
+      "vendor": "OfficeMax Direct",
+      "date": "2024-06-25",
+      "line_items": [
+        { "description": "Stapler heavy duty", "quantity": 15, "unit_price": 20.00, "total": 300.00 },
+        { "description": "Whiteboard marker set", "quantity": 25, "unit_price": 5.50, "total": 137.50 }
+      ]
+    },
+    "goods_receipt": {
+      "receipt_number": "GR-2024-0350",
+      "date": "2024-07-03",
+      "received_items": [
+        { "description": "Stapler heavy duty", "quantity_received": 14 },
+        { "description": "Whiteboard marker set", "quantity_received": 25 }
+      ]
+    },
+    "gl_codes": {
+      "category_to_account": {
+        "office_supplies": "GL-5100",
+        "furniture": "GL-5200"
+      }
+    }
+  }
+}

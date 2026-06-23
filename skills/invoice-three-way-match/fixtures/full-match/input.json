@@ -1,0 +1,40 @@
+{
+  "meeting_context": {
+    "invoice": {
+      "vendor": "TechParts Inc.",
+      "invoice_number": "INV-2024-1001",
+      "date": "2024-07-01",
+      "due_date": "2024-07-30",
+      "line_items": [
+        { "description": "USB-C hub 7-in-1", "quantity": 20, "unit_price": 25.00, "total": 500.00, "category": "electronics" },
+        { "description": "HDMI cable 3m", "quantity": 30, "unit_price": 8.00, "total": 240.00, "category": "cables" }
+      ],
+      "subtotal": 740.00,
+      "tax": 59.20,
+      "total": 799.20
+    },
+    "purchase_order": {
+      "po_number": "PO-2024-0500",
+      "vendor": "TechParts Inc.",
+      "date": "2024-06-20",
+      "line_items": [
+        { "description": "USB-C hub 7-in-1", "quantity": 20, "unit_price": 25.00, "total": 500.00 },
+        { "description": "HDMI cable 3m", "quantity": 30, "unit_price": 8.00, "total": 240.00 }
+      ]
+    },
+    "goods_receipt": {
+      "receipt_number": "GR-2024-0300",
+      "date": "2024-06-28",
+      "received_items": [
+        { "description": "USB-C hub 7-in-1", "quantity_received": 20 },
+        { "description": "HDMI cable 3m", "quantity_received": 30 }
+      ]
+    },
+    "gl_codes": {
+      "category_to_account": {
+        "electronics": "GL-5300",
+        "cables": "GL-5305"
+      }
+    }
+  }
+}
