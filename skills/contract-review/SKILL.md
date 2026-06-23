@@ -1,3 +1,18 @@
+---
+name: contract-review
+version: 0.1.0
+description: Extract contract clauses, compare them only with a supplied terms playbook, and produce cited redlines plus a human-gated risk summary.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - run.mjs
+links:
+  source: https://github.com/luismireles12/runx/tree/feat/contract-review/skills/contract-review
+runx:
+  category: legal
+---
+
 # Contract Review
 
 `contract-review` performs a deterministic, read-only comparison between a
@@ -64,4 +79,3 @@ requirement, and uses replacement text only if `proposed_text` was supplied.
 
 This artifact is suitable for a first-pass commercial review, not a substitute
 for advice from qualified counsel.
-
