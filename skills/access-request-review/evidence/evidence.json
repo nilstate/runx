@@ -1,0 +1,81 @@
+{
+  "schema": "frantic.delivery.evidence.v1",
+  "summary": "access-request-review was published as a hosted runx skill, clean-installed from the registry, harnessed from the installed package, dogfooded on a bounded least-privilege access request, and verified with a sealed production-mode runx receipt.",
+  "artifact": "access-request-review",
+  "package": {
+    "owner": "lubuseb",
+    "name": "access-request-review",
+    "version": "sha-fefdaf21eb13",
+    "registry_ref": "lubuseb/access-request-review@sha-fefdaf21eb13",
+    "public_url": "https://runx.ai/x/lubuseb/access-request-review@sha-fefdaf21eb13",
+    "digest": "64dd95e8a5f5fd2e34a07710f9256596468e3d0399efc97ffb61286b37c5dc83",
+    "profile_digest": "74de3a7ad9c53687034e0751b415adf4039a4234fb954898c1d2fb1c9c31d3f5"
+  },
+  "source": {
+    "pr_url": "https://github.com/runxhq/runx/pull/123",
+    "source_url": "https://github.com/LubuSeb/runx/tree/access-request-review-55",
+    "x_yaml": "https://raw.githubusercontent.com/LubuSeb/runx/access-request-review-55/skills/access-request-review/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/LubuSeb/runx/access-request-review-55/skills/access-request-review/SKILL.md"
+  },
+  "runtime": {
+    "runx_version": "runx-cli 0.6.13",
+    "receipt_ref": "runx:receipt:sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21",
+    "receipt_id": "sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21",
+    "verify_verdict": "valid",
+    "signature_mode": "production"
+  },
+  "observations": [
+    {
+      "name": "published_registry_package",
+      "status": "passed",
+      "detail": "runx registry publish completed successfully for lubuseb/access-request-review@sha-fefdaf21eb13 on https://api.runx.ai.",
+      "evidence_ref": "registry-publish.json"
+    },
+    {
+      "name": "registry_read",
+      "status": "passed",
+      "detail": "runx registry read resolved the published package metadata.",
+      "evidence_ref": "registry-read.json"
+    },
+    {
+      "name": "clean_install",
+      "status": "passed",
+      "detail": "runx add installed lubuseb/access-request-review@sha-fefdaf21eb13 into a clean directory.",
+      "evidence_ref": "clean-install.json"
+    },
+    {
+      "name": "hosted_harness",
+      "status": "passed",
+      "detail": "The installed registry package passed least-privilege grant, deny, and fail-closed harness cases.",
+      "evidence_ref": "hosted-harness.json"
+    },
+    {
+      "name": "dogfood_run",
+      "status": "closed",
+      "detail": "Hosted dogfood emitted a grant proposal with a bounded TTL and human approval gate, without issuing access.",
+      "evidence_ref": "hosted-dogfood-output.json"
+    },
+    {
+      "name": "dogfood_receipt_verified",
+      "status": "passed",
+      "detail": "runx verify accepted receipt sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21 with no findings.",
+      "evidence_ref": "hosted-verification.json"
+    },
+    {
+      "name": "read_only_behavior",
+      "status": "passed",
+      "detail": "The runner reads JSON inputs, computes deterministically in memory, performs no provider calls, requires no secrets, and emits structured stdout only.",
+      "evidence_ref": "run.mjs"
+    }
+  ],
+  "commands": [
+    "npx --yes @runxhq/cli@latest --version",
+    "npx --yes @runxhq/cli@latest harness /mnt/f/BountyBar/repos/runx/skills/access-request-review --json",
+    "npx --yes @runxhq/cli@latest registry publish /mnt/f/BountyBar/repos/runx/skills/access-request-review/SKILL.md --registry https://api.runx.ai --json",
+    "npx --yes @runxhq/cli@latest registry read lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --json",
+    "npx --yes @runxhq/cli@latest add lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --to /tmp/runx-access-request-review-clean-install --json",
+    "npx --yes @runxhq/cli@latest harness /tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/<version> --json",
+    "npx --yes @runxhq/cli@latest skill lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --input-json access_request=<fixture> --input-json policy=<fixture> --input-json current_entitlements=<fixture> --json",
+    "npx --yes @runxhq/cli@latest verify --receipt-dir /tmp/runx-access-request-review-hosted-dogfood-receipts --json"
+  ]
+}
