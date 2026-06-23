@@ -28,6 +28,13 @@
     "catalog_role": "context"
   },
   {
+    "skill_id": "runx/contract-review",
+    "version": "sha-76f918703134",
+    "digest": "e4da6c2458483280a64948ef71c1e6c5c9f43628883672e234da37c2ebffe40d",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/data-store",
     "version": "sha-1b3887a55009",
     "digest": "05ed91ab2873f7ccf1a898166f79c1ebae2542924e5444fa8b504a9aa2f22f76",

@@ -1,0 +1,21 @@
+name: non-contract-refused
+kind: skill
+target: ..
+runner: review
+inputs:
+  contract:
+    id: random-note
+    text: Please summarize this lunch menu and draft a friendly reply.
+  playbook:
+    id: legal-playbook-2026-06
+    rules:
+      - id: term-notice-max-30
+        clause_type: termination
+        max_notice_days: 30
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed

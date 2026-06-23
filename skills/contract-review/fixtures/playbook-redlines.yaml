@@ -1,0 +1,38 @@
+name: playbook-redlines
+kind: skill
+target: ..
+runner: review
+inputs:
+  contract:
+    id: msa-acme-2026
+    clauses:
+      - id: c1
+        type: termination
+        title: Termination for Convenience
+        text: Either party may terminate this Agreement with 90 days notice.
+      - id: c2
+        type: liability
+        title: Limitation of Liability
+        text: Supplier liability is uncapped for all damages.
+  playbook:
+    id: legal-playbook-2026-06
+    rules:
+      - id: term-notice-max-30
+        clause_type: termination
+        description: Termination for convenience must not require more than 30 days notice.
+        max_notice_days: 30
+        severity: medium
+        recommendation: Change notice period to 30 days or less.
+      - id: liability-cap-required
+        clause_type: liability
+        description: Liability must be expressly capped.
+        requires_liability_cap: true
+        severity: high
+        recommendation: Add a negotiated liability cap.
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed

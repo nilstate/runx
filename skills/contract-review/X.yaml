@@ -1,0 +1,80 @@
+skill: contract-review
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+runners:
+  review:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      clauses: array
+      redlines: array
+      risk_summary: object
+    artifacts:
+      wrap_as: contract_review_packet
+      packet: runx.legal.contract_review.v1
+    inputs:
+      contract:
+        type: json
+        required: true
+        description: Contract text and optional clause map.
+      playbook:
+        type: json
+        required: true
+        description: Acceptable terms, required clauses, and risk rules.
+harness:
+  cases:
+    - name: playbook-redlines
+      runner: review
+      inputs:
+        contract:
+          id: msa-acme-2026
+          clauses:
+            - id: c1
+              type: termination
+              title: Termination for Convenience
+              text: Either party may terminate this Agreement with 90 days notice.
+            - id: c2
+              type: liability
+              title: Limitation of Liability
+              text: Supplier liability is uncapped for all damages.
+        playbook:
+          id: legal-playbook-2026-06
+          rules:
+            - id: term-notice-max-30
+              clause_type: termination
+              description: Termination for convenience must not require more than 30 days notice.
+              max_notice_days: 30
+              severity: medium
+              recommendation: Change notice period to 30 days or less.
+            - id: liability-cap-required
+              clause_type: liability
+              description: Liability must be expressly capped.
+              requires_liability_cap: true
+              severity: high
+              recommendation: Add a negotiated liability cap.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: missing-playbook-fails
+      runner: review
+      inputs:
+        contract:
+          id: msa-acme-2026
+          clauses:
+            - id: c1
+              type: termination
+              title: Termination for Convenience
+              text: Either party may terminate this Agreement with 90 days notice.
+      expect:
+        status: failure
