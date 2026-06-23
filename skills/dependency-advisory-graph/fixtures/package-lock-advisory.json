@@ -1,0 +1,27 @@
+{
+  "name": "fixture-vulnerable-app",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "fixture-vulnerable-app",
+      "version": "1.0.0",
+      "dependencies": {
+        "minimist": "0.0.8",
+        "left-pad": "1.3.0"
+      }
+    },
+    "node_modules/minimist": {
+      "version": "0.0.8",
+      "resolved": "https://registry.npmjs.org/minimist/-/minimist-0.0.8.tgz",
+      "integrity": "sha512-fixture"
+    },
+    "node_modules/left-pad": {
+      "version": "1.3.0",
+      "resolved": "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz",
+      "integrity": "sha512-fixture"
+    }
+  }
+}
+

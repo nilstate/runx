@@ -1,0 +1,46 @@
+{
+  "source": {
+    "name": "OSV.dev / GitHub Advisory Database snapshot",
+    "url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+    "retrieved_at": "2026-06-23T02:45:00Z"
+  },
+  "advisories": [
+    {
+      "package": "minimist",
+      "ecosystem": "npm",
+      "advisory_id": "GHSA-vh95-rmgr-6w4m",
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+      "advisory_source": "OSV.dev / GitHub Advisory Database",
+      "retrieved_at": "2026-06-23T02:45:00Z",
+      "severity": "critical",
+      "affected_versions": ["0.0.8"],
+      "fixed_versions": ["0.2.1"],
+      "confidence": "high"
+    },
+    {
+      "package": "minimist",
+      "ecosystem": "npm",
+      "advisory_id": "GHSA-minimist-name-only-guard",
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+      "advisory_source": "fixture false-positive guard",
+      "retrieved_at": "2026-06-23T02:45:00Z",
+      "severity": "high",
+      "affected_versions": ["1.2.8"],
+      "fixed_versions": ["1.2.9"],
+      "confidence": "low"
+    },
+    {
+      "package": "left-pad",
+      "ecosystem": "npm",
+      "advisory_id": "GHSA-left-pad-version-guard",
+      "evidence_url": "https://example.test/advisories/left-pad-version-guard",
+      "advisory_source": "fixture false-positive guard",
+      "retrieved_at": "2026-06-23T02:45:00Z",
+      "severity": "medium",
+      "affected_versions": ["0.0.3"],
+      "fixed_versions": ["1.0.0"],
+      "confidence": "low"
+    }
+  ]
+}
+

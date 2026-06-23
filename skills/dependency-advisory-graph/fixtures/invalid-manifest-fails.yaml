@@ -1,0 +1,21 @@
+name: invalid-manifest-fails
+kind: skill
+target: ..
+runner: default
+inputs:
+  ecosystem: npm
+  manifest: {}
+  advisory_database:
+    retrieved_at: "2026-06-23T00:00:00.000Z"
+    advisories: []
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: dependency-advisory-graph
+  source_case: invalid-manifest-fails
+  source: skills-fixture

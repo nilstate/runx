@@ -1,0 +1,38 @@
+skill: dependency-advisory-graph
+version: "0.1.1"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      manifest:
+        type: json
+        required: true
+        description: Dependency manifest data with package names and installed versions.
+      advisory_database:
+        type: json
+        required: true
+        description: Advisory records with package, vulnerable range, evidence URL, severity, and fix version.
+      ecosystem:
+        type: string
+        required: false
+        description: Dependency ecosystem label. Defaults to npm.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill directory for evidence.json, verification.json, and report.md.
+    outputs:
+      dependency_advisory_graph: object
+      evidence_json: object
+      verification_json: object
+      report_md: string

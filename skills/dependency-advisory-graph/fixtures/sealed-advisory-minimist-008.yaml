@@ -1,0 +1,44 @@
+name: sealed-advisory-minimist-008
+kind: skill
+target: ..
+runner: default
+inputs:
+  ecosystem: npm
+  manifest:
+    name: vulnerable-fixture
+    lockfile_version: 2
+    packages:
+      - name: minimist
+        version: 0.0.8
+        path: node_modules/minimist
+      - name: is-number
+        version: 7.0.0
+        path: node_modules/is-number
+  advisory_database:
+    retrieved_at: "2026-06-23T00:00:00.000Z"
+    advisories:
+      - id: GHSA-vh95-rmgr-6w4m
+        package: minimist
+        ecosystem: npm
+        vulnerable_range: "<0.2.1"
+        severity: critical
+        fix_version: 0.2.1
+        evidence_url: https://github.com/advisories/GHSA-vh95-rmgr-6w4m
+        source: GitHub Advisory Database
+      - id: NAME-ONLY-GUARD
+        package: minimist
+        ecosystem: npm
+        vulnerable_range: "=1.2.8"
+        severity: medium
+        fix_version: 1.2.9
+        evidence_url: https://example.test/name-only-guard
+        source: Fixture false-positive guard
+  output_dir: artifacts/sealed-advisory-minimist-008
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: dependency-advisory-graph
+  source_case: sealed-advisory-minimist-008
+  source: skills-fixture

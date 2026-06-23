@@ -1,0 +1,26 @@
+{
+  "name": "fixture-clean-app",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "fixture-clean-app",
+      "version": "1.0.0",
+      "dependencies": {
+        "minimist": "1.2.7",
+        "left-pad": "1.3.0"
+      }
+    },
+    "node_modules/minimist": {
+      "version": "1.2.7",
+      "resolved": "https://registry.npmjs.org/minimist/-/minimist-1.2.7.tgz",
+      "integrity": "sha512-fixture"
+    },
+    "node_modules/left-pad": {
+      "version": "1.3.0",
+      "resolved": "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz",
+      "integrity": "sha512-fixture"
+    }
+  }
+}
