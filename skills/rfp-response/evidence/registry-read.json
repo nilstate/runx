@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "lubuseb/rfp-response@sha-68462d4db0fd",
+    "skill": {
+      "skill_id": "lubuseb/rfp-response",
+      "owner": "lubuseb",
+      "name": "rfp-response",
+      "description": "Draft cited RFP and security-questionnaire answers from a supplied knowledge pack, with gaps for unsupported questions.",
+      "category": "security",
+      "version": "sha-68462d4db0fd",
+      "digest": "53684267a1bca9969949207600ca436940ced49500ff3a6381e7f3a375458f9e",
+      "markdown": "---\nname: rfp-response\ndescription: Draft cited RFP and security-questionnaire answers from a supplied knowledge pack, with gaps for unsupported questions.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\n  input_mode: stdin\n  cwd: .\n  timeout_seconds: 30\ninputs:\n  questionnaire:\n    type: json\n    required: true\n    description: Array of questionnaire prompts with id, question text, and optional section.\n  knowledge_pack:\n    type: json\n    required: true\n    description: Sources and claims that may be cited in answers.\n  objective:\n    type: string\n    required: false\n    description: Optional operator intent for the draft.\nrunx:\n  category: business-ops\n  input_resolution:\n    required:\n      - questionnaire\n      - knowledge_pack\n---\n\n# rfp-response\n\nUse this skill when an operator needs a reviewable RFP or security-questionnaire\ndraft that is grounded only in supplied company knowledge. The skill reads a\nquestionnaire and knowledge pack, drafts cited answers for supported questions,\nand records unsupported questions as gaps instead of inventing certifications,\ncontrols, metrics, or contractual claims.\n\nThe skill is read-only over its inputs. It performs no network calls, sends no\nresponses, stores no secrets, and emits only a draft for human approval before it\nleaves the organization.\n\n## Inputs\n\n- `questionnaire`: array of `{id, question, section}` records.\n- `knowledge_pack`: object with a `sources` array. Each source may contain\n  `id`, `title`, `url`, and `claims`; each claim may contain `id`, `text`, and\n  optional `tags`.\n- `objective`: optional operator intent.\n\n## Output\n\nThe runner returns JSON with:\n\n- `answers` array: `{q, answer, citations, confidence}` for grounded answers.\n- `gaps` array: unsupported questions with missing-evidence notes.\n- `evidence_json` object: compact verification summary.\n- `report` string: human-readable draft review notes.\n\nEvery answer contains at least one citation. Questions without supporting\nknowledge are placed in `gaps` and are not answered.",
+      "profile_digest": "75bfeb70a9559a6ed9d077c7d4f8d0db786191172fc7fbe5eeadaef67b07543c",
+      "runner_names": [
+        "default"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_53f00ae7ec2363e37ac6ff68",
+        "handle": "lubuseb",
+        "display_name": "LubuSeb"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_53f00ae7ec2363e37ac6ff68",
+          "status": "declared",
+          "summary": "LubuSeb",
+          "issued_at": "2026-06-23T05:13:19.277Z",
+          "metadata": {
+            "publisher_display_name": "LubuSeb",
+            "publisher_handle": "lubuseb",
+            "publisher_id": "user_53f00ae7ec2363e37ac6ff68",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add lubuseb/rfp-response@sha-68462d4db0fd --registry https://api.runx.ai",
+      "run_command": "runx skill lubuseb/rfp-response@sha-68462d4db0fd --registry https://api.runx.ai"
+    }
+  }
+}

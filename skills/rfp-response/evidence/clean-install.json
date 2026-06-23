@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "lubuseb/rfp-response@sha-68462d4db0fd",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/runx-rfp-response-clean-install/lubuseb/rfp-response/sha-68462d4db0fd/SKILL.md",
+      "skill_name": "rfp-response",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "lubuseb/rfp-response",
+      "version": "sha-68462d4db0fd",
+      "digest": "sha256:53684267a1bca9969949207600ca436940ced49500ff3a6381e7f3a375458f9e",
+      "profile_digest": "sha256:75bfeb70a9559a6ed9d077c7d4f8d0db786191172fc7fbe5eeadaef67b07543c",
+      "profile_state_path": "/tmp/runx-rfp-response-clean-install/lubuseb/rfp-response/sha-68462d4db0fd/.runx/profile.json",
+      "runner_names": [
+        "default"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/runx-rfp-response-clean-install/lubuseb/rfp-response/sha-68462d4db0fd/SKILL.md",
+      "digest": "sha256:53684267a1bca9969949207600ca436940ced49500ff3a6381e7f3a375458f9e",
+      "install_count": 1,
+      "package_digest": "3c983bb8018f48bec461085fccd230d657548ac25b3363529aa4a5af10423be5",
+      "profile_digest": "sha256:75bfeb70a9559a6ed9d077c7d4f8d0db786191172fc7fbe5eeadaef67b07543c",
+      "publisher": {
+        "display_name": "LubuSeb",
+        "handle": "lubuseb",
+        "id": "user_53f00ae7ec2363e37ac6ff68",
+        "kind": "user"
+      },
+      "ref": "lubuseb/rfp-response@sha-68462d4db0fd",
+      "skill_id": "lubuseb/rfp-response",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-68462d4db0fd"
+    }
+  }
+}

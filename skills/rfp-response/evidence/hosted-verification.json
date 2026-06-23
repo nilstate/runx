@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/tmp/runx-rfp-response-hosted-dogfood-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:3a5fe208e9bc5f06920a60b1abee55d874d2e7b72b6e99ac9f3e35f17cc9a3fc",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

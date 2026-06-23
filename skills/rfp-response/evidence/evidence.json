@@ -1,0 +1,132 @@
+{
+  "schema": "frantic.delivery.evidence.v1",
+  "summary": "rfp-response was published as a hosted runx skill, clean-installed from the registry, harnessed from the installed package, dogfooded on a cited questionnaire input, and verified with a sealed production-mode runx receipt.",
+  "artifact": "rfp-response",
+  "package": {
+    "owner": "lubuseb",
+    "name": "rfp-response",
+    "version": "sha-68462d4db0fd",
+    "registry_ref": "lubuseb/rfp-response@sha-68462d4db0fd",
+    "public_url": "https://runx.ai/x/lubuseb/rfp-response@sha-68462d4db0fd",
+    "registry_public_url": "https://runx.ai/x/lubuseb/rfp-response",
+    "digest": "53684267a1bca9969949207600ca436940ced49500ff3a6381e7f3a375458f9e",
+    "profile_digest": "75bfeb70a9559a6ed9d077c7d4f8d0db786191172fc7fbe5eeadaef67b07543c"
+  },
+  "source": {
+    "pr_url": "https://github.com/runxhq/runx/pull/125",
+    "source_url": "https://github.com/LubuSeb/runx/tree/rfp-response-54/skills/rfp-response",
+    "x_yaml": "https://raw.githubusercontent.com/LubuSeb/runx/rfp-response-54/skills/rfp-response/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/LubuSeb/runx/rfp-response-54/skills/rfp-response/SKILL.md"
+  },
+  "runtime": {
+    "runx_version": "runx-cli 0.6.13",
+    "receipt_ref": "runx:receipt:sha256:3a5fe208e9bc5f06920a60b1abee55d874d2e7b72b6e99ac9f3e35f17cc9a3fc",
+    "receipt_id": "sha256:3a5fe208e9bc5f06920a60b1abee55d874d2e7b72b6e99ac9f3e35f17cc9a3fc",
+    "verify_verdict": "valid",
+    "signature_mode": "production"
+  },
+  "dogfood": {
+    "command": "runx skill lubuseb/rfp-response@sha-68462d4db0fd --registry https://api.runx.ai --input-json questionnaire=<fixture> --input-json knowledge_pack=<fixture> --json",
+    "package": "lubuseb/rfp-response@sha-68462d4db0fd",
+    "input": "fixtures/supported-questionnaire.json",
+    "receipt_ref": "runx:receipt:sha256:3a5fe208e9bc5f06920a60b1abee55d874d2e7b72b6e99ac9f3e35f17cc9a3fc",
+    "verification_json": "hosted-verification.json",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "cited-security-questionnaire-answers",
+        "status": "sealed"
+      },
+      {
+        "name": "unsupported-certification-is-gap",
+        "status": "refused"
+      },
+      {
+        "name": "missing-knowledge-pack-fails-closed",
+        "status": "failure"
+      }
+    ],
+    "answered_count": 2,
+    "gap_count": 0,
+    "sample_citations": [
+      {
+        "claim_id": "enc-1",
+        "source_id": "security-overview",
+        "title": "Acme Security Overview 2026",
+        "url": "https://example.com/acme/security-overview"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "name": "runx_version",
+      "status": "passed",
+      "detail": "npx --yes @runxhq/cli@latest --version returned: runx-cli 0.6.13",
+      "evidence_ref": "runx-version.txt"
+    },
+    {
+      "name": "published_registry_package",
+      "status": "passed",
+      "detail": "runx registry publish completed successfully for lubuseb/rfp-response@sha-68462d4db0fd on https://api.runx.ai.",
+      "evidence_ref": "registry-publish.json"
+    },
+    {
+      "name": "public_url_binding",
+      "status": "passed",
+      "detail": "Submitted public_url is the version-pinned registry page https://runx.ai/x/lubuseb/rfp-response@sha-68462d4db0fd; registry-publish.json also reports the unversioned landing page https://runx.ai/x/lubuseb/rfp-response.",
+      "evidence_ref": "registry-publish.json"
+    },
+    {
+      "name": "clean_install",
+      "status": "passed",
+      "detail": "runx add installed lubuseb/rfp-response@sha-68462d4db0fd into a clean directory.",
+      "evidence_ref": "clean-install.json"
+    },
+    {
+      "name": "hosted_harness",
+      "status": "passed",
+      "detail": "The installed registry package passed cited-answer, unsupported-gap, and fail-closed harness cases: cited-security-questionnaire-answers=sealed, unsupported-certification-is-gap=refused, missing-knowledge-pack-fails-closed=failure.",
+      "evidence_ref": "hosted-harness.json"
+    },
+    {
+      "name": "answered_and_gap_counts",
+      "status": "passed",
+      "detail": "Dogfood produced 2 grounded answer(s) and 0 gap(s).",
+      "evidence_ref": "hosted-dogfood-output.json"
+    },
+    {
+      "name": "sample_citations",
+      "status": "passed",
+      "detail": "[{\"claim_id\":\"enc-1\",\"source_id\":\"security-overview\",\"title\":\"Acme Security Overview 2026\",\"url\":\"https://example.com/acme/security-overview\"}]",
+      "evidence_ref": "hosted-dogfood-output.json"
+    },
+    {
+      "name": "dogfood_receipt_verified",
+      "status": "passed",
+      "detail": "runx verify accepted receipt sha256:3a5fe208e9bc5f06920a60b1abee55d874d2e7b72b6e99ac9f3e35f17cc9a3fc with no findings.",
+      "evidence_ref": "hosted-verification.json"
+    },
+    {
+      "name": "receipt_id",
+      "status": "passed",
+      "detail": "Post-publish dogfood receipt id: sha256:3a5fe208e9bc5f06920a60b1abee55d874d2e7b72b6e99ac9f3e35f17cc9a3fc.",
+      "evidence_ref": "hosted-verification.json"
+    },
+    {
+      "name": "read_only_behavior",
+      "status": "passed",
+      "detail": "The runner reads JSON inputs, computes deterministically in memory, performs no provider calls, emits no effect, and emits structured stdout only.",
+      "evidence_ref": "run.mjs"
+    }
+  ],
+  "commands": [
+    "npx --yes @runxhq/cli@latest --version",
+    "npx --yes @runxhq/cli@latest harness /mnt/f/BountyBar/repos/runx/skills/rfp-response --json",
+    "npx --yes @runxhq/cli@latest registry publish /mnt/f/BountyBar/repos/runx/skills/rfp-response/SKILL.md --registry https://api.runx.ai --json",
+    "npx --yes @runxhq/cli@latest registry read lubuseb/rfp-response@sha-68462d4db0fd --registry https://api.runx.ai --json",
+    "npx --yes @runxhq/cli@latest add lubuseb/rfp-response@sha-68462d4db0fd --registry https://api.runx.ai --to /tmp/runx-rfp-response-clean-install --json",
+    "npx --yes @runxhq/cli@latest harness /tmp/runx-rfp-response-clean-install/lubuseb/rfp-response/<version> --json",
+    "npx --yes @runxhq/cli@latest skill lubuseb/rfp-response@sha-68462d4db0fd --registry https://api.runx.ai --input-json questionnaire=<fixture> --input-json knowledge_pack=<fixture> --json",
+    "npx --yes @runxhq/cli@latest verify --receipt-dir /tmp/runx-rfp-response-hosted-dogfood-receipts --json"
+  ]
+}
