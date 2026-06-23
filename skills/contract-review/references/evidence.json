@@ -7,7 +7,7 @@
     "package_name": "contract-review",
     "version": "sha-2a3aa46f2351",
     "registry_ref": "luismireles12/contract-review@sha-2a3aa46f2351",
-    "public_url": "https://runx.ai/x/luismireles12/contract-review",
+    "public_url": "https://runx.ai/x/luismireles12/contract-review@sha-2a3aa46f2351",
     "pr_url": "https://github.com/runxhq/runx/pull/128",
     "source_url": "https://github.com/luismireles12/runx/tree/feat/contract-review/skills/contract-review",
     "x_yaml": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/X.yaml",
@@ -52,4 +52,3 @@
     ]
   }
 }
-

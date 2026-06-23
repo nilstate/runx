@@ -13,7 +13,7 @@
 - Obvious credentials and payment-card numbers are redacted from quoted text.
 - A human reviewer remains responsible for acceptance, negotiation, or escalation.
 - Published registry ref: `luismireles12/contract-review@sha-2a3aa46f2351`.
-- Public adoption page: https://runx.ai/x/luismireles12/contract-review.
+- Public adoption page: https://runx.ai/x/luismireles12/contract-review@sha-2a3aa46f2351.
 - A clean `runx add` installation resolved the same package and profile digests.
 - The post-publish dogfood run produced receipt `sha256:35b48f3bb480b8445f1b98ccf9c7866bf71ebcad83245d2e5edc9457584835f0`.
 - `runx verify` returned `valid: true` with no findings.
