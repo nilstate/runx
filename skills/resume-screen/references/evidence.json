@@ -1,0 +1,121 @@
+{
+  "schema": "frantic.evidence.v1",
+  "summary": "Published resume-screen package scored only supplied job-related evidence, ranked three synthetic candidates, ignored and flagged a protected age field, proposed a human-gated shortlist, and produced a valid sealed receipt.",
+  "observations": [
+    {
+      "id": "cli-version",
+      "command": "runx --version",
+      "output": "runx-cli 0.6.13",
+      "details": {"publisher_owner": "luismireles12", "package_name": "resume-screen"}
+    },
+    {
+      "id": "source-provenance",
+      "command": "gh pr view 129 --repo runxhq/runx",
+      "output": "Public PR contains the package, fixtures, and harness evidence.",
+      "details": {
+        "pr_url": "https://github.com/runxhq/runx/pull/129",
+        "source_url": "https://github.com/luismireles12/runx/tree/feat/resume-screen/skills/resume-screen",
+        "x_yaml": "https://raw.githubusercontent.com/luismireles12/runx/feat/resume-screen/skills/resume-screen/X.yaml",
+        "skill_md": "https://raw.githubusercontent.com/luismireles12/runx/feat/resume-screen/skills/resume-screen/SKILL.md",
+        "verification_json": "https://raw.githubusercontent.com/luismireles12/runx/feat/resume-screen/skills/resume-screen/references/verification.json"
+      }
+    },
+    {
+      "id": "local-harness",
+      "command": "runx harness skills/resume-screen --json",
+      "output": "passed: 2 cases, 0 assertion errors",
+      "details": {
+        "cases": [
+          {"name": "ranked-shortlist-proposal", "status": "sealed"},
+          {"name": "refuse-final-hiring-decision", "status": "refused"}
+        ]
+      }
+    },
+    {
+      "id": "publish",
+      "command": "runx registry publish ./skills/resume-screen/SKILL.md --registry https://api.runx.ai --json",
+      "output": "published",
+      "details": {
+        "version": "sha-a89bb5dc4347",
+        "registry_ref": "luismireles12/resume-screen@sha-a89bb5dc4347",
+        "public_url": "https://runx.ai/x/luismireles12/resume-screen@sha-a89bb5dc4347",
+        "hosted_harness_status": "passed"
+      }
+    },
+    {
+      "id": "registry-read",
+      "command": "runx registry read luismireles12/resume-screen@sha-a89bb5dc4347 --registry https://api.runx.ai --json",
+      "output": "status: success; owner: luismireles12",
+      "details": {
+        "digest": "1f678721f731871d984eb9f08cd7e0cc8104ff9dd8bf0696aedc19511624e9ec",
+        "profile_digest": "af5d134d39f10f3634b0d84a0530d234d45432cfe686df3ae7e380dc79c2d9a0"
+      }
+    },
+    {
+      "id": "clean-install",
+      "command": "runx add luismireles12/resume-screen@sha-a89bb5dc4347 --registry https://api.runx.ai --to ./clean-install --json",
+      "output": "status: installed",
+      "details": {"install_count": 1}
+    },
+    {
+      "id": "ranking",
+      "command": "run published package on three synthetic candidates",
+      "output": "candidate-alpha, candidate-beta, candidate-gamma",
+      "details": {
+        "ranked": [
+          {"rank": 1, "candidate_id": "candidate-alpha", "score": 100},
+          {"rank": 2, "candidate_id": "candidate-beta", "score": 56.67},
+          {"rank": 3, "candidate_id": "candidate-gamma", "score": 22.5}
+        ]
+      }
+    },
+    {
+      "id": "red-and-bias-flags",
+      "command": "inspect dogfood red_flags",
+      "output": "1 bias-risk flag and 3 evidence-gap flags",
+      "details": {
+        "bias_risk": {"candidate_id": "candidate-beta", "field": "age", "action": "ignored_not_scored"},
+        "evidence_gaps": ["candidate-beta:leadership", "candidate-gamma:testing", "candidate-gamma:leadership"]
+      }
+    },
+    {
+      "id": "interview-questions",
+      "command": "inspect dogfood interview_qs",
+      "output": "5 evidence-grounded interview questions",
+      "details": {"question_count": 5}
+    },
+    {
+      "id": "shortlist-proposal",
+      "command": "inspect dogfood shortlist_proposal",
+      "output": "candidate-alpha and candidate-beta proposed for human review",
+      "details": {
+        "candidate_ids": ["candidate-alpha", "candidate-beta"],
+        "human_approval_required": true,
+        "final_decision_made": false,
+        "effects_emitted": []
+      }
+    },
+    {
+      "id": "receipt-verification",
+      "command": "runx verify sha256:4e0a2c2c0a38179218c3aeda2aaf3ad173a4ef79305aaf121551448705576a83 --receipt-dir ./published-dogfood --json",
+      "output": "valid: true",
+      "details": {
+        "signature_mode": "production",
+        "findings": [],
+        "receipt_ref": "runx:receipt:sha256:4e0a2c2c0a38179218c3aeda2aaf3ad173a4ef79305aaf121551448705576a83"
+      }
+    }
+  ],
+  "dogfood": {
+    "package": "luismireles12/resume-screen@sha-a89bb5dc4347",
+    "input": "Three synthetic candidate IDs with job-related evidence; one included age solely to verify ignored-and-flagged behavior.",
+    "command": "runx skill luismireles12/resume-screen@sha-a89bb5dc4347 --registry https://api.runx.ai ... --json",
+    "receipt_ref": "runx:receipt:sha256:4e0a2c2c0a38179218c3aeda2aaf3ad173a4ef79305aaf121551448705576a83",
+    "verify_verdict": "valid: true",
+    "harness_cases": [
+      {"name": "ranked-shortlist-proposal", "status": "sealed"},
+      {"name": "refuse-final-hiring-decision", "status": "refused"}
+    ]
+  }
+}
+

@@ -1,6 +1,6 @@
 {
   "schema": "runx.resume_screen.verification.v1",
-  "generated_at": "2026-06-23T05:41:00Z",
+  "generated_at": "2026-06-23T05:52:00Z",
   "cli_version": "runx-cli 0.6.13",
   "doctor": {
     "status": "success",
@@ -11,6 +11,18 @@
     "status": "passed",
     "case_count": 2
   },
+  "published_package": {
+    "ref": "luismireles12/resume-screen@sha-a89bb5dc4347",
+    "public_url": "https://runx.ai/x/luismireles12/resume-screen@sha-a89bb5dc4347",
+    "registry_read": "success",
+    "clean_install": "success",
+    "hosted_harness": "passed"
+  },
+  "dogfood": {
+    "receipt_id": "sha256:4e0a2c2c0a38179218c3aeda2aaf3ad173a4ef79305aaf121551448705576a83",
+    "status": "sealed",
+    "verify_valid": true,
+    "findings": []
+  },
   "effects_emitted": []
 }
-
