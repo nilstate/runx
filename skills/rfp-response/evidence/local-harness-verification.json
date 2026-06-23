@@ -1,0 +1,22 @@
+{
+  "receipt_dir": "/tmp/runx-rfp-response-harness-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:0981dc3e02dfdf781ec36ec8491276c7ff3019685cbcdc9484cc891008f86a1a",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    },
+    {
+      "root_receipt_id": "sha256:bf4f0f576eaad7228c7b23e8d73d0737f5b03d9b1939aca25141dff76af52620",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

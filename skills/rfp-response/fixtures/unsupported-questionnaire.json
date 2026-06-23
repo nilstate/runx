@@ -1,0 +1,26 @@
+{
+  "objective": "Do not invent unsupported certifications.",
+  "questionnaire": [
+    {
+      "id": "q1",
+      "section": "compliance",
+      "question": "Are you ISO 27001 certified?"
+    }
+  ],
+  "knowledge_pack": {
+    "sources": [
+      {
+        "id": "security-overview",
+        "title": "Acme Security Overview 2026",
+        "url": "https://example.com/acme/security-overview",
+        "claims": [
+          {
+            "id": "access-1",
+            "text": "Production access is limited to approved on-call engineers and requires MFA.",
+            "tags": ["access", "production", "mfa"]
+          }
+        ]
+      }
+    ]
+  }
+}

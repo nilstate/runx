@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "cited-security-questionnaire-answers",
+    "unsupported-certification-is-gap"
+  ],
+  "receipt_ids": [
+    "sha256:0981dc3e02dfdf781ec36ec8491276c7ff3019685cbcdc9484cc891008f86a1a",
+    "sha256:bf4f0f576eaad7228c7b23e8d73d0737f5b03d9b1939aca25141dff76af52620"
+  ],
+  "graph_case_count": 0
+}

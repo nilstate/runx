@@ -1,0 +1,348 @@
+{
+  "closure": {
+    "closed_at": "2026-06-23T05:10:42.304Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool default completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "answers": [
+        {
+          "answer": "Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer.",
+          "citations": [
+            {
+              "claim_id": "enc-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            }
+          ],
+          "confidence": "high",
+          "q": "q1",
+          "question": "Do you encrypt customer data at rest and in transit?",
+          "section": "encryption"
+        },
+        {
+          "answer": "Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly.",
+          "citations": [
+            {
+              "claim_id": "access-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            }
+          ],
+          "confidence": "medium",
+          "q": "q2",
+          "question": "How do you restrict production access?",
+          "section": "access"
+        }
+      ],
+      "evidence_json": {
+        "artifact": "rfp-response",
+        "knowledge_digest": "sha256:acbefb0d1a1a85c3b58fe86d7137f7de79a8eb5f0453116f32dcf6c43b0fc460",
+        "objective": "Draft grounded security questionnaire answers for a vendor review.",
+        "observations": {
+          "answered_count": 2,
+          "effect_emitted": false,
+          "gap_count": 0,
+          "network_used": false,
+          "read_only": true,
+          "refused_questions": [],
+          "sample_citations": [
+            {
+              "claim_id": "enc-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            },
+            {
+              "claim_id": "access-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            }
+          ]
+        },
+        "questionnaire_digest": "sha256:f2428f3d99f2d48e9c64b554dd734057a7a9f591682f1cd77a5a11487eac82b7",
+        "schema": "frantic.delivery.evidence.v1"
+      },
+      "gaps": [],
+      "report": "# rfp-response report\n\nAnswered questions: 2\nGaps: 0\nKnowledge sources: 1\n\n## Answers\n- q1: Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer. Citations: security-overview/enc-1\n- q2: Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly. Citations: security-overview/access-1\n\n## Gaps\n- none\n\nThe draft is read-only and requires human approval before external use."
+    },
+    "stderr": "",
+    "stdout": "{\n  \"answers\": [\n    {\n      \"q\": \"q1\",\n      \"question\": \"Do you encrypt customer data at rest and in transit?\",\n      \"section\": \"encryption\",\n      \"answer\": \"Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer.\",\n      \"citations\": [\n        {\n          \"source_id\": \"security-overview\",\n          \"claim_id\": \"enc-1\",\n          \"title\": \"Acme Security Overview 2026\",\n          \"url\": \"https://example.com/acme/security-overview\"\n        }\n      ],\n      \"confidence\": \"high\"\n    },\n    {\n      \"q\": \"q2\",\n      \"question\": \"How do you restrict production access?\",\n      \"section\": \"access\",\n      \"answer\": \"Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly.\",\n      \"citations\": [\n        {\n          \"source_id\": \"security-overview\",\n          \"claim_id\": \"access-1\",\n          \"title\": \"Acme Security Overview 2026\",\n          \"url\": \"https://example.com/acme/security-overview\"\n        }\n      ],\n      \"confidence\": \"medium\"\n    }\n  ],\n  \"gaps\": [],\n  \"evidence_json\": {\n    \"schema\": \"frantic.delivery.evidence.v1\",\n    \"artifact\": \"rfp-response\",\n    \"objective\": \"Draft grounded security questionnaire answers for a vendor review.\",\n    \"knowledge_digest\": \"sha256:acbefb0d1a1a85c3b58fe86d7137f7de79a8eb5f0453116f32dcf6c43b0fc460\",\n    \"questionnaire_digest\": \"sha256:f2428f3d99f2d48e9c64b554dd734057a7a9f591682f1cd77a5a11487eac82b7\",\n    \"observations\": {\n      \"answered_count\": 2,\n      \"gap_count\": 0,\n      \"sample_citations\": [\n        {\n          \"source_id\": \"security-overview\",\n          \"claim_id\": \"enc-1\",\n          \"title\": \"Acme Security Overview 2026\",\n          \"url\": \"https://example.com/acme/security-overview\"\n        },\n        {\n          \"source_id\": \"security-overview\",\n          \"claim_id\": \"access-1\",\n          \"title\": \"Acme Security Overview 2026\",\n          \"url\": \"https://example.com/acme/security-overview\"\n        }\n      ],\n      \"refused_questions\": [],\n      \"read_only\": true,\n      \"network_used\": false,\n      \"effect_emitted\": false\n    }\n  },\n  \"report\": \"# rfp-response report\\n\\nAnswered questions: 2\\nGaps: 0\\nKnowledge sources: 1\\n\\n## Answers\\n- q1: Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer. Citations: security-overview/enc-1\\n- q2: Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly. Citations: security-overview/access-1\\n\\n## Gaps\\n- none\\n\\nThe draft is read-only and requires human approval before external use.\"\n}\n",
+    "structured_output": {
+      "answers": [
+        {
+          "answer": "Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer.",
+          "citations": [
+            {
+              "claim_id": "enc-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            }
+          ],
+          "confidence": "high",
+          "q": "q1",
+          "question": "Do you encrypt customer data at rest and in transit?",
+          "section": "encryption"
+        },
+        {
+          "answer": "Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly.",
+          "citations": [
+            {
+              "claim_id": "access-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            }
+          ],
+          "confidence": "medium",
+          "q": "q2",
+          "question": "How do you restrict production access?",
+          "section": "access"
+        }
+      ],
+      "evidence_json": {
+        "artifact": "rfp-response",
+        "knowledge_digest": "sha256:acbefb0d1a1a85c3b58fe86d7137f7de79a8eb5f0453116f32dcf6c43b0fc460",
+        "objective": "Draft grounded security questionnaire answers for a vendor review.",
+        "observations": {
+          "answered_count": 2,
+          "effect_emitted": false,
+          "gap_count": 0,
+          "network_used": false,
+          "read_only": true,
+          "refused_questions": [],
+          "sample_citations": [
+            {
+              "claim_id": "enc-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            },
+            {
+              "claim_id": "access-1",
+              "source_id": "security-overview",
+              "title": "Acme Security Overview 2026",
+              "url": "https://example.com/acme/security-overview"
+            }
+          ]
+        },
+        "questionnaire_digest": "sha256:f2428f3d99f2d48e9c64b554dd734057a7a9f591682f1cd77a5a11487eac82b7",
+        "schema": "frantic.delivery.evidence.v1"
+      },
+      "gaps": [],
+      "report": "# rfp-response report\n\nAnswered questions: 2\nGaps: 0\nKnowledge sources: 1\n\n## Answers\n- q1: Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer. Citations: security-overview/enc-1\n- q2: Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly. Citations: security-overview/access-1\n\n## Gaps\n- none\n\nThe draft is read-only and requires human approval before external use."
+    }
+  },
+  "payload": {
+    "answers": [
+      {
+        "answer": "Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer.",
+        "citations": [
+          {
+            "claim_id": "enc-1",
+            "source_id": "security-overview",
+            "title": "Acme Security Overview 2026",
+            "url": "https://example.com/acme/security-overview"
+          }
+        ],
+        "confidence": "high",
+        "q": "q1",
+        "question": "Do you encrypt customer data at rest and in transit?",
+        "section": "encryption"
+      },
+      {
+        "answer": "Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly.",
+        "citations": [
+          {
+            "claim_id": "access-1",
+            "source_id": "security-overview",
+            "title": "Acme Security Overview 2026",
+            "url": "https://example.com/acme/security-overview"
+          }
+        ],
+        "confidence": "medium",
+        "q": "q2",
+        "question": "How do you restrict production access?",
+        "section": "access"
+      }
+    ],
+    "evidence_json": {
+      "artifact": "rfp-response",
+      "knowledge_digest": "sha256:acbefb0d1a1a85c3b58fe86d7137f7de79a8eb5f0453116f32dcf6c43b0fc460",
+      "objective": "Draft grounded security questionnaire answers for a vendor review.",
+      "observations": {
+        "answered_count": 2,
+        "effect_emitted": false,
+        "gap_count": 0,
+        "network_used": false,
+        "read_only": true,
+        "refused_questions": [],
+        "sample_citations": [
+          {
+            "claim_id": "enc-1",
+            "source_id": "security-overview",
+            "title": "Acme Security Overview 2026",
+            "url": "https://example.com/acme/security-overview"
+          },
+          {
+            "claim_id": "access-1",
+            "source_id": "security-overview",
+            "title": "Acme Security Overview 2026",
+            "url": "https://example.com/acme/security-overview"
+          }
+        ]
+      },
+      "questionnaire_digest": "sha256:f2428f3d99f2d48e9c64b554dd734057a7a9f591682f1cd77a5a11487eac82b7",
+      "schema": "frantic.delivery.evidence.v1"
+    },
+    "gaps": [],
+    "report": "# rfp-response report\n\nAnswered questions: 2\nGaps: 0\nKnowledge sources: 1\n\n## Answers\n- q1: Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer. Citations: security-overview/enc-1\n- q2: Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly. Citations: security-overview/access-1\n\n## Gaps\n- none\n\nThe draft is read-only and requires human approval before external use."
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-23T05:10:42.304Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-23T05:10:42.304Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:2f1ce9d4c84c70e45f6b35cb9ada20286fc692c6dffaec2f07ca6467471eaf0a",
+    "id": "sha256:40987dbccf56a96603e2331e1591e2b3aaa94df07ea8cb8bd32c7c25623d7196",
+    "idempotency": {
+      "content_hash": "sha256:run_default_ce6bab504068-default-content",
+      "intent_key": "sha256:run_default_ce6bab504068-default-intent",
+      "trigger_fingerprint": "sha256:run_default_ce6bab504068-default-trigger"
+    },
+    "issuer": {
+      "kid": "local:bountybar-frantic-runx-22-20260618192655",
+      "public_key_sha256": "sha256:afae74faf1b1b104b27d788bee2dd0982052af89a1ae30b3282f1a14b0707871",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-23T05:10:42.304Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-23T05:10:42.304Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:PTGPm-0YrxF9S39qgeUJtXKYZDlRDFQncD3hSJPdq6kKtXCd82kq8jTbeQueyTAQehwfWEjuv8EaUviRbD--Dg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_default_ce6bab504068_default"
+      }
+    }
+  },
+  "receipt_id": "sha256:40987dbccf56a96603e2331e1591e2b3aaa94df07ea8cb8bd32c7c25623d7196",
+  "run_id": "run_default_ce6bab504068",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "rfp-response",
+  "status": "sealed"
+}

@@ -1,0 +1,104 @@
+skill: rfp-response
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  side_effects: none
+  network_during_run: denied
+  secrets_required: false
+  filesystem:
+    read: []
+    write: []
+
+harness:
+  cases:
+    - name: cited-security-questionnaire-answers
+      runner: default
+      inputs:
+        objective: "Draft grounded security questionnaire answers for a vendor review."
+        questionnaire:
+          - id: q1
+            section: encryption
+            question: "Do you encrypt customer data at rest and in transit?"
+          - id: q2
+            section: access
+            question: "How do you restrict production access?"
+        knowledge_pack:
+          sources:
+            - id: security-overview
+              title: "Acme Security Overview 2026"
+              url: "https://example.com/acme/security-overview"
+              claims:
+                - id: enc-1
+                  text: "Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer."
+                  tags: [encryption, data, transit, rest]
+                - id: access-1
+                  text: "Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly."
+                  tags: [access, production, mfa, review]
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: unsupported-certification-is-gap
+      runner: default
+      inputs:
+        objective: "Do not invent unsupported certifications."
+        questionnaire:
+          - id: q1
+            section: compliance
+            question: "Are you ISO 27001 certified?"
+        knowledge_pack:
+          sources:
+            - id: security-overview
+              title: "Acme Security Overview 2026"
+              url: "https://example.com/acme/security-overview"
+              claims:
+                - id: access-1
+                  text: "Production access is limited to approved on-call engineers and requires MFA."
+                  tags: [access, production, mfa]
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    input_mode: stdin
+    args:
+      - run.mjs
+    outputs:
+      answers: array
+      gaps: array
+      evidence_json: object
+      report: string
+    artifacts:
+      wrap_as: rfp_response_packet
+      packet: runx.business_ops.rfp_response.v1
+    inputs:
+      questionnaire:
+        type: json
+        required: true
+        description: Questionnaire prompts to answer.
+      knowledge_pack:
+        type: json
+        required: true
+        description: Source-backed company knowledge pack.
+      objective:
+        type: string
+        required: false
+        description: Operator intent for the response draft.

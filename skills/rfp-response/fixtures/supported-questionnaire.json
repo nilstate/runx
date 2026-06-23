@@ -1,0 +1,36 @@
+{
+  "objective": "Draft grounded security questionnaire answers for a vendor review.",
+  "questionnaire": [
+    {
+      "id": "q1",
+      "section": "encryption",
+      "question": "Do you encrypt customer data at rest and in transit?"
+    },
+    {
+      "id": "q2",
+      "section": "access",
+      "question": "How do you restrict production access?"
+    }
+  ],
+  "knowledge_pack": {
+    "sources": [
+      {
+        "id": "security-overview",
+        "title": "Acme Security Overview 2026",
+        "url": "https://example.com/acme/security-overview",
+        "claims": [
+          {
+            "id": "enc-1",
+            "text": "Customer data is encrypted at rest with AES-256 and in transit with TLS 1.2 or newer.",
+            "tags": ["encryption", "data", "transit", "rest"]
+          },
+          {
+            "id": "access-1",
+            "text": "Production access is limited to approved on-call engineers, requires MFA, and is reviewed quarterly.",
+            "tags": ["access", "production", "mfa", "review"]
+          }
+        ]
+      }
+    ]
+  }
+}
