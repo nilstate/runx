@@ -1,0 +1,36 @@
+name: code-review-note harness
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - code-review-note
+    paths:
+      - 'skills/code-review-note/**'
+      - '.github/workflows/code-review-note-harness.yml'
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run local harness on Linux
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-demo-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          mkdir -p /tmp/runx-code-review-note-receipts
+          npx --yes @runxhq/cli@0.6.13 --version
+          npx --yes @runxhq/cli@0.6.13 harness ./skills/code-review-note --receipt-dir /tmp/runx-code-review-note-receipts --json | tee code-review-note-harness.json
+          test "$(node -e "const r=require('./code-review-note-harness.json'); process.stdout.write(r.status)")" = passed
+      - name: Upload harness evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-review-note-harness-evidence
+          path: |
+            code-review-note-harness.json
+            /tmp/runx-code-review-note-receipts/*.json
