@@ -3,8 +3,10 @@
   "summary": "Invoice Three-Way Match extracts invoice facts, compares them with a purchase order and goods receipt, codes GL lines, and emits only a gated payment proposal when every match and policy gate passes.",
   "observations": [
     {
-      "claim": "The supported CLI used for verification is runx-cli 0.6.13.",
-      "evidence": "The local harness, registry publish, registry read, clean install, hosted harness, registry dogfood, and receipt verification commands were run with this runx CLI binary."
+      "claim": "The exact captured output of `runx --version` is `runx-cli 0.6.13`, satisfying the runx CLI 0.6.13 or newer requirement.",
+      "evidence": "skills/invoice-three-way-match/references/runx-version.txt contains exactly `runx-cli 0.6.13`; the local harness, registry publish, registry read, clean install, hosted harness, registry dogfood, and receipt verification commands were run with that binary.",
+      "command": "runx --version",
+      "exact_output": "runx-cli 0.6.13"
     },
     {
       "claim": "The package owner is zdfgu113.",
@@ -103,5 +105,10 @@
     "pr_url": "https://github.com/runxhq/runx/pull/132",
     "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/X.yaml",
     "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/SKILL.md"
+  },
+  "runx_version": {
+    "command": "runx --version",
+    "exact_output": "runx-cli 0.6.13",
+    "captured_at": "skills/invoice-three-way-match/references/runx-version.txt"
   }
 }

@@ -1,7 +1,7 @@
 # Invoice Three-Way Match verification report
 
 - Scope: one public `invoice-three-way-match` skill package with a Node runner, governed `X.yaml`, fixtures, local and hosted harness evidence, registry evidence, dogfood evidence, and receipt verification output.
-- CLI: `runx-cli 0.6.13`, used for local harness, publish, registry read, clean install, hosted harness, registry dogfood, and receipt verification.
+- CLI: exact captured `runx --version` output is `runx-cli 0.6.13`, stored in `references/runx-version.txt` and used for local harness, publish, registry read, clean install, hosted harness, registry dogfood, and receipt verification.
 - Package: `zdfgu113/invoice-three-way-match@sha-1ec6eb042dde`, published to `https://api.runx.ai` and visible at `https://runx.ai/x/zdfgu113/invoice-three-way-match@sha-1ec6eb042dde`.
 - PR: `https://github.com/runxhq/runx/pull/132` includes `skills/invoice-three-way-match/X.yaml`, `skills/invoice-three-way-match/SKILL.md`, fixtures, runner, and reference evidence.
 - Public source: `https://github.com/zdfgu113/runx/tree/codex/invoice-three-way-match/skills/invoice-three-way-match`.
