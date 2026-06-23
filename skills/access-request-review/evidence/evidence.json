@@ -24,6 +24,22 @@
     "verify_verdict": "valid",
     "signature_mode": "production"
   },
+  "dogfood": {
+    "command": "runx skill lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --input-json access_request=<fixture> --input-json policy=<fixture> --input-json current_entitlements=<fixture> --json",
+    "receipt_ref": "runx:receipt:sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21",
+    "verification_json": "hosted-verification.json",
+    "decision": "grant",
+    "least_privilege_scope": "logs.read:prod/payments/service-a",
+    "ttl_minutes": 120,
+    "approval_gate": "human_approval_required",
+    "execution_status": "proposal_only",
+    "safeguards": [
+      "does not issue access",
+      "does not call identity providers",
+      "does not move secrets",
+      "requires human approval for the one-time grant proposal"
+    ]
+  },
   "observations": [
     {
       "name": "published_registry_package",
