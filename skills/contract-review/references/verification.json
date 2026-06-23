@@ -1,6 +1,6 @@
 {
   "schema": "runx.contract_review.verification.v1",
-  "generated_at": "2026-06-23T05:38:00Z",
+  "generated_at": "2026-06-23T05:45:00Z",
   "cli_version": "runx-cli 0.6.13",
   "doctor": {
     "status": "success",
@@ -16,7 +16,19 @@
       "refuse-non-contract"
     ]
   },
+  "published_package": {
+    "ref": "luismireles12/contract-review@sha-2a3aa46f2351",
+    "public_url": "https://runx.ai/x/luismireles12/contract-review",
+    "registry_read": "success",
+    "clean_install": "success",
+    "hosted_harness": "passed"
+  },
+  "dogfood": {
+    "receipt_id": "sha256:35b48f3bb480b8445f1b98ccf9c7866bf71ebcad83245d2e5edc9457584835f0",
+    "status": "sealed",
+    "verify_valid": true,
+    "findings": []
+  },
   "read_only": true,
   "effects_emitted": []
 }
-
