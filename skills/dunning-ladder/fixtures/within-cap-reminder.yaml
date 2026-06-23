@@ -1,0 +1,40 @@
+name: within-cap-reminder
+kind: skill
+target: ..
+runner: decide
+inputs:
+  invoice_status:
+    invoice_id: inv-2026-0601
+    status: overdue
+    amount_due: 1840
+    currency: USD
+    customer_ref: acct-acme-legal
+    reminders_sent: 1
+    last_reminder_at: "2026-06-18"
+  aging_days: 22
+  cadence_policy:
+    cap: 3
+    escalation_lane: ar-manager
+    steps:
+      - step: 1
+        min_aging_days: 7
+        channel: email
+        tone: friendly
+        content_digest: first-notice-template
+      - step: 2
+        min_aging_days: 14
+        channel: email
+        tone: firm
+        content_digest: second-notice-template
+      - step: 3
+        min_aging_days: 21
+        channel: email
+        tone: final
+        content_digest: final-notice-template
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed

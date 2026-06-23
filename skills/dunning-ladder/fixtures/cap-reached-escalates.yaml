@@ -1,0 +1,39 @@
+name: cap-reached-escalates
+kind: skill
+target: ..
+runner: decide
+inputs:
+  invoice_status:
+    invoice_id: inv-2026-0520
+    status: overdue
+    amount_due: 940
+    currency: USD
+    customer_ref: acct-northwind
+    reminders_sent: 3
+  aging_days: 31
+  cadence_policy:
+    cap: 3
+    escalation_lane: collections-review
+    steps:
+      - step: 1
+        min_aging_days: 7
+        channel: email
+        tone: friendly
+        content_digest: first-notice-template
+      - step: 2
+        min_aging_days: 14
+        channel: email
+        tone: firm
+        content_digest: second-notice-template
+      - step: 3
+        min_aging_days: 21
+        channel: email
+        tone: final
+        content_digest: final-notice-template
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed

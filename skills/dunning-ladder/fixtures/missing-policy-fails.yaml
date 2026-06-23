@@ -1,0 +1,8 @@
+name: missing-policy-fails
+kind: skill
+target: ..
+runner: stop
+inputs:
+  reason: cadence_policy missing
+expect:
+  status: failure

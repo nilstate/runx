@@ -1,0 +1,90 @@
+skill: dunning-ladder
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      reminder_proposal: object
+      escalation: object
+    artifacts:
+      wrap_as: dunning_ladder_packet
+      packet: runx.ar.dunning_ladder.v1
+    inputs:
+      invoice_status:
+        type: json
+        required: true
+        description: Overdue invoice state, reminder history, amount, and recipient reference.
+      aging_days:
+        type: number
+        required: true
+        description: Number of days past due.
+      cadence_policy:
+        type: json
+        required: true
+        description: Reminder steps, cap, and escalation lane.
+  stop:
+    type: cli-tool
+    command: /bin/false
+    outputs:
+      decision: object
+    inputs:
+      reason:
+        type: string
+        required: false
+        description: Harness-only stop path proving the package records stop/error outcomes.
+harness:
+  cases:
+    - name: within-cap-reminder
+      runner: decide
+      inputs:
+        invoice_status:
+          invoice_id: inv-2026-0601
+          status: overdue
+          amount_due: 1840
+          currency: USD
+          customer_ref: acct-acme-legal
+          reminders_sent: 1
+          last_reminder_at: "2026-06-18"
+        aging_days: 22
+        cadence_policy:
+          cap: 3
+          escalation_lane: ar-manager
+          steps:
+            - step: 1
+              min_aging_days: 7
+              channel: email
+              tone: friendly
+              content_digest: first-notice-template
+            - step: 2
+              min_aging_days: 14
+              channel: email
+              tone: firm
+              content_digest: second-notice-template
+            - step: 3
+              min_aging_days: 21
+              channel: email
+              tone: final
+              content_digest: final-notice-template
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: missing-policy-fails
+      runner: stop
+      inputs:
+        reason: cadence_policy missing
+      expect:
+        status: failure

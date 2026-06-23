@@ -70,6 +70,13 @@
     "catalog_role": "context"
   },
   {
+    "skill_id": "runx/dunning-ladder",
+    "version": "sha-c2ad89bedcc6",
+    "digest": "dac73917c27f52b43597cc19001aea05e770af8c296a0d48b5e8c1a789eaa92f",
+    "catalog_visibility": "public",
+    "catalog_role": "context"
+  },
+  {
     "skill_id": "runx/ecosystem-brief",
     "version": "sha-38b4175917cd",
     "digest": "50256b25f1c4dfbb74dddce335d34d84c42725599e8f121067f816214545c6d7",

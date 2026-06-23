@@ -61,6 +61,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "356ec279727984c0432d7ff6e3700eea3a518e7eca3eec8e0d548a583e615a26",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/dunning-ladder",
+        version: "sha-c2ad89bedcc6",
+        digest: "dac73917c27f52b43597cc19001aea05e770af8c296a0d48b5e8c1a789eaa92f",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/ecosystem-brief",
         version: "sha-38b4175917cd",
         digest: "50256b25f1c4dfbb74dddce335d34d84c42725599e8f121067f816214545c6d7",
