@@ -1,0 +1,114 @@
+skill: refund-eligibility
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: in-policy-partial-refund-yields-proposal
+      inputs:
+        charge_receipt:
+          schema: runx.receipt.v1
+          id: runx:receipt:charge-demo-001
+          state: sealed
+          amount: 10000
+          currency: USD
+          charged_at: "2026-06-01T00:00:00Z"
+          refunded_amount: 1000
+        refund_request:
+          amount: 2500
+          reason: duplicate charge
+          requested_at: "2026-06-10T00:00:00Z"
+        policy:
+          max_pct: 50
+          window_days: 30
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: excessive-amount-is-refused
+      inputs:
+        charge_receipt:
+          schema: runx.receipt.v1
+          id: runx:receipt:charge-demo-002
+          state: sealed
+          amount: 10000
+          currency: USD
+          charged_at: "2026-06-01T00:00:00Z"
+          refunded_amount: 1000
+        refund_request:
+          amount: 9000
+          reason: buyer changed mind
+          requested_at: "2026-06-10T00:00:00Z"
+        policy:
+          max_pct: 50
+          window_days: 30
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+    - name: unsealed-charge-escalates
+      inputs:
+        charge_receipt:
+          schema: runx.receipt.v1
+          id: runx:receipt:charge-demo-003
+          state: open
+          amount: 4000
+          currency: USD
+          charged_at: "2026-06-01T00:00:00Z"
+        refund_request:
+          amount: 1000
+          reason: goodwill
+          requested_at: "2026-06-03T00:00:00Z"
+        policy:
+          max_pct: 50
+          window_days: 30
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      summary: string
+      decision: json
+      refund_proposal: json
+      refundable: json
+      escalation: json
+    artifacts:
+      wrap_as: refund_eligibility_decision
+      packet: runx.refund_eligibility.v1
+    inputs:
+      charge_receipt:
+        type: json
+        required: true
+        description: Sealed charge receipt or receipt summary.
+      refund_request:
+        type: json
+        required: true
+        description: Requested refund amount, reason, and optional request time.
+      policy:
+        type: json
+        required: true
+        description: Refund policy with max_pct, window_days, and optional now.

@@ -1,0 +1,31 @@
+name: eligible-partial-refund
+kind: skill
+target: ..
+runner: decide
+inputs:
+  charge_receipt:
+    schema: runx.receipt.v1
+    id: runx:receipt:charge-fixture-eligible
+    state: sealed
+    amount: 10000
+    currency: USD
+    charged_at: "2026-06-01T00:00:00Z"
+    refunded_amount: 1000
+  refund_request:
+    amount: 2500
+    reason: duplicate charge
+    requested_at: "2026-06-10T00:00:00Z"
+  policy:
+    max_pct: 50
+    window_days: 30
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: refund-eligibility
+  source_case: eligible-partial-refund
+  source: skills-fixture

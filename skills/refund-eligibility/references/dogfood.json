@@ -1,0 +1,246 @@
+{
+  "closure": {
+    "closed_at": "2026-06-23T04:47:48.234Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool decide completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "decision": {
+        "eligible": true,
+        "reason": "in_policy"
+      },
+      "escalation": null,
+      "refund_proposal": {
+        "amount": 3000,
+        "charge_ref": "runx:receipt:charge-dogfood-001",
+        "currency": "USD",
+        "effect": {
+          "consumer": "refund catalog skill",
+          "gated": true,
+          "kind": "refund_proposal",
+          "performs_money_movement": false
+        },
+        "idempotency_key": "refund:72a56c6bcfd9319fc3ffab7f"
+      },
+      "refundable": {
+        "age_days": 10,
+        "already_refunded": 2000,
+        "amount": 12000,
+        "charge_ref": "runx:receipt:charge-dogfood-001",
+        "currency": "USD",
+        "policy_cap": 7200,
+        "remaining_refundable": 5200,
+        "requested_amount": 3000,
+        "window_days": 30
+      },
+      "summary": "Refund request is eligible: 3000 USD against runx:receipt:charge-dogfood-001; proposal refund:72a56c6bcfd9319fc3ffab7f."
+    },
+    "stderr": "",
+    "stdout": "{\n  \"summary\": \"Refund request is eligible: 3000 USD against runx:receipt:charge-dogfood-001; proposal refund:72a56c6bcfd9319fc3ffab7f.\",\n  \"decision\": {\n    \"eligible\": true,\n    \"reason\": \"in_policy\"\n  },\n  \"refundable\": {\n    \"charge_ref\": \"runx:receipt:charge-dogfood-001\",\n    \"amount\": 12000,\n    \"currency\": \"USD\",\n    \"already_refunded\": 2000,\n    \"policy_cap\": 7200,\n    \"remaining_refundable\": 5200,\n    \"window_days\": 30,\n    \"requested_amount\": 3000,\n    \"age_days\": 10\n  },\n  \"refund_proposal\": {\n    \"amount\": 3000,\n    \"currency\": \"USD\",\n    \"charge_ref\": \"runx:receipt:charge-dogfood-001\",\n    \"idempotency_key\": \"refund:72a56c6bcfd9319fc3ffab7f\",\n    \"effect\": {\n      \"kind\": \"refund_proposal\",\n      \"gated\": true,\n      \"consumer\": \"refund catalog skill\",\n      \"performs_money_movement\": false\n    }\n  },\n  \"escalation\": null\n}\n",
+    "structured_output": {
+      "decision": {
+        "eligible": true,
+        "reason": "in_policy"
+      },
+      "escalation": null,
+      "refund_proposal": {
+        "amount": 3000,
+        "charge_ref": "runx:receipt:charge-dogfood-001",
+        "currency": "USD",
+        "effect": {
+          "consumer": "refund catalog skill",
+          "gated": true,
+          "kind": "refund_proposal",
+          "performs_money_movement": false
+        },
+        "idempotency_key": "refund:72a56c6bcfd9319fc3ffab7f"
+      },
+      "refundable": {
+        "age_days": 10,
+        "already_refunded": 2000,
+        "amount": 12000,
+        "charge_ref": "runx:receipt:charge-dogfood-001",
+        "currency": "USD",
+        "policy_cap": 7200,
+        "remaining_refundable": 5200,
+        "requested_amount": 3000,
+        "window_days": 30
+      },
+      "summary": "Refund request is eligible: 3000 USD against runx:receipt:charge-dogfood-001; proposal refund:72a56c6bcfd9319fc3ffab7f."
+    }
+  },
+  "payload": {
+    "decision": {
+      "eligible": true,
+      "reason": "in_policy"
+    },
+    "escalation": null,
+    "refund_proposal": {
+      "amount": 3000,
+      "charge_ref": "runx:receipt:charge-dogfood-001",
+      "currency": "USD",
+      "effect": {
+        "consumer": "refund catalog skill",
+        "gated": true,
+        "kind": "refund_proposal",
+        "performs_money_movement": false
+      },
+      "idempotency_key": "refund:72a56c6bcfd9319fc3ffab7f"
+    },
+    "refundable": {
+      "age_days": 10,
+      "already_refunded": 2000,
+      "amount": 12000,
+      "charge_ref": "runx:receipt:charge-dogfood-001",
+      "currency": "USD",
+      "policy_cap": 7200,
+      "remaining_refundable": 5200,
+      "requested_amount": 3000,
+      "window_days": 30
+    },
+    "summary": "Refund request is eligible: 3000 USD against runx:receipt:charge-dogfood-001; proposal refund:72a56c6bcfd9319fc3ffab7f."
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-23T04:47:48.234Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_decide",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step decide",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step decide",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-23T04:47:48.234Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_decide",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node decide",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_decide",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:b4264edb141f93ddf86027f130786da17bc41eb17b44c0ea5450c34d7eb12d62",
+    "id": "sha256:05588adf958872250233bef424f64cd9202a39e8d57824e2e383c762183bcea9",
+    "idempotency": {
+      "content_hash": "sha256:run_decide_0ba9da7ab7d9-decide-content",
+      "intent_key": "sha256:run_decide_0ba9da7ab7d9-decide-intent",
+      "trigger_fingerprint": "sha256:run_decide_0ba9da7ab7d9-decide-trigger"
+    },
+    "issuer": {
+      "kid": "runx-demo-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-23T04:47:48.234Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-23T04:47:48.234Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool decide completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:W6ANYofmXk0qnw7JGrBMpnVG8NVJUo3wrBbV6LIRxJW4ctqdoNhfN7MqCmW6FJyYw6KrGzj9EFTo4-7k9epTAg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_decide_0ba9da7ab7d9_decide"
+      }
+    }
+  },
+  "receipt_id": "sha256:05588adf958872250233bef424f64cd9202a39e8d57824e2e383c762183bcea9",
+  "run_id": "run_decide_0ba9da7ab7d9",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "refund-eligibility",
+  "status": "sealed"
+}

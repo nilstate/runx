@@ -1,0 +1,31 @@
+name: excessive-refund-refused
+kind: skill
+target: ..
+runner: decide
+inputs:
+  charge_receipt:
+    schema: runx.receipt.v1
+    id: runx:receipt:charge-fixture-refused
+    state: sealed
+    amount: 10000
+    currency: USD
+    charged_at: "2026-06-01T00:00:00Z"
+    refunded_amount: 1000
+  refund_request:
+    amount: 9000
+    reason: buyer changed mind
+    requested_at: "2026-06-10T00:00:00Z"
+  policy:
+    max_pct: 50
+    window_days: 30
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: refund-eligibility
+  source_case: excessive-refund-refused
+  source: skills-fixture

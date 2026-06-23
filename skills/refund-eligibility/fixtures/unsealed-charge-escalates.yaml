@@ -1,0 +1,30 @@
+name: unsealed-charge-escalates
+kind: skill
+target: ..
+runner: decide
+inputs:
+  charge_receipt:
+    schema: runx.receipt.v1
+    id: runx:receipt:charge-fixture-unsealed
+    state: open
+    amount: 4000
+    currency: USD
+    charged_at: "2026-06-01T00:00:00Z"
+  refund_request:
+    amount: 1000
+    reason: goodwill
+    requested_at: "2026-06-03T00:00:00Z"
+  policy:
+    max_pct: 50
+    window_days: 30
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: refund-eligibility
+  source_case: unsealed-charge-escalates
+  source: skills-fixture

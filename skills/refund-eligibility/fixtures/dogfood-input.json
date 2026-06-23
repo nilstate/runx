@@ -1,0 +1,20 @@
+{
+  "charge_receipt": {
+    "schema": "runx.receipt.v1",
+    "id": "runx:receipt:charge-dogfood-001",
+    "state": "sealed",
+    "amount": 12000,
+    "currency": "USD",
+    "charged_at": "2026-06-01T00:00:00Z",
+    "refunded_amount": 2000
+  },
+  "refund_request": {
+    "amount": 3000,
+    "reason": "duplicate charge",
+    "requested_at": "2026-06-11T00:00:00Z"
+  },
+  "policy": {
+    "max_pct": 60,
+    "window_days": 30
+  }
+}

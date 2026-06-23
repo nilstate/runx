@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "in-policy-partial-refund-yields-proposal",
+    "excessive-amount-is-refused",
+    "unsealed-charge-escalates"
+  ],
+  "receipt_ids": [
+    "sha256:668b7d8d35616df543d0b0894c9851bc8a134d74ee3579c71481a336640f1398",
+    "sha256:150757d7cde33b5004b16531dff307b43d82c8d79703360db6a0d3ea6c8f40db",
+    "sha256:ccbb4510cc17ccdebd16bdbd5017797abe941387a0628afa65038c4fdb399a32"
+  ],
+  "graph_case_count": 0
+}
