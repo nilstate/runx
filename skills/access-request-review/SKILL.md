@@ -60,11 +60,12 @@ TTL, exact scope, approval gate, escalation lane, and evidence citations.
 
 The runner returns JSON with:
 
-- `decision_packet`: typed decision packet.
-- `grant_proposal`: one-time proposal when the decision is `grant`.
-- `escalation`: human approval or denial escalation lane for the request.
-- `evidence_json`: compact review evidence for external verification.
-- `report`: human-readable review summary.
+- `decision_packet` object: typed decision packet.
+- `grant_proposal` object: one-time proposal when the decision is `grant`.
+- `escalation` object: `required`, `lane`, `reason`, and optional `ticket_id`
+  for human approval or denial escalation.
+- `evidence_json` object: compact review evidence for external verification.
+- `report` string: human-readable review summary.
 
 Decisions are deterministic and fail closed when request, policy, or entitlement
 facts are missing.

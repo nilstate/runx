@@ -3,16 +3,16 @@
   "registry": {
     "action": "read",
     "source": "remote",
-    "ref": "lubuseb/access-request-review@sha-844f75658a9f",
+    "ref": "lubuseb/access-request-review@sha-2100c1996336",
     "skill": {
       "skill_id": "lubuseb/access-request-review",
       "owner": "lubuseb",
       "name": "access-request-review",
       "description": "Review a bounded access request against policy and emit a least-privilege grant proposal or denial.",
       "category": "security",
-      "version": "sha-844f75658a9f",
-      "digest": "b1e8d2b79039ff87d8dcc34fbbeb2f2c5d51cee5e7df305770855c271b2ccf59",
-      "markdown": "---\nname: access-request-review\ndescription: Review a bounded access request against policy and emit a least-privilege grant proposal or denial.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\n  input_mode: stdin\n  cwd: .\n  timeout_seconds: 30\ninputs:\n  access_request:\n    type: json\n    required: true\n    description: Request packet with requester, requested resource, requested action, business justification, and optional ticket metadata.\n  policy:\n    type: json\n    required: true\n    description: Access policy with allowed roles, resources, actions, TTL caps, approval rules, and escalation rules.\n  current_entitlements:\n    type: json\n    required: true\n    description: Current role and grant state for the requester.\n  objective:\n    type: string\n    required: false\n    description: Optional operator intent for the review.\nrunx:\n  category: security\n  input_resolution:\n    required:\n      - access_request\n      - policy\n      - current_entitlements\n---\n\n# access-request-review\n\nUse this skill when an operator needs a bounded access decision before a\nhuman-approved one-time grant. The skill compares a request, the governing\npolicy, and current entitlements, then returns `grant`, `deny`, or\n`needs_human_review`.\n\nThe skill never creates access, calls identity providers, sends approval\nmessages, stores credentials, or widens authority outside the supplied policy.\nWhen access is allowed it emits a least-privilege grant proposal with a bounded\nTTL, exact scope, approval gate, escalation lane, and evidence citations.\n\n## Inputs\n\n- `access_request`: requester id, role, action, resource, requested scope,\n  justification, ticket id, and optional requested TTL.\n- `policy`: allowed roles, resources, actions, maximum TTL, denied resources,\n  sensitive resources, required approvals, and break-glass rules.\n- `current_entitlements`: current grants and group/role state for the requester.\n- `objective`: optional operator intent.\n\n## Output\n\nThe runner returns JSON with:\n\n- `decision_packet`: typed decision packet.\n- `grant_proposal`: one-time proposal when the decision is `grant`.\n- `escalation`: human approval or denial escalation lane for the request.\n- `evidence_json`: compact review evidence for external verification.\n- `report`: human-readable review summary.\n\nDecisions are deterministic and fail closed when request, policy, or entitlement\nfacts are missing.",
+      "version": "sha-2100c1996336",
+      "digest": "5d7e4a0c2122f7f98d418827f0115f81c158004ac9a12f2236ba6eb212d60aee",
+      "markdown": "---\nname: access-request-review\ndescription: Review a bounded access request against policy and emit a least-privilege grant proposal or denial.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\n  input_mode: stdin\n  cwd: .\n  timeout_seconds: 30\ninputs:\n  access_request:\n    type: json\n    required: true\n    description: Request packet with requester, requested resource, requested action, business justification, and optional ticket metadata.\n  policy:\n    type: json\n    required: true\n    description: Access policy with allowed roles, resources, actions, TTL caps, approval rules, and escalation rules.\n  current_entitlements:\n    type: json\n    required: true\n    description: Current role and grant state for the requester.\n  objective:\n    type: string\n    required: false\n    description: Optional operator intent for the review.\nrunx:\n  category: security\n  input_resolution:\n    required:\n      - access_request\n      - policy\n      - current_entitlements\n---\n\n# access-request-review\n\nUse this skill when an operator needs a bounded access decision before a\nhuman-approved one-time grant. The skill compares a request, the governing\npolicy, and current entitlements, then returns `grant`, `deny`, or\n`needs_human_review`.\n\nThe skill never creates access, calls identity providers, sends approval\nmessages, stores credentials, or widens authority outside the supplied policy.\nWhen access is allowed it emits a least-privilege grant proposal with a bounded\nTTL, exact scope, approval gate, escalation lane, and evidence citations.\n\n## Inputs\n\n- `access_request`: requester id, role, action, resource, requested scope,\n  justification, ticket id, and optional requested TTL.\n- `policy`: allowed roles, resources, actions, maximum TTL, denied resources,\n  sensitive resources, required approvals, and break-glass rules.\n- `current_entitlements`: current grants and group/role state for the requester.\n- `objective`: optional operator intent.\n\n## Output\n\nThe runner returns JSON with:\n\n- `decision_packet` object: typed decision packet.\n- `grant_proposal` object: one-time proposal when the decision is `grant`.\n- `escalation` object: `required`, `lane`, `reason`, and optional `ticket_id`\n  for human approval or denial escalation.\n- `evidence_json` object: compact review evidence for external verification.\n- `report` string: human-readable review summary.\n\nDecisions are deterministic and fail closed when request, policy, or entitlement\nfacts are missing.",
       "profile_digest": "865d7c9c5be962b752080face77831ddbf4d110b6fae85ee40baba3dae6b436e",
       "runner_names": [
         "default"
@@ -33,7 +33,7 @@
           "id": "publisher:user_53f00ae7ec2363e37ac6ff68",
           "status": "declared",
           "summary": "LubuSeb",
-          "issued_at": "2026-06-23T04:56:39.582Z",
+          "issued_at": "2026-06-23T05:01:11.882Z",
           "metadata": {
             "publisher_display_name": "LubuSeb",
             "publisher_handle": "lubuseb",
@@ -43,8 +43,8 @@
           }
         }
       ],
-      "install_command": "runx add lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai",
-      "run_command": "runx skill lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai"
+      "install_command": "runx add lubuseb/access-request-review@sha-2100c1996336 --registry https://api.runx.ai",
+      "run_command": "runx skill lubuseb/access-request-review@sha-2100c1996336 --registry https://api.runx.ai"
     }
   }
 }

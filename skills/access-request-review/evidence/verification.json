@@ -3,7 +3,7 @@
   "signature_mode": "production",
   "trees": [
     {
-      "root_receipt_id": "sha256:a4ba985040f3e89d93c2ac2b11ffc5f916d172fb878ec34d3484270958df7428",
+      "root_receipt_id": "sha256:e7345fa793916faca7cad087176a959b36bbf794d35ed9e56a587eb2f9a1ac21",
       "receipt_count": 1,
       "parent_missing": null,
       "valid": true,

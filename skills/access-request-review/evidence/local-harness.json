@@ -9,9 +9,9 @@
     "missing-justification-fails-closed"
   ],
   "receipt_ids": [
-    "sha256:57e3f3e04c44ea50c1df464e2ddce6836c8d5d5de1c1a23499c055b24ea0b838",
-    "sha256:b4d82ccf4917aa090c34595c2f421d77721367b8b471332e5378769633bfbdac",
-    "sha256:9d1e8498bd72ab90451b384da67ed5da9d0c153c6381a43152e712151b0fd089"
+    "sha256:80913055a7d490e01e3a27ca0dd6aa2ace475770b66537a1dc83c6c5b375fdfe",
+    "sha256:960d6a9d5e0a90aa5a815e74cf50c101a85a88928347528dcc08db7b10f90eaa",
+    "sha256:944b199698a86fb54d84d79443a85ee2ad3cd36005ee6e3e4b92f0d1c0bccf7c"
   ],
   "graph_case_count": 0
 }

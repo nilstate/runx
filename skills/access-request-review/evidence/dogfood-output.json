@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-06-23T04:56:31.382Z",
+    "closed_at": "2026-06-23T05:01:03.689Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool default completed"
@@ -327,7 +327,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-06-23T04:56:31.382Z",
+          "closed_at": "2026-06-23T05:01:03.689Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -382,7 +382,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-06-23T04:56:31.382Z",
+    "created_at": "2026-06-23T05:01:03.689Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -410,8 +410,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:cc90a797df2cb4fe9be28fd25690f3e9e1a43b4740f1840272c8a79d501dba71",
-    "id": "sha256:a4ba985040f3e89d93c2ac2b11ffc5f916d172fb878ec34d3484270958df7428",
+    "digest": "sha256:f17ca72b4a6a3c8c5d6498b655fa1adcb62b04b0dc30a5f291e6e1b8ae4cdbc1",
+    "id": "sha256:e7345fa793916faca7cad087176a959b36bbf794d35ed9e56a587eb2f9a1ac21",
     "idempotency": {
       "content_hash": "sha256:run_default_8e438e086dc8-default-content",
       "intent_key": "sha256:run_default_8e438e086dc8-default-intent",
@@ -428,7 +428,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-06-23T04:56:31.382Z",
+      "closed_at": "2026-06-23T05:01:03.689Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -439,14 +439,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-06-23T04:56:31.382Z",
+      "last_observed_at": "2026-06-23T05:01:03.689Z",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:izf_-fgxEdZpLGTEt0tzYgpHC0rXLPvCxpHtbs0IEomzxV4p9uBBEuojIWFhIggqk9Oe6QaPxZur0ytM5S3gCw"
+      "value": "base64:PtZ--prYv24pqqw_aqkHatYeAnfeqJxNjgG3r3_RTIs0DC_O3xS1qexsVlVpHCybiJuyN9t2CPA7x5P1YviVDA"
     },
     "subject": {
       "commitments": [],
@@ -457,7 +457,7 @@
       }
     }
   },
-  "receipt_id": "sha256:a4ba985040f3e89d93c2ac2b11ffc5f916d172fb878ec34d3484270958df7428",
+  "receipt_id": "sha256:e7345fa793916faca7cad087176a959b36bbf794d35ed9e56a587eb2f9a1ac21",
   "run_id": "run_default_8e438e086dc8",
   "schema": "runx.skill_run.v1",
   "skill_name": "access-request-review",
