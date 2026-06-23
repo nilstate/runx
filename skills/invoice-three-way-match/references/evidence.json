@@ -1,6 +1,28 @@
 {
   "schema": "runx.skill_evidence.v1",
   "summary": "Invoice Three-Way Match extracts invoice facts, compares them with a purchase order and goods receipt, codes GL lines, and emits only a gated payment proposal when every match and policy gate passes.",
+  "runx_version": {
+    "command": "runx --version",
+    "exact_output": "runx-cli 0.6.13",
+    "captured_at": "skills/invoice-three-way-match/references/runx-version.txt"
+  },
+  "dogfood": {
+    "package": "zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
+    "input": "skills/invoice-three-way-match/fixtures/dogfood-input.json",
+    "command": "runx skill zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json",
+    "receipt_ref": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "matched-invoice-under-threshold-yields-proposal",
+        "status": "sealed"
+      },
+      {
+        "name": "unmatched-receipt-refuses-with-exceptions",
+        "status": "refused"
+      }
+    ]
+  },
   "observations": [
     {
       "claim": "The exact captured output of `runx --version` is `runx-cli 0.6.13`, satisfying the runx CLI 0.6.13 or newer requirement.",
@@ -82,33 +104,11 @@
     "receipt_ref": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
     "report": "skills/invoice-three-way-match/references/report.md"
   },
-  "dogfood": {
-    "package": "zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
-    "input": "skills/invoice-three-way-match/fixtures/dogfood-input.json",
-    "command": "runx skill zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json",
-    "receipt_ref": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
-    "verify_verdict": "valid",
-    "harness_cases": [
-      {
-        "name": "matched-invoice-under-threshold-yields-proposal",
-        "status": "sealed"
-      },
-      {
-        "name": "unmatched-receipt-refuses-with-exceptions",
-        "status": "refused"
-      }
-    ]
-  },
   "public_urls": {
     "public_url": "https://runx.ai/x/zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
     "source_url": "https://github.com/zdfgu113/runx/tree/codex/invoice-three-way-match/skills/invoice-three-way-match",
     "pr_url": "https://github.com/runxhq/runx/pull/132",
     "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/X.yaml",
     "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/SKILL.md"
-  },
-  "runx_version": {
-    "command": "runx --version",
-    "exact_output": "runx-cli 0.6.13",
-    "captured_at": "skills/invoice-three-way-match/references/runx-version.txt"
   }
 }
