@@ -1,0 +1,41 @@
+{
+  "objective": "Reject direct secret access.",
+  "access_request": {
+    "request_id": "req-2026-06-23-002",
+    "requester": {
+      "id": "user-21",
+      "role": "oncall_engineer",
+      "team": "payments"
+    },
+    "action": "read",
+    "resource": "prod/payments/secrets",
+    "requested_scope": "secrets.read:prod/payments/*",
+    "justification": "Need to check API keys.",
+    "ticket_id": "INC-2043",
+    "requested_ttl_minutes": 60
+  },
+  "policy": {
+    "policy_id": "access-policy-demo-v1",
+    "max_ttl_minutes": 240,
+    "allowed_roles": {
+      "oncall_engineer": {
+        "actions": ["read"],
+        "resources": ["prod/payments/logs/*"],
+        "scope_prefixes": ["logs.read:prod/payments/"]
+      }
+    },
+    "denied_resources": ["prod/payments/secrets"],
+    "sensitive_resources": ["prod/payments/logs/*"],
+    "required_approvals": {
+      "sensitive_resource": "human_approval_required"
+    },
+    "grant_defaults": {
+      "approval_gate": "human_approval_required"
+    }
+  },
+  "current_entitlements": {
+    "subject_id": "user-21",
+    "roles": ["oncall_engineer"],
+    "current_grants": []
+  }
+}

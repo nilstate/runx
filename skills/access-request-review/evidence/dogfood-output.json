@@ -1,0 +1,408 @@
+{
+  "closure": {
+    "closed_at": "2026-06-23T04:33:57.734Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool default completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "decision_packet": {
+        "action": "read",
+        "approval_gate": "human_approval_required",
+        "decision": "grant",
+        "evidence_refs": [
+          "request:req-2026-06-23-001",
+          "policy:access-policy-demo-v1",
+          "entitlements:user-17"
+        ],
+        "least_privilege_scope": "logs.read:prod/payments/service-a",
+        "objective": "Dogfood access request review for Frantic bounty 55.",
+        "policy_id": "access-policy-demo-v1",
+        "reasons": [
+          "request matches allowed role, action, resource, and scope prefix",
+          "ttl bounded to 120 minutes by policy max 240",
+          "proposal is gated; no access is issued by this skill"
+        ],
+        "request_id": "req-2026-06-23-001",
+        "requested_scope": "logs.read:prod/payments/service-a/*",
+        "resource": "prod/payments/logs/service-a",
+        "safeguards": {
+          "executes_grant": false,
+          "mutates_grants": false,
+          "read_only": true,
+          "requires_human_approval": true
+        },
+        "schema": "runx.security.access_request_review.v1",
+        "subject_id": "user-17",
+        "ttl_minutes": 120
+      },
+      "evidence_json": {
+        "artifact": "access-request-review",
+        "observations": {
+          "action": "read",
+          "approval_gate": "human_approval_required",
+          "current_grant_count": 1,
+          "decision": "grant",
+          "entitlement_digest": "sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7",
+          "evidence_refs": [
+            "request:req-2026-06-23-001",
+            "policy:access-policy-demo-v1",
+            "entitlements:user-17"
+          ],
+          "least_privilege_scope": "logs.read:prod/payments/service-a",
+          "policy_digest": "sha256:fed71a99fc94be00827e5a8fc8678ee5d07b3ff9fb2830bc3b718cff29bb8a9c",
+          "policy_id": "access-policy-demo-v1",
+          "reasons": [
+            "request matches allowed role, action, resource, and scope prefix",
+            "ttl bounded to 120 minutes by policy max 240",
+            "proposal is gated; no access is issued by this skill"
+          ],
+          "request_digest": "sha256:42e9ee73c27845ed1fea00efce5f1d509b9bb97322d8c891ed74a78a14681d5a",
+          "request_id": "req-2026-06-23-001",
+          "requested_scope": "logs.read:prod/payments/service-a/*",
+          "requester_roles": [
+            "oncall_engineer"
+          ],
+          "resource": "prod/payments/logs/service-a",
+          "subject_id": "user-17",
+          "ttl_minutes": 120
+        },
+        "schema": "frantic.delivery.evidence.v1"
+      },
+      "grant_proposal": {
+        "action": "read",
+        "approval_gate": "human_approval_required",
+        "execution_status": "proposal_only",
+        "handoff": {
+          "catalog_skill": "least-privilege-auditor",
+          "requires_human_approval": true
+        },
+        "issued_by_skill": false,
+        "justification": "Investigate incident INC-2042 elevated payment retries.",
+        "policy_id": "access-policy-demo-v1",
+        "proposal_id": "grant-proposal-req-2026-06-23-001",
+        "resource": "prod/payments/logs/service-a",
+        "schema": "runx.security.one_time_grant_proposal.v1",
+        "scope": "logs.read:prod/payments/service-a",
+        "subject_id": "user-17",
+        "ticket_id": "INC-2042",
+        "ttl_minutes": 120
+      },
+      "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
+    },
+    "stderr": "",
+    "stdout": "{\n  \"decision_packet\": {\n    \"schema\": \"runx.security.access_request_review.v1\",\n    \"decision\": \"grant\",\n    \"request_id\": \"req-2026-06-23-001\",\n    \"subject_id\": \"user-17\",\n    \"objective\": \"Dogfood access request review for Frantic bounty 55.\",\n    \"policy_id\": \"access-policy-demo-v1\",\n    \"resource\": \"prod/payments/logs/service-a\",\n    \"action\": \"read\",\n    \"requested_scope\": \"logs.read:prod/payments/service-a/*\",\n    \"least_privilege_scope\": \"logs.read:prod/payments/service-a\",\n    \"ttl_minutes\": 120,\n    \"approval_gate\": \"human_approval_required\",\n    \"reasons\": [\n      \"request matches allowed role, action, resource, and scope prefix\",\n      \"ttl bounded to 120 minutes by policy max 240\",\n      \"proposal is gated; no access is issued by this skill\"\n    ],\n    \"evidence_refs\": [\n      \"request:req-2026-06-23-001\",\n      \"policy:access-policy-demo-v1\",\n      \"entitlements:user-17\"\n    ],\n    \"safeguards\": {\n      \"read_only\": true,\n      \"mutates_grants\": false,\n      \"executes_grant\": false,\n      \"requires_human_approval\": true\n    }\n  },\n  \"grant_proposal\": {\n    \"schema\": \"runx.security.one_time_grant_proposal.v1\",\n    \"proposal_id\": \"grant-proposal-req-2026-06-23-001\",\n    \"subject_id\": \"user-17\",\n    \"action\": \"read\",\n    \"resource\": \"prod/payments/logs/service-a\",\n    \"scope\": \"logs.read:prod/payments/service-a\",\n    \"ttl_minutes\": 120,\n    \"approval_gate\": \"human_approval_required\",\n    \"ticket_id\": \"INC-2042\",\n    \"justification\": \"Investigate incident INC-2042 elevated payment retries.\",\n    \"policy_id\": \"access-policy-demo-v1\",\n    \"issued_by_skill\": false,\n    \"execution_status\": \"proposal_only\",\n    \"handoff\": {\n      \"catalog_skill\": \"least-privilege-auditor\",\n      \"requires_human_approval\": true\n    }\n  },\n  \"evidence_json\": {\n    \"schema\": \"frantic.delivery.evidence.v1\",\n    \"artifact\": \"access-request-review\",\n    \"observations\": {\n      \"request_id\": \"req-2026-06-23-001\",\n      \"policy_id\": \"access-policy-demo-v1\",\n      \"policy_digest\": \"sha256:fed71a99fc94be00827e5a8fc8678ee5d07b3ff9fb2830bc3b718cff29bb8a9c\",\n      \"request_digest\": \"sha256:42e9ee73c27845ed1fea00efce5f1d509b9bb97322d8c891ed74a78a14681d5a\",\n      \"entitlement_digest\": \"sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7\",\n      \"subject_id\": \"user-17\",\n      \"requester_roles\": [\n        \"oncall_engineer\"\n      ],\n      \"action\": \"read\",\n      \"resource\": \"prod/payments/logs/service-a\",\n      \"requested_scope\": \"logs.read:prod/payments/service-a/*\",\n      \"decision\": \"grant\",\n      \"least_privilege_scope\": \"logs.read:prod/payments/service-a\",\n      \"ttl_minutes\": 120,\n      \"approval_gate\": \"human_approval_required\",\n      \"current_grant_count\": 1,\n      \"reasons\": [\n        \"request matches allowed role, action, resource, and scope prefix\",\n        \"ttl bounded to 120 minutes by policy max 240\",\n        \"proposal is gated; no access is issued by this skill\"\n      ],\n      \"evidence_refs\": [\n        \"request:req-2026-06-23-001\",\n        \"policy:access-policy-demo-v1\",\n        \"entitlements:user-17\"\n      ]\n    }\n  },\n  \"report\": \"# access-request-review report\\n\\nRequest: req-2026-06-23-001\\nSubject: user-17\\nPolicy: access-policy-demo-v1\\nDecision: grant\\nResource: prod/payments/logs/service-a\\nRequested scope: logs.read:prod/payments/service-a/*\\nLeast-privilege scope: logs.read:prod/payments/service-a\\nTTL: 120 minutes\\nApproval gate: human_approval_required\\n\\n## Reasons\\n- request matches allowed role, action, resource, and scope prefix\\n- ttl bounded to 120 minutes by policy max 240\\n- proposal is gated; no access is issued by this skill\\n\\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\\nThis skill does not mutate grants, move secrets, or call identity-provider APIs.\"\n}\n",
+    "structured_output": {
+      "decision_packet": {
+        "action": "read",
+        "approval_gate": "human_approval_required",
+        "decision": "grant",
+        "evidence_refs": [
+          "request:req-2026-06-23-001",
+          "policy:access-policy-demo-v1",
+          "entitlements:user-17"
+        ],
+        "least_privilege_scope": "logs.read:prod/payments/service-a",
+        "objective": "Dogfood access request review for Frantic bounty 55.",
+        "policy_id": "access-policy-demo-v1",
+        "reasons": [
+          "request matches allowed role, action, resource, and scope prefix",
+          "ttl bounded to 120 minutes by policy max 240",
+          "proposal is gated; no access is issued by this skill"
+        ],
+        "request_id": "req-2026-06-23-001",
+        "requested_scope": "logs.read:prod/payments/service-a/*",
+        "resource": "prod/payments/logs/service-a",
+        "safeguards": {
+          "executes_grant": false,
+          "mutates_grants": false,
+          "read_only": true,
+          "requires_human_approval": true
+        },
+        "schema": "runx.security.access_request_review.v1",
+        "subject_id": "user-17",
+        "ttl_minutes": 120
+      },
+      "evidence_json": {
+        "artifact": "access-request-review",
+        "observations": {
+          "action": "read",
+          "approval_gate": "human_approval_required",
+          "current_grant_count": 1,
+          "decision": "grant",
+          "entitlement_digest": "sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7",
+          "evidence_refs": [
+            "request:req-2026-06-23-001",
+            "policy:access-policy-demo-v1",
+            "entitlements:user-17"
+          ],
+          "least_privilege_scope": "logs.read:prod/payments/service-a",
+          "policy_digest": "sha256:fed71a99fc94be00827e5a8fc8678ee5d07b3ff9fb2830bc3b718cff29bb8a9c",
+          "policy_id": "access-policy-demo-v1",
+          "reasons": [
+            "request matches allowed role, action, resource, and scope prefix",
+            "ttl bounded to 120 minutes by policy max 240",
+            "proposal is gated; no access is issued by this skill"
+          ],
+          "request_digest": "sha256:42e9ee73c27845ed1fea00efce5f1d509b9bb97322d8c891ed74a78a14681d5a",
+          "request_id": "req-2026-06-23-001",
+          "requested_scope": "logs.read:prod/payments/service-a/*",
+          "requester_roles": [
+            "oncall_engineer"
+          ],
+          "resource": "prod/payments/logs/service-a",
+          "subject_id": "user-17",
+          "ttl_minutes": 120
+        },
+        "schema": "frantic.delivery.evidence.v1"
+      },
+      "grant_proposal": {
+        "action": "read",
+        "approval_gate": "human_approval_required",
+        "execution_status": "proposal_only",
+        "handoff": {
+          "catalog_skill": "least-privilege-auditor",
+          "requires_human_approval": true
+        },
+        "issued_by_skill": false,
+        "justification": "Investigate incident INC-2042 elevated payment retries.",
+        "policy_id": "access-policy-demo-v1",
+        "proposal_id": "grant-proposal-req-2026-06-23-001",
+        "resource": "prod/payments/logs/service-a",
+        "schema": "runx.security.one_time_grant_proposal.v1",
+        "scope": "logs.read:prod/payments/service-a",
+        "subject_id": "user-17",
+        "ticket_id": "INC-2042",
+        "ttl_minutes": 120
+      },
+      "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
+    }
+  },
+  "payload": {
+    "decision_packet": {
+      "action": "read",
+      "approval_gate": "human_approval_required",
+      "decision": "grant",
+      "evidence_refs": [
+        "request:req-2026-06-23-001",
+        "policy:access-policy-demo-v1",
+        "entitlements:user-17"
+      ],
+      "least_privilege_scope": "logs.read:prod/payments/service-a",
+      "objective": "Dogfood access request review for Frantic bounty 55.",
+      "policy_id": "access-policy-demo-v1",
+      "reasons": [
+        "request matches allowed role, action, resource, and scope prefix",
+        "ttl bounded to 120 minutes by policy max 240",
+        "proposal is gated; no access is issued by this skill"
+      ],
+      "request_id": "req-2026-06-23-001",
+      "requested_scope": "logs.read:prod/payments/service-a/*",
+      "resource": "prod/payments/logs/service-a",
+      "safeguards": {
+        "executes_grant": false,
+        "mutates_grants": false,
+        "read_only": true,
+        "requires_human_approval": true
+      },
+      "schema": "runx.security.access_request_review.v1",
+      "subject_id": "user-17",
+      "ttl_minutes": 120
+    },
+    "evidence_json": {
+      "artifact": "access-request-review",
+      "observations": {
+        "action": "read",
+        "approval_gate": "human_approval_required",
+        "current_grant_count": 1,
+        "decision": "grant",
+        "entitlement_digest": "sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7",
+        "evidence_refs": [
+          "request:req-2026-06-23-001",
+          "policy:access-policy-demo-v1",
+          "entitlements:user-17"
+        ],
+        "least_privilege_scope": "logs.read:prod/payments/service-a",
+        "policy_digest": "sha256:fed71a99fc94be00827e5a8fc8678ee5d07b3ff9fb2830bc3b718cff29bb8a9c",
+        "policy_id": "access-policy-demo-v1",
+        "reasons": [
+          "request matches allowed role, action, resource, and scope prefix",
+          "ttl bounded to 120 minutes by policy max 240",
+          "proposal is gated; no access is issued by this skill"
+        ],
+        "request_digest": "sha256:42e9ee73c27845ed1fea00efce5f1d509b9bb97322d8c891ed74a78a14681d5a",
+        "request_id": "req-2026-06-23-001",
+        "requested_scope": "logs.read:prod/payments/service-a/*",
+        "requester_roles": [
+          "oncall_engineer"
+        ],
+        "resource": "prod/payments/logs/service-a",
+        "subject_id": "user-17",
+        "ttl_minutes": 120
+      },
+      "schema": "frantic.delivery.evidence.v1"
+    },
+    "grant_proposal": {
+      "action": "read",
+      "approval_gate": "human_approval_required",
+      "execution_status": "proposal_only",
+      "handoff": {
+        "catalog_skill": "least-privilege-auditor",
+        "requires_human_approval": true
+      },
+      "issued_by_skill": false,
+      "justification": "Investigate incident INC-2042 elevated payment retries.",
+      "policy_id": "access-policy-demo-v1",
+      "proposal_id": "grant-proposal-req-2026-06-23-001",
+      "resource": "prod/payments/logs/service-a",
+      "schema": "runx.security.one_time_grant_proposal.v1",
+      "scope": "logs.read:prod/payments/service-a",
+      "subject_id": "user-17",
+      "ticket_id": "INC-2042",
+      "ttl_minutes": 120
+    },
+    "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-23T04:33:57.734Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-23T04:33:57.734Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:e23e5164c906d73bb1383d24f14eba0aeed003232677627740150a444fb43df7",
+    "id": "sha256:fc425c86f5c9340c8e2fa38bac0c5ad88ccb01489a5cb9cf7cfafcc88ccbff0e",
+    "idempotency": {
+      "content_hash": "sha256:run_default_8e438e086dc8-default-content",
+      "intent_key": "sha256:run_default_8e438e086dc8-default-intent",
+      "trigger_fingerprint": "sha256:run_default_8e438e086dc8-default-trigger"
+    },
+    "issuer": {
+      "kid": "local:bountybar-frantic-runx-22-20260618192655",
+      "public_key_sha256": "sha256:afae74faf1b1b104b27d788bee2dd0982052af89a1ae30b3282f1a14b0707871",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-23T04:33:57.734Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-23T04:33:57.734Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:IPrUVe8iFzP-IXATGMrUFdDzcc0qPFnVougfSw53RGrSsDS3IlTkOOKbIDtwNFy6752Pi5kWhDwjWuv6BPxZBg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_default_8e438e086dc8_default"
+      }
+    }
+  },
+  "receipt_id": "sha256:fc425c86f5c9340c8e2fa38bac0c5ad88ccb01489a5cb9cf7cfafcc88ccbff0e",
+  "run_id": "run_default_8e438e086dc8",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "access-request-review",
+  "status": "sealed"
+}

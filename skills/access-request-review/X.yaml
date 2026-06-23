@@ -1,0 +1,181 @@
+skill: access-request-review
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  side_effects: none
+  grant_mutation: denied
+  network_during_run: denied
+  secrets_required: false
+  filesystem:
+    read: []
+    write: []
+
+harness:
+  cases:
+    - name: least-privilege-grant-proposal
+      runner: default
+      inputs:
+        objective: "Review a temporary production log access request for incident response."
+        access_request:
+          request_id: req-2026-06-23-001
+          requester:
+            id: user-17
+            role: oncall_engineer
+            team: payments
+          action: read
+          resource: prod/payments/logs/service-a
+          requested_scope: logs.read:prod/payments/service-a/*
+          justification: "Investigate incident INC-2042 elevated payment retries."
+          ticket_id: INC-2042
+          requested_ttl_minutes: 120
+        policy:
+          policy_id: access-policy-demo-v1
+          max_ttl_minutes: 240
+          allowed_roles:
+            oncall_engineer:
+              actions: [read]
+              resources:
+                - prod/payments/logs/*
+              scope_prefixes:
+                - logs.read:prod/payments/
+          denied_resources:
+            - prod/payments/secrets
+          sensitive_resources:
+            - prod/payments/logs/*
+          required_approvals:
+            sensitive_resource: human_approval
+          grant_defaults:
+            approval_gate: human_approval_required
+        current_entitlements:
+          subject_id: user-17
+          roles: [oncall_engineer]
+          current_grants:
+            - grant_id: grant-staging-logs
+              scope: logs.read:staging/payments/*
+              expires_at: "2026-06-23T12:00:00Z"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: deny-for-disallowed-resource
+      runner: default
+      inputs:
+        objective: "Reject direct secret access."
+        access_request:
+          request_id: req-2026-06-23-002
+          requester:
+            id: user-21
+            role: oncall_engineer
+            team: payments
+          action: read
+          resource: prod/payments/secrets
+          requested_scope: secrets.read:prod/payments/*
+          justification: "Need to check API keys."
+          ticket_id: INC-2043
+          requested_ttl_minutes: 60
+        policy:
+          policy_id: access-policy-demo-v1
+          max_ttl_minutes: 240
+          allowed_roles:
+            oncall_engineer:
+              actions: [read]
+              resources:
+                - prod/payments/logs/*
+              scope_prefixes:
+                - logs.read:prod/payments/
+          denied_resources:
+            - prod/payments/secrets
+          sensitive_resources:
+            - prod/payments/logs/*
+          required_approvals:
+            sensitive_resource: human_approval
+          grant_defaults:
+            approval_gate: human_approval_required
+        current_entitlements:
+          subject_id: user-21
+          roles: [oncall_engineer]
+          current_grants: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: missing-justification-fails-closed
+      runner: default
+      inputs:
+        objective: "Reject incomplete access requests."
+        access_request:
+          request_id: req-2026-06-23-003
+          requester:
+            id: user-22
+            role: support_agent
+          action: read
+          resource: prod/support/tickets
+          requested_scope: tickets.read:prod/support/*
+          requested_ttl_minutes: 30
+        policy:
+          policy_id: access-policy-demo-v1
+          max_ttl_minutes: 60
+          allowed_roles:
+            support_agent:
+              actions: [read]
+              resources:
+                - prod/support/tickets
+              scope_prefixes:
+                - tickets.read:prod/support/
+          denied_resources: []
+          sensitive_resources: []
+          required_approvals: {}
+        current_entitlements:
+          subject_id: user-22
+          roles: [support_agent]
+          current_grants: []
+      expect:
+        status: failure
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    input_mode: stdin
+    args:
+      - run.mjs
+    outputs:
+      decision_packet: object
+      grant_proposal: object
+      evidence_json: object
+      report: string
+    artifacts:
+      wrap_as: access_request_review_packet
+      packet: runx.security.access_request_review.v1
+    inputs:
+      access_request:
+        type: json
+        required: true
+        description: Bounded access request packet.
+      policy:
+        type: json
+        required: true
+        description: Governing access policy.
+      current_entitlements:
+        type: json
+        required: true
+        description: Current role and grant state for the requester.
+      objective:
+        type: string
+        required: false
+        description: Operator intent for the review.

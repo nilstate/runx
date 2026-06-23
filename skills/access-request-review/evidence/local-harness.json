@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "least-privilege-grant-proposal",
+    "deny-for-disallowed-resource",
+    "missing-justification-fails-closed"
+  ],
+  "receipt_ids": [
+    "sha256:4d68bd9ca1dfec2a84fa801552f18c2a5a57597228abd81cace98e0c9fc3206a",
+    "sha256:e9446e2df66a9b824379d9406a17c89e52da4621cbe47c8d2752f3be9b8951eb",
+    "sha256:713e0ee53aa5d373ed35580f2b5ddb0e2bd48cb541b3407921ab1752b4f15cc4"
+  ],
+  "graph_case_count": 0
+}
