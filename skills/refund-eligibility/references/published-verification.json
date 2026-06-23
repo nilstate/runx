@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/zjs/runx-refund-eligibility-published",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:5862a95ab112b392f0d5ce71395ea94c7a8574a7d090e07f9127e90e51a20e37",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

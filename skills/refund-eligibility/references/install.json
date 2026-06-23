@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "zdfgu113/refund-eligibility@sha-578a29edc86a",
+    "install": {
+      "status": "installed",
+      "destination": "/home/zjs/runx-refund-eligibility-clean-install/zdfgu113/refund-eligibility/sha-578a29edc86a/SKILL.md",
+      "skill_name": "refund-eligibility",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "zdfgu113/refund-eligibility",
+      "version": "sha-578a29edc86a",
+      "digest": "sha256:83911644078323687d61301ae4ded68ecad5fe0d608aeff8cc4a1455ca90c46e",
+      "profile_digest": "sha256:8bd8cf3284cbb3d6e8e779748d6f6bd46950f464bb7d47d48b3f173becfaad92",
+      "profile_state_path": "/home/zjs/runx-refund-eligibility-clean-install/zdfgu113/refund-eligibility/sha-578a29edc86a/.runx/profile.json",
+      "runner_names": [
+        "decide"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/home/zjs/runx-refund-eligibility-clean-install/zdfgu113/refund-eligibility/sha-578a29edc86a/SKILL.md",
+      "digest": "sha256:83911644078323687d61301ae4ded68ecad5fe0d608aeff8cc4a1455ca90c46e",
+      "install_count": 1,
+      "package_digest": "9edc38fac995acb54a802cf702c9556b904c0b22546967fbc14739a57ca1cc6b",
+      "profile_digest": "sha256:8bd8cf3284cbb3d6e8e779748d6f6bd46950f464bb7d47d48b3f173becfaad92",
+      "publisher": {
+        "display_name": "zdfgu113",
+        "handle": "zdfgu113",
+        "id": "user_029f74b8258386ff624c5320",
+        "kind": "user"
+      },
+      "ref": "zdfgu113/refund-eligibility@sha-578a29edc86a",
+      "skill_id": "zdfgu113/refund-eligibility",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-578a29edc86a"
+    }
+  }
+}

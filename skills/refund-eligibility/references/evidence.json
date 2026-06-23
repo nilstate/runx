@@ -1,0 +1,106 @@
+{
+  "schema": "runx.skill_evidence.v1",
+  "summary": "Refund Eligibility decides whether a refund request is in policy from a sealed charge receipt, a refund request, and a policy, and emits only a gated refund proposal when every evidence gate passes.",
+  "observations": [
+    {
+      "claim": "The supported CLI used for verification is runx-cli 0.6.13.",
+      "evidence": "runx --version returned runx-cli 0.6.13, and the harness, publish, install, dogfood, and verify commands were run with that binary."
+    },
+    {
+      "claim": "The package owner is the GitHub and registry publisher zdfgu113.",
+      "evidence": "The PR branch is hosted in zdfgu113/runx and registry-read.json lists publisher.handle zdfgu113."
+    },
+    {
+      "claim": "The package name is refund-eligibility and the source version is 0.1.0.",
+      "evidence": "SKILL.md declares name refund-eligibility and version 0.1.0; X.yaml declares skill refund-eligibility and version 0.1.0."
+    },
+    {
+      "claim": "The public registry reference is zdfgu113/refund-eligibility@sha-578a29edc86a.",
+      "evidence": "registry-read.json resolved zdfgu113/refund-eligibility@sha-578a29edc86a from https://api.runx.ai with digest 83911644078323687d61301ae4ded68ecad5fe0d608aeff8cc4a1455ca90c46e."
+    },
+    {
+      "claim": "The local harness passed all cases.",
+      "evidence": "references/harness.json records status passed, case_count 3, and zero assertion errors."
+    },
+    {
+      "claim": "The installed registry package harness passed all cases.",
+      "evidence": "references/hosted-harness.json records status passed, case_count 3, and zero assertion errors after a clean registry install."
+    },
+    {
+      "claim": "The eligible case emits decision.eligible true and a bounded refund_proposal.",
+      "evidence": "The in-policy-partial-refund-yields-proposal harness case passed, and published-dogfood.json records decision.reason in_policy with proposal amount 3000 USD."
+    },
+    {
+      "claim": "The proposal records the refundable amount and idempotency key.",
+      "evidence": "published-dogfood.json records remaining_refundable 5200, requested_amount 3000, and idempotency_key refund:72a56c6bcfd9319fc3ffab7f."
+    },
+    {
+      "claim": "The excessive refund case is refused with no proposal.",
+      "evidence": "The excessive-amount-is-refused harness case passed with status failure; run.mjs emits decision.reason amount_exceeds_remaining_refundable and exits without refund_proposal for that path."
+    },
+    {
+      "claim": "The unsealed charge case escalates instead of inventing charge evidence.",
+      "evidence": "The unsealed-charge-escalates harness case passed with status failure; run.mjs maps missing sealed_state evidence to the human_refund_approval lane."
+    },
+    {
+      "claim": "The dogfood run used a post-publish registry package, not only local source.",
+      "evidence": "published-dogfood.json records registry_provenance.skill_id zdfgu113/refund-eligibility and registry_provenance.version sha-578a29edc86a."
+    },
+    {
+      "claim": "The dogfood receipt is cryptographically valid.",
+      "evidence": "published-verification.json records valid true, production signature mode, one receipt in the tree, and no findings."
+    },
+    {
+      "claim": "The public PR contains the submitted skill package and evidence.",
+      "evidence": "PR https://github.com/runxhq/runx/pull/124 contains skills/refund-eligibility/X.yaml, SKILL.md, fixtures, and references."
+    },
+    {
+      "claim": "A new user can install, run, and verify the skill without private context.",
+      "evidence": "install.json records runx add zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai succeeded, and report.md lists the run and verify commands."
+    }
+  ],
+  "commands": [
+    "runx --version",
+    "runx harness ./skills/refund-eligibility --receipt-dir /home/zjs/runx-refund-eligibility-receipts --json",
+    "runx registry publish ./skills/refund-eligibility/SKILL.md --registry https://api.runx.ai --json",
+    "runx registry read zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai --json",
+    "runx add zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai --to /home/zjs/runx-refund-eligibility-clean-install --json",
+    "runx harness /home/zjs/runx-refund-eligibility-clean-install/zdfgu113/refund-eligibility/sha-578a29edc86a --receipt-dir /home/zjs/runx-refund-eligibility-published --json",
+    "runx skill zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai --receipt-dir /home/zjs/runx-refund-eligibility-published --json",
+    "runx verify sha256:5862a95ab112b392f0d5ce71395ea94c7a8574a7d090e07f9127e90e51a20e37 --receipt-dir /home/zjs/runx-refund-eligibility-published --json"
+  ],
+  "dogfood": {
+    "package": "zdfgu113/refund-eligibility@sha-578a29edc86a",
+    "input": "skills/refund-eligibility/fixtures/dogfood-input.json",
+    "command": "runx skill zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai --receipt-dir /home/zjs/runx-refund-eligibility-published --json",
+    "receipt_ref": "sha256:5862a95ab112b392f0d5ce71395ea94c7a8574a7d090e07f9127e90e51a20e37",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "in-policy-partial-refund-yields-proposal",
+        "status": "sealed"
+      },
+      {
+        "name": "excessive-amount-is-refused",
+        "status": "refused"
+      },
+      {
+        "name": "unsealed-charge-escalates",
+        "status": "refused"
+      }
+    ]
+  },
+  "artifacts": {
+    "public_url": "https://runx.ai/x/zdfgu113/refund-eligibility@sha-578a29edc86a",
+    "registry_target": "https://runx.ai/x/zdfgu113/refund-eligibility",
+    "registry_ref": "zdfgu113/refund-eligibility@sha-578a29edc86a",
+    "pr_url": "https://github.com/runxhq/runx/pull/124",
+    "source_url": "https://github.com/zdfgu113/runx/tree/codex/refund-eligibility/skills/refund-eligibility",
+    "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/codex/refund-eligibility/skills/refund-eligibility/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/codex/refund-eligibility/skills/refund-eligibility/SKILL.md",
+    "evidence_json": "https://raw.githubusercontent.com/zdfgu113/runx/codex/refund-eligibility/skills/refund-eligibility/references/evidence.json",
+    "verification_json": "https://raw.githubusercontent.com/zdfgu113/runx/codex/refund-eligibility/skills/refund-eligibility/references/published-verification.json",
+    "receipt_ref": "sha256:5862a95ab112b392f0d5ce71395ea94c7a8574a7d090e07f9127e90e51a20e37",
+    "report": "https://raw.githubusercontent.com/zdfgu113/runx/codex/refund-eligibility/skills/refund-eligibility/references/report.md"
+  }
+}

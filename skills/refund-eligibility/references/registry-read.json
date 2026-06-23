@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "zdfgu113/refund-eligibility@sha-578a29edc86a",
+    "skill": {
+      "skill_id": "zdfgu113/refund-eligibility",
+      "owner": "zdfgu113",
+      "name": "refund-eligibility",
+      "description": "Decide whether a refund request is in policy from a sealed charge receipt, a refund request, and a refund policy, emitting only a bounded refund proposal.",
+      "category": "payments",
+      "version": "sha-578a29edc86a",
+      "digest": "83911644078323687d61301ae4ded68ecad5fe0d608aeff8cc4a1455ca90c46e",
+      "markdown": "---\nname: refund-eligibility\nversion: 0.1.0\ndescription: Decide whether a refund request is in policy from a sealed charge receipt, a refund request, and a refund policy, emitting only a bounded refund proposal.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nlinks:\n  source: https://github.com/zdfgu113/runx/tree/codex/refund-eligibility/skills/refund-eligibility\nrunx:\n  category: payments\n  input_resolution:\n    required:\n      - charge_receipt\n      - refund_request\n      - policy\n---\n\n# Refund Eligibility\n\nDecide whether a requested refund is allowed by a sealed charge receipt and a\nsimple policy. The skill reads a charge receipt summary, a refund request, and a\npolicy, then emits a bounded `refund_proposal` only when the request is clearly\neligible. It never performs the reversal, calls a payment rail, signs a money\nmovement, or mutates external state.\n\n## When to use this skill\n\nUse it before invoking a refund execution skill when support or finance needs a\ncheckable decision packet. The packet explains the eligibility verdict, the\nremaining refundable amount, the idempotency key that a refund catalog skill can\nconsume, and the exact reason when the request is refused.\n\n## When not to use this skill\n\nDo not use it to move money, repair a receipt, override a policy, or invent a\ncharge. If the receipt is unsealed, ambiguous, missing currency or amount, or\noutside the supported policy shape, the skill escalates instead of guessing.\n\n## Procedure\n\n1. Require `charge_receipt`, `refund_request`, and `policy`.\n2. Accept only charge receipts that expose `schema: runx.receipt.v1` and\n   `state: sealed`.\n3. Extract a charge reference from `id`, `receipt_ref`, or `charge_ref`.\n4. Extract the original amount, already refunded amount, currency, and charge\n   timestamp from explicit fields.\n5. Require `refund_request.amount` to be positive and in the same units as the\n   charge.\n6. Compute the policy cap as `amount * policy.max_pct / 100`, then subtract any\n   already refunded amount.\n7. Require the request to be inside `policy.window_days`, measured from the\n   charge timestamp to `refund_request.requested_at`, `policy.now`, or the\n   current time.\n8. Return `decision.eligible: true` plus `refund_proposal` only when every gate\n   passes.\n9. Return `decision.eligible: false` plus `escalation` and no proposal when a\n   gate fails or the evidence is ambiguous.\n\n## Output\n\nThe runner emits `runx.refund_eligibility.v1` with:\n\n- `summary`: short human-readable decision summary.\n- `decision`: `{ eligible, reason }`.\n- `refund_proposal`: `{ amount, currency, charge_ref, idempotency_key, effect }`\n  only when eligible.\n- `refundable`: original amount, already refunded amount, policy cap, and\n  remaining refundable amount.\n- `escalation`: human review lane and evidence gaps when not eligible or\n  ambiguous.\n\n## Example\n\n```bash\nrunx skill ./skills/refund-eligibility \\\n  --input-json charge_receipt='{\"schema\":\"runx.receipt.v1\",\"id\":\"runx:receipt:charge-demo\",\"state\":\"sealed\",\"amount\":10000,\"currency\":\"USD\",\"charged_at\":\"2026-06-01T00:00:00Z\",\"refunded_amount\":1000}' \\\n  --input-json refund_request='{\"amount\":2500,\"reason\":\"duplicate charge\",\"requested_at\":\"2026-06-10T00:00:00Z\"}' \\\n  --input-json policy='{\"max_pct\":50,\"window_days\":30}' \\\n  --json\n```\n\n## Inputs\n\n- `charge_receipt` (required): sealed `runx.receipt.v1` charge receipt or\n  receipt summary with amount, currency, and charge time.\n- `refund_request` (required): object with `amount`, `reason`, and optional\n  `requested_at`.\n- `policy` (required): object with `max_pct`, `window_days`, and optional `now`.",
+      "profile_digest": "8bd8cf3284cbb3d6e8e779748d6f6bd46950f464bb7d47d48b3f173becfaad92",
+      "runner_names": [
+        "decide"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_029f74b8258386ff624c5320",
+        "handle": "zdfgu113",
+        "display_name": "zdfgu113"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_029f74b8258386ff624c5320",
+          "status": "declared",
+          "summary": "zdfgu113",
+          "issued_at": "2026-06-23T04:49:25.082Z",
+          "metadata": {
+            "publisher_display_name": "zdfgu113",
+            "publisher_handle": "zdfgu113",
+            "publisher_id": "user_029f74b8258386ff624c5320",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai"
+    }
+  }
+}

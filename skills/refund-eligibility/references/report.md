@@ -1,0 +1,21 @@
+# Refund Eligibility verification report
+
+- Scope: one public `refund-eligibility` skill package with a Node runner, a governed `X.yaml` profile, fixtures, harness receipts, registry evidence, dogfood evidence, and verification output.
+- CLI: `runx-cli 0.6.13`, used for local harness, publish, registry read, clean install, registry dogfood, and receipt verification.
+- Package: `zdfgu113/refund-eligibility@sha-578a29edc86a`, published to `https://api.runx.ai` and visible at `https://runx.ai/x/zdfgu113/refund-eligibility`.
+- PR: `https://github.com/runxhq/runx/pull/124` includes `skills/refund-eligibility/X.yaml`, `skills/refund-eligibility/SKILL.md`, fixtures, and reference evidence.
+- Public source: `https://github.com/zdfgu113/runx/tree/codex/refund-eligibility/skills/refund-eligibility`.
+- Raw profile: `https://raw.githubusercontent.com/zdfgu113/runx/codex/refund-eligibility/skills/refund-eligibility/X.yaml`.
+- Raw skill doc: `https://raw.githubusercontent.com/zdfgu113/runx/codex/refund-eligibility/skills/refund-eligibility/SKILL.md`.
+- Local harness: 3 cases passed with zero assertion errors: `in-policy-partial-refund-yields-proposal`, `excessive-amount-is-refused`, and `unsealed-charge-escalates`.
+- Installed registry harness: 3 cases passed after `runx add zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai`.
+- Positive path: a 3000 USD request against a sealed 12000 USD charge with 2000 already refunded and a 60 percent cap yields `decision.eligible: true`.
+- Proposal: the positive path emits `refund_proposal.amount: 3000`, `charge_ref: runx:receipt:charge-dogfood-001`, and `idempotency_key: refund:72a56c6bcfd9319fc3ffab7f`.
+- Refusal path: a request above the remaining refundable amount is refused and emits no `refund_proposal`.
+- Escalation path: an unsealed charge receipt is refused into `human_refund_approval` rather than inventing evidence.
+- Safety boundary: the skill never performs a reversal, never calls a payment rail, never signs money movement, and only emits a gated proposed Effect for a refund catalog skill to consume.
+- Dogfood command: `runx skill zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai --receipt-dir /home/zjs/runx-refund-eligibility-published --json`.
+- Dogfood receipt: `sha256:5862a95ab112b392f0d5ce71395ea94c7a8574a7d090e07f9127e90e51a20e37`.
+- Verification: `runx verify sha256:5862a95ab112b392f0d5ce71395ea94c7a8574a7d090e07f9127e90e51a20e37 --receipt-dir /home/zjs/runx-refund-eligibility-published --json` returned `valid: true` with no findings.
+- New user flow: run `runx add zdfgu113/refund-eligibility@sha-578a29edc86a --registry https://api.runx.ai`, then run the `runx skill` command with a sealed charge receipt, refund request, and policy, then verify the emitted receipt with `runx verify`.
+- Operator value: support and finance teams can separate refund judgment from refund execution, preserve an idempotent proposal, and route ambiguous or unsealed receipt evidence to human review before any money movement.
