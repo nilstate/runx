@@ -1,0 +1,26 @@
+{
+  "schema": "runx.resume_screen.harness_evidence.v1",
+  "generated_at": "2026-06-23T05:41:00Z",
+  "cli_version": "runx-cli 0.6.13",
+  "result": {
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "ranked-shortlist-proposal",
+      "refuse-final-hiring-decision"
+    ],
+    "receipt_ids": [
+      "sha256:cdd6ef60d78f78e8c0de921539f95547826f19d0636867d05c1dfaf78450b516",
+      "sha256:80905177c8d58dd509a1b095b1d6b2db5a709097e1596fac8ce212a2149400fc"
+    ]
+  },
+  "observations": {
+    "ranking": ["candidate-a", "candidate-b"],
+    "red_flags": ["candidate-b lacks testing evidence"],
+    "bias_risk": "Protected attributes are ignored and flagged, never scored.",
+    "interview_questions": 2,
+    "shortlist": ["candidate-a"],
+    "final_decision": false
+  }
+}
+

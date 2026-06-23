@@ -1,0 +1,93 @@
+skill: resume-screen
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: ranked-shortlist-proposal
+      inputs:
+        resumes:
+          - id: candidate-a
+            evidence:
+              - skill: typescript
+                years: 5
+                source: "Resume: Senior TypeScript engineer, 5 years."
+              - skill: testing
+                years: 4
+                source: "Resume: Built automated test suites for 4 years."
+          - id: candidate-b
+            evidence:
+              - skill: typescript
+                years: 2
+                source: "Resume: TypeScript developer, 2 years."
+        jd:
+          title: Senior Software Engineer
+          requirements: [typescript, testing]
+        rubric:
+          criteria:
+            - id: typescript
+              weight: 60
+              min_years: 3
+            - id: testing
+              weight: 40
+              min_years: 2
+          shortlist_size: 1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuse-final-hiring-decision
+      inputs:
+        resumes:
+          - id: candidate-a
+            evidence:
+              - skill: typescript
+                years: 5
+                source: "Resume: TypeScript engineer, 5 years."
+        jd:
+          title: Senior Software Engineer
+          requirements: [typescript]
+        rubric:
+          criteria:
+            - id: typescript
+              weight: 100
+              min_years: 3
+          requested_action: hire
+      expect:
+        status: failure
+
+runners:
+  screen:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      resumes:
+        type: json
+        required: true
+        description: "Candidate records containing job-related evidence only."
+      jd:
+        type: json
+        required: true
+        description: "Job description and required job-related skills."
+      rubric:
+        type: json
+        required: true
+        description: "Supplied scoring criteria and optional shortlist size."
+    outputs:
+      scored: array
+      ranked: array
+      red_flags: array
+      interview_qs: array
+      shortlist_proposal: object
+

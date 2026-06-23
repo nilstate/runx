@@ -1,0 +1,20 @@
+{
+  "resumes": [
+    {
+      "id": "candidate-a",
+      "evidence": [
+        {"skill": "typescript", "years": 5, "source": "Resume: TypeScript engineer, 5 years."}
+      ]
+    }
+  ],
+  "jd": {
+    "title": "Senior Software Engineer",
+    "requirements": ["typescript"]
+  },
+  "rubric": {
+    "criteria": [
+      {"id": "typescript", "weight": 100, "min_years": 3}
+    ],
+    "requested_action": "hire"
+  }
+}
