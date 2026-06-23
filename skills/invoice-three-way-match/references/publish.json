@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "zdfgu113/invoice-three-way-match",
+      "owner": "zdfgu113",
+      "name": "invoice-three-way-match",
+      "version": "sha-1ec6eb042dde",
+      "digest": "5556cff07b2af5dd5ed56d454d55f686f141953474d4f566dd402ee6a54dcd0b",
+      "profile_digest": "9c2112a4d43f86c34f5fcf253b0640bb8c21d63aba7d7bdc65002393d2a0e4df",
+      "trust_tier": "community",
+      "install_command": "runx add zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/zdfgu113/invoice-three-way-match"
+    }
+  }
+}

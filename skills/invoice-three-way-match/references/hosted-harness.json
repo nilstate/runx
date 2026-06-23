@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "matched-invoice-under-threshold-yields-proposal",
+    "unmatched-receipt-refuses-with-exceptions"
+  ],
+  "receipt_ids": [
+    "sha256:3c9d91578b1ad68649cfa44bd51e23a5e6c58d4b6790b76b25ba1293287d508a",
+    "sha256:bd624809623681fd650014abeae6ba073e910ce0b49cc9198ce9b2f40689d64d"
+  ],
+  "graph_case_count": 0
+}

@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
+    "skill": {
+      "skill_id": "zdfgu113/invoice-three-way-match",
+      "owner": "zdfgu113",
+      "name": "invoice-three-way-match",
+      "description": "Extract an invoice, match it against a purchase order and goods receipt, code GL expense lines, and emit a gated payment proposal only when the evidence matches policy.",
+      "category": "payments",
+      "version": "sha-1ec6eb042dde",
+      "digest": "5556cff07b2af5dd5ed56d454d55f686f141953474d4f566dd402ee6a54dcd0b",
+      "markdown": "---\nname: invoice-three-way-match\nversion: 0.1.0\ndescription: Extract an invoice, match it against a purchase order and goods receipt, code GL expense lines, and emit a gated payment proposal only when the evidence matches policy.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nlinks:\n  source: https://github.com/zdfgu113/runx/tree/codex/invoice-three-way-match/skills/invoice-three-way-match\nrunx:\n  category: finance\n  input_resolution:\n    required:\n      - invoice\n      - po\n      - goods_receipt\n      - policy\n---\n\n# Invoice Three-Way Match\n\nExtract an invoice, compare it with the purchase order and goods receipt, assign\ngeneral-ledger coding, and emit a bounded `payment_proposal` only when the three\ndocuments agree and the invoice is below the approval threshold.\n\nThe proposal is a gated Effect for the `settle-invoice` catalog skill. This\nskill does not move money, sign payment instructions, call a rail, or mutate\nexternal state.\n\n## When to use this skill\n\nUse it during accounts-payable intake when an operator needs a checkable packet\nshowing whether an invoice can proceed to payment approval. The sealed receipt\ncontains the extracted invoice facts, match status, discrepancies, GL coding,\nproposal details when eligible, and named exceptions when not eligible.\n\n## When not to use this skill\n\nDo not use it to execute payment, override a purchase policy, infer missing line\nitems, or force a match from incomplete evidence. If the invoice, purchase order,\nor goods receipt lacks the facts needed to support a match, the skill refuses and\nroutes the issue into `exceptions[]`.\n\n## Procedure\n\n1. Require typed inputs `invoice`, `po`, `goods_receipt`, and `policy`.\n2. Extract invoice number, vendor, PO number, total, currency, and line items\n   from explicit invoice fields.\n3. Extract PO number, vendor, currency, and ordered line items from the purchase\n   order.\n4. Extract receipt number, PO number, and received line quantities from the goods\n   receipt.\n5. Compare invoice PO number, receipt PO number, vendor, currency, line\n   quantity, unit price, and received quantity.\n6. Compare invoice total with `policy.auto_approve_under`.\n7. Code invoice lines into GL buckets using explicit category or description\n   signals.\n8. Emit `match.status: matched` and `payment_proposal` only when every comparison\n   passes.\n9. Emit `match.status: exception`, named `discrepancies`, and `exceptions[]`\n   with no proposal when any required fact is missing or any comparison fails.\n\n## Output\n\nThe runner emits `runx.invoice_three_way_match.v1` with:\n\n- `summary`: short decision summary.\n- `extracted`: invoice facts used for the decision.\n- `match`: `{ status, discrepancies }`.\n- `gl_coding`: account allocations derived from the invoice lines.\n- `payment_proposal`: gated proposal for `settle-invoice` when matched.\n- `exceptions`: explicit reasons that block payment approval.\n\n## Example\n\n```bash\nrunx skill ./skills/invoice-three-way-match \\\n  --input-json invoice='{\"invoice_number\":\"INV-2026-0101\",\"vendor\":\"Northwind Software\",\"po_number\":\"PO-2026-044\",\"receipt_number\":\"GR-2026-044\",\"currency\":\"USD\",\"total\":1800,\"line_items\":[{\"sku\":\"SAAS-SEATS\",\"description\":\"Platform seats\",\"category\":\"software\",\"quantity\":3,\"unit_price\":600,\"amount\":1800}]}' \\\n  --input-json po='{\"po_number\":\"PO-2026-044\",\"vendor\":\"Northwind Software\",\"currency\":\"USD\",\"line_items\":[{\"sku\":\"SAAS-SEATS\",\"description\":\"Platform seats\",\"category\":\"software\",\"quantity\":3,\"unit_price\":600,\"amount\":1800}]}' \\\n  --input-json goods_receipt='{\"receipt_number\":\"GR-2026-044\",\"po_number\":\"PO-2026-044\",\"vendor\":\"Northwind Software\",\"line_items\":[{\"sku\":\"SAAS-SEATS\",\"description\":\"Platform seats\",\"quantity_received\":3}]}' \\\n  --input-json policy='{\"auto_approve_under\":2500}' \\\n  --json\n```\n\n## Inputs\n\n- `invoice` (required): object with invoice reference, vendor, PO number, total,\n  currency, and explicit line items.\n- `po` (required): object with PO number, vendor, currency, and ordered line\n  items.\n- `goods_receipt` (required): object with receipt reference, PO number, and\n  received line quantities.\n- `policy` (required): object with `auto_approve_under`, expressed in the same\n  units and currency as `invoice.total`.",
+      "profile_digest": "9c2112a4d43f86c34f5fcf253b0640bb8c21d63aba7d7bdc65002393d2a0e4df",
+      "runner_names": [
+        "decide"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_029f74b8258386ff624c5320",
+        "handle": "zdfgu113",
+        "display_name": "zdfgu113"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_029f74b8258386ff624c5320",
+          "status": "declared",
+          "summary": "zdfgu113",
+          "issued_at": "2026-06-23T06:47:09.068Z",
+          "metadata": {
+            "publisher_display_name": "zdfgu113",
+            "publisher_handle": "zdfgu113",
+            "publisher_id": "user_029f74b8258386ff624c5320",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai"
+    }
+  }
+}

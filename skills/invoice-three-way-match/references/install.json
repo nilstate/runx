@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
+    "install": {
+      "status": "installed",
+      "destination": "/home/zjs/runx-invoice-three-way-match-clean-install/zdfgu113/invoice-three-way-match/sha-1ec6eb042dde/SKILL.md",
+      "skill_name": "invoice-three-way-match",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "zdfgu113/invoice-three-way-match",
+      "version": "sha-1ec6eb042dde",
+      "digest": "sha256:5556cff07b2af5dd5ed56d454d55f686f141953474d4f566dd402ee6a54dcd0b",
+      "profile_digest": "sha256:9c2112a4d43f86c34f5fcf253b0640bb8c21d63aba7d7bdc65002393d2a0e4df",
+      "profile_state_path": "/home/zjs/runx-invoice-three-way-match-clean-install/zdfgu113/invoice-three-way-match/sha-1ec6eb042dde/.runx/profile.json",
+      "runner_names": [
+        "decide"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/home/zjs/runx-invoice-three-way-match-clean-install/zdfgu113/invoice-three-way-match/sha-1ec6eb042dde/SKILL.md",
+      "digest": "sha256:5556cff07b2af5dd5ed56d454d55f686f141953474d4f566dd402ee6a54dcd0b",
+      "install_count": 1,
+      "package_digest": "d12a551935980fbb5abc68d83df3a9277bf752e944e69e915ff77e6fc809cace",
+      "profile_digest": "sha256:9c2112a4d43f86c34f5fcf253b0640bb8c21d63aba7d7bdc65002393d2a0e4df",
+      "publisher": {
+        "display_name": "zdfgu113",
+        "handle": "zdfgu113",
+        "id": "user_029f74b8258386ff624c5320",
+        "kind": "user"
+      },
+      "ref": "zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
+      "skill_id": "zdfgu113/invoice-three-way-match",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-1ec6eb042dde"
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schema": "runx.skill_evidence.v1",
+  "summary": "Invoice Three-Way Match extracts invoice facts, compares them with a purchase order and goods receipt, codes GL lines, and emits only a gated payment proposal when every match and policy gate passes.",
+  "observations": [
+    {
+      "claim": "The supported CLI used for verification is runx-cli 0.6.13.",
+      "evidence": "The local harness, registry publish, registry read, clean install, hosted harness, registry dogfood, and receipt verification commands were run with this runx CLI binary."
+    },
+    {
+      "claim": "The package owner is zdfgu113.",
+      "evidence": "registry-read.json lists publisher.handle zdfgu113, and the PR branch is hosted in zdfgu113/runx."
+    },
+    {
+      "claim": "The exact package name is invoice-three-way-match.",
+      "evidence": "SKILL.md declares name invoice-three-way-match and X.yaml declares skill invoice-three-way-match."
+    },
+    {
+      "claim": "The public registry reference is zdfgu113/invoice-three-way-match@sha-1ec6eb042dde.",
+      "evidence": "registry-read.json resolved digest 5556cff07b2af5dd5ed56d454d55f686f141953474d4f566dd402ee6a54dcd0b and profile_digest 9c2112a4d43f86c34f5fcf253b0640bb8c21d63aba7d7bdc65002393d2a0e4df from https://api.runx.ai."
+    },
+    {
+      "claim": "The local harness passed all required cases.",
+      "evidence": "harness.json records status passed, case_count 2, and assertion_error_count 0."
+    },
+    {
+      "claim": "The installed registry package harness passed all required cases.",
+      "evidence": "hosted-harness.json records status passed, case_count 2, and assertion_error_count 0."
+    },
+    {
+      "claim": "The matched invoice case emits a payment_proposal.",
+      "evidence": "published-dogfood.json records match.status matched, proposal amount 1800 USD, and idempotency_key invoice-three-way:cdfa9629cb9a6002b380284f."
+    },
+    {
+      "claim": "The proposal is gated and delegates execution to settle-invoice.",
+      "evidence": "published-dogfood.json records effect.consumer settle-invoice, gated true, and performs_money_movement false."
+    },
+    {
+      "claim": "The GL coding is explicit and auditable.",
+      "evidence": "published-dogfood.json records account 6100 Software and subscriptions for 1800 USD."
+    },
+    {
+      "claim": "The refused harness case blocks payment when receipt or threshold evidence does not match.",
+      "evidence": "The unmatched-receipt-refuses-with-exceptions harness case passed with status failure and the runner emits no payment_proposal on that path."
+    },
+    {
+      "claim": "The dogfood run used the post-publish registry package.",
+      "evidence": "published-dogfood.json records registry provenance for zdfgu113/invoice-three-way-match@sha-1ec6eb042dde, not only local source."
+    },
+    {
+      "claim": "The dogfood receipt is cryptographically valid.",
+      "evidence": "published-verification.json records valid true, signature_mode production, one receipt in the tree, and no findings."
+    },
+    {
+      "claim": "The public PR contains the submitted skill package and evidence.",
+      "evidence": "https://github.com/runxhq/runx/pull/132 contains skills/invoice-three-way-match/X.yaml, SKILL.md, fixtures, run.mjs, and references."
+    },
+    {
+      "claim": "A new user can install, run, and verify the skill without private context.",
+      "evidence": "install.json records runx add zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai succeeded, and report.md lists the run and verify commands."
+    }
+  ],
+  "commands": [
+    "runx --version",
+    "runx harness ./skills/invoice-three-way-match --receipt-dir /home/zjs/runx-invoice-three-way-match-receipts --json",
+    "runx registry publish ./skills/invoice-three-way-match/SKILL.md --registry https://api.runx.ai --json",
+    "runx registry read zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai --json",
+    "runx add zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai --to /home/zjs/runx-invoice-three-way-match-clean-install --json",
+    "runx harness /home/zjs/runx-invoice-three-way-match-clean-install/zdfgu113/invoice-three-way-match/sha-1ec6eb042dde --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json",
+    "runx skill zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json",
+    "runx verify sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json"
+  ],
+  "artifacts": {
+    "public_url": "https://runx.ai/x/zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
+    "source_url": "https://github.com/zdfgu113/runx/tree/codex/invoice-three-way-match/skills/invoice-three-way-match",
+    "pr_url": "https://github.com/runxhq/runx/pull/132",
+    "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/SKILL.md",
+    "evidence_json": "skills/invoice-three-way-match/references/evidence.json",
+    "verification_json": "skills/invoice-three-way-match/references/published-verification.json",
+    "receipt_ref": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
+    "report": "skills/invoice-three-way-match/references/report.md"
+  },
+  "dogfood": {
+    "package": "zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
+    "input": "skills/invoice-three-way-match/fixtures/dogfood-input.json",
+    "command": "runx skill zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json",
+    "receipt_ref": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "matched-invoice-under-threshold-yields-proposal",
+        "status": "sealed"
+      },
+      {
+        "name": "unmatched-receipt-refuses-with-exceptions",
+        "status": "refused"
+      }
+    ]
+  },
+  "public_urls": {
+    "public_url": "https://runx.ai/x/zdfgu113/invoice-three-way-match@sha-1ec6eb042dde",
+    "source_url": "https://github.com/zdfgu113/runx/tree/codex/invoice-three-way-match/skills/invoice-three-way-match",
+    "pr_url": "https://github.com/runxhq/runx/pull/132",
+    "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/SKILL.md"
+  }
+}

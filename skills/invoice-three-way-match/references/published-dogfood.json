@@ -1,0 +1,341 @@
+{
+  "closure": {
+    "closed_at": "2026-06-23T06:47:42.939Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool decide completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "exceptions": [],
+      "extracted": {
+        "currency": "USD",
+        "invoice_ref": "INV-2026-0101",
+        "line_items": [
+          {
+            "amount": 1800,
+            "category": "software",
+            "description": "Platform seats",
+            "key": "SAAS-SEATS",
+            "quantity": 3,
+            "quantity_received": 3,
+            "sku": "SAAS-SEATS",
+            "unit_price": 600
+          }
+        ],
+        "po_number": "PO-2026-044",
+        "receipt_number": "GR-2026-044",
+        "total": 1800,
+        "vendor": "Northwind Software"
+      },
+      "gl_coding": [
+        {
+          "account": "6100",
+          "amount": 1800,
+          "currency": "USD",
+          "label": "Software and subscriptions"
+        }
+      ],
+      "match": {
+        "discrepancies": [],
+        "status": "matched"
+      },
+      "payment_proposal": {
+        "amount": 1800,
+        "currency": "USD",
+        "effect": {
+          "consumer": "settle-invoice",
+          "gated": true,
+          "kind": "payment_approval_proposal",
+          "performs_money_movement": false
+        },
+        "gl_coding": [
+          {
+            "account": "6100",
+            "amount": 1800,
+            "currency": "USD",
+            "label": "Software and subscriptions"
+          }
+        ],
+        "goods_receipt_ref": "GR-2026-044",
+        "idempotency_key": "invoice-three-way:cdfa9629cb9a6002b380284f",
+        "invoice_ref": "INV-2026-0101",
+        "po_number": "PO-2026-044",
+        "vendor": "Northwind Software"
+      },
+      "summary": "Invoice INV-2026-0101 matched PO PO-2026-044 and receipt GR-2026-044; payment proposal invoice-three-way:cdfa9629cb9a6002b380284f is ready for settle-invoice."
+    },
+    "stderr": "",
+    "stdout": "{\n  \"summary\": \"Invoice INV-2026-0101 matched PO PO-2026-044 and receipt GR-2026-044; payment proposal invoice-three-way:cdfa9629cb9a6002b380284f is ready for settle-invoice.\",\n  \"extracted\": {\n    \"invoice_ref\": \"INV-2026-0101\",\n    \"vendor\": \"Northwind Software\",\n    \"po_number\": \"PO-2026-044\",\n    \"receipt_number\": \"GR-2026-044\",\n    \"total\": 1800,\n    \"currency\": \"USD\",\n    \"line_items\": [\n      {\n        \"key\": \"SAAS-SEATS\",\n        \"sku\": \"SAAS-SEATS\",\n        \"description\": \"Platform seats\",\n        \"category\": \"software\",\n        \"quantity\": 3,\n        \"quantity_received\": 3,\n        \"unit_price\": 600,\n        \"amount\": 1800\n      }\n    ]\n  },\n  \"match\": {\n    \"status\": \"matched\",\n    \"discrepancies\": []\n  },\n  \"gl_coding\": [\n    {\n      \"account\": \"6100\",\n      \"label\": \"Software and subscriptions\",\n      \"amount\": 1800,\n      \"currency\": \"USD\"\n    }\n  ],\n  \"payment_proposal\": {\n    \"idempotency_key\": \"invoice-three-way:cdfa9629cb9a6002b380284f\",\n    \"invoice_ref\": \"INV-2026-0101\",\n    \"po_number\": \"PO-2026-044\",\n    \"goods_receipt_ref\": \"GR-2026-044\",\n    \"amount\": 1800,\n    \"currency\": \"USD\",\n    \"vendor\": \"Northwind Software\",\n    \"gl_coding\": [\n      {\n        \"account\": \"6100\",\n        \"label\": \"Software and subscriptions\",\n        \"amount\": 1800,\n        \"currency\": \"USD\"\n      }\n    ],\n    \"effect\": {\n      \"kind\": \"payment_approval_proposal\",\n      \"gated\": true,\n      \"consumer\": \"settle-invoice\",\n      \"performs_money_movement\": false\n    }\n  },\n  \"exceptions\": []\n}\n",
+    "structured_output": {
+      "exceptions": [],
+      "extracted": {
+        "currency": "USD",
+        "invoice_ref": "INV-2026-0101",
+        "line_items": [
+          {
+            "amount": 1800,
+            "category": "software",
+            "description": "Platform seats",
+            "key": "SAAS-SEATS",
+            "quantity": 3,
+            "quantity_received": 3,
+            "sku": "SAAS-SEATS",
+            "unit_price": 600
+          }
+        ],
+        "po_number": "PO-2026-044",
+        "receipt_number": "GR-2026-044",
+        "total": 1800,
+        "vendor": "Northwind Software"
+      },
+      "gl_coding": [
+        {
+          "account": "6100",
+          "amount": 1800,
+          "currency": "USD",
+          "label": "Software and subscriptions"
+        }
+      ],
+      "match": {
+        "discrepancies": [],
+        "status": "matched"
+      },
+      "payment_proposal": {
+        "amount": 1800,
+        "currency": "USD",
+        "effect": {
+          "consumer": "settle-invoice",
+          "gated": true,
+          "kind": "payment_approval_proposal",
+          "performs_money_movement": false
+        },
+        "gl_coding": [
+          {
+            "account": "6100",
+            "amount": 1800,
+            "currency": "USD",
+            "label": "Software and subscriptions"
+          }
+        ],
+        "goods_receipt_ref": "GR-2026-044",
+        "idempotency_key": "invoice-three-way:cdfa9629cb9a6002b380284f",
+        "invoice_ref": "INV-2026-0101",
+        "po_number": "PO-2026-044",
+        "vendor": "Northwind Software"
+      },
+      "summary": "Invoice INV-2026-0101 matched PO PO-2026-044 and receipt GR-2026-044; payment proposal invoice-three-way:cdfa9629cb9a6002b380284f is ready for settle-invoice."
+    }
+  },
+  "payload": {
+    "exceptions": [],
+    "extracted": {
+      "currency": "USD",
+      "invoice_ref": "INV-2026-0101",
+      "line_items": [
+        {
+          "amount": 1800,
+          "category": "software",
+          "description": "Platform seats",
+          "key": "SAAS-SEATS",
+          "quantity": 3,
+          "quantity_received": 3,
+          "sku": "SAAS-SEATS",
+          "unit_price": 600
+        }
+      ],
+      "po_number": "PO-2026-044",
+      "receipt_number": "GR-2026-044",
+      "total": 1800,
+      "vendor": "Northwind Software"
+    },
+    "gl_coding": [
+      {
+        "account": "6100",
+        "amount": 1800,
+        "currency": "USD",
+        "label": "Software and subscriptions"
+      }
+    ],
+    "match": {
+      "discrepancies": [],
+      "status": "matched"
+    },
+    "payment_proposal": {
+      "amount": 1800,
+      "currency": "USD",
+      "effect": {
+        "consumer": "settle-invoice",
+        "gated": true,
+        "kind": "payment_approval_proposal",
+        "performs_money_movement": false
+      },
+      "gl_coding": [
+        {
+          "account": "6100",
+          "amount": 1800,
+          "currency": "USD",
+          "label": "Software and subscriptions"
+        }
+      ],
+      "goods_receipt_ref": "GR-2026-044",
+      "idempotency_key": "invoice-three-way:cdfa9629cb9a6002b380284f",
+      "invoice_ref": "INV-2026-0101",
+      "po_number": "PO-2026-044",
+      "vendor": "Northwind Software"
+    },
+    "summary": "Invoice INV-2026-0101 matched PO PO-2026-044 and receipt GR-2026-044; payment proposal invoice-three-way:cdfa9629cb9a6002b380284f is ready for settle-invoice."
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-23T06:47:42.939Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_decide",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step decide",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step decide",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-23T06:47:42.939Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_decide",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node decide",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_decide",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:47a894a35e4f509dad5c762ec3d981e6d39e93c9f1a8b1d25cb35fb9cc19172e",
+    "id": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
+    "idempotency": {
+      "content_hash": "sha256:run_decide_18cddaea39ab-decide-content",
+      "intent_key": "sha256:run_decide_18cddaea39ab-decide-intent",
+      "trigger_fingerprint": "sha256:run_decide_18cddaea39ab-decide-trigger"
+    },
+    "issuer": {
+      "kid": "runx-demo-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-23T06:47:42.939Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-23T06:47:42.939Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool decide completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:3aY6m8HPW5Bgc9uVe2VFBfi5-vVxwvyUf14m1zOzicvXTv6cLy4LNHFpLoIqGapVPfaPSgUtGfkXVosd0LSXCg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_decide_18cddaea39ab_decide"
+      }
+    }
+  },
+  "receipt_id": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
+  "registry_provenance": {
+    "digest": "sha256:5556cff07b2af5dd5ed56d454d55f686f141953474d4f566dd402ee6a54dcd0b",
+    "profile_digest": "sha256:9c2112a4d43f86c34f5fcf253b0640bb8c21d63aba7d7bdc65002393d2a0e4df",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "zdfgu113/invoice-three-way-match",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-1ec6eb042dde"
+  },
+  "run_id": "run_decide_18cddaea39ab",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "invoice-three-way-match",
+  "status": "sealed"
+}

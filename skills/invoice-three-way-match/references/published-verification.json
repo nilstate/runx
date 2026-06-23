@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/zjs/runx-invoice-three-way-match-published",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

@@ -1,0 +1,21 @@
+# Invoice Three-Way Match verification report
+
+- Scope: one public `invoice-three-way-match` skill package with a Node runner, governed `X.yaml`, fixtures, local and hosted harness evidence, registry evidence, dogfood evidence, and receipt verification output.
+- CLI: `runx-cli 0.6.13`, used for local harness, publish, registry read, clean install, hosted harness, registry dogfood, and receipt verification.
+- Package: `zdfgu113/invoice-three-way-match@sha-1ec6eb042dde`, published to `https://api.runx.ai` and visible at `https://runx.ai/x/zdfgu113/invoice-three-way-match@sha-1ec6eb042dde`.
+- PR: `https://github.com/runxhq/runx/pull/132` includes `skills/invoice-three-way-match/X.yaml`, `skills/invoice-three-way-match/SKILL.md`, fixtures, runner, and reference evidence.
+- Public source: `https://github.com/zdfgu113/runx/tree/codex/invoice-three-way-match/skills/invoice-three-way-match`.
+- Raw profile: `https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/X.yaml`.
+- Raw skill doc: `https://raw.githubusercontent.com/zdfgu113/runx/codex/invoice-three-way-match/skills/invoice-three-way-match/SKILL.md`.
+- Local harness: 2 cases passed with zero assertion errors: `matched-invoice-under-threshold-yields-proposal`, `unmatched-receipt-refuses-with-exceptions`.
+- Installed registry harness: 2 cases passed after `runx add zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai`.
+- Positive path: invoice `INV-2026-0101` matched PO `PO-2026-044` with `match.status: matched`.
+- Proposal: `invoice-three-way:cdfa9629cb9a6002b380284f` proposes 1800 USD, uses `settle-invoice`, is gated, and does not move money.
+- GL coding: account `6100` / `Software and subscriptions` for 1800 USD.
+- Refusal path: `unmatched-receipt-refuses-with-exceptions` passes as a failure case and emits no payment proposal when received quantity or threshold evidence does not match.
+- Safety boundary: the skill never executes payment, never signs payment instructions, never calls a rail, and only emits a gated proposed Effect for `settle-invoice`.
+- Dogfood command: `runx skill zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json`.
+- Dogfood receipt: `sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b`.
+- Verification: `runx verify sha256:26e87ba07f05ae0f02e9b3a8e068417e0a473bb6be888eb29b16d134a0062e6b --receipt-dir /home/zjs/runx-invoice-three-way-match-published --json` returned `valid: true` with no findings.
+- New user flow: run `runx add zdfgu113/invoice-three-way-match@sha-1ec6eb042dde --registry https://api.runx.ai`, then run the `runx skill` command with invoice, PO, goods receipt, and policy JSON inputs, then verify the emitted receipt with `runx verify`.
+- Operator value: AP teams get a deterministic packet that separates invoice approval from settlement, records discrepancies, and keeps payment execution in the downstream settlement skill.
