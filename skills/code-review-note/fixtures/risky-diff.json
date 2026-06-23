@@ -1,0 +1,9 @@
+{
+  "pr_diff": "diff --git a/src/payments/refunds.ts b/src/payments/refunds.ts\nindex 1111111..2222222 100644\n--- a/src/payments/refunds.ts\n+++ b/src/payments/refunds.ts\n@@ -12,11 +12,11 @@ export async function approveRefund(req, user) {\n-  if (!user.roles.includes(\"refund_admin\")) {\n-    throw new Error(\"forbidden\");\n-  }\n-  if (req.amountCents > policy.maxAutoRefundCents) {\n-    throw new Error(\"manual review required\");\n-  }\n+  // TODO: restore role check after support migration\n+  const amount = Number(req.amountCents);\n+  if (!amount) return { status: \"skipped\" };\n   return refundGateway.create({\n     chargeId: req.chargeId,\n-    amountCents: req.amountCents,\n+    amountCents: amount,\n   });\n }\n",
+  "context": {
+    "repository": "example/payments",
+    "pr_number": "42",
+    "title": "Relax refund approval path",
+    "test_policy": "Require authorization and threshold regression tests for payment changes."
+  }
+}
