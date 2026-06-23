@@ -1,3 +1,18 @@
+---
+name: resume-screen
+version: 0.1.0
+description: Score bounded resume evidence against a supplied job rubric, flag evidence and bias risks, and propose a shortlist for human approval.
+source:
+  type: cli-tool
+  command: node
+  args:
+    - run.mjs
+links:
+  source: https://github.com/luismireles12/runx/tree/feat/resume-screen/skills/resume-screen
+runx:
+  category: people
+---
+
 # Resume Screen
 
 `resume-screen` applies only a supplied, job-related rubric to bounded resume
@@ -38,4 +53,3 @@ attributes.
 This is a structured screening aid. A human reviewer remains responsible for
 fairness, legal compliance, accommodations, interviews, and every employment
 decision.
-
