@@ -1,0 +1,118 @@
+skill: code-review-note
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: risky-diff-yields-review-note
+      runner: review
+      inputs:
+        pr_diff: |
+          diff --git a/src/payments/refunds.ts b/src/payments/refunds.ts
+          index 1111111..2222222 100644
+          --- a/src/payments/refunds.ts
+          +++ b/src/payments/refunds.ts
+          @@ -12,11 +12,11 @@ export async function approveRefund(req, user) {
+          -  if (!user.roles.includes("refund_admin")) {
+          -    throw new Error("forbidden");
+          -  }
+          -  if (req.amountCents > policy.maxAutoRefundCents) {
+          -    throw new Error("manual review required");
+          -  }
+          +  // TODO: restore role check after support migration
+          +  const amount = Number(req.amountCents);
+          +  if (!amount) return { status: "skipped" };
+             return refundGateway.create({
+               chargeId: req.chargeId,
+          -    amountCents: req.amountCents,
+          +    amountCents: amount,
+             });
+           }
+        context:
+          repository: example/payments
+          pr_number: "42"
+          title: Relax refund approval path
+          test_policy: Require authorization and threshold regression tests for payment changes.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: empty-diff-refused
+      runner: review
+      inputs:
+        pr_diff: ""
+        context:
+          repository: example/payments
+          pr_number: "42"
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runx:
+  mutating: false
+  category: code
+  scopes:
+    - pr.diff.read
+  policy:
+    data_classification: bounded_pr_diff
+    network:
+      allowed: []
+      forbidden:
+        - live repository fetches
+        - GitHub mutations
+        - merge operations
+    verifier_notes:
+      - Findings must cite supplied diff files and changed lines.
+      - The review_note is proposed only; posting requires pr-review-note.
+  artifacts:
+    emits:
+      - code_review_note_packet
+    wrap_as: code_review_note_packet
+
+runners:
+  review:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - pr.diff.read
+    policy:
+      reads:
+        - bounded PR diff supplied by caller
+      writes: []
+      disallows:
+        - fetching repository contents
+        - posting review comments
+        - approving or merging pull requests
+        - inventing risks not visible in the diff
+    artifacts:
+      wrap_as: code_review_note_packet
+      packet: runx.code.review_note.v1
+    inputs:
+      pr_diff:
+        type: string
+        required: true
+        description: Unified diff or bounded PR diff excerpt.
+      context:
+        type: json
+        required: false
+        description: Optional repository, PR number, title, and test policy.
+    outputs:
+      findings: object
+      risk: object
+      test_gaps: object
+      review_note: object
