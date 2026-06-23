@@ -1,0 +1,92 @@
+skill: dunning-ladder
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: within-cap-reminder-proposal
+      inputs:
+        invoice_status:
+          invoice_id: inv-100
+          status: overdue
+          reminders_sent: 1
+          customer_ref: customer-7
+        aging_days: 18
+        cadence_policy:
+          cap: 3
+          steps:
+            - step: 1
+              min_days: 1
+              channel: email
+              template: friendly-reminder
+            - step: 2
+              min_days: 14
+              channel: email
+              template: firm-reminder
+            - step: 3
+              min_days: 30
+              channel: email
+              template: final-reminder
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuse-at-cadence-cap
+      inputs:
+        invoice_status:
+          invoice_id: inv-200
+          status: overdue
+          reminders_sent: 3
+          customer_ref: customer-9
+        aging_days: 45
+        cadence_policy:
+          cap: 3
+          steps:
+            - step: 1
+              min_days: 1
+              channel: email
+              template: friendly-reminder
+            - step: 2
+              min_days: 14
+              channel: email
+              template: firm-reminder
+            - step: 3
+              min_days: 30
+              channel: email
+              template: final-reminder
+      expect:
+        status: failure
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      invoice_status:
+        type: json
+        required: true
+        description: "Bounded receivable state including status and reminders_sent."
+      aging_days:
+        type: number
+        required: true
+        description: "Whole days the receivable is overdue."
+      cadence_policy:
+        type: json
+        required: true
+        description: "Ordered reminder steps and a hard cadence cap."
+    outputs:
+      decision: object
+      reminder_proposal: object
+      escalation: object
+

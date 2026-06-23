@@ -1,0 +1,25 @@
+{
+  "schema": "runx.dunning_ladder.harness_evidence.v1",
+  "generated_at": "2026-06-23T05:56:00Z",
+  "cli_version": "runx-cli 0.6.13",
+  "result": {
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "within-cap-reminder-proposal",
+      "refuse-at-cadence-cap"
+    ],
+    "receipt_ids": [
+      "sha256:d36dc9aed6f499872c1a7586c4ded7a6036e0f23d441d9b010d5ca41a43e5310",
+      "sha256:9098ca7e4bc3e53005b09282a61964f9e3f2129430010db9754883019a06ead8"
+    ]
+  },
+  "observations": {
+    "chosen_step": 2,
+    "cap_state": "1 of 3 reminders already sent; step 2 proposed",
+    "reminder_proposal": "email / firm-reminder / requires_human_approval",
+    "escalation_path": "accounts_receivable_operator",
+    "at_cap": "failure with no reminder proposal"
+  }
+}
+

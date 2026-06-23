@@ -1,0 +1,17 @@
+{
+  "invoice_status": {
+    "invoice_id": "inv-200",
+    "status": "overdue",
+    "reminders_sent": 3,
+    "customer_ref": "customer-9"
+  },
+  "aging_days": 45,
+  "cadence_policy": {
+    "cap": 3,
+    "steps": [
+      {"step": 1, "min_days": 1, "channel": "email", "template": "friendly-reminder"},
+      {"step": 2, "min_days": 14, "channel": "email", "template": "firm-reminder"},
+      {"step": 3, "min_days": 30, "channel": "email", "template": "final-reminder"}
+    ]
+  }
+}

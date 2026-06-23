@@ -1,0 +1,9 @@
+{
+  "schema": "runx.dunning_ladder.verification.v1",
+  "generated_at": "2026-06-23T05:56:00Z",
+  "cli_version": "runx-cli 0.6.13",
+  "doctor": {"status": "success", "errors": 0, "warnings": 0},
+  "harness": {"status": "passed", "case_count": 2},
+  "effects_emitted": []
+}
+
