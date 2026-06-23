@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-06-23T04:33:57.734Z",
+    "closed_at": "2026-06-23T04:56:31.382Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool default completed"
@@ -12,6 +12,12 @@
         "action": "read",
         "approval_gate": "human_approval_required",
         "decision": "grant",
+        "escalation": {
+          "lane": "human_approval_required",
+          "reason": "one-time grant proposal requires human approval before any access is issued",
+          "required": true,
+          "ticket_id": "INC-2042"
+        },
         "evidence_refs": [
           "request:req-2026-06-23-001",
           "policy:access-policy-demo-v1",
@@ -38,6 +44,12 @@
         "subject_id": "user-17",
         "ttl_minutes": 120
       },
+      "escalation": {
+        "lane": "human_approval_required",
+        "reason": "one-time grant proposal requires human approval before any access is issued",
+        "required": true,
+        "ticket_id": "INC-2042"
+      },
       "evidence_json": {
         "artifact": "access-request-review",
         "observations": {
@@ -46,6 +58,13 @@
           "current_grant_count": 1,
           "decision": "grant",
           "entitlement_digest": "sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7",
+          "escalation": {
+            "lane": "human_approval_required",
+            "reason": "one-time grant proposal requires human approval before any access is issued",
+            "required": true,
+            "ticket_id": "INC-2042"
+          },
+          "escalation_path": "human_approval_required",
           "evidence_refs": [
             "request:req-2026-06-23-001",
             "policy:access-policy-demo-v1",
@@ -90,15 +109,21 @@
         "ticket_id": "INC-2042",
         "ttl_minutes": 120
       },
-      "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
+      "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\nEscalation: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
     },
     "stderr": "",
-    "stdout": "{\n  \"decision_packet\": {\n    \"schema\": \"runx.security.access_request_review.v1\",\n    \"decision\": \"grant\",\n    \"request_id\": \"req-2026-06-23-001\",\n    \"subject_id\": \"user-17\",\n    \"objective\": \"Dogfood access request review for Frantic bounty 55.\",\n    \"policy_id\": \"access-policy-demo-v1\",\n    \"resource\": \"prod/payments/logs/service-a\",\n    \"action\": \"read\",\n    \"requested_scope\": \"logs.read:prod/payments/service-a/*\",\n    \"least_privilege_scope\": \"logs.read:prod/payments/service-a\",\n    \"ttl_minutes\": 120,\n    \"approval_gate\": \"human_approval_required\",\n    \"reasons\": [\n      \"request matches allowed role, action, resource, and scope prefix\",\n      \"ttl bounded to 120 minutes by policy max 240\",\n      \"proposal is gated; no access is issued by this skill\"\n    ],\n    \"evidence_refs\": [\n      \"request:req-2026-06-23-001\",\n      \"policy:access-policy-demo-v1\",\n      \"entitlements:user-17\"\n    ],\n    \"safeguards\": {\n      \"read_only\": true,\n      \"mutates_grants\": false,\n      \"executes_grant\": false,\n      \"requires_human_approval\": true\n    }\n  },\n  \"grant_proposal\": {\n    \"schema\": \"runx.security.one_time_grant_proposal.v1\",\n    \"proposal_id\": \"grant-proposal-req-2026-06-23-001\",\n    \"subject_id\": \"user-17\",\n    \"action\": \"read\",\n    \"resource\": \"prod/payments/logs/service-a\",\n    \"scope\": \"logs.read:prod/payments/service-a\",\n    \"ttl_minutes\": 120,\n    \"approval_gate\": \"human_approval_required\",\n    \"ticket_id\": \"INC-2042\",\n    \"justification\": \"Investigate incident INC-2042 elevated payment retries.\",\n    \"policy_id\": \"access-policy-demo-v1\",\n    \"issued_by_skill\": false,\n    \"execution_status\": \"proposal_only\",\n    \"handoff\": {\n      \"catalog_skill\": \"least-privilege-auditor\",\n      \"requires_human_approval\": true\n    }\n  },\n  \"evidence_json\": {\n    \"schema\": \"frantic.delivery.evidence.v1\",\n    \"artifact\": \"access-request-review\",\n    \"observations\": {\n      \"request_id\": \"req-2026-06-23-001\",\n      \"policy_id\": \"access-policy-demo-v1\",\n      \"policy_digest\": \"sha256:fed71a99fc94be00827e5a8fc8678ee5d07b3ff9fb2830bc3b718cff29bb8a9c\",\n      \"request_digest\": \"sha256:42e9ee73c27845ed1fea00efce5f1d509b9bb97322d8c891ed74a78a14681d5a\",\n      \"entitlement_digest\": \"sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7\",\n      \"subject_id\": \"user-17\",\n      \"requester_roles\": [\n        \"oncall_engineer\"\n      ],\n      \"action\": \"read\",\n      \"resource\": \"prod/payments/logs/service-a\",\n      \"requested_scope\": \"logs.read:prod/payments/service-a/*\",\n      \"decision\": \"grant\",\n      \"least_privilege_scope\": \"logs.read:prod/payments/service-a\",\n      \"ttl_minutes\": 120,\n      \"approval_gate\": \"human_approval_required\",\n      \"current_grant_count\": 1,\n      \"reasons\": [\n        \"request matches allowed role, action, resource, and scope prefix\",\n        \"ttl bounded to 120 minutes by policy max 240\",\n        \"proposal is gated; no access is issued by this skill\"\n      ],\n      \"evidence_refs\": [\n        \"request:req-2026-06-23-001\",\n        \"policy:access-policy-demo-v1\",\n        \"entitlements:user-17\"\n      ]\n    }\n  },\n  \"report\": \"# access-request-review report\\n\\nRequest: req-2026-06-23-001\\nSubject: user-17\\nPolicy: access-policy-demo-v1\\nDecision: grant\\nResource: prod/payments/logs/service-a\\nRequested scope: logs.read:prod/payments/service-a/*\\nLeast-privilege scope: logs.read:prod/payments/service-a\\nTTL: 120 minutes\\nApproval gate: human_approval_required\\n\\n## Reasons\\n- request matches allowed role, action, resource, and scope prefix\\n- ttl bounded to 120 minutes by policy max 240\\n- proposal is gated; no access is issued by this skill\\n\\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\\nThis skill does not mutate grants, move secrets, or call identity-provider APIs.\"\n}\n",
+    "stdout": "{\n  \"decision_packet\": {\n    \"schema\": \"runx.security.access_request_review.v1\",\n    \"decision\": \"grant\",\n    \"request_id\": \"req-2026-06-23-001\",\n    \"subject_id\": \"user-17\",\n    \"objective\": \"Dogfood access request review for Frantic bounty 55.\",\n    \"policy_id\": \"access-policy-demo-v1\",\n    \"resource\": \"prod/payments/logs/service-a\",\n    \"action\": \"read\",\n    \"requested_scope\": \"logs.read:prod/payments/service-a/*\",\n    \"least_privilege_scope\": \"logs.read:prod/payments/service-a\",\n    \"ttl_minutes\": 120,\n    \"approval_gate\": \"human_approval_required\",\n    \"escalation\": {\n      \"required\": true,\n      \"lane\": \"human_approval_required\",\n      \"reason\": \"one-time grant proposal requires human approval before any access is issued\",\n      \"ticket_id\": \"INC-2042\"\n    },\n    \"reasons\": [\n      \"request matches allowed role, action, resource, and scope prefix\",\n      \"ttl bounded to 120 minutes by policy max 240\",\n      \"proposal is gated; no access is issued by this skill\"\n    ],\n    \"evidence_refs\": [\n      \"request:req-2026-06-23-001\",\n      \"policy:access-policy-demo-v1\",\n      \"entitlements:user-17\"\n    ],\n    \"safeguards\": {\n      \"read_only\": true,\n      \"mutates_grants\": false,\n      \"executes_grant\": false,\n      \"requires_human_approval\": true\n    }\n  },\n  \"grant_proposal\": {\n    \"schema\": \"runx.security.one_time_grant_proposal.v1\",\n    \"proposal_id\": \"grant-proposal-req-2026-06-23-001\",\n    \"subject_id\": \"user-17\",\n    \"action\": \"read\",\n    \"resource\": \"prod/payments/logs/service-a\",\n    \"scope\": \"logs.read:prod/payments/service-a\",\n    \"ttl_minutes\": 120,\n    \"approval_gate\": \"human_approval_required\",\n    \"ticket_id\": \"INC-2042\",\n    \"justification\": \"Investigate incident INC-2042 elevated payment retries.\",\n    \"policy_id\": \"access-policy-demo-v1\",\n    \"issued_by_skill\": false,\n    \"execution_status\": \"proposal_only\",\n    \"handoff\": {\n      \"catalog_skill\": \"least-privilege-auditor\",\n      \"requires_human_approval\": true\n    }\n  },\n  \"escalation\": {\n    \"required\": true,\n    \"lane\": \"human_approval_required\",\n    \"reason\": \"one-time grant proposal requires human approval before any access is issued\",\n    \"ticket_id\": \"INC-2042\"\n  },\n  \"evidence_json\": {\n    \"schema\": \"frantic.delivery.evidence.v1\",\n    \"artifact\": \"access-request-review\",\n    \"observations\": {\n      \"request_id\": \"req-2026-06-23-001\",\n      \"policy_id\": \"access-policy-demo-v1\",\n      \"policy_digest\": \"sha256:fed71a99fc94be00827e5a8fc8678ee5d07b3ff9fb2830bc3b718cff29bb8a9c\",\n      \"request_digest\": \"sha256:42e9ee73c27845ed1fea00efce5f1d509b9bb97322d8c891ed74a78a14681d5a\",\n      \"entitlement_digest\": \"sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7\",\n      \"subject_id\": \"user-17\",\n      \"requester_roles\": [\n        \"oncall_engineer\"\n      ],\n      \"action\": \"read\",\n      \"resource\": \"prod/payments/logs/service-a\",\n      \"requested_scope\": \"logs.read:prod/payments/service-a/*\",\n      \"decision\": \"grant\",\n      \"least_privilege_scope\": \"logs.read:prod/payments/service-a\",\n      \"ttl_minutes\": 120,\n      \"approval_gate\": \"human_approval_required\",\n      \"escalation\": {\n        \"required\": true,\n        \"lane\": \"human_approval_required\",\n        \"reason\": \"one-time grant proposal requires human approval before any access is issued\",\n        \"ticket_id\": \"INC-2042\"\n      },\n      \"escalation_path\": \"human_approval_required\",\n      \"current_grant_count\": 1,\n      \"reasons\": [\n        \"request matches allowed role, action, resource, and scope prefix\",\n        \"ttl bounded to 120 minutes by policy max 240\",\n        \"proposal is gated; no access is issued by this skill\"\n      ],\n      \"evidence_refs\": [\n        \"request:req-2026-06-23-001\",\n        \"policy:access-policy-demo-v1\",\n        \"entitlements:user-17\"\n      ]\n    }\n  },\n  \"report\": \"# access-request-review report\\n\\nRequest: req-2026-06-23-001\\nSubject: user-17\\nPolicy: access-policy-demo-v1\\nDecision: grant\\nResource: prod/payments/logs/service-a\\nRequested scope: logs.read:prod/payments/service-a/*\\nLeast-privilege scope: logs.read:prod/payments/service-a\\nTTL: 120 minutes\\nApproval gate: human_approval_required\\nEscalation: human_approval_required\\n\\n## Reasons\\n- request matches allowed role, action, resource, and scope prefix\\n- ttl bounded to 120 minutes by policy max 240\\n- proposal is gated; no access is issued by this skill\\n\\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\\nThis skill does not mutate grants, move secrets, or call identity-provider APIs.\"\n}\n",
     "structured_output": {
       "decision_packet": {
         "action": "read",
         "approval_gate": "human_approval_required",
         "decision": "grant",
+        "escalation": {
+          "lane": "human_approval_required",
+          "reason": "one-time grant proposal requires human approval before any access is issued",
+          "required": true,
+          "ticket_id": "INC-2042"
+        },
         "evidence_refs": [
           "request:req-2026-06-23-001",
           "policy:access-policy-demo-v1",
@@ -125,6 +150,12 @@
         "subject_id": "user-17",
         "ttl_minutes": 120
       },
+      "escalation": {
+        "lane": "human_approval_required",
+        "reason": "one-time grant proposal requires human approval before any access is issued",
+        "required": true,
+        "ticket_id": "INC-2042"
+      },
       "evidence_json": {
         "artifact": "access-request-review",
         "observations": {
@@ -133,6 +164,13 @@
           "current_grant_count": 1,
           "decision": "grant",
           "entitlement_digest": "sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7",
+          "escalation": {
+            "lane": "human_approval_required",
+            "reason": "one-time grant proposal requires human approval before any access is issued",
+            "required": true,
+            "ticket_id": "INC-2042"
+          },
+          "escalation_path": "human_approval_required",
           "evidence_refs": [
             "request:req-2026-06-23-001",
             "policy:access-policy-demo-v1",
@@ -177,7 +215,7 @@
         "ticket_id": "INC-2042",
         "ttl_minutes": 120
       },
-      "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
+      "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\nEscalation: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
     }
   },
   "payload": {
@@ -185,6 +223,12 @@
       "action": "read",
       "approval_gate": "human_approval_required",
       "decision": "grant",
+      "escalation": {
+        "lane": "human_approval_required",
+        "reason": "one-time grant proposal requires human approval before any access is issued",
+        "required": true,
+        "ticket_id": "INC-2042"
+      },
       "evidence_refs": [
         "request:req-2026-06-23-001",
         "policy:access-policy-demo-v1",
@@ -211,6 +255,12 @@
       "subject_id": "user-17",
       "ttl_minutes": 120
     },
+    "escalation": {
+      "lane": "human_approval_required",
+      "reason": "one-time grant proposal requires human approval before any access is issued",
+      "required": true,
+      "ticket_id": "INC-2042"
+    },
     "evidence_json": {
       "artifact": "access-request-review",
       "observations": {
@@ -219,6 +269,13 @@
         "current_grant_count": 1,
         "decision": "grant",
         "entitlement_digest": "sha256:39f793146c7d0523fe0a0267640093d3a124f3efa49ce2bd128075a7056fc4e7",
+        "escalation": {
+          "lane": "human_approval_required",
+          "reason": "one-time grant proposal requires human approval before any access is issued",
+          "required": true,
+          "ticket_id": "INC-2042"
+        },
+        "escalation_path": "human_approval_required",
         "evidence_refs": [
           "request:req-2026-06-23-001",
           "policy:access-policy-demo-v1",
@@ -263,14 +320,14 @@
       "ticket_id": "INC-2042",
       "ttl_minutes": 120
     },
-    "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
+    "report": "# access-request-review report\n\nRequest: req-2026-06-23-001\nSubject: user-17\nPolicy: access-policy-demo-v1\nDecision: grant\nResource: prod/payments/logs/service-a\nRequested scope: logs.read:prod/payments/service-a/*\nLeast-privilege scope: logs.read:prod/payments/service-a\nTTL: 120 minutes\nApproval gate: human_approval_required\nEscalation: human_approval_required\n\n## Reasons\n- request matches allowed role, action, resource, and scope prefix\n- ttl bounded to 120 minutes by policy max 240\n- proposal is gated; no access is issued by this skill\n\nGrant proposal grant-proposal-req-2026-06-23-001 is proposal-only and requires human_approval_required.\nThis skill does not mutate grants, move secrets, or call identity-provider APIs."
   },
   "receipt": {
     "acts": [
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-06-23T04:33:57.734Z",
+          "closed_at": "2026-06-23T04:56:31.382Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -325,7 +382,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-06-23T04:33:57.734Z",
+    "created_at": "2026-06-23T04:56:31.382Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -353,8 +410,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:e23e5164c906d73bb1383d24f14eba0aeed003232677627740150a444fb43df7",
-    "id": "sha256:fc425c86f5c9340c8e2fa38bac0c5ad88ccb01489a5cb9cf7cfafcc88ccbff0e",
+    "digest": "sha256:cc90a797df2cb4fe9be28fd25690f3e9e1a43b4740f1840272c8a79d501dba71",
+    "id": "sha256:a4ba985040f3e89d93c2ac2b11ffc5f916d172fb878ec34d3484270958df7428",
     "idempotency": {
       "content_hash": "sha256:run_default_8e438e086dc8-default-content",
       "intent_key": "sha256:run_default_8e438e086dc8-default-intent",
@@ -371,7 +428,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-06-23T04:33:57.734Z",
+      "closed_at": "2026-06-23T04:56:31.382Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -382,14 +439,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-06-23T04:33:57.734Z",
+      "last_observed_at": "2026-06-23T04:56:31.382Z",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:IPrUVe8iFzP-IXATGMrUFdDzcc0qPFnVougfSw53RGrSsDS3IlTkOOKbIDtwNFy6752Pi5kWhDwjWuv6BPxZBg"
+      "value": "base64:izf_-fgxEdZpLGTEt0tzYgpHC0rXLPvCxpHtbs0IEomzxV4p9uBBEuojIWFhIggqk9Oe6QaPxZur0ytM5S3gCw"
     },
     "subject": {
       "commitments": [],
@@ -400,7 +457,7 @@
       }
     }
   },
-  "receipt_id": "sha256:fc425c86f5c9340c8e2fa38bac0c5ad88ccb01489a5cb9cf7cfafcc88ccbff0e",
+  "receipt_id": "sha256:a4ba985040f3e89d93c2ac2b11ffc5f916d172fb878ec34d3484270958df7428",
   "run_id": "run_default_8e438e086dc8",
   "schema": "runx.skill_run.v1",
   "skill_name": "access-request-review",

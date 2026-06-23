@@ -10,6 +10,7 @@ const objective = stringValue(inputs.objective) || "Review access request.";
 const normalized = normalizeInputs(request, policy, entitlements);
 const decision = decide(normalized);
 const grantProposal = decision.decision === "grant" ? buildGrantProposal(normalized, decision) : null;
+const escalation = buildEscalation(normalized, decision);
 
 const decisionPacket = {
   schema: "runx.security.access_request_review.v1",
@@ -24,6 +25,7 @@ const decisionPacket = {
   least_privilege_scope: decision.leastPrivilegeScope,
   ttl_minutes: decision.ttlMinutes,
   approval_gate: decision.approvalGate,
+  escalation,
   reasons: decision.reasons,
   evidence_refs: decision.evidenceRefs,
   safeguards: {
@@ -52,6 +54,8 @@ const evidenceJson = {
     least_privilege_scope: decision.leastPrivilegeScope,
     ttl_minutes: decision.ttlMinutes,
     approval_gate: decision.approvalGate,
+    escalation,
+    escalation_path: escalation.lane,
     current_grant_count: normalized.currentGrants.length,
     reasons: decision.reasons,
     evidence_refs: decision.evidenceRefs,
@@ -61,7 +65,7 @@ const evidenceJson = {
 const report = renderReport(decisionPacket, grantProposal);
 
 process.stdout.write(
-  `${JSON.stringify({ decision_packet: decisionPacket, grant_proposal: grantProposal, evidence_json: evidenceJson, report }, null, 2)}\n`,
+  `${JSON.stringify({ decision_packet: decisionPacket, grant_proposal: grantProposal, escalation, evidence_json: evidenceJson, report }, null, 2)}\n`,
 );
 
 function normalizeInputs(request, policy, entitlements) {
@@ -232,6 +236,23 @@ function buildGrantProposal(input, decision) {
   };
 }
 
+function buildEscalation(input, decision) {
+  if (decision.decision === "grant") {
+    return {
+      required: true,
+      lane: decision.approvalGate,
+      reason: "one-time grant proposal requires human approval before any access is issued",
+      ticket_id: input.ticketId || null,
+    };
+  }
+  return {
+    required: decision.decision !== "deny",
+    lane: decision.decision === "deny" ? "not_applicable" : "human_review",
+    reason: decision.reasons[0] || "request did not satisfy policy",
+    ticket_id: input.ticketId || null,
+  };
+}
+
 function firstRolePolicy(roles, allowedRoles) {
   for (const role of roles) {
     if (isObject(allowedRoles[role])) return allowedRoles[role];
@@ -274,6 +295,7 @@ function renderReport(packet, grantProposal) {
     `Least-privilege scope: ${packet.least_privilege_scope || "none"}`,
     `TTL: ${packet.ttl_minutes} minutes`,
     `Approval gate: ${packet.approval_gate}`,
+    `Escalation: ${packet.escalation.required ? packet.escalation.lane : "none"}`,
     "",
     "## Reasons",
     ...packet.reasons.map((reason) => `- ${reason}`),

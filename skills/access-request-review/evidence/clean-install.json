@@ -3,41 +3,41 @@
   "registry": {
     "action": "install",
     "source": "remote",
-    "ref": "lubuseb/access-request-review@sha-fefdaf21eb13",
+    "ref": "lubuseb/access-request-review@sha-844f75658a9f",
     "install": {
       "status": "installed",
-      "destination": "/tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/sha-fefdaf21eb13/SKILL.md",
+      "destination": "/tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/sha-844f75658a9f/SKILL.md",
       "skill_name": "access-request-review",
       "source": "runx-registry",
       "source_label": "runx registry",
       "skill_id": "lubuseb/access-request-review",
-      "version": "sha-fefdaf21eb13",
-      "digest": "sha256:64dd95e8a5f5fd2e34a07710f9256596468e3d0399efc97ffb61286b37c5dc83",
-      "profile_digest": "sha256:74de3a7ad9c53687034e0751b415adf4039a4234fb954898c1d2fb1c9c31d3f5",
-      "profile_state_path": "/tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/sha-fefdaf21eb13/.runx/profile.json",
+      "version": "sha-844f75658a9f",
+      "digest": "sha256:b1e8d2b79039ff87d8dcc34fbbeb2f2c5d51cee5e7df305770855c271b2ccf59",
+      "profile_digest": "sha256:865d7c9c5be962b752080face77831ddbf4d110b6fae85ee40baba3dae6b436e",
+      "profile_state_path": "/tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/sha-844f75658a9f/.runx/profile.json",
       "runner_names": [
         "default"
       ],
       "trust_tier": "community"
     },
     "receipt_metadata": {
-      "destination": "/tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/sha-fefdaf21eb13/SKILL.md",
-      "digest": "sha256:64dd95e8a5f5fd2e34a07710f9256596468e3d0399efc97ffb61286b37c5dc83",
+      "destination": "/tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/sha-844f75658a9f/SKILL.md",
+      "digest": "sha256:b1e8d2b79039ff87d8dcc34fbbeb2f2c5d51cee5e7df305770855c271b2ccf59",
       "install_count": 1,
-      "package_digest": "fb9e74d2f776897866e5a6e431c5e94da782ede2ef0451d31a3e39494618c5cf",
-      "profile_digest": "sha256:74de3a7ad9c53687034e0751b415adf4039a4234fb954898c1d2fb1c9c31d3f5",
+      "package_digest": "4dadabe78e9b528dd7b256eaf9bbefb7a272e4c0e1edc401ec6de2f9758d858a",
+      "profile_digest": "sha256:865d7c9c5be962b752080face77831ddbf4d110b6fae85ee40baba3dae6b436e",
       "publisher": {
         "display_name": "LubuSeb",
         "handle": "lubuseb",
         "id": "user_53f00ae7ec2363e37ac6ff68",
         "kind": "user"
       },
-      "ref": "lubuseb/access-request-review@sha-fefdaf21eb13",
+      "ref": "lubuseb/access-request-review@sha-844f75658a9f",
       "skill_id": "lubuseb/access-request-review",
       "source_label": "runx registry",
       "status": "installed",
       "trust_tier": "community",
-      "version": "sha-fefdaf21eb13"
+      "version": "sha-844f75658a9f"
     }
   }
 }

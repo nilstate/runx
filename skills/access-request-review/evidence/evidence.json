@@ -5,11 +5,11 @@
   "package": {
     "owner": "lubuseb",
     "name": "access-request-review",
-    "version": "sha-fefdaf21eb13",
-    "registry_ref": "lubuseb/access-request-review@sha-fefdaf21eb13",
-    "public_url": "https://runx.ai/x/lubuseb/access-request-review@sha-fefdaf21eb13",
-    "digest": "64dd95e8a5f5fd2e34a07710f9256596468e3d0399efc97ffb61286b37c5dc83",
-    "profile_digest": "74de3a7ad9c53687034e0751b415adf4039a4234fb954898c1d2fb1c9c31d3f5"
+    "version": "sha-844f75658a9f",
+    "registry_ref": "lubuseb/access-request-review@sha-844f75658a9f",
+    "public_url": "https://runx.ai/x/lubuseb/access-request-review@sha-844f75658a9f",
+    "digest": "b1e8d2b79039ff87d8dcc34fbbeb2f2c5d51cee5e7df305770855c271b2ccf59",
+    "profile_digest": "865d7c9c5be962b752080face77831ddbf4d110b6fae85ee40baba3dae6b436e"
   },
   "source": {
     "pr_url": "https://github.com/runxhq/runx/pull/123",
@@ -19,19 +19,42 @@
   },
   "runtime": {
     "runx_version": "runx-cli 0.6.13",
-    "receipt_ref": "runx:receipt:sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21",
-    "receipt_id": "sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21",
+    "receipt_ref": "runx:receipt:sha256:6f8bddcc14381c6402cc308762b33f84f1525a6e752792940b17e95eb1d16458",
+    "receipt_id": "sha256:6f8bddcc14381c6402cc308762b33f84f1525a6e752792940b17e95eb1d16458",
     "verify_verdict": "valid",
     "signature_mode": "production"
   },
   "dogfood": {
-    "command": "runx skill lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --input-json access_request=<fixture> --input-json policy=<fixture> --input-json current_entitlements=<fixture> --json",
-    "receipt_ref": "runx:receipt:sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21",
+    "command": "runx skill lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai --input-json access_request=<fixture> --input-json policy=<fixture> --input-json current_entitlements=<fixture> --json",
+    "package": "lubuseb/access-request-review@sha-844f75658a9f",
+    "input": "fixtures/grant-request.json",
+    "receipt_ref": "runx:receipt:sha256:6f8bddcc14381c6402cc308762b33f84f1525a6e752792940b17e95eb1d16458",
     "verification_json": "hosted-verification.json",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "least-privilege-grant-proposal",
+        "status": "sealed"
+      },
+      {
+        "name": "deny-for-disallowed-resource",
+        "status": "sealed"
+      },
+      {
+        "name": "missing-justification-fails-closed",
+        "status": "refused"
+      }
+    ],
     "decision": "grant",
     "least_privilege_scope": "logs.read:prod/payments/service-a",
     "ttl_minutes": 120,
     "approval_gate": "human_approval_required",
+    "escalation": {
+      "lane": "human_approval_required",
+      "reason": "one-time grant proposal requires human approval before any access is issued",
+      "required": true,
+      "ticket_id": "INC-2042"
+    },
     "execution_status": "proposal_only",
     "safeguards": [
       "does not issue access",
@@ -42,9 +65,15 @@
   },
   "observations": [
     {
+      "name": "runx_version",
+      "status": "passed",
+      "detail": "npx --yes @runxhq/cli@latest --version returned: runx-cli 0.6.13",
+      "evidence_ref": "runx-version.txt"
+    },
+    {
       "name": "published_registry_package",
       "status": "passed",
-      "detail": "runx registry publish completed successfully for lubuseb/access-request-review@sha-fefdaf21eb13 on https://api.runx.ai.",
+      "detail": "runx registry publish completed successfully for lubuseb/access-request-review@sha-844f75658a9f on https://api.runx.ai.",
       "evidence_ref": "registry-publish.json"
     },
     {
@@ -56,13 +85,19 @@
     {
       "name": "clean_install",
       "status": "passed",
-      "detail": "runx add installed lubuseb/access-request-review@sha-fefdaf21eb13 into a clean directory.",
+      "detail": "runx add installed lubuseb/access-request-review@sha-844f75658a9f into a clean directory.",
       "evidence_ref": "clean-install.json"
     },
     {
       "name": "hosted_harness",
       "status": "passed",
-      "detail": "The installed registry package passed least-privilege grant, deny, and fail-closed harness cases.",
+      "detail": "The installed registry package passed least-privilege grant, deny, and fail-closed harness cases: least-privilege-grant-proposal=sealed, deny-for-disallowed-resource=sealed, missing-justification-fails-closed=refused.",
+      "evidence_ref": "hosted-harness.json"
+    },
+    {
+      "name": "harness_case_names",
+      "status": "passed",
+      "detail": "Harness cases: least-privilege-grant-proposal=sealed; deny-for-disallowed-resource=sealed; missing-justification-fails-closed=refused.",
       "evidence_ref": "hosted-harness.json"
     },
     {
@@ -72,9 +107,21 @@
       "evidence_ref": "hosted-dogfood-output.json"
     },
     {
+      "name": "escalation_path",
+      "status": "passed",
+      "detail": "Dogfood grant proposal escalates to human_approval_required and remains proposal-only; the skill never issues live access.",
+      "evidence_ref": "hosted-dogfood-output.json"
+    },
+    {
       "name": "dogfood_receipt_verified",
       "status": "passed",
-      "detail": "runx verify accepted receipt sha256:db7a0c11abce65a3b0561308d75b46db38b4e36598021534b6f268343863ea21 with no findings.",
+      "detail": "runx verify accepted receipt sha256:6f8bddcc14381c6402cc308762b33f84f1525a6e752792940b17e95eb1d16458 with no findings.",
+      "evidence_ref": "hosted-verification.json"
+    },
+    {
+      "name": "receipt_id",
+      "status": "passed",
+      "detail": "Post-publish dogfood receipt id: sha256:6f8bddcc14381c6402cc308762b33f84f1525a6e752792940b17e95eb1d16458.",
       "evidence_ref": "hosted-verification.json"
     },
     {
@@ -88,10 +135,10 @@
     "npx --yes @runxhq/cli@latest --version",
     "npx --yes @runxhq/cli@latest harness /mnt/f/BountyBar/repos/runx/skills/access-request-review --json",
     "npx --yes @runxhq/cli@latest registry publish /mnt/f/BountyBar/repos/runx/skills/access-request-review/SKILL.md --registry https://api.runx.ai --json",
-    "npx --yes @runxhq/cli@latest registry read lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --json",
-    "npx --yes @runxhq/cli@latest add lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --to /tmp/runx-access-request-review-clean-install --json",
+    "npx --yes @runxhq/cli@latest registry read lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai --json",
+    "npx --yes @runxhq/cli@latest add lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai --to /tmp/runx-access-request-review-clean-install --json",
     "npx --yes @runxhq/cli@latest harness /tmp/runx-access-request-review-clean-install/lubuseb/access-request-review/<version> --json",
-    "npx --yes @runxhq/cli@latest skill lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai --input-json access_request=<fixture> --input-json policy=<fixture> --input-json current_entitlements=<fixture> --json",
+    "npx --yes @runxhq/cli@latest skill lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai --input-json access_request=<fixture> --input-json policy=<fixture> --input-json current_entitlements=<fixture> --json",
     "npx --yes @runxhq/cli@latest verify --receipt-dir /tmp/runx-access-request-review-hosted-dogfood-receipts --json"
   ]
 }

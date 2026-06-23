@@ -45,7 +45,7 @@ policy, and current entitlements, then returns `grant`, `deny`, or
 The skill never creates access, calls identity providers, sends approval
 messages, stores credentials, or widens authority outside the supplied policy.
 When access is allowed it emits a least-privilege grant proposal with a bounded
-TTL, exact scope, approval gate, and evidence citations.
+TTL, exact scope, approval gate, escalation lane, and evidence citations.
 
 ## Inputs
 
@@ -62,6 +62,7 @@ The runner returns JSON with:
 
 - `decision_packet`: typed decision packet.
 - `grant_proposal`: one-time proposal when the decision is `grant`.
+- `escalation`: human approval or denial escalation lane for the request.
 - `evidence_json`: compact review evidence for external verification.
 - `report`: human-readable review summary.
 

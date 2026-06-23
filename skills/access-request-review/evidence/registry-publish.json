@@ -8,12 +8,12 @@
       "skill_id": "lubuseb/access-request-review",
       "owner": "lubuseb",
       "name": "access-request-review",
-      "version": "sha-fefdaf21eb13",
-      "digest": "64dd95e8a5f5fd2e34a07710f9256596468e3d0399efc97ffb61286b37c5dc83",
-      "profile_digest": "74de3a7ad9c53687034e0751b415adf4039a4234fb954898c1d2fb1c9c31d3f5",
+      "version": "sha-844f75658a9f",
+      "digest": "b1e8d2b79039ff87d8dcc34fbbeb2f2c5d51cee5e7df305770855c271b2ccf59",
+      "profile_digest": "865d7c9c5be962b752080face77831ddbf4d110b6fae85ee40baba3dae6b436e",
       "trust_tier": "community",
-      "install_command": "runx add lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai",
-      "run_command": "runx skill lubuseb/access-request-review@sha-fefdaf21eb13 --registry https://api.runx.ai",
+      "install_command": "runx add lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai",
+      "run_command": "runx skill lubuseb/access-request-review@sha-844f75658a9f --registry https://api.runx.ai",
       "public_url": "https://runx.ai/x/lubuseb/access-request-review"
     }
   }

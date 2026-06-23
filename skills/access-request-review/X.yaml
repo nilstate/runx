@@ -157,6 +157,7 @@ runners:
     outputs:
       decision_packet: object
       grant_proposal: object
+      escalation: object
       evidence_json: object
       report: string
     artifacts:
