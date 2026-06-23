@@ -1,45 +1,113 @@
 {
   "schema": "frantic.evidence.v1",
   "summary": "Published and independently installed contract-review package. The post-publish dogfood run extracted three supplied clauses, produced three playbook-cited redlines, emitted no effects, and generated a sealed receipt that verifies as valid.",
-  "observations": {
-    "runx_version": "runx-cli 0.6.13",
-    "publisher_owner": "luismireles12",
-    "package_name": "contract-review",
-    "version": "sha-2a3aa46f2351",
-    "registry_ref": "luismireles12/contract-review@sha-2a3aa46f2351",
-    "public_url": "https://runx.ai/x/luismireles12/contract-review@sha-2a3aa46f2351",
-    "pr_url": "https://github.com/runxhq/runx/pull/128",
-    "source_url": "https://github.com/luismireles12/runx/tree/feat/contract-review/skills/contract-review",
-    "x_yaml": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/X.yaml",
-    "skill_md": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/SKILL.md",
-    "verification_json": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/references/verification.json",
-    "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/contract-review/SKILL.md --registry https://api.runx.ai --json",
-    "install_command": "runx add luismireles12/contract-review@sha-2a3aa46f2351 --registry https://api.runx.ai --to ./clean-install --json",
-    "registry_read_command": "runx registry read luismireles12/contract-review@sha-2a3aa46f2351 --registry https://api.runx.ai --json",
-    "harness_cases": [
-      {"name": "cited-redlines", "status": "sealed"},
-      {"name": "refuse-non-contract", "status": "refused"}
-    ],
-    "hosted_harness_status": "passed during authenticated registry publish",
-    "dogfood_command": "runx skill luismireles12/contract-review@sha-2a3aa46f2351 --registry https://api.runx.ai -R ./published-dogfood --input-json contract=<bounded-public-example> --input-json playbook=<bounded-public-playbook> --json",
-    "receipt_ref": "runx:receipt:sha256:35b48f3bb480b8445f1b98ccf9c7866bf71ebcad83245d2e5edc9457584835f0",
-    "receipt_url": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/references/dogfood-receipt.json",
-    "verify_command": "runx verify sha256:35b48f3bb480b8445f1b98ccf9c7866bf71ebcad83245d2e5edc9457584835f0 --receipt-dir ./published-dogfood --json",
-    "verify_verdict": {"valid": true, "signature_mode": "production", "findings": []},
-    "clause_list": ["payment-1", "termination-1", "liability-1"],
-    "redlines": [
-      {"clause_id": "liability-1", "rule_id": "liability-cap", "severity": "high", "citation": "Liability must contain an express cap tied to fees."},
-      {"clause_id": "payment-1", "rule_id": "payment-net-30", "severity": "medium", "citation": "Invoice terms must not exceed 30 days."},
-      {"clause_id": "termination-1", "rule_id": "termination-30", "severity": "medium", "citation": "Termination notice must not exceed 30 days."}
-    ],
-    "risk_summary": {"level": "high", "clause_count": 3, "redline_count": 3, "read_only": true, "effects_emitted": []},
-    "new_user_flow": [
-      "Install the exact registry ref with the install command.",
-      "Run it with bounded contract and playbook JSON inputs.",
-      "Save the emitted receipt in a receipt directory.",
-      "Verify the receipt with runx verify and an admitted signing key."
-    ]
-  },
+  "observations": [
+    {
+      "id": "cli-version",
+      "command": "runx --version",
+      "output": "runx-cli 0.6.13",
+      "details": {"publisher_owner": "luismireles12", "package_name": "contract-review"}
+    },
+    {
+      "id": "source-provenance",
+      "command": "gh pr view 128 --repo runxhq/runx",
+      "output": "Public PR open with the contract-review package and evidence.",
+      "details": {
+        "pr_url": "https://github.com/runxhq/runx/pull/128",
+        "source_url": "https://github.com/luismireles12/runx/tree/feat/contract-review/skills/contract-review",
+        "x_yaml": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/X.yaml",
+        "skill_md": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/SKILL.md",
+        "verification_json": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/references/verification.json"
+      }
+    },
+    {
+      "id": "local-harness",
+      "command": "runx harness skills/contract-review --json",
+      "output": "passed: 2 cases, 0 assertion errors",
+      "details": {
+        "cases": [
+          {"name": "cited-redlines", "status": "sealed"},
+          {"name": "refuse-non-contract", "status": "refused"}
+        ]
+      }
+    },
+    {
+      "id": "publish",
+      "command": "runx login --provider github --for publish; runx registry publish ./skills/contract-review/SKILL.md --registry https://api.runx.ai --json",
+      "output": "published",
+      "details": {
+        "version": "sha-2a3aa46f2351",
+        "registry_ref": "luismireles12/contract-review@sha-2a3aa46f2351",
+        "public_url": "https://runx.ai/x/luismireles12/contract-review@sha-2a3aa46f2351",
+        "hosted_harness_status": "passed"
+      }
+    },
+    {
+      "id": "registry-read",
+      "command": "runx registry read luismireles12/contract-review@sha-2a3aa46f2351 --registry https://api.runx.ai --json",
+      "output": "status: success; owner: luismireles12; trust_tier: community",
+      "details": {
+        "digest": "83995c7034d7a9479bae246742b66c1121cc0320614a45e58825ef4dd038d798",
+        "profile_digest": "5d51769d898f4b35dc9cce4000f71992f5bd1e41978a3800ae47b8b77c457175"
+      }
+    },
+    {
+      "id": "clean-install",
+      "command": "runx add luismireles12/contract-review@sha-2a3aa46f2351 --registry https://api.runx.ai --to ./clean-install --json",
+      "output": "status: installed",
+      "details": {"install_count": 1}
+    },
+    {
+      "id": "dogfood",
+      "command": "runx skill luismireles12/contract-review@sha-2a3aa46f2351 --registry https://api.runx.ai -R ./published-dogfood --input-json contract=<bounded-public-example> --input-json playbook=<bounded-public-playbook> --json",
+      "output": "status: sealed; 3 clauses; 3 redlines; risk level high",
+      "details": {
+        "clause_list": ["payment-1", "termination-1", "liability-1"],
+        "receipt_ref": "runx:receipt:sha256:35b48f3bb480b8445f1b98ccf9c7866bf71ebcad83245d2e5edc9457584835f0"
+      }
+    },
+    {
+      "id": "cited-redlines",
+      "command": "inspect dogfood structured output",
+      "output": "Every redline cites a supplied clause and playbook rule.",
+      "details": {
+        "redlines": [
+          {"clause_id": "liability-1", "rule_id": "liability-cap", "severity": "high", "citation": "Liability must contain an express cap tied to fees."},
+          {"clause_id": "payment-1", "rule_id": "payment-net-30", "severity": "medium", "citation": "Invoice terms must not exceed 30 days."},
+          {"clause_id": "termination-1", "rule_id": "termination-30", "severity": "medium", "citation": "Termination notice must not exceed 30 days."}
+        ]
+      }
+    },
+    {
+      "id": "risk-and-effects",
+      "command": "inspect dogfood risk_summary",
+      "output": "high risk; read_only true; effects_emitted empty",
+      "details": {"clause_count": 3, "redline_count": 3, "read_only": true, "effects_emitted": []}
+    },
+    {
+      "id": "receipt-verification",
+      "command": "runx verify sha256:35b48f3bb480b8445f1b98ccf9c7866bf71ebcad83245d2e5edc9457584835f0 --receipt-dir ./published-dogfood --json",
+      "output": "valid: true",
+      "details": {
+        "signature_mode": "production",
+        "findings": [],
+        "receipt_url": "https://raw.githubusercontent.com/luismireles12/runx/feat/contract-review/skills/contract-review/references/dogfood-receipt.json"
+      }
+    },
+    {
+      "id": "new-user-flow",
+      "command": "install, run, and verify the published package",
+      "output": "No private context is required.",
+      "details": {
+        "steps": [
+          "Install the exact registry ref.",
+          "Run with bounded contract and playbook JSON.",
+          "Save the emitted receipt.",
+          "Verify it with runx verify."
+        ]
+      }
+    }
+  ],
   "dogfood": {
     "package": "luismireles12/contract-review@sha-2a3aa46f2351",
     "input": "Public synthetic cloud order form with payment, termination, and liability clauses plus an explicit commercial playbook.",
