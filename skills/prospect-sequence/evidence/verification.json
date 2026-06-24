@@ -5,14 +5,22 @@
   "package": "vidshidden/prospect-sequence@sha-f1f58b597581",
   "runx_version_output": "runx-cli 0.6.13",
   "public_url": "https://runx.ai/x/vidshidden/prospect-sequence",
+  "pr_url": "https://github.com/runxhq/runx/pull/142",
   "hosted_harness": {
     "status": "passed",
     "case_count": 3,
     "assertion_error_count": 0,
     "assertion_errors": [],
-    "case_names": ["public-sources-yield-sequence", "private-network-source-refused", "missing-public-sources-refused"],
-    "receipt_ids": ["sha256:c6aa0aa5942bff73f59d55aeec61bd4e716c2110b53576b7c8dc9ef2b15d8a12", "sha256:b7a867a68413d7212661e0ca1389ba7e7ce6522e2b72a69170aab96af48102ec", "sha256:7395c038164bf04eceff0a1c0c1d6df3a2c108d2233ef9967d9461c9e2a5c013"],
-    "graph_case_count": 0,
+    "case_names": [
+      "public-sources-yield-sequence",
+      "private-network-source-refused",
+      "missing-public-sources-refused"
+    ],
+    "receipt_ids": [
+      "sha256:c6aa0aa5942bff73f59d55aeec61bd4e716c2110b53576b7c8dc9ef2b15d8a12",
+      "sha256:b7a867a68413d7212661e0ca1389ba7e7ce6522e2b72a69170aab96af48102ec",
+      "sha256:7395c038164bf04eceff0a1c0c1d6df3a2c108d2233ef9967d9461c9e2a5c013"
+    ],
     "evidence_id": "runx-harness:vidshidden/prospect-sequence:sha-f1f58b597581",
     "evidence_url": "https://runx.ai/x/vidshidden/prospect-sequence#harness"
   },
@@ -22,8 +30,44 @@
     "observed": {
       "skill_id": "vidshidden/prospect-sequence",
       "version": "sha-f1f58b597581",
-      "digest": "ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
-      "profile_digest": "a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8"
+      "digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
+      "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8"
+    }
+  },
+  "dogfood_run": {
+    "command": "runx skill vidshidden/prospect-sequence@sha-f1f58b597581 --registry https://api.runx.ai --json",
+    "status": "sealed",
+    "receipt_id": "sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
+    "receipt_ref": "runx:receipt:sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
+    "distinct_from_harness_receipts": true,
+    "registry_provenance": {
+      "digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
+      "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "trust_state": "trusted",
+      "trust_tier": "community"
+    },
+    "output_observed": {
+      "source_count": 2,
+      "angle_citations": ["S2511ff", "S5d5ad6"],
+      "sequence_length": 3,
+      "send_proposal": "proposed",
+      "send_executor": "send-as",
+      "live_send_authorized": false
+    }
+  },
+  "dogfood_verify": {
+    "command": "runx verify --receipt-dir skills/prospect-sequence/evidence/dogfood-receipts --json",
+    "valid": true,
+    "signature_mode": "production",
+    "unreadable_files": [],
+    "target_tree": {
+      "root_receipt_id": "sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
+      "receipt_count": 1,
+      "valid": true,
+      "findings": []
     }
   },
   "direct_runner_success": {
@@ -37,22 +81,5 @@
   "direct_runner_refusal": {
     "status": "refused",
     "reason_code": "private_network_refused"
-  },
-  "dogfood_attempt": {
-    "command": "runx skill vidshidden/prospect-sequence@sha-f1f58b597581 --registry https://api.runx.ai --json",
-    "status": 1,
-    "registry_provenance": {
-      "digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
-      "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8",
-      "registry_key_id": "runx-registry-ed25519-v1",
-      "registry_source": "remote https://api.runx.ai",
-      "registry_source_fingerprint": "ba1ac16b631195fd",
-      "skill_id": "vidshidden/prospect-sequence",
-      "trust_state": "trusted",
-      "trust_tier": "community",
-      "version": "sha-f1f58b597581"
-    },
-    "error": {"code": "skill_error", "message": "receipt store is unreadable: os error 87"},
-    "note": "The Windows runx-cli 0.6.13 dogfood invocation resolved the published registry package and trust metadata, but failed when writing the local receipt store with os error 87. A Linux GitHub Actions dogfood workflow was added to the PR branch to produce a durable receipt once Actions is available on the fork."
   }
 }
