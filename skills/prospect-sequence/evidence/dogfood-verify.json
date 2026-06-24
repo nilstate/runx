@@ -24,6 +24,13 @@
       "findings": []
     },
     {
+      "root_receipt_id": "sha256:9392e43c3d0d4c774241c1e76138f466a60fcc7e134aa03daa714c3e4ffd4a52",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    },
+    {
       "root_receipt_id": "sha256:cc6e93598e000b33ceda7fa39181b1327809e56d437a69248ab22081583653be",
       "receipt_count": 1,
       "parent_missing": null,
