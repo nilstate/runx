@@ -14,6 +14,19 @@
           "message": "signature verifier could not resolve the issuer key"
         }
       ]
+    },
+    {
+      "root_receipt_id": "sha256:cc6e93598e000b33ceda7fa39181b1327809e56d437a69248ab22081583653be",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": false,
+      "findings": [
+        {
+          "code": "SignatureKeyMissing",
+          "path": "issuer",
+          "message": "signature verifier could not resolve the issuer key"
+        }
+      ]
     }
   ],
   "unreadable_files": [],
