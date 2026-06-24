@@ -7,6 +7,36 @@ catalog:
   visibility: public
   role: canonical
 
+harness:
+  cases:
+    - name: sealed-advisory-minimist-008
+      runner: default
+      inputs:
+        ecosystem: npm
+        project_name: fixture/minimist-direct
+        project_url: https://example.com/fixtures/minimist-direct
+        lockfile_path: fixtures/package-lock-advisory.json
+        osv_response_path: fixtures/osv-minimist-response.json
+        output_dir: artifacts/sealed-advisory-minimist-008
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: invalid-manifest-fails
+      runner: default
+      inputs:
+        ecosystem: npm
+        lockfile: {}
+        osv_response:
+          results: []
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
 runners:
   default:
     default: true
