@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "sealed-bounded-meeting-prep",
+    "stop-on-insufficient-context"
+  ],
+  "receipt_ids": [
+    "sha256:b656d6307dbe75d1dc8cbb57d71c747b50c24c4c55433d3a084977f97a70b312",
+    "sha256:025458a36ea59f0697c045e2471d04b7ae82d32a3bc1fe0e4a264710b9f1ee18"
+  ],
+  "graph_case_count": 0
+}

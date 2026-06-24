@@ -1,0 +1,62 @@
+{
+  "schema": "runx.meeting_prep.verification.v1",
+  "package": "luismireles12/meeting-prep@sha-91aa956278fa",
+  "public_url": "https://runx.ai/x/luismireles12/meeting-prep@sha-91aa956278fa",
+  "runx_cli_version": "runx-cli 0.6.13",
+  "local_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "sealed-bounded-meeting-prep",
+      "stop-on-insufficient-context"
+    ],
+    "receipt_ids": [
+      "sha256:b656d6307dbe75d1dc8cbb57d71c747b50c24c4c55433d3a084977f97a70b312",
+      "sha256:025458a36ea59f0697c045e2471d04b7ae82d32a3bc1fe0e4a264710b9f1ee18"
+    ]
+  },
+  "hosted_registry": {
+    "publish_status": "success",
+    "hosted_harness": "passed",
+    "digest": "660528d9e27cb8b709eb3cbfda28786da49ba792b5af0cb8158f75b735c097ea",
+    "profile_digest": "613d9adccee5ff2255e1be40c5e89916f59b3c6378f9ba6c6afbe52b34d478ee"
+  },
+  "clean_install": {
+    "status": "installed",
+    "command": "runx add luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai"
+  },
+  "dogfood": {
+    "status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:a3825b46c7964aa6979902c0618a6b14dd2910dda2e3681337499b868eca228b",
+    "verify_valid": true,
+    "verify_status": "success",
+    "verify_kid": "meeting-prep-dogfood",
+    "verify_public_key_base64": "jGa3D/g64ZWXC+ErMgBFujjhuUrbldgbpds6jTgMaoo="
+  },
+  "output_contract": {
+    "required": [
+      "agenda",
+      "decisions",
+      "risks",
+      "questions",
+      "follow_ups",
+      "citations"
+    ],
+    "observed": [
+      "agenda",
+      "decisions",
+      "risks",
+      "questions",
+      "follow_ups",
+      "citations"
+    ]
+  },
+  "safety": {
+    "private_context_read": false,
+    "external_effects_emitted": [],
+    "insufficient_context_refuses": true,
+    "cites_only_supplied_sources": true
+  },
+  "source_revision": "pinned by source_url and raw artifact refs at delivery",
+  "pr_url": "published in pr_url artifact ref at delivery"
+}

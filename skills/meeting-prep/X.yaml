@@ -1,0 +1,97 @@
+skill: meeting-prep
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed-bounded-meeting-prep
+      inputs:
+        event:
+          title: "Acme renewal risk review"
+          starts_at: "2026-06-25T16:00:00Z"
+          organizer: "maya@example.com"
+          attendees:
+            - name: "Maya Chen"
+              role: "CS lead"
+            - name: "Jordan Lee"
+              role: "Acme operations director"
+          purpose: "Decide whether to offer an implementation extension before renewal."
+          agenda_items:
+            - "Review unresolved launch blockers"
+            - "Confirm renewal decision owner"
+        attendee_notes:
+          - id: "note-cs-1"
+            subject: "Maya Chen"
+            text: "Maya owns the renewal plan and asked for a direct blocker list before the call."
+          - id: "note-acme-1"
+            subject: "Jordan Lee"
+            text: "Jordan is accountable for Acme rollout operations and requested a support timeline."
+        thread_snippets:
+          - id: "thread-042"
+            source: "support thread 042"
+            text: "Acme has two unresolved launch blockers: SSO mapping and CSV import validation."
+          - id: "thread-043"
+            source: "email snippet 043"
+            text: "Acme will decide renewal next Friday if the implementation plan is credible."
+        public_links:
+          - id: "link-status"
+            url: "https://status.example.test/acme-rollout"
+            summary: "Public project note says CSV import validation is in beta."
+        prep_goal: "renewal decision support"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: stop-on-insufficient-context
+      inputs:
+        event:
+          title: "Quick sync"
+        attendee_notes: []
+        thread_snippets: []
+        public_links: []
+      expect:
+        status: failure
+
+runners:
+  prep:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      event:
+        type: json
+        required: true
+        description: "Bounded calendar event details supplied by the caller."
+      attendee_notes:
+        type: json
+        required: false
+        description: "Array of supplied attendee or organization notes with IDs."
+      thread_snippets:
+        type: json
+        required: false
+        description: "Array of prior thread snippets with IDs and source labels."
+      public_links:
+        type: json
+        required: false
+        description: "Array of public links or already-read public summaries."
+      prep_goal:
+        type: string
+        required: false
+        description: "Optional focus for the brief."
+    outputs:
+      agenda: array
+      decisions: array
+      risks: array
+      questions: array
+      follow_ups: array
+      citations: array

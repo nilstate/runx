@@ -1,0 +1,54 @@
+{
+  "event": {
+    "title": "Acme renewal risk review",
+    "starts_at": "2026-06-25T16:00:00Z",
+    "organizer": "maya@example.com",
+    "attendees": [
+      {
+        "name": "Maya Chen",
+        "role": "CS lead"
+      },
+      {
+        "name": "Jordan Lee",
+        "role": "Acme operations director"
+      }
+    ],
+    "purpose": "Decide whether to offer an implementation extension before renewal.",
+    "agenda_items": [
+      "Review unresolved launch blockers",
+      "Confirm renewal decision owner"
+    ]
+  },
+  "attendee_notes": [
+    {
+      "id": "note-cs-1",
+      "subject": "Maya Chen",
+      "text": "Maya owns the renewal plan and asked for a direct blocker list before the call."
+    },
+    {
+      "id": "note-acme-1",
+      "subject": "Jordan Lee",
+      "text": "Jordan is accountable for Acme rollout operations and requested a support timeline."
+    }
+  ],
+  "thread_snippets": [
+    {
+      "id": "thread-042",
+      "source": "support thread 042",
+      "text": "Acme has two unresolved launch blockers: SSO mapping and CSV import validation."
+    },
+    {
+      "id": "thread-043",
+      "source": "email snippet 043",
+      "text": "Acme will decide renewal next Friday if the implementation plan is credible."
+    }
+  ],
+  "public_links": [
+    {
+      "id": "link-status",
+      "url": "https://status.example.test/acme-rollout",
+      "summary": "Public project note says CSV import validation is in beta."
+    }
+  ],
+  "prep_goal": "renewal decision support"
+}

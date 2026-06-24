@@ -1,0 +1,164 @@
+{
+  "schema": "frantic.evidence.v1",
+  "bounty": "https://gofrantic.com/bounties/27",
+  "summary": "meeting-prep is a real executable Runx skill that creates a bounded, cited meeting preparation brief from caller-supplied event context, notes, snippets, and public-link summaries. It refuses insufficient context and emits no private-context or external-action claims.",
+  "package": {
+    "owner": "luismireles12",
+    "name": "meeting-prep",
+    "version": "sha-91aa956278fa",
+    "registry_ref": "luismireles12/meeting-prep@sha-91aa956278fa",
+    "public_url": "https://runx.ai/x/luismireles12/meeting-prep@sha-91aa956278fa",
+    "publisher_owner": "luismireles12",
+    "source_commit": "pinned by source_url and raw artifact refs at delivery",
+    "pr_url": "published in pr_url artifact ref at delivery"
+  },
+  "observations": [
+    {
+      "id": "cli-version",
+      "command": "runx --version",
+      "output": "runx-cli 0.6.13"
+    },
+    {
+      "id": "package-name",
+      "output": "Exact package name is meeting-prep; published registry ref is luismireles12/meeting-prep@sha-91aa956278fa."
+    },
+    {
+      "id": "publish-method",
+      "command": "runx registry publish ./skills/meeting-prep/SKILL.md --registry https://api.runx.ai --json",
+      "output": {
+        "status": "success",
+        "skill_id": "luismireles12/meeting-prep",
+        "version": "sha-91aa956278fa",
+        "digest": "660528d9e27cb8b709eb3cbfda28786da49ba792b5af0cb8158f75b735c097ea",
+        "public_url": "https://runx.ai/x/luismireles12/meeting-prep@sha-91aa956278fa"
+      }
+    },
+    {
+      "id": "clean-install",
+      "command": "HOME=/tmp/runx-meeting-prep-home runx add luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai --json",
+      "output": "Clean install succeeded from the hosted registry."
+    },
+    {
+      "id": "local-harness",
+      "command": "runx harness ./skills/meeting-prep --receipt-dir ./skills/meeting-prep/references/local-harness --json",
+      "output": {
+        "status": "passed",
+        "case_count": 2,
+        "case_names": [
+          "sealed-bounded-meeting-prep",
+          "stop-on-insufficient-context"
+        ],
+        "receipt_ids": [
+          "sha256:b656d6307dbe75d1dc8cbb57d71c747b50c24c4c55433d3a084977f97a70b312",
+          "sha256:025458a36ea59f0697c045e2471d04b7ae82d32a3bc1fe0e4a264710b9f1ee18"
+        ]
+      }
+    },
+    {
+      "id": "hosted-harness",
+      "command": "registry publish gate",
+      "output": {
+        "hosted_harness_status": "passed",
+        "status": "success"
+      }
+    },
+    {
+      "id": "dogfood",
+      "command": "runx skill luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai --json --receipt-dir /tmp/meeting-prep-dogfood-receipts < fixtures/sealed-bounded-meeting-prep.json",
+      "output": {
+        "status": "sealed",
+        "receipt_ref": "runx:receipt:sha256:a3825b46c7964aa6979902c0618a6b14dd2910dda2e3681337499b868eca228b",
+        "verify_verdict": "valid",
+        "sections": [
+          "agenda",
+          "decisions",
+          "risks",
+          "questions",
+          "follow_ups",
+          "citations"
+        ]
+      }
+    },
+    {
+      "id": "input-bounds",
+      "output": {
+        "event_title": "Acme renewal risk review",
+        "prep_goal": "renewal decision support",
+        "provided_source_count": 5,
+        "private_context_read": false,
+        "external_effects_emitted": []
+      }
+    },
+    {
+      "id": "cited-snippets",
+      "output": {
+        "citations": [
+          "link-status",
+          "note-acme-1",
+          "note-cs-1",
+          "thread-042",
+          "thread-043"
+        ],
+        "sample_labels": [
+          "https://status.example.test/acme-rollout",
+          "Jordan Lee",
+          "Maya Chen",
+          "support thread 042"
+        ]
+      }
+    },
+    {
+      "id": "output-sections",
+      "output": {
+        "agenda": 5,
+        "decisions": 2,
+        "risks": 6,
+        "questions": 6,
+        "follow_ups": 3,
+        "citations": 5
+      }
+    },
+    {
+      "id": "stop-behavior",
+      "command": "RUNX_INPUTS_PATH=fixtures/stop-on-insufficient-context.json node run.mjs",
+      "output": "Exits 2 with insufficient bounded context instead of inventing a brief."
+    },
+    {
+      "id": "typed-outputs",
+      "output": [
+        "agenda",
+        "decisions",
+        "risks",
+        "questions",
+        "follow_ups",
+        "citations"
+      ]
+    },
+    {
+      "id": "operator-value",
+      "output": "High-frequency meeting prep workflow with bounded context discipline, source citations, missing-context risks, and safe composition with calendar/mail/research gatherers."
+    }
+  ],
+  "dogfood": {
+    "package": "luismireles12/meeting-prep@sha-91aa956278fa",
+    "input": "skills/meeting-prep/fixtures/sealed-bounded-meeting-prep.json",
+    "command": "runx skill luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai --json --receipt-dir /tmp/meeting-prep-dogfood-receipts < skills/meeting-prep/fixtures/sealed-bounded-meeting-prep.json",
+    "receipt_ref": "runx:receipt:sha256:a3825b46c7964aa6979902c0618a6b14dd2910dda2e3681337499b868eca228b",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "sealed-bounded-meeting-prep",
+        "status": "sealed"
+      },
+      {
+        "name": "stop-on-insufficient-context",
+        "status": "refused"
+      }
+    ]
+  },
+  "new_user": {
+    "install": "runx add luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai",
+    "run": "runx skill luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai --json < meeting-context.json",
+    "verify": "RUNX_RECEIPT_VERIFY_KID=meeting-prep-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=<public key from verification.json> runx verify --receipt dogfood-receipt.json --json"
+  }
+}

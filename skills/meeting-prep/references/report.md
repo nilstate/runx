@@ -1,0 +1,23 @@
+# meeting-prep delivery report
+
+- Package: `luismireles12/meeting-prep@sha-91aa956278fa`.
+- Package name is exactly `meeting-prep`.
+- Publisher owner is `luismireles12`.
+- Runx CLI version used for publish, install, harness, dogfood, and verify evidence: `runx-cli 0.6.13`.
+- Public registry URL: `https://runx.ai/x/luismireles12/meeting-prep@sha-91aa956278fa`.
+- Local harness passes two required cases: `sealed-bounded-meeting-prep` and `stop-on-insufficient-context`.
+- Hosted registry publish completed successfully and the registry publish gate accepted the package.
+- Clean install command: `runx add luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai`.
+- Dogfood command: `runx skill luismireles12/meeting-prep@sha-91aa956278fa --registry https://api.runx.ai --json --receipt-dir /tmp/meeting-prep-dogfood-receipts < skills/meeting-prep/fixtures/sealed-bounded-meeting-prep.json`.
+- Dogfood receipt: `runx:receipt:sha256:a3825b46c7964aa6979902c0618a6b14dd2910dda2e3681337499b868eca228b`.
+- `runx verify --receipt dogfood-receipt.json --json` returned a valid verdict with `RUNX_RECEIPT_VERIFY_KID=meeting-prep-dogfood` and the public key recorded in `verification.json`.
+- Typed output includes `agenda`, `decisions`, `risks`, `questions`, `follow_ups`, and `citations`.
+- The sealed case cites only supplied attendee notes, thread snippets, and public-link summaries.
+- The stop case refuses insufficient context instead of inventing a meeting brief.
+- The brief marks private context as missing; it does not claim inbox, calendar, CRM, or attendee-history access beyond supplied inputs.
+- The skill emits no messages, scheduling changes, CRM writes, or other external effects.
+- Future calendar composition: a calendar connector can provide `event` details and attendee lists, then call this skill with the bounded packet.
+- Future mail composition: a mail connector can select explicit thread snippets and source labels; this skill will cite only those snippets.
+- Future research composition: a web/research scope can pass public-link summaries; this skill will cite those links and keep non-read links out of claims.
+- New users install with the clean install command above, pass a JSON meeting-context packet, and verify any receipt with `runx verify`.
+- Source URL, raw `X.yaml`, raw `SKILL.md`, `evidence_json`, and `verification_json` are pinned to the PR head commit in the submitted artifact refs.
