@@ -1,7 +1,7 @@
 {
   "schema": "frantic.verification.v1",
   "bounty": 59,
-  "claim_id": "1b71f2a0-0a06-40ae-9145-6a2144894ba9",
+  "claim_id": "8fb43f27-8b4d-4c89-b6c1-d26791943e37",
   "package": "vidshidden/code-review-note@sha-d4b7c3ff5357",
   "runx_version_output": "runx-cli 0.6.13",
   "public_url": "https://runx.ai/x/vidshidden/code-review-note@sha-d4b7c3ff5357",
