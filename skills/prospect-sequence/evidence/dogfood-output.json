@@ -1,0 +1,539 @@
+{
+  "closure": {
+    "closed_at": "2026-06-24T09:48:18.814Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool sequence completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "prospect": {
+        "company": "Northstar Analytics",
+        "contact": {
+          "name": "Maya Chen",
+          "title": "VP Revenue Operations"
+        }
+      },
+      "research": {
+        "angle": {
+          "citations": [
+            "S2511ff",
+            "S5d5ad6"
+          ],
+          "source_count": 2,
+          "summary": "Northstar Analytics appears relevant to VP Revenue Operations because Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff] The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6] The outreach angle is to offer a governed automation review that turns account signals into a weekly executive forecast note while keeping every claim tied to those public citations."
+        },
+        "guardrails": {
+          "citation_policy": "every source used in the angle has a citation marker",
+          "fabrication_policy": "facts must appear in cited snippets",
+          "source_policy": "allowlisted public HTTP(S) sources only"
+        },
+        "sources": [
+          {
+            "citation_id": "S2511ff",
+            "host": "northstar.example",
+            "read_mode": "fixture_content",
+            "snippets": [
+              "Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard."
+            ],
+            "title": "Northstar customer story",
+            "url": "https://northstar.example/customers"
+          },
+          {
+            "citation_id": "S5d5ad6",
+            "host": "northstar.example",
+            "read_mode": "fixture_content",
+            "snippets": [
+              "The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams."
+            ],
+            "title": "Northstar RevOps guide",
+            "url": "https://northstar.example/docs/revops"
+          }
+        ]
+      },
+      "schema": "prospect_sequence_packet.v1",
+      "send_proposal": {
+        "action_family": "send-as",
+        "audience": {
+          "ref": "Maya Chen",
+          "requires_reconfirmation": true,
+          "type": "recipient"
+        },
+        "catalog_skill": "send-as",
+        "consent_basis": "requires caller-provided lawful outreach basis before send-as execution",
+        "content": {
+          "digest": "sha256:fce6134dd78c26086811c1f31e44fffadabca08b13ff5714a6e67042560ba188",
+          "draft_ref": "prospect-sequence:northstar-analytics",
+          "subject_or_title": "Northstar Analytics and fragmented forecasting and manual pipeline inspection"
+        },
+        "effect": "proposed",
+        "evidence_refs": [
+          {
+            "citation_id": "S2511ff",
+            "url": "https://northstar.example/customers"
+          },
+          {
+            "citation_id": "S5d5ad6",
+            "url": "https://northstar.example/docs/revops"
+          }
+        ],
+        "gates": {
+          "executor": "send-as",
+          "human_approval_required": true,
+          "preflight_required": true
+        },
+        "human_approval_required": true,
+        "live_send_authorized": false,
+        "principal": {
+          "ref": "caller_supplied_principal_required",
+          "type": "account"
+        },
+        "provider_actions": [
+          "send-as.plan",
+          "human_approval",
+          "provider_send_after_gate"
+        ],
+        "required_scope": "send_as.outreach.propose",
+        "send_class": "outreach"
+      },
+      "sequence": [
+        {
+          "body": "Hi Maya Chen, I noticed Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff]. If fragmented forecasting and manual pipeline inspection is on your list, I can share a governed automation review that turns account signals into a weekly executive forecast note.",
+          "channel": "email",
+          "citations": [
+            "S2511ff"
+          ],
+          "step": 1,
+          "subject": "Northstar Analytics and fragmented forecasting and manual pipeline inspection",
+          "tone": "concise and consultative"
+        },
+        {
+          "body": "Following up because the public material also points to The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6]. A small governed workflow review could turn that into a repeatable sequence.",
+          "channel": "email",
+          "citations": [
+            "S5d5ad6"
+          ],
+          "step": 2,
+          "subject": "Quick follow-up for Northstar Analytics",
+          "tone": "concise and consultative"
+        },
+        {
+          "body": "I do not want to assume priorities beyond the public sources. If useful, I can send a one-page review mapped to [S2511ff] [S5d5ad6] and you can decide whether it is worth a deeper look.",
+          "channel": "email",
+          "citations": [
+            "S2511ff",
+            "S5d5ad6"
+          ],
+          "step": 3,
+          "subject": "Close the loop?",
+          "tone": "concise and consultative"
+        }
+      ],
+      "status": "sealed"
+    },
+    "stderr": "",
+    "stdout": "{\n  \"schema\": \"prospect_sequence_packet.v1\",\n  \"status\": \"sealed\",\n  \"prospect\": {\n    \"company\": \"Northstar Analytics\",\n    \"contact\": {\n      \"name\": \"Maya Chen\",\n      \"title\": \"VP Revenue Operations\"\n    }\n  },\n  \"research\": {\n    \"sources\": [\n      {\n        \"citation_id\": \"S2511ff\",\n        \"url\": \"https://northstar.example/customers\",\n        \"host\": \"northstar.example\",\n        \"title\": \"Northstar customer story\",\n        \"read_mode\": \"fixture_content\",\n        \"snippets\": [\n          \"Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard.\"\n        ]\n      },\n      {\n        \"citation_id\": \"S5d5ad6\",\n        \"url\": \"https://northstar.example/docs/revops\",\n        \"host\": \"northstar.example\",\n        \"title\": \"Northstar RevOps guide\",\n        \"read_mode\": \"fixture_content\",\n        \"snippets\": [\n          \"The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams.\"\n        ]\n      }\n    ],\n    \"angle\": {\n      \"summary\": \"Northstar Analytics appears relevant to VP Revenue Operations because Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff] The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6] The outreach angle is to offer a governed automation review that turns account signals into a weekly executive forecast note while keeping every claim tied to those public citations.\",\n      \"citations\": [\n        \"S2511ff\",\n        \"S5d5ad6\"\n      ],\n      \"source_count\": 2\n    },\n    \"guardrails\": {\n      \"source_policy\": \"allowlisted public HTTP(S) sources only\",\n      \"fabrication_policy\": \"facts must appear in cited snippets\",\n      \"citation_policy\": \"every source used in the angle has a citation marker\"\n    }\n  },\n  \"sequence\": [\n    {\n      \"step\": 1,\n      \"channel\": \"email\",\n      \"subject\": \"Northstar Analytics and fragmented forecasting and manual pipeline inspection\",\n      \"body\": \"Hi Maya Chen, I noticed Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff]. If fragmented forecasting and manual pipeline inspection is on your list, I can share a governed automation review that turns account signals into a weekly executive forecast note.\",\n      \"citations\": [\n        \"S2511ff\"\n      ],\n      \"tone\": \"concise and consultative\"\n    },\n    {\n      \"step\": 2,\n      \"channel\": \"email\",\n      \"subject\": \"Quick follow-up for Northstar Analytics\",\n      \"body\": \"Following up because the public material also points to The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6]. A small governed workflow review could turn that into a repeatable sequence.\",\n      \"citations\": [\n        \"S5d5ad6\"\n      ],\n      \"tone\": \"concise and consultative\"\n    },\n    {\n      \"step\": 3,\n      \"channel\": \"email\",\n      \"subject\": \"Close the loop?\",\n      \"body\": \"I do not want to assume priorities beyond the public sources. If useful, I can send a one-page review mapped to [S2511ff] [S5d5ad6] and you can decide whether it is worth a deeper look.\",\n      \"citations\": [\n        \"S2511ff\",\n        \"S5d5ad6\"\n      ],\n      \"tone\": \"concise and consultative\"\n    }\n  ],\n  \"send_proposal\": {\n    \"effect\": \"proposed\",\n    \"catalog_skill\": \"send-as\",\n    \"action_family\": \"send-as\",\n    \"send_class\": \"outreach\",\n    \"required_scope\": \"send_as.outreach.propose\",\n    \"human_approval_required\": true,\n    \"live_send_authorized\": false,\n    \"principal\": {\n      \"type\": \"account\",\n      \"ref\": \"caller_supplied_principal_required\"\n    },\n    \"audience\": {\n      \"type\": \"recipient\",\n      \"ref\": \"Maya Chen\",\n      \"requires_reconfirmation\": true\n    },\n    \"content\": {\n      \"draft_ref\": \"prospect-sequence:northstar-analytics\",\n      \"digest\": \"sha256:fce6134dd78c26086811c1f31e44fffadabca08b13ff5714a6e67042560ba188\",\n      \"subject_or_title\": \"Northstar Analytics and fragmented forecasting and manual pipeline inspection\"\n    },\n    \"consent_basis\": \"requires caller-provided lawful outreach basis before send-as execution\",\n    \"evidence_refs\": [\n      {\n        \"citation_id\": \"S2511ff\",\n        \"url\": \"https://northstar.example/customers\"\n      },\n      {\n        \"citation_id\": \"S5d5ad6\",\n        \"url\": \"https://northstar.example/docs/revops\"\n      }\n    ],\n    \"gates\": {\n      \"preflight_required\": true,\n      \"human_approval_required\": true,\n      \"executor\": \"send-as\"\n    },\n    \"provider_actions\": [\n      \"send-as.plan\",\n      \"human_approval\",\n      \"provider_send_after_gate\"\n    ]\n  }\n}\n",
+    "structured_output": {
+      "prospect": {
+        "company": "Northstar Analytics",
+        "contact": {
+          "name": "Maya Chen",
+          "title": "VP Revenue Operations"
+        }
+      },
+      "research": {
+        "angle": {
+          "citations": [
+            "S2511ff",
+            "S5d5ad6"
+          ],
+          "source_count": 2,
+          "summary": "Northstar Analytics appears relevant to VP Revenue Operations because Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff] The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6] The outreach angle is to offer a governed automation review that turns account signals into a weekly executive forecast note while keeping every claim tied to those public citations."
+        },
+        "guardrails": {
+          "citation_policy": "every source used in the angle has a citation marker",
+          "fabrication_policy": "facts must appear in cited snippets",
+          "source_policy": "allowlisted public HTTP(S) sources only"
+        },
+        "sources": [
+          {
+            "citation_id": "S2511ff",
+            "host": "northstar.example",
+            "read_mode": "fixture_content",
+            "snippets": [
+              "Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard."
+            ],
+            "title": "Northstar customer story",
+            "url": "https://northstar.example/customers"
+          },
+          {
+            "citation_id": "S5d5ad6",
+            "host": "northstar.example",
+            "read_mode": "fixture_content",
+            "snippets": [
+              "The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams."
+            ],
+            "title": "Northstar RevOps guide",
+            "url": "https://northstar.example/docs/revops"
+          }
+        ]
+      },
+      "schema": "prospect_sequence_packet.v1",
+      "send_proposal": {
+        "action_family": "send-as",
+        "audience": {
+          "ref": "Maya Chen",
+          "requires_reconfirmation": true,
+          "type": "recipient"
+        },
+        "catalog_skill": "send-as",
+        "consent_basis": "requires caller-provided lawful outreach basis before send-as execution",
+        "content": {
+          "digest": "sha256:fce6134dd78c26086811c1f31e44fffadabca08b13ff5714a6e67042560ba188",
+          "draft_ref": "prospect-sequence:northstar-analytics",
+          "subject_or_title": "Northstar Analytics and fragmented forecasting and manual pipeline inspection"
+        },
+        "effect": "proposed",
+        "evidence_refs": [
+          {
+            "citation_id": "S2511ff",
+            "url": "https://northstar.example/customers"
+          },
+          {
+            "citation_id": "S5d5ad6",
+            "url": "https://northstar.example/docs/revops"
+          }
+        ],
+        "gates": {
+          "executor": "send-as",
+          "human_approval_required": true,
+          "preflight_required": true
+        },
+        "human_approval_required": true,
+        "live_send_authorized": false,
+        "principal": {
+          "ref": "caller_supplied_principal_required",
+          "type": "account"
+        },
+        "provider_actions": [
+          "send-as.plan",
+          "human_approval",
+          "provider_send_after_gate"
+        ],
+        "required_scope": "send_as.outreach.propose",
+        "send_class": "outreach"
+      },
+      "sequence": [
+        {
+          "body": "Hi Maya Chen, I noticed Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff]. If fragmented forecasting and manual pipeline inspection is on your list, I can share a governed automation review that turns account signals into a weekly executive forecast note.",
+          "channel": "email",
+          "citations": [
+            "S2511ff"
+          ],
+          "step": 1,
+          "subject": "Northstar Analytics and fragmented forecasting and manual pipeline inspection",
+          "tone": "concise and consultative"
+        },
+        {
+          "body": "Following up because the public material also points to The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6]. A small governed workflow review could turn that into a repeatable sequence.",
+          "channel": "email",
+          "citations": [
+            "S5d5ad6"
+          ],
+          "step": 2,
+          "subject": "Quick follow-up for Northstar Analytics",
+          "tone": "concise and consultative"
+        },
+        {
+          "body": "I do not want to assume priorities beyond the public sources. If useful, I can send a one-page review mapped to [S2511ff] [S5d5ad6] and you can decide whether it is worth a deeper look.",
+          "channel": "email",
+          "citations": [
+            "S2511ff",
+            "S5d5ad6"
+          ],
+          "step": 3,
+          "subject": "Close the loop?",
+          "tone": "concise and consultative"
+        }
+      ],
+      "status": "sealed"
+    }
+  },
+  "payload": {
+    "prospect": {
+      "company": "Northstar Analytics",
+      "contact": {
+        "name": "Maya Chen",
+        "title": "VP Revenue Operations"
+      }
+    },
+    "research": {
+      "angle": {
+        "citations": [
+          "S2511ff",
+          "S5d5ad6"
+        ],
+        "source_count": 2,
+        "summary": "Northstar Analytics appears relevant to VP Revenue Operations because Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff] The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6] The outreach angle is to offer a governed automation review that turns account signals into a weekly executive forecast note while keeping every claim tied to those public citations."
+      },
+      "guardrails": {
+        "citation_policy": "every source used in the angle has a citation marker",
+        "fabrication_policy": "facts must appear in cited snippets",
+        "source_policy": "allowlisted public HTTP(S) sources only"
+      },
+      "sources": [
+        {
+          "citation_id": "S2511ff",
+          "host": "northstar.example",
+          "read_mode": "fixture_content",
+          "snippets": [
+            "Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard."
+          ],
+          "title": "Northstar customer story",
+          "url": "https://northstar.example/customers"
+        },
+        {
+          "citation_id": "S5d5ad6",
+          "host": "northstar.example",
+          "read_mode": "fixture_content",
+          "snippets": [
+            "The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams."
+          ],
+          "title": "Northstar RevOps guide",
+          "url": "https://northstar.example/docs/revops"
+        }
+      ]
+    },
+    "schema": "prospect_sequence_packet.v1",
+    "send_proposal": {
+      "action_family": "send-as",
+      "audience": {
+        "ref": "Maya Chen",
+        "requires_reconfirmation": true,
+        "type": "recipient"
+      },
+      "catalog_skill": "send-as",
+      "consent_basis": "requires caller-provided lawful outreach basis before send-as execution",
+      "content": {
+        "digest": "sha256:fce6134dd78c26086811c1f31e44fffadabca08b13ff5714a6e67042560ba188",
+        "draft_ref": "prospect-sequence:northstar-analytics",
+        "subject_or_title": "Northstar Analytics and fragmented forecasting and manual pipeline inspection"
+      },
+      "effect": "proposed",
+      "evidence_refs": [
+        {
+          "citation_id": "S2511ff",
+          "url": "https://northstar.example/customers"
+        },
+        {
+          "citation_id": "S5d5ad6",
+          "url": "https://northstar.example/docs/revops"
+        }
+      ],
+      "gates": {
+        "executor": "send-as",
+        "human_approval_required": true,
+        "preflight_required": true
+      },
+      "human_approval_required": true,
+      "live_send_authorized": false,
+      "principal": {
+        "ref": "caller_supplied_principal_required",
+        "type": "account"
+      },
+      "provider_actions": [
+        "send-as.plan",
+        "human_approval",
+        "provider_send_after_gate"
+      ],
+      "required_scope": "send_as.outreach.propose",
+      "send_class": "outreach"
+    },
+    "sequence": [
+      {
+        "body": "Hi Maya Chen, I noticed Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff]. If fragmented forecasting and manual pipeline inspection is on your list, I can share a governed automation review that turns account signals into a weekly executive forecast note.",
+        "channel": "email",
+        "citations": [
+          "S2511ff"
+        ],
+        "step": 1,
+        "subject": "Northstar Analytics and fragmented forecasting and manual pipeline inspection",
+        "tone": "concise and consultative"
+      },
+      {
+        "body": "Following up because the public material also points to The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6]. A small governed workflow review could turn that into a repeatable sequence.",
+        "channel": "email",
+        "citations": [
+          "S5d5ad6"
+        ],
+        "step": 2,
+        "subject": "Quick follow-up for Northstar Analytics",
+        "tone": "concise and consultative"
+      },
+      {
+        "body": "I do not want to assume priorities beyond the public sources. If useful, I can send a one-page review mapped to [S2511ff] [S5d5ad6] and you can decide whether it is worth a deeper look.",
+        "channel": "email",
+        "citations": [
+          "S2511ff",
+          "S5d5ad6"
+        ],
+        "step": 3,
+        "subject": "Close the loop?",
+        "tone": "concise and consultative"
+      }
+    ],
+    "status": "sealed"
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-24T09:48:18.814Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_sequence",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step sequence",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step sequence",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-24T09:48:18.814Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_sequence",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node sequence",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_sequence",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:bde048fc734903607365cbfa933cb1ef9d43a76ab4b65374a392588ffad2b766",
+    "id": "sha256:77ab8c45b2a150cec54716e789b162052948b9967eb6b64651b56c9cb5d110ef",
+    "idempotency": {
+      "content_hash": "sha256:run_sequence_6b8a81bcb846-sequence-content",
+      "intent_key": "sha256:run_sequence_6b8a81bcb846-sequence-intent",
+      "trigger_fingerprint": "sha256:run_sequence_6b8a81bcb846-sequence-trigger"
+    },
+    "issuer": {
+      "kid": "runx-runtime-prod-fixture-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-24T09:48:18.814Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-24T09:48:18.814Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool sequence completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:v9Y60bgD3d-DvffYCF5NF-pWrGDQ--Kl5EJl9VKmPI8wu6cUVkr5s6DncX9b0cvH3004oG9eDDOeRQtJpj5EAA"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_sequence_6b8a81bcb846_sequence"
+      }
+    }
+  },
+  "receipt_id": "sha256:77ab8c45b2a150cec54716e789b162052948b9967eb6b64651b56c9cb5d110ef",
+  "registry_provenance": {
+    "digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
+    "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "vidshidden/prospect-sequence",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-f1f58b597581"
+  },
+  "run_id": "run_sequence_6b8a81bcb846",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "prospect-sequence",
+  "status": "sealed"
+}

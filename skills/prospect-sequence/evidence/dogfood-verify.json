@@ -1,0 +1,21 @@
+{
+  "receipt_dir": "/home/runner/work/runx/runx/skills/prospect-sequence/evidence/dogfood-receipts",
+  "signature_mode": "local-development",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:77ab8c45b2a150cec54716e789b162052948b9967eb6b64651b56c9cb5d110ef",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": false,
+      "findings": [
+        {
+          "code": "SignatureKeyMissing",
+          "path": "issuer",
+          "message": "signature verifier could not resolve the issuer key"
+        }
+      ]
+    }
+  ],
+  "unreadable_files": [],
+  "valid": false
+}

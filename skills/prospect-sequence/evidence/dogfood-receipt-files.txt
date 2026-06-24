@@ -1,0 +1,2 @@
+skills/prospect-sequence/evidence/dogfood-receipts/index.json
+skills/prospect-sequence/evidence/dogfood-receipts/sha256:77ab8c45b2a150cec54716e789b162052948b9967eb6b64651b56c9cb5d110ef.json
