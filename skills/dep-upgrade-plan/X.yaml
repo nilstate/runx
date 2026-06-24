@@ -1,5 +1,5 @@
 skill: dep-upgrade-plan
-version: "0.1.0"
+version: "0.2.0"
 
 catalog:
   kind: skill
@@ -19,12 +19,13 @@ runx:
     network:
       allowed:
         - https://raw.githubusercontent.com/
+        - https://api.osv.dev/v1/query
       forbidden:
         - private repositories
         - package installation
         - source code execution
     verifier_notes:
-      - The skill proposes upgrades only from supplied advisory and constraint evidence.
+      - The skill fetches a real public npm package-lock.json and queries OSV.dev advisories at run time.
       - The skill never edits package manifests or installs dependencies.
       - The dogfood receipt must come from a post-publish registry skill run.
   artifacts:
@@ -36,34 +37,38 @@ runx:
 
 harness:
   cases:
-    - name: fixture-ranked-plan
+    - name: nodegoat-live-osv-ranked-plan
       runner: default
       inputs:
-        target_name: Fixture Shop
-        target_repo: https://github.com/RYDE-PLAY/runx-fixture-shop
-        target_ref: fixture-lock-v1
+        target_name: OWASP NodeGoat
+        target_repo: https://github.com/OWASP/NodeGoat
+        target_ref: c5cb68a7084e4ae7dcc60e6a98768720a81841e8
         lockfile_json: |
-          {"name":"fixture-shop","version":"1.0.0","lockfileVersion":3,"requires":true,"packages":{"":{"name":"fixture-shop","version":"1.0.0","dependencies":{"express":"4.16.4","lodash":"4.17.19","debug":"2.6.8"}},"node_modules/express":{"version":"4.16.4","resolved":"https://registry.npmjs.org/express/-/express-4.16.4.tgz"},"node_modules/lodash":{"version":"4.17.19","resolved":"https://registry.npmjs.org/lodash/-/lodash-4.17.19.tgz"},"node_modules/debug":{"version":"2.6.8","resolved":"https://registry.npmjs.org/debug/-/debug-2.6.8.tgz"}}}
+          {"name":"owasp-nodejs-goat","version":"1.3.0","lockfileVersion":3,"requires":true,"packages":{"":{"name":"owasp-nodejs-goat","version":"1.3.0","dependencies":{"bcrypt-nodejs":"0.0.3","body-parser":"^1.15.1","consolidate":"^0.14.1","csurf":"^1.8.3","dont-sniff-mimetype":"^1.0.0","express":"^4.13.4","express-session":"^1.13.0","forever":"^2.0.0","helmet":"^2.0.0","marked":"0.3.5","mongodb":"^2.1.18","needle":"2.2.4","node-esapi":"0.0.1","serve-favicon":"^2.3.0","swig":"^1.4.2","underscore":"^1.8.3"}},"node_modules/bcrypt-nodejs":{"version":"0.0.3"},"node_modules/body-parser":{"version":"1.18.3"},"node_modules/consolidate":{"version":"0.14.5"},"node_modules/csurf":{"version":"1.9.0"},"node_modules/dont-sniff-mimetype":{"version":"1.0.0"},"node_modules/express":{"version":"4.16.4"},"node_modules/express-session":{"version":"1.15.6"},"node_modules/forever":{"version":"2.0.0"},"node_modules/helmet":{"version":"2.3.0"},"node_modules/marked":{"version":"0.3.5"},"node_modules/mongodb":{"version":"2.2.36"},"node_modules/needle":{"version":"2.2.4"},"node_modules/node-esapi":{"version":"0.0.1"},"node_modules/serve-favicon":{"version":"2.5.0"},"node_modules/swig":{"version":"1.4.2"},"node_modules/underscore":{"version":"1.9.1"}}}
+        advisory_mode: supplied
         advisories_json: |
-          {"advisories":[{"package":"express","current":"4.16.4","fixed":"4.20.0","severity":"low","advisory":"GHSA-qw6h-vgh9-j6wx","source":"https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx","breaking":"Stays on Express 4.x; review response.redirect behavior and middleware compatibility."},{"package":"lodash","current":"4.17.19","fixed":"4.17.21","severity":"high","advisory":"GHSA-35jh-r3h4-6jhm","source":"https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm","breaking":"Patch-level update; no breaking change indicated by supplied notes."},{"package":"debug","current":"2.6.8","fixed":"4.3.1","severity":"medium","advisory":"GHSA-9vvw-cc9w-f27h","source":"supplied fixture advisory","breaking":"Major update from 2.x to 4.x; verify namespace formatting and transitive consumer compatibility."}]}
-        constraints_json: |
-          {"constraints":{"express":{"allowed":["4.20.0"],"max_major":4,"notes":"Stay on Express 4 until the next application framework migration."},"lodash":{"allowed":["4.17.21"],"max_major":4,"notes":"Patch-only update allowed in the current release train."},"debug":{"blocked":["4.3.1"],"max_major":2,"notes":"debug 4.x is blocked until transitive consumers are tested."}}}
-        output_dir: artifacts/fixture
+          {"advisories":[{"package":"underscore","current":"1.9.1","fixed":"1.13.8","severity":"critical","advisory":"GHSA-cf4h-3jhx-xvhq","source":"https://osv.dev/vulnerability/GHSA-cf4h-3jhx-xvhq","breaking":"OSV fixed version stays within major 1; review release notes before shipping."},{"package":"body-parser","current":"1.18.3","fixed":"1.20.3","severity":"high","advisory":"GHSA-qwcr-r2fm-qrc7","source":"https://osv.dev/vulnerability/GHSA-qwcr-r2fm-qrc7","breaking":"OSV fixed version stays within major 1; review release notes before shipping."},{"package":"marked","current":"0.3.5","fixed":"4.0.10","severity":"high","advisory":"GHSA-5v2h-r2cx-5xgj","source":"https://osv.dev/vulnerability/GHSA-5v2h-r2cx-5xgj","breaking":"OSV fixed version crosses major versions (0.3.5 -> 4.0.10); review package changelog and runtime compatibility."},{"package":"mongodb","current":"2.2.36","fixed":"3.1.13","severity":"high","advisory":"GHSA-mh5c-679w-hh4r","source":"https://osv.dev/vulnerability/GHSA-mh5c-679w-hh4r","breaking":"OSV fixed version crosses major versions (2.2.36 -> 3.1.13); review package changelog and runtime compatibility."},{"package":"express","current":"4.16.4","fixed":"4.20.0","severity":"medium","advisory":"GHSA-qw6h-vgh9-j6wx","source":"https://osv.dev/vulnerability/GHSA-qw6h-vgh9-j6wx","breaking":"OSV fixed version stays within major 4; review release notes before shipping."}]}
+        scan_scope: direct
+        include_dev: false
+        output_dir: artifacts/nodegoat-live
       expect:
         status: sealed
-    - name: all-upgrades-blocked-refusal
+    - name: nodegoat-all-upgrades-blocked-refusal
       runner: default
       inputs:
-        target_name: Fixture Shop
-        target_repo: https://github.com/RYDE-PLAY/runx-fixture-shop
-        target_ref: fixture-lock-v1
+        target_name: OWASP NodeGoat
+        target_repo: https://github.com/OWASP/NodeGoat
+        target_ref: c5cb68a7084e4ae7dcc60e6a98768720a81841e8
         lockfile_json: |
-          {"name":"fixture-shop","version":"1.0.0","lockfileVersion":3,"requires":true,"packages":{"":{"name":"fixture-shop","version":"1.0.0","dependencies":{"express":"4.16.4","lodash":"4.17.19","debug":"2.6.8"}},"node_modules/express":{"version":"4.16.4","resolved":"https://registry.npmjs.org/express/-/express-4.16.4.tgz"},"node_modules/lodash":{"version":"4.17.19","resolved":"https://registry.npmjs.org/lodash/-/lodash-4.17.19.tgz"},"node_modules/debug":{"version":"2.6.8","resolved":"https://registry.npmjs.org/debug/-/debug-2.6.8.tgz"}}}
+          {"name":"owasp-nodejs-goat","version":"1.3.0","lockfileVersion":3,"requires":true,"packages":{"":{"name":"owasp-nodejs-goat","version":"1.3.0","dependencies":{"bcrypt-nodejs":"0.0.3","body-parser":"^1.15.1","consolidate":"^0.14.1","csurf":"^1.8.3","dont-sniff-mimetype":"^1.0.0","express":"^4.13.4","express-session":"^1.13.0","forever":"^2.0.0","helmet":"^2.0.0","marked":"0.3.5","mongodb":"^2.1.18","needle":"2.2.4","node-esapi":"0.0.1","serve-favicon":"^2.3.0","swig":"^1.4.2","underscore":"^1.8.3"}},"node_modules/bcrypt-nodejs":{"version":"0.0.3"},"node_modules/body-parser":{"version":"1.18.3"},"node_modules/consolidate":{"version":"0.14.5"},"node_modules/csurf":{"version":"1.9.0"},"node_modules/dont-sniff-mimetype":{"version":"1.0.0"},"node_modules/express":{"version":"4.16.4"},"node_modules/express-session":{"version":"1.15.6"},"node_modules/forever":{"version":"2.0.0"},"node_modules/helmet":{"version":"2.3.0"},"node_modules/marked":{"version":"0.3.5"},"node_modules/mongodb":{"version":"2.2.36"},"node_modules/needle":{"version":"2.2.4"},"node_modules/node-esapi":{"version":"0.0.1"},"node_modules/serve-favicon":{"version":"2.5.0"},"node_modules/swig":{"version":"1.4.2"},"node_modules/underscore":{"version":"1.9.1"}}}
+        advisory_mode: supplied
         advisories_json: |
-          {"advisories":[{"package":"express","current":"4.16.4","fixed":"4.20.0","severity":"low","advisory":"GHSA-qw6h-vgh9-j6wx","source":"https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx","breaking":"Stays on Express 4.x; review response.redirect behavior and middleware compatibility."},{"package":"lodash","current":"4.17.19","fixed":"4.17.21","severity":"high","advisory":"GHSA-35jh-r3h4-6jhm","source":"https://github.com/lodash/lodash/security/advisories/GHSA-35jh-r3h4-6jhm","breaking":"Patch-level update; no breaking change indicated by supplied notes."},{"package":"debug","current":"2.6.8","fixed":"4.3.1","severity":"medium","advisory":"GHSA-9vvw-cc9w-f27h","source":"supplied fixture advisory","breaking":"Major update from 2.x to 4.x; verify namespace formatting and transitive consumer compatibility."}]}
+          {"advisories":[{"package":"underscore","current":"1.9.1","fixed":"1.13.8","severity":"critical","advisory":"GHSA-cf4h-3jhx-xvhq","source":"https://osv.dev/vulnerability/GHSA-cf4h-3jhx-xvhq","breaking":"OSV fixed version stays within major 1; review release notes before shipping."},{"package":"body-parser","current":"1.18.3","fixed":"1.20.3","severity":"high","advisory":"GHSA-qwcr-r2fm-qrc7","source":"https://osv.dev/vulnerability/GHSA-qwcr-r2fm-qrc7","breaking":"OSV fixed version stays within major 1; review release notes before shipping."},{"package":"marked","current":"0.3.5","fixed":"4.0.10","severity":"high","advisory":"GHSA-5v2h-r2cx-5xgj","source":"https://osv.dev/vulnerability/GHSA-5v2h-r2cx-5xgj","breaking":"OSV fixed version crosses major versions (0.3.5 -> 4.0.10); review package changelog and runtime compatibility."},{"package":"mongodb","current":"2.2.36","fixed":"3.1.13","severity":"high","advisory":"GHSA-mh5c-679w-hh4r","source":"https://osv.dev/vulnerability/GHSA-mh5c-679w-hh4r","breaking":"OSV fixed version crosses major versions (2.2.36 -> 3.1.13); review package changelog and runtime compatibility."},{"package":"express","current":"4.16.4","fixed":"4.20.0","severity":"medium","advisory":"GHSA-qw6h-vgh9-j6wx","source":"https://osv.dev/vulnerability/GHSA-qw6h-vgh9-j6wx","breaking":"OSV fixed version stays within major 4; review release notes before shipping."}]}
+        scan_scope: direct
+        include_dev: false
         constraints_json: |
-          {"constraints":{"express":{"blocked":["4.20.0"],"notes":"Blocked by framework compatibility freeze."},"lodash":{"blocked":["4.17.21"],"notes":"Blocked by release freeze."},"debug":{"blocked":["4.3.1"],"notes":"Blocked by major-version policy."}}}
-        output_dir: artifacts/refused
+          {"constraints":{"body-parser":{"blocked":["1.20.3"],"notes":"Release train is frozen for HTTP request parsing changes."},"express":{"blocked":["4.20.0"],"notes":"Express upgrade requires a separate middleware compatibility review."},"marked":{"blocked":["4.0.10"],"notes":"Markdown renderer replacement is blocked for this release."},"mongodb":{"blocked":["3.1.13"],"notes":"Driver major upgrade requires database integration testing."},"underscore":{"blocked":["1.13.8"],"notes":"Template helper compatibility is blocked pending manual review."}}}
+        output_dir: artifacts/nodegoat-blocked
       expect:
         status: failure
 
@@ -84,7 +89,8 @@ runners:
         - public advisory facts
         - public release constraints
       calls:
-        - optional public raw lockfile fetch
+        - public raw lockfile fetch
+        - live OSV.dev advisory query for exact locked npm versions
       writes:
         - dependency upgrade evidence
         - reviewer report
@@ -121,15 +127,20 @@ runners:
       advisories_path:
         type: string
         required: false
-        description: Local JSON advisory facts path inside the skill directory.
+        description: Optional supplemental local advisory facts path inside the skill directory.
       advisories_url:
         type: string
         required: false
-        description: Public HTTPS URL for advisory facts JSON.
+        description: Optional supplemental public HTTPS URL for advisory facts JSON.
       advisories_json:
         type: string
         required: false
-        description: Advisory facts as a JSON string.
+        description: Optional supplemental advisory facts as a JSON string.
+      advisory_mode:
+        type: string
+        required: false
+        default: live_osv
+        description: live_osv queries OSV.dev; supplied uses only provided advisories for deterministic hosted harness replay.
       constraints_path:
         type: string
         required: false

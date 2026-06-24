@@ -1,14 +1,14 @@
 {
   "name": "dep-upgrade-plan",
-  "version": "0.1.0",
-  "description": "Governed runx skill that ranks dependency upgrades from lockfile, advisory, and constraint evidence.",
+  "version": "0.2.0",
+  "description": "Governed runx skill that ranks dependency upgrades from a real npm lockfile, live OSV advisories, and constraint evidence.",
   "type": "module",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "dogfood": "RUNX_INPUTS_PATH=fixtures/upgrade.inputs.json node run.mjs",
-    "dogfood:refuse": "RUNX_INPUTS_PATH=fixtures/refuse.inputs.json node run.mjs"
+    "dogfood": "RUNX_INPUTS_PATH=fixtures/nodegoat.inputs.json node run.mjs",
+    "dogfood:refuse": "RUNX_INPUTS_PATH=fixtures/nodegoat-blocked.inputs.json node run.mjs"
   },
   "devDependencies": {
     "@runxhq/cli": "^0.6.13"

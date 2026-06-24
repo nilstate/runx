@@ -1,0 +1,22 @@
+# Dependency upgrade plan report
+
+- Target: OWASP NodeGoat (https://github.com/OWASP/NodeGoat c5cb68a7084e4ae7dcc60e6a98768720a81841e8)
+- Lockfile: url https://raw.githubusercontent.com/OWASP/NodeGoat/c5cb68a7084e4ae7dcc60e6a98768720a81841e8/package-lock.json
+- Lockfile SHA-256: b9ed49893a9d3bcf6fe567cd38fe8168850591e0018f19d3bb0d1f80a4c2eecc
+- Planned upgrades: 5
+- Live OSV records: 13
+- Advisory mode: live_osv
+- Refused candidates: 1
+- No package installation, manifest mutation, or target code execution was performed.
+- Ranked plan:
+  - underscore: 1.9.1 -> 1.13.8; risk=high; breaking=OSV fixed version stays within major 1; review release notes before shipping.; advisory=GHSA-cf4h-3jhx-xvhq, GHSA-qpx9-hpmf-5gmw
+  - body-parser: 1.18.3 -> 1.20.3; risk=high; breaking=OSV fixed version stays within major 1; review release notes before shipping.; advisory=GHSA-qwcr-r2fm-qrc7
+  - marked: 0.3.5 -> 4.0.10; risk=high; breaking=OSV fixed version crosses major versions (0.3.5 -> 4.0.10); review package changelog and runtime compatibility.; advisory=GHSA-5v2h-r2cx-5xgj, GHSA-7px7-7xjx-hxm8, GHSA-p9wx-2529-fp83, GHSA-rrrm-qjm4-v8hf, GHSA-vfvf-mqq8-rwqc, GHSA-x5pg-88wf-qq4p
+  - mongodb: 2.2.36 -> 3.1.13; risk=high; breaking=OSV fixed version crosses major versions (2.2.36 -> 3.1.13); review package changelog and runtime compatibility.; advisory=GHSA-mh5c-679w-hh4r
+  - express: 4.16.4 -> 4.20.0; risk=medium; breaking=OSV fixed version stays within major 4; review release notes before shipping.; advisory=GHSA-qw6h-vgh9-j6wx, GHSA-rv95-896h-c2vc
+- Changelog:
+  - underscore: 1.9.1 -> 1.13.8 (high); advisories=GHSA-cf4h-3jhx-xvhq, GHSA-qpx9-hpmf-5gmw; OSV fixed version stays within major 1; review release notes before shipping.
+  - body-parser: 1.18.3 -> 1.20.3 (high); advisories=GHSA-qwcr-r2fm-qrc7; OSV fixed version stays within major 1; review release notes before shipping.
+  - marked: 0.3.5 -> 4.0.10 (high); advisories=GHSA-5v2h-r2cx-5xgj, GHSA-7px7-7xjx-hxm8, GHSA-p9wx-2529-fp83, GHSA-rrrm-qjm4-v8hf, GHSA-vfvf-mqq8-rwqc, GHSA-x5pg-88wf-qq4p; OSV fixed version crosses major versions (0.3.5 -> 4.0.10); review package changelog and runtime compatibility.
+  - mongodb: 2.2.36 -> 3.1.13 (high); advisories=GHSA-mh5c-679w-hh4r; OSV fixed version crosses major versions (2.2.36 -> 3.1.13); review package changelog and runtime compatibility.
+  - express: 4.16.4 -> 4.20.0 (medium); advisories=GHSA-qw6h-vgh9-j6wx, GHSA-rv95-896h-c2vc; OSV fixed version stays within major 4; review release notes before shipping.

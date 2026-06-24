@@ -1,9 +1,0 @@
-{
-  "target_name": "Fixture Shop",
-  "target_repo": "https://github.com/RYDE-PLAY/runx-fixture-shop",
-  "target_ref": "fixture-lock-v1",
-  "lockfile_path": "fixtures/package-lock.json",
-  "advisories_path": "fixtures/advisories.json",
-  "constraints_path": "fixtures/blocking-constraints.json",
-  "output_dir": "artifacts/refused"
-}
