@@ -1,16 +1,60 @@
-﻿{
-    "sources":  [
-                    "https://runx.ai/"
-                ],
-    "outputs":  [
-                    "manual-success.json",
-                    "manual-refusal.stderr.txt",
-                    "verification.json"
-                ],
-    "safety":  [
-                   "https-only sources",
-                   "private network refusal",
-                   "off-allowlist refusal",
-                   "proposal only; no email send"
-               ]
+{
+  "summary": "prospect-sequence is a runnable runx skill package that reads only explicit public allowlisted HTTPS sources, drafts a cited account-research outreach sequence, and returns a gated proposal without sending messages. Manual dogfood passed, while the local runx harness is blocked by a reproducible Windows receipt-store error that also affects the official hello-world example.",
+  "runx_cli_version": "runx-cli 0.6.13",
+  "sources": [
+    "https://runx.ai/"
+  ],
+  "outputs": [
+    "manual-success.json",
+    "manual-refusal.stderr.txt",
+    "verification.json",
+    "REPORT.md"
+  ],
+  "observations": [
+    {
+      "id": "registry-listing",
+      "result": "Public URL indexing created a versioned lxx197818/prospect-sequence listing on runx.ai."
+    },
+    {
+      "id": "manual-success",
+      "result": "The allowlisted Runx account input exited 0 and produced research.sources, research.angle, sequence, and send_proposal."
+    },
+    {
+      "id": "manual-citations",
+      "result": "The output cites https://runx.ai/ as the read public source for the account angle."
+    },
+    {
+      "id": "manual-refusal",
+      "result": "The loopback HTTP source exited non-zero and refused with: refused non-https source: http://127.0.0.1:3000/internal."
+    },
+    {
+      "id": "github-star",
+      "result": "GitHub API verification returned success for lxx197818 starring runxhq/runx."
+    },
+    {
+      "id": "pull-request",
+      "result": "PR https://github.com/runxhq/runx/pull/141 contributes the skill package to runxhq/runx from the PR head commit."
+    },
+    {
+      "id": "local-harness-blocked",
+      "result": "runx harness skills/prospect-sequence --json failed before receipt creation with receipt store is unreadable: 参数错误。 (os error 87)."
+    },
+    {
+      "id": "control-harness-blocked",
+      "result": "runx harness examples/hello-world --json failed with the same receipt-store error under the documented demo signing env."
+    }
+  ],
+  "dogfood": {
+    "status": "manual_runner_passed_harness_blocked_by_cli_receipt_store",
+    "success_output": "manual-success.json",
+    "refusal_output": "manual-refusal.stderr.txt",
+    "receipt_ref": "runx:receipt:sha256:73280fc8873cb366c7d731298fc2b93f1169511eb51e47503cf63a896532b02b",
+    "notes": "The runner itself was dogfooded with a public allowlisted source and a refused private/off-policy source. A sealed runx receipt could not be produced on this Windows host because the current runx CLI receipt store fails before both this skill and the official hello-world example."
+  },
+  "safety": [
+    "https-only sources",
+    "private network refusal",
+    "off-allowlist refusal",
+    "proposal only; no email send"
+  ]
 }
