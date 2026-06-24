@@ -1,0 +1,115 @@
+{
+  "schema": "frantic.evidence.code_review_note.v1",
+  "summary": "Published code-review-note runx skill for bounty #59. The skill reads a bounded PR diff and emits grounded findings, risk, test gaps, and a gated review_note proposal without posting comments or merging.",
+  "observations": [
+    {
+      "type": "runx_version",
+      "runx_version_output": "runx-cli 0.6.13",
+      "requirement": "runx CLI 0.6.13 or newer",
+      "status": "satisfied"
+    },
+    {
+      "type": "package_identity",
+      "publisher_owner": "vidshidden",
+      "package_name": "code-review-note",
+      "version": "sha-d4b7c3ff5357",
+      "registry_ref": "vidshidden/code-review-note@sha-d4b7c3ff5357",
+      "public_url": "https://runx.ai/x/vidshidden/code-review-note@sha-d4b7c3ff5357",
+      "install_command": "runx add vidshidden/code-review-note@sha-d4b7c3ff5357 --registry https://api.runx.ai",
+      "run_command": "runx skill vidshidden/code-review-note@sha-d4b7c3ff5357 --registry https://api.runx.ai --json"
+    },
+    {
+      "type": "source_and_pr",
+      "pr_url": "https://github.com/runxhq/runx/pull/121",
+      "source_url": "https://github.com/VidsHidden/runx/tree/code-review-note/skills/code-review-note",
+      "raw_x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/X.yaml",
+      "raw_skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/SKILL.md",
+      "raw_runner": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/run.mjs",
+      "head_ref": "code-review-note"
+    },
+    {
+      "type": "hosted_harness",
+      "hosted_harness_status": "passed",
+      "harness_case_names": [
+        "risky-diff-yields-review-note",
+        "empty-diff-refused"
+      ],
+      "harness_case_count": 2,
+      "evidence_url": "https://runx.ai/x/vidshidden/code-review-note#harness",
+      "receipt_ids": [
+        "sha256:2cc4840a322ed96bc53ea705c3704d0632c07396aacb6a471e578658e4251f33",
+        "sha256:d0c128171918130c079167eef3a02c1f11a761d52f4a330c12818bc06064f7b2"
+      ]
+    },
+    {
+      "type": "dogfood",
+      "package": "vidshidden/code-review-note@sha-d4b7c3ff5357",
+      "input": "fixtures/risky-diff.json",
+      "dogfood_command": "runx skill vidshidden/code-review-note@sha-d4b7c3ff5357 --registry https://api.runx.ai --json",
+      "receipt_ref": "runx:receipt:sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f",
+      "receipt_url": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/evidence/dogfood-receipt-sha256-45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json",
+      "verify_public_key_url": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/evidence/dogfood-receipt-public-key.txt",
+      "runx_verify_verdict": "runx verify --receipt dogfood-receipts/sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json --json returned valid: true with valid digest, valid content_address, and valid production signature for kid runx-demo-key",
+      "harness_cases": [
+        "risky-diff-yields-review-note sealed",
+        "empty-diff-refused refused"
+      ]
+    },
+    {
+      "type": "local_harness",
+      "command": "runx harness ./skills/code-review-note --receipt-dir <isolated-receipt-dir> --json",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": [
+        "risky-diff-yields-review-note",
+        "empty-diff-refused"
+      ],
+      "non_windows_rerun": "https://github.com/VidsHidden/runx/blob/code-review-note/.github/workflows/code-review-note-harness.yml"
+    },
+    {
+      "type": "review_output",
+      "finding_count": 4,
+      "risk_rating": "high",
+      "named_test_gaps": [
+        "missing_high_risk_regression_tests",
+        "missing_numeric_boundary_tests"
+      ],
+      "grounding": "Findings cite supplied diff file src/payments/refunds.ts and visible changed lines."
+    },
+    {
+      "type": "gated_effect",
+      "review_note": {
+        "effect": "proposed",
+        "catalog_skill": "pr-review-note",
+        "required_scope": "pr.comment",
+        "merge_scope": "refused"
+      },
+      "mutation_status": "no GitHub comment is posted by this skill"
+    },
+    {
+      "type": "refusal_case",
+      "refusal_case": "empty-diff-refused",
+      "result": "failure/refusal rather than invented findings",
+      "reason": "The skill refuses empty or unparseable diffs."
+    }
+  ],
+  "dogfood": {
+    "package": "vidshidden/code-review-note@sha-d4b7c3ff5357",
+    "input": "fixtures/risky-diff.json",
+    "command": "runx skill vidshidden/code-review-note@sha-d4b7c3ff5357 --registry https://api.runx.ai --json",
+    "receipt_ref": "runx:receipt:sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f",
+    "verify_verdict": "runx verify --receipt dogfood-receipts/sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json --json returned valid: true with valid digest, valid content_address, and valid production signature for kid runx-demo-key",
+    "harness_cases": [
+      {
+        "name": "risky-diff-yields-review-note",
+        "status": "sealed",
+        "receipt_ref": "runx:receipt:sha256:2cc4840a322ed96bc53ea705c3704d0632c07396aacb6a471e578658e4251f33"
+      },
+      {
+        "name": "empty-diff-refused",
+        "status": "refused",
+        "receipt_ref": "runx:receipt:sha256:d0c128171918130c079167eef3a02c1f11a761d52f4a330c12818bc06064f7b2"
+      }
+    ]
+  }
+}
