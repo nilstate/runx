@@ -1,9 +1,29 @@
 ---
 name: prospect-sequence
-description: Research an account through a governed, SSRF-guarded HTTP front over an explicit host allowlist, synthesize an angle that cites every source it read, draft a multi-touch outreach sequence, and emit a gated send proposal that the send-as catalog skill performs.
-source: https://github.com/epistemedeus/prospect-sequence
+description: "Research an account through a governed, SSRF-guarded HTTP front over an explicit host allowlist, synthesize an angle that cites every source it read, draft a multi-touch outreach sequence, and emit a gated send proposal that the send-as catalog skill performs."
+source:
+  type: cli-tool
+  command: node
+  args:
+    - run.mjs
+inputs:
+  prospect:
+    type: json
+    required: true
+    description: "Account identity: { company, contact, domain? }."
+  icp:
+    type: string
+    required: true
+    description: "Ideal customer profile / who we serve; shapes the angle."
+  source_allowlist:
+    type: json
+    required: true
+    description: "Permitted public hosts read through the governed HTTP front; every fetch is SSRF-guarded and re-checked on redirects."
 runx:
   category: ops
+links:
+  source: https://github.com/epistemedeus/prospect-sequence
+license: MIT
 ---
 
 # Prospect Sequence
