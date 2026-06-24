@@ -1,0 +1,20 @@
+{
+  "prospect": {
+    "company": "Internal Demo",
+    "public_sources": [
+      {
+        "url": "http://127.0.0.1/admin",
+        "title": "internal host",
+        "content": "private admin page"
+      }
+    ]
+  },
+  "icp": {
+    "target": "security teams",
+    "pain": "unsafe source collection",
+    "offer": "safe public research"
+  },
+  "source_allowlist": [
+    "127.0.0.1"
+  ]
+}
