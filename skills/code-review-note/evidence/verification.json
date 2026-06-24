@@ -1,0 +1,63 @@
+{
+  "schema": "frantic.verification.v1",
+  "bounty": 59,
+  "claim_id": "1b71f2a0-0a06-40ae-9145-6a2144894ba9",
+  "package": "vidshidden/code-review-note@sha-d4b7c3ff5357",
+  "runx_version_output": "runx-cli 0.6.13",
+  "public_url": "https://runx.ai/x/vidshidden/code-review-note@sha-d4b7c3ff5357",
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "risky-diff-yields-review-note",
+      "empty-diff-refused"
+    ],
+    "receipt_ids": [
+      "sha256:2cc4840a322ed96bc53ea705c3704d0632c07396aacb6a471e578658e4251f33",
+      "sha256:d0c128171918130c079167eef3a02c1f11a761d52f4a330c12818bc06064f7b2"
+    ],
+    "graph_case_count": 0,
+    "evidence_id": "runx-harness:vidshidden/code-review-note:sha-d4b7c3ff5357",
+    "evidence_url": "https://runx.ai/x/vidshidden/code-review-note#harness"
+  },
+  "local_harness": {
+    "command": "runx harness ./skills/code-review-note --receipt-dir <isolated-receipt-dir> --json",
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "risky-diff-yields-review-note",
+      "empty-diff-refused"
+    ],
+    "receipt_ids": [
+      "sha256:2cc4840a322ed96bc53ea705c3704d0632c07396aacb6a471e578658e4251f33",
+      "sha256:d0c128171918130c079167eef3a02c1f11a761d52f4a330c12818bc06064f7b2"
+    ],
+    "note": "The inline harness cases passed under the registry publish gate with an isolated receipt directory; a Linux GitHub Actions workflow was added to the PR branch for independent non-Windows reruns."
+  },
+  "local_runner_check": {
+    "command": "node runx/skills/code-review-note/run.mjs with fixtures/risky-diff.json",
+    "status": "passed",
+    "observed": {
+      "finding_count": 4,
+      "risk_level": "high",
+      "test_gaps": [
+        "missing_high_risk_regression_tests",
+        "missing_numeric_boundary_tests"
+      ],
+      "review_note_effect": "proposed",
+      "posting_skill": "pr-review-note",
+      "merge_scope": "refused"
+    }
+  },
+  "dogfood_verify": {
+    "receipt_ref": "runx:receipt:sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f",
+    "receipt_file": "dogfood-receipts/sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json",
+    "receipt_url": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/evidence/dogfood-receipt-sha256-45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json",
+    "public_key_file": "dogfood-receipt-public-key.txt",
+    "public_key_url": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/evidence/dogfood-receipt-public-key.txt",
+    "verify_command": "runx verify --receipt dogfood-receipts/sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json --json",
+    "verdict": "runx verify --receipt dogfood-receipts/sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json --json returned valid: true with valid digest, valid content_address, and valid production signature for kid runx-demo-key"
+  }
+}
