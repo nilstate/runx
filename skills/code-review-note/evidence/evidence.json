@@ -21,11 +21,11 @@
     {
       "type": "source_and_pr",
       "pr_url": "https://github.com/runxhq/runx/pull/121",
-      "source_url": "https://github.com/VidsHidden/runx/tree/code-review-note/skills/code-review-note",
-      "raw_x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/X.yaml",
-      "raw_skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/SKILL.md",
-      "raw_runner": "https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/run.mjs",
-      "head_ref": "code-review-note"
+      "source_url": "https://github.com/VidsHidden/runx/tree/e4471faeab328c34f2d198947dcb5547c5bffa40/skills/code-review-note",
+      "raw_x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/e4471faeab328c34f2d198947dcb5547c5bffa40/skills/code-review-note/X.yaml",
+      "raw_skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/e4471faeab328c34f2d198947dcb5547c5bffa40/skills/code-review-note/SKILL.md",
+      "raw_runner": "https://raw.githubusercontent.com/VidsHidden/runx/e4471faeab328c34f2d198947dcb5547c5bffa40/skills/code-review-note/run.mjs",
+      "head_commit": "e4471faeab328c34f2d198947dcb5547c5bffa40"
     },
     {
       "type": "hosted_harness",
