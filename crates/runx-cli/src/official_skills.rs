@@ -47,8 +47,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/dep-upgrade-plan",
-        version: "sha-dbb9cf39834f",
-        digest: "e9c97b13c566e477349007a54f9947a873f3b82301becad78acfb118dfacf002",
+        version: "sha-42e774c4b1dd",
+        digest: "468ab0365d4ead4145541f18f21bb08a1a21442eac7ef6679554c516a721b13d",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/dependency-cve-audit",

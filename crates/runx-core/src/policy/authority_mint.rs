@@ -93,6 +93,8 @@ impl FamilySubsetComparator for ScopeBoundsComparator {
         Self::ALGORITHM
     }
 
+    // rust-style-allow: long-function because this comparator exhaustively binds
+    // AuthorityBounds fields so newly added bounds fail closed at the mint boundary.
     fn bounds_subset(&self, child: &AuthorityTerm, parent: &AuthorityTerm) -> bool {
         // Exhaustively destructure both sides so growing `AuthorityBounds` breaks
         // this function until the new field is classified as generic-narrowable

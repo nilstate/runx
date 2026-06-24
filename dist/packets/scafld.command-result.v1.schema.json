@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/scafld/command-result/v1.json",
+  "x-runx-packet-id": "runx.scafld.command_result.v1",
+  "type": "object",
+  "properties": {
+    "ok": { "type": "boolean" },
+    "command": { "type": "string" },
+    "task_id": { "type": "string" },
+    "status": { "type": "string" },
+    "path": { "type": "string" },
+    "markdown": { "type": "string" },
+    "error": { "type": "string" },
+    "summary": { "type": "string" }
+  },
+  "additionalProperties": true
+}
