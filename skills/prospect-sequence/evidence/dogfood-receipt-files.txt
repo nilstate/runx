@@ -1,4 +1,5 @@
 skills/prospect-sequence/evidence/dogfood-receipts/index.json
+skills/prospect-sequence/evidence/dogfood-receipts/sha256:2030c8ef8cb4487f2442c9a7a9f9d47d090967a328001eb6a6a7fe73016e26c2.json
 skills/prospect-sequence/evidence/dogfood-receipts/sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a.json
 skills/prospect-sequence/evidence/dogfood-receipts/sha256:77ab8c45b2a150cec54716e789b162052948b9967eb6b64651b56c9cb5d110ef.json
 skills/prospect-sequence/evidence/dogfood-receipts/sha256:cc6e93598e000b33ceda7fa39181b1327809e56d437a69248ab22081583653be.json

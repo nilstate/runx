@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-06-24T09:53:19.882Z",
+    "closed_at": "2026-06-24T09:56:15.064Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool sequence completed"
@@ -390,7 +390,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-06-24T09:53:19.882Z",
+          "closed_at": "2026-06-24T09:56:15.064Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -445,7 +445,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-06-24T09:53:19.882Z",
+    "created_at": "2026-06-24T09:56:15.064Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -473,8 +473,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:b4f69bff5359ffe197d8194a95123877d14b49796b427a79ae414f761512c0a4",
-    "id": "sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
+    "digest": "sha256:0151a85bad59806bc5737007d4a3b9e7a12c0aede9f8dace754d676578cc5739",
+    "id": "sha256:2030c8ef8cb4487f2442c9a7a9f9d47d090967a328001eb6a6a7fe73016e26c2",
     "idempotency": {
       "content_hash": "sha256:run_sequence_6b8a81bcb846-sequence-content",
       "intent_key": "sha256:run_sequence_6b8a81bcb846-sequence-intent",
@@ -491,7 +491,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-06-24T09:53:19.882Z",
+      "closed_at": "2026-06-24T09:56:15.064Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -502,14 +502,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-06-24T09:53:19.882Z",
+      "last_observed_at": "2026-06-24T09:56:15.064Z",
       "reason_code": "process_closed",
       "summary": "cli-tool sequence completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:3IOCdLRE059hAQ66VLMcd2sC_UyfxjAZiD2WqEMOozzvwg1CaFlU3OsVNKLvccL7htYvDKg7ic2spjnNHGAjBg"
+      "value": "base64:CXayjC4SdcJawuQr50iidvxjbEcAdbX6doqbUEG3n8UlTuA3o1Npd6ZA83Imqc_ekLIFVsc63gFZnGXQv4gsDw"
     },
     "subject": {
       "commitments": [],
@@ -520,7 +520,7 @@
       }
     }
   },
-  "receipt_id": "sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
+  "receipt_id": "sha256:2030c8ef8cb4487f2442c9a7a9f9d47d090967a328001eb6a6a7fe73016e26c2",
   "registry_provenance": {
     "digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
     "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8",

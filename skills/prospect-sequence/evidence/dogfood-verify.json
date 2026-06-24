@@ -3,6 +3,13 @@
   "signature_mode": "production",
   "trees": [
     {
+      "root_receipt_id": "sha256:2030c8ef8cb4487f2442c9a7a9f9d47d090967a328001eb6a6a7fe73016e26c2",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    },
+    {
       "root_receipt_id": "sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
       "receipt_count": 1,
       "parent_missing": null,
