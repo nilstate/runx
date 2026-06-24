@@ -1,0 +1,16 @@
+﻿{
+    "sources":  [
+                    "https://runx.ai/"
+                ],
+    "outputs":  [
+                    "manual-success.json",
+                    "manual-refusal.stderr.txt",
+                    "verification.json"
+                ],
+    "safety":  [
+                   "https-only sources",
+                   "private network refusal",
+                   "off-allowlist refusal",
+                   "proposal only; no email send"
+               ]
+}

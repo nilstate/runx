@@ -1,0 +1,63 @@
+skill: prospect-sequence
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: allowlisted-account-produces-sequence
+      runner: default
+      inputs:
+        prospect:
+          company: Runx
+          contact: Developer Relations
+          website: https://runx.ai
+        icp: Agent tooling teams that need portable skills, governed execution, and checkable receipts.
+        source_allowlist:
+          - https://runx.ai
+          - https://github.com/runxhq/runx
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: off-allowlist-source-is-refused
+      runner: default
+      inputs:
+        prospect:
+          company: Private Example
+          contact: Ops
+          website: http://127.0.0.1:3000/internal
+        icp: Teams needing governed execution.
+        source_allowlist:
+          - https://example.com
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      prospect:
+        type: json
+        required: true
+      icp:
+        type: string
+        required: true
+      source_allowlist:
+        type: json
+        required: true

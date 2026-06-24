@@ -1,0 +1,22 @@
+﻿{
+    "skill":  "prospect-sequence",
+    "version":  "0.1.0",
+    "generated_at":  "2026-06-24T02:52:07.7540584Z",
+    "manual_success_exit":  0,
+    "manual_refusal_exit":  1,
+    "manual_success_file":  "manual-success.json",
+    "manual_refusal_stderr_file":  "manual-refusal.stderr.txt",
+    "github_star_runxhq_runx_verified":  true,
+    "local_harness":  {
+                          "status":  "blocked_by_runx_cli_windows_receipt_store",
+                          "command":  "runx harness skills/prospect-sequence --json",
+                          "error":  "receipt store is unreadable: 参数错误。 (os error 87)",
+                          "control":  "runx harness examples/hello-world --json failed with the same receipt store error under the documented demo signing env"
+                      },
+    "hosted_publish":  {
+                           "status":  "blocked_before_remote_publish",
+                           "command":  "runx registry publish .\\skills\\prospect-sequence\\SKILL.md --registry https://api.runx.ai --json",
+                           "error":  "local publish harness failed with the same receipt store error"
+                       },
+    "no_secrets":  true
+}
