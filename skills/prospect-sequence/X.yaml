@@ -1,0 +1,149 @@
+skill: prospect-sequence
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: public-sources-yield-sequence
+      runner: sequence
+      inputs:
+        prospect:
+          company: Northstar Analytics
+          contact:
+            name: Maya Chen
+            title: VP Revenue Operations
+          public_sources:
+            - url: https://northstar.example/customers
+              title: Northstar customer story
+              content: Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard.
+            - url: https://northstar.example/docs/revops
+              title: Northstar RevOps guide
+              content: The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams.
+        icp:
+          target: B2B SaaS revenue operations leaders
+          pain: fragmented forecasting and manual pipeline inspection
+          offer: a governed automation review that turns account signals into a weekly executive forecast note
+          proof: keeps outreach factual by citing public source material only
+          tone: concise and consultative
+        source_allowlist:
+          - northstar.example
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: private-network-source-refused
+      runner: sequence
+      inputs:
+        prospect:
+          company: Internal Demo
+          public_sources:
+            - url: http://127.0.0.1/admin
+              title: internal host
+              content: private admin page
+        icp:
+          target: security teams
+          pain: unsafe source collection
+          offer: safe public research
+        source_allowlist:
+          - 127.0.0.1
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+    - name: missing-public-sources-refused
+      runner: sequence
+      inputs:
+        prospect:
+          company: EmptyCo
+          public_sources: []
+        icp:
+          target: revenue teams
+          offer: sequence draft
+        source_allowlist:
+          - empty.example
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runx:
+  mutating: false
+  category: growth
+  scopes:
+    - public_source.read
+    - outreach.sequence.propose
+  policy:
+    data_classification: public_prospect_sources
+    network:
+      allowed:
+        - source_allowlist
+      forbidden:
+        - localhost
+        - private network ranges
+        - link-local addresses
+        - non-http schemes
+        - off-allowlist hosts
+    verifier_notes:
+      - The angle must cite every source used.
+      - send_proposal is proposed only and must name send-as as the executor.
+      - The runner must refuse private-network and missing-source cases.
+  artifacts:
+    emits:
+      - prospect_sequence_packet
+    wrap_as: prospect_sequence_packet
+
+runners:
+  sequence:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - public_source.read
+      - outreach.sequence.propose
+    policy:
+      reads:
+        - allowlisted public source URLs
+        - bounded fixture source content
+      writes: []
+      disallows:
+        - private network fetches
+        - off-allowlist fetches
+        - CRM mutations
+        - sending email
+        - inventing uncited facts
+    artifacts:
+      wrap_as: prospect_sequence_packet
+      packet: runx.growth.prospect_sequence.v1
+    inputs:
+      prospect:
+        type: json
+        required: true
+        description: Prospect company/contact plus public_sources with URL and optional bounded content.
+      icp:
+        type: json
+        required: true
+        description: Ideal customer profile, pains, offer, proof, and tone.
+      source_allowlist:
+        type: json
+        required: true
+        description: Hostnames the public research reader may access.
+    outputs:
+      research: object
+      sequence: array
+      send_proposal: object
