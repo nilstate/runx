@@ -1,5 +1,5 @@
 skill: dependency-advisory-graph
-version: "0.1.1"
+version: "0.2.0"
 
 catalog:
   kind: skill
@@ -15,18 +15,38 @@ runners:
     args:
       - run.mjs
     inputs:
-      manifest:
+      lockfile:
         type: json
-        required: true
-        description: Dependency manifest data with package names and installed versions.
-      advisory_database:
+        required: false
+        description: npm package-lock JSON object for the target project.
+      lockfile_path:
+        type: string
+        required: false
+        description: Path inside the skill package to a real target package-lock.json.
+      lockfile_url:
+        type: string
+        required: false
+        description: Public URL to a target package-lock.json, fetched at run time.
+      osv_response:
         type: json
-        required: true
-        description: Advisory records with package, vulnerable range, evidence URL, severity, and fix version.
+        required: false
+        description: Optional OSV querybatch response for offline harness fixtures.
+      osv_response_path:
+        type: string
+        required: false
+        description: Optional path inside the skill package to an OSV querybatch fixture.
       ecosystem:
         type: string
         required: false
         description: Dependency ecosystem label. Defaults to npm.
+      project_name:
+        type: string
+        required: false
+        description: Name of the target project being scanned.
+      project_url:
+        type: string
+        required: false
+        description: Public URL of the target project being scanned.
       output_dir:
         type: string
         required: false

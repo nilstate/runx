@@ -1,0 +1,50 @@
+{
+  "schema": "runx.dependency_advisory_graph.verification.v2",
+  "skill": "dependency-advisory-graph",
+  "project": {
+    "name": "eclipse-theia/security-audit",
+    "url": "https://github.com/eclipse-theia/security-audit",
+    "lockfile_source": "https://raw.githubusercontent.com/eclipse-theia/security-audit/master/package-lock.json",
+    "lockfile_path": null,
+    "lockfile_url": "https://raw.githubusercontent.com/eclipse-theia/security-audit/master/package-lock.json"
+  },
+  "checks": [
+    {
+      "id": "typed_output_fields",
+      "status": "pass"
+    },
+    {
+      "id": "real_lockfile_ingested",
+      "status": "pass",
+      "source": "https://raw.githubusercontent.com/eclipse-theia/security-audit/master/package-lock.json"
+    },
+    {
+      "id": "osv_advisory_source",
+      "status": "pass",
+      "mode": "live_osv_querybatch"
+    },
+    {
+      "id": "exact_version_match",
+      "status": "pass"
+    },
+    {
+      "id": "direct_dependency_fix_path",
+      "status": "pass"
+    },
+    {
+      "id": "false_positive_guard",
+      "status": "pass",
+      "guarded_non_findings": 32
+    },
+    {
+      "id": "no_target_install_or_app_execution",
+      "status": "pass",
+      "note": "The scanner executed against and parsed the target project's dependency lockfile; it did not run application code."
+    }
+  ],
+  "install_run_verify": [
+    "runx --version",
+    "runx harness ./skills/dependency-advisory-graph --json",
+    "runx skill ./skills/dependency-advisory-graph --input lockfile_path=<real package-lock.json> --json"
+  ]
+}

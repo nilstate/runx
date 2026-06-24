@@ -1,0 +1,49 @@
+{
+  "source": {
+    "url": "https://api.osv.dev/v1/querybatch",
+    "retrieved_at": "2026-06-24T00:00:00.000Z"
+  },
+  "results": [
+    {
+      "vulns": []
+    },
+    {
+      "vulns": [
+        {
+          "id": "GHSA-vh95-rmgr-6w4m",
+          "aliases": [
+            "CVE-2020-7598"
+          ],
+          "summary": "minimist prototype pollution",
+          "database_specific": {
+            "severity": "critical"
+          },
+          "affected": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "minimist"
+              },
+              "ranges": [
+                {
+                  "type": "SEMVER",
+                  "events": [
+                    {
+                      "fixed": "0.2.1"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "type": "ADVISORY",
+              "url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

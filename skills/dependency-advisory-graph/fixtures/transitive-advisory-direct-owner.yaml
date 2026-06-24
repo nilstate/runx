@@ -1,0 +1,19 @@
+name: transitive-advisory-direct-owner
+kind: skill
+target: ..
+runner: default
+inputs:
+  ecosystem: npm
+  project_name: fixture-transitive-vulnerable-app
+  project_url: https://example.com/fixture-transitive-vulnerable-app
+  lockfile_path: fixtures/package-lock-transitive-advisory.json
+  osv_response_path: fixtures/osv-transitive-minimist-response.json
+  output_dir: artifacts/transitive-advisory-direct-owner
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: dependency-advisory-graph
+  source_case: transitive-advisory-direct-owner
+  source: lockfile-osv-fixture

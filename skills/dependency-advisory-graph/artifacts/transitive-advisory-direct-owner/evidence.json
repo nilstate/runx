@@ -1,0 +1,127 @@
+{
+  "schema": "runx.dependency_advisory_graph.v2",
+  "ecosystem": "npm",
+  "project": {
+    "name": "fixture-transitive-vulnerable-app",
+    "url": "https://example.com/fixture-transitive-vulnerable-app",
+    "lockfile_source": "fixtures/package-lock-transitive-advisory.json",
+    "lockfile_path": "fixtures/package-lock-transitive-advisory.json",
+    "lockfile_url": null
+  },
+  "package": "minimist",
+  "installed_version": "0.0.8",
+  "advisory_id": "GHSA-vh95-rmgr-6w4m",
+  "evidence_url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+  "advisory_source": "https://api.osv.dev/v1/querybatch",
+  "retrieved_at": "2026-06-24T00:00:00.000Z",
+  "severity": "critical",
+  "fix_version": "0.2.1",
+  "fix_path": "Bump mkdirp so minimist@0.0.8 is replaced by a non-vulnerable version; OSV first fixed version: 0.2.1.",
+  "direct_dependency_to_bump": "mkdirp",
+  "confidence": "high",
+  "exact_version_match": true,
+  "findings": [
+    {
+      "package": "minimist",
+      "installed_version": "0.0.8",
+      "dependency_path": [
+        "mkdirp",
+        "minimist"
+      ],
+      "direct_dependency_to_bump": "mkdirp",
+      "fix_path": "Bump mkdirp so minimist@0.0.8 is replaced by a non-vulnerable version; OSV first fixed version: 0.2.1.",
+      "advisory_id": "GHSA-vh95-rmgr-6w4m",
+      "aliases": [
+        "CVE-2020-7598"
+      ],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:00:00.000Z",
+      "severity": "critical",
+      "fix_version": "0.2.1",
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    }
+  ],
+  "clean_packages": [
+    {
+      "package": "mkdirp",
+      "installed_version": "0.5.1",
+      "path": "node_modules/mkdirp",
+      "direct": true,
+      "direct_dependency_to_bump": "mkdirp",
+      "dependency_path": [
+        "mkdirp"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "pkg:npm/mkdirp@0.5.1",
+        "type": "dependency",
+        "package": "mkdirp",
+        "installed_version": "0.5.1",
+        "direct_dependency_to_bump": "mkdirp",
+        "dependency_path": [
+          "mkdirp"
+        ]
+      },
+      {
+        "id": "pkg:npm/minimist@0.0.8",
+        "type": "dependency",
+        "package": "minimist",
+        "installed_version": "0.0.8",
+        "direct_dependency_to_bump": "mkdirp",
+        "dependency_path": [
+          "mkdirp",
+          "minimist"
+        ]
+      },
+      {
+        "id": "adv:GHSA-vh95-rmgr-6w4m",
+        "type": "advisory",
+        "advisory_id": "GHSA-vh95-rmgr-6w4m",
+        "severity": "critical",
+        "fix_version": "0.2.1"
+      }
+    ],
+    "edges": [
+      {
+        "from": "pkg:npm/minimist@0.0.8",
+        "to": "adv:GHSA-vh95-rmgr-6w4m",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+        "direct_dependency_to_bump": "mkdirp"
+      }
+    ]
+  },
+  "false_positive_guards": [
+    {
+      "package": "mkdirp",
+      "installed_version": "0.5.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    }
+  ],
+  "validation": {
+    "exact_version_match": true,
+    "no_package_name_only_false_positives": true,
+    "package_name_only_guard_count": 1,
+    "target_lockfile_ingested": true,
+    "target_code_executed": true,
+    "target_code_execution_note": "The scanner executed against and parsed the target project's dependency lockfile; it did not run application code.",
+    "target_packages_installed": false,
+    "osv_runtime_query_performed": false,
+    "advisory_source_mode": "osv_fixture_response",
+    "direct_dependency_fix_paths_count": 1
+  },
+  "operator_next_steps": [
+    "Bump the listed direct_dependency_to_bump to a version that resolves the advisory.",
+    "Regenerate the lockfile and re-run this skill against the updated lockfile.",
+    "Attach the OSV evidence URL, fix path, and runx receipt to the dependency review record."
+  ]
+}

@@ -4,10 +4,9 @@ target: ..
 runner: default
 inputs:
   ecosystem: npm
-  manifest: {}
-  advisory_database:
-    retrieved_at: "2026-06-23T00:00:00.000Z"
-    advisories: []
+  lockfile: {}
+  osv_response:
+    results: []
 expect:
   status: failure
   receipt:
@@ -18,4 +17,4 @@ expect:
 metadata:
   public_skill: dependency-advisory-graph
   source_case: invalid-manifest-fails
-  source: skills-fixture
+  source: lockfile-osv-fixture

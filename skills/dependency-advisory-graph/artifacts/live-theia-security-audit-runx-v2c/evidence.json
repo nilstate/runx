@@ -1,0 +1,1506 @@
+{
+  "schema": "runx.dependency_advisory_graph.v2",
+  "ecosystem": "npm",
+  "project": {
+    "name": "eclipse-theia/security-audit",
+    "url": "https://github.com/eclipse-theia/security-audit",
+    "lockfile_source": "https://raw.githubusercontent.com/eclipse-theia/security-audit/master/package-lock.json",
+    "lockfile_path": null,
+    "lockfile_url": "https://raw.githubusercontent.com/eclipse-theia/security-audit/master/package-lock.json"
+  },
+  "package": "brace-expansion",
+  "installed_version": "1.1.11",
+  "advisory_id": "GHSA-f886-m6hf-6m8v",
+  "evidence_url": "https://osv.dev/vulnerability/GHSA-f886-m6hf-6m8v",
+  "advisory_source": "https://api.osv.dev/v1/querybatch",
+  "retrieved_at": "2026-06-24T00:25:58.356Z",
+  "severity": "unknown",
+  "fix_version": null,
+  "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-f886-m6hf-6m8v.",
+  "direct_dependency_to_bump": "tslint",
+  "confidence": "high",
+  "exact_version_match": true,
+  "findings": [
+    {
+      "package": "brace-expansion",
+      "installed_version": "1.1.11",
+      "dependency_path": [
+        "tslint",
+        "brace-expansion"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-f886-m6hf-6m8v.",
+      "advisory_id": "GHSA-f886-m6hf-6m8v",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-f886-m6hf-6m8v",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "brace-expansion",
+      "installed_version": "1.1.11",
+      "dependency_path": [
+        "tslint",
+        "brace-expansion"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-v6h2-p8h4-qcjw.",
+      "advisory_id": "GHSA-v6h2-p8h4-qcjw",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-v6h2-p8h4-qcjw",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "diff",
+      "installed_version": "4.0.1",
+      "dependency_path": [
+        "tslint",
+        "diff"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-73rr-hh4g-fpgx.",
+      "advisory_id": "GHSA-73rr-hh4g-fpgx",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-73rr-hh4g-fpgx",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "js-yaml",
+      "installed_version": "3.13.1",
+      "dependency_path": [
+        "tslint",
+        "js-yaml"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-h67p-54hq-rp68.",
+      "advisory_id": "GHSA-h67p-54hq-rp68",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-h67p-54hq-rp68",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "js-yaml",
+      "installed_version": "3.13.1",
+      "dependency_path": [
+        "tslint",
+        "js-yaml"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-mh29-5h37-fv8m.",
+      "advisory_id": "GHSA-mh29-5h37-fv8m",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-mh29-5h37-fv8m",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "minimatch",
+      "installed_version": "3.0.4",
+      "dependency_path": [
+        "tslint",
+        "minimatch"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-23c5-xmqv-rm74.",
+      "advisory_id": "GHSA-23c5-xmqv-rm74",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-23c5-xmqv-rm74",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "minimatch",
+      "installed_version": "3.0.4",
+      "dependency_path": [
+        "tslint",
+        "minimatch"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-3ppc-4f35-3m26.",
+      "advisory_id": "GHSA-3ppc-4f35-3m26",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-3ppc-4f35-3m26",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "minimatch",
+      "installed_version": "3.0.4",
+      "dependency_path": [
+        "tslint",
+        "minimatch"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-7r86-cg39-jmmj.",
+      "advisory_id": "GHSA-7r86-cg39-jmmj",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-7r86-cg39-jmmj",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "minimatch",
+      "installed_version": "3.0.4",
+      "dependency_path": [
+        "tslint",
+        "minimatch"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-f8q6-p94x-37v3.",
+      "advisory_id": "GHSA-f8q6-p94x-37v3",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-f8q6-p94x-37v3",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "minimist",
+      "installed_version": "0.0.8",
+      "dependency_path": [
+        "tslint",
+        "minimist"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-vh95-rmgr-6w4m.",
+      "advisory_id": "GHSA-vh95-rmgr-6w4m",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "minimist",
+      "installed_version": "0.0.8",
+      "dependency_path": [
+        "tslint",
+        "minimist"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-xvch-5gv4-984h.",
+      "advisory_id": "GHSA-xvch-5gv4-984h",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-xvch-5gv4-984h",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "path-parse",
+      "installed_version": "1.0.6",
+      "dependency_path": [
+        "tslint",
+        "path-parse"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-hj48-42vr-x3v9.",
+      "advisory_id": "GHSA-hj48-42vr-x3v9",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-hj48-42vr-x3v9",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    },
+    {
+      "package": "semver",
+      "installed_version": "5.7.1",
+      "dependency_path": [
+        "tslint",
+        "semver"
+      ],
+      "direct_dependency_to_bump": "tslint",
+      "fix_path": "Bump tslint to a version outside the OSV affected range for GHSA-c2qf-rxjj-qqgw.",
+      "advisory_id": "GHSA-c2qf-rxjj-qqgw",
+      "aliases": [],
+      "evidence_url": "https://osv.dev/vulnerability/GHSA-c2qf-rxjj-qqgw",
+      "advisory_source": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-06-24T00:25:58.356Z",
+      "severity": "unknown",
+      "fix_version": null,
+      "confidence": "high",
+      "exact_version_match": true,
+      "ecosystem": "npm",
+      "false_positive_guard": "Finding emitted only after OSV query matched package name and exact installed version."
+    }
+  ],
+  "clean_packages": [
+    {
+      "package": "@babel/code-frame",
+      "installed_version": "7.5.5",
+      "path": "@babel/code-frame",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "@babel/code-frame"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "@babel/highlight",
+      "installed_version": "7.5.0",
+      "path": "@babel/highlight",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "@babel/highlight"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "@types/node",
+      "installed_version": "12.11.1",
+      "path": "@types/node",
+      "direct": true,
+      "direct_dependency_to_bump": "@types/node",
+      "dependency_path": [
+        "@types/node"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "ansi-styles",
+      "installed_version": "3.2.1",
+      "path": "ansi-styles",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "ansi-styles"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "argparse",
+      "installed_version": "1.0.10",
+      "path": "argparse",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "argparse"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "balanced-match",
+      "installed_version": "1.0.0",
+      "path": "balanced-match",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "balanced-match"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "builtin-modules",
+      "installed_version": "1.1.1",
+      "path": "builtin-modules",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "builtin-modules"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "chalk",
+      "installed_version": "2.4.2",
+      "path": "chalk",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "chalk"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "color-convert",
+      "installed_version": "1.9.3",
+      "path": "color-convert",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "color-convert"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "color-name",
+      "installed_version": "1.1.3",
+      "path": "color-name",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "color-name"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "commander",
+      "installed_version": "2.20.3",
+      "path": "commander",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "commander"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "concat-map",
+      "installed_version": "0.0.1",
+      "path": "concat-map",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "concat-map"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "escape-string-regexp",
+      "installed_version": "1.0.5",
+      "path": "escape-string-regexp",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "escape-string-regexp"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "esprima",
+      "installed_version": "4.0.1",
+      "path": "esprima",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "esprima"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "esutils",
+      "installed_version": "2.0.3",
+      "path": "esutils",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "esutils"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "fs.realpath",
+      "installed_version": "1.0.0",
+      "path": "fs.realpath",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "fs.realpath"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "glob",
+      "installed_version": "7.1.4",
+      "path": "glob",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "glob"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "has-flag",
+      "installed_version": "3.0.0",
+      "path": "has-flag",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "has-flag"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "inflight",
+      "installed_version": "1.0.6",
+      "path": "inflight",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "inflight"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "inherits",
+      "installed_version": "2.0.4",
+      "path": "inherits",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "inherits"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "js-tokens",
+      "installed_version": "4.0.0",
+      "path": "js-tokens",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "js-tokens"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "mkdirp",
+      "installed_version": "0.5.1",
+      "path": "mkdirp",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "mkdirp"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "once",
+      "installed_version": "1.4.0",
+      "path": "once",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "once"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "path-is-absolute",
+      "installed_version": "1.0.1",
+      "path": "path-is-absolute",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "path-is-absolute"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "resolve",
+      "installed_version": "1.12.0",
+      "path": "resolve",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "resolve"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "sprintf-js",
+      "installed_version": "1.0.3",
+      "path": "sprintf-js",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "sprintf-js"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "supports-color",
+      "installed_version": "5.5.0",
+      "path": "supports-color",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "supports-color"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "tslib",
+      "installed_version": "1.10.0",
+      "path": "tslib",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "tslib"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "tslint",
+      "installed_version": "5.20.0",
+      "path": "tslint",
+      "direct": true,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "tsutils",
+      "installed_version": "2.29.0",
+      "path": "tsutils",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "tsutils"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "typescript",
+      "installed_version": "3.6.4",
+      "path": "typescript",
+      "direct": true,
+      "direct_dependency_to_bump": "typescript",
+      "dependency_path": [
+        "typescript"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    },
+    {
+      "package": "wrappy",
+      "installed_version": "1.0.2",
+      "path": "wrappy",
+      "direct": false,
+      "direct_dependency_to_bump": "tslint",
+      "dependency_path": [
+        "tslint",
+        "wrappy"
+      ],
+      "confidence": "high",
+      "false_positive_guard": "No finding was emitted because OSV returned no advisory for this exact package and installed version."
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "pkg:npm/@babel/code-frame@7.5.5",
+        "type": "dependency",
+        "package": "@babel/code-frame",
+        "installed_version": "7.5.5",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "@babel/code-frame"
+        ]
+      },
+      {
+        "id": "pkg:npm/@babel/highlight@7.5.0",
+        "type": "dependency",
+        "package": "@babel/highlight",
+        "installed_version": "7.5.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "@babel/highlight"
+        ]
+      },
+      {
+        "id": "pkg:npm/@types/node@12.11.1",
+        "type": "dependency",
+        "package": "@types/node",
+        "installed_version": "12.11.1",
+        "direct_dependency_to_bump": "@types/node",
+        "dependency_path": [
+          "@types/node"
+        ]
+      },
+      {
+        "id": "pkg:npm/ansi-styles@3.2.1",
+        "type": "dependency",
+        "package": "ansi-styles",
+        "installed_version": "3.2.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "ansi-styles"
+        ]
+      },
+      {
+        "id": "pkg:npm/argparse@1.0.10",
+        "type": "dependency",
+        "package": "argparse",
+        "installed_version": "1.0.10",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "argparse"
+        ]
+      },
+      {
+        "id": "pkg:npm/balanced-match@1.0.0",
+        "type": "dependency",
+        "package": "balanced-match",
+        "installed_version": "1.0.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "balanced-match"
+        ]
+      },
+      {
+        "id": "pkg:npm/brace-expansion@1.1.11",
+        "type": "dependency",
+        "package": "brace-expansion",
+        "installed_version": "1.1.11",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "brace-expansion"
+        ]
+      },
+      {
+        "id": "pkg:npm/builtin-modules@1.1.1",
+        "type": "dependency",
+        "package": "builtin-modules",
+        "installed_version": "1.1.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "builtin-modules"
+        ]
+      },
+      {
+        "id": "pkg:npm/chalk@2.4.2",
+        "type": "dependency",
+        "package": "chalk",
+        "installed_version": "2.4.2",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "chalk"
+        ]
+      },
+      {
+        "id": "pkg:npm/color-convert@1.9.3",
+        "type": "dependency",
+        "package": "color-convert",
+        "installed_version": "1.9.3",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "color-convert"
+        ]
+      },
+      {
+        "id": "pkg:npm/color-name@1.1.3",
+        "type": "dependency",
+        "package": "color-name",
+        "installed_version": "1.1.3",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "color-name"
+        ]
+      },
+      {
+        "id": "pkg:npm/commander@2.20.3",
+        "type": "dependency",
+        "package": "commander",
+        "installed_version": "2.20.3",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "commander"
+        ]
+      },
+      {
+        "id": "pkg:npm/concat-map@0.0.1",
+        "type": "dependency",
+        "package": "concat-map",
+        "installed_version": "0.0.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "concat-map"
+        ]
+      },
+      {
+        "id": "pkg:npm/diff@4.0.1",
+        "type": "dependency",
+        "package": "diff",
+        "installed_version": "4.0.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "diff"
+        ]
+      },
+      {
+        "id": "pkg:npm/escape-string-regexp@1.0.5",
+        "type": "dependency",
+        "package": "escape-string-regexp",
+        "installed_version": "1.0.5",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "escape-string-regexp"
+        ]
+      },
+      {
+        "id": "pkg:npm/esprima@4.0.1",
+        "type": "dependency",
+        "package": "esprima",
+        "installed_version": "4.0.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "esprima"
+        ]
+      },
+      {
+        "id": "pkg:npm/esutils@2.0.3",
+        "type": "dependency",
+        "package": "esutils",
+        "installed_version": "2.0.3",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "esutils"
+        ]
+      },
+      {
+        "id": "pkg:npm/fs.realpath@1.0.0",
+        "type": "dependency",
+        "package": "fs.realpath",
+        "installed_version": "1.0.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "fs.realpath"
+        ]
+      },
+      {
+        "id": "pkg:npm/glob@7.1.4",
+        "type": "dependency",
+        "package": "glob",
+        "installed_version": "7.1.4",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "glob"
+        ]
+      },
+      {
+        "id": "pkg:npm/has-flag@3.0.0",
+        "type": "dependency",
+        "package": "has-flag",
+        "installed_version": "3.0.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "has-flag"
+        ]
+      },
+      {
+        "id": "pkg:npm/inflight@1.0.6",
+        "type": "dependency",
+        "package": "inflight",
+        "installed_version": "1.0.6",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "inflight"
+        ]
+      },
+      {
+        "id": "pkg:npm/inherits@2.0.4",
+        "type": "dependency",
+        "package": "inherits",
+        "installed_version": "2.0.4",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "inherits"
+        ]
+      },
+      {
+        "id": "pkg:npm/js-tokens@4.0.0",
+        "type": "dependency",
+        "package": "js-tokens",
+        "installed_version": "4.0.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "js-tokens"
+        ]
+      },
+      {
+        "id": "pkg:npm/js-yaml@3.13.1",
+        "type": "dependency",
+        "package": "js-yaml",
+        "installed_version": "3.13.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "js-yaml"
+        ]
+      },
+      {
+        "id": "pkg:npm/minimatch@3.0.4",
+        "type": "dependency",
+        "package": "minimatch",
+        "installed_version": "3.0.4",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "minimatch"
+        ]
+      },
+      {
+        "id": "pkg:npm/minimist@0.0.8",
+        "type": "dependency",
+        "package": "minimist",
+        "installed_version": "0.0.8",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "minimist"
+        ]
+      },
+      {
+        "id": "pkg:npm/mkdirp@0.5.1",
+        "type": "dependency",
+        "package": "mkdirp",
+        "installed_version": "0.5.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "mkdirp"
+        ]
+      },
+      {
+        "id": "pkg:npm/once@1.4.0",
+        "type": "dependency",
+        "package": "once",
+        "installed_version": "1.4.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "once"
+        ]
+      },
+      {
+        "id": "pkg:npm/path-is-absolute@1.0.1",
+        "type": "dependency",
+        "package": "path-is-absolute",
+        "installed_version": "1.0.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "path-is-absolute"
+        ]
+      },
+      {
+        "id": "pkg:npm/path-parse@1.0.6",
+        "type": "dependency",
+        "package": "path-parse",
+        "installed_version": "1.0.6",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "path-parse"
+        ]
+      },
+      {
+        "id": "pkg:npm/resolve@1.12.0",
+        "type": "dependency",
+        "package": "resolve",
+        "installed_version": "1.12.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "resolve"
+        ]
+      },
+      {
+        "id": "pkg:npm/semver@5.7.1",
+        "type": "dependency",
+        "package": "semver",
+        "installed_version": "5.7.1",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "semver"
+        ]
+      },
+      {
+        "id": "pkg:npm/sprintf-js@1.0.3",
+        "type": "dependency",
+        "package": "sprintf-js",
+        "installed_version": "1.0.3",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "sprintf-js"
+        ]
+      },
+      {
+        "id": "pkg:npm/supports-color@5.5.0",
+        "type": "dependency",
+        "package": "supports-color",
+        "installed_version": "5.5.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "supports-color"
+        ]
+      },
+      {
+        "id": "pkg:npm/tslib@1.10.0",
+        "type": "dependency",
+        "package": "tslib",
+        "installed_version": "1.10.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "tslib"
+        ]
+      },
+      {
+        "id": "pkg:npm/tslint@5.20.0",
+        "type": "dependency",
+        "package": "tslint",
+        "installed_version": "5.20.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint"
+        ]
+      },
+      {
+        "id": "pkg:npm/tsutils@2.29.0",
+        "type": "dependency",
+        "package": "tsutils",
+        "installed_version": "2.29.0",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "tsutils"
+        ]
+      },
+      {
+        "id": "pkg:npm/typescript@3.6.4",
+        "type": "dependency",
+        "package": "typescript",
+        "installed_version": "3.6.4",
+        "direct_dependency_to_bump": "typescript",
+        "dependency_path": [
+          "typescript"
+        ]
+      },
+      {
+        "id": "pkg:npm/wrappy@1.0.2",
+        "type": "dependency",
+        "package": "wrappy",
+        "installed_version": "1.0.2",
+        "direct_dependency_to_bump": "tslint",
+        "dependency_path": [
+          "tslint",
+          "wrappy"
+        ]
+      },
+      {
+        "id": "adv:GHSA-f886-m6hf-6m8v",
+        "type": "advisory",
+        "advisory_id": "GHSA-f886-m6hf-6m8v",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-v6h2-p8h4-qcjw",
+        "type": "advisory",
+        "advisory_id": "GHSA-v6h2-p8h4-qcjw",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-73rr-hh4g-fpgx",
+        "type": "advisory",
+        "advisory_id": "GHSA-73rr-hh4g-fpgx",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-h67p-54hq-rp68",
+        "type": "advisory",
+        "advisory_id": "GHSA-h67p-54hq-rp68",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-mh29-5h37-fv8m",
+        "type": "advisory",
+        "advisory_id": "GHSA-mh29-5h37-fv8m",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-23c5-xmqv-rm74",
+        "type": "advisory",
+        "advisory_id": "GHSA-23c5-xmqv-rm74",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-3ppc-4f35-3m26",
+        "type": "advisory",
+        "advisory_id": "GHSA-3ppc-4f35-3m26",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-7r86-cg39-jmmj",
+        "type": "advisory",
+        "advisory_id": "GHSA-7r86-cg39-jmmj",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-f8q6-p94x-37v3",
+        "type": "advisory",
+        "advisory_id": "GHSA-f8q6-p94x-37v3",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-vh95-rmgr-6w4m",
+        "type": "advisory",
+        "advisory_id": "GHSA-vh95-rmgr-6w4m",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-xvch-5gv4-984h",
+        "type": "advisory",
+        "advisory_id": "GHSA-xvch-5gv4-984h",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-hj48-42vr-x3v9",
+        "type": "advisory",
+        "advisory_id": "GHSA-hj48-42vr-x3v9",
+        "severity": "unknown",
+        "fix_version": null
+      },
+      {
+        "id": "adv:GHSA-c2qf-rxjj-qqgw",
+        "type": "advisory",
+        "advisory_id": "GHSA-c2qf-rxjj-qqgw",
+        "severity": "unknown",
+        "fix_version": null
+      }
+    ],
+    "edges": [
+      {
+        "from": "pkg:npm/brace-expansion@1.1.11",
+        "to": "adv:GHSA-f886-m6hf-6m8v",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-f886-m6hf-6m8v",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/brace-expansion@1.1.11",
+        "to": "adv:GHSA-v6h2-p8h4-qcjw",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-v6h2-p8h4-qcjw",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/diff@4.0.1",
+        "to": "adv:GHSA-73rr-hh4g-fpgx",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-73rr-hh4g-fpgx",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/js-yaml@3.13.1",
+        "to": "adv:GHSA-h67p-54hq-rp68",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-h67p-54hq-rp68",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/js-yaml@3.13.1",
+        "to": "adv:GHSA-mh29-5h37-fv8m",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-mh29-5h37-fv8m",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/minimatch@3.0.4",
+        "to": "adv:GHSA-23c5-xmqv-rm74",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-23c5-xmqv-rm74",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/minimatch@3.0.4",
+        "to": "adv:GHSA-3ppc-4f35-3m26",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-3ppc-4f35-3m26",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/minimatch@3.0.4",
+        "to": "adv:GHSA-7r86-cg39-jmmj",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-7r86-cg39-jmmj",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/minimatch@3.0.4",
+        "to": "adv:GHSA-f8q6-p94x-37v3",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-f8q6-p94x-37v3",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/minimist@0.0.8",
+        "to": "adv:GHSA-vh95-rmgr-6w4m",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-vh95-rmgr-6w4m",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/minimist@0.0.8",
+        "to": "adv:GHSA-xvch-5gv4-984h",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-xvch-5gv4-984h",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/path-parse@1.0.6",
+        "to": "adv:GHSA-hj48-42vr-x3v9",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-hj48-42vr-x3v9",
+        "direct_dependency_to_bump": "tslint"
+      },
+      {
+        "from": "pkg:npm/semver@5.7.1",
+        "to": "adv:GHSA-c2qf-rxjj-qqgw",
+        "relationship": "osv_exact_version_matches_advisory",
+        "evidence_url": "https://osv.dev/vulnerability/GHSA-c2qf-rxjj-qqgw",
+        "direct_dependency_to_bump": "tslint"
+      }
+    ]
+  },
+  "false_positive_guards": [
+    {
+      "package": "@babel/code-frame",
+      "installed_version": "7.5.5",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "@babel/highlight",
+      "installed_version": "7.5.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "@types/node",
+      "installed_version": "12.11.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "ansi-styles",
+      "installed_version": "3.2.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "argparse",
+      "installed_version": "1.0.10",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "balanced-match",
+      "installed_version": "1.0.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "builtin-modules",
+      "installed_version": "1.1.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "chalk",
+      "installed_version": "2.4.2",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "color-convert",
+      "installed_version": "1.9.3",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "color-name",
+      "installed_version": "1.1.3",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "commander",
+      "installed_version": "2.20.3",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "concat-map",
+      "installed_version": "0.0.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "escape-string-regexp",
+      "installed_version": "1.0.5",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "esprima",
+      "installed_version": "4.0.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "esutils",
+      "installed_version": "2.0.3",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "fs.realpath",
+      "installed_version": "1.0.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "glob",
+      "installed_version": "7.1.4",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "has-flag",
+      "installed_version": "3.0.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "inflight",
+      "installed_version": "1.0.6",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "inherits",
+      "installed_version": "2.0.4",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "js-tokens",
+      "installed_version": "4.0.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "mkdirp",
+      "installed_version": "0.5.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "once",
+      "installed_version": "1.4.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "path-is-absolute",
+      "installed_version": "1.0.1",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "resolve",
+      "installed_version": "1.12.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "sprintf-js",
+      "installed_version": "1.0.3",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "supports-color",
+      "installed_version": "5.5.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "tslib",
+      "installed_version": "1.10.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "tslint",
+      "installed_version": "5.20.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "tsutils",
+      "installed_version": "2.29.0",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "typescript",
+      "installed_version": "3.6.4",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    },
+    {
+      "package": "wrappy",
+      "installed_version": "1.0.2",
+      "guard": "OSV returned no vulnerability for this exact package and installed version."
+    }
+  ],
+  "validation": {
+    "exact_version_match": true,
+    "no_package_name_only_false_positives": true,
+    "package_name_only_guard_count": 32,
+    "target_lockfile_ingested": true,
+    "target_code_executed": true,
+    "target_code_execution_note": "The scanner executed against and parsed the target project's dependency lockfile; it did not run application code.",
+    "target_packages_installed": false,
+    "osv_runtime_query_performed": true,
+    "advisory_source_mode": "live_osv_querybatch",
+    "direct_dependency_fix_paths_count": 13
+  },
+  "operator_next_steps": [
+    "Bump the listed direct_dependency_to_bump to a version that resolves the advisory.",
+    "Regenerate the lockfile and re-run this skill against the updated lockfile.",
+    "Attach the OSV evidence URL, fix path, and runx receipt to the dependency review record."
+  ]
+}

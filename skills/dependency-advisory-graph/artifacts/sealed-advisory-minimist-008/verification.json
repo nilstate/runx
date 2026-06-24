@@ -1,0 +1,50 @@
+{
+  "schema": "runx.dependency_advisory_graph.verification.v2",
+  "skill": "dependency-advisory-graph",
+  "project": {
+    "name": "fixture-vulnerable-app",
+    "url": "https://example.com/fixture-vulnerable-app",
+    "lockfile_source": "fixtures/package-lock-advisory.json",
+    "lockfile_path": "fixtures/package-lock-advisory.json",
+    "lockfile_url": null
+  },
+  "checks": [
+    {
+      "id": "typed_output_fields",
+      "status": "pass"
+    },
+    {
+      "id": "real_lockfile_ingested",
+      "status": "pass",
+      "source": "fixtures/package-lock-advisory.json"
+    },
+    {
+      "id": "osv_advisory_source",
+      "status": "pass",
+      "mode": "osv_fixture_response"
+    },
+    {
+      "id": "exact_version_match",
+      "status": "pass"
+    },
+    {
+      "id": "direct_dependency_fix_path",
+      "status": "pass"
+    },
+    {
+      "id": "false_positive_guard",
+      "status": "pass",
+      "guarded_non_findings": 1
+    },
+    {
+      "id": "no_target_install_or_app_execution",
+      "status": "pass",
+      "note": "The scanner executed against and parsed the target project's dependency lockfile; it did not run application code."
+    }
+  ],
+  "install_run_verify": [
+    "runx --version",
+    "runx harness ./skills/dependency-advisory-graph --json",
+    "runx skill ./skills/dependency-advisory-graph --input lockfile_path=<real package-lock.json> --json"
+  ]
+}

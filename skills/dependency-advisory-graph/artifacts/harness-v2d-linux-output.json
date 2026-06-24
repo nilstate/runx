@@ -1,0 +1,542 @@
+[
+  {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-05-18T00:00:00Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-05-18T00:00:00Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:6f3308f95197046d7d2a0d57af2ddc5771ebe390ac17170cc30f1f472e207368",
+    "id": "sha256:e1b46700b81862e28d24693fabb80953a66318903e64c42ec6703406c9dd2c25",
+    "idempotency": {
+      "content_hash": "sha256:clean-manifest-no-finding-default-content",
+      "intent_key": "sha256:clean-manifest-no-finding-default-intent",
+      "trigger_fingerprint": "sha256:clean-manifest-no-finding-default-trigger"
+    },
+    "issuer": {
+      "kid": "dependency-advisory-graph-local-key-v2d",
+      "public_key_sha256": "sha256:65b60673d6ed884bf01c2c222d82ada0740f29ac3355d6a925c81f17f47a27b8",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-05-18T00:00:00Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-05-18T00:00:00Z",
+      "reason_code": "process_closed",
+      "summary": "step default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:-dGWQoORxmzaECeylAb4T1dudIvz6uyOCCzmFNCrbaMrQI1ws15IyzBp63rtq43FeUGh137eZiWzZge-c4ySDQ"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_clean-manifest-no-finding_default"
+      }
+    }
+  },
+  {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-05-18T00:00:00Z",
+          "disposition": "failed",
+          "reason_code": "process_exit",
+          "summary": "npm package-lock must include packages or dependencies\n"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "failed",
+            "summary": "npm package-lock must include packages or dependencies\n",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-05-18T00:00:00Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:7f702142ef6eec53c779de4cd4cc9b3a56ec058701a81f823c6d836307b659fc",
+    "id": "sha256:fd53f882648d3ae1a6062f500b03fd975a0f1832e32e5a8f636ae646705e6deb",
+    "idempotency": {
+      "content_hash": "sha256:invalid-manifest-fails-default-content",
+      "intent_key": "sha256:invalid-manifest-fails-default-intent",
+      "trigger_fingerprint": "sha256:invalid-manifest-fails-default-trigger"
+    },
+    "issuer": {
+      "kid": "dependency-advisory-graph-local-key-v2d",
+      "public_key_sha256": "sha256:65b60673d6ed884bf01c2c222d82ada0740f29ac3355d6a925c81f17f47a27b8",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-05-18T00:00:00Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "failed",
+          "summary": "npm package-lock must include packages or dependencies\n",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "failed",
+      "last_observed_at": "2026-05-18T00:00:00Z",
+      "reason_code": "process_failed",
+      "summary": "step default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:9lxLAxvWOZPl3GaU0LDhPM3Q9L4xtymzHlLe_78XRFYDzxYO7vJq83OdDqjOV__1J2DjS2yEph1NmWDDyTZeCA"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_invalid-manifest-fails_default"
+      }
+    }
+  },
+  {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-05-18T00:00:00Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-05-18T00:00:00Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:04c3d1623a73d0f88ec9814cd2e5e060f45782c44dc32e8176e908f8543e6627",
+    "id": "sha256:f5656ef51f825864be77ce93b8c5f85001c7b8a3fde0e0caeab9acd0c7762e8f",
+    "idempotency": {
+      "content_hash": "sha256:sealed-advisory-minimist-008-default-content",
+      "intent_key": "sha256:sealed-advisory-minimist-008-default-intent",
+      "trigger_fingerprint": "sha256:sealed-advisory-minimist-008-default-trigger"
+    },
+    "issuer": {
+      "kid": "dependency-advisory-graph-local-key-v2d",
+      "public_key_sha256": "sha256:65b60673d6ed884bf01c2c222d82ada0740f29ac3355d6a925c81f17f47a27b8",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-05-18T00:00:00Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-05-18T00:00:00Z",
+      "reason_code": "process_closed",
+      "summary": "step default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:P7qJrrEvUuvs6Kble_q59cQVgpyhvIMrzbaUoXrTHgrVpjTBRMdt3Dz1S3VC41y-G5lcOZYZMtp8xS5R2rGbDg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_sealed-advisory-minimist-008_default"
+      }
+    }
+  },
+  {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-05-18T00:00:00Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-05-18T00:00:00Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:c176eaa67134766d9c83929b2d7be1a1d4c25379e28b68761674eaef616e996f",
+    "id": "sha256:fd3b31f089f2f32f48a59aaaa7730acc74a1622ca969a81b81d87d2fe5325a9e",
+    "idempotency": {
+      "content_hash": "sha256:transitive-advisory-direct-owner-default-content",
+      "intent_key": "sha256:transitive-advisory-direct-owner-default-intent",
+      "trigger_fingerprint": "sha256:transitive-advisory-direct-owner-default-trigger"
+    },
+    "issuer": {
+      "kid": "dependency-advisory-graph-local-key-v2d",
+      "public_key_sha256": "sha256:65b60673d6ed884bf01c2c222d82ada0740f29ac3355d6a925c81f17f47a27b8",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-05-18T00:00:00Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-05-18T00:00:00Z",
+      "reason_code": "process_closed",
+      "summary": "step default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:_6Bv718jJVVTr7qtbzDvUBrlWLdFjZusgEzfCOQNEwCeJNt-YY5k0eg5wVly4M20mE8Sx2FOgu-zSAScFmtjDA"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_transitive-advisory-direct-owner_default"
+      }
+    }
+  }
+]

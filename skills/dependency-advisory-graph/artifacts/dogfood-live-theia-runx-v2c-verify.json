@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "F:\\work\\ai_work\\get_money\\third_party\\runx\\.runx-linux-receipts\\dependency-advisory-graph-live-v2c",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:93bd267651956cba928f676538aee8f3e298af325b317c8a498c10a80c459e94",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

@@ -1,0 +1,16 @@
+{
+  "retrieved_at": "2026-06-24T00:00:00.000Z",
+  "source": {
+    "name": "OSV querybatch fixture",
+    "url": "https://api.osv.dev/v1/querybatch",
+    "retrieved_at": "2026-06-24T00:00:00.000Z"
+  },
+  "results": [
+    {
+      "vulns": []
+    },
+    {
+      "vulns": []
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "fixture-transitive-vulnerable-app",
+  "lockfileVersion": 3,
+  "packages": {
+    "": {
+      "name": "fixture-transitive-vulnerable-app",
+      "dependencies": {
+        "mkdirp": "0.5.1"
+      }
+    },
+    "node_modules/mkdirp": {
+      "version": "0.5.1",
+      "dependencies": {
+        "minimist": "0.0.8"
+      }
+    },
+    "node_modules/minimist": {
+      "version": "0.0.8"
+    }
+  }
+}
