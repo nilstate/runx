@@ -1757,9 +1757,7 @@ fn write_cli_tool_skill(
 ) -> Result<(), std::io::Error> {
     fs::create_dir(dir)?;
     let artifacts = emitted_packet.map_or_else(String::new, |packet| {
-        format!(
-            "runx:\n  artifacts:\n    named_emits:\n      {packet}: runx.payment.{packet}.v1\n"
-        )
+        format!("runx:\n  artifacts:\n    named_emits:\n      {packet}: runx.payment.{packet}.v1\n")
     });
     fs::write(
         dir.join("SKILL.md"),

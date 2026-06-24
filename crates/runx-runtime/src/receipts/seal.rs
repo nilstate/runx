@@ -11,12 +11,12 @@ use crate::execution::output_projection::{
 use crate::{RuntimeError, StepRun};
 use runx_contracts::schema::NonEmptyString;
 use runx_contracts::{
-    ActForm, AuthorityAttenuation, AuthoritySubsetResult, AuthorityTerm, Closure, ClosureDisposition,
-    CredentialDeliveryObservation, CriterionBinding, CriterionStatus, Decision, DecisionChoice,
-    DecisionInputs, DecisionJustification, FanoutReceiptSyncPoint, Intent, JsonObject, Lineage,
-    RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority, ReceiptEnforcement,
-    ReceiptIdempotency, ReceiptIssuer, ReceiptSchema, Reference, ReferenceType, Seal,
-    SignatureAlgorithm, Subject, json_string_field, receipt_subject_kind,
+    ActForm, AuthorityAttenuation, AuthoritySubsetResult, AuthorityTerm, Closure,
+    ClosureDisposition, CredentialDeliveryObservation, CriterionBinding, CriterionStatus, Decision,
+    DecisionChoice, DecisionInputs, DecisionJustification, FanoutReceiptSyncPoint, Intent,
+    JsonObject, Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority,
+    ReceiptEnforcement, ReceiptIdempotency, ReceiptIssuer, ReceiptSchema, Reference, ReferenceType,
+    Seal, SignatureAlgorithm, Subject, json_string_field, receipt_subject_kind,
 };
 use runx_receipts::{
     ReceiptProofContext, ReceiptProofContextProvider, ReceiptSignature, ReceiptTreeConfig,

@@ -21,7 +21,8 @@ steps:
 #[test]
 fn graph_accepts_contract_context_edge() -> Result<(), String> {
     let graph = validate_graph(
-        parse_graph_yaml(&graph_with_edge("result.data.message")).map_err(|error| error.to_string())?,
+        parse_graph_yaml(&graph_with_edge("result.data.message"))
+            .map_err(|error| error.to_string())?,
     )
     .map_err(|error| error.to_string())?;
 

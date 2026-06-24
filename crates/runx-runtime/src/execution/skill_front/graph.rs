@@ -859,10 +859,11 @@ fn mint_charter_attenuation(
     let Some(directive) = act.mint_authority.as_ref() else {
         return Ok(None);
     };
-    let charter_key = charter_key
-        .ok_or_else(|| invalid("mint_authority requires the graph runner to declare charter_from"))?;
-    let charter: runx_contracts::AuthorityTerm =
-        decode_graph_input(graph_inputs, charter_key).ok_or_else(|| {
+    let charter_key = charter_key.ok_or_else(|| {
+        invalid("mint_authority requires the graph runner to declare charter_from")
+    })?;
+    let charter: runx_contracts::AuthorityTerm = decode_graph_input(graph_inputs, charter_key)
+        .ok_or_else(|| {
             invalid(format!(
                 "mint_authority charter input '{charter_key}' did not resolve to an authority term"
             ))
@@ -903,10 +904,7 @@ fn mint_charter_attenuation(
 }
 
 /// Decode a trusted graph input value into a typed contract struct.
-fn decode_graph_input<T: serde::de::DeserializeOwned>(
-    inputs: &JsonObject,
-    key: &str,
-) -> Option<T> {
+fn decode_graph_input<T: serde::de::DeserializeOwned>(inputs: &JsonObject, key: &str) -> Option<T> {
     inputs
         .get(key)
         .and_then(|value| serde_json::to_value(value).ok())
@@ -1013,7 +1011,10 @@ mod tests {
         widen.insert("charter".to_owned(), contract_json_value(&charter)?);
         widen.insert(
             "requested".to_owned(),
-            contract_json_value(&make_request(vec![AuthorityVerb::Read, AuthorityVerb::Delete]))?,
+            contract_json_value(&make_request(vec![
+                AuthorityVerb::Read,
+                AuthorityVerb::Delete,
+            ]))?,
         );
         assert!(
             mint_charter_attenuation(&act, Some("charter"), &widen).is_err(),

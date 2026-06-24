@@ -16,8 +16,8 @@ use crate::adapter::{
 };
 use crate::adapter_pipeline::{AdapterCapture, AdapterProjection};
 use crate::adapters::cli_tool::CliToolAdapter;
-use crate::execution::output_projection::data_envelope;
 use crate::credentials::CredentialDelivery;
+use crate::execution::output_projection::data_envelope;
 use crate::json_render::json_number_string;
 use crate::tool_catalogs::search::{FixtureTool, fixture_tool};
 use crate::tool_catalogs::{ToolCatalogError, ToolInspectOptions, resolve_local_tool};
