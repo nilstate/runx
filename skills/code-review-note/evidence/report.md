@@ -9,10 +9,10 @@ This delivery implements and publishes the requested `code-review-note` runx ski
 - Version: `sha-d4b7c3ff5357`
 - Registry ref: `vidshidden/code-review-note@sha-d4b7c3ff5357`
 - Public URL: https://runx.ai/x/vidshidden/code-review-note@sha-d4b7c3ff5357
-- Source URL: https://github.com/VidsHidden/runx/tree/code-review-note/skills/code-review-note
+- Source URL: https://github.com/VidsHidden/runx/tree/e4471faeab328c34f2d198947dcb5547c5bffa40/skills/code-review-note
 - PR URL: https://github.com/runxhq/runx/pull/121
-- Raw X.yaml: https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/X.yaml
-- Raw SKILL.md: https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/SKILL.md
+- Raw X.yaml: https://raw.githubusercontent.com/VidsHidden/runx/e4471faeab328c34f2d198947dcb5547c5bffa40/skills/code-review-note/X.yaml
+- Raw SKILL.md: https://raw.githubusercontent.com/VidsHidden/runx/e4471faeab328c34f2d198947dcb5547c5bffa40/skills/code-review-note/SKILL.md
 - Verification JSON: see submitted `verification_json`
 - Dogfood receipt: `runx:receipt:sha256:45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f`
 - Dogfood receipt URL: https://raw.githubusercontent.com/VidsHidden/runx/code-review-note/skills/code-review-note/evidence/dogfood-receipt-sha256-45bc3b4f9d30d422339fbbe0df95e15ddb1ebf6d919500e6826c033c7e39020f.json
