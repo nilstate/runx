@@ -49,10 +49,13 @@ jobs:
             -R skills/prospect-sequence/evidence/dogfood-receipts \
             | tee skills/prospect-sequence/evidence/dogfood-output.json
       - name: Verify dogfood receipts
+        env:
+          RUNX_RECEIPT_VERIFY_KID: runx-runtime-prod-fixture-key
+          RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64: IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=
         run: |
           RUNX="$(cat /tmp/runx-path)"
-          "$RUNX" verify --receipt-dir skills/prospect-sequence/evidence/dogfood-receipts --allow-local-development-signatures --json | tee skills/prospect-sequence/evidence/dogfood-verify.json
-          find skills/prospect-sequence/evidence/dogfood-receipts -type f -name '*.json' -maxdepth 3 | sort > skills/prospect-sequence/evidence/dogfood-receipt-files.txt
+          "$RUNX" verify --receipt-dir skills/prospect-sequence/evidence/dogfood-receipts --json | tee skills/prospect-sequence/evidence/dogfood-verify.json
+          find skills/prospect-sequence/evidence/dogfood-receipts -maxdepth 3 -type f -name '*.json' | sort > skills/prospect-sequence/evidence/dogfood-receipt-files.txt
       - name: Commit evidence
         run: |
           rm -rf skills/prospect-sequence/evidence/install
