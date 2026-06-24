@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-06-24T09:48:46.612Z",
+    "closed_at": "2026-06-24T09:49:22.064Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool sequence completed"
@@ -390,7 +390,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-06-24T09:48:46.612Z",
+          "closed_at": "2026-06-24T09:49:22.064Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -445,7 +445,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-06-24T09:48:46.612Z",
+    "created_at": "2026-06-24T09:49:22.064Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -473,8 +473,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:f1a2104b9f8da02e463d0bcd779aac7822c051e2567a1bc80b79b84a6510a059",
-    "id": "sha256:cc6e93598e000b33ceda7fa39181b1327809e56d437a69248ab22081583653be",
+    "digest": "sha256:42d784d971f94ee980f28c6ab7be8f5f8af57ccc4e33f337bdc92ecc097c5916",
+    "id": "sha256:e3b1e5287cb348c62ba421ea3c2769dcfdb01b9175057401f668632d76caac23",
     "idempotency": {
       "content_hash": "sha256:run_sequence_6b8a81bcb846-sequence-content",
       "intent_key": "sha256:run_sequence_6b8a81bcb846-sequence-intent",
@@ -491,7 +491,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-06-24T09:48:46.612Z",
+      "closed_at": "2026-06-24T09:49:22.064Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -502,14 +502,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-06-24T09:48:46.612Z",
+      "last_observed_at": "2026-06-24T09:49:22.064Z",
       "reason_code": "process_closed",
       "summary": "cli-tool sequence completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:ajCNaBTX622hyrO8LjNGrZSSftWSI-qh67SbzBMYvZ9v5BgpxWFxrQOson-AK2rap4MVT9ahXtQAHDDRlRzGAg"
+      "value": "base64:02CQ7t650hFHZGGmG41vHJIHu5E8ec9j-N0aZffanvYGKN64o7EwVJZuDkHa_hWUPl6Pfh-chMP63QWWGgtCDA"
     },
     "subject": {
       "commitments": [],
@@ -520,7 +520,7 @@
       }
     }
   },
-  "receipt_id": "sha256:cc6e93598e000b33ceda7fa39181b1327809e56d437a69248ab22081583653be",
+  "receipt_id": "sha256:e3b1e5287cb348c62ba421ea3c2769dcfdb01b9175057401f668632d76caac23",
   "registry_provenance": {
     "digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
     "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8",

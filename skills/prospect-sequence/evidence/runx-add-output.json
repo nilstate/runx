@@ -23,7 +23,7 @@
     "receipt_metadata": {
       "destination": "/home/runner/work/runx/runx/skills/prospect-sequence/evidence/install/vidshidden/prospect-sequence/sha-f1f58b597581/SKILL.md",
       "digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
-      "install_count": 3,
+      "install_count": 4,
       "package_digest": "ddf2ad57fa3a9246cfe5d3e72d63afc1f2589943f5a47e2fe3fc6b7b7011a21b",
       "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8",
       "publisher": {
