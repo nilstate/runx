@@ -1,0 +1,93 @@
+{
+  "schema": "frantic.evidence.prospect_sequence.v1",
+  "summary": "Published prospect-sequence runx skill for bounty #56. The skill reads allowlisted public prospect sources, builds a cited research angle, drafts a three-step outreach sequence, and emits a gated send-as proposal.",
+  "observations": [
+    {
+      "type": "runx_version",
+      "runx_version_output": "runx-cli 0.6.13",
+      "requirement": "runx CLI 0.6.13 or newer",
+      "status": "satisfied"
+    },
+    {
+      "type": "package_identity",
+      "publisher_owner": "vidshidden",
+      "package_name": "prospect-sequence",
+      "version": "sha-f1f58b597581",
+      "registry_ref": "vidshidden/prospect-sequence@sha-f1f58b597581",
+      "public_url": "https://runx.ai/x/vidshidden/prospect-sequence",
+      "install_command": "runx add vidshidden/prospect-sequence@sha-f1f58b597581 --registry https://api.runx.ai",
+      "run_command": "runx skill vidshidden/prospect-sequence@sha-f1f58b597581 --registry https://api.runx.ai"
+    },
+    {
+      "type": "source_and_pr",
+      "pr_url": "https://github.com/runxhq/runx/pull/142",
+      "source_url": "https://github.com/VidsHidden/runx/tree/9c9679b01fb033155553bc7a9029126469a2cf92/skills/prospect-sequence",
+      "raw_x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/9c9679b01fb033155553bc7a9029126469a2cf92/skills/prospect-sequence/X.yaml",
+      "raw_skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/9c9679b01fb033155553bc7a9029126469a2cf92/skills/prospect-sequence/SKILL.md",
+      "raw_runner": "https://raw.githubusercontent.com/VidsHidden/runx/9c9679b01fb033155553bc7a9029126469a2cf92/skills/prospect-sequence/run.mjs",
+      "head_commit": "9c9679b01fb033155553bc7a9029126469a2cf92"
+    },
+    {
+      "type": "hosted_harness",
+      "hosted_harness_status": "passed",
+      "harness_case_names": ["public-sources-yield-sequence", "private-network-source-refused", "missing-public-sources-refused"],
+      "harness_case_count": 3,
+      "evidence_url": "https://runx.ai/x/vidshidden/prospect-sequence#harness",
+      "receipt_ids": ["sha256:c6aa0aa5942bff73f59d55aeec61bd4e716c2110b53576b7c8dc9ef2b15d8a12", "sha256:b7a867a68413d7212661e0ca1389ba7e7ce6522e2b72a69170aab96af48102ec", "sha256:7395c038164bf04eceff0a1c0c1d6df3a2c108d2233ef9967d9461c9e2a5c013"]
+    },
+    {
+      "type": "clean_install",
+      "status": "success",
+      "install_command": "runx add vidshidden/prospect-sequence@sha-f1f58b597581 --registry https://api.runx.ai",
+      "digest": "ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef",
+      "profile_digest": "a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8"
+    },
+    {
+      "type": "successful_case",
+      "sources_read": [
+        {"citation_id": "S2511ff", "url": "https://northstar.example/customers", "read_mode": "fixture_content", "snippets": ["Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard."]},
+        {"citation_id": "S5d5ad6", "url": "https://northstar.example/docs/revops", "read_mode": "fixture_content", "snippets": ["The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams."]}
+      ],
+      "angle": {
+        "summary": "Northstar Analytics appears relevant to VP Revenue Operations because Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard. [S2511ff] The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams. [S5d5ad6] The outreach angle is to offer a governed automation review that turns account signals into a weekly executive forecast note while keeping every claim tied to those public citations.",
+        "citations": ["S2511ff", "S5d5ad6"],
+        "source_count": 2
+      },
+      "sequence_length": 3,
+      "send_proposal": {
+        "effect": "proposed",
+        "catalog_skill": "send-as",
+        "action_family": "send-as",
+        "send_class": "outreach",
+        "required_scope": "send_as.outreach.propose",
+        "human_approval_required": true,
+        "live_send_authorized": false,
+        "principal": {"type": "account", "ref": "caller_supplied_principal_required"},
+        "audience": {"type": "recipient", "ref": "Maya Chen", "requires_reconfirmation": true},
+        "content": {"draft_ref": "prospect-sequence:northstar-analytics", "digest": "sha256:fce6134dd78c26086811c1f31e44fffadabca08b13ff5714a6e67042560ba188", "subject_or_title": "Northstar Analytics and fragmented forecasting and manual pipeline inspection"},
+        "consent_basis": "requires caller-provided lawful outreach basis before send-as execution",
+        "evidence_refs": [{"citation_id": "S2511ff", "url": "https://northstar.example/customers"}, {"citation_id": "S5d5ad6", "url": "https://northstar.example/docs/revops"}],
+        "gates": {"preflight_required": true, "human_approval_required": true, "executor": "send-as"},
+        "provider_actions": ["send-as.plan", "human_approval", "provider_send_after_gate"]
+      }
+    },
+    {
+      "type": "refusal_case",
+      "case": "private-network-source-refused",
+      "status": "refused",
+      "reason_code": "private_network_refused",
+      "message": "Private, localhost, or link-local host refused: 127.0.0.1"
+    },
+    {
+      "type": "dogfood_attempt",
+      "status": "blocked_on_windows_receipt_store",
+      "command": "runx skill vidshidden/prospect-sequence@sha-f1f58b597581 --registry https://api.runx.ai --json",
+      "runx_stdout": {
+        "error": {"code": "skill_error", "message": "receipt store is unreadable: os error 87"},
+        "registry_provenance": {"digest": "sha256:ee57dec1c4ce3d192c59b21324300b22e2e8332ee2e1980af9e32369e053bbef", "profile_digest": "sha256:a9fab3ce46746eb89975af7ef6431549c731ccb5a0aaf65c887db467afba39a8", "registry_key_id": "runx-registry-ed25519-v1", "registry_source": "remote https://api.runx.ai", "registry_source_fingerprint": "ba1ac16b631195fd", "skill_id": "vidshidden/prospect-sequence", "trust_state": "trusted", "trust_tier": "community", "version": "sha-f1f58b597581"},
+        "status": "failure"
+      },
+      "note": "runx skill resolved the remote registry package and trusted provenance but failed at local receipt store write with os error 87 on Windows. The PR branch includes .github/workflows/prospect-sequence-dogfood.yml to rerun the same dogfood on Ubuntu and commit durable evidence."
+    }
+  ]
+}
