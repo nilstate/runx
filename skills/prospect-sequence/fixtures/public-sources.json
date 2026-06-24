@@ -1,0 +1,31 @@
+{
+  "prospect": {
+    "company": "Northstar Analytics",
+    "contact": {
+      "name": "Maya Chen",
+      "title": "VP Revenue Operations"
+    },
+    "public_sources": [
+      {
+        "url": "https://northstar.example/customers",
+        "title": "Northstar customer story",
+        "content": "Northstar Analytics helps SaaS revenue teams unify pipeline health, renewal risk, and expansion signals in one operating dashboard."
+      },
+      {
+        "url": "https://northstar.example/docs/revops",
+        "title": "Northstar RevOps guide",
+        "content": "The Northstar RevOps guide recommends weekly pipeline inspection, lifecycle alerts, and executive-ready forecast notes for growing B2B software teams."
+      }
+    ]
+  },
+  "icp": {
+    "target": "B2B SaaS revenue operations leaders",
+    "pain": "fragmented forecasting and manual pipeline inspection",
+    "offer": "a governed automation review that turns account signals into a weekly executive forecast note",
+    "proof": "keeps outreach factual by citing public source material only",
+    "tone": "concise and consultative"
+  },
+  "source_allowlist": [
+    "northstar.example"
+  ]
+}
