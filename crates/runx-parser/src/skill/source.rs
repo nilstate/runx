@@ -383,62 +383,69 @@ mod tests {
     use super::validate_act_declaration;
     use serde_json::json;
 
-    fn act_value(value: serde_json::Value) -> JsonValue {
-        serde_json::from_value(value).expect("convertible act value")
+    fn act_value(value: serde_json::Value) -> Result<JsonValue, String> {
+        serde_json::from_value(value).map_err(|error| format!("convertible act value: {error}"))
     }
 
-    fn act_err(value: serde_json::Value) -> String {
-        validate_act_declaration(Some(&act_value(value)))
-            .err()
-            .map(|error| error.to_string())
-            .expect("act unexpectedly validated")
+    fn act_err(value: serde_json::Value) -> Result<String, String> {
+        match validate_act_declaration(Some(&act_value(value)?)) {
+            Err(error) => Ok(error.to_string()),
+            Ok(_) => Err("act unexpectedly validated".to_owned()),
+        }
     }
 
     #[test]
-    fn requested_scope_mint_act_validates() {
-        let act = validate_act_declaration(Some(&act_value(json!({
+    fn requested_scope_mint_act_validates() -> Result<(), String> {
+        let act = match validate_act_declaration(Some(&act_value(json!({
             "mint_authority": {"source": "requested_scope"},
             "requested_scope_from": "needed_scope",
-        }))))
-        .expect("valid act")
-        .expect("present act");
+        }))?)) {
+            Ok(Some(act)) => act,
+            Ok(None) => return Err("present act".to_owned()),
+            Err(error) => return Err(format!("valid act: {error}")),
+        };
         assert_eq!(
             act.mint_authority.map(|directive| directive.source),
             Some(MintScopeSource::RequestedScope)
         );
+        Ok(())
     }
 
     #[test]
-    fn mint_authority_conflicts_with_prebuilt_path() {
+    fn mint_authority_conflicts_with_prebuilt_path() -> Result<(), String> {
         let message = act_err(json!({
             "mint_authority": {"source": "static_scopes"},
             "authority_term_from": "member_authority",
-        }));
+        }))?;
         assert!(message.contains("mutually exclusive"));
+        Ok(())
     }
 
     #[test]
-    fn requested_scope_act_requires_input_key() {
+    fn requested_scope_act_requires_input_key() -> Result<(), String> {
         let message = act_err(json!({
             "mint_authority": {"source": "requested_scope"},
-        }));
+        }))?;
         assert!(message.contains("requires requested_scope_from"));
+        Ok(())
     }
 
     #[test]
-    fn static_scopes_act_rejects_requested_scope_from() {
+    fn static_scopes_act_rejects_requested_scope_from() -> Result<(), String> {
         let message = act_err(json!({
             "mint_authority": {"source": "static_scopes"},
             "requested_scope_from": "needed_scope",
-        }));
+        }))?;
         assert!(message.contains("must not declare requested_scope_from"));
+        Ok(())
     }
 
     #[test]
-    fn dangling_requested_scope_from_in_act_is_rejected() {
+    fn dangling_requested_scope_from_in_act_is_rejected() -> Result<(), String> {
         let message = act_err(json!({
             "requested_scope_from": "needed_scope",
-        }));
+        }))?;
         assert!(message.contains("only valid with a mint_authority directive"));
+        Ok(())
     }
 }

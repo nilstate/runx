@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use runx_contracts::{ClosureDisposition, JsonObject, JsonValue, ReceiptSchema};
 use runx_receipts::canonical_receipt_json;
 use runx_runtime::{
-    HarnessExpectedStatus, HarnessFixtureError, HarnessFixtureKind, InvocationStatus,
+    HarnessExpectedStatus, HarnessFixtureError, HarnessFixtureKind, InvocationStatus, RuntimeError,
     RuntimeOptions, SkillAdapter, SkillInvocation, SkillOutput, load_harness_fixture,
     parse_harness_fixture, run_harness_fixture_with_adapter,
 };
@@ -274,8 +274,12 @@ impl SkillAdapter for TestAdapter {
         // is addressable by downstream context edges under the contract model.
         let mut claim = JsonObject::default();
         claim.insert("message".to_owned(), JsonValue::String(message));
-        let stdout = serde_json::to_string(&JsonValue::Object(claim))
-            .expect("serialize harness test adapter claim");
+        let stdout = serde_json::to_string(&JsonValue::Object(claim)).map_err(|source| {
+            RuntimeError::Json {
+                context: "serializing harness test adapter claim".to_owned(),
+                source,
+            }
+        })?;
         Ok(SkillOutput {
             status: InvocationStatus::Success,
             stdout,
