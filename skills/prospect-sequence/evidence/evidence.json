@@ -11,6 +11,31 @@
     "public_url": "https://runx.ai/x/vidshidden/prospect-sequence",
     "pr_url": "https://github.com/runxhq/runx/pull/142"
   },
+  "dogfood": {
+    "command": "runx skill vidshidden/prospect-sequence@sha-f1f58b597581 --registry https://api.runx.ai --json",
+    "status": "sealed",
+    "receipt_id": "sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
+    "receipt_ref": "runx:receipt:sha256:602f6dd820cacbcbee87a1e08f536a15907dcb79c9ad3b5ae284a29f0bce160a",
+    "verify": {
+      "command": "runx verify --receipt-dir skills/prospect-sequence/evidence/dogfood-receipts --json",
+      "valid": true,
+      "signature_mode": "production",
+      "findings": []
+    },
+    "output_observed": {
+      "sources_read": [
+        {"citation_id": "S2511ff", "url": "https://northstar.example/customers", "host": "northstar.example"},
+        {"citation_id": "S5d5ad6", "url": "https://northstar.example/docs/revops", "host": "northstar.example"}
+      ],
+      "angle_source_count": 2,
+      "angle_citations": ["S2511ff", "S5d5ad6"],
+      "sequence_length": 3,
+      "send_proposal_effect": "proposed",
+      "send_proposal_executor": "send-as",
+      "live_send_authorized": false
+    },
+    "distinct_from_harness_receipts": true
+  },
   "observations": [
     {
       "type": "runx_version",
