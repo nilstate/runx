@@ -1,0 +1,23 @@
+name: prospect-with-public-source-yields-sourced-sequence
+kind: skill
+target: ..
+runner: default
+inputs:
+  prospect:
+    company: Example Org
+    contact: ops@example.com
+  icp: "B2B teams that publish a public marketing site and want sourced, non-fabricated outbound"
+  source_allowlist:
+    - example.com
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: prospect-sequence
+  source_case: prospect-with-public-source
+  source: skills-fixture
+  note: Reads https://example.com/ through the governed HTTP front, extracts facts, cites them in the angle, drafts 3 touches, proposes (not sends) the first.

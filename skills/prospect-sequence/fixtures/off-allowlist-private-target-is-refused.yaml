@@ -1,0 +1,23 @@
+name: off-allowlist-private-target-is-refused
+kind: skill
+target: ..
+runner: default
+inputs:
+  prospect:
+    company: Internal Metadata Probe
+    contact: ""
+  icp: "should never produce a sequence"
+  source_allowlist:
+    - 169.254.169.254
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: prospect-sequence
+  source_case: off-allowlist-private-target
+  source: skills-fixture
+  note: The SSRF guard refuses the cloud-metadata link-local target 169.254.169.254; decision is "refused" with no fabricated facts. The run still seals a provable refusal.

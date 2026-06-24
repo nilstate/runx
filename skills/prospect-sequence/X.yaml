@@ -1,0 +1,71 @@
+skill: prospect-sequence
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: prospect-with-public-source-yields-sourced-sequence
+      runner: default
+      inputs:
+        prospect:
+          company: Example Org
+          contact: ops@example.com
+        icp: "B2B teams that publish a public marketing site and want sourced, non-fabricated outbound"
+        source_allowlist:
+          - example.com
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: off-allowlist-private-target-is-refused
+      runner: default
+      inputs:
+        prospect:
+          company: Internal Metadata Probe
+          contact: ""
+        icp: "should never produce a sequence"
+        source_allowlist:
+          - 169.254.169.254
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      prospect:
+        type: json
+        required: true
+        description: "Account identity: { company, contact, domain? }."
+      icp:
+        type: string
+        required: true
+        description: "Ideal customer profile / who we are and who we serve; shapes the angle."
+      source_allowlist:
+        type: json
+        required: true
+        description: "Permitted public hosts. Each host's homepage is read through the governed HTTP front; every fetch is SSRF-guarded and re-checked on redirects."
+    outputs:
+      decision: string
+      research: object
+      sequence: array
+      send_proposal: object
+      policy: object
