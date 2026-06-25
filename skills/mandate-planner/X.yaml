@@ -1,0 +1,4 @@
+package: mandate-planner
+version: 0.1.0
+runtime: python
+main: planner.py
