@@ -1,0 +1,159 @@
+skill: deliverability-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  scopes:
+    - deliverability.signals.read
+    - policy.read
+  policy:
+    data_classification: deliverability_metadata
+    network:
+      allowed: []
+      forbidden:
+        - sending email
+        - throttling live traffic
+        - changing DNS or sender authentication
+        - modifying subscriber lists
+        - minting operational authority
+    verifier_notes:
+      - The skill emits a read-only deliverability verdict and optional recommendation.
+      - Live throttling is a separate governed run dispatched by naming, never by this skill.
+      - Contradictory or unsealed evidence escalates without recommendation.
+  artifacts:
+    emits:
+      - verdict
+      - recommendation
+      - escalation_record
+      - evidence_json
+      - report_md
+    wrap_as: deliverability_judgment_packet
+
+harness:
+  cases:
+    - name: sealed_healthy_signals_continue
+      runner: default
+      inputs:
+        evidence:
+          postmaster_report:
+            sealed: true
+            source: postmaster.example.com/domain/example.com
+            timestamp: "2026-06-26T00:00:00Z"
+            reputation_score: 93
+          bounce_metrics:
+            sealed: true
+            source: esp.example.com/metrics/bounce/2026-06-26
+            timestamp: "2026-06-26T00:01:00Z"
+            bounce_pct: 0.6
+          complaint_metrics:
+            sealed: true
+            source: esp.example.com/metrics/complaint/2026-06-26
+            timestamp: "2026-06-26T00:02:00Z"
+            complaint_pct: 0.03
+          placement_probe:
+            sealed: true
+            source: seedlist.example.com/probe/abc123
+            timestamp: "2026-06-26T00:03:00Z"
+            inbox_placement_pct: 96
+        policy:
+          min_reputation_score: 80
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+          min_inbox_placement_pct: 90
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: contradictory_signals_escalate
+      runner: default
+      inputs:
+        evidence:
+          postmaster_report:
+            sealed: true
+            source: postmaster.example.com/domain/example.net
+            timestamp: "2026-06-26T00:10:00Z"
+            reputation_score: 92
+          bounce_metrics:
+            sealed: true
+            source: esp.example.com/metrics/bounce/2026-06-26
+            timestamp: "2026-06-26T00:11:00Z"
+            bounce_pct: 5.4
+          complaint_metrics:
+            sealed: true
+            source: esp.example.com/metrics/complaint/2026-06-26
+            timestamp: "2026-06-26T00:12:00Z"
+            complaint_pct: 0.04
+          placement_probe:
+            sealed: true
+            source: seedlist.example.com/probe/def456
+            timestamp: "2026-06-26T00:13:00Z"
+            inbox_placement_pct: 62
+        policy:
+          min_reputation_score: 80
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+          min_inbox_placement_pct: 90
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    policy:
+      reads:
+        - sealed postmaster report
+        - sealed bounce metrics
+        - sealed complaint metrics
+        - sealed placement probe
+        - deliverability policy thresholds
+      writes:
+        - verdict
+        - recommendation
+        - escalation_record
+        - evidence_json
+        - report_md
+      disallows:
+        - public_send effects
+        - live throttling
+        - DNS or sender-auth changes
+        - subscriber list mutation
+        - invented deliverability signals
+        - AttenuationRequest emission
+    artifacts:
+      named_emits:
+        verdict: verdict
+        recommendation: recommendation
+        escalation_record: escalation_record
+        evidence_json: evidence_json
+        report_md: report_md
+    inputs:
+      evidence:
+        type: object
+        required: true
+        description: evidence{postmaster_report,bounce_metrics,complaint_metrics,placement_probe}
+      policy:
+        type: object
+        required: false
+        description: Optional deliverability policy thresholds.
+      output_dir:
+        type: string
+        required: false
+        description: Optional directory inside the skill directory for evidence.json and report.md.
+    outputs:
+      verdict: object
+      recommendation: object
+      escalation_record: object
+      evidence_json: object
+      report_md: string

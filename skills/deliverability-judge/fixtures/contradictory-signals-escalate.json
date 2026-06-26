@@ -1,0 +1,34 @@
+{
+  "evidence": {
+    "postmaster_report": {
+      "sealed": true,
+      "source": "postmaster.example.com/domain/example.net",
+      "timestamp": "2026-06-26T00:10:00Z",
+      "reputation_score": 92
+    },
+    "bounce_metrics": {
+      "sealed": true,
+      "source": "esp.example.com/metrics/bounce/2026-06-26",
+      "timestamp": "2026-06-26T00:11:00Z",
+      "bounce_pct": 5.4
+    },
+    "complaint_metrics": {
+      "sealed": true,
+      "source": "esp.example.com/metrics/complaint/2026-06-26",
+      "timestamp": "2026-06-26T00:12:00Z",
+      "complaint_pct": 0.04
+    },
+    "placement_probe": {
+      "sealed": true,
+      "source": "seedlist.example.com/probe/def456",
+      "timestamp": "2026-06-26T00:13:00Z",
+      "inbox_placement_pct": 62
+    }
+  },
+  "policy": {
+    "min_reputation_score": 80,
+    "max_bounce_pct": 2,
+    "max_complaint_pct": 0.1,
+    "min_inbox_placement_pct": 90
+  }
+}
