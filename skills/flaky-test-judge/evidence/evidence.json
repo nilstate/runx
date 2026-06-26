@@ -1,5 +1,6 @@
 {
   "schema": "frantic.runx_skill_evidence.v1",
+  "summary": "Published dh0h/flaky-test-judge@0.1.0 as a runx flaky test triage skill with a passing hosted publish gate, public PR source, raw PR-head files, clean install proof, post-publish dogfood receipt, and valid runx verify verdict.",
   "package": {
     "owner": "dh0h",
     "name": "flaky-test-judge",
