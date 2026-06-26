@@ -1,0 +1,73 @@
+{
+  "summary": "deliverability-judge skill v0.1.0 published and dogfooded successfully",
+  "cli_version": "runx-cli 0.6.13",
+  "publisher_owner": "deltah9420",
+  "package_name": "deliverability-judge",
+  "package_version": "0.1.0",
+  "registry_ref": "https://api.runx.ai",
+  "public_url": "https://runx.ai/x/deltah9420/deliverability-judge",
+  "source_url": "https://github.com/deltah9420/runx/tree/codex/deliverability-judge/skills/deliverability-judge",
+  "pr_url": "https://github.com/runxhq/runx/pull/155",
+  "x_yaml": "https://raw.githubusercontent.com/deltah9420/runx/codex/deliverability-judge/skills/deliverability-judge/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/deltah9420/runx/codex/deliverability-judge/skills/deliverability-judge/SKILL.md",
+  "publish_method": "runx registry publish ./skills/deliverability-judge/SKILL.md --registry https://api.runx.ai --version 0.1.0",
+  "install_command": "runx add deltah9420/deliverability-judge@0.1.0 --registry https://api.runx.ai",
+  "harness_cases": [
+    {
+      "name": "sealed_healthy_signals_continue",
+      "status": "sealed",
+      "description": "Healthy reputation, low bounce, low complaint, passing placement probe → verdict.healthy with recommendation.action continue"
+    },
+    {
+      "name": "contradictory_signals_escalate",
+      "status": "failure",
+      "description": "Two signals contradict (high reputation + high bounce) → refusal, no recommendation emitted"
+    }
+  ],
+  "local_harness_status": "passed",
+  "hosted_harness_status": "passed",
+  "dogfood": {
+    "package": "deltah9420/deliverability-judge@0.1.0",
+    "input": {
+      "evidence": {
+        "postmaster_report": {"source": "postmaster.example.com", "timestamp": "2026-06-25T12:00:00Z", "reputation_score": 95, "domain": "example.com"},
+        "bounce_metrics": {"source": "bounce-monitor.example.com", "timestamp": "2026-06-25T12:00:00Z", "bounce_pct": 1.2},
+        "complaint_metrics": {"source": "feedback-loop.example.com", "timestamp": "2026-06-25T12:00:00Z", "complaint_pct": 0.05},
+        "placement_probe": {"source": "placement-test.example.com", "timestamp": "2026-06-25T12:00:00Z", "inbox_pct": 97.5}
+      },
+      "policy": {"min_reputation_score": 80, "max_bounce_pct": 5, "max_complaint_pct": 0.3}
+    },
+    "command": "runx skill deltah9420/deliverability-judge@0.1.0 --registry https://api.runx.ai --input evidence=... --input policy=... --json",
+    "receipt_ref": "runx:receipt:sha256:c1fc8b39fa56404ab9c3f540392ea2be0b5eeedee5277b2b89d1b33c196a2a49",
+    "verify_verdict": "receipt sealed with Ed25519 signature",
+    "harness_cases": ["sealed_healthy_signals_continue", "contradictory_signals_escalate"]
+  },
+  "observations": {
+    "verdict": {
+      "state": "healthy",
+      "confidence_window": "7d",
+      "reason": "All signals sealed, within policy thresholds, and non-contradictory."
+    },
+    "signals": {
+      "postmaster_report": {"sealed": true, "within_policy": true, "value": 95, "threshold": 80},
+      "bounce_metrics": {"sealed": true, "within_policy": true, "value": 1.2, "threshold": 5},
+      "complaint_metrics": {"sealed": true, "within_policy": true, "value": 0.05, "threshold": 0.3},
+      "placement_probe": {"sealed": true, "within_policy": true, "value": 97.5}
+    },
+    "recommendation": {
+      "action": "continue",
+      "evidence_hash": "sha256:d9190c6e1216d2d2780b2643f4e694dfcad99bd163d9929cfeccc10ac6eec631"
+    },
+    "contradictions": [],
+    "missing_signals": [],
+    "refusal_reason": null,
+    "harness_case_names": ["sealed_healthy_signals_continue", "contradictory_signals_escalate"],
+    "receipt_id": "sha256:c1fc8b39fa56404ab9c3f540392ea2be0b5eeedee5277b2b89d1b33c196a2a49",
+    "runx_cli_version": "runx-cli 0.6.13"
+  },
+  "new_user_guide": {
+    "install": "runx add deltah9420/deliverability-judge@0.1.0 --registry https://api.runx.ai",
+    "run": "runx skill deltah9420/deliverability-judge@0.1.0 --registry https://api.runx.ai --input evidence='{\"postmaster_report\":{\"source\":\"postmaster.example.com\",\"timestamp\":\"2026-06-25T12:00:00Z\",\"reputation_score\":95,\"domain\":\"example.com\"},\"bounce_metrics\":{\"source\":\"bounce-monitor.example.com\",\"timestamp\":\"2026-06-25T12:00:00Z\",\"bounce_pct\":1.2},\"complaint_metrics\":{\"source\":\"feedback-loop.example.com\",\"timestamp\":\"2026-06-25T12:00:00Z\",\"complaint_pct\":0.05},\"placement_probe\":{\"source\":\"placement-test.example.com\",\"timestamp\":\"2026-06-25T12:00:00Z\",\"inbox_pct\":97.5}}' --input policy='{\"min_reputation_score\":80,\"max_bounce_pct\":5,\"max_complaint_pct\":0.3}' --json",
+    "verify": "runx verify --receipt <receipt.json> --json"
+  }
+}

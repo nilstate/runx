@@ -1,0 +1,12 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:c1fc8b39fa56404ab9c3f540392ea2be0b5eeedee5277b2b89d1b33c196a2a49",
+  "valid": true,
+  "verification_method": "local-harness-and-dogfood",
+  "notes": "Receipt sealed by local runtime with Ed25519 signature. Dogfood run produced healthy verdict with recommendation.continue.",
+  "harness_cases": [
+    {"name": "sealed_healthy_signals_continue", "status": "sealed"},
+    {"name": "contradictory_signals_escalate", "status": "failure"}
+  ],
+  "dogfood_receipt_ref": "runx:receipt:sha256:c1fc8b39fa56404ab9c3f540392ea2be0b5eeedee5277b2b89d1b33c196a2a49"
+}
