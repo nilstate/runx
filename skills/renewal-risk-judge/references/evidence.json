@@ -2,6 +2,7 @@
   "schema": "frantic.evidence.v1",
   "package": "renewal-risk-judge",
   "version": "0.1.0",
+  "summary": "renewal-risk-judge is a bounded runx skill that fuses usage decline, support load, and payment risk into a renewal-risk verdict, emits a save_plan only for high or critical risk, and proves the recommendation with local harness, dogfood, and receipt verification evidence.",
   "publisher_owner": "xingdi614-alt",
   "runx_cli_version": "runx-cli 0.6.13",
   "registry_ref": "xingdi614-alt/renewal-risk-judge@0.1.0",
