@@ -5,6 +5,9 @@
 - Registry public URL: `https://runx.ai/x/dh0h/flaky-test-judge`.
 - Public PR URL: `https://github.com/runxhq/runx/pull/147`.
 - Source URL: `https://github.com/dh0h/runx/tree/codex/flaky-test-judge/skills/flaky-test-judge`.
+- Raw `X.yaml`: `https://raw.githubusercontent.com/dh0h/runx/codex/flaky-test-judge/skills/flaky-test-judge/X.yaml`.
+- Raw `SKILL.md`: `https://raw.githubusercontent.com/dh0h/runx/codex/flaky-test-judge/skills/flaky-test-judge/SKILL.md`.
+- Verification JSON: `skills/flaky-test-judge/evidence/verification.json` in the same PR head.
 - Local harness: passed with two cases, `quarantine_justified` and `missing_run_history`.
 - Quarantine case: 65% pass rate over 20 supplied runs; 7 failures; 6 timeout failures.
 - Quarantine output: `disposition.decision=quarantine`, confidence `0.84`, duration `3` days, marker `@flaky-quarantine:flaky-test-judge`.
@@ -16,11 +19,10 @@
 - Post-publish dogfood: sealed receipt `sha256:afd608911f082cef36247da7a7fa752d41d75eaba826e3f335c4f31303669400`.
 - Post-publish verify: valid; digest, content address, and Ed25519 signature all verified.
 - Install/run/verify after publish:
-  - `runx add dh0h/flaky-test-judge@0.1.0`
-  - `runx skill dh0h/flaky-test-judge@0.1.0 --json`
+  - `runx add dh0h/flaky-test-judge@0.1.0 --registry https://api.runx.ai`
+  - `runx skill dh0h/flaky-test-judge@0.1.0 --registry https://api.runx.ai --json`
   - `runx verify --receipt <receipt.json> --json`
 
 Pending before Frantic delivery:
 
-- Raw `X.yaml` URL from the final PR head commit.
-- Raw `SKILL.md` URL from the final PR head commit.
+- Use the final pushed PR head commit SHA when constructing submitted raw artifact URLs.
