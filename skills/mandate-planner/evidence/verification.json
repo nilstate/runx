@@ -1,0 +1,22 @@
+{
+  "summary": "Verification packet for mandate-planner prior to registry publish.",
+  "runx_cli_version": "runx-cli 0.6.13",
+  "package": "patrick6x6/mandate-planner@0.1.0",
+  "local_harness": {
+    "command": "runx harness ./skills/mandate-planner --json",
+    "status": "blocked_on_windows_receipt_store",
+    "case_names": [
+      "in_grant_charter_recommends",
+      "out_of_grant_charter_blocks"
+    ],
+    "note": "The manifest declares both required inline cases. On this Windows host, signed receipt storage failed with os error 87 before receipts were emitted."
+  },
+  "checks": [
+    "X.yaml declares the exact package name mandate-planner.",
+    "SKILL.md states the read-only boundary and dispatch-by-naming handoff to agency.open.",
+    "run.mjs refuses roles outside authority_grant.granted_roles.",
+    "run.mjs refuses spend or max_turns above the authority grant.",
+    "run.mjs refuses missing or non-measurable done_check.",
+    "Blocked cases emit no recommended_charter and route to human_approval."
+  ]
+}

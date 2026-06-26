@@ -1,0 +1,50 @@
+name: in_grant_charter_recommends
+kind: skill
+target: ..
+runner: plan
+inputs:
+  objective: Publish a migration guide for the agency quickstart.
+  proposed_charter:
+    candidate_roster:
+      - role: researcher
+        skill: deep-research-brief
+        scope:
+          - docs:read:/agency/*
+          - repo:read:/examples/*
+      - role: reviewer
+        skill: least-privilege-auditor
+        scope:
+          - receipt:read
+          - repo:read:/examples/*
+    requested_limits:
+      max_turns: 12
+      spend: 120
+    done_check: "when the migration guide is published and the review receipt status equals verified"
+    counterparty: operator:docs
+  authority_grant:
+    granted_roles:
+      - researcher
+      - reviewer
+    granted_spend: 150
+    max_turns: 20
+caller:
+  answers:
+    agent_task.mandate-planner.output:
+      decision:
+        eligible: true
+        reason_code: eligible
+      recommended_charter:
+        spend: 120
+        max_turns: 12
+        counterparty: operator:docs
+        done_check: "when the migration guide is published and the review receipt status equals verified"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: mandate-planner
+  source_case: in_grant_charter_recommends
+  source: skills-fixture

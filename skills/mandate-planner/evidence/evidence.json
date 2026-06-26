@@ -1,0 +1,94 @@
+{
+  "summary": "mandate-planner validates a proposed agency charter against an explicit authority grant and emits runx.agency.mandate_plan.v1 only when the charter is within granted roles, spend, turns, and has a measurable done_check.",
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.6.13"
+    },
+    {
+      "name": "package",
+      "owner": "patrick6x6",
+      "name_value": "mandate-planner",
+      "version": "0.1.0",
+      "registry_ref": "patrick6x6/mandate-planner@0.1.0"
+    },
+    {
+      "name": "decision_happy_path",
+      "risk_or_eligibility": "eligible",
+      "recommended_charter": {
+        "roles": [
+          "researcher",
+          "reviewer"
+        ],
+        "spend": 120,
+        "max_turns": 12,
+        "counterparty": "operator:docs",
+        "done_check": "when the migration guide is published and the review receipt status equals verified"
+      }
+    },
+    {
+      "name": "refused_path",
+      "reason": "role_outside_grant plus limit_exceeds_grant",
+      "recommended_charter": null,
+      "escalation": {
+        "lane": "human_approval",
+        "needs_agent": true
+      }
+    },
+    {
+      "name": "harness_cases",
+      "cases": [
+        {
+          "name": "in_grant_charter_recommends",
+          "expected_status": "sealed"
+        },
+        {
+          "name": "out_of_grant_charter_blocks",
+          "expected_status": "sealed"
+        }
+      ]
+    },
+    {
+      "name": "signal_weights",
+      "role_grant_check": "every candidate_roster role must appear in authority_grant.granted_roles",
+      "limit_check": "requested spend and max_turns must be less than or equal to authority_grant ceilings",
+      "done_check": "done_check must contain a measurable predicate; missing or vague done checks route to human approval"
+    },
+    {
+      "name": "dispatch_boundary",
+      "value": "The skill does not call agency.open. It emits a verdict and stops; a downstream driver or operator may issue a separate governed agency.open run by naming this verdict."
+    },
+    {
+      "name": "local_harness_status",
+      "value": "Inline harness cases are declared in X.yaml. On this Windows host, runx harness reached both cases but receipt store initialization returned os error 87; the failure is captured in local-harness.json and was not hidden."
+    },
+    {
+      "name": "commands",
+      "publish": "runx registry publish ./skills/mandate-planner/SKILL.md --registry https://api.runx.ai --version 0.1.0 --json",
+      "install": "runx add patrick6x6/mandate-planner@0.1.0 --registry https://api.runx.ai",
+      "dogfood": "runx skill patrick6x6/mandate-planner@0.1.0 --registry https://api.runx.ai --json",
+      "verify": "runx verify --receipt <receipt.json> --json"
+    }
+  ],
+  "dogfood": {
+    "package": "patrick6x6/mandate-planner@0.1.0",
+    "input": {
+      "objective": "Publish a migration guide for the agency quickstart.",
+      "proposed_charter": "see fixtures/in_grant_charter_recommends.yaml",
+      "authority_grant": "see fixtures/in_grant_charter_recommends.yaml"
+    },
+    "command": "runx skill patrick6x6/mandate-planner@0.1.0 --registry https://api.runx.ai --json",
+    "receipt_ref": "pending_publish",
+    "verify_verdict": "pending_publish",
+    "harness_cases": [
+      {
+        "name": "in_grant_charter_recommends",
+        "status": "declared"
+      },
+      {
+        "name": "out_of_grant_charter_blocks",
+        "status": "declared"
+      }
+    ]
+  }
+}

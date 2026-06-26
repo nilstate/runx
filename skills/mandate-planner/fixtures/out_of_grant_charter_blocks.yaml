@@ -1,0 +1,48 @@
+name: out_of_grant_charter_blocks
+kind: skill
+target: ..
+runner: plan
+inputs:
+  objective: Launch a paid vendor outreach case.
+  proposed_charter:
+    candidate_roster:
+      - role: researcher
+        skill: deep-research-brief
+        scope:
+          - repo:read:/vendor/*
+      - role: buyer
+        skill: spend
+        scope:
+          - payment:spend
+    requested_limits:
+      max_turns: 30
+      spend: 500
+    done_check: "finish the outreach"
+    counterparty: vendor:unknown
+  authority_grant:
+    granted_roles:
+      - researcher
+      - reviewer
+    granted_spend: 100
+    max_turns: 10
+caller:
+  answers:
+    agent_task.mandate-planner.output:
+      decision:
+        eligible: false
+        reason_code: role_outside_grant
+      recommended_charter: null
+      mandate_plan:
+        escalation:
+          lane: human_approval
+          needs_agent: true
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: mandate-planner
+  source_case: out_of_grant_charter_blocks
+  source: skills-fixture

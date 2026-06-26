@@ -1,0 +1,130 @@
+skill: mandate-planner
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+emits:
+  - name: mandate_plan
+    packet: runx.agency.mandate_plan.v1
+
+harness:
+  cases:
+    - name: in_grant_charter_recommends
+      runner: plan
+      inputs:
+        objective: Publish a migration guide for the agency quickstart.
+        proposed_charter:
+          candidate_roster:
+            - role: researcher
+              skill: deep-research-brief
+              scope:
+                - docs:read:/agency/*
+                - repo:read:/examples/*
+            - role: reviewer
+              skill: least-privilege-auditor
+              scope:
+                - receipt:read
+                - repo:read:/examples/*
+          requested_limits:
+            max_turns: 12
+            spend: 120
+          done_check: "when the migration guide is published and the review receipt status equals verified"
+          counterparty: operator:docs
+        authority_grant:
+          granted_roles:
+            - researcher
+            - reviewer
+          granted_spend: 150
+          max_turns: 20
+      caller:
+        answers:
+          agent_task.mandate-planner.output:
+            decision:
+              eligible: true
+              reason_code: eligible
+            recommended_charter:
+              spend: 120
+              max_turns: 12
+              counterparty: operator:docs
+              done_check: "when the migration guide is published and the review receipt status equals verified"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: out_of_grant_charter_blocks
+      runner: plan
+      inputs:
+        objective: Launch a paid vendor outreach case.
+        proposed_charter:
+          candidate_roster:
+            - role: researcher
+              skill: deep-research-brief
+              scope:
+                - repo:read:/vendor/*
+            - role: buyer
+              skill: spend
+              scope:
+                - payment:spend
+          requested_limits:
+            max_turns: 30
+            spend: 500
+          done_check: "finish the outreach"
+          counterparty: vendor:unknown
+        authority_grant:
+          granted_roles:
+            - researcher
+            - reviewer
+          granted_spend: 100
+          max_turns: 10
+      caller:
+        answers:
+          agent_task.mandate-planner.output:
+            decision:
+              eligible: false
+              reason_code: role_outside_grant
+            recommended_charter: null
+            mandate_plan:
+              escalation:
+                lane: human_approval
+                needs_agent: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  plan:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      mandate_plan: object
+      decision: object
+      recommended_charter: object
+      verdict: string
+    artifacts:
+      wrap_as: mandate_plan
+      packet: runx.agency.mandate_plan.v1
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: The agency objective or mandate being checked.
+      proposed_charter:
+        type: json
+        required: true
+        description: Proposed charter with candidate_roster, requested_limits, done_check, and optional counterparty.
+      authority_grant:
+        type: json
+        required: true
+        description: Authority ceiling with granted_roles, granted_spend, and max_turns.
