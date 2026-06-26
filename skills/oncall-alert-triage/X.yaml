@@ -1,0 +1,139 @@
+skill: oncall-alert-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  idempotency:
+    key: alert_id
+  scopes:
+    - oncall.read
+    - oncall.triage
+  policy:
+    data_classification: sealed_alert_and_runbook
+    network:
+      allowed: []
+      forbidden:
+        - live paging
+        - live PR creation
+        - live remediation
+    verifier_notes:
+      - Read-only triage decision; mints no authority and holds no state.
+      - Packet is not consumed as an effect; downstream dispatch is by naming.
+      - Unsealed runbook or out-of-policy action escalates to human approval.
+  artifacts:
+    emits:
+      - oncall_triage_decision
+      - evidence_json
+      - report_md
+    wrap_as: oncall_triage_packet
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - oncall.read
+      - oncall.triage
+    policy:
+      reads:
+        - sealed alert data
+        - sealed runbook
+        - oncall policy
+      calls: []
+      writes:
+        - evidence.json
+        - report.md
+      disallows:
+        - live paging
+        - live PR creation
+        - live remediation execution
+    inputs:
+      alert:
+        type: object
+        required: true
+        description: >
+          Alert object with id (string), service (string), severity (string),
+          and signal (string).
+      runbook_ref:
+        type: string
+        required: true
+        description: >
+          Reference to the sealed runbook. When missing or unsealed, the
+          skill escalates to needs_agent.
+      oncall_policy:
+        type: object
+        required: true
+        description: >
+          Policy object with services (array of declared service names) and
+          escalation_rules (object mapping service to escalation config).
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill directory where artifacts should be written.
+    outputs:
+      oncall_triage_decision: object
+      evidence_json: object
+      report_md: string
+
+harness:
+  cases:
+    - name: sealed_escalate_eligible_alert
+      description: >
+        An escalate-eligible alert with a sealed runbook and in-policy service.
+        Produces decision.action = escalate, emits one runx.oncall.triage.v1
+        packet, and seals the receipt.
+      inputs:
+        alert:
+          id: "alert-001"
+          service: "payments-api"
+          severity: "critical"
+          signal: "error_rate_spike"
+        runbook_ref: "runbook:payments-api:error-rate"
+        oncall_policy:
+          services:
+            - "payments-api"
+            - "auth-service"
+            - "search-api"
+          escalation_rules:
+            payments-api:
+              severity_critical: escalate
+              severity_warning: acknowledge
+            auth-service:
+              severity_critical: escalate
+              severity_warning: acknowledge
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: missing_runbook_stop
+      description: >
+        Omits the runbook_ref so the skill blocks with needs_agent. No packet
+        is emitted; receipt still seals.
+      inputs:
+        alert:
+          id: "alert-002"
+          service: "payments-api"
+          severity: "critical"
+          signal: "error_rate_spike"
+        runbook_ref: ""
+        oncall_policy:
+          services:
+            - "payments-api"
+            - "auth-service"
+          escalation_rules:
+            payments-api:
+              severity_critical: escalate
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
