@@ -1,0 +1,117 @@
+{
+  "mandate_plan": {
+    "schema": "runx.agency.mandate_plan.v1",
+    "objective": "Publish a migration guide",
+    "decision": {
+      "eligible": true,
+      "reason": "The proposed charter is inside the authority grant and has a measurable done-check.",
+      "reason_code": "eligible"
+    },
+    "recommended_charter": {
+      "objective": "Publish a migration guide",
+      "roster": [
+        {
+          "role": "researcher",
+          "skill": "deep-research-brief",
+          "scope": [
+            "docs:read"
+          ]
+        }
+      ],
+      "scopes": [
+        "docs:read"
+      ],
+      "spend": 10,
+      "max_turns": 5,
+      "counterparty": "operator",
+      "done_check": "when guide is published and receipt status equals verified",
+      "authority_trace": {
+        "granted_roles": [
+          "researcher"
+        ],
+        "granted_spend": 20,
+        "granted_max_turns": 10
+      }
+    },
+    "escalation": {
+      "lane": "none",
+      "reason": null,
+      "needs_agent": false
+    },
+    "trace": {
+      "role_checks": [
+        {
+          "role": "researcher",
+          "skill": "deep-research-brief",
+          "scope": [
+            "docs:read"
+          ],
+          "granted": true,
+          "source": "candidate_roster"
+        }
+      ],
+      "limit_checks": [
+        {
+          "name": "spend",
+          "requested": 10,
+          "granted": 20,
+          "within_grant": true
+        },
+        {
+          "name": "max_turns",
+          "requested": 5,
+          "granted": 10,
+          "within_grant": true
+        }
+      ],
+      "done_check": "when guide is published and receipt status equals verified",
+      "refused_reasons": []
+    },
+    "dispatch_by_naming": {
+      "downstream_run": "agency.open",
+      "effect_status": "not_called",
+      "mapping": {
+        "mandate": "recommended_charter.objective",
+        "roster": "recommended_charter.roster",
+        "limits": {
+          "spend": "recommended_charter.spend",
+          "max_turns": "recommended_charter.max_turns"
+        },
+        "done_check": "recommended_charter.done_check"
+      },
+      "note": "A downstream driver or operator must issue a separate governed agency.open run by naming this verdict."
+    }
+  },
+  "decision": {
+    "eligible": true,
+    "reason": "The proposed charter is inside the authority grant and has a measurable done-check.",
+    "reason_code": "eligible"
+  },
+  "recommended_charter": {
+    "objective": "Publish a migration guide",
+    "roster": [
+      {
+        "role": "researcher",
+        "skill": "deep-research-brief",
+        "scope": [
+          "docs:read"
+        ]
+      }
+    ],
+    "scopes": [
+      "docs:read"
+    ],
+    "spend": 10,
+    "max_turns": 5,
+    "counterparty": "operator",
+    "done_check": "when guide is published and receipt status equals verified",
+    "authority_trace": {
+      "granted_roles": [
+        "researcher"
+      ],
+      "granted_spend": 20,
+      "granted_max_turns": 10
+    }
+  },
+  "verdict": "eligible: 1 role(s), spend 10, max_turns 5"
+}
