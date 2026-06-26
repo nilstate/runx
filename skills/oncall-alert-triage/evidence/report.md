@@ -42,10 +42,19 @@ runx verify --receipt <receipt.json> --json
 
 ## Dogfood result
 
-- **Receipt ID**: `runx:receipt:sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070`
+- **Dogfood Receipt ID**: `runx:receipt:sha256:fcaa5544d4935b56173030de6a072863d1d525ce791dbc06e4448e91269d513c` (post-publish run of installed package)
+- **Harness Receipt ID**: `runx:receipt:sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070` (local harness fixture seal)
+- **Input**: alert={id:alert-001, service:payments-api, severity:critical, signal:error_rate_spike}, runbook_ref=runbook:payments-api:error-rate, oncall_policy={services:[payments-api,auth-service], escalation_rules:{payments-api:{severity_critical:escalate}}}
 - **Decision**: escalate
 - **Packet**: page_target=oncall:payments-api:critical, incident_pr_target=pr:payments-api:incident-alert-001
+- **Sealed runbook digest**: `sha256:075bd287cfe78edf466723eb4a383a2207aa2d5151804fcc14ab4989fe470c4b`
 - **All validations**: service_in_policy=true, runbook_sealed=true, escalation_rule_found=true
+
+## Raw artifact URLs (PR head commit d498e88e)
+
+- **x_yaml**: https://raw.githubusercontent.com/runxhq/runx/d498e88e/skills/oncall-alert-triage/X.yaml
+- **skill_md**: https://raw.githubusercontent.com/runxhq/runx/d498e88e/skills/oncall-alert-triage/SKILL.md
+- **verification_json**: https://raw.githubusercontent.com/deltah9420/runx/d498e88e/skills/oncall-alert-triage/evidence/verification.json
 
 ## Key design decisions
 
