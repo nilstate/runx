@@ -5,6 +5,7 @@
   "publisher_owner": "lxx197818",
   "package_name": "mandate-planner",
   "version": "0.1.0",
+  "summary": "mandate-planner is a published runx skill that validates a proposed agency charter against an explicit authority grant before any separate agency.open dispatch. The hosted registry publish passed its harness, the package installs from the registry, a post-publish dogfood run sealed a receipt, and runx verify reported a valid digest, content address, and Ed25519 signature for that receipt.",
   "runx_version": "runx-cli 0.6.13",
   "registry_ref": "lxx197818/mandate-planner@0.1.0",
   "public_url": "https://runx.ai/x/lxx197818/mandate-planner@0.1.0",
@@ -32,7 +33,37 @@
       "recommended_charter_emitted": false
     }
   ],
-  "observations": {
+  "observations": [
+    {
+      "name": "eligible_verdict",
+      "value": "The in-grant dogfood charter returned decision.eligible true with route dispatch-by-naming."
+    },
+    {
+      "name": "recommended_charter_limits",
+      "value": "The recommended charter carried spend 30 and max_turns 5, both under the authority grant of spend 50 and max_turns 8."
+    },
+    {
+      "name": "recommended_charter_roles",
+      "value": "The recommended charter included docs and reviewer scopes copied from candidate_roster and confirmed present in authority_grant.granted_roles."
+    },
+    {
+      "name": "done_check",
+      "value": "The dogfood done_check was measurable: Tests pass and the charter review receipt is sealed."
+    },
+    {
+      "name": "refusal_path",
+      "value": "The stop harness case refuses an ungranted deployer role, routes business output to needs_agent, and emits no recommended_charter."
+    },
+    {
+      "name": "receipt",
+      "value": "Dogfood receipt sha256:3add020abdc680405b95300aab74b49d5f868e48d72ddfc3727aae69e07fd737 verified with valid digest, content address, and signature."
+    },
+    {
+      "name": "hosted_publish",
+      "value": "Hosted registry publish returned target hosted, status published, community trust, and hosted harness passed."
+    }
+  ],
+  "observation_details": {
     "eligibility_verdict": true,
     "eligibility_reason": "Proposed charter is inside the authority grant and has a measurable done_check.",
     "recommended_charter": {
