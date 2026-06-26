@@ -3,6 +3,8 @@
 - Package: `dh0h/flaky-test-judge@0.1.0`.
 - CLI: `runx-cli 0.6.13`.
 - Registry public URL: `https://runx.ai/x/dh0h/flaky-test-judge`.
+- Public PR URL: `https://github.com/runxhq/runx/pull/147`.
+- Source URL: `https://github.com/dh0h/runx/tree/codex/flaky-test-judge/skills/flaky-test-judge`.
 - Local harness: passed with two cases, `quarantine_justified` and `missing_run_history`.
 - Quarantine case: 65% pass rate over 20 supplied runs; 7 failures; 6 timeout failures.
 - Quarantine output: `disposition.decision=quarantine`, confidence `0.84`, duration `3` days, marker `@flaky-quarantine:flaky-test-judge`.
@@ -20,6 +22,5 @@
 
 Pending before Frantic delivery:
 
-- Public PR URL.
-- Raw `X.yaml` URL from the PR head commit.
-- Raw `SKILL.md` URL from the PR head commit.
+- Raw `X.yaml` URL from the final PR head commit.
+- Raw `SKILL.md` URL from the final PR head commit.

@@ -33,9 +33,9 @@
   "github": {
     "required_star": "runxhq/runx",
     "claimant": "dh0h",
-    "pr_url": "PENDING_PR_URL",
-    "raw_x_yaml": "PENDING_RAW_X_YAML_URL",
-    "raw_skill_md": "PENDING_RAW_SKILL_MD_URL"
+    "pr_url": "https://github.com/runxhq/runx/pull/147",
+    "raw_x_yaml": "https://raw.githubusercontent.com/dh0h/runx/codex/flaky-test-judge/skills/flaky-test-judge/X.yaml",
+    "raw_skill_md": "https://raw.githubusercontent.com/dh0h/runx/codex/flaky-test-judge/skills/flaky-test-judge/SKILL.md"
   },
   "semantic_checks": [
     {
