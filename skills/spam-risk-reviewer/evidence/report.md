@@ -1,12 +1,24 @@
 # spam-risk-reviewer evidence report
 
 Published `dh0h/spam-risk-reviewer@sha-7a71fad9b882` to
-`https://runx.ai/x/dh0h/spam-risk-reviewer`.
+`https://runx.ai/x/dh0h/spam-risk-reviewer@sha-7a71fad9b882`.
 
 The skill emits `runx.send.spam_risk_review.v1` with a typed
 `send_risk_verdict`, a named downstream `send-as` preflight target, escalation
 metadata, and evidence summaries. It does not send mail, mint authority, inspect
 live provider state, or emit `runx.operational_proposal.v1`.
+
+Delivery artifacts:
+
+- `public_url`: `https://runx.ai/x/dh0h/spam-risk-reviewer@sha-7a71fad9b882`
+- `source_url`: `https://github.com/dh0h/runx/tree/codex/spam-risk-reviewer/skills/spam-risk-reviewer`
+- `pr_url`: `https://github.com/runxhq/runx/pull/152`
+- `x_yaml`: `https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/X.yaml`
+- `skill_md`: `https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/SKILL.md`
+- `evidence_json`: `https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/evidence/evidence.json`
+- `verification_json`: `https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/evidence/verification.json`
+- `receipt_ref`: `runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4`
+- `report`: `https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/evidence/report.md`
 
 Verification completed:
 
@@ -19,3 +31,27 @@ Verification completed:
 - Dogfood registry run: sealed with receipt
   `sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4`.
 - Dogfood receipt verification: production signature verification passed.
+
+Dogfood verdict:
+
+- Input used the low-risk fixture: SPF, DKIM, and DMARC pass; sender warm-up is
+  30 days; bounce rate is `0.004`; complaint rate is `0.0002`; freshness is
+  21 days.
+- Output verdict was `risk_level: pass`, `preflight_clear: true`, and
+  `blockers: []`.
+
+Required harness outcomes:
+
+- `low-risk-verified-sender`: sealed, `risk_level: pass`,
+  `preflight_clear: true`, no blockers.
+- `high-risk-incomplete-auth-poor-list`: sealed, `risk_level: hold`,
+  `preflight_clear: false`, blockers for failing DKIM and bounce rate `0.075`
+  exceeding policy max `0.02`, routed to `needs_human`.
+- `missing-sender-auth-posture-fails-closed`: failure case, proving missing
+  authentication evidence does not get guessed or cleared.
+
+Install, run, and verify:
+
+- `runx add dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai`
+- `runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai --json`
+- `runx verify sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4 --json`

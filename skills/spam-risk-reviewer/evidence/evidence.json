@@ -6,8 +6,22 @@
     "local_version": "0.1.1",
     "registry_skill_id": "dh0h/spam-risk-reviewer",
     "registry_version": "sha-7a71fad9b882",
-    "public_url": "https://runx.ai/x/dh0h/spam-risk-reviewer",
-    "source_package_path": "skills/spam-risk-reviewer"
+    "public_url": "https://runx.ai/x/dh0h/spam-risk-reviewer@sha-7a71fad9b882",
+    "canonical_public_url": "https://runx.ai/x/dh0h/spam-risk-reviewer",
+    "source_package_path": "skills/spam-risk-reviewer",
+    "source_url": "https://github.com/dh0h/runx/tree/codex/spam-risk-reviewer/skills/spam-risk-reviewer",
+    "pr_url": "https://github.com/runxhq/runx/pull/152"
+  },
+  "delivery_artifacts": {
+    "public_url": "https://runx.ai/x/dh0h/spam-risk-reviewer@sha-7a71fad9b882",
+    "source_url": "https://github.com/dh0h/runx/tree/codex/spam-risk-reviewer/skills/spam-risk-reviewer",
+    "pr_url": "https://github.com/runxhq/runx/pull/152",
+    "x_yaml": "https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/SKILL.md",
+    "evidence_json": "https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/evidence/evidence.json",
+    "verification_json": "https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/evidence/verification.json",
+    "receipt_ref": "runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4",
+    "report": "https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/evidence/report.md"
   },
   "registry_publish": {
     "status": "published",
@@ -103,6 +117,64 @@
       }
     }
   ],
+  "observations": {
+    "runx_version": "runx-cli 0.6.13",
+    "publisher_owner": "dh0h",
+    "package_name": "spam-risk-reviewer",
+    "package_ref": "dh0h/spam-risk-reviewer@sha-7a71fad9b882",
+    "publish_method": "runx registry publish ./skills/spam-risk-reviewer/SKILL.md --registry https://api.runx.ai --json",
+    "hosted_harness_status": "passed",
+    "install_command": "runx add dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai",
+    "dogfood_command": "runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai --json",
+    "verify_verdict": "valid production signature",
+    "risk_level_verdict": "pass",
+    "authentication_signals_verified": {
+      "spf_pass": true,
+      "dkim_pass": true,
+      "dmarc_pass": true,
+      "warm_up_days": 30
+    },
+    "list_hygiene_compared_to_policy": {
+      "bounce_rate": {
+        "observed": 0.004,
+        "policy_max": 0.02
+      },
+      "complaint_rate": {
+        "observed": 0.0002,
+        "policy_max": 0.001
+      },
+      "freshness_days": {
+        "observed": 21,
+        "policy_max": 90
+      }
+    },
+    "content_risk_flags": [],
+    "blockers": [],
+    "harness_case_names": [
+      "low-risk-verified-sender",
+      "high-risk-incomplete-auth-poor-list",
+      "missing-sender-auth-posture-fails-closed"
+    ],
+    "required_case_outcomes": [
+      {
+        "case": "low-risk-verified-sender",
+        "risk_level": "pass",
+        "preflight_clear": true,
+        "blockers": []
+      },
+      {
+        "case": "high-risk-incomplete-auth-poor-list",
+        "risk_level": "hold",
+        "preflight_clear": false,
+        "blockers": [
+          "authentication: DKIM does not pass",
+          "list_hygiene: bounce_rate 0.075 exceeds policy max 0.02"
+        ],
+        "escalation_lane": "needs_human"
+      }
+    ],
+    "receipt_id": "sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4"
+  },
   "dogfood_run": {
     "status": "sealed",
     "run_id": "run_judge_80d2b3d65654",
