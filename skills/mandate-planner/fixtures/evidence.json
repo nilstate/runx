@@ -1,0 +1,113 @@
+{
+  "schema": "frantic.evidence.v1",
+  "bounty": 67,
+  "package": "lxx197818/mandate-planner@0.1.0",
+  "publisher_owner": "lxx197818",
+  "package_name": "mandate-planner",
+  "version": "0.1.0",
+  "runx_version": "runx-cli 0.6.13",
+  "registry_ref": "lxx197818/mandate-planner@0.1.0",
+  "public_url": "https://runx.ai/x/lxx197818/mandate-planner@0.1.0",
+  "pr_url": "https://github.com/runxhq/runx/pull/151",
+  "source_url": "https://github.com/lxx197818/runx/tree/codex/mandate-planner-67/skills/mandate-planner",
+  "publish_method": "runx login --for publish; runx registry publish ./skills/mandate-planner --registry https://api.runx.ai --version 0.1.0 --profile ./skills/mandate-planner/X.yaml --json",
+  "install_command": "runx add lxx197818/mandate-planner@0.1.0 --registry https://api.runx.ai",
+  "hosted_registry": {
+    "status": "published",
+    "target": "hosted",
+    "trust_tier": "community",
+    "digest": "558c18f8b7d77334cf6ef6efc7a3cd7cf5a9f212644f72ff4e446536ca3ddb77",
+    "profile_digest": "0f408862be44277771c8ceeaaba6dfdb96ade1de17baef78ee7e2f313ae66074",
+    "hosted_harness_status": "passed"
+  },
+  "harness_cases": [
+    {
+      "name": "in-grant-charter-produces-recommendation",
+      "status": "sealed"
+    },
+    {
+      "name": "outside-role-escalates-to-human",
+      "status": "failure",
+      "business_route": "needs_agent",
+      "recommended_charter_emitted": false
+    }
+  ],
+  "observations": {
+    "eligibility_verdict": true,
+    "eligibility_reason": "Proposed charter is inside the authority grant and has a measurable done_check.",
+    "recommended_charter": {
+      "scopes": [
+        {
+          "role": "docs",
+          "skill": "issue-to-pr",
+          "scope": "Update the agency charter docs section."
+        },
+        {
+          "role": "reviewer",
+          "skill": "pr-review-note",
+          "scope": "Review the bounded charter before dispatch."
+        }
+      ],
+      "spend": 30,
+      "max_turns": 5,
+      "counterparty": "docs-maintainer",
+      "done_check": "Tests pass and the charter review receipt is sealed."
+    },
+    "refused_reason": "role 'deployer' is outside authority_grant.granted_roles",
+    "sealed_receipt_id": "sha256:3add020abdc680405b95300aab74b49d5f868e48d72ddfc3727aae69e07fd737"
+  },
+  "dogfood": {
+    "package": "lxx197818/mandate-planner@0.1.0",
+    "input": {
+      "objective": "Validate a docs charter before dispatch-by-naming agency.open.",
+      "proposed_charter": {
+        "candidate_roster": [
+          {
+            "role": "docs",
+            "skill": "issue-to-pr",
+            "scope": "Update the agency charter docs section."
+          },
+          {
+            "role": "reviewer",
+            "skill": "pr-review-note",
+            "scope": "Review the bounded charter before dispatch."
+          }
+        ],
+        "requested_limits": {
+          "max_turns": 5,
+          "spend": 30
+        },
+        "done_check": "Tests pass and the charter review receipt is sealed.",
+        "counterparty": "docs-maintainer"
+      },
+      "authority_grant": {
+        "granted_spend": 50,
+        "granted_roles": [
+          "docs",
+          "reviewer"
+        ],
+        "max_turns": 8,
+        "counterparty": "docs-maintainer"
+      }
+    },
+    "command": "runx skill lxx197818/mandate-planner@0.1.0 --registry https://api.runx.ai --input-json proposed_charter <json> --input-json authority_grant <json> --receipt-dir C:\\runx67-receipts --json",
+    "receipt_ref": "runx:receipt:sha256:3add020abdc680405b95300aab74b49d5f868e48d72ddfc3727aae69e07fd737",
+    "verify_verdict": {
+      "schema": "runx.verify_verdict.v1",
+      "receipt_id": "sha256:3add020abdc680405b95300aab74b49d5f868e48d72ddfc3727aae69e07fd737",
+      "valid": true,
+      "signature_status": "valid",
+      "digest_status": "valid",
+      "content_address_status": "valid"
+    },
+    "harness_cases": [
+      "in-grant-charter-produces-recommendation: sealed",
+      "outside-role-escalates-to-human: failure/needs_agent refusal"
+    ]
+  },
+  "reviewer_notes": [
+    "The skill is read-only and does not call agency.open.",
+    "The handoff seam is dispatch-by-naming: a downstream operator maps recommended_charter to a separate governed agency.open run.",
+    "No tokens or secrets are present in this evidence."
+  ]
+}
