@@ -1,0 +1,20 @@
+{
+  "test_run_history": {
+    "sample_size": 0,
+    "window": "empty",
+    "runs": []
+  },
+  "test_metadata": {
+    "test_path": "tests/e2e/checkout.spec.ts",
+    "suite": "e2e",
+    "tags": ["checkout"],
+    "target_repo": "runxhq/runx",
+    "base": "main"
+  },
+  "release_policy": {
+    "flake_threshold_pct": 70,
+    "min_sample_size": 20,
+    "max_quarantine_days": 7
+  }
+}
+

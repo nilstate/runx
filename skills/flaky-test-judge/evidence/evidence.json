@@ -1,0 +1,59 @@
+{
+  "schema": "frantic.runx_skill_evidence.v1",
+  "package": {
+    "owner": "dh0h",
+    "name": "flaky-test-judge",
+    "version": "0.1.0",
+    "registry_ref": "dh0h/flaky-test-judge@0.1.0",
+    "public_url": "https://runx.ai/x/dh0h/flaky-test-judge",
+    "source_url": "PENDING_PUBLIC_SOURCE_URL",
+    "pr_url": "PENDING_PR_URL",
+    "x_yaml": "PENDING_RAW_X_YAML_URL",
+    "skill_md": "PENDING_RAW_SKILL_MD_URL",
+    "digest": "sha256:f7221122e35e2ec46d935b90c8aad4b6d9f08bffb6b1707c60586282849920c2",
+    "profile_digest": "sha256:b8dfe2a52e6e5f89f11cd24f43338642fcec617dc347ff6c5b3a1c9fc7ee0b5c"
+  },
+  "runx": {
+    "version": "runx-cli 0.6.13",
+    "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/flaky-test-judge/SKILL.md --registry https://api.runx.ai",
+    "install_command": "runx add dh0h/flaky-test-judge@0.1.0",
+    "dogfood_command": "runx skill dh0h/flaky-test-judge@0.1.0 --json",
+    "hosted_harness_status": "passed: registry publish returned status=published",
+    "verify_verdict": "valid: digest, content address, and Ed25519 signature all verified"
+  },
+  "observations": [
+    "disposition decision quarantine with confidence 0.84 for quarantine_justified",
+    "pass-rate 65% across 20 supplied runs",
+    "failure-mode count 6 timeout failures out of 7 failures",
+    "quarantine duration 3 days, within max_quarantine_days 7",
+    "exclusion marker @flaky-quarantine:flaky-test-judge",
+    "refused reason null for quarantine_justified",
+    "refused reason missing-evidence: no run history was supplied for missing_run_history",
+    "dispatch target issue-to-pr with typed inputs thread_title, thread_body, target_repo, and base",
+    "harness cases quarantine_justified and missing_run_history both passed locally; missing_run_history is the required stop/error case",
+    "clean install succeeded with runx add dh0h/flaky-test-judge@0.1.0 --registry https://api.runx.ai",
+    "post-publish registry dogfood sealed receipt sha256:afd608911f082cef36247da7a7fa752d41d75eaba826e3f335c4f31303669400",
+    "post-publish receipt verification returned valid=true"
+  ],
+  "dogfood": {
+    "package": "dh0h/flaky-test-judge@0.1.0",
+    "input": "fixtures/quarantine-justified.json",
+    "command": "runx skill dh0h/flaky-test-judge@0.1.0 --json",
+    "receipt_ref": "sha256:afd608911f082cef36247da7a7fa752d41d75eaba826e3f335c4f31303669400",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "quarantine_justified",
+        "status": "sealed"
+      },
+      {
+        "name": "missing_run_history",
+        "status": "failure_stop"
+      }
+    ]
+  },
+  "local_evidence": {
+    "harness": "skills/flaky-test-judge/evidence/local-harness.json",
+    "dogfood": "skills/flaky-test-judge/evidence/dogfood-local.json"
+  }
+}

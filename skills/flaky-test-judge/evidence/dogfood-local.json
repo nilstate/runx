@@ -1,0 +1,47 @@
+{
+  "command": "runx skill ./skills/flaky-test-judge --input-json test_run_history=<quarantine fixture> --input-json test_metadata=<metadata> --input-json release_policy=<policy> --input harness_case=quarantine_justified --json",
+  "runx_version": "runx-cli 0.6.13",
+  "status": "sealed",
+  "receipt_ref": "sha256:34d32c972f8341f1c16be3d8fd390684a0bac88542cb48ee2db9e828b764082d",
+  "verify_verdict": {
+    "digest_status": "valid",
+    "content_address_status": "valid",
+    "signature_status": "local_demo_signature_not_for_delivery"
+  },
+  "output": {
+    "schema": "runx.flaky.test_triage.v1",
+    "disposition": {
+      "decision": "quarantine",
+      "confidence": 0.84,
+      "reason_code": "below-threshold-repeatable-failure"
+    },
+    "metrics": {
+      "pass_rate_pct": 65,
+      "run_count": 20,
+      "failure_count": 7,
+      "dominant_failure_mode": "timeout",
+      "dominant_failure_count": 6
+    },
+    "quarantine_packet": {
+      "test_path": "tests/e2e/login.spec.ts",
+      "duration_days": 3,
+      "exclusion_marker": "@flaky-quarantine:flaky-test-judge"
+    },
+    "dispatch_target": {
+      "name": "issue-to-pr",
+      "typed_inputs": {
+        "target_repo": "runxhq/runx",
+        "base": "main"
+      }
+    },
+    "evidence": {
+      "harness_case": "quarantine_justified",
+      "refused_reason": null
+    }
+  },
+  "notes": [
+    "This is local dogfood evidence only.",
+    "The final Frantic delivery must replace receipt_ref and verify_verdict with a post-publish registry skill run."
+  ]
+}
+

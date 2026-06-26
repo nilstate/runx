@@ -1,0 +1,41 @@
+{
+  "test_run_history": {
+    "sample_size": 20,
+    "window": "20 recent CI runs",
+    "runs": [
+      { "status": "passed", "duration": 41, "logs": "login flow passed" },
+      { "status": "passed", "duration": 39, "logs": "login flow passed" },
+      { "status": "failed", "duration": 120, "logs": "TimeoutError: waiting for selector #dashboard timed out after 120s" },
+      { "status": "passed", "duration": 40, "logs": "login flow passed" },
+      { "status": "failed", "duration": 120, "logs": "TimeoutError: page did not become ready before deadline" },
+      { "status": "passed", "duration": 42, "logs": "login flow passed" },
+      { "status": "passed", "duration": 38, "logs": "login flow passed" },
+      { "status": "failed", "duration": 119, "logs": "TimeoutError: dashboard navigation timed out" },
+      { "status": "passed", "duration": 37, "logs": "login flow passed" },
+      { "status": "passed", "duration": 36, "logs": "login flow passed" },
+      { "status": "failed", "duration": 121, "logs": "TimeoutError: waiting for auth callback timed out" },
+      { "status": "passed", "duration": 39, "logs": "login flow passed" },
+      { "status": "failed", "duration": 118, "logs": "TimeoutError: network idle deadline exceeded" },
+      { "status": "passed", "duration": 40, "logs": "login flow passed" },
+      { "status": "passed", "duration": 41, "logs": "login flow passed" },
+      { "status": "failed", "duration": 52, "logs": "AssertionError: expected url to include /dashboard" },
+      { "status": "passed", "duration": 39, "logs": "login flow passed" },
+      { "status": "failed", "duration": 120, "logs": "TimeoutError: retry exhausted after waiting for dashboard" },
+      { "status": "passed", "duration": 38, "logs": "login flow passed" },
+      { "status": "passed", "duration": 37, "logs": "login flow passed" }
+    ]
+  },
+  "test_metadata": {
+    "test_path": "tests/e2e/login.spec.ts",
+    "suite": "e2e",
+    "tags": ["auth", "release-blocking"],
+    "target_repo": "runxhq/runx",
+    "base": "main"
+  },
+  "release_policy": {
+    "flake_threshold_pct": 70,
+    "min_sample_size": 20,
+    "max_quarantine_days": 7
+  }
+}
+

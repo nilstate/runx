@@ -1,0 +1,206 @@
+skill: flaky-test-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+runx:
+  mutating: false
+  scopes:
+    - test_history.read
+    - release_policy.read
+  policy:
+    data_classification: public_ci_metadata
+    network:
+      forbidden:
+        - live CI systems
+        - repository mutation
+        - downstream issue-to-pr execution
+    verifier_notes:
+      - The runner computes only from supplied run history and policy inputs.
+      - It names issue-to-pr as a dispatch target but never invokes it.
+      - The human merge gate is required before any live test disable.
+
+harness:
+  cases:
+    - name: quarantine_justified
+      runner: judge
+      inputs:
+        test_run_history:
+          sample_size: 20
+          window: 20 recent CI runs
+          runs:
+            - status: passed
+              duration: 41
+              logs: "login flow passed"
+            - status: passed
+              duration: 39
+              logs: "login flow passed"
+            - status: failed
+              duration: 120
+              logs: "TimeoutError: waiting for selector #dashboard timed out after 120s"
+            - status: passed
+              duration: 40
+              logs: "login flow passed"
+            - status: failed
+              duration: 120
+              logs: "TimeoutError: page did not become ready before deadline"
+            - status: passed
+              duration: 42
+              logs: "login flow passed"
+            - status: passed
+              duration: 38
+              logs: "login flow passed"
+            - status: failed
+              duration: 119
+              logs: "TimeoutError: dashboard navigation timed out"
+            - status: passed
+              duration: 37
+              logs: "login flow passed"
+            - status: passed
+              duration: 36
+              logs: "login flow passed"
+            - status: failed
+              duration: 121
+              logs: "TimeoutError: waiting for auth callback timed out"
+            - status: passed
+              duration: 39
+              logs: "login flow passed"
+            - status: failed
+              duration: 118
+              logs: "TimeoutError: network idle deadline exceeded"
+            - status: passed
+              duration: 40
+              logs: "login flow passed"
+            - status: passed
+              duration: 41
+              logs: "login flow passed"
+            - status: failed
+              duration: 52
+              logs: "AssertionError: expected url to include /dashboard"
+            - status: passed
+              duration: 39
+              logs: "login flow passed"
+            - status: failed
+              duration: 120
+              logs: "TimeoutError: retry exhausted after waiting for dashboard"
+            - status: passed
+              duration: 38
+              logs: "login flow passed"
+            - status: passed
+              duration: 37
+              logs: "login flow passed"
+        test_metadata:
+          test_path: tests/e2e/login.spec.ts
+          suite: e2e
+          tags:
+            - auth
+            - release-blocking
+          target_repo: runxhq/runx
+          base: main
+        release_policy:
+          flake_threshold_pct: 70
+          min_sample_size: 20
+          max_quarantine_days: 7
+      expect:
+        status: sealed
+        output:
+          subset:
+            schema: runx.flaky.test_triage.v1
+            disposition:
+              decision: quarantine
+            metrics:
+              pass_rate_pct: 65
+              run_count: 20
+              failure_count: 7
+              dominant_failure_mode: timeout
+              dominant_failure_count: 6
+            quarantine_packet:
+              test_path: tests/e2e/login.spec.ts
+              duration_days: 3
+              exclusion_marker: "@flaky-quarantine:flaky-test-judge"
+            dispatch_target:
+              name: issue-to-pr
+              typed_inputs:
+                target_repo: runxhq/runx
+                base: main
+            evidence:
+              harness_case: quarantine_justified
+              refused_reason: null
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: missing_run_history
+      runner: judge
+      inputs:
+        test_run_history:
+          sample_size: 0
+          window: empty
+          runs: []
+        test_metadata:
+          test_path: tests/e2e/checkout.spec.ts
+          suite: e2e
+          tags:
+            - checkout
+          target_repo: runxhq/runx
+          base: main
+        release_policy:
+          flake_threshold_pct: 70
+          min_sample_size: 20
+          max_quarantine_days: 7
+      expect:
+        status: failure
+        output:
+          subset:
+            schema: runx.flaky.test_triage.v1
+            disposition:
+              decision: stop
+              confidence: 1
+              reason_code: missing-evidence
+            quarantine_packet: null
+            dispatch_target:
+              name: none
+            evidence:
+              harness_case: missing_run_history
+              refused_reason: "missing-evidence: no run history was supplied"
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      flaky_test_triage: object
+    artifacts:
+      wrap_as: flaky_test_triage_packet
+      packet: runx.flaky.test_triage.v1
+    inputs:
+      test_run_history:
+        type: json
+        required: true
+        description: "test_run_history{runs[{status,duration,logs}],sample_size}"
+      test_metadata:
+        type: json
+        required: true
+        description: "test_metadata{test_path,suite,tags}"
+      release_policy:
+        type: json
+        required: true
+        description: "release_policy{flake_threshold_pct,min_sample_size,max_quarantine_days}"
+      harness_case:
+        type: string
+        required: false
+        description: Optional case name recorded in evidence.

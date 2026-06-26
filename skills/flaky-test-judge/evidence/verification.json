@@ -1,0 +1,67 @@
+{
+  "schema": "frantic.runx_skill_verification.v1",
+  "package": "dh0h/flaky-test-judge@0.1.0",
+  "runx_cli_min_version": {
+    "required": "0.6.13",
+    "observed": "runx-cli 0.6.13",
+    "passed": true
+  },
+  "local_harness": {
+    "command": "runx harness ./skills/flaky-test-judge --json",
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "quarantine_justified",
+      "missing_run_history"
+    ],
+    "assertion_error_count": 0
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "notes": "Registry publish returned status=published for dh0h/flaky-test-judge@0.1.0."
+  },
+  "post_publish_dogfood": {
+    "command": "runx skill dh0h/flaky-test-judge@0.1.0 --json",
+    "receipt_ref": "sha256:afd608911f082cef36247da7a7fa752d41d75eaba826e3f335c4f31303669400",
+    "verify_verdict": {
+      "valid": true,
+      "digest": "valid",
+      "content_address": "valid",
+      "signature": "valid"
+    }
+  },
+  "github": {
+    "required_star": "runxhq/runx",
+    "claimant": "dh0h",
+    "pr_url": "PENDING_PR_URL",
+    "raw_x_yaml": "PENDING_RAW_X_YAML_URL",
+    "raw_skill_md": "PENDING_RAW_SKILL_MD_URL"
+  },
+  "semantic_checks": [
+    {
+      "id": "quarantine_case_65_pct",
+      "passed": true,
+      "summary": "65% pass rate over 20 runs with 6 of 7 failures classified as timeout produces disposition.decision quarantine."
+    },
+    {
+      "id": "bounded_quarantine",
+      "passed": true,
+      "summary": "duration_days is 3, within max_quarantine_days 7, with exclusion marker @flaky-quarantine:flaky-test-judge."
+    },
+    {
+      "id": "dispatch_target_issue_to_pr",
+      "passed": true,
+      "summary": "dispatch_target.name is issue-to-pr and typed_inputs include thread_title, thread_body, target_repo, and base."
+    },
+    {
+      "id": "missing_history_stop",
+      "passed": true,
+      "summary": "No run history produces disposition.decision stop, reason_code missing-evidence, no quarantine_packet, and exits as the publish-gate stop/error harness case."
+    },
+    {
+      "id": "no_mutation",
+      "passed": true,
+      "summary": "The runner does not call network, mutate repositories, mint, emit AttenuationRequest, or use a data store."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "command": "runx harness ./skills/flaky-test-judge --json",
+  "runx_version": "runx-cli 0.6.13",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "quarantine_justified",
+    "missing_run_history"
+  ],
+  "receipt_ids": [
+    "sha256:aeefe5fa5fa0587ea30da48bfe8e086be191d4423a36dbb8c5987fd006d76259",
+    "sha256:beaef8a4a09730207c2f276d2a359841ed30e35c74cff44a377ab6e8e1b88e09"
+  ],
+  "graph_case_count": 0,
+  "notes": [
+    "Local harness was run with demo receipt-signing environment for development only.",
+    "The quarantine case sealed. The missing history stop case emitted a stop packet and exited as the required stop/error harness case.",
+    "A final hosted registry harness and post-publish dogfood receipt must be recorded after publish."
+  ]
+}

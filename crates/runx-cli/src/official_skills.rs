@@ -81,6 +81,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "aa446e7d3ab8a3168facd2372b8bd8fe63736a3e061438d38cc83ea8f294b971",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/flaky-test-judge",
+        version: "sha-620f6fe8123e",
+        digest: "388bab23a05b12481f9b740eae47eb02d666dab6ecd482d07613e0df1efaef89",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/github-sync",
         version: "sha-e685e9e8b5c6",
         digest: "6981adc877736f05a41d764b3e42d479d87de3bc2d69a65992dff457b635bd9a",
