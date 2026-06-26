@@ -29,7 +29,7 @@ jobs:
         run: |
           runx registry publish ./skills/mandate-planner/SKILL.md \
             --registry https://api.runx.ai \
-            --owner patrick6x6 \
+
             --version 0.1.0 \
             --upsert \
             --json | tee skills/mandate-planner/evidence/ci/publish.json
