@@ -20,6 +20,7 @@ jobs:
           RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
           RUNX_RECEIPT_DIR: ${{ runner.temp }}/receipts
         run: |
+          set -euo pipefail
           mkdir -p "$RUNX_RECEIPT_DIR" skills/mandate-planner/evidence/ci
           runx --version | tee skills/mandate-planner/evidence/ci/runx-version.txt
           runx harness ./skills/mandate-planner --json | tee skills/mandate-planner/evidence/ci/harness.json
@@ -27,17 +28,70 @@ jobs:
         env:
           RUNX_PUBLIC_API_TOKEN: ${{ secrets.RUNX_PUBLIC_API_TOKEN }}
         run: |
+          set -euo pipefail
           runx registry publish ./skills/mandate-planner/SKILL.md \
             --registry https://api.runx.ai \
-
             --version 0.1.0 \
             --upsert \
             --json | tee skills/mandate-planner/evidence/ci/publish.json
+          test -s skills/mandate-planner/evidence/ci/publish.json
       - name: Read registry
         run: |
-          runx registry read patrick6x6/mandate-planner@0.1.0 \
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const publish = JSON.parse(fs.readFileSync('skills/mandate-planner/evidence/ci/publish.json', 'utf8'));
+          const candidates = [
+            publish.ref,
+            publish.skill_ref,
+            publish.skill?.ref,
+            publish.package?.ref,
+            publish.data?.ref,
+            publish.data?.skill_ref
+          ].filter(Boolean);
+          const ref = candidates.find((value) => /mandate-planner@0\.1\.0$/.test(String(value))) || 'patrick6x6/mandate-planner@0.1.0';
+          fs.writeFileSync('skills/mandate-planner/evidence/ci/registry-ref.txt', String(ref));
+          NODE
+          ref="$(cat skills/mandate-planner/evidence/ci/registry-ref.txt)"
+          runx registry read "$ref" \
             --registry https://api.runx.ai \
             --json | tee skills/mandate-planner/evidence/ci/registry-read.json
+      - name: Dogfood published skill
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-demo-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+          RUNX_RECEIPT_DIR: ${{ runner.temp }}/receipts
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNX_RECEIPT_DIR"
+          ref="$(cat skills/mandate-planner/evidence/ci/registry-ref.txt)"
+          cat > skills/mandate-planner/evidence/ci/dogfood-input.json <<'JSON'
+          {
+            "objective": "Qualify five enterprise design partners without exceeding granted authority.",
+            "proposed_charter": {
+              "name": "design_partner_qualifier",
+              "candidate_roster": [
+                { "name": "research-lead", "role": "researcher" },
+                { "name": "outreach-coordinator", "role": "messenger" }
+              ],
+              "requested_limits": { "spend": 250, "max_turns": 8 },
+              "done_check": "when qualified_design_partner_count equals 5 and spend_usd is at most 250"
+            },
+            "authority_grant": {
+              "granted_roles": ["researcher", "messenger"],
+              "granted_spend": 500,
+              "max_turns": 10,
+              "requires_human_approval_for": ["contract_signature", "payment_commitment"]
+            }
+          }
+          JSON
+          runx skill "$ref" \
+            --registry https://api.runx.ai \
+            --input-json "$(cat skills/mandate-planner/evidence/ci/dogfood-input.json)" \
+            --json | tee skills/mandate-planner/evidence/ci/dogfood.json
+          find "$RUNX_RECEIPT_DIR" -type f | sort > skills/mandate-planner/evidence/ci/receipt-files.txt
+          cp -R "$RUNX_RECEIPT_DIR" skills/mandate-planner/evidence/ci/receipts
       - uses: actions/upload-artifact@v4
         with:
           name: mandate-planner-ci-evidence
