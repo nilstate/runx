@@ -52,11 +52,11 @@ harness:
               counterparty: operator:docs
               done_check: "when the migration guide is published and the review receipt status equals verified"
       expect:
-        status: needs_agent
+        status: sealed
         receipt:
           schema: runx.receipt.v1
           state: sealed
-          disposition: needs_agent
+          disposition: closed
     - name: out_of_grant_charter_blocks
       runner: plan
       inputs:
@@ -94,11 +94,11 @@ harness:
                 lane: human_approval
                 needs_agent: true
       expect:
-        status: sealed
+        status: needs_agent
         receipt:
           schema: runx.receipt.v1
           state: sealed
-          disposition: closed
+          disposition: needs_agent
 
 runners:
   plan:
