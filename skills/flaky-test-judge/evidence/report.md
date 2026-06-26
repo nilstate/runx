@@ -2,7 +2,7 @@
 
 - Package: `dh0h/flaky-test-judge@0.1.0`.
 - CLI: `runx-cli 0.6.13`.
-- Registry public URL: `https://runx.ai/x/dh0h/flaky-test-judge`.
+- Registry public URL: `https://runx.ai/x/dh0h/flaky-test-judge@0.1.0`.
 - Public PR URL: `https://github.com/runxhq/runx/pull/147`.
 - Source URL: `https://github.com/dh0h/runx/tree/codex/flaky-test-judge/skills/flaky-test-judge`.
 - Raw `X.yaml`: `https://raw.githubusercontent.com/dh0h/runx/codex/flaky-test-judge/skills/flaky-test-judge/X.yaml`.
