@@ -10,10 +10,13 @@ The save plan is only a recommendation. The skill sends no message, mints no aut
 
 - runx version: `runx-cli 0.6.13`
 - package name: `renewal-risk-judge`
-- version: `0.1.0`
+- package version: `0.1.0`
+- published registry ref: `xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095`
+- public URL: `https://runx.ai/x/xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095`
 - local harness: passed
 - harness cases: `high_risk_with_save_play`, `missing_usage_signals_stop`, `missing_required_usage_failure`
-- dogfood receipt: `runx:receipt:sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559`
+- dogfood command: `runx skill xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095 --registry https://api.runx.ai --json ...`
+- dogfood receipt: `runx:receipt:sha256:c98032b08de0f984d490a91d95c5928e5312f9c0bd14ea23498052df86d47d39`
 - verify verdict: valid digest, valid content address, valid production Ed25519 signature, no findings
 
 ## High-risk case

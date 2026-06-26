@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-06-26T04:43:32.104Z",
+    "closed_at": "2026-06-26T06:39:43.480Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool judge completed"
@@ -141,7 +141,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-06-26T04:43:32.104Z",
+          "closed_at": "2026-06-26T06:39:43.480Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -196,7 +196,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-06-26T04:43:32.104Z",
+    "created_at": "2026-06-26T06:39:43.480Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -224,8 +224,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:cbfc914d216a489da353df2f2d4451e326c564a837534c749072214a4327cb89",
-    "id": "sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559",
+    "digest": "sha256:f36f1f4db8125a14d31c2520b8ba04a0292f8c1e0dd2ef03830f3a98544fdb92",
+    "id": "sha256:c98032b08de0f984d490a91d95c5928e5312f9c0bd14ea23498052df86d47d39",
     "idempotency": {
       "content_hash": "sha256:run_judge_a23e37b69dfe-judge-content",
       "intent_key": "sha256:run_judge_a23e37b69dfe-judge-intent",
@@ -242,7 +242,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-06-26T04:43:32.104Z",
+      "closed_at": "2026-06-26T06:39:43.480Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -253,14 +253,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-06-26T04:43:32.104Z",
+      "last_observed_at": "2026-06-26T06:39:43.480Z",
       "reason_code": "process_closed",
       "summary": "cli-tool judge completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:Yrj0QrdJe6fckcRzK-KwQUe9mLsx4L4tI66hIonKip7G9JVgbPShYEI9pCru2DJhKlLMtwg_YpyebSuTp9RvCg"
+      "value": "base64:783CF4zw1WTNGAS6JEedJ0E5SRcDKxfvypsRGGdzRcMObCqnxcUYydaW2iTRdGSaJpfdfHbeueNP01rMe6gpDw"
     },
     "subject": {
       "commitments": [],
@@ -271,7 +271,18 @@
       }
     }
   },
-  "receipt_id": "sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559",
+  "receipt_id": "sha256:c98032b08de0f984d490a91d95c5928e5312f9c0bd14ea23498052df86d47d39",
+  "registry_provenance": {
+    "digest": "sha256:7649942f0d1d67812ddb75e8ec9d27565485fe0e5082669553cdc6d1ee5af31f",
+    "profile_digest": "sha256:32f4fbd0912142db47ae18bc731f897369fd3fe0664f12a77957060de1dd4c9b",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "xingdi614-alt/renewal-risk-judge",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-804b3c7f4095"
+  },
   "run_id": "run_judge_a23e37b69dfe",
   "schema": "runx.skill_run.v1",
   "skill_name": "renewal-risk-judge",

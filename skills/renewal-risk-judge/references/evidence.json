@@ -6,18 +6,20 @@
   "publisher_owner": "xingdi614-alt",
   "runx_cli_version": "runx-cli 0.6.13",
   "registry_ref": "xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095",
+  "public_url": "https://runx.ai/x/xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095",
+  "pr_url": "https://github.com/runxhq/runx/pull/158",
   "publish_method": "runx registry publish ./skills/renewal-risk-judge/SKILL.md --registry https://api.runx.ai",
   "install_command": "runx add xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095 --registry https://api.runx.ai",
   "commands": {
     "harness": "runx harness ./skills/renewal-risk-judge --json",
-    "dogfood": "runx skill ./skills/renewal-risk-judge --json --input-json usage_signals=... --input-json support_history=... --input-json payment_snapshot=... -i account_ref=account:acme-renewal-2026",
-    "verify": "runx verify --receipt sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559.json --json"
+    "dogfood": "runx skill xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095 --registry https://api.runx.ai --json --input-json usage_signals=... --input-json support_history=... --input-json payment_snapshot=... -i account_ref=account:acme-renewal-2026",
+    "verify": "runx verify --receipt sha256:c98032b08de0f984d490a91d95c5928e5312f9c0bd14ea23498052df86d47d39.json --json"
   },
   "dogfood": {
-    "package": "renewal-risk-judge@0.1.0",
+    "package": "xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095",
     "input": "high_risk_with_save_play",
-    "command": "runx skill ./skills/renewal-risk-judge --json --input-json usage_signals=... --input-json support_history=... --input-json payment_snapshot=... -i account_ref=account:acme-renewal-2026",
-    "receipt_ref": "runx:receipt:sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559",
+    "command": "runx skill xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095 --registry https://api.runx.ai --json --input-json usage_signals=... --input-json support_history=... --input-json payment_snapshot=... -i account_ref=account:acme-renewal-2026",
+    "receipt_ref": "runx:receipt:sha256:c98032b08de0f984d490a91d95c5928e5312f9c0bd14ea23498052df86d47d39",
     "verify_verdict": "valid",
     "harness_cases": [
       {
@@ -36,6 +38,9 @@
   },
   "observations": [
     "runx --version output: runx-cli 0.6.13",
+    "public_url is https://runx.ai/x/xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095 and resolves to the live hosted registry listing.",
+    "pr_url is https://github.com/runxhq/runx/pull/158; source_url, raw x_yaml, raw skill_md, evidence_json, verification_json, and report are submitted from the PR head commit for this package.",
+    "hosted registry publish succeeded for xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095 with community trust and hosted harness status accepted by the publish gate.",
     "high_risk_with_save_play fused score: usage trend declining and mau_pct_change -38 weighted 0.45, support volume 14 and ticket_severity_avg 4.2 weighted 0.25, payment days_late 18 and churn_flag true weighted 0.30.",
     "high_risk_with_save_play emits decision.risk_level critical with a bounded save_plan: channel email, audience account:acme-renewal-2026, content_ref renewal-save-play:account:acme-renewal-2026:risk-critical.",
     "missing_usage_signals_stop refuses qualification because usage_signals.trend and usage_signals.mau_pct_change are missing; no save_plan is emitted.",
@@ -44,7 +49,7 @@
     "typed output is one runx.support.renewal_risk.v1 packet with decision{risk_level,justification,fused_score,signal_weights}, escalation, and save_plan only for high or critical risk.",
     "save_plan is a recommendation, not an effect: the skill sends no message, mints no authority, and includes no amount, currency, or counterparty.",
     "downstream delivery must be a separate governed send-as run under human approval; moderate or edge-case accounts route to human_approval and cannot fire send-as without approval.",
-    "verification_json records a valid digest, valid content address, valid production Ed25519 signature, and no findings for the dogfood receipt."
+    "verification_json records a valid digest, valid content address, valid production Ed25519 signature, and no findings for the post-publish registry dogfood receipt sha256:c98032b08de0f984d490a91d95c5928e5312f9c0bd14ea23498052df86d47d39."
   ],
   "artifacts": {
     "skill_md": "skills/renewal-risk-judge/SKILL.md",
