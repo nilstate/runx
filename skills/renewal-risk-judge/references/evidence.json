@@ -27,6 +27,10 @@
       {
         "name": "missing_usage_signals_stop",
         "status": "sealed"
+      },
+      {
+        "name": "missing_required_usage_failure",
+        "status": "failure"
       }
     ]
   },
@@ -35,6 +39,7 @@
     "high_risk_with_save_play fused score: usage trend declining and mau_pct_change -38 weighted 0.45, support volume 14 and ticket_severity_avg 4.2 weighted 0.25, payment days_late 18 and churn_flag true weighted 0.30.",
     "high_risk_with_save_play emits decision.risk_level critical with a bounded save_plan: channel email, audience account:acme-renewal-2026, content_ref renewal-save-play:account:acme-renewal-2026:risk-critical.",
     "missing_usage_signals_stop refuses qualification because usage_signals.trend and usage_signals.mau_pct_change are missing; no save_plan is emitted.",
+    "missing_required_usage_failure omits the required usage_signals object and proves a real runx failure stop path in the hosted harness.",
     "typed inputs are usage_signals{trend,mau_pct_change}, support_history{volume,ticket_severity_avg}, and payment_snapshot{days_late,churn_flag}.",
     "typed output is one runx.support.renewal_risk.v1 packet with decision{risk_level,justification,fused_score,signal_weights}, escalation, and save_plan only for high or critical risk.",
     "save_plan is a recommendation, not an effect: the skill sends no message, mints no authority, and includes no amount, currency, or counterparty.",

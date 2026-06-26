@@ -48,6 +48,18 @@ harness:
           state: sealed
           disposition: closed
           reason_code: process_closed
+    - name: missing_required_usage_failure
+      runner: judge
+      inputs:
+        account_ref: account:missing-required-usage
+        support_history:
+          volume: 2
+          ticket_severity_avg: 1.5
+        payment_snapshot:
+          days_late: 0
+          churn_flag: false
+      expect:
+        status: failure
 
 runners:
   judge:

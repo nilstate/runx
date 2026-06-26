@@ -109,6 +109,9 @@ Risk thresholds:
   or stronger and includes one bounded save plan.
 - `missing_usage_signals_stop`: missing usage trend blocks qualification, emits
   no save plan, and names the missing signal in the refused reason.
+- `missing_required_usage_failure`: omitting the required usage signal object
+  stops before execution with `failure`, proving the harness covers a
+  real runx stop path instead of only successful sealed receipts.
 
 ## Authority boundary
 

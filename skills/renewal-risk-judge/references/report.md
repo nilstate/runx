@@ -12,7 +12,7 @@ The save plan is only a recommendation. The skill sends no message, mints no aut
 - package name: `renewal-risk-judge`
 - version: `0.1.0`
 - local harness: passed
-- harness cases: `high_risk_with_save_play`, `missing_usage_signals_stop`
+- harness cases: `high_risk_with_save_play`, `missing_usage_signals_stop`, `missing_required_usage_failure`
 - dogfood receipt: `runx:receipt:sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559`
 - verify verdict: valid digest, valid content address, valid production Ed25519 signature, no findings
 
@@ -35,6 +35,8 @@ The dogfood run emits `decision.risk_level: critical` and one bounded save plan:
 ## Stop case
 
 The stop fixture omits usable usage trend data. The judge refuses to qualify the account, routes to `human_approval`, names the missing usage signal, and emits no save plan.
+
+The harness also includes `missing_required_usage_failure`, which omits the required `usage_signals` object entirely. That case fails before skill execution and proves the package has a real runx stop/error path for hosted registry verification, not only sealed success receipts.
 
 ## Composition with send-as
 

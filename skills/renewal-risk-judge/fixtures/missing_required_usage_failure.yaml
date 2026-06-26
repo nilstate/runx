@@ -1,0 +1,18 @@
+name: missing_required_usage_failure
+kind: skill
+target: ..
+runner: judge
+inputs:
+  account_ref: account:missing-required-usage
+  support_history:
+    volume: 2
+    ticket_severity_avg: 1.5
+  payment_snapshot:
+    days_late: 0
+    churn_flag: false
+expect:
+  status: failure
+metadata:
+  public_skill: renewal-risk-judge
+  source_case: missing_required_usage_failure
+  source: skills-fixture
