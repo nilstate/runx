@@ -98,7 +98,7 @@ jobs:
             --input-json authority_grant="$(cat skills/mandate-planner/evidence/ci/dogfood-authority-grant.json)" \
             --json | tee skills/mandate-planner/evidence/ci/dogfood.json
           find "$RUNX_RECEIPT_DIR" -type f | sort > skills/mandate-planner/evidence/ci/receipt-files.txt
-          cp -R "$RUNX_RECEIPT_DIR" skills/mandate-planner/evidence/ci/receipts
+          tar -C "$RUNX_RECEIPT_DIR" -czf skills/mandate-planner/evidence/ci/receipts.tar.gz .
       - uses: actions/upload-artifact@v4
         with:
           name: mandate-planner-ci-evidence
