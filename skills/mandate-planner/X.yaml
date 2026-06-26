@@ -59,11 +59,11 @@ harness:
             - reviewer
           max_turns: 6
       expect:
-        status: needs_agent
+        status: failure
         receipt:
           schema: runx.receipt.v1
           state: sealed
-          disposition: closed
+          disposition: failed
 
 runners:
   default:
