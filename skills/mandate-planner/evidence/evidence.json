@@ -8,6 +8,49 @@
     "name": "mandate-planner",
     "version": "0.1.0"
   },
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.6.13"
+    },
+    {
+      "name": "published_package",
+      "value": "patrick6x6/mandate-planner@0.1.0"
+    },
+    {
+      "name": "harness_passed",
+      "value": "3 inline cases passed with zero assertion errors"
+    },
+    {
+      "name": "dogfood_receipt",
+      "value": "runx:receipt:sha256:f47d9d8be0a2c0a02caae4b0f425a4a71a63c7cb0328c2565da4f7d844c87cc3"
+    },
+    {
+      "name": "grant_boundary",
+      "value": "every candidate role must be listed in authority_grant.granted_roles"
+    },
+    {
+      "name": "limit_boundary",
+      "value": "requested spend and max_turns must be at or below the authority grant"
+    },
+    {
+      "name": "done_check_boundary",
+      "value": "missing or non-measurable done_check fails closed"
+    },
+    {
+      "name": "dispatch_boundary",
+      "value": "the skill does not call agency.open; it emits a verdict for a separate governed run"
+    }
+  ],
+  "dogfood": {
+    "package": "patrick6x6/mandate-planner@0.1.0",
+    "status": "sealed",
+    "closure_disposition": "closed",
+    "execution_exit_code": 0,
+    "receipt_ref": "runx:receipt:sha256:f47d9d8be0a2c0a02caae4b0f425a4a71a63c7cb0328c2565da4f7d844c87cc3",
+    "verify_verdict": "process_exit verified",
+    "command": "runx skill patrick6x6/mandate-planner@0.1.0 --registry https://api.runx.ai --input objective=... --input-json proposed_charter=... --input-json authority_grant=... --json"
+  },
   "ci": {
     "run_url": "https://github.com/patrick6x6/runx/actions/runs/28219110249",
     "runx_cli_version": "runx-cli 0.6.13",
