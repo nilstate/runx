@@ -1,0 +1,12 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070",
+  "valid": true,
+  "verification_method": "local-harness-and-dogfood",
+  "notes": "Receipt sealed by local runtime with Ed25519 signature. Dogfood run produced escalate decision with packet.",
+  "harness_cases": [
+    {"name": "sealed_escalate_eligible_alert", "status": "sealed"},
+    {"name": "missing_runbook_stop", "status": "failure"}
+  ],
+  "dogfood_receipt_ref": "runx:receipt:sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070"
+}
