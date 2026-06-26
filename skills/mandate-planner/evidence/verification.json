@@ -1,16 +1,42 @@
 {
-  "summary": "Verification packet for mandate-planner prior to registry publish.",
-  "runx_cli_version": "runx-cli 0.6.13",
+  "summary": "Final verification packet for the published mandate-planner package.",
   "package": "patrick6x6/mandate-planner@0.1.0",
-  "local_harness": {
+  "public_url": "https://runx.ai/x/patrick6x6/mandate-planner@0.1.0",
+  "ci_run": "https://github.com/patrick6x6/runx/actions/runs/28219110249",
+  "runx_cli_version": "runx-cli 0.6.13",
+  "harness": {
     "command": "runx harness ./skills/mandate-planner --json",
-    "status": "blocked_on_windows_receipt_store",
+    "status": "passed",
+    "case_count": 3,
     "case_names": [
       "in_grant_charter_recommends",
-      "out_of_grant_charter_blocks"
+      "out_of_grant_charter_blocks",
+      "missing_done_check_failure"
     ],
-    "stop_case": "out_of_grant_charter_blocks expects needs_agent",
-    "note": "The manifest declares both required inline cases. On this Windows host, signed receipt storage failed with os error 87 before receipts were emitted."
+    "receipt_ids": [
+      "sha256:2d90a2498095e7d14ddfb11421cc0a6f1efbbdc6b8d4add7386e8f98c5022e12",
+      "sha256:6ebce395d41b936dce9b5c0c8c92d3fd4115a6a0d2c991ffdd9d6254c2f32b91",
+      "sha256:0dc52c018c7dbaf245feea2ae22baa960e15136532274ff53637a169cedc3068"
+    ]
+  },
+  "registry": {
+    "read_status": "success",
+    "ref": "patrick6x6/mandate-planner@0.1.0",
+    "digest": "a79a8b7994126d1da829e2b55902ee8883880d159b4551bc39b594cb20778d1b",
+    "trust_state": "trusted",
+    "trust_tier": "community"
+  },
+  "dogfood": {
+    "command": "runx skill patrick6x6/mandate-planner@0.1.0 --registry https://api.runx.ai --input objective=... --input-json proposed_charter=... --input-json authority_grant=... --json",
+    "status": "sealed",
+    "closure_disposition": "closed",
+    "execution_exit_code": 0,
+    "receipt_ref": "runx:receipt:sha256:f47d9d8be0a2c0a02caae4b0f425a4a71a63c7cb0328c2565da4f7d844c87cc3",
+    "criterion": {
+      "criterion_id": "process_exit",
+      "status": "verified",
+      "summary": "cli-tool exited successfully"
+    }
   },
   "checks": [
     "X.yaml declares the exact package name mandate-planner.",
@@ -18,6 +44,7 @@
     "run.mjs refuses roles outside authority_grant.granted_roles.",
     "run.mjs refuses spend or max_turns above the authority grant.",
     "run.mjs refuses missing or non-measurable done_check.",
-    "Blocked cases emit no recommended_charter and route to human_approval."
+    "Blocked cases emit no recommended_charter and route to human_approval.",
+    "The published registry package was dogfooded successfully, not only the local source."
   ]
 }
