@@ -16,6 +16,6 @@
     "oncall_policy": {"services": ["payments-api", "auth-service"], "escalation_rules": {"payments-api": {"severity_critical": "escalate"}}}
   },
   "sealed_runbook_digest": "sha256:075bd287cfe78edf466723eb4a383a2207aa2d5151804fcc14ab4989fe470c4b",
-  "raw_x_yaml_url": "https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/X.yaml",
-  "raw_skill_md_url": "https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/SKILL.md"
+  "raw_x_yaml_url": "https://raw.githubusercontent.com/runxhq/runx/2870fd79e8f57f446cf6635d9a413753e7d718da/skills/oncall-alert-triage/X.yaml",
+  "raw_skill_md_url": "https://raw.githubusercontent.com/runxhq/runx/2870fd79e8f57f446cf6635d9a413753e7d718da/skills/oncall-alert-triage/SKILL.md"
 }
