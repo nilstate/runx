@@ -94,11 +94,34 @@ harness:
                 lane: human_approval
                 needs_agent: true
       expect:
-        status: needs_agent
+        status: sealed
         receipt:
           schema: runx.receipt.v1
           state: sealed
-          disposition: needs_agent
+          disposition: closed
+    - name: missing_done_check_failure
+      runner: plan
+      inputs:
+        objective: Launch an agency case without a measurable finish line.
+        proposed_charter:
+          candidate_roster:
+            - role: researcher
+              skill: deep-research-brief
+              scope:
+                - repo:read:/agency/*
+          requested_limits:
+            max_turns: 5
+            spend: 25
+          done_check: ""
+        authority_grant:
+          granted_roles:
+            - researcher
+          granted_spend: 50
+          max_turns: 8
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
 
 runners:
   plan:

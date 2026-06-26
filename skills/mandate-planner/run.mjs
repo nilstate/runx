@@ -58,10 +58,7 @@ if (overLimits.length > 0) {
 }
 
 if (!isMeasurableDoneCheck(doneCheck)) {
-  blockedReasons.push({
-    code: "missing_done_check",
-    reason: "The proposed charter does not include a measurable done_check predicate.",
-  });
+  fail("proposed_charter.done_check must be a measurable predicate");
 }
 
 const eligible = blockedReasons.length === 0;
