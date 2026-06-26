@@ -1,0 +1,119 @@
+{
+  "schema": "runx.spam_risk_reviewer.evidence.v1",
+  "generated_at": "2026-06-26T01:56:45Z",
+  "skill": {
+    "name": "spam-risk-reviewer",
+    "local_version": "0.1.1",
+    "registry_skill_id": "dh0h/spam-risk-reviewer",
+    "registry_version": "sha-7a71fad9b882",
+    "public_url": "https://runx.ai/x/dh0h/spam-risk-reviewer",
+    "source_package_path": "skills/spam-risk-reviewer"
+  },
+  "registry_publish": {
+    "status": "published",
+    "target": "hosted",
+    "owner": "dh0h",
+    "digest": "sha256:0dfb72589f45498075f60c895f1bb0cc23e489ffb82c026d45c7cc12219275ff",
+    "profile_digest": "sha256:7ac51ffb593b36abf73a49321270bedd921caf37dd4eea773a45bd9fd0375456",
+    "trust_tier": "community",
+    "install_command": "runx add dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai",
+    "run_command": "runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai"
+  },
+  "harness": {
+    "cli_version": "runx-cli 0.6.13",
+    "inline": {
+      "status": "passed",
+      "case_count": 3,
+      "case_names": [
+        "low-risk-verified-sender",
+        "high-risk-incomplete-auth-poor-list",
+        "missing-sender-auth-posture-fails-closed"
+      ],
+      "receipt_ids": [
+        "sha256:b0893d2e0b42f48f0b6f777c81034f0aa02f773c63ffb3b87ec428cbf00ac8dd",
+        "sha256:a6269951b87798c724307566ae65f8ee014f303bcc6b8ccde29f0f5574d6d351",
+        "sha256:a95ecfc0ef61a7ccf6fa8165055698346592842ebd8324068ab919d7a3160724"
+      ]
+    },
+    "standalone": {
+      "status": "passed",
+      "case_count": 3,
+      "receipts": [
+        {
+          "case": "low-risk-verified-sender",
+          "receipt_id": "sha256:11630e79cea29d0ccfaace89cc90f60bc6e43581953e54e39e0cbac2b1bc9dd4",
+          "harness_ref": "hrn_low-risk-verified-sender_judge",
+          "disposition": "closed",
+          "reason_code": "process_closed"
+        },
+        {
+          "case": "high-risk-incomplete-auth-poor-list",
+          "receipt_id": "sha256:9789b41e40dca2de581b927c9630e1f107dd2651e6667c1ca0de4fccda878bbd",
+          "harness_ref": "hrn_high-risk-incomplete-auth-poor-list_judge",
+          "disposition": "closed",
+          "reason_code": "process_closed"
+        },
+        {
+          "case": "missing-sender-auth-posture-fails-closed",
+          "receipt_id": "sha256:8b9cddc13636c2c71520178f9e7dfffe66f51b7334a9fdc4297b3232c52f7168",
+          "harness_ref": "hrn_missing-sender-auth-posture-fails-closed_judge",
+          "disposition": "failed",
+          "reason_code": "process_failed"
+        }
+      ]
+    }
+  },
+  "output_assertions": [
+    {
+      "case": "low-risk-verified-sender",
+      "expected": {
+        "schema": "runx.send.spam_risk_review.v1",
+        "send_risk_verdict": {
+          "risk_level": "pass",
+          "preflight_clear": true,
+          "blockers": []
+        },
+        "dispatch_target": {
+          "name": "send-as"
+        },
+        "escalation": {
+          "required": false
+        }
+      }
+    },
+    {
+      "case": "high-risk-incomplete-auth-poor-list",
+      "expected": {
+        "schema": "runx.send.spam_risk_review.v1",
+        "send_risk_verdict": {
+          "risk_level": "hold",
+          "preflight_clear": false,
+          "blockers": [
+            "authentication: DKIM does not pass",
+            "list_hygiene: bounce_rate 0.075 exceeds policy max 0.02"
+          ]
+        },
+        "dispatch_target": {
+          "name": "send-as"
+        },
+        "escalation": {
+          "lane": "needs_human",
+          "required": true
+        }
+      }
+    }
+  ],
+  "dogfood_run": {
+    "status": "sealed",
+    "run_id": "run_judge_80d2b3d65654",
+    "receipt_ref": "sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4",
+    "registry_version": "sha-7a71fad9b882",
+    "risk_level": "pass",
+    "preflight_clear": true,
+    "receipt_verification": {
+      "signature_mode": "production",
+      "valid": true,
+      "findings": []
+    }
+  }
+}

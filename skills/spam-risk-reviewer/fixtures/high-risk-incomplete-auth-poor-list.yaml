@@ -1,0 +1,46 @@
+name: high-risk-incomplete-auth-poor-list
+kind: skill
+target: ..
+runner: judge
+inputs:
+  harness_case: high-risk-incomplete-auth-poor-list
+  campaign_draft:
+    from: promo@example.com
+    subject: Limited offer for dormant subscribers
+    content_digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  list_metadata:
+    size: 9600
+    bounce_rate: 0.075
+    complaint_rate: 0.0008
+    freshness:
+      days_since_last_confirmed: 35
+      source: subscriber-consent-ledger
+  sender_auth_posture:
+    spf_pass: true
+    dkim_pass: false
+    dmarc_pass: true
+    warm_up_days: 30
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: spam-risk-reviewer
+  source_case: high-risk-incomplete-auth-poor-list
+  source: skills-fixture
+  output_assertions:
+    schema: runx.send.spam_risk_review.v1
+    send_risk_verdict:
+      risk_level: hold
+      preflight_clear: false
+      blockers:
+        - "authentication: DKIM does not pass"
+        - "list_hygiene: bounce_rate 0.075 exceeds policy max 0.02"
+    dispatch_target:
+      name: send-as
+    escalation:
+      lane: needs_human
+      required: true

@@ -311,6 +311,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "4b6316c7fbb323b7d27d304deb8f11cb8f939dc31e0b74349d56f27abf618504",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/spam-risk-reviewer",
+        version: "sha-9f0bf76e7e30",
+        digest: "c44c6cdb1d21a6db3e967455dcbd926f3a74c7cc80fef75f4122d216f140c827",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/spend",
         version: "sha-e5fd2bc16a0f",
         digest: "4b9810ee99bbbc58e467547595e0cdb7d67ad117f8cbba422b6e6e5e2b065fc5",

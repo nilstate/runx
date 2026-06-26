@@ -1,0 +1,23 @@
+{
+  "campaign_draft": {
+    "from": "promo@example.com",
+    "subject": "Limited offer for dormant subscribers",
+    "content_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "list_metadata": {
+    "size": 9600,
+    "bounce_rate": 0.075,
+    "complaint_rate": 0.0008,
+    "freshness": {
+      "days_since_last_confirmed": 35,
+      "source": "subscriber-consent-ledger"
+    }
+  },
+  "sender_auth_posture": {
+    "spf_pass": true,
+    "dkim_pass": false,
+    "dmarc_pass": true,
+    "warm_up_days": 30
+  },
+  "harness_case": "high-risk-incomplete-auth-poor-list"
+}

@@ -1,0 +1,58 @@
+{
+  "schema": "runx.spam_risk_reviewer.verification.v1",
+  "generated_at": "2026-06-26T01:56:45Z",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "runx doctor",
+      "command": "runx doctor --json",
+      "status": "passed",
+      "summary": "0 errors, 0 warnings"
+    },
+    {
+      "name": "inline harness",
+      "command": "runx harness skills/spam-risk-reviewer --json",
+      "status": "passed",
+      "case_count": 3
+    },
+    {
+      "name": "standalone fixtures",
+      "command": "runx harness skills/spam-risk-reviewer/fixtures/*.yaml --json",
+      "status": "passed",
+      "case_count": 3
+    },
+    {
+      "name": "official skill catalog test",
+      "command": "pnpm exec vitest run tests/official-skill-catalog.test.ts --config vitest.config.ts --testTimeout 30000",
+      "status": "passed",
+      "test_count": 8
+    },
+    {
+      "name": "registry publish",
+      "command": "runx registry publish ./skills/spam-risk-reviewer/SKILL.md --registry https://api.runx.ai --json",
+      "status": "passed",
+      "registry_version": "sha-7a71fad9b882",
+      "public_url": "https://runx.ai/x/dh0h/spam-risk-reviewer"
+    },
+    {
+      "name": "dogfood registry run",
+      "command": "runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai ... --json",
+      "status": "passed",
+      "receipt_ref": "sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4"
+    },
+    {
+      "name": "dogfood receipt verify",
+      "command": "runx verify sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4 --receipt-dir <dogfood-receipts> --json",
+      "status": "passed",
+      "valid": true,
+      "signature_mode": "production"
+    }
+  ],
+  "policy_notes": {
+    "mutating": false,
+    "public_send_effect": "not performed",
+    "authority_minting": "not performed",
+    "live_provider_state": "not read",
+    "downstream_dispatch": "send-as named for preflight blockers only"
+  }
+}

@@ -1,0 +1,133 @@
+skill: spam-risk-reviewer
+version: "0.1.1"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+runx:
+  mutating: false
+  scopes:
+    - campaign_draft.read
+    - list_metadata.read
+    - sender_auth_posture.read
+  policy:
+    data_classification: deliverability_metadata
+    network:
+      forbidden:
+        - live provider state
+        - public_send effect
+        - send-as execution
+        - authority minting
+    verifier_notes:
+      - The runner computes only from supplied draft, list, and sender posture inputs.
+      - It names send-as as a downstream dispatch target but never invokes it.
+      - Non-clear verdicts route to human approval and block send-as preflight.
+
+harness:
+  cases:
+    - name: low-risk-verified-sender
+      runner: judge
+      inputs:
+        harness_case: low-risk-verified-sender
+        campaign_draft:
+          from: newsletter@example.com
+          subject: June product update
+          content_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        list_metadata:
+          size: 4200
+          bounce_rate: 0.004
+          complaint_rate: 0.0002
+          freshness:
+            days_since_last_confirmed: 21
+            source: subscriber-consent-ledger
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: true
+          dmarc_pass: true
+          warm_up_days: 30
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: high-risk-incomplete-auth-poor-list
+      runner: judge
+      inputs:
+        harness_case: high-risk-incomplete-auth-poor-list
+        campaign_draft:
+          from: promo@example.com
+          subject: Limited offer for dormant subscribers
+          content_digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        list_metadata:
+          size: 9600
+          bounce_rate: 0.075
+          complaint_rate: 0.0008
+          freshness:
+            days_since_last_confirmed: 35
+            source: subscriber-consent-ledger
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: false
+          dmarc_pass: true
+          warm_up_days: 30
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: missing-sender-auth-posture-fails-closed
+      runner: judge
+      inputs:
+        harness_case: missing-sender-auth-posture-fails-closed
+        campaign_draft:
+          from: promo@example.com
+          subject: Limited offer for dormant subscribers
+          content_digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+        list_metadata:
+          size: 9600
+          bounce_rate: 0.01
+          complaint_rate: 0.0004
+          freshness:
+            days_since_last_confirmed: 35
+            source: subscriber-consent-ledger
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    outputs:
+      send_risk_verdict: object
+      dispatch_target: object
+      escalation: object
+      evidence: object
+    artifacts:
+      wrap_as: spam_risk_review_packet
+      packet: runx.send.spam_risk_review.v1
+    inputs:
+      campaign_draft:
+        type: json
+        required: true
+        description: "campaign_draft{from,subject,content_digest}"
+      list_metadata:
+        type: json
+        required: true
+        description: "list_metadata{size,bounce_rate,complaint_rate,freshness}"
+      sender_auth_posture:
+        type: json
+        required: true
+        description: "sender_auth_posture{spf_pass,dkim_pass,dmarc_pass,warm_up_days}"
+      harness_case:
+        type: string
+        required: false
+        description: Optional case name recorded in evidence.

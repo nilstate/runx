@@ -1,0 +1,26 @@
+name: missing-sender-auth-posture-fails-closed
+kind: skill
+target: ..
+runner: judge
+inputs:
+  harness_case: missing-sender-auth-posture-fails-closed
+  campaign_draft:
+    from: promo@example.com
+    subject: Limited offer for dormant subscribers
+    content_digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  list_metadata:
+    size: 9600
+    bounce_rate: 0.01
+    complaint_rate: 0.0004
+    freshness:
+      days_since_last_confirmed: 35
+      source: subscriber-consent-ledger
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: spam-risk-reviewer
+  source_case: missing-sender-auth-posture-fails-closed
+  source: skills-fixture
+  stop_case: missing sender_auth_posture must fail closed before preflight clearance.

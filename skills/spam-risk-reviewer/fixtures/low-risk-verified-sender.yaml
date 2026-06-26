@@ -1,0 +1,43 @@
+name: low-risk-verified-sender
+kind: skill
+target: ..
+runner: judge
+inputs:
+  harness_case: low-risk-verified-sender
+  campaign_draft:
+    from: newsletter@example.com
+    subject: June product update
+    content_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  list_metadata:
+    size: 4200
+    bounce_rate: 0.004
+    complaint_rate: 0.0002
+    freshness:
+      days_since_last_confirmed: 21
+      source: subscriber-consent-ledger
+  sender_auth_posture:
+    spf_pass: true
+    dkim_pass: true
+    dmarc_pass: true
+    warm_up_days: 30
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: spam-risk-reviewer
+  source_case: low-risk-verified-sender
+  source: skills-fixture
+  output_assertions:
+    schema: runx.send.spam_risk_review.v1
+    send_risk_verdict:
+      risk_level: pass
+      preflight_clear: true
+      blockers: []
+    dispatch_target:
+      name: send-as
+    escalation:
+      required: false
