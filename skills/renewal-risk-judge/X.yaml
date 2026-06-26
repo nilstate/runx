@@ -69,9 +69,6 @@ runners:
     args:
       - run.mjs
     timeout_seconds: 30
-    sandbox:
-      profile: readonly
-      cwd_policy: skill-directory
     outputs:
       packet_schema: string
       decision: object

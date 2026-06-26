@@ -7,9 +7,6 @@ source:
   args:
     - run.mjs
   timeout_seconds: 30
-  sandbox:
-    profile: readonly
-    cwd_policy: skill-directory
 inputs:
   usage_signals:
     type: json
