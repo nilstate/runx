@@ -196,6 +196,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "382cdef84f660e7cfdc2dbbfd7e8382d204d1f4ee46ffa019549615f9c2f745c",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/oncall-alert-triage",
+        version: "sha-d833f21279a7",
+        digest: "2c1d1c260809f0f7e20b4f74b34f59fa3813197c2deccb1e4bd8ab8bfd61c752",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/open-meteo-weather-forecast",
         version: "sha-5d9f95438c9a",
         digest: "041e0ec18fa4b646b46b72d34662eabbbfbc43ab5a3a65423b49b3e94e81d159",

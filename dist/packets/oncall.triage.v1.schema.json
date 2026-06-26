@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/oncall/triage/v1.json",
+  "x-runx-packet-id": "runx.oncall.triage.v1",
+  "type": "object",
+  "properties": {
+    "decision": { "type": "object", "additionalProperties": true },
+    "page_target": { "type": "string" },
+    "incident_pr_target": { "type": "string" },
+    "pr_review_note_body": { "type": "string" },
+    "fix_bundle": { "type": "object", "additionalProperties": true },
+    "escalation": { "type": "object", "additionalProperties": true },
+    "source_url": { "type": "string" },
+    "evidence_json": { "type": "object", "additionalProperties": true },
+    "report": { "type": "string" }
+  },
+  "additionalProperties": true
+}

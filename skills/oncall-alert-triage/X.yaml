@@ -1,0 +1,105 @@
+skill: oncall-alert-triage
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  triage:
+    default: true
+    type: graph
+    act:
+      form: review
+      purpose: Review a sealed on-call alert and emit a read-only triage packet only when policy and runbook evidence bind the route.
+      legitimacy: The graph holds review-only authority; downstream page, PR, comment, and remediation effects require separate governed runs.
+      target_from: target_ref
+      decision_from: act_decision
+      authority_from: authority_ref
+      actor_from: actor_ref
+      previous_from: previous_receipt_ref
+      reason_step: triage
+      reason_from: reason
+    inputs:
+      alert:
+        type: json
+        required: true
+        description: "Alert object with id, service, severity, and signal."
+      runbook_ref:
+        type: json
+        required: true
+        description: "Runbook locator, seal state, digest, and bounded targets."
+      oncall_policy:
+        type: json
+        required: true
+        description: "Declared service policy and escalation rules."
+      source_url:
+        type: string
+        required: true
+        description: "Public or operator-safe source URL for the alert context."
+      target_ref:
+        type: string
+        required: false
+        description: "Reference sealed into the review act as the target."
+      authority_ref:
+        type: string
+        required: false
+        description: "Review-only authority reference for the act receipt."
+      actor_ref:
+        type: string
+        required: false
+        description: "Principal reference for the reviewer."
+      previous_receipt_ref:
+        type: string
+        required: false
+        description: "Optional prior receipt this review chains from."
+      act_decision:
+        type: string
+        required: false
+        default: close
+        description: "Receipt decision choice for the review act."
+    graph:
+      name: oncall-alert-triage
+      steps:
+        - id: triage
+          label: review alert against sealed runbook and policy
+          run:
+            type: agent-task
+            agent: reviewer
+            task: oncall-alert-triage
+            outputs:
+              decision: object
+              escalation: object
+              triage_packet: object
+              evidence_json: object
+              verification_json: object
+              report: string
+              reason: string
+          instructions: >
+            Review the alert, runbook_ref, oncall_policy, and source_url. Return
+            needs_agent instead of a packet when the service is undeclared, the
+            runbook is missing or unsealed, an eligible action cannot bind both
+            page and incident PR targets, or the requested route would execute an
+            effect. For escalate or auto_remediate, emit exactly one
+            runx.oncall.triage.v1 triage_packet with page_target,
+            incident_pr_target, pr_review_note_body, optional fix_bundle,
+            sealed runbook digest, policy clauses applied, and dispatch-by-name
+            downstream_runs. Do not page, open a PR, post a comment, apply a
+            fix, mint authority, request AttenuationRequest, or consume the
+            packet as an effect in this graph.
+          allowed_tools:
+            - fs.read
+          scopes:
+            - runx:oncall:triage:review
+          inputs:
+            alert: "$input.alert"
+            runbook_ref: "$input.runbook_ref"
+            oncall_policy: "$input.oncall_policy"
+            source_url: "$input.source_url"
+          artifacts:
+            named_emits:
+              triage_packet: runx.oncall.triage.v1
+              evidence_json: runx.oncall.triage_evidence.v1
+              verification_json: runx.oncall.triage_verification.v1

@@ -1,0 +1,110 @@
+name: oncall-alert-triage-sealed-escalate
+kind: skill
+target: ..
+runner: triage
+inputs:
+  target_ref: github://auscaster/frantic-board/issues/164
+  authority_ref: runx:grant:oncall-alert-triage:review-only
+  actor_ref: runx:principal:local_runtime
+  act_decision: close
+  source_url: https://gofrantic.com/bounties/64
+  alert:
+    id: pager-evt-2026-06-25-001
+    service: checkout-api
+    severity: sev2
+    signal: 5xx burn rate above threshold for 12 minutes
+  runbook_ref:
+    ref: runbook://checkout-api/5xx-burn-rate
+    sealed: true
+    digest: sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34
+    allowed_actions:
+      - escalate
+    page_target: oncall://payments-primary
+    incident_pr_target: github://runxhq/runx/incidents/checkout-api-pager-evt-2026-06-25-001
+    pr_review_note_body: "Escalate checkout-api alert pager-evt-2026-06-25-001: sev2 burn rate over policy; sealed runbook sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34."
+  oncall_policy:
+    services:
+      checkout-api:
+        page_target: oncall://payments-primary
+        incident_pr_target: github://runxhq/runx/incidents/checkout-api-pager-evt-2026-06-25-001
+    escalation_rules:
+      - id: sev2-escalate
+        service: checkout-api
+        severity: sev2
+        action: escalate
+        reason: Sustained 5xx burn rate requires human escalation.
+caller:
+  answers:
+    agent_task.oncall-alert-triage.output:
+      decision:
+        action: escalate
+        reason: checkout-api sev2 burn rate matches policy clause sev2-escalate and sealed runbook sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34.
+      escalation:
+        field: oncall
+        target: oncall://payments-primary
+        incident_pr_target: github://runxhq/runx/incidents/checkout-api-pager-evt-2026-06-25-001
+        human_gate: true
+      triage_packet:
+        schema: runx.oncall.triage.v1
+        alert:
+          id: pager-evt-2026-06-25-001
+          service: checkout-api
+          severity: sev2
+          signal: 5xx burn rate above threshold for 12 minutes
+        decision:
+          action: escalate
+          reason: checkout-api sev2 burn rate matches policy clause sev2-escalate and sealed runbook sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34.
+        runbook:
+          ref: runbook://checkout-api/5xx-burn-rate
+          digest: sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34
+        policy_clauses_applied:
+          - sev2-escalate
+        packet:
+          page_target: oncall://payments-primary
+          incident_pr_target: github://runxhq/runx/incidents/checkout-api-pager-evt-2026-06-25-001
+          pr_review_note_body: "Escalate checkout-api alert pager-evt-2026-06-25-001: sev2 burn rate over policy; sealed runbook sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34."
+          fix_bundle: null
+        dispatch:
+          mode: by_name
+          downstream_runs:
+            - issue-to-pr
+            - pr-review-note
+            - send-as
+      evidence_json:
+        schema: runx.oncall.triage_evidence.v1
+        observations:
+          runx_version: captured by the caller environment
+          source_url: https://gofrantic.com/bounties/64
+          decision_action: escalate
+          decision_reason: checkout-api sev2 burn rate matches policy clause sev2-escalate and sealed runbook digest.
+          sealed_runbook_digest: sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34
+          policy_clauses_applied:
+            - sev2-escalate
+          packet_targets:
+            page_target: oncall://payments-primary
+            incident_pr_target: github://runxhq/runx/incidents/checkout-api-pager-evt-2026-06-25-001
+          harness_cases:
+            - oncall-alert-triage-sealed-escalate
+            - oncall-alert-triage-unsealed-runbook-stops
+          receipt_id: runx:harness:pending
+      verification_json:
+        schema: runx.oncall.triage_verification.v1
+        verdict: sealed
+        checks:
+          package_name: oncall-alert-triage
+          no_authority_minted: true
+          no_effect_executed: true
+          packet_emitted: true
+          packet_schema: runx.oncall.triage.v1
+      report: "Escalate checkout-api alert pager-evt-2026-06-25-001. The sealed runbook digest and policy clause sev2-escalate bind the page and incident PR targets; no page, PR, comment, or remediation is executed by this skill."
+      reason: checkout-api sev2 burn rate matches policy clause sev2-escalate and sealed runbook sha256:6aaf7d5d3d1bf6d1b3e02f4fd6f19fc37fbc0d4f6d78ce5f9915d5f4b96d1a34.
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: oncall-alert-triage
+  source_case: oncall-alert-triage-sealed-escalate
+  source: skills-fixture
