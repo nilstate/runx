@@ -1,0 +1,164 @@
+skill: ci-failure-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+runx:
+  category: code
+  mutating: false
+  idempotency:
+    key: ci_failure.commit.sha
+  policy:
+    reads:
+      - supplied CI logs
+      - supplied commit metadata
+      - supplied repository state
+      - supplied CI configuration context
+    disallows:
+      - rerunning CI
+      - opening issues or pull requests
+      - posting comments
+      - paging operators
+      - mutating repositories
+      - inventing root causes or lane recommendations
+    verifier_notes:
+      - The packet is a read-only draft routing decision.
+      - Downstream issue-intake, issue-to-pr, or pr-review-note runs must be dispatched separately.
+  artifacts:
+    emits:
+      - triage_packet
+
+harness:
+  cases:
+    - name: real_break_clear_logs
+      runner: triage
+      inputs:
+        ci_failure:
+          logs: |
+            job: test / typecheck
+            command: pnpm typecheck
+            src/workflows/issue-intake.ts(42,19): error TS2339: Property 'title' does not exist on type 'IssuePayload'.
+            src/workflows/issue-intake.ts(42,19): error TS2339: Property 'title' does not exist on type 'IssuePayload'.
+            error Command failed with exit code 2.
+          commit:
+            sha: 4d2c9a7
+            message: refactor issue intake payload parsing
+            changed_files:
+              - src/workflows/issue-intake.ts
+              - src/workflows/issue-payload.ts
+          repo_state:
+            repository: runxhq/runx
+            branch: ci-payload-refactor
+            workflow: pull-request
+            job: test / typecheck
+            retry_history:
+              attempts: 2
+              same_failure: true
+        repo_config:
+          ci_provider: github-actions
+          protected_branch: main
+          known_flaky_jobs:
+            - e2e/browser
+          downstream_lanes:
+            - issue-intake
+            - issue-to-pr
+            - pr-review-note
+        escalation_policy:
+          min_confidence: 0.8
+      caller:
+        answers:
+          agent_task.ci-failure-triage.output:
+            triage_packet:
+              schema: runx.ci.triage.v1
+              classification:
+                verdict: real-break
+                confidence: 0.94
+                evidence_refs:
+                  - log:typecheck:TS2339:src/workflows/issue-intake.ts:42
+                  - commit:4d2c9a7:changed_files:src/workflows/issue-intake.ts
+                  - repo_state:retry_history:same_failure
+              routing_decision:
+                recommended_lane: issue-to-pr
+                rationale: The same deterministic type error appears on repeated attempts and points at a changed source file, so a downstream governed issue-to-pr lane is appropriate.
+              handoff:
+                seam: dispatch-by-naming
+                downstream_candidates:
+                  - issue-intake
+                  - issue-to-pr
+                  - pr-review-note
+              read_only:
+                reran_ci: false
+                opened_tracking_item: false
+                paged_operator: false
+              refusal_reason: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: ambiguous_truncated_logs
+      runner: triage
+      inputs:
+        ci_failure:
+          logs: |
+            job: test / linux
+            command: pnpm test
+            ...
+            output truncated after 4096 bytes
+          commit:
+            sha: 9ac781d
+            message: update workflow fixtures
+            changed_files:
+              - tests/workflow-fixtures.test.ts
+          repo_state:
+            repository: runxhq/runx
+            branch: workflow-fixture-update
+            workflow: pull-request
+            job: test / linux
+            retry_history:
+              attempts: 1
+              same_failure: null
+        repo_config:
+          ci_provider: github-actions
+          protected_branch: main
+          known_flaky_jobs:
+            - test / linux
+          downstream_lanes:
+            - issue-intake
+            - issue-to-pr
+            - pr-review-note
+        escalation_policy:
+          min_confidence: 0.8
+      expect:
+        status: needs_agent
+
+runners:
+  triage:
+    default: true
+    type: agent-task
+    agent: incident-analyst
+    task: ci-failure-triage
+    outputs:
+      triage_packet: object
+    artifacts:
+      wrap_as: ci_failure_triage_packet
+      packet: runx.ci.triage.v1
+    runx:
+      category: code
+    inputs:
+      ci_failure:
+        type: json
+        required: true
+        description: CI failure packet with logs, commit metadata, and repo_state.
+      repo_config:
+        type: json
+        required: true
+        description: Repository CI configuration, known flakes, and available downstream lanes.
+      escalation_policy:
+        type: json
+        required: true
+        description: Minimum confidence and refusal constraints for routing.

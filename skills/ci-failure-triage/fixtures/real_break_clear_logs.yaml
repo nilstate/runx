@@ -1,0 +1,71 @@
+name: real_break_clear_logs
+kind: skill
+target: ..
+runner: triage
+inputs:
+  ci_failure:
+    logs: |
+      job: test / typecheck
+      command: pnpm typecheck
+      src/workflows/issue-intake.ts(42,19): error TS2339: Property 'title' does not exist on type 'IssuePayload'.
+      src/workflows/issue-intake.ts(42,19): error TS2339: Property 'title' does not exist on type 'IssuePayload'.
+      error Command failed with exit code 2.
+    commit:
+      sha: 4d2c9a7
+      message: refactor issue intake payload parsing
+      changed_files:
+        - src/workflows/issue-intake.ts
+        - src/workflows/issue-payload.ts
+    repo_state:
+      repository: runxhq/runx
+      branch: ci-payload-refactor
+      workflow: pull-request
+      job: test / typecheck
+      retry_history:
+        attempts: 2
+        same_failure: true
+  repo_config:
+    ci_provider: github-actions
+    protected_branch: main
+    known_flaky_jobs:
+      - e2e/browser
+    downstream_lanes:
+      - issue-intake
+      - issue-to-pr
+      - pr-review-note
+  escalation_policy:
+    min_confidence: 0.8
+caller:
+  answers:
+    agent_task.ci-failure-triage.output:
+      triage_packet:
+        schema: runx.ci.triage.v1
+        classification:
+          verdict: real-break
+          confidence: 0.94
+          evidence_refs:
+            - log:typecheck:TS2339:src/workflows/issue-intake.ts:42
+            - commit:4d2c9a7:changed_files:src/workflows/issue-intake.ts
+            - repo_state:retry_history:same_failure
+        routing_decision:
+          recommended_lane: issue-to-pr
+          rationale: The same deterministic type error appears on repeated attempts and points at a changed source file, so a downstream governed issue-to-pr lane is appropriate.
+        handoff:
+          seam: dispatch-by-naming
+          downstream_candidates:
+            - issue-intake
+            - issue-to-pr
+            - pr-review-note
+        read_only:
+          reran_ci: false
+          opened_tracking_item: false
+          paged_operator: false
+        refusal_reason: null
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: ci-failure-triage
+  source_case: real_break_clear_logs
+  source: skills-fixture

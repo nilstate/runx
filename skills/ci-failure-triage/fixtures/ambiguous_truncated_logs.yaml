@@ -1,0 +1,41 @@
+name: ambiguous_truncated_logs
+kind: skill
+target: ..
+runner: triage
+inputs:
+  ci_failure:
+    logs: |
+      job: test / linux
+      command: pnpm test
+      ...
+      output truncated after 4096 bytes
+    commit:
+      sha: 9ac781d
+      message: update workflow fixtures
+      changed_files:
+        - tests/workflow-fixtures.test.ts
+    repo_state:
+      repository: runxhq/runx
+      branch: workflow-fixture-update
+      workflow: pull-request
+      job: test / linux
+      retry_history:
+        attempts: 1
+        same_failure: null
+  repo_config:
+    ci_provider: github-actions
+    protected_branch: main
+    known_flaky_jobs:
+      - test / linux
+    downstream_lanes:
+      - issue-intake
+      - issue-to-pr
+      - pr-review-note
+  escalation_policy:
+    min_confidence: 0.8
+expect:
+  status: needs_agent
+metadata:
+  public_skill: ci-failure-triage
+  source_case: ambiguous_truncated_logs
+  source: skills-fixture

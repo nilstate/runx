@@ -31,6 +31,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "c151b98be3a2a7ccd306d7395d906ffd1fc22e45a7d94ffe34c294e9db1c47ce",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/ci-failure-triage",
+        version: "sha-00166ed3ca13",
+        digest: "16584524cecb56e651952d5174be2d507f4aa71b6cd7f6110011ef63fcddc557",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/content-pipeline",
         version: "sha-0efcbf2abed1",
         digest: "b93475f254b458a92936cd4612b8d01a59c371876b810eb242b06ce184f2b798",
