@@ -44,7 +44,7 @@
         },
         {
           "name": "out_of_grant_charter_blocks",
-          "expected_status": "sealed"
+          "expected_status": "needs_agent"
         }
       ]
     },
@@ -87,7 +87,7 @@
       },
       {
         "name": "out_of_grant_charter_blocks",
-        "status": "declared"
+        "status": "declared_needs_agent"
       }
     ]
   }

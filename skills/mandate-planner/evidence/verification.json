@@ -9,6 +9,7 @@
       "in_grant_charter_recommends",
       "out_of_grant_charter_blocks"
     ],
+    "stop_case": "out_of_grant_charter_blocks expects needs_agent",
     "note": "The manifest declares both required inline cases. On this Windows host, signed receipt storage failed with os error 87 before receipts were emitted."
   },
   "checks": [
