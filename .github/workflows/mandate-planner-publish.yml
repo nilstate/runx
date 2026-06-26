@@ -1,0 +1,45 @@
+name: mandate-planner publish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install runx
+        run: npm install -g @runxhq/cli
+      - name: Run harness
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-demo-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+          RUNX_RECEIPT_DIR: ${{ runner.temp }}/receipts
+        run: |
+          mkdir -p "$RUNX_RECEIPT_DIR" skills/mandate-planner/evidence/ci
+          runx --version | tee skills/mandate-planner/evidence/ci/runx-version.txt
+          runx harness ./skills/mandate-planner --json | tee skills/mandate-planner/evidence/ci/harness.json
+      - name: Publish
+        env:
+          RUNX_PUBLIC_API_TOKEN: ${{ secrets.RUNX_PUBLIC_API_TOKEN }}
+        run: |
+          runx registry publish ./skills/mandate-planner/SKILL.md \
+            --registry https://api.runx.ai \
+            --owner patrick6x6 \
+            --version 0.1.0 \
+            --upsert \
+            --json | tee skills/mandate-planner/evidence/ci/publish.json
+      - name: Read registry
+        run: |
+          runx registry read patrick6x6/mandate-planner@0.1.0 \
+            --registry https://api.runx.ai \
+            --json | tee skills/mandate-planner/evidence/ci/registry-read.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mandate-planner-ci-evidence
+          path: |
+            skills/mandate-planner/evidence/ci
