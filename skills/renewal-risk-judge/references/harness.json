@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "high_risk_with_save_play",
+    "missing_usage_signals_stop"
+  ],
+  "receipt_ids": [
+    "sha256:0922e16da231a30618fbee3d96571c4b77ec4aa015040e0d8a294d2a062fb4b2",
+    "sha256:97abb25d7da92d935efa543a010e8c865cb8107ad608612deceb8437a611bbf3"
+  ],
+  "graph_case_count": 0
+}

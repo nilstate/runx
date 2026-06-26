@@ -1,0 +1,88 @@
+skill: renewal-risk-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: high_risk_with_save_play
+      runner: judge
+      inputs:
+        account_ref: account:acme-renewal-2026
+        usage_signals:
+          trend: declining
+          mau_pct_change: -38
+        support_history:
+          volume: 14
+          ticket_severity_avg: 4.2
+        payment_snapshot:
+          days_late: 18
+          churn_flag: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: missing_usage_signals_stop
+      runner: judge
+      inputs:
+        account_ref: account:missing-usage
+        usage_signals:
+          trend: ""
+        support_history:
+          volume: 2
+          ticket_severity_avg: 1.5
+        payment_snapshot:
+          days_late: 0
+          churn_flag: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    sandbox:
+      profile: readonly
+      cwd_policy: skill-directory
+    outputs:
+      packet_schema: string
+      decision: object
+      escalation: object
+      save_plan: object
+      authority_boundary: object
+    artifacts:
+      wrap_as: renewal_risk_packet
+      packet: runx.support.renewal_risk.v1
+    inputs:
+      usage_signals:
+        type: json
+        required: true
+        description: usage_signals{trend,mau_pct_change}
+      support_history:
+        type: json
+        required: true
+        description: support_history{volume,ticket_severity_avg}
+      payment_snapshot:
+        type: json
+        required: true
+        description: payment_snapshot{days_late,churn_flag}
+      account_ref:
+        type: string
+        required: false
+        description: Stable bounded account reference for save-plan audience.

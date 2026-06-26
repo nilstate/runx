@@ -1,0 +1,51 @@
+{
+  "schema": "frantic.evidence.v1",
+  "package": "renewal-risk-judge",
+  "version": "0.1.0",
+  "publisher_owner": "xingdi614-alt",
+  "runx_cli_version": "runx-cli 0.6.13",
+  "registry_ref": "xingdi614-alt/renewal-risk-judge@0.1.0",
+  "publish_method": "runx registry publish ./skills/renewal-risk-judge/SKILL.md --registry https://api.runx.ai",
+  "install_command": "runx add xingdi614-alt/renewal-risk-judge@0.1.0 --registry https://api.runx.ai",
+  "commands": {
+    "harness": "runx harness ./skills/renewal-risk-judge --json",
+    "dogfood": "runx skill ./skills/renewal-risk-judge --json --input-json usage_signals=... --input-json support_history=... --input-json payment_snapshot=... -i account_ref=account:acme-renewal-2026",
+    "verify": "runx verify --receipt sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559.json --json"
+  },
+  "dogfood": {
+    "package": "renewal-risk-judge@0.1.0",
+    "input": "high_risk_with_save_play",
+    "command": "runx skill ./skills/renewal-risk-judge --json --input-json usage_signals=... --input-json support_history=... --input-json payment_snapshot=... -i account_ref=account:acme-renewal-2026",
+    "receipt_ref": "runx:receipt:sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "high_risk_with_save_play",
+        "status": "sealed"
+      },
+      {
+        "name": "missing_usage_signals_stop",
+        "status": "sealed"
+      }
+    ]
+  },
+  "observations": [
+    "runx --version output: runx-cli 0.6.13",
+    "high_risk_with_save_play fused score: usage trend declining and mau_pct_change -38 weighted 0.45, support volume 14 and ticket_severity_avg 4.2 weighted 0.25, payment days_late 18 and churn_flag true weighted 0.30.",
+    "high_risk_with_save_play emits decision.risk_level critical with a bounded save_plan: channel email, audience account:acme-renewal-2026, content_ref renewal-save-play:account:acme-renewal-2026:risk-critical.",
+    "missing_usage_signals_stop refuses qualification because usage_signals.trend and usage_signals.mau_pct_change are missing; no save_plan is emitted.",
+    "typed inputs are usage_signals{trend,mau_pct_change}, support_history{volume,ticket_severity_avg}, and payment_snapshot{days_late,churn_flag}.",
+    "typed output is one runx.support.renewal_risk.v1 packet with decision{risk_level,justification,fused_score,signal_weights}, escalation, and save_plan only for high or critical risk.",
+    "save_plan is a recommendation, not an effect: the skill sends no message, mints no authority, and includes no amount, currency, or counterparty.",
+    "downstream delivery must be a separate governed send-as run under human approval; moderate or edge-case accounts route to human_approval and cannot fire send-as without approval.",
+    "verification_json records a valid digest, valid content address, valid production Ed25519 signature, and no findings for the dogfood receipt."
+  ],
+  "artifacts": {
+    "skill_md": "skills/renewal-risk-judge/SKILL.md",
+    "x_yaml": "skills/renewal-risk-judge/X.yaml",
+    "harness_json": "skills/renewal-risk-judge/references/harness.json",
+    "dogfood_run_json": "skills/renewal-risk-judge/references/dogfood-run.json",
+    "verification_json": "skills/renewal-risk-judge/references/verification.json",
+    "report": "skills/renewal-risk-judge/references/report.md"
+  }
+}

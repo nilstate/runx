@@ -1,0 +1,279 @@
+{
+  "closure": {
+    "closed_at": "2026-06-26T04:43:32.104Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool judge completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "authority_boundary": {
+        "downstream_send_requires_governed_send_as_and_human_approval": true,
+        "includes_amount_currency_or_counterparty": false,
+        "mints_authority": false,
+        "recommendation_not_effect": true,
+        "sends_messages": false
+      },
+      "decision": {
+        "fused_score": 0.91,
+        "justification": "usage declining with mau_pct_change=-38; support volume=14, severity_avg=4.2; payment days_late=18, churn_flag=true; fused_score=0.91",
+        "risk_level": "critical",
+        "signal_weights": {
+          "payment": {
+            "score": 0.8500000000000001,
+            "weight": 0.3
+          },
+          "support": {
+            "score": 1,
+            "weight": 0.25
+          },
+          "usage_trend": {
+            "score": 0.9,
+            "weight": 0.45
+          }
+        }
+      },
+      "escalation": {
+        "dispatch_by_naming": true,
+        "downstream_skill": "send-as",
+        "lane": "retention_owner",
+        "reason": "high renewal risk merits a bounded save plan recommendation",
+        "requires_human_approval": true
+      },
+      "packet_schema": "runx.support.renewal_risk.v1",
+      "save_plan": {
+        "audience": "account:acme-renewal-2026",
+        "channel": "email",
+        "content_ref": "renewal-save-play:account:acme-renewal-2026:risk-critical",
+        "note": "Recommendation only. A separate governed send-as run must bind message content and receive human approval before delivery."
+      }
+    },
+    "stderr": "",
+    "stdout": "{\n  \"packet_schema\": \"runx.support.renewal_risk.v1\",\n  \"decision\": {\n    \"risk_level\": \"critical\",\n    \"justification\": \"usage declining with mau_pct_change=-38; support volume=14, severity_avg=4.2; payment days_late=18, churn_flag=true; fused_score=0.91\",\n    \"fused_score\": 0.91,\n    \"signal_weights\": {\n      \"usage_trend\": {\n        \"weight\": 0.45,\n        \"score\": 0.9\n      },\n      \"support\": {\n        \"weight\": 0.25,\n        \"score\": 1\n      },\n      \"payment\": {\n        \"weight\": 0.3,\n        \"score\": 0.8500000000000001\n      }\n    }\n  },\n  \"escalation\": {\n    \"lane\": \"retention_owner\",\n    \"reason\": \"high renewal risk merits a bounded save plan recommendation\",\n    \"dispatch_by_naming\": true,\n    \"downstream_skill\": \"send-as\",\n    \"requires_human_approval\": true\n  },\n  \"save_plan\": {\n    \"channel\": \"email\",\n    \"audience\": \"account:acme-renewal-2026\",\n    \"content_ref\": \"renewal-save-play:account:acme-renewal-2026:risk-critical\",\n    \"note\": \"Recommendation only. A separate governed send-as run must bind message content and receive human approval before delivery.\"\n  },\n  \"authority_boundary\": {\n    \"recommendation_not_effect\": true,\n    \"sends_messages\": false,\n    \"mints_authority\": false,\n    \"includes_amount_currency_or_counterparty\": false,\n    \"downstream_send_requires_governed_send_as_and_human_approval\": true\n  }\n}\n",
+    "structured_output": {
+      "authority_boundary": {
+        "downstream_send_requires_governed_send_as_and_human_approval": true,
+        "includes_amount_currency_or_counterparty": false,
+        "mints_authority": false,
+        "recommendation_not_effect": true,
+        "sends_messages": false
+      },
+      "decision": {
+        "fused_score": 0.91,
+        "justification": "usage declining with mau_pct_change=-38; support volume=14, severity_avg=4.2; payment days_late=18, churn_flag=true; fused_score=0.91",
+        "risk_level": "critical",
+        "signal_weights": {
+          "payment": {
+            "score": 0.8500000000000001,
+            "weight": 0.3
+          },
+          "support": {
+            "score": 1,
+            "weight": 0.25
+          },
+          "usage_trend": {
+            "score": 0.9,
+            "weight": 0.45
+          }
+        }
+      },
+      "escalation": {
+        "dispatch_by_naming": true,
+        "downstream_skill": "send-as",
+        "lane": "retention_owner",
+        "reason": "high renewal risk merits a bounded save plan recommendation",
+        "requires_human_approval": true
+      },
+      "packet_schema": "runx.support.renewal_risk.v1",
+      "save_plan": {
+        "audience": "account:acme-renewal-2026",
+        "channel": "email",
+        "content_ref": "renewal-save-play:account:acme-renewal-2026:risk-critical",
+        "note": "Recommendation only. A separate governed send-as run must bind message content and receive human approval before delivery."
+      }
+    }
+  },
+  "payload": {
+    "authority_boundary": {
+      "downstream_send_requires_governed_send_as_and_human_approval": true,
+      "includes_amount_currency_or_counterparty": false,
+      "mints_authority": false,
+      "recommendation_not_effect": true,
+      "sends_messages": false
+    },
+    "decision": {
+      "fused_score": 0.91,
+      "justification": "usage declining with mau_pct_change=-38; support volume=14, severity_avg=4.2; payment days_late=18, churn_flag=true; fused_score=0.91",
+      "risk_level": "critical",
+      "signal_weights": {
+        "payment": {
+          "score": 0.8500000000000001,
+          "weight": 0.3
+        },
+        "support": {
+          "score": 1,
+          "weight": 0.25
+        },
+        "usage_trend": {
+          "score": 0.9,
+          "weight": 0.45
+        }
+      }
+    },
+    "escalation": {
+      "dispatch_by_naming": true,
+      "downstream_skill": "send-as",
+      "lane": "retention_owner",
+      "reason": "high renewal risk merits a bounded save plan recommendation",
+      "requires_human_approval": true
+    },
+    "packet_schema": "runx.support.renewal_risk.v1",
+    "save_plan": {
+      "audience": "account:acme-renewal-2026",
+      "channel": "email",
+      "content_ref": "renewal-save-play:account:acme-renewal-2026:risk-critical",
+      "note": "Recommendation only. A separate governed send-as run must bind message content and receive human approval before delivery."
+    }
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-26T04:43:32.104Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_judge",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step judge",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step judge",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-26T04:43:32.104Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_judge",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node judge",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_judge",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:cbfc914d216a489da353df2f2d4451e326c564a837534c749072214a4327cb89",
+    "id": "sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559",
+    "idempotency": {
+      "content_hash": "sha256:run_judge_a23e37b69dfe-judge-content",
+      "intent_key": "sha256:run_judge_a23e37b69dfe-judge-intent",
+      "trigger_fingerprint": "sha256:run_judge_a23e37b69dfe-judge-trigger"
+    },
+    "issuer": {
+      "kid": "local-spam-risk-20260626115234",
+      "public_key_sha256": "sha256:cdbb05136f3d180641b5c3183e0f0a391d1eed924097a4c70807747e7216706a",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-26T04:43:32.104Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-26T04:43:32.104Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool judge completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:Yrj0QrdJe6fckcRzK-KwQUe9mLsx4L4tI66hIonKip7G9JVgbPShYEI9pCru2DJhKlLMtwg_YpyebSuTp9RvCg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_judge_a23e37b69dfe_judge"
+      }
+    }
+  },
+  "receipt_id": "sha256:033f2803da11f7663f5b5738c8660b6eadc682db42df2272eb24f9081d001559",
+  "run_id": "run_judge_a23e37b69dfe",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "renewal-risk-judge",
+  "status": "sealed"
+}
