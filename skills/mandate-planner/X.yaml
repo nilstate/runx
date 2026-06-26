@@ -1,0 +1,85 @@
+skill: mandate-planner
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: in-grant-charter-produces-recommendation
+      runner: default
+      inputs:
+        objective: Open a bounded docs-polish agency case for a public README update.
+        proposed_charter:
+          candidate_roster:
+            - role: docs
+              skill: issue-to-pr
+              scope: Update one README section and one docs page.
+            - role: reviewer
+              skill: pr-review-note
+              scope: Review the proposed documentation diff before merge.
+          requested_limits:
+            max_turns: 8
+            spend: 40
+          done_check: Tests pass and the documentation PR is reviewed with a sealed receipt.
+          counterparty: docs-maintainer
+        authority_grant:
+          granted_spend: 50
+          granted_roles:
+            - docs
+            - reviewer
+          max_turns: 10
+          counterparty: docs-maintainer
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: outside-role-escalates-to-human
+      runner: default
+      inputs:
+        objective: Open an agency case that tries to deploy and spend beyond the grant.
+        proposed_charter:
+          candidate_roster:
+            - role: deployer
+              skill: production-deploy
+              scope: Deploy the service after changing billing code.
+          requested_limits:
+            max_turns: 12
+            spend: 90
+          done_check: deploy when it looks good
+        authority_grant:
+          granted_spend: 25
+          granted_roles:
+            - docs
+            - reviewer
+          max_turns: 6
+      expect:
+        status: needs_agent
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      objective:
+        type: string
+        required: true
+      proposed_charter:
+        type: json
+        required: true
+      authority_grant:
+        type: json
+        required: true
