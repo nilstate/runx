@@ -70,8 +70,8 @@ jobs:
             "proposed_charter": {
               "name": "design_partner_qualifier",
               "candidate_roster": [
-                { "name": "research-lead", "role": "researcher", "scope": "identify and qualify design partner candidates" },
-                { "name": "outreach-coordinator", "role": "messenger", "scope": "send approved outreach and collect responses" }
+                { "name": "research-lead", "role": "researcher", "skill": "market-research", "scope": "identify and qualify design partner candidates" },
+                { "name": "outreach-coordinator", "role": "messenger", "skill": "outreach-drafting", "scope": "send approved outreach and collect responses" }
               ],
               "requested_limits": { "spend": 250, "max_turns": 8 },
               "done_check": "when qualified_design_partner_count equals 5 and spend_usd is at most 250"
