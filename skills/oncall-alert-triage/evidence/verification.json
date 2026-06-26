@@ -1,12 +1,21 @@
 {
   "schema": "runx.verify_verdict.v1",
-  "receipt_id": "sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070",
+  "receipt_id": "sha256:fcaa5544d4935b56173030de6a072863d1d525ce791dbc06e4448e91269d513c",
   "valid": true,
-  "verification_method": "local-harness-and-dogfood",
-  "notes": "Receipt sealed by local runtime with Ed25519 signature. Dogfood run produced escalate decision with packet.",
+  "verification_method": "local-harness-and-post-publish-dogfood",
+  "notes": "Local harness passed (2 harness cases: sealed_escalate_eligible_alert=sealed, missing_runbook_stop=failure). Post-publish dogfood run of installed package deltah9420/oncall-alert-triage@0.1.0 via registry produced sealed receipt with Ed25519 signature. Receipt is distinct from harness fixture seal.",
+  "harness_receipt_id": "sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070",
   "harness_cases": [
     {"name": "sealed_escalate_eligible_alert", "status": "sealed"},
     {"name": "missing_runbook_stop", "status": "failure"}
   ],
-  "dogfood_receipt_ref": "runx:receipt:sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070"
+  "dogfood_receipt_ref": "runx:receipt:sha256:fcaa5544d4935b56173030de6a072863d1d525ce791dbc06e4448e91269d513c",
+  "dogfood_input": {
+    "alert": {"id": "alert-001", "service": "payments-api", "severity": "critical", "signal": "error_rate_spike"},
+    "runbook_ref": "runbook:payments-api:error-rate",
+    "oncall_policy": {"services": ["payments-api", "auth-service"], "escalation_rules": {"payments-api": {"severity_critical": "escalate"}}}
+  },
+  "sealed_runbook_digest": "sha256:075bd287cfe78edf466723eb4a383a2207aa2d5151804fcc14ab4989fe470c4b",
+  "raw_x_yaml_url": "https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/X.yaml",
+  "raw_skill_md_url": "https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/SKILL.md"
 }

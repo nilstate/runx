@@ -1,16 +1,20 @@
 {
-  "summary": "oncall-alert-triage skill v0.1.0 — read-only oncall alert triage producing decision and packet from sealed alert, runbook, and policy, published and dogfooded with green harness",
+  "summary": "oncall-alert-triage skill v0.1.0 — read-only oncall alert triage producing decision and packet from sealed alert, runbook, and policy, published and dogfooded with green harness. Sealed runbook digest sha256:075bd287cfe78edf466723eb4a383a2207aa2d5151804fcc14ab4989fe470c4b. Raw artifacts: x_yaml, skill_md, verification_json at PR head commit 2b6318ab.",
   "observations": [
     "runx_cli_version: runx-cli 0.6.13",
     "decision: action=escalate, reason='Alert alert-001 on payments-api (critical) matches escalation rule.'",
     "alert: id=alert-001, service=payments-api, severity=critical, signal=error_rate_spike",
-    "runbook_ref: runbook:payments-api:error-rate (sealed)",
+    "runbook_ref: runbook:payments-api:error-rate (sealed, digest=sha256:075bd287cfe78edf466723eb4a383a2207aa2d5151804fcc14ab4989fe470c4b)",
     "packet: page_target=oncall:payments-api:critical, incident_pr_target=pr:payments-api:incident-alert-001",
     "validation: service_in_policy=true, runbook_sealed=true, escalation_rule_found=true, valid=true",
     "harness_cases: sealed_escalate_eligible_alert (sealed), missing_runbook_stop (failure)",
-    "receipt_id: sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070",
-    "dogfood: package=deltah9420/oncall-alert-triage@0.1.0, command='runx skill deltah9420/oncall-alert-triage@0.1.0 --registry https://api.runx.ai --input alert=... --input runbook_ref=... --input oncall_policy=... --json', verify_verdict='receipt sealed with Ed25519 signature'",
-    "publisher_owner: deltah9420, package_name: oncall-alert-triage, version: 0.1.0, registry_ref: https://api.runx.ai"
+    "dogfood_receipt_id: sha256:fcaa5544d4935b56173030de6a072863d1d525ce791dbc06e4448e91269d513c",
+    "harness_receipt_id: sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070",
+    "dogfood: package=deltah9420/oncall-alert-triage@0.1.0, input={alert:{id:alert-001,service:payments-api,severity:critical,signal:error_rate_spike},runbook_ref:runbook:payments-api:error-rate,oncall_policy:{services:[payments-api,auth-service],escalation_rules:{payments-api:{severity_critical:escalate}}}}, command='runx skill deltah9420/oncall-alert-triage@0.1.0 --registry https://api.runx.ai --input alert=... --input runbook_ref=... --input oncall_policy=... --json', receipt_ref=sha256:fcaa5544d4935b56173030de6a072863d1d525ce791dbc06e4448e91269d513c, verify_verdict='receipt sealed with Ed25519 signature'",
+    "publisher_owner: deltah9420, package_name: oncall-alert-triage, version: 0.1.0, registry_ref: https://api.runx.ai",
+    "raw_x_yaml_url: https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/X.yaml",
+    "raw_skill_md_url: https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/SKILL.md",
+    "verification_json_url: evidence/verification.json (included in delivery)"
   ],
   "cli_version": "runx-cli 0.6.13",
   "publisher_owner": "deltah9420",
@@ -18,8 +22,11 @@
   "package_version": "0.1.0",
   "registry_ref": "https://api.runx.ai",
   "public_url": "https://runx.ai/x/deltah9420/oncall-alert-triage@0.1.0",
-  "source_url": "https://github.com/deltah9420/runx/tree/codex/oncall-alert-triage/skills/oncall-alert-triage",
+  "source_url": "https://github.com/deltah9420/runx/tree/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage",
   "pr_url": "https://github.com/runxhq/runx/pull/156",
+  "raw_x_yaml_url": "https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/X.yaml",
+  "raw_skill_md_url": "https://raw.githubusercontent.com/runxhq/runx/2b6318ab65075c2751cf541ffe4e531e31f036d3/skills/oncall-alert-triage/SKILL.md",
+  "sealed_runbook_digest": "sha256:075bd287cfe78edf466723eb4a383a2207aa2d5151804fcc14ab4989fe470c4b",
   "publish_method": "runx registry publish ./skills/oncall-alert-triage/SKILL.md --registry https://api.runx.ai --version 0.1.0",
   "install_command": "runx add deltah9420/oncall-alert-triage@0.1.0 --registry https://api.runx.ai",
   "harness_cases": [
@@ -27,11 +34,16 @@
     {"name": "missing_runbook_stop", "status": "failure"}
   ],
   "local_harness_status": "passed",
-  "hosted_harness_status": "passed",
+  "hosted_harness_status": "pending_registry_verification",
   "dogfood": {
     "package": "deltah9420/oncall-alert-triage@0.1.0",
-    "command": "runx skill deltah9420/oncall-alert-triage@0.1.0 --registry https://api.runx.ai --input alert=... --input runbook_ref=... --input oncall_policy=... --json",
-    "receipt_ref": "runx:receipt:sha256:e8cafe9aa3eeda864fddbe18f94b0774ac4ba7949075e8cd9a1ac5fd7e478070",
+    "input": {
+      "alert": {"id": "alert-001", "service": "payments-api", "severity": "critical", "signal": "error_rate_spike"},
+      "runbook_ref": "runbook:payments-api:error-rate",
+      "oncall_policy": {"services": ["payments-api", "auth-service"], "escalation_rules": {"payments-api": {"severity_critical": "escalate"}}}
+    },
+    "command": "runx skill deltah9420/oncall-alert-triage@0.1.0 --registry https://api.runx.ai --input alert='{...}' --input runbook_ref='runbook:payments-api:error-rate' --input oncall_policy='{...}' --json",
+    "receipt_ref": "runx:receipt:sha256:fcaa5544d4935b56173030de6a072863d1d525ce791dbc06e4448e91269d513c",
     "verify_verdict": "receipt sealed with Ed25519 signature",
     "harness_cases": ["sealed_escalate_eligible_alert", "missing_runbook_stop"]
   },
