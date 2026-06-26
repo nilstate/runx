@@ -17,7 +17,7 @@ inputs:
     requested_limits:
       max_turns: 30
       spend: 500
-    done_check: "finish the outreach"
+    done_check: "when outreach receipt count equals 10 and status equals verified"
     counterparty: vendor:unknown
   authority_grant:
     granted_roles:
