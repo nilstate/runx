@@ -5,9 +5,9 @@
   "summary": "renewal-risk-judge is a bounded runx skill that fuses usage decline, support load, and payment risk into a renewal-risk verdict, emits a save_plan only for high or critical risk, and proves the recommendation with local harness, dogfood, and receipt verification evidence.",
   "publisher_owner": "xingdi614-alt",
   "runx_cli_version": "runx-cli 0.6.13",
-  "registry_ref": "xingdi614-alt/renewal-risk-judge",
+  "registry_ref": "xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095",
   "publish_method": "runx registry publish ./skills/renewal-risk-judge/SKILL.md --registry https://api.runx.ai",
-  "install_command": "runx add xingdi614-alt/renewal-risk-judge --registry https://api.runx.ai",
+  "install_command": "runx add xingdi614-alt/renewal-risk-judge@sha-804b3c7f4095 --registry https://api.runx.ai",
   "commands": {
     "harness": "runx harness ./skills/renewal-risk-judge --json",
     "dogfood": "runx skill ./skills/renewal-risk-judge --json --input-json usage_signals=... --input-json support_history=... --input-json payment_snapshot=... -i account_ref=account:acme-renewal-2026",
