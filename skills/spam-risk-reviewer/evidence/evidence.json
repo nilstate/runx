@@ -1,6 +1,7 @@
 {
   "schema": "runx.spam_risk_reviewer.evidence.v1",
   "generated_at": "2026-06-26T01:56:45Z",
+  "summary": "Published dh0h/spam-risk-reviewer@sha-7a71fad9b882 with public registry URL, PR #152 source, raw manifest and skill files, local and hosted harness evidence, and a post-publish dogfood receipt verified with a valid production signature.",
   "skill": {
     "name": "spam-risk-reviewer",
     "local_version": "0.1.1",
@@ -117,7 +118,44 @@
       }
     }
   ],
-  "observations": {
+  "observations": [
+    {
+      "name": "runx_version",
+      "value": "runx-cli 0.6.13",
+      "evidence": "The publish, harness, dogfood, and verify commands were run with runx-cli 0.6.13."
+    },
+    {
+      "name": "published_package",
+      "value": "dh0h/spam-risk-reviewer@sha-7a71fad9b882",
+      "evidence": "Registry publish succeeded with digest sha256:0dfb72589f45498075f60c895f1bb0cc23e489ffb82c026d45c7cc12219275ff and profile_digest sha256:7ac51ffb593b36abf73a49321270bedd921caf37dd4eea773a45bd9fd0375456."
+    },
+    {
+      "name": "source_and_pr",
+      "value": "https://github.com/runxhq/runx/pull/152",
+      "evidence": "The PR contains skills/spam-risk-reviewer/X.yaml, SKILL.md, runner code, fixtures, and evidence artifacts."
+    },
+    {
+      "name": "low_risk_verdict",
+      "value": "risk_level pass, preflight_clear true",
+      "evidence": "The verified sender fixture has SPF, DKIM, and DMARC passing, warm_up_days 30, bounce_rate 0.004, complaint_rate 0.0002, freshness 21 days, and blockers []."
+    },
+    {
+      "name": "high_risk_verdict",
+      "value": "risk_level hold, preflight_clear false",
+      "evidence": "The high-risk fixture blocks on authentication: DKIM does not pass and list_hygiene: bounce_rate 0.075 exceeds policy max 0.02, then routes to needs_human."
+    },
+    {
+      "name": "dogfood_receipt",
+      "value": "sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4",
+      "evidence": "The post-publish dogfood run sealed successfully and runx verify reported a valid production signature."
+    },
+    {
+      "name": "safety_boundary",
+      "value": "read-only judgment only",
+      "evidence": "The skill emits send_risk_verdict for send-as preflight, emits no runx.operational_proposal.v1, mints no authority, reads no live provider state, and performs no public_send effect."
+    }
+  ],
+  "observation_summary": {
     "runx_version": "runx-cli 0.6.13",
     "publisher_owner": "dh0h",
     "package_name": "spam-risk-reviewer",
@@ -174,6 +212,52 @@
       }
     ],
     "receipt_id": "sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4"
+  },
+  "dogfood": {
+    "package": "dh0h/spam-risk-reviewer@sha-7a71fad9b882",
+    "input": {
+      "campaign_draft": {
+        "from": "newsletter@example.com",
+        "subject": "June product update",
+        "content_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "list_metadata": {
+        "size": 4200,
+        "bounce_rate": 0.004,
+        "complaint_rate": 0.0002,
+        "freshness": {
+          "days_since_last_confirmed": 21,
+          "source": "subscriber-consent-ledger"
+        }
+      },
+      "sender_auth_posture": {
+        "spf_pass": true,
+        "dkim_pass": true,
+        "dmarc_pass": true,
+        "warm_up_days": 30
+      }
+    },
+    "command": "runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai --json",
+    "receipt_ref": "sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4",
+    "verify_verdict": {
+      "valid": true,
+      "signature_mode": "production",
+      "findings": []
+    },
+    "harness_cases": [
+      {
+        "name": "low-risk-verified-sender",
+        "status": "sealed"
+      },
+      {
+        "name": "high-risk-incomplete-auth-poor-list",
+        "status": "sealed"
+      },
+      {
+        "name": "missing-sender-auth-posture-fails-closed",
+        "status": "failed"
+      }
+    ]
   },
   "dogfood_run": {
     "status": "sealed",
