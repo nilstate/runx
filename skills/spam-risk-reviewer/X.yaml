@@ -1,0 +1,130 @@
+skill: spam-risk-reviewer
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  scopes:
+    - campaign.read
+    - subscriber_list.metadata.read
+    - sender_auth.read
+  policy:
+    data_classification: campaign_preflight_metadata
+    network:
+      allowed: []
+      forbidden:
+        - sending email
+        - changing DNS or sender authentication
+        - modifying subscriber lists
+        - minting operational authority
+    verifier_notes:
+      - The skill emits only send_risk_verdict and never sends a message.
+      - A non-clear verdict routes to human approval and does not satisfy send-as preflight.
+  artifacts:
+    emits:
+      - send_risk_verdict
+      - evidence_json
+      - report_md
+    wrap_as: send_risk_review_packet
+
+harness:
+  cases:
+    - name: low-risk-verified-sender
+      runner: default
+      inputs:
+        campaign_draft:
+          from: newsletter@example.com
+          subject: Weekly product update
+          content_digest: Short opt-in newsletter for existing customers with unsubscribe footer.
+        list_metadata:
+          size: 4200
+          bounce_rate: 0.008
+          complaint_rate: 0.0002
+          freshness: 14
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: true
+          dmarc_pass: true
+          warm_up_days: 45
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: high-risk-incomplete-auth-poor-list
+      runner: default
+      inputs:
+        campaign_draft:
+          from: promo@example.net
+          subject: URGENT discount expires tonight
+          content_digest: Promotional blast to a stale imported list with aggressive urgency language.
+        list_metadata:
+          size: 28000
+          bounce_rate: 0.085
+          complaint_rate: 0.006
+          freshness: 190
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: false
+          dmarc_pass: true
+          warm_up_days: 3
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    policy:
+      reads:
+        - campaign draft metadata
+        - list hygiene metrics
+        - sender authentication posture
+      writes:
+        - send_risk_verdict
+        - evidence_json
+        - report_md
+      disallows:
+        - public_send effects
+        - DNS or sender-auth changes
+        - subscriber list mutation
+        - invented authentication or list health signals
+    artifacts:
+      named_emits:
+        send_risk_verdict: send_risk_verdict
+        evidence_json: evidence_json
+        report_md: report_md
+    inputs:
+      campaign_draft:
+        type: object
+        required: true
+        description: campaign_draft{from, subject, content_digest}
+      list_metadata:
+        type: object
+        required: true
+        description: list_metadata{size, bounce_rate, complaint_rate, freshness}
+      sender_auth_posture:
+        type: object
+        required: true
+        description: sender_auth_posture{spf_pass, dkim_pass, dmarc_pass, warm_up_days}
+      policy:
+        type: object
+        required: false
+        description: Optional numeric policy thresholds for bounce, complaint, freshness, and warm-up.
+      output_dir:
+        type: string
+        required: false
+        description: Optional directory inside the skill directory for evidence.json and report.md.
+    outputs:
+      send_risk_verdict: object
+      evidence_json: object
+      report_md: string

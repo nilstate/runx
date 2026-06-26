@@ -1,0 +1,19 @@
+{
+  "campaign_draft": {
+    "from": "newsletter@example.com",
+    "subject": "Weekly product update",
+    "content_digest": "Short opt-in newsletter for existing customers with unsubscribe footer."
+  },
+  "list_metadata": {
+    "size": 4200,
+    "bounce_rate": 0.008,
+    "complaint_rate": 0.0002,
+    "freshness": 14
+  },
+  "sender_auth_posture": {
+    "spf_pass": true,
+    "dkim_pass": true,
+    "dmarc_pass": true,
+    "warm_up_days": 45
+  }
+}
