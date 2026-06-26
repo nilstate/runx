@@ -32,7 +32,6 @@ jobs:
           runx registry publish ./skills/mandate-planner/SKILL.md \
             --registry https://api.runx.ai \
             --version 0.1.0 \
-            --upsert \
             --json | tee skills/mandate-planner/evidence/ci/publish.json
           test -s skills/mandate-planner/evidence/ci/publish.json
       - name: Read registry
