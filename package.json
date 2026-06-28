@@ -88,10 +88,10 @@
     "@runxhq/authoring": "workspace:*",
     "@runxhq/contracts": "workspace:^0.3.0",
     "@runxhq/host-adapters": "workspace:^0.1.1",
-    "@types/node": "^24.0.0",
-    "tsx": "^4.20.6",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
-    "yaml": "^2.8.3"
+    "@types/node": "^26.0.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9",
+    "yaml": "^2.9.0"
   }
 }

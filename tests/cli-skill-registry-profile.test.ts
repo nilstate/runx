@@ -1,4 +1,4 @@
-import { generateKeyPairSync, sign } from "node:crypto";
+import { generateKeyPairSync, sign, type KeyObject } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
@@ -114,7 +114,7 @@ interface TestManifestSigningKey {
   readonly keyId: string;
   readonly signerId: string;
   readonly publicKeyBase64: string;
-  readonly privateKey: ReturnType<typeof generateKeyPairSync>["privateKey"];
+  readonly privateKey: KeyObject;
 }
 
 let cachedManifestSigningKey: TestManifestSigningKey | undefined;
