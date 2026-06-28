@@ -183,7 +183,7 @@
   },
   {
     "skill_id": "runx/mandate-planner",
-    "version": "sha-708c0f328647",
+    "version": "sha-d5b241d8f580",
     "digest": "9ad0359a3d739405dd85ec990801090be0ad51c9a6cdbf0286a4e6a3229d73ae",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
