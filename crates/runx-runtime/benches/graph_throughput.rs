@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
+use std::hint::black_box;
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use runx_contracts::{JsonObject, JsonValue};
 use runx_core::state_machine::{
     FanoutBranchFailurePolicy, FanoutGroupPolicy, FanoutSyncStrategy, GraphStatus,
