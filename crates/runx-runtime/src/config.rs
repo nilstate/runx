@@ -5,9 +5,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use aes_gcm::aead::rand_core::RngCore;
-use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
-use aes_gcm::{Aes256Gcm, Nonce};
+use aes_gcm::Aes256Gcm;
+use aes_gcm::aead::{Aead, Generate, KeyInit, Nonce};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use runx_contracts::JsonValue;
@@ -306,8 +305,9 @@ fn load_local_config_secret_value(config_dir: &Path, key_ref: &str) -> Result<St
     let auth_tag = decode_key_part(&key_path, &payload.auth_tag)?;
     let mut sealed = ciphertext;
     sealed.extend(auth_tag);
+    let nonce = config_nonce(&key_path, &nonce_bytes)?;
     let plaintext = cipher
-        .decrypt(Nonce::from_slice(&nonce_bytes), sealed.as_ref())
+        .decrypt(&nonce, sealed.as_ref())
         .map_err(|error| config_key_read_error(&key_path, Some(error.to_string())))?;
     String::from_utf8(plaintext)
         .map_err(|error| config_key_read_error(&key_path, Some(error.to_string())))
@@ -417,6 +417,28 @@ struct StoredLocalConfigSecretPayload<'a> {
     auth_tag: String,
 }
 
+type ConfigNonce = Nonce<Aes256Gcm>;
+
+fn config_nonce(key_path: &Path, nonce_bytes: &[u8]) -> Result<ConfigNonce, ConfigError> {
+    ConfigNonce::try_from(nonce_bytes).map_err(|_| {
+        config_key_read_error(
+            key_path,
+            Some(format!(
+                "expected 12-byte aes-256-gcm nonce, found {} bytes",
+                nonce_bytes.len()
+            )),
+        )
+    })
+}
+
+fn random_config_nonce() -> Result<ConfigNonce, ConfigError> {
+    ConfigNonce::try_generate().map_err(|error| ConfigError::Crypto(error.to_string()))
+}
+
+fn random_config_secret_bytes() -> Result<[u8; 32], ConfigError> {
+    <[u8; 32]>::try_generate().map_err(|error| ConfigError::Crypto(error.to_string()))
+}
+
 fn resolve_runx_workspace_base(env: &BTreeMap<String, String>, cwd: &Path) -> PathBuf {
     env.get("RUNX_CWD")
         .map(PathBuf::from)
@@ -462,7 +484,7 @@ fn store_local_config_secret_value(
     let key = Sha256::digest(secret.as_bytes());
     let cipher =
         Aes256Gcm::new_from_slice(&key).map_err(|error| ConfigError::Crypto(error.to_string()))?;
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let nonce = random_config_nonce()?;
     let mut sealed = cipher
         .encrypt(&nonce, value.as_bytes())
         .map_err(|error| ConfigError::Crypto(error.to_string()))?;
@@ -496,8 +518,7 @@ fn load_or_create_local_config_secret(key_dir: &Path) -> Result<String, ConfigEr
     match fs::read_to_string(&key_path) {
         Ok(secret) => Ok(secret),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            let mut secret_bytes = [0_u8; 32];
-            OsRng.fill_bytes(&mut secret_bytes);
+            let secret_bytes = random_config_secret_bytes()?;
             let secret = URL_SAFE_NO_PAD.encode(secret_bytes);
             match write_private_file_new(&key_path, secret.as_bytes()) {
                 Ok(()) => Ok(secret),
