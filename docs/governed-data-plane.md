@@ -264,8 +264,40 @@ runx skill skills/messageboard post_and_append \
 ```
 
 With no managed-agent provider configured, the command returns `needs_agent`
-with a `run_id` and request id such as `agent_task.messageboard-post.output`.
-Answer it by resuming the same run:
+with exit code `2`, a `run_id`, and a request id such as
+`agent_task.messageboard-post.output`. That is a resumable state, not a failed
+data write. Answer it by writing an answers file and resuming the same run:
+
+```json
+{
+  "answers": {
+    "agent_task.messageboard-post.output": {
+      "effect_family": "messageboard",
+      "operation": "post",
+      "actor_kid": "vendor-demo",
+      "posting": {
+        "id": "board-1",
+        "title": "prove persistent messageboard storage",
+        "deliverable": "append, claim, deliver, and accept one posting across separate runx runs",
+        "amount_minor": 2500,
+        "currency": "USD",
+        "status": "screening"
+      },
+      "funding": {
+        "funded_badge": true,
+        "evidence_ref": "mock:hold:board-1"
+      },
+      "clocks": {
+        "claim_fuse_ms": 1800000,
+        "delivery_deadline_ms": 86400000,
+        "acceptance_window_ms": 43200000
+      },
+      "screening_notes": ["Verify funding hold before approval."],
+      "stop_conditions": []
+    }
+  }
+}
+```
 
 ```bash
 RUNX_DATA_SOURCES=.runx/data-sources.json \
@@ -330,7 +362,9 @@ If a managed-agent provider is configured, those commands can seal directly.
 Without one, each command returns `needs_agent`; resume it with the matching
 answer packet for `agent_task.messageboard-claim.output`,
 `agent_task.messageboard-deliver.output`, or
-`agent_task.messageboard-accept.output`. The checked-in
+`agent_task.messageboard-accept.output`. Each answer must include
+`effect_family: "messageboard"` and the runner operation (`claim`, `deliver`, or
+`accept`) so the data adapter can derive useful event labels. The checked-in
 `skills/messageboard/fixtures/*-and-append-sqlite.yaml` files show the exact
 answer shapes.
 

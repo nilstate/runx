@@ -1,7 +1,9 @@
 use std::process::Child;
 
-use super::{ProcessSpec, ProcessSupervisorError, kill_timed_out_context, poll_timed_out_context};
-use crate::process_signal::{ProcessSignal, signal_process_group_id};
+use super::{
+    ProcessSignal, ProcessSpec, ProcessSupervisorError, kill_timed_out_context,
+    poll_timed_out_context, signal_process_group_id,
+};
 
 #[cfg(unix)]
 pub(super) fn signal_timed_out_process(

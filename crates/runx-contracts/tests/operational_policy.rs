@@ -188,6 +188,39 @@ fn provider_policy_denies_pr_admission_without_source_thread()
 }
 
 #[test]
+fn explicit_runner_with_unallowed_action_is_returned_then_denied_by_validation()
+-> Result<(), Box<dyn std::error::Error>> {
+    // The explicit-runner path resolves the runner and (when it exists and is
+    // allowed for the target) returns it without checking state/allowed_actions
+    // at selection time; that check is deferred to validate_admitted_runner.
+    // Locking this in protects the shared-predicate refactor from accidentally
+    // moving the action check into selection.
+    let policy: OperationalPolicy = serde_json::from_str(PROVIDER_LIKE)?;
+    let admission = admit_operational_policy_request(
+        &policy,
+        &OperationalPolicyAdmissionRequest {
+            source_id: Some("bugs-fixes".to_owned()),
+            target_repo: Some("example/api".to_owned()),
+            action: OperationalPolicyAction::MergeAssist,
+            runner_id: Some("local-review".to_owned()),
+            source_thread_locator: Some("slack://example/C0APFMY0V8Q/1778834840.485629".to_owned()),
+        },
+    )?;
+
+    assert_eq!(admission.status, OperationalPolicyAdmissionStatus::Deny);
+    // Runner was still selected/returned even though it does not allow the action.
+    assert_eq!(admission.runner_id.as_deref(), Some("local-review"));
+    // The deferred validation is what emits the runner-action denial.
+    assert!(
+        admission
+            .findings
+            .iter()
+            .any(|finding| finding.code == "runner_action_not_allowed")
+    );
+    Ok(())
+}
+
+#[test]
 fn typed_action_names_match_contract_literals() {
     assert_eq!(
         OperationalPolicyAction::IssueToPr.to_string(),

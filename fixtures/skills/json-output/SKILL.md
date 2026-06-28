@@ -8,6 +8,9 @@ source:
     - ./run.sh
   timeout_seconds: 10
 inputs: {}
+runx:
+  artifacts:
+    wrap_as: result
 ---
 
-Emit the resolved inputs as structured JSON.
+Emit the resolved inputs as structured JSON under the `result` contract packet.

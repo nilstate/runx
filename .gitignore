@@ -50,3 +50,6 @@ runx-answers.json
 
 # scafld local state
 .scafld/
+
+# local harness-sweep scratch output
+.runx-tmp/

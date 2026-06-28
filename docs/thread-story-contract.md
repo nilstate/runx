@@ -45,24 +45,27 @@ Slack, support-channel, or other provider mutations require the separate
 delivery; they must not be implemented as hidden provider side effects in a
 TypeScript helper package.
 
-Frantic uses that provider lane for source-thread continuity. Frantic emits a
-typed outbox (`thread.create`, `thread.comment`, `thread.labels`,
-`thread.open`, `thread.close`) derived from its ledger; runx maps each intent to
-a provider push frame with `tools/thread/frantic_thread_outbox.mjs`.
-`thread.create` creates or updates the missing GitHub issue by deterministic
-outbox marker and returns the observed provider locator. Bound lifecycle intents
-hydrate the GitHub issue before writing, then apply comments, labels, reopening,
-or non-claimable closure through the GitHub provider adapter. Frantic remains
-the completion authority: a GitHub issue may close only after a Frantic
-`thread.close` intent, may reopen only after a Frantic `thread.open` intent, and
-GitHub state never completes or reopens a Frantic bounty.
+A source (such as Frantic) uses that provider lane for source-thread continuity
+through a generic, declarative reconcile. The source publishes a
+`thread_desired_state` document: per thread, the state it should be in now
+(`title`, `body`, full `labels` + the `managed_labels` the source controls,
+`state` open/closed, and an append-only `comments` log). The contract is
+domain-agnostic: `identity_key` and `ref` are opaque to the engine, and the only
+source-specific value is `source`, supplied as config. runx translates each
+desired thread into provider push frames with
+`tools/thread/thread_desired_state.mjs` and applies them through the GitHub
+provider adapter: locate-or-create the issue by marker, reconcile labels and
+open/closed to the desired state, and append any comment not already present
+(deduped by outbox marker). The source remains the completion authority: open vs
+closed is the source's decision expressed as desired state, and GitHub state
+never completes or reopens anything on the source.
 
-The operational driver for that integration is
-`scripts/frantic-github-thread-sync.mjs` (`pnpm frantic:github-thread-sync` in
-`oss/`). It polls Frantic's internal outbox with a cursor, invokes the GitHub
-thread-outbox provider process for each intent, and posts provider-thread
-observations back to Frantic so future lifecycle intents bind to the created
-issue.
+The operational driver is `scripts/thread-reconcile-sync.mjs`
+(`pnpm thread:reconcile-sync` in `oss/`). It pulls the source's desired-thread
+state, reconciles each thread's provider representation to match, and posts
+observations back so the source can re-link the resulting threads. It is
+stateless and idempotent: every run compares desired vs live and applies only
+the difference, so there is no cursor and drift self-heals on the next run.
 
 The canonical v1 milestone ids are:
 

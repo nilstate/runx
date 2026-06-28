@@ -11,6 +11,10 @@ source:
     profile: readonly
     cwd_policy: skill-directory
 inputs: {}
+runx:
+  artifacts:
+    named_emits:
+      effect_evidence_packet: runx.payment.effect_evidence_packet.v1
 ---
 
 Emit a deterministic mock rail packet for the x402 paid echo fixture.

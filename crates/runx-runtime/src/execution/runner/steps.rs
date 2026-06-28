@@ -6,14 +6,14 @@ mod output;
 
 use std::path::Path;
 
-use output::{ClaimContextExposure, build_step_output_projection, step_output_projection};
+use output::{build_step_output_projection, step_output_projection};
 
 use runx_contracts::{
     ApprovalGate, ClosureDisposition, ExecutionEvent, JsonObject, JsonValue, Receipt,
     ResolutionRequest, ResolutionResponse, ResolutionResponseActor,
 };
-use runx_core::state_machine::{GraphStatus, StepAdmissionWitness};
-use runx_parser::{GraphStep, SkillSource, SourceKind};
+use runx_core::state_machine::StepAdmissionWitness;
+use runx_parser::{GraphStep, SkillArtifactContract, SkillSource, SourceKind};
 
 use super::super::graph::{
     LoadedStepSkill, StepSkillLoadOptions, load_step_skill, materialize_graph_inputs,
@@ -27,7 +27,7 @@ use super::authority::{
 };
 use super::host_resolution::resolve_step_approval;
 use super::inputs::{optional_input_string, required_input_string, string_value, string_value_ref};
-use super::{GraphRun, Runtime, StepRun};
+use super::{GraphRun, Runtime, StepRun, graph_run_payload, graph_run_skill_output};
 use crate::RuntimeError;
 use crate::adapter::{
     BorrowedSkillAdapter, InvocationStatus, SkillAdapter, SkillInvocation, SkillOutput,
@@ -40,7 +40,9 @@ use crate::agent_invocation::{
 use crate::approval::ApprovalResolution;
 use crate::effects::EffectReplay;
 use crate::execution::disposition::agent_answer_disposition_or_closed;
-use crate::execution::output_projection::{StepOutputProjection, project_step_output};
+use crate::execution::output_projection::{
+    BASE_OUTPUT_FIELDS, StepOutputProjection, project_step_output,
+};
 use crate::host::Host;
 use crate::receipts::{StepSeal, StepSealClosure, seal_step};
 use crate::services::merge_inferred_tool_roots;
@@ -54,6 +56,7 @@ struct AgentSkillStepInvocation {
     skill_name: String,
     invocation: SkillInvocation,
     source_type: AgentActInvocationSourceType,
+    artifacts: Option<SkillArtifactContract>,
 }
 
 struct RegularSkillStepOutput {
@@ -267,6 +270,10 @@ where
     A: SkillAdapter,
 {
     let authority = request.authority.as_ref();
+    // The invoked runner's artifact contract travels with the loaded skill so the
+    // OUTER step exposes the sub-skill packet (e.g. `research_packet`) at
+    // `<step>.<packet>.data`, never the sub-skill's internal step ids.
+    let runner_artifacts = skill.artifacts.clone();
     let (skill_name, invocation) = loaded_skill_invocation(
         skill,
         request.graph_dir,
@@ -286,6 +293,7 @@ where
                 skill_name,
                 invocation,
                 source_type,
+                artifacts: runner_artifacts,
             },
             request.host,
         );
@@ -304,6 +312,7 @@ where
         request.runtime,
         request.step,
         invocation,
+        runner_artifacts.as_ref(),
         authority,
         request.host,
     )?;
@@ -345,9 +354,10 @@ where
     let child_runtime = Runtime::new(child_adapter, child_options);
     let run =
         child_runtime.run_graph_with_host(&invocation.skill_directory, graph, request.host)?;
-    let payload = nested_graph_payload(&run)?;
-    let mut output = nested_graph_skill_output(&payload, &run)?;
-    let projection = step_output_projection(request.step, &output)?;
+    let payload = graph_run_payload(&run, true);
+    let mut output = graph_run_skill_output(&payload, &run)?;
+    let mut projection = step_output_projection(request.step, &output)?;
+    adopt_terminal_step_contract(&run, &mut projection.outputs);
     prepare_effect_output_before_gate(
         request.step,
         request.authority.as_ref(),
@@ -369,72 +379,36 @@ where
     )
 }
 
-fn nested_graph_payload(run: &GraphRun) -> Result<JsonValue, RuntimeError> {
-    let mut payload = JsonObject::new();
-    payload.insert(
-        "graph".to_owned(),
-        JsonValue::String(run.graph.name.clone()),
-    );
-    payload.insert(
-        "graph_status".to_owned(),
-        JsonValue::String(format!("{:?}", run.state.status)),
-    );
-    payload.insert(
-        "graph_receipt_id".to_owned(),
-        JsonValue::String(run.receipt.id.to_string()),
-    );
-    let mut step_outputs = JsonObject::new();
-    let mut step_summaries = Vec::new();
-    for step in &run.steps {
-        let mut summary = JsonObject::new();
-        summary.insert(
-            "step_id".to_owned(),
-            JsonValue::String(step.step_id.clone()),
-        );
-        summary.insert("skill".to_owned(), JsonValue::String(step.skill.clone()));
-        summary.insert(
-            "status".to_owned(),
-            JsonValue::String(if step.output.succeeded() {
-                "success".to_owned()
-            } else {
-                "failure".to_owned()
-            }),
-        );
-        summary.insert(
-            "receipt_id".to_owned(),
-            JsonValue::String(step.receipt.id.to_string()),
-        );
-        step_summaries.push(JsonValue::Object(summary));
-        step_outputs.insert(
-            step.step_id.clone(),
-            JsonValue::Object(step.outputs.clone()),
-        );
+/// A nested-graph step adopts its TERMINAL inner step's contract output as its own:
+/// the graph's result is what its last step produced. The terminal step's contract
+/// keys (its declared outputs and artifact packets, already projected into its
+/// `outputs`) surface at the OUTER step so callers address `<step>.<terminal_key>`
+/// (for example `read.data_operation_result.data.events`) with no
+/// `step_outputs.<inner>` hop. Base/diagnostic keys stay owned by the outer step's
+/// own projection of the nested-graph payload, so only contract keys are copied.
+// A nested-graph step's output is its graph's result, which is the contract its
+// LAST-completed step exposed (`run.steps` is completion order). This holds for the
+// linear graphs that are consumed across the catalog (e.g. data-store read/append).
+// For a non-linear graph whose logical terminal is a fanout join, a gate, or a
+// `when`-skipped step, `.last()` is a heuristic; it can never leak a base field (they
+// are filtered below) and only fully-succeeded graphs reach here, so it is safe, but a
+// graph that needs a specific emit step should name it explicitly rather than rely on
+// completion order.
+fn adopt_terminal_step_contract(run: &GraphRun, outputs: &mut JsonObject) {
+    // The graph's result is the contract of its terminal producer. `run.steps` is in
+    // completion order, so for a linear graph that is the last step; but a graph whose
+    // tail is a fanout group can push FAILED branch runs last (branches execute under
+    // RecordAndContinue), so adopt the last SUCCEEDED step rather than blindly the last
+    // one, to avoid adopting a failed branch's empty contract.
+    let Some(terminal) = run.steps.iter().rev().find(|step| step.output.succeeded()) else {
+        return;
+    };
+    for (name, value) in &terminal.outputs {
+        if BASE_OUTPUT_FIELDS.contains(&name.as_str()) {
+            continue;
+        }
+        outputs.insert(name.clone(), value.clone());
     }
-    payload.insert("steps".to_owned(), JsonValue::Array(step_summaries));
-    payload.insert("step_outputs".to_owned(), JsonValue::Object(step_outputs));
-    serde_json::to_value(JsonValue::Object(payload))
-        .and_then(serde_json::from_value)
-        .map_err(|source| RuntimeError::json("serializing nested graph payload", source))
-}
-
-fn nested_graph_skill_output(
-    payload: &JsonValue,
-    run: &GraphRun,
-) -> Result<SkillOutput, RuntimeError> {
-    let stdout = serde_json::to_string(payload)
-        .map_err(|source| RuntimeError::json("serializing nested graph payload", source))?;
-    Ok(SkillOutput {
-        status: if run.state.status == GraphStatus::Succeeded {
-            InvocationStatus::Success
-        } else {
-            InvocationStatus::Failure
-        },
-        stdout,
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 0,
-        metadata: JsonObject::new(),
-    })
 }
 
 fn loaded_skill_invocation(
@@ -472,6 +446,7 @@ fn invoke_regular_skill_step<A>(
     runtime: &Runtime<A>,
     step: &GraphStep,
     invocation: SkillInvocation,
+    extra_artifacts: Option<&SkillArtifactContract>,
     authority: Option<&StepAuthorityContext>,
     host: &mut dyn Host,
 ) -> Result<RegularSkillStepOutput, RuntimeError>
@@ -480,7 +455,7 @@ where
 {
     let mut output = runtime.adapter.invoke(invocation)?;
     route_external_adapter_host_resolution(step, host, &mut output)?;
-    let projection = step_output_projection(step, &output)?;
+    let projection = build_step_output_projection(step, &output, extra_artifacts)?;
     prepare_effect_output_before_gate(
         step,
         authority,
@@ -661,7 +636,10 @@ fn run_replayed_effect_step(
         });
     }
     prepare_replay_output(step, &replay, &mut output, &runtime.options.effects)?;
-    let projection = step_output_projection(step, &output)?;
+    // Project the replayed output through the SAME contract as the fresh path: a
+    // sub-skill's declared runner artifacts must be exposed on replay too, or a
+    // downstream edge that resolves on a fresh run would fail only on replay.
+    let projection = build_step_output_projection(step, &output, skill.artifacts.as_ref())?;
     let authority_grant_refs = runtime
         .options
         .effects
@@ -939,7 +917,10 @@ where
         env: runtime.options.env.clone(),
         credential_delivery: runtime.options.credential_delivery.clone(),
     };
-    let regular = invoke_regular_skill_step(runtime, step, invocation, authority.as_ref(), host)?;
+    // Inline cli-tool step: its contract is the step's own `run.outputs` /
+    // `artifacts`, so no extra runner contract is threaded.
+    let regular =
+        invoke_regular_skill_step(runtime, step, invocation, None, authority.as_ref(), host)?;
     seal_regular_skill_step(
         RegularSkillSeal {
             runtime,
@@ -1025,12 +1006,12 @@ fn seal_agent_act_step<A>(
     attempt: u32,
     skill_name: String,
     response: ResolutionResponse,
+    extra_artifacts: Option<&SkillArtifactContract>,
 ) -> Result<StepRun, RuntimeError> {
     let disposition = agent_answer_disposition_value(step, &response.payload)?;
     let output = agent_task_output(response, &disposition)?;
-    let projection =
-        build_step_output_projection(step, &output, ClaimContextExposure::DeclaredOnly)?;
-    let disposition_label = closure_disposition_label(&disposition);
+    let projection = build_step_output_projection(step, &output, extra_artifacts)?;
+    let disposition_label = disposition.label();
     let receipt = seal_step(
         StepSeal {
             graph_name,
@@ -1106,6 +1087,7 @@ where
             reason: format!("agent act {request_id} requires resolution"),
         });
     };
+    // Inline agent-task step: contract is the step's own `run.outputs` / `artifacts`.
     seal_agent_act_step(
         runtime,
         graph_name,
@@ -1113,6 +1095,7 @@ where
         attempt,
         "run:agent-task".to_owned(),
         response,
+        None,
     )
 }
 
@@ -1131,6 +1114,7 @@ where
         skill_name,
         invocation,
         source_type,
+        artifacts,
     } = agent_task;
     let request_id = agent_act_invocation_id(&invocation, source_type);
     let request = agent_act_resolution_request(&invocation, source_type)?;
@@ -1144,7 +1128,17 @@ where
             step.id, skill_name
         ),
     )?;
-    seal_agent_act_step(runtime, graph_name, step, attempt, skill_name, response)
+    // Referenced agent-task sub-skill: expose the invoked runner's artifact
+    // contract at the outer step.
+    seal_agent_act_step(
+        runtime,
+        graph_name,
+        step,
+        attempt,
+        skill_name,
+        response,
+        artifacts.as_ref(),
+    )
 }
 
 fn resolve_agent_act(
@@ -1270,8 +1264,23 @@ where
             env: runtime.options.env.clone(),
             credential_delivery: runtime.options.credential_delivery.clone(),
         };
+        // Source the tool manifest's artifact contract so the wrapped packet the
+        // catalog adapter folds into the claim (e.g. `data_operation_result`) is
+        // exposed at the OUTER step as `<step>.<packet>.data`.
+        let tool_artifacts = crate::adapters::catalog::resolve_local_tool_artifacts(
+            &crate::adapters::catalog::LocalToolRequest {
+                tool_ref,
+                inputs: &invocation.inputs,
+                resolved_inputs: &invocation.resolved_inputs,
+                env: &invocation.env,
+                skill_directory: &invocation.skill_directory,
+                credential_delivery: &invocation.credential_delivery,
+                skill_name: tool_ref,
+                allow_explicit_manifest_path: true,
+            },
+        )?;
         let output = CatalogAdapter::default().invoke(invocation)?;
-        let projection = step_output_projection(step, &output)?;
+        let projection = build_step_output_projection(step, &output, tool_artifacts.as_ref())?;
         let authority_grant_refs = authority
             .as_ref()
             .map(|authority| authority.authority_grant_refs(&runtime.options.effects))
@@ -1355,10 +1364,7 @@ fn agent_task_output(
         stderr: if succeeded {
             String::new()
         } else {
-            format!(
-                "agent act closed with {}",
-                closure_disposition_label(disposition)
-            )
+            format!("agent act closed with {}", disposition.label())
         },
         exit_code: succeeded.then_some(0),
         duration_ms: 0,
@@ -1401,19 +1407,6 @@ fn agent_answer_disposition_value(
         step_id: step.id.clone(),
         reason: format!("{error}"),
     })
-}
-
-fn closure_disposition_label(disposition: &ClosureDisposition) -> &'static str {
-    match disposition {
-        ClosureDisposition::Closed => "closed",
-        ClosureDisposition::Deferred => "deferred",
-        ClosureDisposition::Superseded => "superseded",
-        ClosureDisposition::Declined => "declined",
-        ClosureDisposition::Blocked => "blocked",
-        ClosureDisposition::Failed => "failed",
-        ClosureDisposition::Killed => "killed",
-        ClosureDisposition::TimedOut => "timed_out",
-    }
 }
 
 pub(super) fn run_approval_step<A>(
@@ -1537,6 +1530,9 @@ pub(super) fn approval_outputs(
     );
     if let Some(actor) = resolution.actor() {
         data.insert("actor".to_owned(), JsonValue::String(actor_name(actor)));
+    }
+    if let Some(reason) = resolution.reason() {
+        data.insert("reason".to_owned(), JsonValue::String(reason.to_owned()));
     }
 
     let mut packet = JsonObject::new();

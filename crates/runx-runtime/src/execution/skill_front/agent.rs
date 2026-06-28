@@ -1,7 +1,7 @@
 use super::{
     SkillRunError, SkillRunOverrides, agent_invocation_source_type, agent_request,
-    answer_disposition, closure_disposition_label, contract_json_value, domain_act_frame,
-    identifier_segment, invalid, needs_agent_output, read_answer, seal_skill_answer, sealed_output,
+    answer_disposition, contract_json_value, domain_act_frame, identifier_segment, invalid,
+    needs_agent_output, read_answer, seal_skill_answer, sealed_output,
 };
 
 use runx_contracts::{ClosureDisposition, JsonObject, JsonValue};
@@ -71,7 +71,7 @@ pub(super) fn execute_agent_skill_run(
     let disposition = answer_disposition(&answer)?;
     let receipt = match domain_act_frame(&invocation, &answer, governed_effect.as_ref()) {
         Some(frame) => {
-            let label = closure_disposition_label(&disposition);
+            let label = disposition.label();
             let created_at = crate::time::now_iso8601();
             let graph_name = identifier_segment(&run_id);
             let step_id = identifier_segment(&runner.name);
@@ -169,7 +169,7 @@ fn try_inline_agent_resolution(
         AgentAdapterSourceType, AgentResolver, build_managed_agent_act_invocation,
     };
     use crate::adapters::agent_resolver::AnthropicAgentResolver;
-    use crate::runtime_http::ReqwestHttpTransport;
+    use crate::http::ReqwestHttpTransport;
     use runx_contracts::ResolutionRequest;
 
     let source_type = if invocation.source.source_type == runx_parser::SourceKind::Agent {
@@ -247,10 +247,7 @@ fn agent_skill_output(stdout: String, receipt: &runx_contracts::Receipt) -> Skil
         stderr: if succeeded {
             String::new()
         } else {
-            format!(
-                "agent act closed with {}",
-                closure_disposition_label(&receipt.seal.disposition)
-            )
+            format!("agent act closed with {}", receipt.seal.disposition.label())
         },
         exit_code: succeeded.then_some(0),
         duration_ms: 0,

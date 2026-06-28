@@ -149,6 +149,8 @@ mod tests {
             when: None,
             mutating: false,
             idempotency_key: None,
+            mint_authority: None,
+            requested_scope_from: None,
         }
     }
 }

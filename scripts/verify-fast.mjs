@@ -46,6 +46,7 @@ await runParallelGroup("source checks", [
   step("test:boundary", "pnpm", ["test:boundary"]),
   step("typecheck", "pnpm", ["typecheck"]),
   step("bindings:check", "pnpm", ["bindings:check"]),
+  step("command drift", "pnpm", ["commands:check-drift"]),
   step("release version sync", "pnpm", ["release:version:check"]),
   step("integration module guard", "node", ["scripts/check-integration-test-modules.mjs"]),
 ]);

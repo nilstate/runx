@@ -208,9 +208,15 @@ fn catalog_adapter_wraps_local_tool_outputs_for_graph_context_paths()
 
     assert_eq!(output.status, InvocationStatus::Success);
     let payload: JsonValue = serde_json::from_str(&output.stdout)?;
+    // The tool already emits a self-described `{ schema, data }` packet, so `wrap_as`
+    // exposes it as-is at a SINGLE `.data` depth rather than re-wrapping into `.data.data`.
     assert_eq!(
-        json_path(&payload, &["wrapped_packet", "data", "data", "message"]),
+        json_path(&payload, &["wrapped_packet", "data", "message"]),
         Some("hello")
+    );
+    assert!(
+        json_path(&payload, &["wrapped_packet", "data", "data", "message"]).is_none(),
+        "a self-described packet must not be double-wrapped"
     );
     Ok(())
 }
@@ -254,6 +260,63 @@ fn catalog_adapter_wraps_local_named_emits_for_graph_context_paths()
     assert_eq!(
         json_path(&payload, &["draft_pull_request", "data", "title"]),
         Some("hello")
+    );
+    Ok(())
+}
+
+// Regression: a manifest that names the SAME key in both `wrap_as` and `named_emits`
+// (the data-store tools do exactly this) must wrap the payload exactly once. Before the
+// idempotence fix, `wrap_as` synthesised `{ data: <flat> }` and `named_emits` re-wrapped
+// it to `{ data: { data: <flat> } }`, drifting every consumer's path by one `.data`.
+#[test]
+fn catalog_adapter_wraps_same_key_once_for_wrap_as_and_named_emits()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    write_catalog_tool(
+        &temp.path().join("tools/test/operation"),
+        r#"{
+  "schema": "runx.tool.manifest.v1",
+  "name": "test.operation",
+  "source": {
+    "type": "cli-tool",
+    "command": "/bin/sh",
+    "args": ["./run.sh"]
+  },
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "data_operation_result": "runx.data.operation_result.v1"
+      },
+      "wrap_as": "data_operation_result"
+    }
+  },
+  "scopes": ["test.operation"]
+}
+"#,
+        r#"printf '%s\n' '{"status":"read","events":"present"}'
+"#,
+    )?;
+    let output = CatalogAdapter::default().invoke(invocation_in_directory(
+        Some("test.operation"),
+        JsonObject::new(),
+        temp.path().to_path_buf(),
+        tool_root_env(temp.path()),
+    ))?;
+
+    assert_eq!(output.status, InvocationStatus::Success);
+    let payload: JsonValue = serde_json::from_str(&output.stdout)?;
+    assert_eq!(
+        json_path(&payload, &["data_operation_result", "data", "events"]),
+        Some("present"),
+        "events must resolve at a single `.data` depth"
+    );
+    assert!(
+        json_path(
+            &payload,
+            &["data_operation_result", "data", "data", "events"]
+        )
+        .is_none(),
+        "the payload must not be double-wrapped"
     );
     Ok(())
 }

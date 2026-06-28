@@ -16,8 +16,8 @@ runners:
     outputs:
       fetch_result: object
     artifacts:
-      wrap_as: fetch_result_packet
-      packet: runx.fetch.v1
+      named_emits:
+        fetch_result: runx.fetch.v1
     runx:
       category: research
     inputs:

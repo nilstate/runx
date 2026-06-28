@@ -7,11 +7,12 @@ use runx_contracts::{
     DoctorStatus, DoctorSummary, JsonNumber, JsonObject, JsonValue, sha256_prefixed,
 };
 use runx_parser::{parse_runner_manifest_yaml, validate_runner_manifest};
+use runx_receipts::canonical_stable_json;
 use serde::Deserialize;
 
 use crate::RuntimeError;
+use crate::filesystem::{read_dir_sorted, read_to_string};
 use crate::path_util::{count_yaml_files, lexical_normalize, project_path};
-use crate::runtime_fs::{read_dir_sorted, read_to_string};
 use crate::tool_catalogs::build::hash_tool_source;
 
 // rust-style-allow: large-file - this first doctor slice keeps parity checks and builders together until follow-up diagnostics add natural module boundaries.
@@ -109,24 +110,15 @@ fn discover_file_budget_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>
                 budget.path, line_count, budget.max_lines
             ),
             target,
-            target_json: format!(
-                r#"{{"kind":"workspace","ref":{}}}"#,
-                json_string(budget.path)
-            ),
             location,
-            location_json: format!(r#"{{"path":{}}}"#, json_string(budget.path)),
             evidence: Some(evidence),
-            evidence_json: Some(format!(
-                r#"{{"line_count":{},"max_lines":{}}}"#,
-                line_count, budget.max_lines
-            )),
             repairs: vec![manual_repair(
                 "split_file_along_real_boundary",
                 DoctorRepairConfidence::Medium,
                 DoctorRepairRisk::Low,
                 false,
             )],
-        }));
+        })?);
     }
     Ok(diagnostics)
 }
@@ -192,27 +184,15 @@ fn discover_cross_package_reach_in_diagnostics(
                     "{source_path} imports {specifier}, reaching into packages/{target_package}/src directly."
                 ),
                 target,
-                target_json: format!(
-                    r#"{{"kind":"workspace","ref":{}}}"#,
-                    json_string(&source_path)
-                ),
                 location,
-                location_json: format!(r#"{{"path":{}}}"#, json_string(&source_path)),
                 evidence: Some(evidence),
-                evidence_json: Some(format!(
-                    r#"{{"specifier":{},"source_package":{},"target_package":{},"resolved_path":{}}}"#,
-                    json_string(&specifier),
-                    json_string(&source_package),
-                    json_string(&target_package),
-                    json_string(&resolved_path)
-                )),
                 repairs: vec![manual_repair(
                     "replace_with_package_boundary_import",
                     DoctorRepairConfidence::High,
                     DoctorRepairRisk::Low,
                     false,
                 )],
-            }));
+            })?);
         }
     }
     Ok(diagnostics)
@@ -239,7 +219,7 @@ fn discover_tool_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runti
                     root,
                     &tool_ref,
                     &removed_format_path,
-                ));
+                )?);
             }
 
             let manifest_path = tool_dir.join("manifest.json");
@@ -270,7 +250,7 @@ fn discover_tool_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runti
                         &tool_dir,
                         &actual_source_hash,
                         source_hash,
-                    ));
+                    )?);
                 }
             }
             let fixture_count = count_yaml_files(&tool_dir.join("fixtures"))?;
@@ -281,7 +261,7 @@ fn discover_tool_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runti
                     &manifest_path,
                     &tool_dir.join("fixtures"),
                     fixture_count,
-                ));
+                )?);
             }
         }
     }
@@ -292,7 +272,7 @@ fn removed_tool_yaml_diagnostic(
     root: &Path,
     tool_ref: &str,
     removed_format_path: &Path,
-) -> DoctorDiagnostic {
+) -> Result<DoctorDiagnostic, RuntimeError> {
     let location_path = project_path(root, removed_format_path);
     let expected_manifest =
         project_path(root, &removed_format_path.with_file_name("manifest.json"));
@@ -311,14 +291,8 @@ fn removed_tool_yaml_diagnostic(
         title: "tool.yaml is no longer supported",
         message: format!("Tool {tool_ref} still uses tool.yaml. Runx resolves manifest.json only."),
         target,
-        target_json: format!(r#"{{"kind":"tool","ref":{}}}"#, json_string(tool_ref)),
         location,
-        location_json: format!(r#"{{"path":{}}}"#, json_string(&location_path)),
         evidence: Some(evidence),
-        evidence_json: Some(format!(
-            r#"{{"expected_manifest":{}}}"#,
-            json_string(&expected_manifest)
-        )),
         repairs: vec![manual_repair(
             "replace_removed_tool_manifest",
             DoctorRepairConfidence::High,
@@ -334,7 +308,7 @@ fn tool_fixture_missing_diagnostic(
     manifest_path: &Path,
     fixtures_path: &Path,
     fixture_count: u64,
-) -> DoctorDiagnostic {
+) -> Result<DoctorDiagnostic, RuntimeError> {
     let location_path = project_path(root, manifest_path);
     let expected_location = project_path(root, fixtures_path);
     let target = object([
@@ -355,15 +329,8 @@ fn tool_fixture_missing_diagnostic(
         title: "Tool has no deterministic fixture",
         message: format!("Tool {tool_ref} declares a manifest but has no deterministic fixture."),
         target,
-        target_json: format!(r#"{{"kind":"tool","ref":{}}}"#, json_string(tool_ref)),
         location,
-        location_json: format!(r#"{{"path":{}}}"#, json_string(&location_path)),
         evidence: Some(evidence),
-        evidence_json: Some(format!(
-            r#"{{"fixture_count":{},"expected_location":{}}}"#,
-            fixture_count,
-            json_string(&expected_location)
-        )),
         repairs: vec![manual_repair(
             "add_tool_fixture",
             DoctorRepairConfidence::Medium,
@@ -380,7 +347,7 @@ fn tool_manifest_stale_diagnostic(
     tool_dir: &Path,
     expected_hash: &str,
     actual_hash: &str,
-) -> DoctorDiagnostic {
+) -> Result<DoctorDiagnostic, RuntimeError> {
     let location_path = project_path(root, manifest_path);
     let tool_path = project_path(root, tool_dir);
     let target = object([
@@ -401,18 +368,8 @@ fn tool_manifest_stale_diagnostic(
         title: "Tool manifest is stale",
         message: format!("Tool {tool_ref} source_hash does not match current source files."),
         target,
-        target_json: format!(r#"{{"kind":"tool","ref":{}}}"#, json_string(tool_ref)),
         location,
-        location_json: format!(
-            r#"{{"path":{},"json_pointer":"/source_hash"}}"#,
-            json_string(&location_path)
-        ),
         evidence: Some(evidence),
-        evidence_json: Some(format!(
-            r#"{{"expected":{},"actual":{}}}"#,
-            json_string(expected_hash),
-            json_string(actual_hash)
-        )),
         repairs: vec![run_command_repair(
             "rebuild_tool_manifest",
             format!("runx tool build {tool_path}"),
@@ -431,24 +388,17 @@ fn discover_skill_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runt
             continue;
         }
         let skill_dir = profile_path.parent().map_or(root, |parent| parent);
-        let skill_name = if skill_dir == root {
-            root.file_name().map_or_else(
-                || ".".to_owned(),
-                |name| name.to_string_lossy().into_owned(),
-            )
-        } else {
-            skill_dir.file_name().map_or_else(
-                || ".".to_owned(),
-                |name| name.to_string_lossy().into_owned(),
-            )
-        };
+        let skill_name = skill_dir.file_name().map_or_else(
+            || ".".to_owned(),
+            |name| name.to_string_lossy().into_owned(),
+        );
         if let Err(message) = validate_skill_profile(&contents) {
             diagnostics.push(skill_profile_invalid_diagnostic(
                 root,
                 &profile_path,
                 &skill_name,
                 &message,
-            ));
+            )?);
             continue;
         }
         let fixture_count = count_yaml_files(&skill_dir.join("fixtures"))?;
@@ -460,7 +410,7 @@ fn discover_skill_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runt
                 &skill_name,
                 fixture_count,
                 harness_case_count,
-            ));
+            )?);
         }
     }
     Ok(diagnostics)
@@ -481,7 +431,7 @@ fn skill_fixture_missing_diagnostic(
     skill_name: &str,
     fixture_count: u64,
     harness_case_count: u64,
-) -> DoctorDiagnostic {
+) -> Result<DoctorDiagnostic, RuntimeError> {
     let location_path = project_path(root, profile_path);
     let target = object([
         ("kind", string_value("skill")),
@@ -503,17 +453,8 @@ fn skill_fixture_missing_diagnostic(
             "Skill {skill_name} declares an execution profile but has no fixtures or inline harness.cases."
         ),
         target,
-        target_json: format!(r#"{{"kind":"skill","ref":{}}}"#, json_string(skill_name)),
         location,
-        location_json: format!(
-            r#"{{"path":{},"json_pointer":"/harness"}}"#,
-            json_string(&location_path)
-        ),
         evidence: Some(evidence),
-        evidence_json: Some(format!(
-            r#"{{"fixture_count":{},"harness_case_count":{}}}"#,
-            fixture_count, harness_case_count
-        )),
         repairs: vec![manual_repair(
             "add_inline_harness_case",
             DoctorRepairConfidence::Medium,
@@ -528,7 +469,7 @@ fn skill_profile_invalid_diagnostic(
     profile_path: &Path,
     skill_name: &str,
     message: &str,
-) -> DoctorDiagnostic {
+) -> Result<DoctorDiagnostic, RuntimeError> {
     let location_path = project_path(root, profile_path);
     let target = object([
         ("kind", string_value("skill")),
@@ -545,14 +486,8 @@ fn skill_profile_invalid_diagnostic(
         title: "Skill execution profile is invalid",
         message: format!("Skill {skill_name} has an invalid execution profile: {message}"),
         target,
-        target_json: format!(r#"{{"kind":"skill","ref":{}}}"#, json_string(skill_name)),
         location,
-        location_json: format!(
-            r#"{{"path":{},"json_pointer":"/runners"}}"#,
-            json_string(&location_path)
-        ),
         evidence: Some(evidence),
-        evidence_json: Some(format!(r#"{{"error":{}}}"#, json_string(message))),
         repairs: vec![manual_repair(
             "fix_execution_profile",
             DoctorRepairConfidence::High,
@@ -568,23 +503,21 @@ struct DiagnosticParts {
     title: &'static str,
     message: String,
     target: JsonObject,
-    target_json: String,
     location: DoctorLocation,
-    location_json: String,
     evidence: Option<JsonObject>,
-    evidence_json: Option<String>,
     repairs: Vec<DoctorRepair>,
 }
 
-fn create_diagnostic(parts: DiagnosticParts) -> DoctorDiagnostic {
-    DoctorDiagnostic {
+fn create_diagnostic(parts: DiagnosticParts) -> Result<DoctorDiagnostic, RuntimeError> {
+    let instance_id = diagnostic_instance_id(
+        parts.id,
+        &parts.target,
+        &parts.location,
+        parts.evidence.as_ref(),
+    )?;
+    Ok(DoctorDiagnostic {
         id: parts.id.to_owned(),
-        instance_id: diagnostic_instance_id(
-            parts.id,
-            &parts.target_json,
-            &parts.location_json,
-            parts.evidence_json.as_deref(),
-        ),
+        instance_id,
         severity: parts.severity,
         title: parts.title.to_owned(),
         message: parts.message,
@@ -592,30 +525,52 @@ fn create_diagnostic(parts: DiagnosticParts) -> DoctorDiagnostic {
         location: parts.location,
         evidence: parts.evidence,
         repairs: parts.repairs,
-    }
+    })
 }
 
-// rust-style-allow: long-function - the style guard counts JSON hash-material braces inside string literals.
+/// Canonical, order-independent identity hash of a diagnostic.
+///
+/// The hash material is the single typed source of truth (`target`,
+/// `location`, `evidence`) assembled into a `JsonObject` (a `BTreeMap`, sorted
+/// at every level) and rendered through the shared `runx.stable-json.v1`
+/// canonical writer. The TypeScript doctor mirrors this exactly via
+/// `canonicalJsonStringify({id, target, location, evidence})`, so both
+/// languages produce byte-identical canonical JSON and identical ids.
 fn diagnostic_instance_id(
     id: &str,
-    target_json: &str,
-    location_json: &str,
-    evidence_json: Option<&str>,
-) -> String {
-    let mut material = String::new();
-    material.push('{');
-    material.push_str(r#""id":"#);
-    material.push_str(&json_string(id));
-    material.push_str(r#","target":"#);
-    material.push_str(target_json);
-    material.push_str(r#","location":"#);
-    material.push_str(location_json);
-    if let Some(evidence) = evidence_json {
-        material.push_str(r#","evidence":"#);
-        material.push_str(evidence);
+    target: &JsonObject,
+    location: &DoctorLocation,
+    evidence: Option<&JsonObject>,
+) -> Result<String, RuntimeError> {
+    let mut material: JsonObject = BTreeMap::new();
+    material.insert("id".to_owned(), JsonValue::String(id.to_owned()));
+    material.insert("target".to_owned(), JsonValue::Object(target.clone()));
+    material.insert(
+        "location".to_owned(),
+        JsonValue::Object(location_object(location)),
+    );
+    if let Some(evidence) = evidence {
+        material.insert("evidence".to_owned(), JsonValue::Object(evidence.clone()));
     }
-    material.push('}');
-    sha256_prefixed(material.as_bytes())
+    let canonical = canonical_stable_json(&JsonValue::Object(material)).map_err(|source| {
+        RuntimeError::effect_state("canonicalizing doctor hash material", source)
+    })?;
+    Ok(sha256_prefixed(canonical.as_bytes()))
+}
+
+/// Convert a typed `DoctorLocation` into its canonical-hash object form,
+/// omitting `json_pointer` when absent so the hash material matches the
+/// serialized wire shape (which skips `None`).
+fn location_object(location: &DoctorLocation) -> JsonObject {
+    let mut object: JsonObject = BTreeMap::new();
+    object.insert("path".to_owned(), JsonValue::String(location.path.clone()));
+    if let Some(json_pointer) = &location.json_pointer {
+        object.insert(
+            "json_pointer".to_owned(),
+            JsonValue::String(json_pointer.clone()),
+        );
+    }
+    object
 }
 
 fn manual_repair(
@@ -797,26 +752,6 @@ fn string_value(value: &str) -> JsonValue {
 
 fn number_value(value: u64) -> JsonValue {
     JsonValue::Number(JsonNumber::U64(value))
-}
-
-fn json_string(value: &str) -> String {
-    let mut encoded = String::with_capacity(value.len() + 2);
-    encoded.push('"');
-    for character in value.chars() {
-        match character {
-            '"' => encoded.push_str("\\\""),
-            '\\' => encoded.push_str("\\\\"),
-            '\n' => encoded.push_str("\\n"),
-            '\r' => encoded.push_str("\\r"),
-            '\t' => encoded.push_str("\\t"),
-            character if character <= '\u{1f}' => {
-                encoded.push_str(&format!("\\u{:04x}", character as u32));
-            }
-            character => encoded.push(character),
-        }
-    }
-    encoded.push('"');
-    encoded
 }
 
 #[cfg(test)]

@@ -88,7 +88,7 @@ fn fanout_all_success_runs_group_then_synthesizes() -> Result<(), Box<dyn std::e
     assert_output(
         &run,
         "finance",
-        "budget",
+        "result.data.budget",
         JsonValue::String("approved".to_owned()),
     )?;
     assert_sync_points(&run, &expected.sync_points);
@@ -357,6 +357,10 @@ source:
     - ./run.sh
   timeout_seconds: 10
 inputs: {}
+runx:
+  artifacts:
+    named_emits:
+      message: message
 ---
 
 Fail once, then emit structured JSON.
@@ -425,7 +429,7 @@ steps:
   - id: downstream
     skill: echo
     context:
-      message: flaky.message
+      message: flaky.message.data
 "#,
     )?;
     Ok(graph_path)
@@ -448,7 +452,7 @@ steps:
   - id: downstream
     skill: echo
     context:
-      message: flaky.message
+      message: flaky.message.data
 "#,
     )?;
     Ok(graph_path)
@@ -512,7 +516,19 @@ fn assert_output(
         .iter()
         .find(|candidate| candidate.step_id == step_id)
         .ok_or_else(|| format!("missing step run {step_id}"))?;
-    assert_eq!(step.outputs.get(key), Some(&expected));
+    // Walk the contract path (for example `result.data.budget`) into the step's
+    // addressable outputs.
+    let mut value = step
+        .outputs
+        .get(key.split('.').next().unwrap_or(key))
+        .ok_or_else(|| format!("missing output {key} on step {step_id}"))?;
+    for segment in key.split('.').skip(1) {
+        value = value
+            .as_object()
+            .and_then(|object| object.get(segment))
+            .ok_or_else(|| format!("missing output segment {segment} of {key} on {step_id}"))?;
+    }
+    assert_eq!(value, &expected);
     Ok(())
 }
 

@@ -14,7 +14,7 @@ use runx_core::state_machine::{
 use runx_parser::{ExecutionGraph, GraphStep};
 
 use super::super::fanout::fanout_policies;
-use super::super::graph::{LoadedStepSkill, StepSkillCache, StepSkillLoadOptions, find_step};
+use super::super::graph::{LoadedStepSkill, StepSkillCache, StepSkillLoadOptions};
 use super::super::graph_index::{ExecutionGraphIndex, PriorRunIndex};
 use super::scheduler::{
     FanoutSchedule, FanoutScheduler, ParallelFanoutSchedule, ScheduledFanoutStep,
@@ -980,9 +980,14 @@ impl GraphExecution {
         graph: &'a ExecutionGraph,
         step_id: &str,
     ) -> Result<&'a GraphStep, RuntimeError> {
-        self.graph_index
-            .find_step(graph, step_id)
-            .or_else(|_| find_step(graph, step_id))
+        // `graph_index` is built from exactly this `graph` (see `GraphExecution::new`
+        // / `from_checkpoint`), which is immutable for the run, so the index position
+        // map is always in sync with `graph.steps`. The index's `StepMissing` is the
+        // authoritative answer for a genuinely-missing step; a linear re-scan over the
+        // same `graph.steps` could never find a step the index legitimately missed, it
+        // would only silently paper over an index/graph desync. Return the index result
+        // directly so such a desync surfaces instead of being absorbed by an O(n) scan.
+        self.graph_index.find_step(graph, step_id)
     }
 }
 
@@ -1132,6 +1137,11 @@ pub(super) fn transition_field_value<'a>(
     let step_id = segments.next()?;
     let run = runs.iter().rev().find(|run| run.step_id == step_id)?;
     let first = segments.next()?;
+    // Guards and `when` conditions gate control flow, not data binding, so they may
+    // reference diagnostic fields (notably `status`, to branch on a prior step's
+    // success). Only the raw structured `skill_claim` blob is excluded here; the
+    // stricter `BASE_OUTPUT_FIELDS` rejection applies to context EDGES (data inputs),
+    // not to control-flow predicates.
     if first == "skill_claim" {
         return None;
     }

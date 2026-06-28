@@ -404,8 +404,8 @@ runners:
             - fs.read
             - git.status
           context:
-            spec_path: scafld-plan.result.path
-            scafld_plan: scafld-plan.result
+            spec_path: scafld-plan.result.data.path
+            scafld_plan: scafld-plan.result.data
         - id: normalize-spec
           label: normalize scafld frontmatter
           tool: spec.normalize_scafld_frontmatter
@@ -420,15 +420,15 @@ runners:
             - fs.write
           mutation: true
           context:
-            path: scafld-plan.result.path
-            contents: normalize-spec.normalized_spec.data.data.contents
+            path: scafld-plan.result.data.path
+            contents: normalize-spec.normalized_spec.data.contents
         - id: read-draft-spec
           label: read draft spec
           tool: fs.read
           scopes:
             - fs.read
           context:
-            path: scafld-plan.result.path
+            path: scafld-plan.result.data.path
         - id: scafld-validate
           label: validate spec
           skill: graph/scafld
@@ -450,7 +450,7 @@ runners:
           scopes:
             - fs.read
           context:
-            path: scafld-approve.result.path
+            path: scafld-approve.result.data.path
         - id: read-declared-files
           label: read declared files
           tool: spec.read_declared_files
@@ -459,7 +459,7 @@ runners:
           inputs:
             extra_files: $input.repo_snapshot.recommended_files
           context:
-            spec_contents: read-approved-spec.file_read.data.data.contents
+            spec_contents: read-approved-spec.file_read.data.contents
         - id: author-fix
           label: author bounded fix
           run:
@@ -522,10 +522,10 @@ runners:
             - fs.read
             - git.status
           context:
-            spec_path: scafld-approve.result.path
-            spec_file: read-approved-spec.file_read.data.data
-            spec_contents: read-approved-spec.file_read.data.data.contents
-            declared_file_context: read-declared-files.declared_file_context.data.data
+            spec_path: scafld-approve.result.data.path
+            spec_file: read-approved-spec.file_read.data
+            spec_contents: read-approved-spec.file_read.data.contents
+            declared_file_context: read-declared-files.declared_file_context.data
           artifacts:
             named_emits:
               fix_bundle: fix_bundle
@@ -604,12 +604,12 @@ runners:
           scopes:
             - runx:repo:package
           context:
-            harness_context: capture-harness-context.harness_context
-            handoff_markdown: scafld-handoff.stdout
-            build_result: scafld-build.result
-            review_result: scafld-review.result
-            completion_result: scafld-complete.result
-            status_snapshot: scafld-final-status.result
+            harness_context: capture-harness-context.harness_context.data
+            handoff_markdown: scafld-handoff.result.data.markdown
+            build_result: scafld-build.result.data
+            review_result: scafld-review.result.data
+            completion_result: scafld-complete.result.data
+            status_snapshot: scafld-final-status.result.data
             current_branch: read-current-branch.git_branch.data
             fix_bundle: author-fix.fix_bundle.data
           inputs:
@@ -642,11 +642,11 @@ runners:
             - runx:repo:package
           context:
             thread: push-pull-request.thread
-            harness_context: capture-harness-context.harness_context
-            build_result: scafld-build.result
-            review_result: scafld-review.result
-            completion_result: scafld-complete.result
-            status_snapshot: scafld-final-status.result
+            harness_context: capture-harness-context.harness_context.data
+            build_result: scafld-build.result.data
+            review_result: scafld-review.result.data
+            completion_result: scafld-complete.result.data
+            status_snapshot: scafld-final-status.result.data
             draft_pull_request: package-pull-request.draft_pull_request.data
             pull_request_outbox_entry: push-pull-request.outbox_entry
             push_result: push-pull-request.push

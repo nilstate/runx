@@ -12,6 +12,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{NonEmptyString, RunxSchema};
 
+/// The diagnostic/base fields a step projection always injects into its `outputs`
+/// map for receipts, effect replay, and debugging. They are NOT part of a step's
+/// addressable contract: a graph context edge may bind only to declared outputs and
+/// artifact packets, never to these. This is the single source of truth shared by the
+/// runtime projection/resolver and the parser's parse-time context-edge validation, so
+/// the addressable surface cannot drift between the two layers.
+pub const BASE_OUTPUT_FIELDS: &[&str] = &["raw", "skill_claim", "stdout", "stderr", "status"];
+
 /// A declared output value type.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(rename_all = "lowercase")]

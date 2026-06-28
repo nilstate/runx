@@ -245,7 +245,7 @@ function readme(): string {
 
 This directory captures the canonical native Rust CLI/runtime surface. The
 matrix is generated from \`scripts/generate-cli-feature-parity.ts\` and checked
-against \`crates/runx-cli/src/launcher.rs\`.
+against \`crates/runx-cli/src/router.rs\`.
 
 Required exit-code coverage: \`"exitCodes": [0, 1, 2, 64]\`.
 
@@ -269,7 +269,7 @@ Required exit-code coverage: \`"exitCodes": [0, 1, 2, 64]\`.
 }
 
 function checkUsageCoverage(): void {
-  const usageCommands = extractUsageCommands(readFileSync(join(root, "crates/runx-cli/src/launcher.rs"), "utf8"));
+  const usageCommands = extractUsageCommands(readFileSync(join(root, "crates/runx-cli/src/router.rs"), "utf8"));
   const commandIds = new Set(commands.map((entry) => entry.id));
   const missing = usageCommands.flatMap((usage) =>
     helpUsageCommandIds(usage)
@@ -280,14 +280,14 @@ function checkUsageCoverage(): void {
   }
 }
 
-function extractUsageCommands(launcherSource: string): readonly string[] {
-  return extractHelpBlock(extractRustHelpText(launcherSource), "Commands:");
+function extractUsageCommands(routerSource: string): readonly string[] {
+  return extractHelpBlock(extractRustHelpText(routerSource), "Commands:");
 }
 
-function extractRustHelpText(launcherSource: string): string {
-  const match = launcherSource.match(/pub fn help_text\(\) -> String \{\s*"\\\n([\s\S]*?)"\s*\.to_owned\(\)\s*\}/u);
+function extractRustHelpText(routerSource: string): string {
+  const match = routerSource.match(/pub fn help_text\(\) -> String \{\s*"\\\n([\s\S]*?)"\s*\.to_owned\(\)\s*\}/u);
   if (!match?.[1]) {
-    throw new Error("Could not find help_text() string in crates/runx-cli/src/launcher.rs");
+    throw new Error("Could not find help_text() string in crates/runx-cli/src/router.rs");
   }
   return match[1];
 }
@@ -296,7 +296,7 @@ function extractHelpBlock(helpText: string, label: string): readonly string[] {
   const lines = helpText.split("\n");
   const start = lines.findIndex((line) => line.trim() === label);
   if (start === -1) {
-    throw new Error(`Could not find ${label} block in crates/runx-cli/src/launcher.rs`);
+    throw new Error(`Could not find ${label} block in crates/runx-cli/src/router.rs`);
   }
   const entries: string[] = [];
   for (const line of lines.slice(start + 1)) {

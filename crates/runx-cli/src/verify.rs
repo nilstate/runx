@@ -403,6 +403,16 @@ fn run_single_receipt_verify<R: Read>(
     })
 }
 
+/// Resolve a possibly-relative user-supplied path against `cwd`. The single
+/// resolver for receipt and notary-key file inputs, so both stay consistent.
+fn resolve_under_cwd(path: &Path, cwd: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    }
+}
+
 fn read_single_receipt_input<R: Read>(
     input: &ReceiptInput,
     cwd: &Path,
@@ -410,11 +420,7 @@ fn read_single_receipt_input<R: Read>(
 ) -> Result<Vec<u8>, VerifyCliError> {
     match input {
         ReceiptInput::Path(path) => {
-            let path = if path.is_absolute() {
-                path.clone()
-            } else {
-                cwd.join(path)
-            };
+            let path = resolve_under_cwd(path, cwd);
             if let Ok(metadata) = fs::metadata(&path) {
                 if metadata.len() > SINGLE_RECEIPT_MAX_BYTES as u64 {
                     return Err(single_receipt_too_large());
@@ -575,7 +581,6 @@ fn locate_notary_verification(
     root.get("receipt")
         .and_then(|receipt| receipt.get("notary_verification"))
         .or_else(|| root.get("notary_verification"))
-        .or(Some(root))
         .and_then(serde_json::Value::as_object)
 }
 
@@ -656,11 +661,7 @@ fn trusted_notary_keys_from_paths(
 ) -> Result<Vec<Vec<u8>>, VerifyCliError> {
     let mut keys = Vec::with_capacity(paths.len());
     for path in paths {
-        let path = if path.is_absolute() {
-            path.clone()
-        } else {
-            cwd.join(path)
-        };
+        let path = resolve_under_cwd(path, cwd);
         let pem = fs::read_to_string(&path).map_err(|error| {
             VerifyCliError::Store(format!(
                 "failed to read notary key {}: {error}",
@@ -1479,6 +1480,55 @@ mod tests {
         assert_eq!(verdict["valid"], JsonValue::Bool(true));
         assert_eq!(verdict["counter_seal"]["digest_status"], "valid");
         assert_eq!(verdict["counter_seal"]["signature_status"], "valid");
+        Ok(())
+    }
+
+    #[test]
+    fn hosted_notary_flags_object_document_without_notary_verification() -> Result<(), io::Error> {
+        let temp = tempfile_dir()?;
+        let key_pair = ring::signature::Ed25519KeyPair::from_seed_unchecked(&FIXTURE_SEED)
+            .map_err(|_| io::Error::other("fixture key must be valid"))?;
+        let public_key_path = temp.join("trusted-notary.pem");
+        fs::write(
+            &public_key_path,
+            ed25519_spki_pem(key_pair.public_key().as_ref()),
+        )?;
+        // An object document that carries no notary_verification (or
+        // receipt.notary_verification) wrapper must surface the missing finding,
+        // not fall through to a misleading counter_seal_missing diagnostic.
+        let document = test_json::json!({ "counter_seal": "not-a-notary-block" });
+
+        let result = run_verify_command_with_stdin(
+            &[
+                "verify".into(),
+                "--notary".into(),
+                "-".into(),
+                "--notary-key".into(),
+                public_key_path.into_os_string(),
+                "--json".into(),
+            ],
+            &BTreeMap::new(),
+            &temp,
+            io::Cursor::new(serde_json::to_vec(&document).map_err(io::Error::other)?),
+        )
+        .map_err(|error| io::Error::other(error.to_string()))?;
+
+        assert!(
+            result.failed,
+            "document without notary_verification must fail: {}",
+            result.output
+        );
+        let verdict: JsonValue = serde_json::from_str(&result.output).map_err(io::Error::other)?;
+        assert_eq!(verdict["valid"], JsonValue::Bool(false));
+        let codes = finding_codes(&verdict);
+        assert!(
+            codes.contains(&"notary_verification_missing".to_owned()),
+            "expected notary_verification_missing, got {codes:?}"
+        );
+        assert!(
+            !codes.contains(&"counter_seal_missing".to_owned()),
+            "must not fall through to counter_seal_missing: {codes:?}"
+        );
         Ok(())
     }
 

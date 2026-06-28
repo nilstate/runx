@@ -132,8 +132,6 @@ runners:
             - runx:net:allowlist
           inputs:
             extract: text
-          artifacts:
-            wrap_as: fetch_result
         - id: scrub-content
           label: scrub personal data before the boundary
           skill: ../redact-pii
@@ -143,9 +141,7 @@ runners:
           inputs:
             mode: redact
           context:
-            content: fetch-source.fetch_result_packet.data.extracted
-          artifacts:
-            wrap_as: redaction_report
+            content: fetch-source.fetch_result.data.extracted
         - id: approve-send
           label: human approval before delivery
           run:
@@ -154,9 +150,9 @@ runners:
             gate_id: governed-outbound.send.approval
             reason: Approve delivery of the scrubbed content; review the redaction verdict and residual risk before it leaves the boundary.
           context:
-            decision: scrub-content.redaction_report_packet.data.decision
-            residual_risk: scrub-content.redaction_report_packet.data.residual_risk
-            redacted_digest: scrub-content.redaction_report_packet.data.redacted_digest
+            decision: scrub-content.redaction_report.data.decision
+            residual_risk: scrub-content.redaction_report.data.residual_risk
+            redacted_digest: scrub-content.redaction_report.data.redacted_digest
           artifacts:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
@@ -171,10 +167,7 @@ runners:
             audience: "$input.channel"
             provider_context: "$input.operator_context"
           context:
-            content_ref: scrub-content.redaction_report_packet.data
-          artifacts:
-            wrap_as: send_plan
-            packet: runx.send_as.plan.v1
+            content_ref: scrub-content.redaction_report.data
         - id: seal-run
           label: seal the run to the ledger
           skill: ../sign-receipt
@@ -184,12 +177,12 @@ runners:
           inputs:
             action: governed outbound post
           context:
-            evidence: post-notice.send_plan_packet.data
+            evidence: post-notice.send_plan.data
       policy:
         guards:
           - step: post-notice
             field: approve-send.approval_decision.data.approved
             equals: true
           - step: post-notice
-            field: scrub-content.redaction_report_packet.data.decision
+            field: scrub-content.redaction_report.data.decision
             equals: ready

@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use std::path::{Path, PathBuf};
 
 use runx_contracts::{ClosureDisposition, JsonObject, JsonValue, ReceiptSchema};
@@ -87,8 +89,8 @@ fn parses_harness_graph_fixture_contract() -> Result<(), HarnessFixtureError> {
     assert_eq!(
         receipt.child_receipt_refs,
         vec![
-            "runx:receipt:sha256:3e9617d1d7d0494106096a195a0369ffdfee9e24a54bea74967019339733c569",
-            "runx:receipt:sha256:da09438dd433579faf33fc206a4b1183bfafc8ad7b5c03859fb453a6badd4603"
+            "runx:receipt:sha256:4bf91309813b3b409c340168892c6b3803602772010b4e8b47d9f7a3153f5da7",
+            "runx:receipt:sha256:a94a3b142e795c9c448bf43046eb6c0b9d47b5d4858f483f1bd1bb91bf5dc863"
         ]
     );
     Ok(())
@@ -178,7 +180,7 @@ fn replays_active_harness_skill_fixture() -> Result<(), Box<dyn std::error::Erro
     let skill_output = output.skill_output.ok_or(HarnessFixtureError::Required {
         field: "skill_output".to_owned(),
     })?;
-    assert_eq!(skill_output.stdout, "hello from harness");
+    assert_eq!(skill_output.stdout, "{\"message\":\"hello from harness\"}");
     Ok(())
 }
 
@@ -260,7 +262,7 @@ impl SkillAdapter for TestAdapter {
     }
 
     fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, runx_runtime::RuntimeError> {
-        let stdout = request
+        let message = request
             .inputs
             .get("message")
             .and_then(|value| match value {
@@ -269,6 +271,13 @@ impl SkillAdapter for TestAdapter {
             })
             .unwrap_or_default()
             .to_owned();
+        // Emit a structured `{ "message": ... }` claim so the producing step's
+        // declared artifact contract (for example json-output's `result` packet)
+        // is addressable by downstream context edges under the contract model.
+        let mut claim = JsonObject::default();
+        claim.insert("message".to_owned(), JsonValue::String(message));
+        let stdout = serde_json::to_string(&JsonValue::Object(claim))
+            .expect("serialize harness test adapter claim");
         Ok(SkillOutput {
             status: InvocationStatus::Success,
             stdout,

@@ -4128,6 +4128,10 @@
                 {
                   "const": "spawn_child",
                   "type": "string"
+                },
+                {
+                  "const": "revoke",
+                  "type": "string"
                 }
               ]
             },

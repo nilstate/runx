@@ -19,6 +19,9 @@ runx:
   input_resolution:
     required:
       - message
+  artifacts:
+    named_emits:
+      message: message
 ---
 
 Print one message so a new contributor can verify the local runx execution path.

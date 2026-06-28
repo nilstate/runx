@@ -99,7 +99,7 @@ runners:
             resources: "$input.resources"
             scope: "$input.scope"
           context:
-            cursor_projection: read-cursor.step_outputs.read.data_operation_result.data.projection
+            cursor_projection: read-cursor.data_operation_result.data.projection
           artifacts:
             wrap_as: sync_plan_packet
             packet: runx.github_sync.v1

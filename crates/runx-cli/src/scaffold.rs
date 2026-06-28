@@ -8,7 +8,7 @@ use runx_runtime::scaffold::{
 };
 use serde::Serialize;
 
-use crate::launcher::{InitPlan, NewPlan};
+use crate::router::{InitPlan, NewPlan};
 
 pub fn run_native_new(plan: NewPlan) -> ExitCode {
     let cwd = match env::current_dir() {

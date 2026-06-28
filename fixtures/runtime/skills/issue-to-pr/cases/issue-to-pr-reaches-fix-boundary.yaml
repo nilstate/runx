@@ -18,14 +18,14 @@ expect:
   status: "needs_agent"
   receipt:
     schema: "runx.receipt.v1"
-    receipt_id: "sha256:4836aef96b54038a28104fe31735fa42840427b7bfe0b880a7a3107b9fa794d2"
+    receipt_id: "sha256:1be8aed088af731b688296c341c321ecf6f1de032dfbd0470d3b0fcec6225c51"
     harness_id: "hrn_issue-to-pr-reaches-fix-boundary_graph"
     state: "deferred"
     disposition: "deferred"
     reason_code: "issue-to-pr-reaches-fix-boundary_deferred"
     child_receipt_refs:
-      - "runx:receipt:sha256:11cc6363f2388d39670b43476e9df843cec543d9de966829f98eec2ec98dcb0f"
-      - "runx:receipt:sha256:3c44738bd3f715684e558794fc92097ca4ada04a1b63eda080c4aa5eb49d74da"
+      - "runx:receipt:sha256:b592914412c5929a253570b02b3c9da3599a034b5a905bb7d304f37ac677afaa"
+      - "runx:receipt:sha256:5964ceae66466557a70c7084fe0e897eb6597a2ea6a4a53244e968baceb54fe2"
   steps:
     - "author-spec"
     - "author-fix"

@@ -28,7 +28,7 @@ crates) require an explicit spec before they may be added to `deny.toml`.
 
 - `runx-cli`: native `runx` binary. Hand-rolled dispatcher across `harness`,
   `connect`, `config`, `policy`, `kernel`, `doctor`, `list`, `history`, `mcp`,
-  `tool`, `registry`, `skill`, plus scaffold/launcher plumbing. Activation
+  `tool`, `registry`, `skill`, plus scaffold/router plumbing. Activation
   versus the npm CLI is recorded by the completed
   [`rust-cli-rust-cutover`](../.scafld/specs/archive/2026-05/rust-cli-rust-cutover.md)
   spec.

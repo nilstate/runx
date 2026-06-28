@@ -2,10 +2,10 @@ name: sequential-echo
 owner: runx
 steps:
   - id: first
-    skill: ../../skills/echo
+    skill: ../../skills/json-output
     inputs:
       message: hello from graph
   - id: second
     skill: ../../skills/echo
     context:
-      message: first.stdout
+      message: first.result.data.message

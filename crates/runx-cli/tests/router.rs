@@ -1,32 +1,32 @@
 use runx_cli::config::{ConfigAction, ConfigPlan};
 use runx_cli::export::{ExportPlan, Target};
 use runx_cli::kernel::{KernelInputSource, KernelPlan};
-use runx_cli::launcher::{
-    DevPlan, DoctorMode, DoctorPlan, FilterMode, HarnessPlan, HistoryPlan, InitPlan, JsonErrorPlan,
-    LauncherAction, ListKind, ListPlan, NewPlan, ToolAction, ToolPlan, UrlAddPlan, add_help_text,
-    help_text, history_help_text, list_help_text, login_help_text, plan_launcher,
-    publish_help_text, registry_help_text, skill_help_text, verify_help_text,
-};
 use runx_cli::login::LoginPlan;
 use runx_cli::mcp::McpPlan;
 use runx_cli::parser::{ParserInputSource, ParserPlan};
 use runx_cli::policy::{PolicyAction, PolicyPlan};
 use runx_cli::registry::{RegistryAction, RegistryPlan};
 use runx_cli::resume::ResumePlan;
+use runx_cli::router::{
+    AddUrlPlan, DevPlan, DoctorMode, DoctorPlan, FilterMode, HarnessPlan, HistoryPlan, InitPlan,
+    JsonErrorPlan, ListKind, ListPlan, NewPlan, RouterAction, ToolAction, ToolPlan, add_help_text,
+    help_text, history_help_text, list_help_text, login_help_text, publish_help_text,
+    registry_help_text, route_args, skill_help_text, verify_help_text,
+};
 use runx_cli::skill::{SkillAction, SkillPlan};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-fn plan(args: &[&str]) -> LauncherAction {
-    plan_launcher(args.iter().map(std::ffi::OsString::from).collect())
+fn plan(args: &[&str]) -> RouterAction {
+    route_args(args.iter().map(std::ffi::OsString::from).collect())
 }
 
 #[test]
 fn top_level_help_and_version_are_native() {
-    assert_eq!(plan(&[]), LauncherAction::PrintHelp);
-    assert_eq!(plan(&["--help"]), LauncherAction::PrintHelp);
-    assert_eq!(plan(&["--version"]), LauncherAction::PrintVersion);
-    assert_eq!(plan(&["export", "--help"]), LauncherAction::PrintHelp);
+    assert_eq!(plan(&[]), RouterAction::PrintHelp);
+    assert_eq!(plan(&["--help"]), RouterAction::PrintHelp);
+    assert_eq!(plan(&["--version"]), RouterAction::PrintVersion);
+    assert_eq!(plan(&["export", "--help"]), RouterAction::PrintHelp);
 
     let help = help_text();
     assert_help_line(
@@ -79,32 +79,26 @@ fn top_level_help_and_version_are_native() {
 
 #[test]
 fn nested_skill_history_verify_and_publish_help_are_native() {
-    assert_eq!(plan(&["skill", "--help"]), LauncherAction::PrintSkillHelp);
-    assert_eq!(plan(&["skill", "-h"]), LauncherAction::PrintSkillHelp);
+    assert_eq!(plan(&["skill", "--help"]), RouterAction::PrintSkillHelp);
+    assert_eq!(plan(&["skill", "-h"]), RouterAction::PrintSkillHelp);
     assert_eq!(
         plan(&["skill", "SKILL.md", "--help"]),
-        LauncherAction::PrintSkillHelp
+        RouterAction::PrintSkillHelp
     );
-    assert_eq!(
-        plan(&["history", "--help"]),
-        LauncherAction::PrintHistoryHelp
-    );
-    assert_eq!(plan(&["history", "-h"]), LauncherAction::PrintHistoryHelp);
+    assert_eq!(plan(&["history", "--help"]), RouterAction::PrintHistoryHelp);
+    assert_eq!(plan(&["history", "-h"]), RouterAction::PrintHistoryHelp);
     assert_eq!(
         plan(&["history", "sourcey", "--help"]),
-        LauncherAction::PrintHistoryHelp
+        RouterAction::PrintHistoryHelp
     );
-    assert_eq!(plan(&["verify", "--help"]), LauncherAction::PrintVerifyHelp);
-    assert_eq!(plan(&["verify", "-h"]), LauncherAction::PrintVerifyHelp);
+    assert_eq!(plan(&["verify", "--help"]), RouterAction::PrintVerifyHelp);
+    assert_eq!(plan(&["verify", "-h"]), RouterAction::PrintVerifyHelp);
     assert_eq!(
         plan(&["verify", "receipt-123", "--help"]),
-        LauncherAction::PrintVerifyHelp
+        RouterAction::PrintVerifyHelp
     );
-    assert_eq!(
-        plan(&["publish", "--help"]),
-        LauncherAction::PrintPublishHelp
-    );
-    assert_eq!(plan(&["publish", "-h"]), LauncherAction::PrintPublishHelp);
+    assert_eq!(plan(&["publish", "--help"]), RouterAction::PrintPublishHelp);
+    assert_eq!(plan(&["publish", "-h"]), RouterAction::PrintPublishHelp);
 
     assert_help_line(
         &skill_help_text(),
@@ -134,15 +128,15 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
 
 #[test]
 fn documented_command_help_is_native() {
-    assert_eq!(plan(&["add", "--help"]), LauncherAction::PrintAddHelp);
-    assert_eq!(plan(&["add", "-h"]), LauncherAction::PrintAddHelp);
-    assert_eq!(plan(&["list", "--help"]), LauncherAction::PrintListHelp);
-    assert_eq!(plan(&["login", "--help"]), LauncherAction::PrintLoginHelp);
+    assert_eq!(plan(&["add", "--help"]), RouterAction::PrintAddHelp);
+    assert_eq!(plan(&["add", "-h"]), RouterAction::PrintAddHelp);
+    assert_eq!(plan(&["list", "--help"]), RouterAction::PrintListHelp);
+    assert_eq!(plan(&["login", "--help"]), RouterAction::PrintLoginHelp);
     assert_eq!(
         plan(&["registry", "--help"]),
-        LauncherAction::PrintRegistryHelp
+        RouterAction::PrintRegistryHelp
     );
-    assert_eq!(plan(&["registry"]), LauncherAction::PrintRegistryUsageError);
+    assert_eq!(plan(&["registry"]), RouterAction::PrintRegistryUsageError);
 
     assert_help_line(
         &add_help_text(),
@@ -177,7 +171,7 @@ fn routes_login_to_native_plan() {
             "https://runx.test",
             "--json",
         ]),
-        LauncherAction::RunLogin(LoginPlan {
+        RouterAction::RunLogin(LoginPlan {
             provider: Some("github".to_owned()),
             purpose: Some("publish".to_owned()),
             api_base_url: Some("https://runx.test".to_owned()),
@@ -187,7 +181,7 @@ fn routes_login_to_native_plan() {
     );
     assert_eq!(
         plan(&["login", "--unknown"]),
-        LauncherAction::Error("unknown login flag --unknown".to_owned())
+        RouterAction::Error("unknown login flag --unknown".to_owned())
     );
 }
 
@@ -195,7 +189,7 @@ fn routes_login_to_native_plan() {
 fn routes_doctor_registry_to_native_plan() {
     assert_eq!(
         plan(&["doctor", "registry", "--json"]),
-        LauncherAction::RunDoctor(DoctorPlan {
+        RouterAction::RunDoctor(DoctorPlan {
             mode: DoctorMode::Registry,
             path: None,
             json: true,
@@ -203,19 +197,19 @@ fn routes_doctor_registry_to_native_plan() {
     );
     assert_eq!(
         plan(&["doctor", "registry", "workspace"]),
-        LauncherAction::Error("runx doctor registry does not accept a path".to_owned())
+        RouterAction::Error("runx doctor registry does not accept a path".to_owned())
     );
 }
 
 #[test]
-fn removed_launcher_shim_flags_fail_closed() {
+fn removed_router_shim_flags_fail_closed() {
     assert_eq!(
         plan(&["--shim-help"]),
-        LauncherAction::Error("unknown command --shim-help".to_owned())
+        RouterAction::Error("unknown command --shim-help".to_owned())
     );
     assert_eq!(
         plan(&["--shim-version"]),
-        LauncherAction::Error("unknown command --shim-version".to_owned())
+        RouterAction::Error("unknown command --shim-version".to_owned())
     );
 }
 
@@ -230,7 +224,7 @@ fn routes_mcp_serve_to_native_plan() {
             "--runner",
             "default",
         ]),
-        LauncherAction::RunMcp(McpPlan {
+        RouterAction::RunMcp(McpPlan {
             refs: vec![PathBuf::from("fixtures/skills/echo")],
             receipt_dir: Some(PathBuf::from("receipts")),
             runner: Some("default".to_owned()),
@@ -244,7 +238,7 @@ fn routes_mcp_serve_to_native_plan() {
 fn mcp_http_listen_defaults_to_loopback_and_requires_explicit_non_loopback_opt_in() {
     assert_eq!(
         plan(&["mcp", "serve", "fixtures/skills/echo", "--http-listen"]),
-        LauncherAction::RunMcp(McpPlan {
+        RouterAction::RunMcp(McpPlan {
             refs: vec![PathBuf::from("fixtures/skills/echo")],
             receipt_dir: None,
             runner: None,
@@ -260,7 +254,7 @@ fn mcp_http_listen_defaults_to_loopback_and_requires_explicit_non_loopback_opt_i
             "--http-listen=0.0.0.0:8080",
             "--http-allow-non-loopback",
         ]),
-        LauncherAction::RunMcp(McpPlan {
+        RouterAction::RunMcp(McpPlan {
             refs: vec![PathBuf::from("fixtures/skills/echo")],
             receipt_dir: None,
             runner: None,
@@ -274,11 +268,11 @@ fn mcp_http_listen_defaults_to_loopback_and_requires_explicit_non_loopback_opt_i
 fn mcp_rejects_unknown_shapes_without_delegating() {
     assert_eq!(
         plan(&["mcp", "serve", "fixtures/skills/echo", "--legacy-js-only"]),
-        LauncherAction::Error("unknown mcp serve flag --legacy-js-only".to_owned())
+        RouterAction::Error("unknown mcp serve flag --legacy-js-only".to_owned())
     );
     assert_eq!(
         plan(&["mcp", "--runner=default", "serve", "fixtures/skills/echo"]),
-        LauncherAction::Error("runx mcp --runner must follow the serve subcommand".to_owned())
+        RouterAction::Error("runx mcp --runner must follow the serve subcommand".to_owned())
     );
 }
 
@@ -292,7 +286,7 @@ fn routes_harness_to_native_runner() {
             ".runx/receipts",
             "-j"
         ]),
-        LauncherAction::RunHarness(HarnessPlan {
+        RouterAction::RunHarness(HarnessPlan {
             fixture_paths: vec!["fixtures/harness/echo-skill.yaml".into()],
             receipt_dir: Some(".runx/receipts".into()),
         })
@@ -308,7 +302,7 @@ fn routes_multiple_harness_fixtures_to_native_runner() {
             "fixtures/harness/sequential-graph.yaml",
             "--json",
         ]),
-        LauncherAction::RunHarness(HarnessPlan {
+        RouterAction::RunHarness(HarnessPlan {
             fixture_paths: vec![
                 "fixtures/harness/echo-skill.yaml".into(),
                 "fixtures/harness/sequential-graph.yaml".into(),
@@ -322,7 +316,7 @@ fn routes_multiple_harness_fixtures_to_native_runner() {
 fn harness_rejects_missing_fixture_path() {
     assert_eq!(
         plan(&["harness"]),
-        LauncherAction::Error("runx harness requires a fixture path or skill package".to_owned())
+        RouterAction::Error("runx harness requires a fixture path or skill package".to_owned())
     );
 }
 
@@ -342,7 +336,7 @@ fn routes_canonical_skill_run_to_native_plan() {
             "--thread-title",
             "Docs bug",
         ]),
-        LauncherAction::RunSkill(SkillPlan {
+        RouterAction::RunSkill(SkillPlan {
             action: SkillAction::Run,
             skill_path: PathBuf::from("skills/issue-intake"),
             runner: Some("intake".to_owned()),
@@ -373,14 +367,14 @@ fn routes_canonical_skill_run_to_native_plan() {
 fn skill_rejects_legacy_runner_and_continuation_flags() {
     assert_eq!(
         plan(&["skill", "skills/issue-intake", "--runner", "intake"]),
-        LauncherAction::Error(
+        RouterAction::Error(
             "runx skill --runner is no longer supported; use `runx skill <skill> <runner>`"
                 .to_owned()
         )
     );
     assert_eq!(
             plan(&["skill", "skills/issue-intake", "--run-id", "run_123"]),
-            LauncherAction::Error(
+            RouterAction::Error(
                 "runx skill continuation flags are no longer supported; use `runx resume <run-id> <answers.json>`"
                     .to_owned()
             )
@@ -392,7 +386,7 @@ fn skill_rejects_legacy_runner_and_continuation_flags() {
             "--answers",
             "/tmp/answers.json",
         ]),
-            LauncherAction::Error(
+            RouterAction::Error(
                 "runx skill continuation flags are no longer supported; use `runx resume <run-id> <answers.json>`"
                     .to_owned()
             )
@@ -404,7 +398,7 @@ fn skill_rejects_resolver_flags_for_management_actions() {
     for action in ["publish", "search", "validate"] {
         assert_eq!(
             plan(&["skill", action, "--registry", "fixtures/registry"]),
-            LauncherAction::Error(
+            RouterAction::Error(
                 "runx skill --registry and --digest are only supported when running a skill ref"
                     .to_owned()
             ),
@@ -412,7 +406,7 @@ fn skill_rejects_resolver_flags_for_management_actions() {
         );
         assert_eq!(
             plan(&["skill", action, "--digest", "sha256:abc"]),
-            LauncherAction::Error(
+            RouterAction::Error(
                 "runx skill --registry and --digest are only supported when running a skill ref"
                     .to_owned()
             ),
@@ -425,11 +419,11 @@ fn skill_rejects_resolver_flags_for_management_actions() {
 fn rejects_legacy_skill_add_shape() {
     assert_eq!(
         plan(&["skill", "add", "acme/sourcey@1.0.0"]),
-        LauncherAction::Error("runx skill add has been removed; use runx add <ref>".to_owned())
+        RouterAction::Error("runx skill add has been removed; use runx add <ref>".to_owned())
     );
     assert_eq!(
         plan(&["skill", "add", "acme/sourcey@1.0.0", "--json"]),
-        LauncherAction::JsonError(JsonErrorPlan {
+        RouterAction::JsonError(JsonErrorPlan {
             message: "runx skill add has been removed; use runx add <ref>".to_owned(),
             code: "invalid_args".to_owned(),
             exit_code: 64,
@@ -438,14 +432,14 @@ fn rejects_legacy_skill_add_shape() {
 }
 
 #[test]
-fn connect_surface_is_removed_from_oss_launcher() {
+fn connect_surface_is_removed_from_oss_router() {
     assert_eq!(
         plan(&["connect", "--json"]),
-        LauncherAction::Error("unknown command connect".to_owned())
+        RouterAction::Error("unknown command connect".to_owned())
     );
     assert_eq!(
         plan(&["url-add", "github.com/kam/skills"]),
-        LauncherAction::Error("unknown command url-add".to_owned())
+        RouterAction::Error("unknown command url-add".to_owned())
     );
 }
 
@@ -453,7 +447,7 @@ fn connect_surface_is_removed_from_oss_launcher() {
 fn routes_export_to_native_plan() {
     assert_eq!(
         plan(&["export", "claude", "brand-voice", "--project", "--json"]),
-        LauncherAction::RunExport(ExportPlan {
+        RouterAction::RunExport(ExportPlan {
             target: Target::Claude,
             refs: vec!["brand-voice".to_owned()],
             project: true,
@@ -462,7 +456,7 @@ fn routes_export_to_native_plan() {
     );
     assert_eq!(
         plan(&["export", "codex"]),
-        LauncherAction::RunExport(ExportPlan {
+        RouterAction::RunExport(ExportPlan {
             target: Target::Codex,
             refs: Vec::new(),
             project: false,
@@ -475,11 +469,11 @@ fn routes_export_to_native_plan() {
 fn export_rejects_unknown_target_and_flags() {
     assert_eq!(
         plan(&["export", "vscode"]),
-        LauncherAction::Error("runx export target must be claude or codex, got vscode".to_owned())
+        RouterAction::Error("runx export target must be claude or codex, got vscode".to_owned())
     );
     assert_eq!(
         plan(&["export", "claude", "--project=true"]),
-        LauncherAction::Error("--project does not take a value".to_owned())
+        RouterAction::Error("--project does not take a value".to_owned())
     );
 }
 
@@ -487,7 +481,7 @@ fn export_rejects_unknown_target_and_flags() {
 fn routes_config_to_native_plan() {
     assert_eq!(
         plan(&["config", "set", "agent.model", "gpt-test", "--json"]),
-        LauncherAction::RunConfig(ConfigPlan {
+        RouterAction::RunConfig(ConfigPlan {
             action: ConfigAction::Set,
             key: Some("agent.model".to_owned()),
             value: Some("gpt-test".to_owned()),
@@ -505,7 +499,7 @@ fn routes_policy_to_native_plan_and_rejects_unknown_subcommands() {
             "fixtures/operational-policy/provider-like.json",
             "--json",
         ]),
-        LauncherAction::RunPolicy(PolicyPlan {
+        RouterAction::RunPolicy(PolicyPlan {
             action: PolicyAction::Inspect,
             path: PathBuf::from("fixtures/operational-policy/provider-like.json"),
             json: true,
@@ -513,7 +507,7 @@ fn routes_policy_to_native_plan_and_rejects_unknown_subcommands() {
     );
     assert_eq!(
         plan(&["policy", "apply"]),
-        LauncherAction::Error("unknown policy subcommand apply".to_owned())
+        RouterAction::Error("unknown policy subcommand apply".to_owned())
     );
 }
 
@@ -521,14 +515,14 @@ fn routes_policy_to_native_plan_and_rejects_unknown_subcommands() {
 fn routes_kernel_to_native_plan_and_rejects_unknown_subcommands() {
     assert_eq!(
         plan(&["kernel", "eval", "--input=-", "--json"]),
-        LauncherAction::RunKernel(KernelPlan {
+        RouterAction::RunKernel(KernelPlan {
             input: KernelInputSource::Stdin,
             json: true,
         })
     );
     assert_eq!(
         plan(&["kernel", "trace"]),
-        LauncherAction::Error("unknown kernel subcommand trace".to_owned())
+        RouterAction::Error("unknown kernel subcommand trace".to_owned())
     );
 }
 
@@ -536,14 +530,14 @@ fn routes_kernel_to_native_plan_and_rejects_unknown_subcommands() {
 fn routes_parser_to_native_plan_and_rejects_unknown_subcommands() {
     assert_eq!(
         plan(&["parser", "eval", "--input=-", "--json"]),
-        LauncherAction::RunParser(ParserPlan {
+        RouterAction::RunParser(ParserPlan {
             input: ParserInputSource::Stdin,
             json: true,
         })
     );
     assert_eq!(
         plan(&["parser", "trace"]),
-        LauncherAction::Error("unknown parser subcommand trace".to_owned())
+        RouterAction::Error("unknown parser subcommand trace".to_owned())
     );
 }
 
@@ -555,7 +549,7 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
             "fixtures/doctor/empty-success/workspace",
             "--json"
         ]),
-        LauncherAction::RunDoctor(DoctorPlan {
+        RouterAction::RunDoctor(DoctorPlan {
             mode: DoctorMode::Workspace,
             path: Some(PathBuf::from("fixtures/doctor/empty-success/workspace")),
             json: true,
@@ -563,7 +557,7 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
     );
     assert_eq!(
         plan(&["doctor", "authority", "--json"]),
-        LauncherAction::RunDoctor(DoctorPlan {
+        RouterAction::RunDoctor(DoctorPlan {
             mode: DoctorMode::Authority,
             path: None,
             json: true,
@@ -571,13 +565,13 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
     );
     assert_eq!(
         plan(&["history", "sourcey", "--json"]),
-        LauncherAction::RunHistory(HistoryPlan {
+        RouterAction::RunHistory(HistoryPlan {
             args: vec!["history".into(), "sourcey".into(), "--json".into()],
         })
     );
     assert_eq!(
         plan(&["resume", "run_123", "answers.json", "-R", "receipts", "-j",]),
-        LauncherAction::RunResume(ResumePlan {
+        RouterAction::RunResume(ResumePlan {
             run_id: "run_123".to_owned(),
             answers_path: PathBuf::from("answers.json"),
             receipt_dir: Some(PathBuf::from("receipts")),
@@ -586,7 +580,7 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
     );
     assert_eq!(
         plan(&["list", "packets", "--ok-only", "--json"]),
-        LauncherAction::RunList(ListPlan {
+        RouterAction::RunList(ListPlan {
             kind: ListKind::Packets,
             filter: FilterMode::OkOnly,
             json: true,
@@ -594,7 +588,7 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
     );
     assert_eq!(
         plan(&["new", "docs-demo", "--directory", "tmp/docs-demo", "--json"]),
-        LauncherAction::RunNew(NewPlan {
+        RouterAction::RunNew(NewPlan {
             name: "docs-demo".to_owned(),
             directory: Some(PathBuf::from("tmp/docs-demo")),
             json: true,
@@ -602,7 +596,7 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
     );
     assert_eq!(
         plan(&["init", "-g", "--prefetch", "official", "--json"]),
-        LauncherAction::RunInit(InitPlan {
+        RouterAction::RunInit(InitPlan {
             global: true,
             prefetch_official: true,
             json: true,
@@ -614,7 +608,7 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
 fn routes_dev_to_native_plan_with_scaffolded_lane_shape() {
     assert_eq!(
         plan(&["dev", "--lane", "deterministic", "--json"]),
-        LauncherAction::RunDev(DevPlan {
+        RouterAction::RunDev(DevPlan {
             root: None,
             lane: Some("deterministic".to_owned()),
             json: true,
@@ -622,7 +616,7 @@ fn routes_dev_to_native_plan_with_scaffolded_lane_shape() {
     );
     assert_eq!(
         plan(&["dev", "packages/demo", "--lane=all"]),
-        LauncherAction::RunDev(DevPlan {
+        RouterAction::RunDev(DevPlan {
             root: Some(PathBuf::from("packages/demo")),
             lane: Some("all".to_owned()),
             json: false,
@@ -634,15 +628,15 @@ fn routes_dev_to_native_plan_with_scaffolded_lane_shape() {
 fn dev_rejects_unknown_shapes_without_delegating() {
     assert_eq!(
         plan(&["dev", "--lane"]),
-        LauncherAction::Error("--lane requires a value".to_owned())
+        RouterAction::Error("--lane requires a value".to_owned())
     );
     assert_eq!(
         plan(&["dev", "--watch"]),
-        LauncherAction::Error("unknown dev flag --watch".to_owned())
+        RouterAction::Error("unknown dev flag --watch".to_owned())
     );
     assert_eq!(
         plan(&["dev", "one", "two"]),
-        LauncherAction::Error("runx dev accepts at most one root path".to_owned())
+        RouterAction::Error("runx dev accepts at most one root path".to_owned())
     );
 }
 
@@ -650,15 +644,15 @@ fn dev_rejects_unknown_shapes_without_delegating() {
 fn unsupported_doctor_and_list_shapes_fail_closed() {
     assert_eq!(
         plan(&["doctor", "--fix"]),
-        LauncherAction::Error("unknown doctor flag --fix".to_owned())
+        RouterAction::Error("unknown doctor flag --fix".to_owned())
     );
     assert_eq!(
         plan(&["doctor", "authority", "workspace"]),
-        LauncherAction::Error("runx doctor authority does not accept a path".to_owned())
+        RouterAction::Error("runx doctor authority does not accept a path".to_owned())
     );
     assert_eq!(
         plan(&["list", "skills", "--source", "registry"]),
-        LauncherAction::Error("unknown list flag --source".to_owned())
+        RouterAction::Error("unknown list flag --source".to_owned())
     );
 }
 
@@ -675,7 +669,7 @@ fn routes_registry_to_native_plan() {
             "10",
             "--json",
         ]),
-        LauncherAction::RunRegistry(RegistryPlan {
+        RouterAction::RunRegistry(RegistryPlan {
             action: RegistryAction::Search,
             subject: "echo".to_owned(),
             registry: None,
@@ -707,7 +701,7 @@ fn routes_add_to_native_plan() {
             "sha256:abc",
             "--json",
         ]),
-        LauncherAction::RunRegistry(RegistryPlan {
+        RouterAction::RunRegistry(RegistryPlan {
             action: RegistryAction::Install,
             subject: "acme/sourcey@1.0.0".to_owned(),
             registry: Some("https://runx.example.test".to_owned()),
@@ -733,7 +727,7 @@ fn routes_add_to_native_plan() {
             "https://api.runx.test",
             "--json",
         ]),
-        LauncherAction::RunUrlAdd(UrlAddPlan {
+        RouterAction::RunAddUrl(AddUrlPlan {
             repo: "github.com/kam/skills".to_owned(),
             repo_ref: Some("main".to_owned()),
             api_base_url: Some("https://api.runx.test".to_owned()),
@@ -742,7 +736,7 @@ fn routes_add_to_native_plan() {
     );
     assert_eq!(
         plan(&["add", "github.com/kam/skills", "--version", "main"]),
-        LauncherAction::Error(
+        RouterAction::Error(
             "runx add <github-url> uses --ref for git refs, not --version".to_owned()
         )
     );
@@ -754,7 +748,7 @@ fn routes_add_to_native_plan() {
             "main",
             "--json"
         ]),
-        LauncherAction::JsonError(JsonErrorPlan {
+        RouterAction::JsonError(JsonErrorPlan {
             message: "runx add <github-url> uses --ref for git refs, not --version".to_owned(),
             code: "invalid_args".to_owned(),
             exit_code: 64,
@@ -766,7 +760,7 @@ fn routes_add_to_native_plan() {
 fn routes_tool_to_native_plan_and_rejects_unknown_subcommands() {
     assert_eq!(
         plan(&["tool", "build", "tools/fixture/minimal", "--json"]),
-        LauncherAction::RunTool(ToolPlan {
+        RouterAction::RunTool(ToolPlan {
             action: ToolAction::Build,
             path: Some(PathBuf::from("tools/fixture/minimal")),
             ref_or_query: None,
@@ -785,7 +779,7 @@ fn routes_tool_to_native_plan_and_rejects_unknown_subcommands() {
             "fixture-mcp",
             "--json",
         ]),
-        LauncherAction::RunTool(ToolPlan {
+        RouterAction::RunTool(ToolPlan {
             action: ToolAction::Search,
             path: None,
             ref_or_query: Some("echo writer".to_owned()),
@@ -796,13 +790,12 @@ fn routes_tool_to_native_plan_and_rejects_unknown_subcommands() {
     );
     assert_eq!(
         plan(&["tool", "publish", "fixture.echo"]),
-        LauncherAction::Error("unknown tool subcommand publish".to_owned())
+        RouterAction::Error("unknown tool subcommand publish".to_owned())
     );
 }
 
 #[test]
-fn native_launcher_argument_errors_exit_with_usage_code() -> Result<(), Box<dyn std::error::Error>>
-{
+fn native_router_argument_errors_exit_with_usage_code() -> Result<(), Box<dyn std::error::Error>> {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_runx"))
         .args(["policy", "inspect", "--json"])
         .output()?;

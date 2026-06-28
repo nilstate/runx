@@ -11,6 +11,10 @@ source:
     profile: readonly
     cwd_policy: skill-directory
 inputs: {}
+runx:
+  artifacts:
+    named_emits:
+      payment_quote_packet: runx.payment.payment_quote_packet.v1
 ---
 
 Emit a deterministic mock payment quote for the x402 paid echo fixture.

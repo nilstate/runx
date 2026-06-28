@@ -9,7 +9,24 @@ inputs:
   payee:
     name: Acme Hosting
     account_ref: "acct_3f9c1a7e"
-  spend_limit: 2500.00
+  requested_scope:
+    principal_ref:
+      type: principal
+      uri: runx:principal:accounts-payable
+    resource_ref:
+      type: surface
+      uri: merchant:acme-hosting
+    resource_family: workspace
+    verbs:
+      - read
+    capabilities:
+      - network_egress
+    bounds:
+      network_destinations:
+        - rail.ach
+      max_fanout: 1
+      max_child_depth: 1
+    expires_at: 2026-06-30T00:00:00Z
   rail: ach
 caller:
   answers:
@@ -23,7 +40,24 @@ caller:
           name: Acme Hosting
           account_digest: "sha256:9b1f...e042"
         rail: ach
-        spend_limit: 2500.00
+        requested_scope:
+          principal_ref:
+            type: principal
+            uri: runx:principal:accounts-payable
+          resource_ref:
+            type: surface
+            uri: merchant:acme-hosting
+          resource_family: workspace
+          verbs:
+            - read
+          capabilities:
+            - network_egress
+          bounds:
+            network_destinations:
+              - rail.ach
+            max_fanout: 1
+            max_child_depth: 1
+          expires_at: 2026-06-30T00:00:00Z
         gates:
           human_approval_required: true
           preflight_required: true

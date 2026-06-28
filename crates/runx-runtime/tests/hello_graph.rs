@@ -22,8 +22,14 @@ fn hello_graph_runs_to_receipt_tree() -> Result<(), Box<dyn std::error::Error>> 
             .collect::<Vec<_>>(),
         vec!["first", "second"]
     );
-    assert_eq!(run.steps[0].output.stdout, "hello from graph\n");
-    assert!(run.steps[1].output.stdout.starts_with("hello from graph"));
+    assert_eq!(
+        run.steps[0].output.stdout,
+        "{\"message\":\"hello from graph\"}\n"
+    );
+    assert_eq!(
+        run.steps[1].output.stdout,
+        "{\"message\":\"hello from graph\"}\n"
+    );
 
     let children = run
         .steps

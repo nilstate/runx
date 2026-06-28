@@ -29,14 +29,25 @@
   "scopes": [
     "runx:control:read"
   ],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "harness_context": "runx.control.harness_context.v1"
+      }
+    }
+  },
   "runtime": {
     "command": "node",
     "args": [
       "./run.mjs"
     ]
   },
-  "output": {},
-  "source_hash": "sha256:f087b82767b7d5475dc99ec6c33a167fc1a6c0f8e72d883f522b3967ee384af6",
-  "schema_hash": "sha256:a9c2921a41e843cd01ca599e73ed561e123283a5f17fab06a6aa6e4e3529a8d6",
+  "output": {
+    "named_emits": {
+      "harness_context": "runx.control.harness_context.v1"
+    }
+  },
+  "source_hash": "sha256:7dcd7b73cf9ec06f3f40d1516c3fb7e0562927bcb4a7e8fe17256aa588acfe48",
+  "schema_hash": "sha256:54d1b403c29670f43adc2fde72cd09bc2e3a134779db69d044cb2b0f3609d409",
   "toolkit_version": "0.1.4"
 }

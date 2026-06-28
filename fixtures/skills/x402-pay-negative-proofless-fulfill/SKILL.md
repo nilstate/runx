@@ -11,6 +11,10 @@ source:
     profile: readonly
     cwd_policy: skill-directory
 inputs: {}
+runx:
+  artifacts:
+    named_emits:
+      effect_evidence_packet: runx.payment.effect_evidence_packet.v1
 ---
 
 Emit a deterministic proofless rail success for the x402 negative fixture.

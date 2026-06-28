@@ -7,6 +7,8 @@ use runx_contracts::{ExecutionSemantics, JsonObject, JsonValue};
 use runx_core::policy::{CwdPolicy, SandboxProfile};
 use serde::{Deserialize, Serialize};
 
+use crate::graph::MintAuthorityDirective;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RawSkillIr {
@@ -194,6 +196,29 @@ pub struct ActDeclaration {
     pub actor_from: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authority_from: Option<String>,
+    /// Charter attenuation: the input key carrying the member's own authority term
+    /// (the child grant minted from the charter).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_term_from: Option<String>,
+    /// The input key carrying the parent (charter) authority reference the child
+    /// term attenuates from.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_parent_from: Option<String>,
+    /// The input key carrying the subset proof that the child term is no broader
+    /// than the parent charter.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_subset_proof_from: Option<String>,
+    /// Compute path (mutually exclusive with the explicit `authority_*_from` keys
+    /// above): when present, the runtime mints the child authority term from the
+    /// charter (resolved from config) off the model path instead of receiving a
+    /// pre-built term. With `MintScopeSource::RequestedScope`, the requested child
+    /// scope is read from the input key named by `requested_scope_from`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mint_authority: Option<MintAuthorityDirective>,
+    /// The input key carrying the requested child scope, used only when
+    /// `mint_authority.source` is `MintScopeSource::RequestedScope`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requested_scope_from: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_from: Option<String>,
     /// Graph turns only: the step whose output supplies the reason prose.

@@ -14,7 +14,7 @@ use runx_contracts::{
 use thiserror::Error;
 
 use crate::credentials::CredentialDelivery;
-use crate::process_signal::{ProcessSignal, configure_process_group, signal_process_group_id};
+use crate::process::{ProcessSignal, configure_process_group, signal_process_group_id};
 use crate::redaction::trim_ascii_whitespace;
 
 const DEFAULT_TIMEOUT_MS: u64 = 5_000;

@@ -3,36 +3,120 @@
 //! downstream graph state machines and receipt sealers consume.
 
 use runx_contracts::{JsonObject, JsonValue};
-use runx_parser::GraphStep;
+use runx_parser::{GraphStep, SkillArtifactContract};
 
 use crate::RuntimeError;
 use crate::adapter::SkillOutput;
-use crate::execution::output_projection::{StepOutputProjection, project_step_output};
+use crate::execution::output_projection::{
+    BASE_OUTPUT_FIELDS, StepOutputProjection, data_envelope, project_step_output,
+};
 
+/// Project a step's output using only the consuming step's own inline contract
+/// (`run.outputs` / `artifacts`). Used where the step kind carries its own
+/// contract material (inline cli-tool / agent-task / run steps).
 pub(super) fn step_output_projection(
     step: &GraphStep,
     output: &SkillOutput,
 ) -> Result<StepOutputProjection, RuntimeError> {
-    build_step_output_projection(step, output, ClaimContextExposure::DeclaredAndContext)
+    build_step_output_projection(step, output, None)
 }
 
+/// Project a step's output from its producing runner contract.
+///
+/// The addressable surface is sourced from the contract, never from the step
+/// kind: declared `run.outputs` plus the effective artifact packets. The
+/// effective artifact contract is the step's own inline `artifacts` when present
+/// (raw inline step), otherwise `extra_artifacts` (the invoked sub-skill / tool
+/// runner contract). Base/diagnostic keys (`raw`/`skill_claim`/`stdout`/`stderr`/
+/// `status`) are inserted by `project_step_output` for receipts and replay but are
+/// never part of the addressable contract.
 pub(super) fn build_step_output_projection(
     step: &GraphStep,
     output: &SkillOutput,
-    exposure: ClaimContextExposure,
+    extra_artifacts: Option<&SkillArtifactContract>,
 ) -> Result<StepOutputProjection, RuntimeError> {
     let mut projection = project_step_output(output);
     expose_declared_run_outputs(step, &projection.claim, &mut projection.outputs)?;
-    expose_declared_artifacts(step, &projection.claim, &mut projection.outputs)?;
-    if matches!(exposure, ClaimContextExposure::DeclaredAndContext) {
-        expose_skill_claim_context_fields(&projection.claim, &mut projection.outputs);
-    }
+    expose_effective_artifacts(
+        step,
+        extra_artifacts,
+        &projection.claim,
+        &mut projection.outputs,
+    )?;
     Ok(projection)
 }
 
-pub(super) enum ClaimContextExposure {
-    DeclaredOnly,
-    DeclaredAndContext,
+/// Resolve the effective artifact contract for a step and expose its packets. The
+/// step's own inline `artifacts` (raw `JsonObject`) win; otherwise the producing
+/// runner's typed `SkillArtifactContract` is used. Both funnel through the single
+/// `expose_artifact_packets` helper so a raw inline declaration and a typed runner
+/// contract wrap identically.
+fn expose_effective_artifacts(
+    step: &GraphStep,
+    extra_artifacts: Option<&SkillArtifactContract>,
+    claim: &JsonObject,
+    outputs: &mut JsonObject,
+) -> Result<(), RuntimeError> {
+    if claim.is_empty() {
+        return Ok(());
+    }
+    if let Some(artifacts) = &step.artifacts {
+        let wrap_as = artifacts.get("wrap_as").and_then(JsonValue::as_str);
+        let named_emits = inline_named_emit_names(artifacts);
+        return expose_artifact_packets(step, wrap_as, named_emits.as_deref(), claim, outputs);
+    }
+    if let Some(artifacts) = extra_artifacts {
+        let named_emits = artifacts
+            .named_emits
+            .as_ref()
+            .map(|emits| emits.keys().cloned().collect::<Vec<_>>());
+        return expose_artifact_packets(
+            step,
+            artifacts.wrap_as.as_deref(),
+            named_emits.as_deref(),
+            claim,
+            outputs,
+        );
+    }
+    Ok(())
+}
+
+/// The single artifact-exposure helper shared by the raw inline `step.artifacts`
+/// path and the typed `SkillArtifactContract` path. `wrap_as` exposes the whole
+/// claim as one `{ data: ... }` packet (idempotent via `data_envelope`), and each
+/// `named_emits` key exposes that claim field as its own `{ data: ... }` packet.
+fn expose_artifact_packets(
+    step: &GraphStep,
+    wrap_as: Option<&str>,
+    named_emits: Option<&[String]>,
+    claim: &JsonObject,
+    outputs: &mut JsonObject,
+) -> Result<(), RuntimeError> {
+    if let Some(wrap_as) = wrap_as {
+        reject_reserved_step_output_name(step, wrap_as, "artifact output")?;
+        let value = declared_claim_value(claim, wrap_as).map_or_else(
+            || data_envelope(JsonValue::Object(claim.clone())),
+            data_envelope,
+        );
+        outputs.insert(wrap_as.to_owned(), value);
+    }
+    if let Some(named_emits) = named_emits {
+        for name in named_emits {
+            reject_reserved_step_output_name(step, name, "artifact output")?;
+            let Some(value) = declared_claim_value(claim, name) else {
+                continue;
+            };
+            outputs.insert(name.clone(), data_envelope(value));
+        }
+    }
+    Ok(())
+}
+
+fn inline_named_emit_names(artifacts: &JsonObject) -> Option<Vec<String>> {
+    let JsonValue::Object(named_emits) = artifacts.get("named_emits")? else {
+        return None;
+    };
+    Some(named_emits.keys().cloned().collect())
 }
 
 fn expose_declared_run_outputs(
@@ -59,40 +143,6 @@ fn expose_declared_run_outputs(
     Ok(())
 }
 
-fn expose_declared_artifacts(
-    step: &GraphStep,
-    claim: &JsonObject,
-    outputs: &mut JsonObject,
-) -> Result<(), RuntimeError> {
-    let Some(artifacts) = &step.artifacts else {
-        return Ok(());
-    };
-    if claim.is_empty() {
-        return Ok(());
-    }
-
-    if let Some(wrap_as) = artifacts.get("wrap_as").and_then(JsonValue::as_str) {
-        reject_reserved_step_output_name(step, wrap_as, "artifact output")?;
-        let value = declared_claim_value(claim, wrap_as).unwrap_or_else(|| {
-            let mut wrapper = JsonObject::new();
-            wrapper.insert("data".to_owned(), JsonValue::Object(claim.clone()));
-            JsonValue::Object(wrapper)
-        });
-        outputs.insert(wrap_as.to_owned(), value);
-    }
-
-    if let Some(JsonValue::Object(named_emits)) = artifacts.get("named_emits") {
-        for name in named_emits.keys() {
-            reject_reserved_step_output_name(step, name, "artifact output")?;
-            let Some(value) = declared_claim_value(claim, name) else {
-                continue;
-            };
-            outputs.insert(name.clone(), artifact_data_wrapper(value));
-        }
-    }
-    Ok(())
-}
-
 fn declared_claim_value(claim: &JsonObject, name: &str) -> Option<JsonValue> {
     claim.get(name).cloned().or_else(|| {
         ["output", "outputs", "payload"]
@@ -106,38 +156,16 @@ fn declared_claim_value(claim: &JsonObject, name: &str) -> Option<JsonValue> {
     })
 }
 
-fn expose_skill_claim_context_fields(claim: &JsonObject, outputs: &mut JsonObject) {
-    const RESERVED_OUTPUT_FIELDS: &[&str] = &["raw", "skill_claim", "stdout", "stderr", "status"];
-    for (name, value) in claim {
-        if RESERVED_OUTPUT_FIELDS.contains(&name.as_str()) || outputs.contains_key(name) {
-            continue;
-        }
-        outputs.insert(name.clone(), value.clone());
-    }
-}
-
 fn reject_reserved_step_output_name(
     step: &GraphStep,
     name: &str,
     output_kind: &str,
 ) -> Result<(), RuntimeError> {
-    const RESERVED_OUTPUT_FIELDS: &[&str] = &["raw", "skill_claim", "stdout", "stderr", "status"];
-    if RESERVED_OUTPUT_FIELDS.contains(&name) {
+    if BASE_OUTPUT_FIELDS.contains(&name) {
         return Err(RuntimeError::InvalidRunStep {
             step_id: step.id.clone(),
             reason: format!("{output_kind} name {name:?} is reserved"),
         });
     }
     Ok(())
-}
-
-fn artifact_data_wrapper(value: JsonValue) -> JsonValue {
-    match value {
-        JsonValue::Object(object) if object.contains_key("data") => JsonValue::Object(object),
-        other => {
-            let mut wrapper = JsonObject::new();
-            wrapper.insert("data".to_owned(), other);
-            JsonValue::Object(wrapper)
-        }
-    }
 }

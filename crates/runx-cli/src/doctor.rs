@@ -9,7 +9,7 @@ use runx_contracts::{
     DoctorRepairConfidence, DoctorRepairKind, DoctorRepairRisk, DoctorReport, DoctorReportSchema,
     DoctorStatus, DoctorSummary, JsonObject, JsonValue,
 };
-use runx_pay::state::{
+use runx_pay::effect_state::{
     RUNX_EFFECT_STATE_PATH_ENV, RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV,
     hosted_effect_state_backend_is_supported, resolve_effect_state_path,
 };
@@ -23,8 +23,8 @@ use runx_runtime::{
 use crate::history::{
     RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV, RUNX_RECEIPT_VERIFY_KID_ENV,
 };
-use crate::launcher::{DoctorMode, DoctorPlan};
 use crate::registry::{self, RegistryAction, RegistryPlan};
+use crate::router::{DoctorMode, DoctorPlan};
 
 const OFFICIAL_SKILLS_DIR_ENV: &str = "RUNX_OFFICIAL_SKILLS_DIR";
 

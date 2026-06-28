@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - launcher argument parity is centralized for CLI routing tests.
+// rust-style-allow: large-file - router argument parity is centralized for CLI routing tests.
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
@@ -17,7 +17,7 @@ use crate::resume::ResumePlan;
 use crate::skill::SkillPlan;
 
 #[derive(Debug, PartialEq)]
-pub enum LauncherAction {
+pub enum RouterAction {
     Error(String),
     JsonError(JsonErrorPlan),
     RunDev(DevPlan),
@@ -41,7 +41,7 @@ pub enum LauncherAction {
     RunResume(ResumePlan),
     RunSkill(SkillPlan),
     RunTool(ToolPlan),
-    RunUrlAdd(UrlAddPlan),
+    RunAddUrl(AddUrlPlan),
     PrintHelp,
     PrintAddHelp,
     PrintHistoryHelp,
@@ -65,7 +65,7 @@ pub struct JsonErrorPlan {
 
 /// Arguments for indexing a GitHub repository via `runx add <github-url>`.
 #[derive(Debug, Eq, PartialEq)]
-pub struct UrlAddPlan {
+pub struct AddUrlPlan {
     pub repo: String,
     pub repo_ref: Option<String>,
     pub api_base_url: Option<String>,
@@ -168,15 +168,15 @@ pub enum ToolAction {
     Inspect,
 }
 
-// rust-style-allow: long-function because launcher routing is the cutover gate:
+// rust-style-allow: long-function because router routing is the cutover gate:
 // every native command branch and fail-closed decision is reviewed here.
-pub fn plan_launcher(args: Vec<OsString>) -> LauncherAction {
+pub fn route_args(args: Vec<OsString>) -> RouterAction {
     if args.is_empty() || single_arg_is(&args, "--help") || single_arg_is(&args, "-h") {
-        return LauncherAction::PrintHelp;
+        return RouterAction::PrintHelp;
     }
 
     if single_arg_is(&args, "--version") || single_arg_is(&args, "-V") {
-        return LauncherAction::PrintVersion;
+        return RouterAction::PrintVersion;
     }
 
     if first_arg_is(&args, "harness") {
@@ -185,52 +185,48 @@ pub fn plan_launcher(args: Vec<OsString>) -> LauncherAction {
 
     if first_arg_is(&args, "config") {
         return crate::config::parse_config_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunConfig);
+            .map_or_else(RouterAction::Error, RouterAction::RunConfig);
     }
 
     if first_arg_is(&args, "login") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintLoginHelp;
+            return RouterAction::PrintLoginHelp;
         }
         return crate::login::parse_login_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunLogin);
+            .map_or_else(RouterAction::Error, RouterAction::RunLogin);
     }
 
     if first_arg_is(&args, "policy") {
-        return parse_policy_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunPolicy);
+        return parse_policy_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunPolicy);
     }
 
     if first_arg_is(&args, "publish") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintPublishHelp;
+            return RouterAction::PrintPublishHelp;
         }
         return crate::publish::parse_publish_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunPublish);
+            .map_or_else(RouterAction::Error, RouterAction::RunPublish);
     }
 
     if first_arg_is(&args, "kernel") {
-        return parse_kernel_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunKernel);
+        return parse_kernel_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunKernel);
     }
 
     if first_arg_is(&args, "payment") {
         return parse_payment_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunPayment);
+            .map_or_else(RouterAction::Error, RouterAction::RunPayment);
     }
 
     if first_arg_is(&args, "parser") {
-        return parse_parser_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunParser);
+        return parse_parser_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunParser);
     }
 
     if first_arg_is(&args, "doctor") {
-        return parse_doctor_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunDoctor);
+        return parse_doctor_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunDoctor);
     }
 
     if first_arg_is(&args, "dev") {
-        return parse_dev_plan(&args).map_or_else(LauncherAction::Error, LauncherAction::RunDev);
+        return parse_dev_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunDev);
     }
 
     if first_arg_is(&args, "export") {
@@ -240,88 +236,88 @@ pub fn plan_launcher(args: Vec<OsString>) -> LauncherAction {
                 .and_then(|arg| arg.to_str())
                 .is_some_and(|arg| matches!(arg, "--help" | "-h"))
         {
-            return LauncherAction::PrintHelp;
+            return RouterAction::PrintHelp;
         }
         return crate::export::parse_export_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunExport);
+            .map_or_else(RouterAction::Error, RouterAction::RunExport);
     }
 
     if first_arg_is(&args, "list") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintListHelp;
+            return RouterAction::PrintListHelp;
         }
-        return parse_list_plan(&args).map_or_else(LauncherAction::Error, LauncherAction::RunList);
+        return parse_list_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunList);
     }
 
     if first_arg_is(&args, "new") {
-        return parse_new_plan(&args).map_or_else(LauncherAction::Error, LauncherAction::RunNew);
+        return parse_new_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunNew);
     }
 
     if first_arg_is(&args, "init") {
-        return parse_init_plan(&args).map_or_else(LauncherAction::Error, LauncherAction::RunInit);
+        return parse_init_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunInit);
     }
 
     if first_arg_is(&args, "history") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintHistoryHelp;
+            return RouterAction::PrintHistoryHelp;
         }
-        return LauncherAction::RunHistory(HistoryPlan { args });
+        return RouterAction::RunHistory(HistoryPlan { args });
     }
 
     if first_arg_is(&args, "resume") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintResumeHelp;
+            return RouterAction::PrintResumeHelp;
         }
         return crate::resume::parse_resume_plan(&args).map_or_else(
             |message| json_or_human_error(&args, message),
-            LauncherAction::RunResume,
+            RouterAction::RunResume,
         );
     }
 
     if first_arg_is(&args, "verify") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintVerifyHelp;
+            return RouterAction::PrintVerifyHelp;
         }
-        return LauncherAction::RunVerify(VerifyPlan { args });
+        return RouterAction::RunVerify(VerifyPlan { args });
     }
 
     if first_arg_is(&args, "mcp") {
         if mcp_runner_before_serve(&args) {
-            return LauncherAction::Error(
+            return RouterAction::Error(
                 "runx mcp --runner must follow the serve subcommand".to_owned(),
             );
         }
         return crate::mcp::parse_mcp_plan(&args)
-            .map_or_else(LauncherAction::Error, LauncherAction::RunMcp);
+            .map_or_else(RouterAction::Error, RouterAction::RunMcp);
     }
 
     if first_arg_is(&args, "tool") {
-        return parse_tool_plan(&args).map_or_else(LauncherAction::Error, LauncherAction::RunTool);
+        return parse_tool_plan(&args).map_or_else(RouterAction::Error, RouterAction::RunTool);
     }
 
     if first_arg_is(&args, "registry") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintRegistryHelp;
+            return RouterAction::PrintRegistryHelp;
         }
         if args.len() == 1 {
-            return LauncherAction::PrintRegistryUsageError;
+            return RouterAction::PrintRegistryUsageError;
         }
         return parse_registry_plan(&args).map_or_else(
             |message| json_or_human_error(&args, message),
-            LauncherAction::RunRegistry,
+            RouterAction::RunRegistry,
         );
     }
 
     if first_arg_is(&args, "add") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintAddHelp;
+            return RouterAction::PrintAddHelp;
         }
         return parse_add_plan(&args).unwrap_or_else(|message| json_or_human_error(&args, message));
     }
 
     if first_arg_is(&args, "skill") {
         if nested_help_requested(&args) {
-            return LauncherAction::PrintSkillHelp;
+            return RouterAction::PrintSkillHelp;
         }
         if second_arg_is(&args, "add") {
             return json_or_human_error(
@@ -331,11 +327,11 @@ pub fn plan_launcher(args: Vec<OsString>) -> LauncherAction {
         }
         return crate::skill::parse_skill_plan(&args).map_or_else(
             |message| json_or_human_error(&args, message),
-            LauncherAction::RunSkill,
+            RouterAction::RunSkill,
         );
     }
 
-    LauncherAction::Error(format!(
+    RouterAction::Error(format!(
         "unknown command {}",
         args.first()
             .and_then(|arg| arg.to_str())
@@ -579,15 +575,15 @@ fn second_arg_is(args: &[OsString], expected: &str) -> bool {
     args.get(1).is_some_and(|arg| arg == OsStr::new(expected))
 }
 
-fn json_or_human_error(args: &[OsString], message: String) -> LauncherAction {
+fn json_or_human_error(args: &[OsString], message: String) -> RouterAction {
     if json_requested(args) {
-        LauncherAction::JsonError(JsonErrorPlan {
+        RouterAction::JsonError(JsonErrorPlan {
             message,
             code: "invalid_args".to_owned(),
             exit_code: 64,
         })
     } else {
-        LauncherAction::Error(message)
+        RouterAction::Error(message)
     }
 }
 
@@ -619,15 +615,15 @@ fn mcp_runner_before_serve(args: &[OsString]) -> bool {
 }
 
 // rust-style-allow: long-function - harness flag parsing stays local to the
-// launcher boundary so native dispatch does not grow a second parser surface.
-fn native_harness_plan(args: &[OsString]) -> LauncherAction {
+// router boundary so native dispatch does not grow a second parser surface.
+fn native_harness_plan(args: &[OsString]) -> RouterAction {
     let mut fixture_paths = Vec::new();
     let mut receipt_dir = None;
     let mut index = 1;
 
     while index < args.len() {
         let Some(token) = args.get(index).and_then(|arg| arg.to_str()) else {
-            return LauncherAction::Error("harness arguments must be UTF-8".to_owned());
+            return RouterAction::Error("harness arguments must be UTF-8".to_owned());
         };
 
         if !token.starts_with('-') {
@@ -640,7 +636,7 @@ fn native_harness_plan(args: &[OsString]) -> LauncherAction {
         match flag {
             "--json" | "-j" => {
                 if inline_value.is_some() {
-                    return LauncherAction::Error("--json does not take a value".to_owned());
+                    return RouterAction::Error("--json does not take a value".to_owned());
                 }
                 index += 1;
             }
@@ -651,7 +647,7 @@ fn native_harness_plan(args: &[OsString]) -> LauncherAction {
                 }
                 None => {
                     let Some(value) = args.get(index + 1) else {
-                        return LauncherAction::Error(
+                        return RouterAction::Error(
                             "--receipt-dir requires a directory".to_owned(),
                         );
                     };
@@ -661,27 +657,27 @@ fn native_harness_plan(args: &[OsString]) -> LauncherAction {
             },
             "-R" => {
                 if inline_value.is_some() {
-                    return LauncherAction::Error(
+                    return RouterAction::Error(
                         "-R requires a separate directory value".to_owned(),
                     );
                 }
                 let Some(value) = args.get(index + 1) else {
-                    return LauncherAction::Error("-R requires a directory".to_owned());
+                    return RouterAction::Error("-R requires a directory".to_owned());
                 };
                 receipt_dir = Some(value.clone());
                 index += 2;
             }
-            _ => return LauncherAction::Error(format!("unknown harness flag {flag}")),
+            _ => return RouterAction::Error(format!("unknown harness flag {flag}")),
         }
     }
 
     if fixture_paths.is_empty() {
-        return LauncherAction::Error(
+        return RouterAction::Error(
             "runx harness requires a fixture path or skill package".to_owned(),
         );
     }
 
-    LauncherAction::RunHarness(HarnessPlan {
+    RouterAction::RunHarness(HarnessPlan {
         fixture_paths,
         receipt_dir,
     })
@@ -738,12 +734,12 @@ fn parse_new_plan(args: &[OsString]) -> Result<NewPlan, String> {
     })
 }
 
-fn parse_add_plan(args: &[OsString]) -> Result<LauncherAction, String> {
+fn parse_add_plan(args: &[OsString]) -> Result<RouterAction, String> {
     let parsed = parse_add_args(args)?;
     if is_github_repo_url_like(parsed.subject.as_deref().unwrap_or_default()) {
-        return add_url_plan(parsed).map(LauncherAction::RunUrlAdd);
+        return add_url_plan(parsed).map(RouterAction::RunAddUrl);
     }
-    add_registry_plan(parsed).map(LauncherAction::RunRegistry)
+    add_registry_plan(parsed).map(RouterAction::RunRegistry)
 }
 
 #[derive(Default)]
@@ -824,7 +820,7 @@ fn set_add_string(
     Ok(next_index)
 }
 
-fn add_url_plan(parsed: AddParseState) -> Result<UrlAddPlan, String> {
+fn add_url_plan(parsed: AddParseState) -> Result<AddUrlPlan, String> {
     if parsed.registry.is_some() {
         return Err(
             "runx add <github-url> uses --api-base-url for the hosted index API, not --registry"
@@ -840,7 +836,7 @@ fn add_url_plan(parsed: AddParseState) -> Result<UrlAddPlan, String> {
                 .to_owned(),
         );
     }
-    Ok(UrlAddPlan {
+    Ok(AddUrlPlan {
         repo: parsed.subject.unwrap_or_default(),
         repo_ref: parsed.repo_ref,
         api_base_url: parsed.api_base_url,

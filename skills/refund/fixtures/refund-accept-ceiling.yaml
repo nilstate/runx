@@ -1,0 +1,131 @@
+name: refund-accept-ceiling
+kind: skill
+target: ..
+runner: accept
+inputs:
+  # The parent charter authority term the requested ceiling attenuates from.
+  charter:
+    term_id: charter
+    principal_ref:
+      type: principal
+      uri: runx:principal:agency
+    resource_ref:
+      type: repository
+      uri: runx:repository:monorepo
+    resource_family: workspace
+    verbs:
+      - read
+      - write
+      - review
+    bounds:
+      repo_path_globs:
+        - "apps/**"
+        - "packages/**"
+      network_destinations:
+        - api.internal
+        - cdn.internal
+      max_fanout: 8
+      max_child_depth: 3
+    conditions:
+      - condition_id: condition_approval
+        predicate: approval_present
+        refs: []
+    approvals:
+      - approval_ref:
+          type: decision
+          uri: runx:decision:approval
+        criterion_ids: []
+    capabilities:
+      - filesystem_read
+      - network_egress
+    expires_at: 2026-12-31T00:00:00Z
+    issued_by_ref:
+      type: principal
+      uri: runx:principal:operator
+  # The requested authority ceiling (AttenuationRequest): a strict subset of the
+  # charter on every dimension. It is both the reservation ceiling quote/reserve
+  # narrow from and the subject the runtime mints the child grant from.
+  requested_scope:
+    principal_ref:
+      type: principal
+      uri: runx:principal:member
+    resource_ref:
+      type: repository
+      uri: runx:repository:monorepo
+    resource_family: workspace
+    verbs:
+      - read
+    capabilities:
+      - filesystem_read
+    bounds:
+      repo_path_globs:
+        - "apps/**"
+      network_destinations:
+        - api.internal
+      max_fanout: 2
+      max_child_depth: 1
+    expires_at: 2026-06-30T00:00:00Z
+  original_receipt_ref: receipt:charge:mock:paid-search-001
+  original_receipt:
+    amount_minor: 125
+    currency: USD
+    settlement_family: mock
+  refund_request:
+    amount_minor: 125
+    reason: operator_refund
+  idempotency_seed: refund-paid-search-001
+caller:
+  answers:
+    agent_task.refund-quote.output:
+      refund_quote:
+        quote_id: refund_quote_demo_001
+        original_receipt_ref: receipt:charge:mock:paid-search-001
+        amount_minor: 125
+        currency: USD
+      refundable_bounds:
+        remaining_minor: 125
+        max_refund_minor: 125
+        currency: USD
+      original_receipt_link:
+        receipt_ref: receipt:charge:mock:paid-search-001
+      settlement_family: mock
+    agent_task.refund-reserve.output:
+      payment_decision:
+        decision_id: decision_refund_demo_001
+        selected: true
+        operation: refund
+        original_receipt_ref: receipt:charge:mock:paid-search-001
+      reserved_payment_authority:
+        authority_ref: authority:payment:refund-demo-001
+      idempotency:
+        key: refund:paid-search-001
+        recovery_required: true
+        original_receipt_ref: receipt:charge:mock:paid-search-001
+      reservation:
+        original_receipt_ref: receipt:charge:mock:paid-search-001
+        settlement_family: mock
+      approval:
+        required: false
+        status: not_required
+    agent_task.settlement.output:
+      refund_closure:
+        status: refunded
+        settlement_family: mock
+        original_receipt_ref: receipt:charge:mock:paid-search-001
+      refund_proof:
+        proof_ref: receipt-proof:refund:mock:paid-search-001
+        refund_idempotency_key: refund:paid-search-001
+      refund_receipt_ref: receipt:refund:mock:paid-search-001
+  approvals:
+    refund.accept.approval: true
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: agent_act_closed
+metadata:
+  public_skill: refund
+  source_case: refund-accept-ceiling
+  source: skills-fixture

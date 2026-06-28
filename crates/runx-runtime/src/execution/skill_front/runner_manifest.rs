@@ -1,9 +1,6 @@
 use super::{SkillRunError, invalid};
 #[cfg(feature = "cli-tool")]
-use super::{
-    closure_disposition_label, contract_json_value, identifier_segment, seal_skill_output,
-    sealed_output,
-};
+use super::{contract_json_value, identifier_segment, seal_skill_output, sealed_output};
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -182,7 +179,7 @@ pub(super) fn execute_cli_tool_skill_run(
         runner,
         &output,
         disposition.clone(),
-        format!("process_{}", closure_disposition_label(&disposition)),
+        format!("process_{}", disposition.label()),
         format!("cli-tool {} completed", runner.name),
         receipts.signature_config(),
     )?;

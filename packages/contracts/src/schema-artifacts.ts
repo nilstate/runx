@@ -14573,6 +14573,10 @@ export const runxSchemaArtifacts = {
                   {
                     "const": "spawn_child",
                     "type": "string"
+                  },
+                  {
+                    "const": "revoke",
+                    "type": "string"
                   }
                 ]
               },
@@ -37207,6 +37211,10 @@ export const runxSchemaArtifacts = {
                       },
                       {
                         "const": "spawn_child",
+                        "type": "string"
+                      },
+                      {
+                        "const": "revoke",
                         "type": "string"
                       }
                     ]

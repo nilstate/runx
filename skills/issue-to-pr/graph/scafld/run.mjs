@@ -195,7 +195,20 @@ const stderr = result.stderr ?? "";
 const exitCode = result.status ?? 1;
 
 let structured = null;
-if (jsonCommands.has(command)) {
+if (command === "handoff" && exitCode === 0) {
+  // scafld handoff emits raw markdown, never JSON. Wrap it in the same
+  // `{ ok, command, result }` envelope every other command uses so the runx
+  // runner contract (named_emits: result) can expose it at
+  // `<step>.result.data.markdown`; base stdout is not addressable.
+  structured = {
+    ok: true,
+    command,
+    result: {
+      task_id: taskId,
+      markdown: stdout,
+    },
+  };
+} else if (jsonCommands.has(command)) {
   try {
     structured = parseJsonPayload(command, stdout);
   } catch (error) {

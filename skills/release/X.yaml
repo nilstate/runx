@@ -269,6 +269,8 @@ runners:
           artifacts:
             named_emits:
               publish_report: publish_report
+            packets:
+              publish_report: runx.release.publish_report.v1
         - id: verify-release
           label: verify the published release
           run:
@@ -295,6 +297,8 @@ runners:
           artifacts:
             named_emits:
               release_report: release_report
+            packets:
+              release_report: runx.release.verification_report.v1
       policy:
         guards:
           - step: publish-release

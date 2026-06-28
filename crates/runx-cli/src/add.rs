@@ -12,9 +12,9 @@ use runx_runtime::registry::{
 };
 use serde::Serialize;
 
-use crate::launcher::UrlAddPlan;
+use crate::router::AddUrlPlan;
 
-pub fn run_native_url_add(plan: UrlAddPlan) -> ExitCode {
+pub fn run_native_add(plan: AddUrlPlan) -> ExitCode {
     let env = crate::history::env_map();
     let base_url = resolve_public_api_base_url(&plan, &env);
 
@@ -40,15 +40,15 @@ pub fn run_native_url_add(plan: UrlAddPlan) -> ExitCode {
     }
 }
 
-fn resolve_public_api_base_url(plan: &UrlAddPlan, env: &BTreeMap<String, String>) -> String {
+fn resolve_public_api_base_url(plan: &AddUrlPlan, env: &BTreeMap<String, String>) -> String {
     crate::public_api::resolve_base_url(plan.api_base_url.as_deref(), env)
 }
 
 fn render_result(json: bool, repo_ref: &GithubRepoRef, response: &IndexResponse) -> ExitCode {
     if json {
-        let envelope = UrlAddJsonResult {
+        let envelope = AddUrlJsonResult {
             status: "success",
-            requested: UrlAddRequestedRef {
+            requested: AddUrlRequestedRef {
                 canonical_url: &repo_ref.canonical_url,
                 owner: &repo_ref.owner,
                 repo: &repo_ref.repo,
@@ -129,16 +129,16 @@ fn fail(message: &str) -> ExitCode {
 }
 
 #[derive(Serialize)]
-struct UrlAddJsonResult<'a> {
+struct AddUrlJsonResult<'a> {
     status: &'a str,
-    requested: UrlAddRequestedRef<'a>,
+    requested: AddUrlRequestedRef<'a>,
     repo: &'a IndexedRepo,
     listings: &'a [IndexedListing],
     warnings: &'a [IndexWarning],
 }
 
 #[derive(Serialize)]
-struct UrlAddRequestedRef<'a> {
+struct AddUrlRequestedRef<'a> {
     canonical_url: &'a str,
     owner: &'a str,
     repo: &'a str,
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn resolves_base_url_in_precedence_order() {
-        let plan_with_override = UrlAddPlan {
+        let plan_with_override = AddUrlPlan {
             repo: "https://github.com/runxhq/runx".to_owned(),
             repo_ref: None,
             api_base_url: Some("https://override.example/".to_owned()),
@@ -241,7 +241,7 @@ mod tests {
         );
 
         // Without plan override, env takes over.
-        let plan_no_override = UrlAddPlan {
+        let plan_no_override = AddUrlPlan {
             repo: "https://github.com/runxhq/runx".to_owned(),
             repo_ref: None,
             api_base_url: None,

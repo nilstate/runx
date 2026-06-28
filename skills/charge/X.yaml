@@ -82,9 +82,9 @@ runners:
               sealed: boolean
               receipt_ref: string
           inputs:
-            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
             required: true
           context:
+            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
             settlement_proof: verify.charge_verification_packet.data.settlement_proof
           artifacts:
             wrap_as: charge_seal
@@ -192,9 +192,9 @@ runners:
               sealed: boolean
               receipt_ref: string
           inputs:
-            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
             required: true
           context:
+            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
             settlement_proof: verify.charge_verification_packet.data.settlement_proof
           artifacts:
             wrap_as: charge_seal
@@ -302,9 +302,9 @@ runners:
               sealed: boolean
               receipt_ref: string
           inputs:
-            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
             required: true
           context:
+            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
             settlement_proof: verify.charge_verification_packet.data.settlement_proof
           artifacts:
             wrap_as: charge_seal

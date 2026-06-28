@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/release/verification-report/v1.json",
+  "x-runx-packet-id": "runx.release.verification_report.v1",
+  "type": "object",
+  "properties": {
+    "release_tag": { "type": "string" },
+    "verdict": { "type": "string" },
+    "readbacks": { "type": "array" },
+    "missing": { "type": "array" },
+    "conditional_skips": { "type": "array" }
+  },
+  "additionalProperties": true
+}

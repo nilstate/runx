@@ -9,14 +9,15 @@ use crate::execution::output_projection::{
     StepOutputProjection, StepOutputRefs, project_step_output,
 };
 use crate::{RuntimeError, StepRun};
+use runx_contracts::fingerprint::sha256_hex;
 use runx_contracts::schema::NonEmptyString;
 use runx_contracts::{
-    ActForm, AuthorityAttenuation, AuthoritySubsetResult, Closure, ClosureDisposition,
-    CredentialDeliveryObservation, CriterionBinding, CriterionStatus, Decision, DecisionChoice,
-    DecisionInputs, DecisionJustification, FanoutReceiptSyncPoint, Intent, JsonObject, Lineage,
-    RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority, ReceiptEnforcement,
-    ReceiptIdempotency, ReceiptIssuer, ReceiptSchema, Reference, ReferenceType, Seal,
-    SignatureAlgorithm, Subject, json_string_field, receipt_subject_kind,
+    ActForm, AuthorityAttenuation, AuthoritySubsetResult, AuthorityTerm, Closure,
+    ClosureDisposition, CredentialDeliveryObservation, CriterionBinding, CriterionStatus, Decision,
+    DecisionChoice, DecisionInputs, DecisionJustification, FanoutReceiptSyncPoint, Intent,
+    JsonObject, Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority,
+    ReceiptEnforcement, ReceiptIdempotency, ReceiptIssuer, ReceiptSchema, Reference, ReferenceType,
+    Seal, SignatureAlgorithm, Subject, json_string_field, receipt_subject_kind,
 };
 use runx_receipts::{
     ReceiptProofContext, ReceiptProofContextProvider, ReceiptSignature, ReceiptTreeConfig,
@@ -37,17 +38,12 @@ pub fn step_receipt(
     output: &SkillOutput,
     created_at: &str,
 ) -> Result<Receipt, RuntimeError> {
-    let disposition = disposition(output);
-    step_receipt_with_disposition(StepReceiptWithDisposition {
-        graph_name,
-        step_id,
-        attempt,
-        output,
-        created_at,
-        reason_code: process_reason_code(&disposition),
-        disposition,
-        summary: format!("step {step_id} completed"),
-    })
+    step_receipt_with_disposition_and_policy(
+        StepReceiptWithDisposition::with_default_closure(
+            graph_name, step_id, attempt, output, created_at,
+        ),
+        RuntimeReceiptSignaturePolicy::local_development(),
+    )
 }
 
 pub fn step_receipt_with_signature_policy(
@@ -58,18 +54,10 @@ pub fn step_receipt_with_signature_policy(
     created_at: &str,
     signature_policy: RuntimeReceiptSignaturePolicy<'_>,
 ) -> Result<Receipt, RuntimeError> {
-    let disposition = disposition(output);
     step_receipt_with_disposition_and_policy(
-        StepReceiptWithDisposition {
-            graph_name,
-            step_id,
-            attempt,
-            output,
-            created_at,
-            reason_code: process_reason_code(&disposition),
-            disposition,
-            summary: format!("step {step_id} completed"),
-        },
+        StepReceiptWithDisposition::with_default_closure(
+            graph_name, step_id, attempt, output, created_at,
+        ),
         signature_policy,
     )
 }
@@ -82,19 +70,11 @@ pub fn step_receipt_with_authority_grant_refs(
     authority_grant_refs: Vec<Reference>,
     created_at: &str,
 ) -> Result<Receipt, RuntimeError> {
-    let disposition = disposition(output);
     let projection = project_step_output(output);
     step_receipt_with_disposition_projection_authority_and_policy(
-        StepReceiptWithDisposition {
-            graph_name,
-            step_id,
-            attempt,
-            output,
-            created_at,
-            reason_code: process_reason_code(&disposition),
-            disposition,
-            summary: format!("step {step_id} completed"),
-        },
+        StepReceiptWithDisposition::with_default_closure(
+            graph_name, step_id, attempt, output, created_at,
+        ),
         &projection,
         authority_grant_refs,
         RuntimeReceiptSignaturePolicy::local_development(),
@@ -112,13 +92,34 @@ pub(crate) struct StepReceiptWithDisposition<'a> {
     pub(crate) summary: String,
 }
 
-pub(crate) fn step_receipt_with_disposition(
-    params: StepReceiptWithDisposition<'_>,
-) -> Result<Receipt, RuntimeError> {
-    step_receipt_with_disposition_and_policy(
-        params,
-        RuntimeReceiptSignaturePolicy::local_development(),
-    )
+impl<'a> StepReceiptWithDisposition<'a> {
+    /// A step-receipt request whose closure is derived from the output (the
+    /// process-exit default): `Closed`/`Failed` by exit status, the matching
+    /// `process_*` reason code, and a generic completion summary. This is the
+    /// single source of that derivation for the process-exit step receipts.
+    pub(crate) fn with_default_closure(
+        graph_name: &'a str,
+        step_id: &'a str,
+        attempt: u32,
+        output: &'a SkillOutput,
+        created_at: &'a str,
+    ) -> Self {
+        let StepSealClosure {
+            disposition,
+            reason_code,
+            summary,
+        } = StepSealClosure::default_for(output, step_id);
+        Self {
+            graph_name,
+            step_id,
+            attempt,
+            output,
+            created_at,
+            disposition,
+            reason_code,
+            summary,
+        }
+    }
 }
 
 pub(crate) fn step_receipt_with_disposition_and_policy(
@@ -126,17 +127,9 @@ pub(crate) fn step_receipt_with_disposition_and_policy(
     signature_policy: RuntimeReceiptSignaturePolicy<'_>,
 ) -> Result<Receipt, RuntimeError> {
     let projection = project_step_output(params.output);
-    step_receipt_with_disposition_projection_and_policy(params, &projection, signature_policy)
-}
-
-pub(crate) fn step_receipt_with_disposition_projection_and_policy(
-    params: StepReceiptWithDisposition<'_>,
-    projection: &StepOutputProjection,
-    signature_policy: RuntimeReceiptSignaturePolicy<'_>,
-) -> Result<Receipt, RuntimeError> {
     step_receipt_with_disposition_projection_authority_and_policy(
         params,
-        projection,
+        &projection,
         Vec::new(),
         signature_policy,
     )
@@ -225,6 +218,20 @@ pub(crate) struct StepSealClosure {
     pub(crate) summary: String,
 }
 
+impl StepSealClosure {
+    /// The process-exit default closure derived from the output: `Closed`/`Failed`
+    /// by exit status, the matching `process_*` reason code, and a generic
+    /// completion summary. The single source of this derivation.
+    pub(crate) fn default_for(output: &SkillOutput, step_id: &str) -> Self {
+        let disposition = disposition(output);
+        Self {
+            reason_code: process_reason_code(&disposition),
+            summary: format!("step {step_id} completed"),
+            disposition,
+        }
+    }
+}
+
 pub(crate) fn seal_step(
     params: StepSeal<'_>,
     signature_policy: RuntimeReceiptSignaturePolicy<'_>,
@@ -243,14 +250,7 @@ pub(crate) fn seal_step(
         disposition,
         reason_code,
         summary,
-    } = closure.unwrap_or_else(|| {
-        let disposition = disposition(output);
-        StepSealClosure {
-            reason_code: process_reason_code(&disposition),
-            summary: format!("step {step_id} completed"),
-            disposition,
-        }
-    });
+    } = closure.unwrap_or_else(|| StepSealClosure::default_for(output, step_id));
     step_receipt_with_disposition_projection_authority_and_policy(
         StepReceiptWithDisposition {
             graph_name,
@@ -615,7 +615,34 @@ fn subject(graph_name: &str, node_id: &str, kind: NonEmptyString) -> Subject {
     }
 }
 
+/// The stable identity of the local runtime's enforcement profile. The hash is
+/// derived over this id plus the profile's redaction/setup/teardown refs, never
+/// over [`ReceiptEnforcement`] itself (which carries the resulting hash).
+const RUNTIME_ENFORCEMENT_PROFILE_ID: &str = "runx.runtime.enforcement.profile.v1";
+
+/// Content-address an enforcement profile as `sha256:<digest>` over its stable
+/// id plus its redaction/setup/teardown ref inputs in deterministic order. Both
+/// runtime `ReceiptEnforcement` build sites (the generic `authority()` helper and
+/// the domain-act seal) call this so the profile hash has one source of truth.
+fn enforcement_profile_hash(
+    redaction_refs: &[Reference],
+    setup_refs: &[Reference],
+    teardown_refs: &[Reference],
+) -> NonEmptyString {
+    let identity = serde_json::json!({
+        "profile_id": RUNTIME_ENFORCEMENT_PROFILE_ID,
+        "redaction_refs": redaction_refs,
+        "setup_refs": setup_refs,
+        "teardown_refs": teardown_refs,
+    });
+    let canonical = serde_json::to_vec(&identity).unwrap_or_default();
+    format!("sha256:{}", sha256_hex(&canonical)).into()
+}
+
 fn authority(grant_refs: Vec<Reference>) -> ReceiptAuthority {
+    let redaction_refs = Vec::new();
+    let setup_refs = Vec::new();
+    let teardown_refs = Vec::new();
     ReceiptAuthority {
         actor_ref: Reference::runx(ReferenceType::Principal, "local_runtime"),
         authority_proof_refs: Vec::new(),
@@ -628,10 +655,10 @@ fn authority(grant_refs: Vec<Reference>) -> ReceiptAuthority {
         },
         mandate_ref: None,
         enforcement: ReceiptEnforcement {
-            profile_hash: "sha256:runtime-skeleton-enforcement".into(),
-            redaction_refs: Vec::new(),
-            setup_refs: Vec::new(),
-            teardown_refs: Vec::new(),
+            profile_hash: enforcement_profile_hash(&redaction_refs, &setup_refs, &teardown_refs),
+            redaction_refs,
+            setup_refs,
+            teardown_refs,
         },
     }
 }
@@ -653,6 +680,12 @@ pub(crate) struct DomainActFrame {
     pub actor_ref: Reference,
     pub authority_grant_refs: Vec<Reference>,
     pub authority_scope_refs: Vec<Reference>,
+    /// The member's own authority term (the child grant minted from the charter).
+    /// Empty for an unattenuated turn.
+    pub authority_terms: Vec<AuthorityTerm>,
+    /// The charter attenuation: the parent authority and the subset proof that the
+    /// child term is no broader. `None` for a root (unattenuated) turn.
+    pub authority_attenuation: Option<AuthorityAttenuation>,
     pub previous: Option<Reference>,
 }
 
@@ -745,22 +778,25 @@ pub(crate) fn domain_act_receipt(
         closure: Some(closure),
         artifact_refs: frame.artifact_refs.clone(),
     };
+    let redaction_refs = Vec::new();
+    let setup_refs = Vec::new();
+    let teardown_refs = Vec::new();
     let authority = ReceiptAuthority {
         actor_ref: frame.actor_ref,
         authority_proof_refs: Vec::new(),
         grant_refs: frame.authority_grant_refs,
         scope_refs: frame.authority_scope_refs,
-        terms: Vec::new(),
-        attenuation: AuthorityAttenuation {
+        terms: frame.authority_terms,
+        attenuation: frame.authority_attenuation.unwrap_or(AuthorityAttenuation {
             parent_authority_ref: None,
             subset_proof: None,
-        },
+        }),
         mandate_ref: None,
         enforcement: ReceiptEnforcement {
-            profile_hash: "sha256:runtime-skeleton-enforcement".into(),
-            redaction_refs: Vec::new(),
-            setup_refs: Vec::new(),
-            teardown_refs: Vec::new(),
+            profile_hash: enforcement_profile_hash(&redaction_refs, &setup_refs, &teardown_refs),
+            redaction_refs,
+            setup_refs,
+            teardown_refs,
         },
     };
     let seal = seal(
@@ -1150,14 +1186,13 @@ impl SignatureVerifier for RuntimeReceiptSignatureVerifier<'_> {
         body_digest: &str,
     ) -> Result<(), SignatureVerificationFailure> {
         if is_local_pseudo_signature(&signature.value) {
-            return if self.policy.allows_local_pseudo_signatures()
-                && signature.value == format!("sig:{body_digest}")
-            {
+            if !self.policy.allows_local_pseudo_signatures() {
+                return Err(SignatureVerificationFailure::MalformedSignature);
+            }
+            return if signature.value.strip_prefix("sig:") == Some(body_digest) {
                 Ok(())
-            } else if self.policy.allows_local_pseudo_signatures() {
-                Err(SignatureVerificationFailure::SignatureMismatch)
             } else {
-                Err(SignatureVerificationFailure::MalformedSignature)
+                Err(SignatureVerificationFailure::SignatureMismatch)
             };
         }
         let Some(verifier) = self.policy.production_verifier else {
@@ -1179,8 +1214,7 @@ fn authority_attenuation_verified(attenuation: &AuthorityAttenuation) -> bool {
             proof.parent_authority_ref == *parent
                 && matches!(proof.result, AuthoritySubsetResult::Subset)
         }
-        (Some(_), None) | (None, Some(_)) => false,
-        (None, None) => false,
+        _ => false,
     }
 }
 

@@ -22,6 +22,8 @@ inputs:
 caller:
   answers:
     agent_task.messageboard-deliver.output:
+      effect_family: messageboard
+      operation: deliver
       actor_kid: worker
       posting_id: post_sqlite_3
       delivery:

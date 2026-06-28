@@ -73,10 +73,10 @@ fn minor_unit_caps_subset(
     child_payment: &AuthorityEffectLimit,
     parent_payment: &AuthorityEffectLimit,
 ) -> bool {
-    if uses_minor_units(child) && child_payment.max_per_call_units.is_none() {
-        return false;
-    }
-    if uses_minor_units(child) && parent_payment.max_per_call_units.is_none() {
+    if uses_minor_units(child)
+        && (child_payment.max_per_call_units.is_none()
+            || parent_payment.max_per_call_units.is_none())
+    {
         return false;
     }
 
@@ -130,6 +130,12 @@ fn rails_subset(child: &AuthorityEffectLimit, parent: &AuthorityEffectLimit) -> 
             .all(|rail| parent.channels.contains(rail))
 }
 
+// Subset-time monotonicity: a child may not drop a required-boolean flag its
+// parent set (attenuation can only narrow, never relax). The
+// `receipt_before_success` clause here is distinct from the admission-time guard
+// in `authority::authority_requires_effect_receipt_before_success`, which reads
+// the same flag to decide whether the live step must hold a rail receipt. Both
+// fire at different points and gate different things; keep both.
 fn required_booleans_subset(child: &AuthorityEffectLimit, parent: &AuthorityEffectLimit) -> bool {
     (!parent.preflight_required || child.preflight_required)
         && (!parent.commitment_required || child.commitment_required)

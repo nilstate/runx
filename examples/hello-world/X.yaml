@@ -28,6 +28,9 @@ runners:
     command: node
     args:
       - run.mjs
+    artifacts:
+      named_emits:
+        message: message
     inputs:
       message:
         type: string

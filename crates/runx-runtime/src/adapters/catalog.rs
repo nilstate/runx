@@ -17,6 +17,7 @@ use crate::adapter::{
 use crate::adapter_pipeline::{AdapterCapture, AdapterProjection};
 use crate::adapters::cli_tool::CliToolAdapter;
 use crate::credentials::CredentialDelivery;
+use crate::execution::output_projection::data_envelope;
 use crate::json_render::json_number_string;
 use crate::tool_catalogs::search::{FixtureTool, fixture_tool};
 use crate::tool_catalogs::{ToolCatalogError, ToolInspectOptions, resolve_local_tool};
@@ -107,21 +108,48 @@ fn resolve_data_source_router(
     catalog_ref: &str,
     request: &mut SkillInvocation,
 ) -> Result<Option<String>, String> {
+    let Some((adapter, binding)) = router_target(
+        catalog_ref,
+        &request.inputs,
+        &request.env,
+        &request.skill_directory,
+    )?
+    else {
+        return Ok(None);
+    };
+
+    request.inputs.insert(
+        "data_source_binding".to_owned(),
+        JsonValue::Object(binding.clone()),
+    );
+    request
+        .resolved_inputs
+        .insert("data_source_binding".to_owned(), JsonValue::Object(binding));
+    Ok(Some(adapter))
+}
+
+/// Resolve the `data.source` router to the concrete adapter ref and binding it
+/// dispatches to, without mutating the invocation. Shared by the invoke path
+/// (which folds the binding into inputs) and the step-output artifact resolution
+/// (which needs the concrete adapter's artifact contract, since the router ref
+/// has no manifest of its own). Returns `Ok(None)` for any non-router tool ref.
+fn router_target(
+    catalog_ref: &str,
+    inputs: &JsonObject,
+    env: &BTreeMap<String, String>,
+    skill_directory: &Path,
+) -> Result<Option<(String, JsonObject)>, String> {
     if catalog_ref != DATA_SOURCE_ROUTER_TOOL_REF {
         return Ok(None);
     }
 
-    let data_source_ref = string_input(&request.inputs, "data_source_ref")
+    let data_source_ref = string_input(inputs, "data_source_ref")
         .ok_or_else(|| "data.source requires input data_source_ref.".to_owned())?
         .to_owned();
-    let binding = match data_source_binding(
-        &data_source_ref,
-        &request.env,
-        &request.skill_directory,
-    )? {
+    let binding = match data_source_binding(&data_source_ref, env, skill_directory)? {
         Some(binding) => binding,
         None if data_source_ref.starts_with("local://") => {
-            default_local_data_source_binding(&data_source_ref, &request.inputs)
+            default_local_data_source_binding(&data_source_ref, inputs)
         }
         None => {
             return Err(format!(
@@ -142,16 +170,7 @@ fn resolve_data_source_router(
             "Data source '{data_source_ref}' adapter '{adapter}' must be a namespaced tool ref such as data.local."
         ));
     }
-    let adapter = adapter.to_owned();
-
-    request.inputs.insert(
-        "data_source_binding".to_owned(),
-        JsonValue::Object(binding.clone()),
-    );
-    request
-        .resolved_inputs
-        .insert("data_source_binding".to_owned(), JsonValue::Object(binding));
-    Ok(Some(adapter))
+    Ok(Some((adapter.to_owned(), binding)))
 }
 
 fn default_local_data_source_binding(data_source_ref: &str, inputs: &JsonObject) -> JsonObject {
@@ -371,11 +390,11 @@ fn invoke_local_tool(
 /// adapter, applying any artifact wrappers. This is the single resolve-and-invoke
 /// path shared by the catalog adapter and the managed-agent tool executor.
 /// Returns `Ok(None)` when the reference does not resolve to a local tool.
-pub(crate) fn resolve_and_invoke_local_tool(
-    request: &LocalToolRequest<'_>,
-    started: Instant,
-) -> Result<Option<SkillOutput>, RuntimeError> {
-    let resolution = match resolve_local_tool(&ToolInspectOptions {
+/// The `ToolInspectOptions` that resolve a local tool by reference for the given
+/// invocation context. Shared by the resolve-and-invoke path and the artifact
+/// contract lookup so both see the same tool from the same roots.
+fn local_tool_inspect_options(request: &LocalToolRequest<'_>) -> ToolInspectOptions {
+    ToolInspectOptions {
         root: workspace_root(request.env, request.skill_directory),
         tool_ref: request.tool_ref.to_owned(),
         source: None,
@@ -383,7 +402,42 @@ pub(crate) fn resolve_and_invoke_local_tool(
         tool_roots: configured_tool_roots(request.env),
         fixture_catalog_enabled: false,
         allow_explicit_manifest_path: request.allow_explicit_manifest_path,
-    }) {
+    }
+}
+
+/// Resolve only the artifact contract a local tool declares, for the step-output
+/// projection of a `tool:` step. The catalog adapter wraps the packet into the
+/// claim at invoke time; without the old auto-copy the OUTER step must expose that
+/// packet via this contract, so `<step>.<wrap_as>.data.<field>` resolves.
+/// Returns `Ok(None)` when the reference does not resolve to a local tool.
+pub(crate) fn resolve_local_tool_artifacts(
+    request: &LocalToolRequest<'_>,
+) -> Result<Option<SkillArtifactContract>, RuntimeError> {
+    // The `data.source` router ref has no manifest of its own; resolve it to the
+    // concrete adapter the catalog will actually run so the artifact contract
+    // matches the packet the adapter folds into the claim. A router that cannot
+    // resolve here is left to the invoke path to report the binding error.
+    let mut options = local_tool_inspect_options(request);
+    if let Ok(Some((adapter, _))) = router_target(
+        request.tool_ref,
+        request.inputs,
+        request.env,
+        request.skill_directory,
+    ) {
+        options.tool_ref = adapter;
+    }
+    match resolve_local_tool(&options) {
+        Ok(resolution) => Ok(resolution.tool.artifacts),
+        Err(error) if local_lookup_miss(&error) => Ok(None),
+        Err(error) => Err(catalog_error(request.skill_name, error)),
+    }
+}
+
+pub(crate) fn resolve_and_invoke_local_tool(
+    request: &LocalToolRequest<'_>,
+    started: Instant,
+) -> Result<Option<SkillOutput>, RuntimeError> {
+    let resolution = match resolve_local_tool(&local_tool_inspect_options(request)) {
         Ok(resolution) => resolution,
         Err(error) if local_lookup_miss(&error) => return Ok(None),
         Err(error) => return Err(catalog_error(request.skill_name, error)),
@@ -467,9 +521,12 @@ fn apply_local_tool_artifact_wrappers(
     if let Some(wrap_as) = artifacts.wrap_as.as_deref()
         && !object.contains_key(wrap_as)
     {
-        let mut wrapper = JsonObject::new();
-        wrapper.insert("data".to_owned(), JsonValue::Object(object.clone()));
-        object.insert(wrap_as.to_owned(), JsonValue::Object(wrapper));
+        // Wrap the claim in the canonical `{ data: ... }` envelope idempotently: a tool
+        // that already emits a self-described `{ schema, data }` packet is exposed as-is
+        // (single `.data`) rather than re-wrapped into `.data.data`. Mirrors the
+        // `named_emits` branch so artifact depth is uniform across both forms.
+        let wrapped = data_envelope(JsonValue::Object(object.clone()));
+        object.insert(wrap_as.to_owned(), wrapped);
         changed = true;
     }
 
@@ -478,9 +535,7 @@ fn apply_local_tool_artifact_wrappers(
             let Some(value) = object.get(name).cloned() else {
                 continue;
             };
-            let mut wrapper = JsonObject::new();
-            wrapper.insert("data".to_owned(), value);
-            object.insert(name.clone(), JsonValue::Object(wrapper));
+            object.insert(name.clone(), data_envelope(value));
             changed = true;
         }
     }

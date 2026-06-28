@@ -11,6 +11,10 @@ source:
     profile: readonly
     cwd_policy: skill-directory
 inputs: {}
+runx:
+  artifacts:
+    named_emits:
+      payment_reservation_packet: runx.payment.payment_reservation_packet.v1
 ---
 
 # x402 Pay Negative Authority Broader Child Reserve

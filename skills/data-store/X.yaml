@@ -1,5 +1,5 @@
 skill: data-store
-version: "0.1.1"
+version: "0.1.2"
 
 catalog:
   kind: skill
@@ -7,6 +7,41 @@ catalog:
   visibility: public
   role: canonical
   runtime_path: data-adapter
+
+harness:
+  cases:
+    - name: data-store-append-and-readback-default-sqlite
+      runner: append_and_readback
+      inputs:
+        data_source_ref: local://runx-data-store/default-sqlite-fixture
+        resource: board_events
+        aggregate_id: default-sqlite-posting-123
+        expected_version: 0
+        idempotency_key: default-sqlite-posting-123:create:v1
+        event:
+          type: posting.created
+          payload:
+            title: verify default sqlite-backed local data source
+            actor: runx:principal:example
+            amount_minor: 500
+            currency: usd
+      expect:
+        status: sealed
+    - name: data-store-append-version-conflict
+      runner: append_event
+      inputs:
+        data_source_ref: local://runx-data-store/version-conflict
+        store_id: data-store-version-conflict-v1
+        resource: generic_events
+        aggregate_id: item-1
+        expected_version: 1
+        idempotency_key: item-1:create-conflict:v1
+        event:
+          type: item.created
+          payload:
+            label: conflict item
+      expect:
+        status: sealed
 
 policy:
   allow:

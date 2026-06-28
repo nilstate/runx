@@ -9,6 +9,11 @@ export default defineTool({
     decision: recordInput({ optional: true, description: "Optional runx.decision.v1 packet that selected the next harness action." }),
   },
   scopes: ["runx:control:read"],
+  output: {
+    named_emits: {
+      harness_context: "runx.control.harness_context.v1",
+    },
+  },
   run({ inputs }) {
     const harness = isRecord(inputs.harness) ? inputs.harness : undefined;
     const signal = isRecord(inputs.signal) ? inputs.signal : undefined;

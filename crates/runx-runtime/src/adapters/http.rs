@@ -1,10 +1,10 @@
 // rust-style-allow: large-file because the governed HTTP front keeps the request
 // engine, the skill adapter, and their unit tests in one review unit, mirroring
-// runtime_http.rs.
+// http.rs.
 //! Governed HTTP execution on the runtime HTTP transport.
 //!
 //! The keystone call-out front. Given a method, URL, and inputs, this builds a
-//! request, sends it through the governed `runtime_http` transport (which enforces
+//! request, sends it through the governed `http` transport (which enforces
 //! SSRF and private-network filtering, header validation, no-redirect, SSL, and
 //! timeouts), and maps the response to the universal [`SkillOutput`]. GET and DELETE
 //! map inputs to the query string; POST, PUT, and PATCH map them to a JSON body. It reuses the same
@@ -25,7 +25,7 @@ use crate::adapter::{
     SkillOutput,
 };
 use crate::credentials::SecretEnv;
-use crate::runtime_http::{
+use crate::http::{
     DEFAULT_BROWSER_USER_AGENT, HttpMethod, ReqwestHttpTransport, RuntimeHttpHeader,
     RuntimeHttpRequest, RuntimeHttpTransport,
 };
@@ -384,7 +384,7 @@ fn add_credential_delivery_metadata(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime_http::{RuntimeHttpError, RuntimeHttpResponse};
+    use crate::http::{RuntimeHttpError, RuntimeHttpResponse};
     use std::cell::RefCell;
     use std::collections::BTreeMap;
     use std::path::PathBuf;

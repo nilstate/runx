@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/release/publish-report/v1.json",
+  "x-runx-packet-id": "runx.release.publish_report.v1",
+  "type": "object",
+  "properties": {
+    "registry_url": { "type": "string" },
+    "release_tag": { "type": "string" },
+    "commit_sha": { "type": "string" },
+    "announcement_packet": { "type": "object", "additionalProperties": true },
+    "side_effects": { "type": "array" }
+  },
+  "additionalProperties": true
+}

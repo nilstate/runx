@@ -221,7 +221,7 @@ until then consumers depend on the specific crate they need.
 The runtime crate is the impure owner, but it should not read as one flat bag
 of side effects. Current modules map to these implementation buckets:
 
-- Service construction: `config`, `credentials`, `registry`, `runtime_http`,
+- Service construction: `config`, `credentials`, `registry`, `http`,
   `receipts::paths`, `receipts::signing`, and the `RuntimeOptions` entrypoint.
   These modules resolve environment, credentials, registry roots, HTTP clients,
   receipt paths, and signing policy. They should become typed service facets

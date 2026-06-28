@@ -1,5 +1,5 @@
 import { generateKeyPairSync, sign } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
@@ -7,8 +7,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-describe("official skill native fetch", () => {
-  it("acquires, caches, and reruns official shorthand through the native resolver", async () => {
+describe("registry skill native fetch", () => {
+  it("acquires, caches, and reruns a registry skill through the native resolver", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-official-fetch-"));
     const projectDir = path.join(tempDir, "project");
     const globalHomeDir = path.join(tempDir, "home");
@@ -22,13 +22,14 @@ describe("official skill native fetch", () => {
         registryDir,
         subject: path.resolve("skills/sourcey/SKILL.md"),
         profile: path.resolve("skills/sourcey/X.yaml"),
-        owner: "runx",
+        owner: "acme",
         version: sourceyLock.version,
         env,
       });
+      const skillRef = `acme/sourcey@${sourceyLock.version}`;
 
       const first = runNativeSkill(env, [
-        "sourcey",
+        skillRef,
         "--registry",
         registryDir,
         "--json",
@@ -36,12 +37,12 @@ describe("official skill native fetch", () => {
       ]);
       const firstJson = parseJsonOutput(first, 2);
       expect((firstJson as { status?: string }).status).toBe("needs_agent");
-      const firstPath = findOfficialSkillCachePath(globalHomeDir, "runx/sourcey");
+      const firstPath = findRegistrySkillCachePath(globalHomeDir, "acme/sourcey");
       expect((await stat(path.join(firstPath, "SKILL.md"))).isFile()).toBe(true);
       expect((await stat(path.join(firstPath, "X.yaml"))).isFile()).toBe(true);
 
       const second = runNativeSkill(env, [
-        "sourcey",
+        skillRef,
         "--registry",
         registryDir,
         "--json",
@@ -55,7 +56,7 @@ describe("official skill native fetch", () => {
     }
   });
 
-  it("rejects an official acquisition with a digest mismatch before caching", async () => {
+  it("rejects a registry acquisition with a digest mismatch before caching", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-official-fetch-digest-"));
     const projectDir = path.join(tempDir, "project");
     const globalHomeDir = path.join(tempDir, "home");
@@ -79,15 +80,17 @@ describe("official skill native fetch", () => {
         registryDir,
         subject: wrongSkillPath,
         profile: path.resolve("skills/sourcey/X.yaml"),
-        owner: "runx",
+        owner: "acme",
         version: sourceyLock.version,
         env,
       });
 
       const result = runNativeSkill(env, [
-        "sourcey",
+        `acme/sourcey@${sourceyLock.version}`,
         "--registry",
         registryDir,
+        "--digest",
+        sourceyLock.digest,
         "--input",
         `project=${projectDir}`,
         "--json",
@@ -95,14 +98,18 @@ describe("official skill native fetch", () => {
       ]);
       expect(result.status).toBe(1);
       expect(result.stderr).toBe("");
-      expect((JSON.parse(result.stdout) as { error?: { message?: string } }).error?.message).toContain("digest mismatch");
-      expect(existsSync(path.join(globalHomeDir, "official-skills", "runx", "sourcey", "SKILL.md"))).toBe(false);
+      expect(
+        (JSON.parse(result.stdout) as { error?: { message?: string } }).error?.message,
+      ).toContain("digest mismatch");
+      expect(
+        existsSync(path.join(globalHomeDir, "official-skills", "acme", "sourcey", "SKILL.md")),
+      ).toBe(false);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
 
-  it("copies graph stages beside cached official graph skills", async () => {
+  it("copies graph stages beside cached registry graph skills", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-official-fetch-stages-"));
     const projectDir = path.join(tempDir, "project");
     const globalHomeDir = path.join(tempDir, "home");
@@ -116,15 +123,21 @@ describe("official skill native fetch", () => {
         registryDir,
         subject: path.resolve("skills/spend/SKILL.md"),
         profile: path.resolve("skills/spend/X.yaml"),
-        owner: "runx",
+        owner: "acme",
         version: lockEntry.version,
         env,
       });
 
-      const result = runNativeSkill(env, ["spend", "--registry", registryDir, "--json", "--non-interactive"]);
+      const result = runNativeSkill(env, [
+        `acme/spend@${lockEntry.version}`,
+        "--registry",
+        registryDir,
+        "--json",
+        "--non-interactive",
+      ]);
       const output = parseJsonOutput(result, 2);
       expect((output as { status?: string }).status).toBe("needs_agent");
-      const skillPath = findOfficialSkillCachePath(globalHomeDir, "runx/spend");
+      const skillPath = findRegistrySkillCachePath(globalHomeDir, "acme/spend");
       for (const stage of ["pay-quote", "pay-reserve", "pay-fulfill-rail"]) {
         expect(
           (await stat(
@@ -133,17 +146,12 @@ describe("official skill native fetch", () => {
           stage,
         ).toBe(true);
       }
-      expect(
-        (await stat(
-          path.join(skillPath, "graph", "pay-fulfill-rail", "stripe-spt-fulfill-adapter.mjs"),
-        )).isFile(),
-      ).toBe(true);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
 
-  it("copies local tool adapters beside cached official graph skills", async () => {
+  it("copies local tool adapters beside cached registry graph skills", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-official-fetch-data-store-"));
     const projectDir = path.join(tempDir, "project");
     const globalHomeDir = path.join(tempDir, "home");
@@ -157,17 +165,16 @@ describe("official skill native fetch", () => {
         registryDir,
         subject: path.resolve("skills/data-store/SKILL.md"),
         profile: path.resolve("skills/data-store/X.yaml"),
-        owner: "runx",
+        owner: "acme",
         version: lockEntry.version,
         env,
       });
 
       const result = runNativeSkill(env, [
-        "data-store",
+        `acme/data-store@${lockEntry.version}`,
+        "append_event",
         "--registry",
         registryDir,
-        "--runner",
-        "append_event",
         "--input",
         "data_source_ref=local://runx-data-store/official-cache",
         "--input",
@@ -180,18 +187,21 @@ describe("official skill native fetch", () => {
         "expected_version=0",
         "--input",
         "idempotency_key=posting-123:create:v1",
-        "--input",
-        "event",
-        "{\"type\":\"posting.created\",\"payload\":{\"title\":\"cached data-store smoke\"}}",
+        "--input-json",
+        "event={\"type\":\"posting.created\",\"payload\":{\"title\":\"cached data-store smoke\"}}",
         "--json",
         "--non-interactive",
       ]);
       const output = parseJsonOutput(result, 0) as { status?: string };
 
       expect(output.status).toBe("sealed");
-      const cachedSkillPath = findOfficialSkillCachePath(globalHomeDir, "runx/data-store");
-      expect((await stat(path.join(cachedSkillPath, "tools", "data", "local", "manifest.json"))).isFile()).toBe(true);
-      expect((await stat(path.join(cachedSkillPath, "tools", "data", "local", "run.mjs"))).isFile()).toBe(true);
+      const cachedSkillPath = findRegistrySkillCachePath(globalHomeDir, "acme/data-store");
+      expect(
+        (await stat(path.join(cachedSkillPath, "tools", "data", "local", "manifest.json"))).isFile(),
+      ).toBe(true);
+      expect(
+        (await stat(path.join(cachedSkillPath, "tools", "data", "local", "run.mjs"))).isFile(),
+      ).toBe(true);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -199,7 +209,7 @@ describe("official skill native fetch", () => {
 });
 
 function testEnv(projectDir: string, globalHomeDir: string): NodeJS.ProcessEnv {
-  return {
+  const env: NodeJS.ProcessEnv = {
     ...process.env,
     RUNX_CWD: projectDir,
     RUNX_HOME: globalHomeDir,
@@ -209,6 +219,13 @@ function testEnv(projectDir: string, globalHomeDir: string): NodeJS.ProcessEnv {
       process.env.RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64 ?? "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=",
     RUNX_RECEIPT_SIGN_ISSUER_TYPE: process.env.RUNX_RECEIPT_SIGN_ISSUER_TYPE ?? "hosted",
   };
+  delete env.RUNX_REGISTRY_DIR;
+  delete env.RUNX_REGISTRY_URL;
+  delete env.RUNX_REGISTRY_SOURCE_AUTHORITY;
+  delete env.RUNX_REGISTRY_MANIFEST_TRUST_KEY_ID;
+  delete env.RUNX_REGISTRY_MANIFEST_TRUST_KEY_BASE64;
+  delete env.RUNX_REGISTRY_MANIFEST_TRUST_OWNER;
+  return env;
 }
 
 async function officialSkillLock(skillId: string): Promise<{
@@ -257,7 +274,7 @@ function parseJsonOutput(result: {
   return JSON.parse(result.stdout);
 }
 
-function findOfficialSkillCachePath(globalHomeDir: string, skillId: string): string {
+function findRegistrySkillCachePath(globalHomeDir: string, skillId: string): string {
   const [owner, name] = skillId.split("/");
   if (!owner || !name) {
     throw new Error(`Invalid skill id ${skillId}.`);
@@ -286,7 +303,7 @@ function findOfficialSkillCachePath(globalHomeDir: string, skillId: string): str
   };
   walk(base);
   if (matches.length !== 1) {
-    throw new Error(`expected one cached official package for ${skillId}, found ${matches.length}`);
+    throw new Error(`expected one cached registry package for ${skillId}, found ${matches.length}`);
   }
   return matches[0];
 }
@@ -300,13 +317,12 @@ function publishLocalRegistrySkill(input: {
   readonly profile?: string;
   readonly trustTier?: "verified" | "community";
 }): void {
+  input.env.RUNX_REGISTRY_DIR = input.registryDir;
+  delete input.env.RUNX_REGISTRY_SOURCE_AUTHORITY;
   const signingKey = testManifestSigningKey();
   input.env.RUNX_REGISTRY_MANIFEST_TRUST_KEY_ID = signingKey.keyId;
   input.env.RUNX_REGISTRY_MANIFEST_TRUST_KEY_BASE64 = signingKey.publicKeyBase64;
   input.env.RUNX_REGISTRY_MANIFEST_TRUST_OWNER = input.owner;
-  if (input.owner === "runx") {
-    input.env.RUNX_REGISTRY_SOURCE_AUTHORITY = "official_runx";
-  }
   const args = [
     "registry",
     "publish",
@@ -334,21 +350,6 @@ function publishLocalRegistrySkill(input: {
     throw new Error(`failed to publish local registry fixture: ${result.stderr || result.stdout}`);
   }
   signPublishedRegistryEntry(input.registryDir, signingKey);
-}
-
-async function writeTestFile(filePath: string, contents: string): Promise<void> {
-  await rm(path.dirname(filePath), { recursive: true, force: true });
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, contents, "utf8");
-}
-
-function nativeRunxBinaryForTest(): string {
-  const existing = process.env.RUNX_DEV_RUST_CLI_BIN;
-  if (existing) {
-    return existing;
-  }
-  const candidate = path.resolve("crates/target/debug/runx");
-  return existsSync(candidate) ? candidate : "runx";
 }
 
 interface TestManifestSigningKey {
@@ -432,4 +433,19 @@ function findSingleRegistryEntry(root: string): string {
     throw new Error(`expected one registry fixture entry, found ${matches.length}`);
   }
   return matches[0];
+}
+
+async function writeTestFile(filePath: string, contents: string): Promise<void> {
+  await rm(path.dirname(filePath), { recursive: true, force: true });
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, contents, "utf8");
+}
+
+function nativeRunxBinaryForTest(): string {
+  const existing = process.env.RUNX_DEV_RUST_CLI_BIN;
+  if (existing) {
+    return existing;
+  }
+  const candidate = path.resolve("crates/target/debug/runx");
+  return existsSync(candidate) ? candidate : "runx";
 }

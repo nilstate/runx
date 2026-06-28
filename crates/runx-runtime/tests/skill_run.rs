@@ -1806,10 +1806,14 @@ fn native_graph_skill_run_executes_nested_cli_tool_skill() -> Result<(), Box<dyn
     assert_eq!(string_field(nested, "message"), Some("Nested graph bug"));
     let step_outputs = object_field(payload, "step_outputs").ok_or("missing step outputs")?;
     let nested_step = object_field(step_outputs, "nested").ok_or("missing nested step output")?;
+    // The contract packet exposes the claim's `nested` field under the single
+    // `{ data: ... }` envelope: `<step>.nested.data.message`.
     let declared_nested =
         object_field(nested_step, "nested").ok_or("missing exposed nested output")?;
+    let declared_nested_data =
+        object_field(declared_nested, "data").ok_or("missing exposed nested data envelope")?;
     assert_eq!(
-        string_field(declared_nested, "message"),
+        string_field(declared_nested_data, "message"),
         Some("Nested graph bug")
     );
     let root_receipt_id = string_field(output, "receipt_id").ok_or("missing receipt id")?;
@@ -2846,6 +2850,10 @@ source:
   args:
     - run.mjs
   input_mode: stdin
+runx:
+  artifacts:
+    named_emits:
+      nested: nested
 ---
 # Child Echo
 "#,

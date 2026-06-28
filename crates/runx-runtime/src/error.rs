@@ -34,6 +34,24 @@ pub enum RuntimeError {
     UnsupportedRunStep { step_id: String, run_type: String },
     #[error("graph step '{step_id}' is blocked: {reason}")]
     GraphBlocked { step_id: String, reason: String },
+    #[error(
+        "context edge from step '{from_step}' could not resolve path '{output_path}': segment '{missing_segment}' is absent; available keys there: [{}]",
+        .available_keys.join(", ")
+    )]
+    ContextEdgeUnresolved {
+        from_step: String,
+        output_path: String,
+        missing_segment: String,
+        available_keys: Vec<String>,
+    },
+    #[error(
+        "context edge from step '{from_step}' binds base/diagnostic field '{base_field}' (path '{output_path}'); base fields (raw/skill_claim/stdout/stderr/status) are not addressable, bind the step contract (a declared output or artifact packet) instead"
+    )]
+    ContextEdgeBaseKey {
+        from_step: String,
+        output_path: String,
+        base_field: String,
+    },
     #[error("authority {verb:?} denied graph step '{step_id}': {reason}")]
     AuthorityDenied {
         verb: AuthorityVerb,

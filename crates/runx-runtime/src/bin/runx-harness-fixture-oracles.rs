@@ -362,7 +362,7 @@ impl SkillAdapter for FixtureOracleAdapter {
     }
 
     fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, runx_runtime::RuntimeError> {
-        let stdout = request
+        let message = request
             .inputs
             .get("message")
             .and_then(|value| match value {
@@ -371,6 +371,12 @@ impl SkillAdapter for FixtureOracleAdapter {
             })
             .unwrap_or_default()
             .to_owned();
+        // Emit a structured `{ "message": ... }` claim so a producer step's declared
+        // artifact contract (for example json-output's `result` packet) is addressable
+        // by downstream context edges under the contract-only addressing model.
+        let mut claim = JsonObject::default();
+        claim.insert("message".to_owned(), JsonValue::String(message));
+        let stdout = serde_json::to_string(&JsonValue::Object(claim)).unwrap_or_default();
         Ok(SkillOutput {
             status: InvocationStatus::Success,
             stdout,

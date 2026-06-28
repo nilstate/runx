@@ -1,0 +1,35 @@
+name: agency-advance-integration
+kind: skill
+target: ..
+runner: advance
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://agency/int-cases":{"adapter":"data.sqlite","database_path":".runx/data/agency-int.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+inputs:
+  data_source_ref: tenant://agency/int-cases
+  case_id: case-int-1
+  driver_id: drv-1
+caller:
+  answers:
+    agent_task.ops-desk-advance.output:
+      decision: dispatch
+      reason: The case is open; the smallest useful next move is to draft the doc update within scope.
+      dispatch:
+        member: writer
+        skill: draft-content
+        task: Draft the doc update for the drifted API reference.
+        needed_scope:
+          - docs.write
+        consequence: draft
+        verification:
+          expected_receipt: runx.receipt.v1
+          readback: draft-content effect for the docs update on case-int-1
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - read
+    - reduce
+    - decide
+    - plan
+    - append

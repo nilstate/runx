@@ -1,11 +1,83 @@
 skill: ops-desk
-version: "0.1.3"
+version: "0.2.1"
 
 catalog:
   kind: skill
   audience: operator
   visibility: public
   role: canonical
+
+harness:
+  cases:
+    - name: ops-desk-operate-from-sqlite-projection
+      runner: operate_from_projection
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://ops-desk/sqlite-state":{"adapter":"data.sqlite","database_path":".runx/data/ops-desk-state.sqlite","resources":{"ops_projection":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: tenant://ops-desk/sqlite-state
+        resource: ops_projection
+        aggregate_id: workspace-example
+        objective: Check the workspace and tell me the next safe action.
+        scope_ref: workspace:example
+        receipt_summary:
+          receipts: []
+        provider_status:
+          runx_api: ok
+        approval_context:
+          approvals: []
+        operator_policy: Route live sends through send-as and money movement through spend or refund.
+      caller:
+        answers:
+          agent_task.ops-desk.output:
+            ops_desk_packet:
+              decision: needs_input
+              scope_ref: workspace:example
+              objective: Check the workspace and tell me the next safe action.
+              mode: read_only
+              dashboard:
+                health: unknown
+                money: unknown
+                communications: unknown
+                providers: ok
+                receipts: unknown
+              findings:
+                - severity: warning
+                  area: receipts
+                  summary: The projection is empty, so there is no receipt-backed operating state yet.
+                  evidence_refs:
+                    - data-store.read_projection
+              proposals: []
+              ordered_next_steps:
+                - step: Append a governed state event or provide a receipt summary before proposing live actions.
+                  lane: data-store
+                  requires_confirmation: false
+              refused_reasons: []
+              needs_input:
+                - receipt-backed operating state
+              success_checkpoint:
+                milestone: state loaded
+                description: A projection read was attempted before operator planning.
+      expect:
+        status: sealed
+    - name: ops-desk-operate-needs-agent
+      runner: operate_from_projection
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://ops-desk/sqlite-state":{"adapter":"data.sqlite","database_path":".runx/data/ops-desk-state.sqlite","resources":{"ops_projection":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: tenant://ops-desk/sqlite-state
+        resource: ops_projection
+        aggregate_id: workspace-example
+        objective: Check the workspace and tell me the next safe action.
+        scope_ref: workspace:example
+        receipt_summary:
+          receipts: []
+        provider_status:
+          runx_api: ok
+        approval_context:
+          approvals: []
+        operator_policy: Route live sends through send-as and money movement through spend or refund.
+      expect:
+        status: needs_agent
 
 runners:
   operate:
@@ -82,6 +154,69 @@ runners:
         type: string
         required: false
         description: Optional action id or lane selected by the dashboard.
+
+  advance:
+    type: agent-task
+    agent: operator
+    task: ops-desk-advance
+    outputs:
+      decision: string
+      dispatch: object
+      escalation: object
+      resolution: object
+      reason: string
+    artifacts:
+      wrap_as: dispatch_decision
+      packet: runx.effect.transition.v1
+    runx:
+      category: ops
+    instructions: >
+      Decide the single next move for a standing case advanced toward a mandate.
+      Inputs are the mandate, the current case_state, and a fixed candidate_roster
+      of dispatchable members, each a role with its skill and scope ceiling. Choose
+      exactly one of: dispatch one roster member, escalate, or done. Hard-constrain
+      every choice to candidate_roster; never name a member, skill, or lane that is
+      not in the roster, and never widen a member's scope beyond its ceiling. Rank
+      by the smallest useful next action toward the mandate, the same way the
+      operate runner ranks, and apply the same gates: if the best move is
+      consequential (money movement, public send, provider mutation, deploy,
+      destructive, target or credential change) and approval_context does not prove
+      approval, return decision=escalate with an approval prompt instead of
+      dispatching. If case_state shows the mandate is satisfied, return
+      decision=done with the reason. If no roster member can act and nothing is
+      escalatable, return decision=escalate to the configured human or member and
+      name the missing input. Never invent a member outside the roster; never claim
+      work settled, sent, paid, deployed, or done without naming the receipt or
+      readback that will prove it.
+    inputs:
+      mandate:
+        type: string
+        required: true
+        description: The standing objective the case is advancing toward.
+      case_state:
+        type: json
+        required: true
+        description: The current folded case projection (status, turn, members_used, spent, acts, over_limits).
+      candidate_roster:
+        type: json
+        required: true
+        description: The fixed set of dispatchable members as [{ role, skill, scope }]. The decision must choose only from this set.
+      scope_ref:
+        type: string
+        required: true
+        description: The bounded operating surface the case operates.
+      approval_context:
+        type: json
+        required: false
+        description: Existing approvals, denials, or policy gates for consequential moves.
+      operator_policy:
+        type: string
+        required: false
+        description: Tenant-specific guardrails and lane names. Context, not authority.
+      project_profile:
+        type: string
+        required: false
+        description: Topology and verification expectations. Context, not authority.
 
   review-action:
     type: agent-task
@@ -196,7 +331,7 @@ runners:
             project_profile: "$input.project_profile"
             requested_action: "$input.requested_action"
           context:
-            dashboard_snapshot: read-state.step_outputs.read.data_operation_result.data.projection
+            dashboard_snapshot: read-state.data_operation_result.data.projection
           artifacts:
             wrap_as: ops_desk_packet
             packet: runx.ops_desk.packet.v1

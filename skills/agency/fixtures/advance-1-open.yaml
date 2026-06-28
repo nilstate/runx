@@ -1,0 +1,22 @@
+name: agency-advance-integration-open
+kind: skill
+target: ..
+runner: open
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://agency/int-cases":{"adapter":"data.sqlite","database_path":".runx/data/agency-int.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+inputs:
+  data_source_ref: tenant://agency/int-cases
+  case_id: case-int-1
+  agency_ref: docs-agency
+  mandate: keep the published docs current and accurate
+  roster:
+    - { role: writer, skill: draft-content, scope: [docs.write] }
+    - { role: reviewer, skill: review-skill, scope: [docs.read] }
+  limits:
+    max_turns: 50
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - open

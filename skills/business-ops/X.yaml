@@ -116,7 +116,7 @@ runners:
             expected_version: "$input.expected_version"
             idempotency_key: "$input.idempotency_key"
           context:
-            event: classify.lane_packet
+            event: classify.lane_packet.data
         - id: readback
           skill: ../data-store
           runner: read_projection

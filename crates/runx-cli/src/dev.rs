@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use runx_runtime::dev::DevLane;
 use runx_runtime::{DevLoopOptions, DevReport, DevReportStatus, render_dev_result, run_dev_once};
 
-use crate::launcher::DevPlan;
+use crate::router::DevPlan;
 
 pub fn run_native_dev(plan: DevPlan) -> ExitCode {
     let current_dir = match env::current_dir() {

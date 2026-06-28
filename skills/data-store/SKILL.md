@@ -150,6 +150,13 @@ All runners return `runx.data.operation_result.v1`:
 Provider adapters may add provider evidence under `provider_evidence`, but they
 must not expose credentials or raw secret material.
 
+For event streams, adapters derive a readable `event_type` in this order:
+explicit `event.type`, explicit `event.event_type`, then
+`event.effect_family + "." + event.operation`. Domain skills that emit the
+generic `runx.effect.transition.v1` packet should include `effect_family` and
+`operation` on every event so readback projections say `messageboard.accept`,
+`business_ops.route`, or another meaningful transition instead of `data.event`.
+
 ## Worked example
 
 A messageboard skill decides that `posting.claimed` is allowed. It emits a

@@ -2,7 +2,7 @@
 
 This directory captures the canonical native Rust CLI/runtime surface. The
 matrix is generated from `scripts/generate-cli-feature-parity.ts` and checked
-against `crates/runx-cli/src/launcher.rs`.
+against `crates/runx-cli/src/router.rs`.
 
 Required exit-code coverage: `"exitCodes": [0, 1, 2, 64]`.
 

@@ -39,4 +39,4 @@ steps:
   - id: synthesize
     skill: ../../../skills/echo
     context:
-      message: branch_0.recommendation
+      message: branch_0.result.data.recommendation

@@ -1,7 +1,12 @@
+// rust-style-allow: large-file because skill-source validation keeps the source-kind
+// parsing, the artifact/mint coherence rules, and their error construction as one
+// cohesive unit; splitting it would scatter the source contract across files.
 use runx_contracts::{JsonObject, JsonValue};
 
 use crate::ValidationError;
 use crate::graph::{RawGraphIr, validate_graph_document};
+
+use crate::graph::MintScopeSource;
 
 use super::{
     ActDeclaration, FIELDS, InputMode, SkillHttpSource, SkillMcpServer, SkillSource, SourceKind,
@@ -111,10 +116,51 @@ fn validate_act_declaration(
     let Some(value) = value else {
         return Ok(None);
     };
-    serde_json::to_value(value)
+    let act = serde_json::to_value(value)
         .and_then(serde_json::from_value::<ActDeclaration>)
-        .map(Some)
-        .map_err(|error| FIELDS.validation_error(format!("source.act is malformed: {error}")))
+        .map_err(|error| FIELDS.validation_error(format!("source.act is malformed: {error}")))?;
+    validate_act_authority_coherence(&act)?;
+    Ok(Some(act))
+}
+
+/// Reject incoherent authority declarations: the compute path (`mint_authority`)
+/// and the explicit pre-built path (`authority_*_from`) are mutually exclusive,
+/// and each mint source draws from exactly one place (`requested_scope` needs
+/// `requested_scope_from`; `static_scopes` must not declare it).
+fn validate_act_authority_coherence(act: &ActDeclaration) -> Result<(), ValidationError> {
+    let Some(directive) = act.mint_authority else {
+        if act.requested_scope_from.is_some() {
+            return Err(FIELDS.validation_error(
+                "source.act.requested_scope_from is only valid with a mint_authority directive.",
+            ));
+        }
+        return Ok(());
+    };
+    if act.authority_term_from.is_some()
+        || act.authority_parent_from.is_some()
+        || act.authority_subset_proof_from.is_some()
+    {
+        return Err(FIELDS.validation_error(
+            "source.act.mint_authority (compute path) is mutually exclusive with the pre-built authority_term_from / authority_parent_from / authority_subset_proof_from keys.",
+        ));
+    }
+    match directive.source {
+        MintScopeSource::StaticScopes => {
+            if act.requested_scope_from.is_some() {
+                return Err(FIELDS.validation_error(
+                    "source.act.mint_authority source static_scopes must not declare requested_scope_from.",
+                ));
+            }
+        }
+        MintScopeSource::RequestedScope => {
+            if act.requested_scope_from.is_none() {
+                return Err(FIELDS.validation_error(
+                    "source.act.mint_authority source requested_scope requires requested_scope_from.",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn parse_source_kind(value: &str, field: &str) -> Result<SourceKind, ValidationError> {
@@ -327,4 +373,73 @@ fn validate_agent_command_boundary(
         )));
     }
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
+mod tests {
+    use crate::graph::MintScopeSource;
+    use runx_contracts::JsonValue;
+
+    use super::validate_act_declaration;
+    use serde_json::json;
+
+    fn act_value(value: serde_json::Value) -> JsonValue {
+        serde_json::from_value(value).expect("convertible act value")
+    }
+
+    fn act_err(value: serde_json::Value) -> String {
+        validate_act_declaration(Some(&act_value(value)))
+            .err()
+            .map(|error| error.to_string())
+            .expect("act unexpectedly validated")
+    }
+
+    #[test]
+    fn requested_scope_mint_act_validates() {
+        let act = validate_act_declaration(Some(&act_value(json!({
+            "mint_authority": {"source": "requested_scope"},
+            "requested_scope_from": "needed_scope",
+        }))))
+        .expect("valid act")
+        .expect("present act");
+        assert_eq!(
+            act.mint_authority.map(|directive| directive.source),
+            Some(MintScopeSource::RequestedScope)
+        );
+    }
+
+    #[test]
+    fn mint_authority_conflicts_with_prebuilt_path() {
+        let message = act_err(json!({
+            "mint_authority": {"source": "static_scopes"},
+            "authority_term_from": "member_authority",
+        }));
+        assert!(message.contains("mutually exclusive"));
+    }
+
+    #[test]
+    fn requested_scope_act_requires_input_key() {
+        let message = act_err(json!({
+            "mint_authority": {"source": "requested_scope"},
+        }));
+        assert!(message.contains("requires requested_scope_from"));
+    }
+
+    #[test]
+    fn static_scopes_act_rejects_requested_scope_from() {
+        let message = act_err(json!({
+            "mint_authority": {"source": "static_scopes"},
+            "requested_scope_from": "needed_scope",
+        }));
+        assert!(message.contains("must not declare requested_scope_from"));
+    }
+
+    #[test]
+    fn dangling_requested_scope_from_in_act_is_rejected() {
+        let message = act_err(json!({
+            "requested_scope_from": "needed_scope",
+        }));
+        assert!(message.contains("only valid with a mint_authority directive"));
+    }
 }

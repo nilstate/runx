@@ -507,5 +507,5 @@ fn skill_json_failure_output(message: &str, code: &str, provenance: Option<JsonO
     }
     serde_json::to_string_pretty(&JsonValue::Object(output))
         .map(|json| format!("{json}\n"))
-        .unwrap_or_else(|_| crate::launcher::json_failure_output(message, code))
+        .unwrap_or_else(|_| crate::router::json_failure_output(message, code))
 }

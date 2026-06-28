@@ -16,6 +16,8 @@ inputs:
 caller:
   answers:
     agent_task.messageboard-moderate.output:
+      effect_family: messageboard
+      operation: moderate
       moderator_kid: moderator
       posting_id: post_1
       decision: approve

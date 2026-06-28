@@ -16,7 +16,11 @@ import {
   pushGitHubLifecycleIntent,
   selectPreferredGitHubPullRequest,
 } from "../tools/thread/github_adapter.mjs";
-import { buildFranticThreadProviderPush } from "../tools/thread/frantic_thread_outbox.mjs";
+import {
+  buildCreateFrame,
+  buildLifecycleFrame,
+  buildMessageFrame,
+} from "../tools/thread/thread_desired_state.mjs";
 
 describe("GitHub thread helper", () => {
   it("parses adapter refs, locators, and canonical issue URLs into one stable shape", () => {
@@ -295,25 +299,31 @@ describe("GitHub thread helper", () => {
     });
   });
 
-  it("maps Frantic thread intents into GitHub provider push frames", () => {
-    const frame = buildFranticThreadProviderPush({
+  it("maps a desired-thread comment into a GitHub message provider frame", () => {
+    const thread = {
       schema_version: 1,
-      kind: "thread.comment",
-      outbox_id: "github:payout-1:thread.comment",
       provider: "github",
+      target_repo: "auscaster/frantic-board",
+      identity_key: "frantic:bounty:7",
       thread_locator: "github://auscaster/frantic-board/issues/7",
-      source: "frantic",
-      source_ref: "github:payout-1",
-      event_id: 99,
-      occurred_at: "2026-06-13T00:00:00.000Z",
-      room: "town",
-      posting_id: "auscaster/frantic-board#7",
-      bounty_number: 7,
-      bounty_url: "https://gofrantic.com/bounties/7",
-      receipt_ref: "frantic:receipt:payout:7",
-      receipt_url: "https://gofrantic.com/receipts/frantic%3Areceipt%3Apayout%3A7",
-      body: "Frantic paid the final accepted claim and closed the bounty.",
-    });
+      title: "Frantic bounty #7",
+      body: "Frantic is the source of truth.",
+      labels: ["bounty", "funded", "available"],
+      managed_labels: ["bounty", "funded", "available", "paid", "closed"],
+      state: "open",
+      comments: [],
+      ref: { posting_id: "auscaster/frantic-board#7", bounty_number: 7 },
+    };
+    const frame = buildMessageFrame(
+      thread,
+      {
+        entry_id: "github:payout-1:thread.comment",
+        body: "Frantic paid one accepted claim.",
+        receipt_ref: "frantic:receipt:payout:7",
+      },
+      thread.thread_locator,
+      { sourceId: "frantic" },
+    );
 
     expect(frame).toMatchObject({
       protocol_version: "runx.thread_outbox_provider.v1",
@@ -340,58 +350,68 @@ describe("GitHub thread helper", () => {
       kind: "message",
       metadata: {
         channel: "github_issue_comment",
-        body_markdown: expect.stringContaining("https://gofrantic.com/bounties/7"),
+        source: "frantic",
+        outbox_receipt_id: "frantic:receipt:payout:7",
       },
     });
   });
 
-  it("maps Frantic thread creation intents into pending GitHub provider frames", () => {
-    const frame = buildFranticThreadProviderPush({
+  it("maps a desired-thread state into create and lifecycle provider frames", () => {
+    const thread = {
       schema_version: 1,
-      kind: "thread.create",
-      outbox_id: "frantic:bounty:9:github:thread.create",
       provider: "github",
-      source: "frantic",
-      source_ref: "frantic:receipt:funding:9",
-      event_id: 41,
-      occurred_at: "2026-06-13T00:00:00.000Z",
-      room: "town",
-      posting_id: "round-one-009",
-      bounty_number: 9,
-      bounty_url: "https://gofrantic.com/bounties/9",
-      receipt_ref: "frantic:receipt:funding:9",
-      receipt_url: "https://gofrantic.com/receipts/frantic%3Areceipt%3Afunding%3A9",
       target_repo: "auscaster/frantic-board",
+      identity_key: "frantic:bounty:9",
       title: "Frantic bounty #9: Audit the public receipt trail",
       body: "Frantic is the source of truth.",
-      labels: ["frantic:bounty", "frantic:funded", "frantic:open"],
-      dedupe_key: "frantic:bounty:9:github:thread.create",
-    });
+      labels: ["bounty", "funded", "available"],
+      managed_labels: ["bounty", "funded", "available", "claimed", "paid", "closed"],
+      state: "open",
+      comments: [],
+      ref: { posting_id: "round-one-009", bounty_number: 9 },
+    };
 
-    expect(frame).toMatchObject({
+    const createFrame = buildCreateFrame(thread, { sourceId: "frantic" });
+    expect(createFrame).toMatchObject({
       protocol_version: "runx.thread_outbox_provider.v1",
       provider: "github",
-      outbox_entry_id: "frantic:bounty:9:github:thread.create",
+      outbox_entry_id: "frantic:bounty:9",
       thread_locator: {
         type: "provider_thread_target",
         locator: expect.stringContaining("github://auscaster/frantic-board/issues/new/"),
       },
     });
-    const body = JSON.parse((frame.payload as { body: string }).body);
-    expect(body.thread).toMatchObject({
+    const createBody = JSON.parse((createFrame.payload as { body: string }).body);
+    expect(createBody.thread).toMatchObject({
       metadata: {
         repo: "auscaster/frantic-board",
         pending_provider_thread: true,
       },
     });
-    expect(body.outbox_entry).toMatchObject({
+    expect(createBody.outbox_entry).toMatchObject({
       kind: "provider_thread_create",
       metadata: {
         target_repo: "auscaster/frantic-board",
-        posting_id: "round-one-009",
-        bounty_number: "9",
+        labels: ["bounty", "funded", "available"],
+        dedupe_key: "frantic:bounty:9",
       },
     });
+
+    const lifecycleFrame = buildLifecycleFrame(
+      { ...thread, state: "closed", close_reason: "completed", labels: ["paid", "closed"] },
+      "github://auscaster/frantic-board/issues/9",
+      { sourceId: "frantic" },
+    );
+    const lifecycleBody = JSON.parse((lifecycleFrame.payload as { body: string }).body);
+    expect(lifecycleBody.outbox_entry).toMatchObject({
+      kind: "provider_thread_lifecycle",
+      metadata: {
+        action: "close",
+        close_reason: "completed",
+      },
+    });
+    expect(lifecycleBody.outbox_entry.metadata.add_labels).toContain("paid");
+    expect(lifecycleBody.outbox_entry.metadata.remove_labels).toContain("available");
   });
 
   it("creates Frantic GitHub issues idempotently through the GitHub adapter", async () => {

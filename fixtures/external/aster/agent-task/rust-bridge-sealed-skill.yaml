@@ -54,7 +54,7 @@ expect:
   status: "sealed"
   receipt:
     schema: "runx.receipt.v1"
-    receipt_id: "sha256:b1145b2eebab0b5a857213533049344f421a114a5dac373bcfcc16d61acf45c5"
+    receipt_id: "sha256:c166ea6befeacbb05430a99c4534a0c5a964aa32280ebd4ed59c20df4d4c0834"
     harness_id: "hrn_aster-rust-bridge-sealed-skill_aster-rust-bridge-sealed-skill"
     state: "sealed"
     disposition: "closed"

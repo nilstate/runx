@@ -14,8 +14,8 @@ runners:
     outputs:
       send_plan: object
     artifacts:
-      wrap_as: send_plan_packet
-      packet: runx.send_as.plan.v1
+      named_emits:
+        send_plan: runx.send_as.plan.v1
     runx:
       category: ops
     inputs:

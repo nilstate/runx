@@ -494,14 +494,14 @@ fn verification_status(
     let verification = verify_receipt_proof(receipt, &context);
     // The decision -> act-id integrity property is checked inline against
     // `acts[]` by `verify_receipt`; no journal indirection remains.
-    let blocking: Vec<_> = verification.findings.iter().collect();
-    if blocking.is_empty() {
+    if verification.findings.is_empty() {
         if signature_policy.can_report_production_verified() {
             "verified".to_owned()
         } else {
             "unverified".to_owned()
         }
-    } else if blocking
+    } else if verification
+        .findings
         .iter()
         .all(|finding| matches!(finding.code, ReceiptFindingCode::SignatureVerifierMissing))
     {
@@ -908,7 +908,7 @@ fn paused_run_from_events(run_id: &str, events: &[LedgerRunEvent]) -> Option<Pau
                     .skill_name
                     .clone()
                     .unwrap_or_else(|| run_id.to_owned()),
-                kind: run_kind(run_id),
+                kind: RUN_KIND.to_owned(),
                 status: "paused".to_owned(),
                 started_at: started_at.or_else(|| event.created_at.clone()),
                 resume_skill_ref: event.resume_skill_ref.clone(),
@@ -932,7 +932,7 @@ fn invalid_paused_run(run_id: &str, reason: String) -> PausedRunSummary {
     PausedRunSummary {
         id: run_id.to_owned(),
         name: run_id.to_owned(),
-        kind: run_kind(run_id),
+        kind: RUN_KIND.to_owned(),
         status: "paused".to_owned(),
         started_at: None,
         resume_skill_ref: None,
@@ -946,10 +946,7 @@ fn invalid_paused_run(run_id: &str, reason: String) -> PausedRunSummary {
     }
 }
 
-fn run_kind(run_id: &str) -> String {
-    let _ = run_id;
-    "runx.receipt.v1".to_owned()
-}
+const RUN_KIND: &str = "runx.receipt.v1";
 
 fn clean_string_array(items: Vec<String>) -> Vec<String> {
     items
@@ -981,8 +978,5 @@ fn subject_state(_kind: &NonEmptyString, disposition: &ClosureDisposition) -> St
 }
 
 fn closure_status(disposition: &ClosureDisposition) -> String {
-    serde_json::to_value(disposition).map_or_else(
-        |_| format!("{disposition:?}").to_lowercase(),
-        |value| value.as_str().unwrap_or("unknown").to_owned(),
-    )
+    disposition.label().to_owned()
 }

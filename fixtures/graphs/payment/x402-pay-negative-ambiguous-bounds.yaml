@@ -13,7 +13,7 @@ steps:
   - id: reserve
     skill: ../../skills/x402-pay-negative-ambiguous-bounds-reserve
     context:
-      payment_quote_packet: quote.skill_claim.payment_quote_packet.data
+      payment_quote_packet: quote.payment_quote_packet.data
   - id: approve-spend
     run:
       type: approval
@@ -28,5 +28,5 @@ steps:
 policy:
   guards:
     - step: approve-spend
-      field: reserve.skill_claim.payment_reservation_packet.data.spend_capability_ref.uri
+      field: reserve.payment_reservation_packet.data.spend_capability_ref.uri
       equals: runx:payment-capability:paid-echo-spend-1

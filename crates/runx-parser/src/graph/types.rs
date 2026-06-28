@@ -115,6 +115,35 @@ pub struct GraphWhen {
     pub not_equals: Option<JsonValue>,
 }
 
+/// Where [`MintAuthorityDirective`] draws the requested child scope from when the
+/// runtime computes the attenuation off the model path. The two cases are
+/// mutually exclusive by construction, so a step can never feed the mint from two
+/// sources at once.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MintScopeSource {
+    /// Derive the child from the step's static `scopes:` list (the common
+    /// in-graph case). The declared ceiling and the minted term share one source,
+    /// so they cannot drift.
+    StaticScopes,
+    /// Derive the child from a runtime input named by `requested_scope_from` (the
+    /// dynamic case, e.g. an ops-desk-chosen scope). The mint fail-closes if the
+    /// requested scope exceeds the charter.
+    RequestedScope,
+}
+
+/// Declarative request to MINT (compute) the step's child authority term from the
+/// graph charter, off the model path, rather than receive a pre-built term. This
+/// is the compute path; the act-declaration `authority_term_from` /
+/// `authority_parent_from` / `authority_subset_proof_from` keys remain the
+/// explicit pre-built path. A directive is only coherent when the graph (or
+/// runner) declares `charter_from`, since the mint narrows that parent charter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MintAuthorityDirective {
+    pub source: MintScopeSource,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GraphStep {
@@ -152,6 +181,18 @@ pub struct GraphStep {
     pub mutating: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency_key: Option<String>,
+    /// Compute path: when present, the runtime mints this step's child authority
+    /// term from the graph charter (named by `ExecutionGraph::charter_from`) off
+    /// the model path, instead of receiving a pre-built term via the act
+    /// declaration's `authority_*_from` keys.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mint_authority: Option<MintAuthorityDirective>,
+    /// The input key carrying the requested child scope, used only when
+    /// `mint_authority.source` is [`MintScopeSource::RequestedScope`]. The static
+    /// `scopes:` list is the source for [`MintScopeSource::StaticScopes`]; the two
+    /// are mutually exclusive.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requested_scope_from: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -160,6 +201,12 @@ pub struct ExecutionGraph {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owner: Option<String>,
+    /// The input key carrying the parent charter authority term that steps with a
+    /// `mint_authority` directive attenuate from. Declared once at the graph (or
+    /// runner) level, replacing per-skill re-threading of the parent authority. A
+    /// step's `mint_authority` is only coherent when this is set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub charter_from: Option<String>,
     pub steps: Vec<GraphStep>,
     pub fanout_groups: BTreeMap<String, FanoutGroupPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]

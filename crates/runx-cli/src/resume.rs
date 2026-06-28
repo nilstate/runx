@@ -193,7 +193,7 @@ fn string_arg(args: &[OsString], index: usize) -> Result<String, String> {
 fn write_resume_failure(message: &str, json: bool, exit_code: u8) -> ExitCode {
     if json {
         return crate::cli_io::write_stdout_code(
-            &crate::launcher::json_failure_output(message, "resume_error"),
+            &crate::router::json_failure_output(message, "resume_error"),
             exit_code,
         );
     }

@@ -14,7 +14,7 @@ steps:
   - id: reserve
     skill: ../../skills/x402-pay-negative-cap-exceeded-reserve
     context:
-      payment_quote_packet: quote.skill_claim.payment_quote_packet.data
+      payment_quote_packet: quote.payment_quote_packet.data
   - id: approve-spend
     run:
       type: approval
@@ -33,9 +33,9 @@ steps:
     mutation: true
     idempotency_key: paid-echo-cap-exceeded-fulfill
     context:
-      reserved_payment_authority: reserve.skill_claim.payment_reservation_packet.data.reserved_payment_authority
-      spend_capability_ref: reserve.skill_claim.payment_reservation_packet.data.spend_capability_ref
-      idempotency: reserve.skill_claim.payment_reservation_packet.data.idempotency
+      reserved_payment_authority: reserve.payment_reservation_packet.data.reserved_payment_authority
+      spend_capability_ref: reserve.payment_reservation_packet.data.spend_capability_ref
+      idempotency: reserve.payment_reservation_packet.data.idempotency
 policy:
   guards:
     - step: fulfill

@@ -72,6 +72,12 @@ pub trait ToolExecutor {
 #[derive(Clone, Debug)]
 pub struct AgentLoopConfig {
     pub max_rounds: u32,
+    /// How many times to re-ask the model after an empty turn (a stray text-only
+    /// reply when it should have called a tool) before failing closed. A transient
+    /// sampling blip is recovered by resampling; a persistently silent model still
+    /// exhausts these attempts and fails, so the fail-closed guarantee holds. Kept
+    /// separate from `max_rounds` so a blip never costs a legitimate tool round.
+    pub max_empty_turn_resamples: u32,
     pub final_result_tool: String,
 }
 
@@ -88,6 +94,30 @@ fn tool_result_content(output: &SkillOutput, is_error: bool) -> String {
     } else {
         output.stdout.clone()
     }
+}
+
+/// Ask the model for the next tool uses, tolerating a transient empty turn by
+/// resampling up to `max_resamples` extra times. Returns the first non-empty
+/// turn, or fails closed if every attempt is empty. A provider error from the
+/// model call is surfaced immediately and never retried.
+fn next_tool_uses_resilient<M>(
+    model: &M,
+    transcript: &[AgentTurn],
+    max_resamples: u32,
+) -> Result<Vec<AgentToolUse>, RuntimeError>
+where
+    M: ModelCaller,
+{
+    for _ in 0..=max_resamples {
+        let uses = model.next_tool_uses(transcript)?;
+        if !uses.is_empty() {
+            return Ok(uses);
+        }
+    }
+    Err(loop_failure(format!(
+        "managed agent returned no tool use after {} attempts",
+        max_resamples + 1
+    )))
 }
 
 /// Run the bounded tool-use loop, returning the existing [`AgentResolution`] when
@@ -115,12 +145,7 @@ where
     let mut last_effect: Option<JsonValue> = None;
 
     for round in 1..=config.max_rounds {
-        let uses = model.next_tool_uses(&transcript)?;
-        if uses.is_empty() {
-            return Err(loop_failure(format!(
-                "managed agent returned no tool use on round {round}"
-            )));
-        }
+        let uses = next_tool_uses_resilient(model, &transcript, config.max_empty_turn_resamples)?;
         transcript.push(AgentTurn::AssistantToolUses(uses.clone()));
 
         let mut results = Vec::with_capacity(uses.len());
@@ -230,6 +255,7 @@ mod tests {
     fn loop_executes_tool_then_finalizes() {
         let config = AgentLoopConfig {
             max_rounds: 8,
+            max_empty_turn_resamples: 3,
             final_result_tool: FINAL.to_owned(),
         };
         let result = run_agent_loop(
@@ -267,6 +293,7 @@ mod tests {
         }
         let config = AgentLoopConfig {
             max_rounds: 3,
+            max_empty_turn_resamples: 3,
             final_result_tool: FINAL.to_owned(),
         };
         let result = run_agent_loop(&config, &NeverFinal, &OkExecutor, "go".to_owned());
@@ -277,7 +304,10 @@ mod tests {
     }
 
     #[test]
-    fn loop_fails_closed_on_empty_turn() {
+    fn loop_fails_closed_when_every_resample_is_empty() {
+        // A persistently silent model exhausts the empty-turn resamples and fails
+        // closed. A transient single blip is recovered instead (see the recovery
+        // test); only sustained silence reaches this error.
         struct Silent;
         impl ModelCaller for Silent {
             fn next_tool_uses(
@@ -289,12 +319,72 @@ mod tests {
         }
         let config = AgentLoopConfig {
             max_rounds: 3,
+            max_empty_turn_resamples: 3,
             final_result_tool: FINAL.to_owned(),
         };
         let result = run_agent_loop(&config, &Silent, &OkExecutor, "go".to_owned());
         assert!(
             matches!(&result, Err(RuntimeError::SkillFailed { message, .. }) if message.contains("no tool use")),
             "loop should fail closed on an empty turn; got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn loop_recovers_from_a_transient_empty_turn() {
+        // The model returns one empty turn (a transient sampling blip) and then
+        // proceeds normally. The loop must resample, recover, and finalize rather
+        // than fail closed. rounds == 2 proves the blip did not cost a tool round.
+        struct EmptyOnceThenScripted {
+            empties: std::cell::Cell<u32>,
+        }
+        impl ModelCaller for EmptyOnceThenScripted {
+            fn next_tool_uses(
+                &self,
+                transcript: &[AgentTurn],
+            ) -> Result<Vec<AgentToolUse>, RuntimeError> {
+                if self.empties.get() == 0 {
+                    self.empties.set(1);
+                    return Ok(Vec::new());
+                }
+                let executed = transcript
+                    .iter()
+                    .any(|turn| matches!(turn, AgentTurn::ToolResults(_)));
+                if executed {
+                    Ok(vec![AgentToolUse {
+                        id: "f".to_owned(),
+                        name: FINAL.to_owned(),
+                        input: JsonValue::String("done".to_owned()),
+                    }])
+                } else {
+                    Ok(vec![AgentToolUse {
+                        id: "t1".to_owned(),
+                        name: "pay".to_owned(),
+                        input: JsonValue::Null,
+                    }])
+                }
+            }
+        }
+        let config = AgentLoopConfig {
+            max_rounds: 8,
+            max_empty_turn_resamples: 3,
+            final_result_tool: FINAL.to_owned(),
+        };
+        let result = run_agent_loop(
+            &config,
+            &EmptyOnceThenScripted {
+                empties: std::cell::Cell::new(0),
+            },
+            &OkExecutor,
+            "buy a quota".to_owned(),
+        );
+        assert!(
+            matches!(
+                &result,
+                Ok(resolution)
+                    if matches!(resolution.response.payload, JsonValue::String(ref s) if s == "done")
+                    && resolution.telemetry.as_ref().and_then(|t| t.rounds) == Some(2)
+            ),
+            "a transient empty turn should be resampled and recovered, finalizing normally; got: {result:?}"
         );
     }
 
@@ -322,6 +412,7 @@ mod tests {
         };
         let config = AgentLoopConfig {
             max_rounds: 8,
+            max_empty_turn_resamples: 3,
             final_result_tool: FINAL.to_owned(),
         };
         let result = run_agent_loop(&config, &ScriptedModel, &executor, "go".to_owned());
@@ -356,6 +447,7 @@ mod tests {
         // back, records it in telemetry, and the model can still finalize.
         let config = AgentLoopConfig {
             max_rounds: 8,
+            max_empty_turn_resamples: 3,
             final_result_tool: FINAL.to_owned(),
         };
         let resolution = run_agent_loop(&config, &ScriptedModel, &FailingExecutor, "go".to_owned())
@@ -417,6 +509,7 @@ mod tests {
         // repeated 'pay'. This catches broken dedup, lost distinct names, and order.
         let config = AgentLoopConfig {
             max_rounds: 8,
+            max_empty_turn_resamples: 3,
             final_result_tool: FINAL.to_owned(),
         };
         let resolution = run_agent_loop(&config, &DistinctThenRepeat, &OkExecutor, "go".to_owned())

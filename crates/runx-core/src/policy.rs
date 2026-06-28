@@ -1,4 +1,5 @@
 pub mod authority_algebra;
+pub mod authority_mint;
 pub mod authority_proof;
 mod credential_grant;
 mod graph_scope;
@@ -17,6 +18,10 @@ mod types;
 pub use authority_algebra::{
     AuthorityEffectGuardDecision, authority_effect_family, authority_effect_guard_required,
     authority_effect_proof_kinds, authority_term_has_verb, evaluate_authority_effect_guards,
+};
+pub use authority_mint::{
+    AttenuationError, AttenuationRequest, FamilySubsetComparator, ScopeBoundsComparator,
+    SubsetProofError, ensure_subset_proof, is_authority_subset, mint_attenuated,
 };
 pub use authority_proof::{
     build_authority_proof, build_authority_proof_metadata, build_local_scope_admission,

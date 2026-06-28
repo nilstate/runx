@@ -10,8 +10,8 @@ use runx_contracts::{
 };
 use runx_core::state_machine::GraphStatus;
 use runx_pay::PAYMENT_EFFECT_FAMILY;
-use runx_pay::state::{
-    EffectMutationStatus, EffectRecoveryState, FileBackedEffectStateStore,
+use runx_pay::effect_state::{
+    EffectMutationStatus, EffectRecoveryState, EffectStateStore, FileBackedEffectStateStore,
     RUNX_EFFECT_STATE_PATH_ENV,
 };
 use runx_pay::supervisor::{
@@ -893,7 +893,7 @@ fn x402_paid_echo_partial_mutation_escalates_without_second_rail()
     let mutation = store
         .lookup_mutation(
             PAYMENT_EFFECT_FAMILY,
-            &runx_pay::state::EffectIdempotencyKey::new(
+            &runx_pay::effect_state::EffectIdempotencyKey::new(
                 "mock",
                 "merchant:paid-echo",
                 PAID_ECHO_IDEMPOTENCY_KEY,
@@ -1721,10 +1721,22 @@ struct PaidEchoFixture {
 impl PaidEchoFixture {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
-        write_cli_tool_skill(&temp.path().join("quote"), "pay-quote")?;
-        write_cli_tool_skill(&temp.path().join("reserve"), "pay-reserve")?;
-        write_cli_tool_skill(&temp.path().join("fulfill"), "pay-fulfill-rail")?;
-        write_cli_tool_skill(&temp.path().join("echo"), "paid-echo")?;
+        write_cli_tool_skill(
+            &temp.path().join("quote"),
+            "pay-quote",
+            Some("payment_quote_packet"),
+        )?;
+        write_cli_tool_skill(
+            &temp.path().join("reserve"),
+            "pay-reserve",
+            Some("payment_reservation_packet"),
+        )?;
+        write_cli_tool_skill(
+            &temp.path().join("fulfill"),
+            "pay-fulfill-rail",
+            Some("effect_evidence_packet"),
+        )?;
+        write_cli_tool_skill(&temp.path().join("echo"), "paid-echo", None)?;
         let graph_path = temp.path().join("graph.yaml");
         fs::write(&graph_path, paid_echo_graph_yaml()?)?;
         Ok(Self {
@@ -1738,8 +1750,15 @@ impl PaidEchoFixture {
     }
 }
 
-fn write_cli_tool_skill(dir: &Path, name: &str) -> Result<(), std::io::Error> {
+fn write_cli_tool_skill(
+    dir: &Path,
+    name: &str,
+    emitted_packet: Option<&str>,
+) -> Result<(), std::io::Error> {
     fs::create_dir(dir)?;
+    let artifacts = emitted_packet.map_or_else(String::new, |packet| {
+        format!("runx:\n  artifacts:\n    named_emits:\n      {packet}: runx.payment.{packet}.v1\n")
+    });
     fs::write(
         dir.join("SKILL.md"),
         format!(
@@ -1749,7 +1768,7 @@ description: Payment fixture skill.
 source:
   type: cli-tool
   command: runx-payment-test
----
+{artifacts}---
 
 Payment fixture skill.
 "#
@@ -1841,7 +1860,7 @@ fn paid_echo_graph_yaml() -> Result<String, serde_json::Error> {
                 "id": "reserve",
                 "skill": "./reserve",
                 "context": {
-                    "payment_quote_packet": "quote.skill_claim.payment_quote_packet.data"
+                    "payment_quote_packet": "quote.payment_quote_packet.data"
                 }
             },
             {
@@ -1863,9 +1882,9 @@ fn paid_echo_graph_yaml() -> Result<String, serde_json::Error> {
                 "mutation": true,
                 "idempotency_key": "paid-echo-fulfill",
                 "context": {
-                    "reserved_payment_authority": "reserve.skill_claim.payment_reservation_packet.data.reserved_payment_authority",
-                    "spend_capability_ref": "reserve.skill_claim.payment_reservation_packet.data.spend_capability_ref",
-                    "idempotency": "reserve.skill_claim.payment_reservation_packet.data.idempotency"
+                    "reserved_payment_authority": "reserve.payment_reservation_packet.data.reserved_payment_authority",
+                    "spend_capability_ref": "reserve.payment_reservation_packet.data.spend_capability_ref",
+                    "idempotency": "reserve.payment_reservation_packet.data.idempotency"
                 }
             },
             {
@@ -1875,8 +1894,8 @@ fn paid_echo_graph_yaml() -> Result<String, serde_json::Error> {
                     "message": "hello from paid echo"
                 },
                 "context": {
-                    "payment_credential_ref": "fulfill.skill_claim.effect_evidence_packet.data.credential_envelope.credential_ref",
-                    "payment_proof_ref": "fulfill.skill_claim.effect_evidence_packet.data.rail_proof.proof_ref"
+                    "payment_credential_ref": "fulfill.effect_evidence_packet.data.credential_envelope.credential_ref",
+                    "payment_proof_ref": "fulfill.effect_evidence_packet.data.rail_proof.proof_ref"
                 }
             }
         ],

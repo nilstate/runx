@@ -14,6 +14,8 @@ inputs:
 caller:
   answers:
     agent_task.messageboard-accept.output:
+      effect_family: messageboard
+      operation: accept
       actor_kid: vendor
       posting_id: post_1
       acceptance:

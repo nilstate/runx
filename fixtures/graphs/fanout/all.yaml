@@ -27,4 +27,4 @@ steps:
   - id: synthesize
     skill: ../../skills/echo
     context:
-      message: finance.budget
+      message: finance.result.data.budget

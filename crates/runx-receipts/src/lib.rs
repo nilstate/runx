@@ -10,7 +10,8 @@ mod verify;
 
 pub use canonical::{
     canonical_receipt_body_digest, canonical_receipt_body_json, canonical_receipt_digest,
-    canonical_receipt_identity_json, canonical_receipt_json, content_addressed_receipt_id,
+    canonical_receipt_identity_json, canonical_receipt_json, canonical_stable_json,
+    content_addressed_receipt_id,
 };
 pub use identity::{SignedDisplayIdentity, signed_display_identity};
 pub use runx_contracts::{

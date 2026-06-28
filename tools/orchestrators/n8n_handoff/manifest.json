@@ -75,12 +75,6 @@
   "output": {
     "wrap_as": "handoff_delivery"
   },
-  "runtime": {
-    "command": "node",
-    "args": [
-      "./run.mjs"
-    ]
-  },
   "source_hash": "sha256:cc7b00235e9fa8b7ec01ce2f0d158fa15f85c0074b801245103813970f3586af",
   "schema_hash": "sha256:d2923c791dc58de39b2d36c74a2dbdc4e50090210e71511d108ea6356d2c585d",
   "toolkit_version": "0.2.0"

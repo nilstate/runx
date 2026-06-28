@@ -13,8 +13,8 @@ pub use error::{ParseError, ParseErrorKind, ValidationError, ValidationErrorKind
 pub use graph::{
     ExecutionGraph, FanoutBranchFailurePolicy, FanoutConflictAction, FanoutConflictGate,
     FanoutGroupPolicy, FanoutSyncStrategy, FanoutThresholdAction, FanoutThresholdGate,
-    GraphContextEdge, GraphGuard, GraphPolicy, GraphRetryPolicy, GraphStep, RawGraphIr,
-    parse_graph_yaml, validate_graph, validate_graph_document,
+    GraphContextEdge, GraphGuard, GraphPolicy, GraphRetryPolicy, GraphStep, MintAuthorityDirective,
+    MintScopeSource, RawGraphIr, parse_graph_yaml, validate_graph, validate_graph_document,
 };
 pub use install::{
     SkillInstallError, SkillInstallOrigin, ValidatedSkillInstall, validate_skill_install,

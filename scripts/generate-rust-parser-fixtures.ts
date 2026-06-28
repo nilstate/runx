@@ -91,7 +91,7 @@ steps:
   - id: second
     skill: ../../skills/echo
     context:
-      message: first.stdout
+      message: first.result
     retry:
       max_attempts: 2
       backoff_ms: 25
@@ -136,7 +136,7 @@ steps:
     allowed_tools:
       - fs.read
     context:
-      readme: scan.stdout
+      readme: scan.result
 `),
     graphSuccess("fanout-structured-gates", `
 name: fanout

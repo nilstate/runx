@@ -45,6 +45,15 @@ projection as the dashboard snapshot. The storage provider is still selected by
 the logical `data_source_ref`; ops desk does not know whether state came from
 SQLite, Postgres, D1, Redis, or a product API.
 
+When a standing case must be advanced one move at a time toward a mandate, use
+`advance`. It takes the mandate, the current `case_state`, and a fixed
+`candidate_roster`, and returns a single typed `dispatch_decision`: dispatch one
+roster member, escalate, or done. It applies the same ranking and the same gates as
+`operate`, but it is hard-constrained to the roster and emits one move instead of a
+multi-proposal plan. The caller (an agency loop) holds the case and the goal; ops
+desk supplies the judgment. The chosen member is named as data; ops desk never runs
+it.
+
 ## When to use this skill
 
 - An operator asks an agent to manage a project, workspace, product, account,
@@ -54,6 +63,8 @@ SQLite, Postgres, D1, Redis, or a product API.
   actions, and post-action verification.
 - A product-specific operator skill needs a generic cockpit spine instead of
   inventing its own action model.
+- A standing case (an agency) needs the single next governed move chosen from a
+  fixed roster, one turn at a time.
 - Runx needs to dogfood its own release, registry, hosted, receipt, or provider
   operations through the same governed lanes it exposes to users.
 
@@ -244,6 +255,30 @@ ops_desk_packet:
   success_checkpoint:
     milestone: string
     description: string
+```
+
+The `advance` runner returns one `dispatch_decision`:
+
+```yaml
+dispatch_decision:
+  decision: dispatch | escalate | done
+  reason: string
+  dispatch:                 # present when decision == dispatch
+    member: string          # a role from candidate_roster
+    skill: string           # that role's roster skill, echoed
+    task: string            # what the member should do
+    needed_scope: [string]  # subset of the member's scope ceiling
+    consequence: read_only | draft | live_mutation | money_movement | public_send | deploy
+    verification:
+      expected_receipt: string
+      readback: string
+  escalation:               # present when decision == escalate
+    to: string              # a roster role or "human"
+    trigger: string
+    ask: string
+    approval_prompt: string | null
+  resolution:               # present when decision == done
+    reason: string
 ```
 
 ## Quality Bar

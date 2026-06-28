@@ -8,13 +8,14 @@ pub use subset::is_payment_authority_subset;
 
 use runx_contracts::{
     AuthorityCapability, AuthorityEffectCredentialForm, AuthorityEffectLimit,
-    AuthorityResourceFamily, AuthoritySubsetProof, AuthoritySubsetRelation, AuthoritySubsetResult,
-    AuthorityTerm, AuthorityVerb, Decision, DecisionChoice, Reference,
+    AuthorityResourceFamily, AuthoritySubsetProof, AuthorityTerm, AuthorityVerb, Decision,
+    DecisionChoice, Reference,
 };
 #[cfg(test)]
 use runx_core::policy::authority_effect_proof_kinds as generic_authority_effect_proof_kinds;
 use runx_core::policy::{
-    authority_effect_family as generic_authority_effect_family, evaluate_authority_effect_guards,
+    SubsetProofError, authority_effect_family as generic_authority_effect_family,
+    ensure_subset_proof as core_ensure_subset_proof, evaluate_authority_effect_guards,
 };
 use thiserror::Error;
 
@@ -58,20 +59,6 @@ struct PaymentRailAuthorization<'a> {
     pub idempotency_key: Option<&'a str>,
     pub spend_capability_binding: Option<PaymentSpendCapabilityBinding>,
     pub rail_proof_refs: &'a [Reference],
-    pub consumed_spend_capability_refs: &'a [Reference],
-    pub spend_capability_ref: Option<&'a Reference>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct PaymentRailAdmission<'a> {
-    pub parent_authority: &'a AuthorityTerm,
-    pub child_authority: &'a AuthorityTerm,
-    pub reservation_decision: Option<&'a Decision>,
-    pub subset_proof: Option<&'a AuthoritySubsetProof>,
-    pub child_harness_ref: &'a Reference,
-    pub act_id: &'a str,
-    pub idempotency_key: Option<&'a str>,
-    pub spend_capability_binding: Option<PaymentSpendCapabilityBinding>,
     pub consumed_spend_capability_refs: &'a [Reference],
     pub spend_capability_ref: Option<&'a Reference>,
 }
@@ -142,6 +129,14 @@ fn authority_term_has_verb(term: &AuthorityTerm, verb: AuthorityVerb) -> bool {
     term.verbs.iter().any(|candidate| candidate == &verb)
 }
 
+// Admission-time guard: derives whether this step must hold a rail receipt
+// before reporting success, reading the generic effect-guard list
+// (`bounds.effects`) plus, for payments, the `effect_limit.receipt_before_success`
+// flag on either term. This populates the returned decision and gates runtime
+// receipt-before-success. It is independent of, and complementary to, the
+// subset-time monotonicity check in `subset::required_booleans_subset`, which
+// reads the same payment flag for a different purpose (a child may not drop a
+// flag its parent set). Both are load-bearing; do not collapse one into the other.
 #[must_use]
 fn authority_requires_effect_receipt_before_success(
     parent: &AuthorityTerm,
@@ -221,18 +216,7 @@ pub fn admit_step_authority(
 
     if is_payment_effect_authority(input.child_authority) {
         let spends = payment_authority_spends(input.child_authority);
-        let admission = admit_payment_rail(PaymentRailAdmission {
-            parent_authority: input.parent_authority,
-            child_authority: input.child_authority,
-            reservation_decision: input.reservation_decision,
-            subset_proof: input.subset_proof,
-            child_harness_ref: input.child_harness_ref,
-            act_id: input.act_id,
-            idempotency_key: input.idempotency_key,
-            spend_capability_binding: input.spend_capability_binding,
-            consumed_spend_capability_refs: input.consumed_spend_capability_refs,
-            spend_capability_ref: input.spend_capability_ref,
-        })?;
+        let admission = admit_payment_rail(&input)?;
         return Ok(StepAuthorityAdmissionDecision {
             verb: admitted_payment_verb(input.child_authority, spends),
             parent_term_id: admission.parent_term_id,
@@ -269,7 +253,7 @@ fn authorize_payment_rail(
     input: PaymentRailAuthorization<'_>,
 ) -> Result<PaymentRailAuthorizationDecision, PaymentAuthorityError> {
     let spends = payment_authority_spends(input.child_authority);
-    let admission = admit_payment_rail(PaymentRailAdmission {
+    let admission = admit_payment_rail(&StepAuthorityAdmission {
         parent_authority: input.parent_authority,
         child_authority: input.child_authority,
         reservation_decision: input.reservation_decision,
@@ -277,7 +261,7 @@ fn authorize_payment_rail(
         child_harness_ref: input.child_harness_ref,
         act_id: input.act_id,
         idempotency_key: input.idempotency_key,
-        spend_capability_binding: input.spend_capability_binding,
+        spend_capability_binding: input.spend_capability_binding.clone(),
         consumed_spend_capability_refs: input.consumed_spend_capability_refs,
         spend_capability_ref: input.spend_capability_ref,
     })?;
@@ -301,9 +285,9 @@ fn authorize_payment_rail(
     })
 }
 
-fn admit_payment_rail(
-    input: PaymentRailAdmission<'_>,
-) -> Result<PaymentRailAdmissionDecision<'_>, PaymentAuthorityError> {
+fn admit_payment_rail<'a>(
+    input: &StepAuthorityAdmission<'a>,
+) -> Result<PaymentRailAdmissionDecision<'a>, PaymentAuthorityError> {
     let spends = payment_authority_spends(input.child_authority);
 
     if spends {
@@ -313,9 +297,9 @@ fn admit_payment_rail(
         if !decision_selects_payment_execution(decision) {
             return Err(PaymentAuthorityError::ReservationDecisionNotSelected);
         }
-        ensure_idempotency_key(&input)?;
+        ensure_idempotency_key(input)?;
         ensure_bounded_spend_counterparty(input.child_authority)?;
-        ensure_single_use_spend_capability(&input)?;
+        ensure_single_use_spend_capability(input)?;
     }
 
     ensure_subset_proof(
@@ -336,35 +320,19 @@ fn admit_payment_rail(
     })
 }
 
+// The structural proof validation is the lifted, family-agnostic core
+// `ensure_subset_proof`; payment maps its result onto the payment error so the
+// admission keeps a single error vocabulary. There is exactly one validator in
+// the workspace.
 fn ensure_subset_proof(
     proof: Option<&AuthoritySubsetProof>,
     child: &AuthorityTerm,
     parent: &AuthorityTerm,
 ) -> Result<(), PaymentAuthorityError> {
-    let Some(proof) = proof else {
-        return Err(PaymentAuthorityError::MissingSubsetProof);
-    };
-    if proof.comparison_algorithm.trim().is_empty() || proof.checked_at.trim().is_empty() {
-        return Err(PaymentAuthorityError::InvalidSubsetProof);
-    }
-    if proof.parent_authority_ref != parent.resource_ref {
-        return Err(PaymentAuthorityError::InvalidSubsetProof);
-    }
-    if !matches!(proof.result, AuthoritySubsetResult::Subset) {
-        return Err(PaymentAuthorityError::InvalidSubsetProof);
-    }
-    let compared_terms_match = proof.compared_terms.iter().any(|comparison| {
-        comparison.child_term_id == child.term_id
-            && comparison.parent_term_id == parent.term_id
-            && matches!(
-                comparison.relation,
-                AuthoritySubsetRelation::Subset | AuthoritySubsetRelation::Equal
-            )
-    });
-    if !compared_terms_match {
-        return Err(PaymentAuthorityError::InvalidSubsetProof);
-    }
-    Ok(())
+    core_ensure_subset_proof(proof, child, parent).map_err(|error| match error {
+        SubsetProofError::Missing => PaymentAuthorityError::MissingSubsetProof,
+        SubsetProofError::Invalid => PaymentAuthorityError::InvalidSubsetProof,
+    })
 }
 
 fn decision_selects_payment_execution(decision: &Decision) -> bool {
@@ -378,7 +346,7 @@ fn decision_selects_payment_execution(decision: &Decision) -> bool {
 }
 
 fn ensure_single_use_spend_capability(
-    input: &PaymentRailAdmission<'_>,
+    input: &StepAuthorityAdmission<'_>,
 ) -> Result<(), PaymentAuthorityError> {
     let Some(payment) = payment_effect_limit(input.child_authority) else {
         return Err(PaymentAuthorityError::SpendRequiresSingleUseCapability);
@@ -420,7 +388,7 @@ fn ensure_single_use_spend_capability(
     Ok(())
 }
 
-fn ensure_idempotency_key(input: &PaymentRailAdmission<'_>) -> Result<(), PaymentAuthorityError> {
+fn ensure_idempotency_key(input: &StepAuthorityAdmission<'_>) -> Result<(), PaymentAuthorityError> {
     let idempotency_required = payment_effect_limit(input.child_authority)
         .is_some_and(|payment| payment.idempotency_required);
 
@@ -446,7 +414,7 @@ fn ensure_bounded_spend_counterparty(term: &AuthorityTerm) -> Result<(), Payment
 }
 
 fn spend_capability_binding_matches(
-    input: &PaymentRailAdmission<'_>,
+    input: &StepAuthorityAdmission<'_>,
     decision: &Decision,
     payment: &AuthorityEffectLimit,
     binding: &PaymentSpendCapabilityBinding,

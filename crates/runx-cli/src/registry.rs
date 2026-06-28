@@ -61,7 +61,7 @@ pub fn run_native_registry(plan: RegistryPlan) -> ExitCode {
         Err(error) => {
             if json {
                 return crate::cli_io::write_stdout_code(
-                    &crate::launcher::json_failure_output(&error.message, error.code()),
+                    &crate::router::json_failure_output(&error.message, error.code()),
                     error.exit_code,
                 );
             }

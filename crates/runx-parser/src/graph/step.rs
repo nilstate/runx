@@ -10,7 +10,10 @@ use super::helpers::{
     optional_non_empty_string, optional_number, optional_object, optional_string,
     optional_string_array, optional_string_object, required_string, validation_error,
 };
-use super::types::{GraphContextEdge, GraphRetryPolicy, GraphStep, GraphWhen};
+use super::types::{
+    GraphContextEdge, GraphRetryPolicy, GraphStep, GraphWhen, MintAuthorityDirective,
+    MintScopeSource,
+};
 use crate::ValidationError;
 
 struct StepTarget {
@@ -19,10 +22,14 @@ struct StepTarget {
     run: Option<JsonObject>,
 }
 
+// rust-style-allow: long-function - step validation parses one step's fields in a
+// single pass and rejects incoherent combinations inline; splitting it would scatter
+// the per-field rules away from the step they validate.
 pub fn validate_step(
     raw_step: &JsonObject,
     field: &str,
     previous_step_ids: &BTreeSet<String>,
+    charter_in_scope: bool,
 ) -> Result<GraphStep, ValidationError> {
     reject_unsupported_step_fields(raw_step, field)?;
 
@@ -43,6 +50,20 @@ pub fn validate_step(
         optional_object(raw_step.get("inputs"), &format!("{field}.inputs"))?.unwrap_or_default();
     reject_step_output_refs_in_inputs(&inputs, previous_step_ids, &format!("{field}.inputs"))?;
 
+    let scopes = optional_string_array(raw_step.get("scopes"), &format!("{field}.scopes"))?
+        .unwrap_or_default();
+    let requested_scope_from = optional_non_empty_string(
+        raw_step.get("requested_scope_from"),
+        &format!("{field}.requested_scope_from"),
+    )?;
+    let mint_authority = validate_mint_authority(
+        raw_step.get("mint_authority"),
+        field,
+        charter_in_scope,
+        &scopes,
+        requested_scope_from.as_deref(),
+    )?;
+
     Ok(GraphStep {
         id,
         label: optional_non_empty_string(raw_step.get("label"), &format!("{field}.label"))?,
@@ -59,8 +80,7 @@ pub fn validate_step(
         context_edges: context_edges(&context, previous_step_ids, field)?,
         context,
         context_skills,
-        scopes: optional_string_array(raw_step.get("scopes"), &format!("{field}.scopes"))?
-            .unwrap_or_default(),
+        scopes,
         allowed_tools: validate_allowed_tools(raw_step.get("allowed_tools"), field)?,
         retry: validate_retry(raw_step.get("retry"), &format!("{field}.retry"))?,
         policy: optional_object(raw_step.get("policy"), &format!("{field}.policy"))?,
@@ -75,7 +95,80 @@ pub fn validate_step(
             raw_step.get("idempotency_key"),
             &format!("{field}.idempotency_key"),
         )?,
+        mint_authority,
+        requested_scope_from,
     })
+}
+
+/// Validate the `mint_authority` compute-path directive and its coherence with
+/// the graph charter and the chosen scope source. A directive is only admissible
+/// when the graph (or runner) declares `charter_from`, and each source draws from
+/// exactly one place: `static_scopes` from the step's non-empty `scopes:` list and
+/// nothing else, `requested_scope` from `requested_scope_from` and nothing else.
+fn validate_mint_authority(
+    value: Option<&JsonValue>,
+    field: &str,
+    charter_in_scope: bool,
+    scopes: &[String],
+    requested_scope_from: Option<&str>,
+) -> Result<Option<MintAuthorityDirective>, ValidationError> {
+    let Some(record) = optional_object(value, &format!("{field}.mint_authority"))? else {
+        if requested_scope_from.is_some() {
+            return Err(validation_error(format!(
+                "{field}.requested_scope_from is only valid with a mint_authority directive."
+            )));
+        }
+        return Ok(None);
+    };
+    if !charter_in_scope {
+        return Err(validation_error(format!(
+            "{field}.mint_authority requires the graph to declare charter_from."
+        )));
+    }
+    let source = validate_mint_scope_source(
+        record.get("source"),
+        &format!("{field}.mint_authority.source"),
+    )?;
+    match source {
+        MintScopeSource::StaticScopes => {
+            if scopes.is_empty() {
+                return Err(validation_error(format!(
+                    "{field}.mint_authority source static_scopes requires a non-empty scopes list."
+                )));
+            }
+            if requested_scope_from.is_some() {
+                return Err(validation_error(format!(
+                    "{field}.mint_authority source static_scopes must not declare requested_scope_from."
+                )));
+            }
+        }
+        MintScopeSource::RequestedScope => {
+            if requested_scope_from.is_none() {
+                return Err(validation_error(format!(
+                    "{field}.mint_authority source requested_scope requires requested_scope_from."
+                )));
+            }
+            if !scopes.is_empty() {
+                return Err(validation_error(format!(
+                    "{field}.mint_authority source requested_scope must not declare a static scopes list."
+                )));
+            }
+        }
+    }
+    Ok(Some(MintAuthorityDirective { source }))
+}
+
+fn validate_mint_scope_source(
+    value: Option<&JsonValue>,
+    field: &str,
+) -> Result<MintScopeSource, ValidationError> {
+    match required_string(value, field)?.as_str() {
+        "static_scopes" => Ok(MintScopeSource::StaticScopes),
+        "requested_scope" => Ok(MintScopeSource::RequestedScope),
+        other => Err(validation_error(format!(
+            "{field} '{other}' must be static_scopes or requested_scope."
+        ))),
+    }
 }
 
 fn reject_step_output_refs_in_inputs(
@@ -351,10 +444,18 @@ fn parse_context_reference(
             "{field} references unknown or later step '{from_step}'."
         )));
     }
+    let output = &reference[dot_index + 1..];
+    let first_segment = output.split('.').next().unwrap_or(output);
+    if runx_contracts::output::BASE_OUTPUT_FIELDS.contains(&first_segment) {
+        return Err(validation_error(format!(
+            "{field} binds base/diagnostic field '{first_segment}' of step '{from_step}'; base fields ({}) are not addressable, bind a declared output or artifact packet instead.",
+            runx_contracts::output::BASE_OUTPUT_FIELDS.join("/")
+        )));
+    }
     Ok(GraphContextEdge {
         input: input.to_owned(),
         from_step: from_step.to_owned(),
-        output: reference[dot_index + 1..].to_owned(),
+        output: output.to_owned(),
     })
 }
 

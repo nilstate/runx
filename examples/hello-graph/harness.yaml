@@ -13,5 +13,5 @@ expect:
     disposition: closed
     reason_code: graph_closed
     child_receipt_refs:
-      - runx:receipt:sha256:90f8ca3e95f4afdfb4e5d1983f00555b1c01cc69b46ee06a7631881341c24727
-      - runx:receipt:sha256:16d6ad24127b256f6c9890c1b32f6d4359b1d88e79d71f74adc47b7081e5d900
+      - runx:receipt:sha256:224326828748840e3f9538237fe4387ac01fe9e4d5b819e4a9de8a85238701c3
+      - runx:receipt:sha256:5eb58a3bed18795aa5e930ab625af9b6eea165d09012f6bbea2286c6f42bc4e2

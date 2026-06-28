@@ -7,8 +7,8 @@ use super::types::{
     AcquiredRegistrySkill, RegistrySearchResult, RegistrySkillDetail, ResolvedRegistryRef,
 };
 
-use crate::runtime_http::strip_one_trailing_slash;
-pub use crate::runtime_http::{
+use crate::http::strip_one_trailing_slash;
+pub use crate::http::{
     HttpMethod, ReqwestHttpTransport as DefaultRuntimeHttpTransport, RuntimeHttpError,
     RuntimeHttpHeader, RuntimeHttpRequest as HttpRequest, RuntimeHttpResponse as HttpResponse,
     RuntimeHttpTransport as Transport,

@@ -8,7 +8,7 @@ fanout:
       on_branch_failure: continue
       threshold_gates:
         - step: risk
-          field: risk_score
+          field: result.data.risk_score
           above: 0.8
           action: pause
 steps:
@@ -33,4 +33,4 @@ steps:
   - id: synthesize
     skill: ../../skills/echo
     context:
-      message: market.recommendation
+      message: market.result.data.recommendation

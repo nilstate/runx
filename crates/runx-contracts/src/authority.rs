@@ -39,6 +39,7 @@ pub enum AuthorityVerb {
     Reverse,
     Publish,
     SpawnChild,
+    Revoke,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]

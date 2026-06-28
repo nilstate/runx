@@ -8,6 +8,7 @@ use runx_core::state_machine::{
 };
 use runx_parser::{ExecutionGraph, GraphStep};
 
+use crate::execution::output_projection::BASE_OUTPUT_FIELDS;
 use crate::{RuntimeError, StepRun};
 
 pub(crate) struct ExecutionGraphIndex {
@@ -174,19 +175,68 @@ impl<'a> PriorRunIndex<'a> {
                 reason: "context source step has not run".to_owned(),
             });
         };
-        Ok(resolve_output_path(&run.outputs, output).unwrap_or(JsonValue::Null))
+        reject_base_key_edge(from_step, output)?;
+        resolve_output_path(&run.outputs, output).map_err(|break_at| {
+            RuntimeError::ContextEdgeUnresolved {
+                from_step: from_step.to_owned(),
+                output_path: output.to_owned(),
+                missing_segment: break_at.missing_segment,
+                available_keys: break_at.available_keys,
+            }
+        })
     }
 }
 
-pub(crate) fn resolve_output_path(outputs: &JsonObject, output: &str) -> Option<JsonValue> {
+/// Base/diagnostic fields (`raw`/`skill_claim`/`stdout`/`stderr`/`status`) are kept
+/// in a step's `outputs` for receipts and effect replay, but they are not part of
+/// the step's addressable contract. A context edge whose first path segment names
+/// one of them is rejected loudly so authors bind to the contract (declared outputs
+/// or artifact packets), never to diagnostic material.
+fn reject_base_key_edge(from_step: &str, output: &str) -> Result<(), RuntimeError> {
+    let first = output.split('.').next().unwrap_or(output);
+    if BASE_OUTPUT_FIELDS.contains(&first) {
+        return Err(RuntimeError::ContextEdgeBaseKey {
+            from_step: from_step.to_owned(),
+            output_path: output.to_owned(),
+            base_field: first.to_owned(),
+        });
+    }
+    Ok(())
+}
+
+/// Where a context-edge path stopped resolving: the segment that was absent and the keys
+/// that were available at that depth (empty when the value there was not an object).
+pub(crate) struct ContextPathBreak {
+    pub(crate) missing_segment: String,
+    pub(crate) available_keys: Vec<String>,
+}
+
+pub(crate) fn resolve_output_path(
+    outputs: &JsonObject,
+    output: &str,
+) -> Result<JsonValue, ContextPathBreak> {
     let mut segments = output.split('.');
-    let first = segments.next()?;
-    let mut value = outputs.get(first)?;
+    let Some(first) = segments.next() else {
+        return Err(ContextPathBreak {
+            missing_segment: String::new(),
+            available_keys: outputs.keys().cloned().collect(),
+        });
+    };
+    let mut value = outputs.get(first).ok_or_else(|| ContextPathBreak {
+        missing_segment: first.to_owned(),
+        available_keys: outputs.keys().cloned().collect(),
+    })?;
     for segment in segments {
         let JsonValue::Object(object) = value else {
-            return None;
+            return Err(ContextPathBreak {
+                missing_segment: segment.to_owned(),
+                available_keys: Vec::new(),
+            });
         };
-        value = object.get(segment)?;
+        value = object.get(segment).ok_or_else(|| ContextPathBreak {
+            missing_segment: segment.to_owned(),
+            available_keys: object.keys().cloned().collect(),
+        })?;
     }
-    Some(value.clone())
+    Ok(value.clone())
 }

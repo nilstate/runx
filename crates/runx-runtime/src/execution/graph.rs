@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use runx_contracts::{JsonObject, JsonValue, sha256_prefixed};
 use runx_core::state_machine::{RetryPolicy, SequentialGraphStepDefinition};
 use runx_parser::{
-    ExecutionGraph, GraphStep, SkillRunnerDefinition, SkillRunnerManifest, SkillSource,
-    ValidatedSkill, parse_graph_yaml, parse_runner_manifest_yaml, validate_graph,
+    ExecutionGraph, GraphStep, SkillArtifactContract, SkillRunnerDefinition, SkillRunnerManifest,
+    SkillSource, ValidatedSkill, parse_graph_yaml, parse_runner_manifest_yaml, validate_graph,
     validate_runner_manifest,
 };
 
@@ -26,6 +26,10 @@ pub(crate) struct LoadedStepSkill {
     pub(crate) name: String,
     pub(crate) source: SkillSource,
     pub(crate) directory: PathBuf,
+    /// The invoked runner's declared artifact contract. A sub-skill step exposes
+    /// this contract at the OUTER step (the packet, e.g. `research_packet`,
+    /// becomes `<step>.<packet>.data`), never the sub-skill's internals.
+    pub(crate) artifacts: Option<SkillArtifactContract>,
 }
 
 #[derive(Default)]
@@ -147,6 +151,7 @@ pub(crate) fn load_step_skill(
             name: runner.name,
             source: runner.source,
             directory,
+            artifacts: runner.artifacts,
         });
     }
     let skill = load_skill(&directory)?;
@@ -154,6 +159,7 @@ pub(crate) fn load_step_skill(
         name: skill.name,
         source: skill.source,
         directory,
+        artifacts: skill.artifacts,
     })
 }
 
@@ -225,19 +231,6 @@ pub(crate) fn step_definitions(graph: &ExecutionGraph) -> Vec<SequentialGraphSte
             fanout_group: step.fanout_group.clone(),
         })
         .collect()
-}
-
-pub(crate) fn find_step<'a>(
-    graph: &'a ExecutionGraph,
-    step_id: &str,
-) -> Result<&'a GraphStep, RuntimeError> {
-    graph
-        .steps
-        .iter()
-        .find(|step| step.id == step_id)
-        .ok_or_else(|| RuntimeError::StepMissing {
-            step_id: step_id.to_owned(),
-        })
 }
 
 pub(crate) fn skill_dir(

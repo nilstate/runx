@@ -36,6 +36,7 @@ mod runner_manifest;
 
 #[cfg(feature = "cli-tool")]
 pub(crate) use self::graph::SkillRunGraphAdapter;
+pub(crate) use self::graph::graph_domain_act_receipt;
 pub(crate) use self::inline_harness::run_inline_harness_with_effects;
 
 use self::agent::execute_agent_skill_run;
@@ -231,7 +232,7 @@ fn seal_skill_answer(
     disposition: ClosureDisposition,
     signature_config: &RuntimeReceiptSignatureConfig,
 ) -> Result<runx_contracts::Receipt, SkillRunError> {
-    let disposition_label = closure_disposition_label(&disposition);
+    let disposition_label = disposition.label();
     let succeeded = disposition == ClosureDisposition::Closed;
     let status = if succeeded {
         InvocationStatus::Success
@@ -303,7 +304,10 @@ fn build_domain_act_frame(
     governed_effect: Option<&JsonValue>,
     authority_grant_refs: Vec<runx_contracts::Reference>,
 ) -> Option<DomainActFrame> {
-    use runx_contracts::{ActForm, DecisionChoice, Reference, ReferenceType};
+    use runx_contracts::{
+        ActForm, AuthorityAttenuation, AuthoritySubsetProof, AuthorityTerm, DecisionChoice,
+        Reference, ReferenceType,
+    };
 
     // A declared field may be a static literal (`form: review`) or driver-pinned
     // from an input (`form_from: act_form` names the input key). The driver-pinned
@@ -401,6 +405,40 @@ fn build_domain_act_frame(
         artifact_refs.push(reference);
     }
 
+    // Charter attenuation, read from driver-pinned inputs (the model never sets
+    // authority). The member's child term, the parent charter reference, and the
+    // subset proof each ride a trusted input key named by the act declaration.
+    // Attenuation is recorded only when both a parent and a proof are present; a
+    // term without them is a root and carries no proof, as the receipt verifier
+    // requires.
+    let authority_terms = act
+        .authority_term_from
+        .as_deref()
+        .and_then(|key| inputs.get(key))
+        .and_then(|value| serde_json::to_value(value).ok())
+        .and_then(|value| serde_json::from_value::<AuthorityTerm>(value).ok())
+        .map(|term| vec![term])
+        .unwrap_or_default();
+    let parent_authority_ref = act
+        .authority_parent_from
+        .as_deref()
+        .and_then(|key| inputs.get(key))
+        .and_then(|value| serde_json::to_value(value).ok())
+        .and_then(|value| serde_json::from_value::<Reference>(value).ok());
+    let subset_proof = act
+        .authority_subset_proof_from
+        .as_deref()
+        .and_then(|key| inputs.get(key))
+        .and_then(|value| serde_json::to_value(value).ok())
+        .and_then(|value| serde_json::from_value::<AuthoritySubsetProof>(value).ok());
+    let authority_attenuation = match (parent_authority_ref, subset_proof) {
+        (Some(parent), Some(proof)) => Some(AuthorityAttenuation {
+            parent_authority_ref: Some(parent),
+            subset_proof: Some(proof),
+        }),
+        _ => None,
+    };
+
     Some(DomainActFrame {
         form,
         purpose: purpose.into(),
@@ -418,6 +456,8 @@ fn build_domain_act_frame(
         authority_scope_refs: input_ref(act.authority_from.as_deref(), ReferenceType::Grant)
             .into_iter()
             .collect(),
+        authority_terms,
+        authority_attenuation,
         previous: input_ref(act.previous_from.as_deref(), ReferenceType::Receipt),
     })
 }
@@ -538,7 +578,7 @@ fn closure_output(seal: &runx_contracts::Seal) -> JsonObject {
     let mut closure = JsonObject::new();
     closure.insert(
         "disposition".to_owned(),
-        JsonValue::String(closure_disposition_label(&seal.disposition).to_owned()),
+        JsonValue::String(seal.disposition.label().to_owned()),
     );
     closure.insert(
         "reason_code".to_owned(),
@@ -553,19 +593,6 @@ fn closure_output(seal: &runx_contracts::Seal) -> JsonObject {
         JsonValue::String(seal.closed_at.to_string()),
     );
     closure
-}
-
-fn closure_disposition_label(disposition: &ClosureDisposition) -> &'static str {
-    match disposition {
-        ClosureDisposition::Closed => "closed",
-        ClosureDisposition::Deferred => "deferred",
-        ClosureDisposition::Superseded => "superseded",
-        ClosureDisposition::Declined => "declined",
-        ClosureDisposition::Blocked => "blocked",
-        ClosureDisposition::Failed => "failed",
-        ClosureDisposition::Killed => "killed",
-        ClosureDisposition::TimedOut => "timed_out",
-    }
 }
 
 fn normalize_request_id(value: &str) -> String {

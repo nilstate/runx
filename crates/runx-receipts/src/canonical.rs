@@ -67,6 +67,15 @@ fn strip_body_proof_fields(value: &mut JsonValue) {
     }
 }
 
+/// Render any `JsonValue` under the `runx.stable-json.v1` canonicalization:
+/// recursively key-sorted objects, JS-`JSON.stringify`-compatible number and
+/// string encoding. This is the single Rust source of truth for stable JSON;
+/// the TypeScript `canonicalJsonStringify` (in `@runxhq/contracts`) mirrors it
+/// byte-for-byte, as the shared oracle fixtures pin.
+pub fn canonical_stable_json(value: &JsonValue) -> Result<String, ReceiptError> {
+    canonical_json_value(value)
+}
+
 fn canonical_json_value(value: &JsonValue) -> Result<String, ReceiptError> {
     let mut output = String::new();
     write_canonical_json_value(value, &mut output)?;

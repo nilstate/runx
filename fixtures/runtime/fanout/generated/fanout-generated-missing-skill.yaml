@@ -26,4 +26,4 @@ steps:
   - id: synthesize
     skill: ../../../skills/echo
     context:
-      message: market.recommendation
+      message: market.result.data.recommendation

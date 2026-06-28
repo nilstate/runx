@@ -14,7 +14,7 @@ steps:
   - id: reserve
     skill: ../../skills/x402-pay-paid-echo-reserve
     context:
-      payment_quote_packet: quote.skill_claim.payment_quote_packet.data
+      payment_quote_packet: quote.payment_quote_packet.data
   - id: approve-spend
     run:
       type: approval
@@ -33,16 +33,16 @@ steps:
     mutation: true
     idempotency_key: paid-echo-proofless-fulfill
     context:
-      reserved_payment_authority: reserve.skill_claim.payment_reservation_packet.data.reserved_payment_authority
-      spend_capability_ref: reserve.skill_claim.payment_reservation_packet.data.spend_capability_ref
-      idempotency: reserve.skill_claim.payment_reservation_packet.data.idempotency
+      reserved_payment_authority: reserve.payment_reservation_packet.data.reserved_payment_authority
+      spend_capability_ref: reserve.payment_reservation_packet.data.spend_capability_ref
+      idempotency: reserve.payment_reservation_packet.data.idempotency
   - id: echo
     skill: ../../skills/x402-pay-paid-echo-tool
     inputs:
       message: should not run
     context:
-      payment_capability_ref: fulfill.skill_claim.effect_evidence_packet.data.credential_envelope.credential_ref
-      payment_proof_ref: fulfill.skill_claim.effect_evidence_packet.data.rail_proof.proof_ref
+      payment_capability_ref: fulfill.effect_evidence_packet.data.credential_envelope.credential_ref
+      payment_proof_ref: fulfill.effect_evidence_packet.data.rail_proof.proof_ref
 policy:
   guards:
     - step: fulfill

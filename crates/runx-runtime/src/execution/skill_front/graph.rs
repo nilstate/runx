@@ -26,7 +26,7 @@ use crate::RuntimeError;
     feature = "thread-outbox-provider"
 ))]
 use crate::adapter::SkillAdapter;
-use crate::adapter::{InvocationStatus, SkillInvocation, SkillOutput};
+use crate::adapter::{SkillInvocation, SkillOutput};
 #[cfg(feature = "cli-tool")]
 use crate::adapters::cli_tool::CliToolAdapter;
 use crate::credentials::CredentialDelivery;
@@ -34,7 +34,8 @@ use crate::effects::RuntimeEffectRegistry;
 use crate::execution::graph::materialize_graph_inputs;
 use crate::execution::orchestrator::SkillRunRequest;
 use crate::execution::runner::{
-    GraphCheckpoint, GraphRun, RUNX_RUN_ID_ENV, Runtime, RuntimeOptions,
+    GraphCheckpoint, GraphRun, RUNX_RUN_ID_ENV, Runtime, RuntimeOptions, graph_run_payload,
+    graph_run_skill_output,
 };
 use crate::host::Host;
 use crate::journal::{PausedRunCheckpoint, append_paused_run_checkpoint};
@@ -78,10 +79,11 @@ pub(super) fn execute_graph_skill_run(
         env: env.clone(),
         credential_delivery: credential_delivery.clone(),
     };
+    let created_at = crate::time::now_iso8601();
     let runtime = Runtime::new(
         SkillRunGraphAdapter::default(),
         RuntimeOptions {
-            created_at: crate::time::now_iso8601(),
+            created_at: created_at.clone(),
             env,
             receipt_signature: receipts.signature_config().clone(),
             effects: effects.clone(),
@@ -151,7 +153,7 @@ pub(super) fn execute_graph_skill_run(
                         &mut final_host,
                     )?;
                     write_graph_receipts(request, workspace, receipts, &run)?;
-                    let payload = graph_payload(&run)?;
+                    let payload = graph_run_payload(&run, false);
                     // A graph that declares an `act:` block seals a clean domain-act
                     // receipt as its primary receipt; the step receipts above remain
                     // as its execution trace.
@@ -160,13 +162,14 @@ pub(super) fn execute_graph_skill_run(
                         &graph_inputs,
                         &run,
                         &run_id,
+                        &created_at,
                         receipts.signature_config(),
                     )?;
                     if let Some(domain_receipt) = &domain {
                         write_skill_receipt(request, workspace, receipts, domain_receipt)?;
                     }
                     let receipt = domain.as_ref().unwrap_or(&run.receipt);
-                    let output = graph_skill_output(&payload, &run)?;
+                    let output = graph_run_skill_output(&payload, &run)?;
                     return Ok(JsonValue::Object(sealed_output(
                         manifest,
                         &run_id,
@@ -379,8 +382,8 @@ fn seal_blocked_graph_skill_run(
         &mut final_host,
     )?;
     write_graph_receipts(context.request, context.workspace, context.receipts, &run)?;
-    let payload = graph_payload(&run)?;
-    let output = graph_skill_output(&payload, &run)?;
+    let payload = graph_run_payload(&run, false);
+    let output = graph_run_skill_output(&payload, &run)?;
     Ok(JsonValue::Object(sealed_output(
         context.manifest,
         context.run_id,
@@ -554,7 +557,7 @@ impl InlineResolver {
     fn try_resolve(&self, request: &ResolutionRequest) -> Result<Option<JsonValue>, RuntimeError> {
         use crate::adapters::agent::AgentResolver;
         use crate::adapters::agent_resolver::AnthropicAgentResolver;
-        use crate::runtime_http::ReqwestHttpTransport;
+        use crate::http::ReqwestHttpTransport;
 
         let fail = |message: String| RuntimeError::SkillFailed {
             skill_name: "managed-agent".to_owned(),
@@ -691,65 +694,6 @@ fn graph_run_id(
     }
 }
 
-fn graph_payload(run: &GraphRun) -> Result<JsonValue, SkillRunError> {
-    let mut payload = JsonObject::new();
-    payload.insert(
-        "graph".to_owned(),
-        JsonValue::String(run.graph.name.clone()),
-    );
-    payload.insert(
-        "graph_status".to_owned(),
-        JsonValue::String(format!("{:?}", run.state.status)),
-    );
-    let mut step_outputs = JsonObject::new();
-    let mut step_summaries = Vec::new();
-    for step in &run.steps {
-        let mut summary = JsonObject::new();
-        summary.insert(
-            "step_id".to_owned(),
-            JsonValue::String(step.step_id.clone()),
-        );
-        summary.insert("skill".to_owned(), JsonValue::String(step.skill.clone()));
-        summary.insert(
-            "status".to_owned(),
-            JsonValue::String(if step.output.succeeded() {
-                "success".to_owned()
-            } else {
-                "failure".to_owned()
-            }),
-        );
-        summary.insert(
-            "receipt_id".to_owned(),
-            JsonValue::String(step.receipt.id.to_string()),
-        );
-        step_summaries.push(JsonValue::Object(summary));
-        step_outputs.insert(
-            step.step_id.clone(),
-            JsonValue::Object(step.outputs.clone()),
-        );
-    }
-    payload.insert("steps".to_owned(), JsonValue::Array(step_summaries));
-    payload.insert("step_outputs".to_owned(), JsonValue::Object(step_outputs));
-    Ok(JsonValue::Object(payload))
-}
-
-fn graph_skill_output(payload: &JsonValue, run: &GraphRun) -> Result<SkillOutput, SkillRunError> {
-    let stdout = serde_json::to_string(payload)
-        .map_err(|source| RuntimeError::json("serializing graph payload", source))?;
-    Ok(SkillOutput {
-        status: if run.state.status == GraphStatus::Succeeded {
-            InvocationStatus::Success
-        } else {
-            InvocationStatus::Failure
-        },
-        stdout,
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 0,
-        metadata: JsonObject::new(),
-    })
-}
-
 fn write_graph_receipts(
     request: &SkillRunRequest,
     workspace: &WorkspaceEnv,
@@ -769,11 +713,15 @@ fn write_graph_receipts(
 /// inputs. The graph's per-step receipts remain as the execution trace; this
 /// standalone domain receipt is what the turn presents and what chains by
 /// lineage. Transport (the http step, status, token) never enters it.
-fn graph_domain_act_receipt(
+// rust-style-allow: long-function - assembling the domain-act receipt is one frame
+// build/mint/seal sequence; splitting it would separate the authority mint from the
+// frame it seals into.
+pub(crate) fn graph_domain_act_receipt(
     runner: &SkillRunnerDefinition,
     graph_inputs: &JsonObject,
     run: &GraphRun,
     run_id: &str,
+    created_at: &str,
     signature_config: &RuntimeReceiptSignatureConfig,
 ) -> Result<Option<runx_contracts::Receipt>, SkillRunError> {
     let Some(act) = runner.source.act.as_ref() else {
@@ -791,7 +739,7 @@ fn graph_domain_act_receipt(
         .filter(|step| step.output.succeeded())
         .and_then(|step| serde_json::from_str::<JsonValue>(step.output.stdout.trim()).ok());
     let authority_grant_refs = graph_credential_grant_refs(run);
-    let Some(frame) = build_domain_act_frame(
+    let Some(mut frame) = build_domain_act_frame(
         act,
         graph_inputs,
         &reason_source,
@@ -800,13 +748,30 @@ fn graph_domain_act_receipt(
     ) else {
         return Ok(None);
     };
+    // Compute path: when the act declares `mint_authority`, the runtime mints the
+    // child term and proves the subset against the graph charter off the model
+    // path, overriding the (empty, since the parser holds them mutually exclusive)
+    // pre-built attenuation fields. Fail-loud: a request exceeding the charter
+    // fails the turn rather than sealing a false or missing attenuation.
+    if let Some((terms, attenuation)) = mint_charter_attenuation(
+        act,
+        runner
+            .source
+            .graph
+            .as_ref()
+            .and_then(|graph| graph.charter_from.as_deref()),
+        graph_inputs,
+        created_at,
+    )? {
+        frame.authority_terms = terms;
+        frame.authority_attenuation = Some(attenuation);
+    }
     let graph_name = identifier_segment(run_id);
-    let created_at = crate::time::now_iso8601();
     let receipt = domain_act_receipt(DomainActReceiptRequest {
         graph_name: &graph_name,
         step_id: "turn",
         succeeded: run.state.status == GraphStatus::Succeeded,
-        created_at: &created_at,
+        created_at,
         disposition: ClosureDisposition::Closed,
         reason_code: "agent_act_closed".to_owned(),
         seal_summary: "governed graph turn sealed".to_owned(),
@@ -816,11 +781,93 @@ fn graph_domain_act_receipt(
     Ok(Some(receipt))
 }
 
+/// Mint the charter -> member attenuation for a graph turn that declares
+/// `mint_authority`. The parent charter is the AuthorityTerm carried by the graph
+/// runner's `charter_from` input; the requested narrowing is the AttenuationRequest
+/// carried by `requested_scope_from`. The child term and subset proof are computed
+/// and verified by the core mint primitive, so the runtime never trusts a pre-built
+/// proof here and a request exceeding the charter fails the turn loudly.
+// rust-style-allow: long-function - minting is one linear resolve-charter,
+// build-request, mint-and-prove sequence on the trust boundary; splitting it would
+// separate the charter from the proof that bounds it.
+pub(crate) fn mint_charter_attenuation(
+    act: &runx_parser::ActDeclaration,
+    charter_key: Option<&str>,
+    graph_inputs: &JsonObject,
+    created_at: &str,
+) -> Result<
+    Option<(
+        Vec<runx_contracts::AuthorityTerm>,
+        runx_contracts::AuthorityAttenuation,
+    )>,
+    SkillRunError,
+> {
+    use runx_core::policy::{AttenuationRequest, ScopeBoundsComparator, mint_attenuated};
+    use runx_parser::MintScopeSource;
+
+    let Some(directive) = act.mint_authority.as_ref() else {
+        return Ok(None);
+    };
+    let charter_key = charter_key.ok_or_else(|| {
+        invalid("mint_authority requires the graph runner to declare charter_from")
+    })?;
+    let charter: runx_contracts::AuthorityTerm = decode_graph_input(graph_inputs, charter_key)
+        .ok_or_else(|| {
+            invalid(format!(
+                "mint_authority charter input '{charter_key}' did not resolve to an authority term"
+            ))
+        })?;
+    let request: AttenuationRequest = match directive.source {
+        MintScopeSource::RequestedScope => {
+            let key = act.requested_scope_from.as_deref().ok_or_else(|| {
+                invalid("mint_authority requested_scope requires requested_scope_from")
+            })?;
+            decode_graph_input(graph_inputs, key).ok_or_else(|| {
+                invalid(format!(
+                    "mint_authority requested_scope input '{key}' did not resolve to an attenuation request"
+                ))
+            })?
+        }
+        MintScopeSource::StaticScopes => {
+            return Err(invalid(
+                "mint_authority source static_scopes is not yet wired in the runtime; use requested_scope",
+            ));
+        }
+    };
+    let (child, proof) = mint_attenuated(
+        &charter,
+        &request,
+        &ScopeBoundsComparator,
+        created_at.into(),
+    )
+    .map_err(|error| {
+        invalid(format!(
+            "mint_authority requested child is not a subset of the charter ({error:?})"
+        ))
+    })?;
+    let attenuation = runx_contracts::AuthorityAttenuation {
+        parent_authority_ref: Some(proof.parent_authority_ref.clone()),
+        subset_proof: Some(proof),
+    };
+    Ok(Some((vec![child], attenuation)))
+}
+
+/// Decode a trusted graph input value into a typed contract struct.
+pub(crate) fn decode_graph_input<T: serde::de::DeserializeOwned>(
+    inputs: &JsonObject,
+    key: &str,
+) -> Option<T> {
+    inputs
+        .get(key)
+        .and_then(|value| serde_json::to_value(value).ok())
+        .and_then(|value| serde_json::from_value(value).ok())
+}
+
 /// Gather the credential grant refs the turn actually held, read from the
 /// `Credential` verification refs sealed on each step receipt. These become the
 /// domain act's `authority.grant_refs`, so the receipt records the authority it
 /// carried, not only the declared scope.
-fn graph_credential_grant_refs(run: &GraphRun) -> Vec<runx_contracts::Reference> {
+pub(crate) fn graph_credential_grant_refs(run: &GraphRun) -> Vec<runx_contracts::Reference> {
     let mut refs: Vec<runx_contracts::Reference> = Vec::new();
     for step in &run.steps {
         for act in &step.receipt.acts {
@@ -847,6 +894,98 @@ mod tests {
 
     use super::*;
     use crate::adapter::SkillAdapter;
+
+    #[test]
+    fn mint_authority_seals_a_subset_proven_child() -> Result<(), SkillRunError> {
+        use runx_contracts::{
+            AuthorityBounds, AuthorityResourceFamily, AuthorityTerm, AuthorityVerb, Reference,
+            ReferenceType,
+        };
+        use runx_core::policy::{AttenuationRequest, ensure_subset_proof};
+
+        // Deterministic fixture instant for the minted child's `granted_at`; the
+        // test asserts on the subset proof, not the timestamp.
+        let created_at = "2026-05-18T00:00:00Z";
+
+        let principal = Reference::with_uri(ReferenceType::Principal, "runx:principal:agency");
+        let member = Reference::with_uri(ReferenceType::Principal, "runx:principal:writer");
+        let resource = Reference::with_uri(ReferenceType::Repository, "runx:repository:docs");
+        let bounds = AuthorityBounds {
+            filesystem_roots: vec!["/repo".into()],
+            ..AuthorityBounds::default()
+        };
+        let charter = AuthorityTerm {
+            term_id: "charter".into(),
+            principal_ref: principal.clone(),
+            resource_ref: resource.clone(),
+            resource_family: AuthorityResourceFamily::Workspace,
+            verbs: vec![AuthorityVerb::Read, AuthorityVerb::Write],
+            bounds: bounds.clone(),
+            conditions: Vec::new(),
+            approvals: Vec::new(),
+            capabilities: Vec::new(),
+            expires_at: None,
+            issued_by_ref: principal,
+            credential_ref: None,
+        };
+        let make_request = |verbs: Vec<AuthorityVerb>| AttenuationRequest {
+            principal_ref: member.clone(),
+            resource_ref: resource.clone(),
+            resource_family: AuthorityResourceFamily::Workspace,
+            verbs,
+            capabilities: Vec::new(),
+            bounds: bounds.clone(),
+            expires_at: None,
+        };
+
+        let act: runx_parser::ActDeclaration = serde_json::from_value(serde_json::json!({
+            "mint_authority": {"source": "requested_scope"},
+            "requested_scope_from": "requested"
+        }))
+        .map_err(|error| invalid(format!("act fixture: {error}")))?;
+
+        // Valid narrowing: a read-only child of a read+write charter, same resource.
+        let mut inputs = JsonObject::new();
+        inputs.insert("charter".to_owned(), contract_json_value(&charter)?);
+        inputs.insert(
+            "requested".to_owned(),
+            contract_json_value(&make_request(vec![AuthorityVerb::Read]))?,
+        );
+        let (terms, attenuation) =
+            mint_charter_attenuation(&act, Some("charter"), &inputs, created_at)?
+                .ok_or_else(|| invalid("expected minted attenuation"))?;
+        assert_eq!(terms.len(), 1, "exactly one minted child term");
+        let proof = attenuation
+            .subset_proof
+            .as_ref()
+            .ok_or_else(|| invalid("minted attenuation must carry a subset proof"))?;
+        // The receipt verifier accepts the computed proof.
+        ensure_subset_proof(Some(proof), &terms[0], &charter)
+            .map_err(|error| invalid(format!("verifier rejected minted proof: {error:?}")))?;
+
+        // Fail-closed: widening verbs beyond the charter errors and seals nothing.
+        let mut widen = JsonObject::new();
+        widen.insert("charter".to_owned(), contract_json_value(&charter)?);
+        widen.insert(
+            "requested".to_owned(),
+            contract_json_value(&make_request(vec![
+                AuthorityVerb::Read,
+                AuthorityVerb::Delete,
+            ]))?,
+        );
+        assert!(
+            mint_charter_attenuation(&act, Some("charter"), &widen, created_at,).is_err(),
+            "a request that widens beyond the charter must fail closed"
+        );
+
+        // Fail-closed: an unresolved charter input errors rather than sealing a root.
+        assert!(
+            mint_charter_attenuation(&act, Some("absent"), &inputs, created_at,).is_err(),
+            "an unresolved charter must fail closed"
+        );
+
+        Ok(())
+    }
 
     #[test]
     fn graph_source_registry_fails_closed_on_unregistered_source() {

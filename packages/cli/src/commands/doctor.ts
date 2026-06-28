@@ -527,8 +527,12 @@ async function loadStepOutputDeclarations(
       : isPlainRecord(raw.runx) && isPlainRecord(raw.runx.artifacts) && typeof raw.runx.artifacts.wrap_as === "string"
         ? raw.runx.artifacts.wrap_as
         : undefined;
+    // The catalog adapter wraps a local tool's claim idempotently (`data_envelope`):
+    // a self-described `{ schema, data }` packet is exposed as-is, so the payload sits
+    // at a single `.data` depth, same as a flat claim. Both wrap_as and named_emits are
+    // therefore "payload"-shaped (not the legacy "packet"/`.data.data` double envelope).
     if (wrapAs) {
-      return { [wrapAs]: { packet, packetDataShape: "packet" } };
+      return { [wrapAs]: { packet, packetDataShape: "payload" } };
     }
     const namedEmits = isPlainRecord(output.named_emits) ? output.named_emits : undefined;
     if (namedEmits) {
@@ -537,7 +541,7 @@ async function loadStepOutputDeclarations(
         const declared = outputPackets[name];
         return [name, {
           packet: readPacketRef(isPlainRecord(declared) ? declared.packet : undefined) ?? packet,
-          packetDataShape: "packet",
+          packetDataShape: "payload",
         }];
       }));
     }

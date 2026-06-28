@@ -88,9 +88,20 @@ export interface ActDeclaration {
   readonly effect_prefix_from?: string;
   readonly actor_from?: string;
   readonly authority_from?: string;
+  readonly authority_term_from?: string;
+  readonly authority_parent_from?: string;
+  readonly authority_subset_proof_from?: string;
+  readonly mint_authority?: MintAuthorityDirective;
+  readonly requested_scope_from?: string;
   readonly previous_from?: string;
   readonly reason_step?: string;
   readonly effect_step?: string;
+}
+
+export type MintScopeSource = "static_scopes" | "requested_scope";
+
+export interface MintAuthorityDirective {
+  readonly source: MintScopeSource;
 }
 
 export interface SkillArtifactContract {
@@ -774,25 +785,49 @@ const actFields = [
   "effect_prefix_from",
   "actor_from",
   "authority_from",
+  "authority_term_from",
+  "authority_parent_from",
+  "authority_subset_proof_from",
+  "requested_scope_from",
   "previous_from",
   "reason_step",
   "effect_step",
 ] as const;
+
+const actObjectFields = ["mint_authority"] as const;
+const actAllowedFields = [...actFields, ...actObjectFields] as const;
 
 function validateActDeclaration(value: unknown, field: string): ActDeclaration | undefined {
   const record = optionalNullableRecord(value, field);
   if (!record) {
     return undefined;
   }
-  rejectUnknownFields(record, field, actFields);
-  const validated: Record<string, string> = {};
+  rejectUnknownFields(record, field, actAllowedFields);
+  const validated: Record<string, string | MintAuthorityDirective> = {};
   for (const key of actFields) {
     const entry = optionalNullableString(record[key], `${field}.${key}`);
     if (entry !== undefined) {
       validated[key] = entry;
     }
   }
-  return validated;
+  const mintAuthority = validateMintAuthorityDirective(record.mint_authority, `${field}.mint_authority`);
+  if (mintAuthority !== undefined) {
+    validated.mint_authority = mintAuthority;
+  }
+  return validated as ActDeclaration;
+}
+
+function validateMintAuthorityDirective(value: unknown, field: string): MintAuthorityDirective | undefined {
+  const record = optionalNullableRecord(value, field);
+  if (!record) {
+    return undefined;
+  }
+  rejectUnknownFields(record, field, ["source"]);
+  const source = requiredNullableString(record.source, `${field}.source`);
+  if (source !== "static_scopes" && source !== "requested_scope") {
+    throw new SkillValidationError(`${field}.source must be static_scopes or requested_scope.`);
+  }
+  return { source };
 }
 
 function validateSandbox(value: unknown): SkillSandbox | undefined {

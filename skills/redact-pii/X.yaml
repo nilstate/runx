@@ -16,8 +16,8 @@ runners:
     outputs:
       redaction_report: object
     artifacts:
-      wrap_as: redaction_report_packet
-      packet: runx.redaction.report.v1
+      named_emits:
+        redaction_report: runx.redaction.report.v1
     runx:
       category: security
     inputs:

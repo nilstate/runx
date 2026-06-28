@@ -16,9 +16,7 @@ use serde_json::{Value as WireValue, json};
 use super::agent_loop::{AgentToolUse, AgentTurn, ModelCaller};
 use crate::RuntimeError;
 use crate::credentials::SecretString;
-use crate::runtime_http::{
-    HttpMethod, RuntimeHttpHeader, RuntimeHttpRequest, RuntimeHttpTransport,
-};
+use crate::http::{HttpMethod, RuntimeHttpHeader, RuntimeHttpRequest, RuntimeHttpTransport};
 
 const ANTHROPIC_MESSAGES_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
@@ -222,7 +220,7 @@ impl<T: RuntimeHttpTransport> ModelCaller for AnthropicModelCaller<T> {
 mod tests {
     use super::*;
     use crate::adapters::agent_loop::AgentTurn;
-    use crate::runtime_http::{RuntimeHttpError, RuntimeHttpRequest, RuntimeHttpResponse};
+    use crate::http::{RuntimeHttpError, RuntimeHttpRequest, RuntimeHttpResponse};
     use std::cell::RefCell;
 
     struct StubTransport {

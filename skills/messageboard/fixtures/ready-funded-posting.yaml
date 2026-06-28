@@ -17,6 +17,8 @@ inputs:
 caller:
   answers:
     agent_task.messageboard-post.output:
+      effect_family: messageboard
+      operation: post
       actor_kid: vendor
       posting:
         title: Verify receipt link

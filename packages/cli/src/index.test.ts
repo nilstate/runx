@@ -1672,7 +1672,7 @@ runners:
               ok: string
           context:
             brand_name: produce.profile_packet.data.profile.name
-            tool_brand_name: tool-produce.profile_packet.data.data.profile.name
+            tool_brand_name: tool-produce.profile_packet.data.profile.name
 harness:
   cases:
     - name: graph-smoke

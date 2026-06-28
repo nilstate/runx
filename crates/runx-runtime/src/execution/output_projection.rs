@@ -19,6 +19,12 @@ pub(crate) struct StepOutputRefs {
     pub(crate) verification_refs: Vec<Reference>,
 }
 
+/// The diagnostic/base fields `project_step_output` injects into a step's `outputs`
+/// map. Re-exported from `runx_contracts::output` so the runtime projection/resolver
+/// and the parser's parse-time context-edge validation share one source of truth and
+/// the addressable surface cannot drift between layers.
+pub(crate) use runx_contracts::output::BASE_OUTPUT_FIELDS;
+
 #[must_use]
 pub(crate) fn project_step_output(output: &SkillOutput) -> StepOutputProjection {
     let mut outputs = JsonObject::new();
@@ -50,6 +56,25 @@ pub(crate) fn project_step_output(output: &SkillOutput) -> StepOutputProjection 
         outputs,
         claim,
         refs,
+    }
+}
+
+/// Wrap a value in the canonical `{ "data": ... }` artifact envelope, idempotently.
+///
+/// This is the single owner of the envelope convention: a value that is already an
+/// object carrying a `data` key is returned untouched, so the envelope is applied at
+/// most once no matter how many layers (catalog adapter, step projection) handle the
+/// same payload. Without this guard a payload wrapped by one layer is re-wrapped by the
+/// next, producing the `data.data` depth drift that silently breaks context-edge paths.
+#[must_use]
+pub(crate) fn data_envelope(value: JsonValue) -> JsonValue {
+    match value {
+        JsonValue::Object(object) if object.contains_key("data") => JsonValue::Object(object),
+        other => {
+            let mut wrapper = JsonObject::new();
+            wrapper.insert("data".to_owned(), other);
+            JsonValue::Object(wrapper)
+        }
     }
 }
 

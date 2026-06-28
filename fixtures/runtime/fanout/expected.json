@@ -107,8 +107,8 @@
       "group_id": "advisors",
       "strategy": "all",
       "decision": "pause",
-      "rule_fired": "threshold.risk.risk_score.above",
-      "reason": "risk.risk_score=0.91 exceeded 0.8",
+      "rule_fired": "threshold.risk.result.data.risk_score.above",
+      "reason": "risk.result.data.risk_score=0.91 exceeded 0.8",
       "branch_count": 2,
       "success_count": 2,
       "failure_count": 0,
@@ -120,7 +120,7 @@
       "gate": {
         "action": "pause",
         "comparedTo": 0.8,
-        "field": "risk_score",
+        "field": "result.data.risk_score",
         "stepId": "risk",
         "type": "threshold",
         "value": 0.91

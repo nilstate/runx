@@ -1,7 +1,7 @@
 use std::path::{Component, Path, PathBuf};
 
 use crate::RuntimeError;
-use crate::runtime_fs::read_dir_sorted;
+use crate::filesystem::read_dir_sorted;
 
 pub(crate) fn count_yaml_files(directory: &Path) -> Result<u64, RuntimeError> {
     let mut count = 0;

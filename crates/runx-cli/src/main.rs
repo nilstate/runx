@@ -6,8 +6,8 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use runx_cli::launcher::{
-    HarnessPlan, LauncherAction, add_help_text, help_text, history_help_text, list_help_text,
+use runx_cli::router::{
+    HarnessPlan, RouterAction, add_help_text, help_text, history_help_text, list_help_text,
     login_help_text, publish_help_text, registry_help_text, resume_help_text, skill_help_text,
     verify_help_text,
 };
@@ -18,53 +18,53 @@ const INLINE_HARNESS_STALE_RECEIPT_STORE_HINT: &str = "runx: hint: the receipt s
 fn main() -> ExitCode {
     let args: Vec<OsString> = env::args_os().skip(1).collect();
 
-    match runx_cli::launcher::plan_launcher(args) {
-        LauncherAction::Error(message) => {
+    match runx_cli::router::route_args(args) {
+        RouterAction::Error(message) => {
             let _ignored = write_stderr_line(&format!("runx: {message}"));
             ExitCode::from(64)
         }
-        LauncherAction::JsonError(plan) => {
+        RouterAction::JsonError(plan) => {
             write_json_failure(&plan.message, &plan.code, plan.exit_code)
         }
-        LauncherAction::PrintHelp => write_stdout(&help_text()),
-        LauncherAction::PrintAddHelp => write_stdout(&add_help_text()),
-        LauncherAction::PrintHistoryHelp => write_stdout(&history_help_text()),
-        LauncherAction::PrintListHelp => write_stdout(&list_help_text()),
-        LauncherAction::PrintLoginHelp => write_stdout(&login_help_text()),
-        LauncherAction::PrintPublishHelp => write_stdout(&publish_help_text()),
-        LauncherAction::PrintRegistryHelp => write_stdout(&registry_help_text()),
-        LauncherAction::PrintRegistryUsageError => {
+        RouterAction::PrintHelp => write_stdout(&help_text()),
+        RouterAction::PrintAddHelp => write_stdout(&add_help_text()),
+        RouterAction::PrintHistoryHelp => write_stdout(&history_help_text()),
+        RouterAction::PrintListHelp => write_stdout(&list_help_text()),
+        RouterAction::PrintLoginHelp => write_stdout(&login_help_text()),
+        RouterAction::PrintPublishHelp => write_stdout(&publish_help_text()),
+        RouterAction::PrintRegistryHelp => write_stdout(&registry_help_text()),
+        RouterAction::PrintRegistryUsageError => {
             let _ignored = write_stderr_line(&registry_help_text());
             ExitCode::from(64)
         }
-        LauncherAction::PrintResumeHelp => write_stdout(&resume_help_text()),
-        LauncherAction::PrintSkillHelp => write_stdout(&skill_help_text()),
-        LauncherAction::PrintVerifyHelp => write_stdout(&verify_help_text()),
-        LauncherAction::PrintVersion => {
+        RouterAction::PrintResumeHelp => write_stdout(&resume_help_text()),
+        RouterAction::PrintSkillHelp => write_stdout(&skill_help_text()),
+        RouterAction::PrintVerifyHelp => write_stdout(&verify_help_text()),
+        RouterAction::PrintVersion => {
             write_stdout_line(&format!("runx-cli {}", env!("CARGO_PKG_VERSION")))
         }
-        LauncherAction::RunInit(plan) => runx_cli::scaffold::run_native_init(plan),
-        LauncherAction::RunNew(plan) => runx_cli::scaffold::run_native_new(plan),
-        LauncherAction::RunHistory(plan) => run_native_history(plan.args),
-        LauncherAction::RunVerify(plan) => run_native_verify(plan.args),
-        LauncherAction::RunList(plan) => run_native_list(plan),
-        LauncherAction::RunLogin(plan) => runx_cli::login::run_native_login(plan),
-        LauncherAction::RunMcp(plan) => runx_cli::mcp::run_native_mcp(plan),
-        LauncherAction::RunHarness(plan) => run_native_harness(plan),
-        LauncherAction::RunKernel(plan) => runx_cli::kernel::run_native_kernel(plan),
-        LauncherAction::RunPayment(plan) => runx_cli::payment::run_native_payment(plan),
-        LauncherAction::RunParser(plan) => runx_cli::parser::run_native_parser(plan),
-        LauncherAction::RunConfig(plan) => run_native_config(plan),
-        LauncherAction::RunPolicy(plan) => runx_cli::policy::run_native_policy(plan),
-        LauncherAction::RunPublish(plan) => runx_cli::publish::run_native_publish(plan),
-        LauncherAction::RunRegistry(plan) => runx_cli::registry::run_native_registry(plan),
-        LauncherAction::RunResume(plan) => runx_cli::resume::run_native_resume(plan),
-        LauncherAction::RunSkill(plan) => runx_cli::skill::run_native_skill(plan),
-        LauncherAction::RunDoctor(plan) => runx_cli::doctor::run_native_doctor(plan),
-        LauncherAction::RunDev(plan) => runx_cli::dev::run_native_dev(plan),
-        LauncherAction::RunExport(plan) => runx_cli::export::run_native_export(plan),
-        LauncherAction::RunTool(plan) => runx_cli::tool::run_native_tool(plan),
-        LauncherAction::RunUrlAdd(plan) => runx_cli::url_add::run_native_url_add(plan),
+        RouterAction::RunInit(plan) => runx_cli::scaffold::run_native_init(plan),
+        RouterAction::RunNew(plan) => runx_cli::scaffold::run_native_new(plan),
+        RouterAction::RunHistory(plan) => run_native_history(plan.args),
+        RouterAction::RunVerify(plan) => run_native_verify(plan.args),
+        RouterAction::RunList(plan) => run_native_list(plan),
+        RouterAction::RunLogin(plan) => runx_cli::login::run_native_login(plan),
+        RouterAction::RunMcp(plan) => runx_cli::mcp::run_native_mcp(plan),
+        RouterAction::RunHarness(plan) => run_native_harness(plan),
+        RouterAction::RunKernel(plan) => runx_cli::kernel::run_native_kernel(plan),
+        RouterAction::RunPayment(plan) => runx_cli::payment::run_native_payment(plan),
+        RouterAction::RunParser(plan) => runx_cli::parser::run_native_parser(plan),
+        RouterAction::RunConfig(plan) => run_native_config(plan),
+        RouterAction::RunPolicy(plan) => runx_cli::policy::run_native_policy(plan),
+        RouterAction::RunPublish(plan) => runx_cli::publish::run_native_publish(plan),
+        RouterAction::RunRegistry(plan) => runx_cli::registry::run_native_registry(plan),
+        RouterAction::RunResume(plan) => runx_cli::resume::run_native_resume(plan),
+        RouterAction::RunSkill(plan) => runx_cli::skill::run_native_skill(plan),
+        RouterAction::RunDoctor(plan) => runx_cli::doctor::run_native_doctor(plan),
+        RouterAction::RunDev(plan) => runx_cli::dev::run_native_dev(plan),
+        RouterAction::RunExport(plan) => runx_cli::export::run_native_export(plan),
+        RouterAction::RunTool(plan) => runx_cli::tool::run_native_tool(plan),
+        RouterAction::RunAddUrl(plan) => runx_cli::add::run_native_add(plan),
     }
 }
 
@@ -90,7 +90,7 @@ fn run_native_history(args: Vec<OsString>) -> ExitCode {
 }
 
 fn run_native_verify(args: Vec<OsString>) -> ExitCode {
-    let json = runx_cli::launcher::json_requested(&args);
+    let json = runx_cli::router::json_requested(&args);
     let cwd = match env::current_dir() {
         Ok(cwd) => cwd,
         Err(error) => {
@@ -129,7 +129,7 @@ fn run_native_verify(args: Vec<OsString>) -> ExitCode {
     }
 }
 
-fn run_native_list(plan: runx_cli::launcher::ListPlan) -> ExitCode {
+fn run_native_list(plan: runx_cli::router::ListPlan) -> ExitCode {
     let cwd = match env::current_dir() {
         Ok(cwd) => cwd,
         Err(error) => {
@@ -335,7 +335,7 @@ fn write_stdout(message: &str) -> ExitCode {
 }
 
 fn write_json_failure(message: &str, code: &str, exit_code: u8) -> ExitCode {
-    let output = runx_cli::launcher::json_failure_output(message, code);
+    let output = runx_cli::router::json_failure_output(message, code);
     let mut stdout = io::stdout().lock();
     if stdout.write_all(output.as_bytes()).is_ok() {
         ExitCode::from(exit_code)

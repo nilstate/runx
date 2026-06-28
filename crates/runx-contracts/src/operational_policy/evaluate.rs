@@ -263,10 +263,7 @@ fn select_request_runner<'a>(
     findings: &mut Vec<OperationalPolicyValidationFinding>,
 ) -> Option<&'a OperationalPolicyRunnerRule> {
     if let Some(runner_id) = non_empty_string(&request.runner_id) {
-        let runner = policy
-            .runners
-            .iter()
-            .find(|candidate| candidate.runner_id == runner_id);
+        let runner = resolve_runner(policy, runner_id);
         if runner.is_none() {
             findings.push(finding(
                 "unknown_runner",
@@ -274,7 +271,7 @@ fn select_request_runner<'a>(
                 &format!("request references unknown runner '{runner_id}'."),
             ));
         } else if let Some(target) = target
-            && !target.runner_ids.iter().any(|id| id == runner_id)
+            && !target_admits_runner(target, runner_id)
         {
             findings.push(finding(
                 "runner_not_allowed_for_target",
@@ -292,16 +289,8 @@ fn select_request_runner<'a>(
     let runner = target
         .runner_ids
         .iter()
-        .filter_map(|runner_id| {
-            policy
-                .runners
-                .iter()
-                .find(|candidate| candidate.runner_id == *runner_id)
-        })
-        .find(|candidate| {
-            candidate.state == OperationalPolicyRunnerState::Available
-                && candidate.allowed_actions.contains(&request.action)
-        });
+        .filter_map(|runner_id| resolve_runner(policy, runner_id))
+        .find(|candidate| runner_ready_for_action(candidate, &request.action));
     if runner.is_none() {
         findings.push(finding(
             "runner_required",
@@ -313,6 +302,38 @@ fn select_request_runner<'a>(
         ));
     }
     runner
+}
+
+/// Resolve a runner id to the matching runner rule, if any. Shared by the
+/// explicit-runner admission path and the auto-select filter so both entry
+/// points perform runner lookup identically.
+fn resolve_runner<'a>(
+    policy: &'a OperationalPolicy,
+    runner_id: &str,
+) -> Option<&'a OperationalPolicyRunnerRule> {
+    policy
+        .runners
+        .iter()
+        .find(|candidate| candidate.runner_id == runner_id)
+}
+
+/// Whether the target lists this runner id among its allowed runners. Names the
+/// membership predicate the explicit path applies before emitting
+/// `runner_not_allowed_for_target`. The auto path enforces the same membership
+/// structurally by iterating `target.runner_ids` directly.
+fn target_admits_runner(target: &OperationalPolicyTargetRule, runner_id: &str) -> bool {
+    target.runner_ids.iter().any(|id| id == runner_id)
+}
+
+/// Whether a runner is available and permits the requested action. Used only by
+/// the auto-select filter; the explicit path defers this check to
+/// `validate_admitted_runner` and intentionally does not apply it here.
+fn runner_ready_for_action(
+    runner: &OperationalPolicyRunnerRule,
+    action: &OperationalPolicyAction,
+) -> bool {
+    runner.state == OperationalPolicyRunnerState::Available
+        && runner.allowed_actions.contains(action)
 }
 
 fn source_readback(source: &OperationalPolicySourceRule) -> OperationalPolicySourceReadback {

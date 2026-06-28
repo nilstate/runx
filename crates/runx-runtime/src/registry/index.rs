@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use super::types::TrustTier;
-use crate::runtime_http::{
+use crate::http::{
     HttpMethod, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest as HttpRequest,
     RuntimeHttpTransport as Transport,
 };

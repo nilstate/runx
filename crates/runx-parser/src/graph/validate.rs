@@ -33,6 +33,7 @@ pub fn validate_graph_document(
 
     let name = required_string(document.get("name"), "name")?;
     let owner = optional_string(document.get("owner"), "owner")?;
+    let charter_from = optional_string(document.get("charter_from"), "charter_from")?;
     let raw_steps = required_array(document.get("steps"), "steps")?;
     let fanout_groups = validate_fanout_groups(document.get("fanout"), "fanout")?;
     let policy = validate_graph_policy(document.get("policy"), "policy")?;
@@ -42,7 +43,7 @@ pub fn validate_graph_document(
     for (index, raw_step) in raw_steps.iter().enumerate() {
         let field = format!("steps.{index}");
         let raw_step = required_object(Some(raw_step), &field)?;
-        let step = validate_step(raw_step, &field, &seen_step_ids)?;
+        let step = validate_step(raw_step, &field, &seen_step_ids, charter_from.is_some())?;
         seen_step_ids.insert(step.id.clone());
         steps.push(step);
     }
@@ -52,6 +53,7 @@ pub fn validate_graph_document(
     Ok(ExecutionGraph {
         name,
         owner,
+        charter_from,
         steps,
         fanout_groups,
         policy,
@@ -117,6 +119,201 @@ steps:
         )
         .map_err(|error| error.to_string())?;
         validate_graph(raw).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    fn validate_yaml(source: &str) -> Result<crate::ExecutionGraph, String> {
+        let raw = parse_graph_yaml(source).map_err(|error| error.to_string())?;
+        validate_graph(raw).map_err(|error| error.to_string())
+    }
+
+    fn validate_err(source: &str) -> Result<String, String> {
+        let raw = parse_graph_yaml(source).map_err(|error| error.to_string())?;
+        validate_graph(raw)
+            .err()
+            .map(|error| error.to_string())
+            .ok_or_else(|| "graph unexpectedly validated".to_owned())
+    }
+
+    #[test]
+    fn charter_from_and_static_scope_mint_validate() -> Result<(), String> {
+        let graph = validate_yaml(
+            r#"
+name: mint-static
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    scopes:
+      - payments:spend
+    mint_authority:
+      source: static_scopes
+"#,
+        )?;
+        assert_eq!(graph.charter_from.as_deref(), Some("charter"));
+        let directive = graph.steps[0]
+            .mint_authority
+            .ok_or_else(|| "expected mint_authority".to_owned())?;
+        assert_eq!(directive.source, crate::MintScopeSource::StaticScopes);
+        Ok(())
+    }
+
+    #[test]
+    fn requested_scope_mint_validates() -> Result<(), String> {
+        let graph = validate_yaml(
+            r#"
+name: mint-dynamic
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    requested_scope_from: needed_scope
+    mint_authority:
+      source: requested_scope
+"#,
+        )?;
+        let step = &graph.steps[0];
+        assert_eq!(step.requested_scope_from.as_deref(), Some("needed_scope"));
+        assert_eq!(
+            step.mint_authority.map(|directive| directive.source),
+            Some(crate::MintScopeSource::RequestedScope)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn mint_authority_without_charter_is_rejected() -> Result<(), String> {
+        let message = validate_err(
+            r#"
+name: mint-no-charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    scopes:
+      - payments:spend
+    mint_authority:
+      source: static_scopes
+"#,
+        )?;
+        assert!(message.contains("requires the graph to declare charter_from"));
+        Ok(())
+    }
+
+    #[test]
+    fn static_scopes_mint_rejects_requested_scope_from() -> Result<(), String> {
+        let message = validate_err(
+            r#"
+name: mint-two-sources
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    scopes:
+      - payments:spend
+    requested_scope_from: needed_scope
+    mint_authority:
+      source: static_scopes
+"#,
+        )?;
+        assert!(message.contains("must not declare requested_scope_from"));
+        Ok(())
+    }
+
+    #[test]
+    fn static_scopes_mint_requires_non_empty_scopes() -> Result<(), String> {
+        let message = validate_err(
+            r#"
+name: mint-no-scopes
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    mint_authority:
+      source: static_scopes
+"#,
+        )?;
+        assert!(message.contains("requires a non-empty scopes list"));
+        Ok(())
+    }
+
+    #[test]
+    fn requested_scope_mint_requires_input_key() -> Result<(), String> {
+        let message = validate_err(
+            r#"
+name: mint-missing-input
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    mint_authority:
+      source: requested_scope
+"#,
+        )?;
+        assert!(message.contains("requires requested_scope_from"));
+        Ok(())
+    }
+
+    #[test]
+    fn requested_scope_mint_rejects_static_scopes() -> Result<(), String> {
+        let message = validate_err(
+            r#"
+name: mint-mixed
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    scopes:
+      - payments:spend
+    requested_scope_from: needed_scope
+    mint_authority:
+      source: requested_scope
+"#,
+        )?;
+        assert!(message.contains("must not declare a static scopes list"));
+        Ok(())
+    }
+
+    #[test]
+    fn requested_scope_from_without_directive_is_rejected() -> Result<(), String> {
+        let message = validate_err(
+            r#"
+name: dangling-requested-scope
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    requested_scope_from: needed_scope
+"#,
+        )?;
+        assert!(message.contains("only valid with a mint_authority directive"));
+        Ok(())
+    }
+
+    #[test]
+    fn unknown_mint_source_is_rejected() -> Result<(), String> {
+        let message = validate_err(
+            r#"
+name: bad-source
+charter_from: charter
+steps:
+  - id: dispatch
+    run:
+      type: agent-task
+    scopes:
+      - payments:spend
+    mint_authority:
+      source: widen_everything
+"#,
+        )?;
+        assert!(message.contains("must be static_scopes or requested_scope"));
         Ok(())
     }
 }

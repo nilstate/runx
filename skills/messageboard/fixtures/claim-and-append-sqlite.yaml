@@ -21,6 +21,8 @@ inputs:
 caller:
   answers:
     agent_task.messageboard-claim.output:
+      effect_family: messageboard
+      operation: claim
       actor_kid: worker
       posting_id: post_sqlite_2
       claim:

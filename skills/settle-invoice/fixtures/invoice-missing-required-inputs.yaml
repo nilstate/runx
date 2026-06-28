@@ -17,14 +17,14 @@ caller:
           name: ""
           account_digest: ""
         rail: ""
-        spend_limit: 0
+        requested_scope: null
         gates:
           human_approval_required: true
           preflight_required: true
         blockers:
           - amount is missing
           - payee is missing
-          - spend_limit is missing
+          - requested_scope ceiling is missing
 expect:
   status: needs_agent
   receipt:
