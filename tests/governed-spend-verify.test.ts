@@ -246,7 +246,7 @@ function publicKeyHash() {
   return `sha256:${crypto.createHash("sha256").update(raw).digest("hex")}`;
 }
 
-function publicKeyRaw() {
-  const publicKey = crypto.createPublicKey(privateKey());
-  return publicKey.export({ format: "der", type: "spki" }).subarray(-32);
+function publicKeyRaw(): Buffer {
+  const publicKey = crypto.createPublicKey(privateKey().export({ format: "pem", type: "pkcs8" }));
+  return Buffer.from(publicKey.export({ format: "der", type: "spki" })).subarray(-32);
 }
