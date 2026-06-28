@@ -64,7 +64,7 @@ ring = "0.17.14"
 # compiled in. ring is then the single, unambiguous process-default provider.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"], optional = true }
 rustix = { version = "1.1.4", features = ["process"] }
-rmcp = { version = "=1.7.0", default-features = false, features = ["client", "server"], optional = true }
+rmcp = { version = "=1.8.0", default-features = false, features = ["client", "server"], optional = true }
 # Drive rmcp's StreamableHttpService (a tower service) over a TCP listener for the
 # MCP-over-HTTP server. Both crates are already in the tree via reqwest/rmcp.
 hyper = { version = "=1.9.0", default-features = false, features = ["server", "http1"], optional = true }
