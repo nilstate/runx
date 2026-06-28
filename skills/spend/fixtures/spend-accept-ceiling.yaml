@@ -1,0 +1,296 @@
+name: spend-accept-ceiling
+kind: skill
+target: ..
+runner: accept
+inputs:
+  # The parent charter authority term the requested ceiling attenuates from.
+  charter:
+    term_id: charter
+    principal_ref:
+      type: principal
+      uri: runx:principal:agency
+    resource_ref:
+      type: repository
+      uri: runx:repository:monorepo
+    resource_family: workspace
+    verbs:
+      - read
+      - write
+      - review
+    bounds:
+      repo_path_globs:
+        - "apps/**"
+        - "packages/**"
+      network_destinations:
+        - api.internal
+        - cdn.internal
+      max_fanout: 8
+      max_child_depth: 3
+    conditions:
+      - condition_id: condition_approval
+        predicate: approval_present
+        refs: []
+    approvals:
+      - approval_ref:
+          type: decision
+          uri: runx:decision:approval
+        criterion_ids: []
+    capabilities:
+      - filesystem_read
+      - network_egress
+    expires_at: 2026-12-31T00:00:00Z
+    issued_by_ref:
+      type: principal
+      uri: runx:principal:operator
+  # The requested authority ceiling (AttenuationRequest): a strict subset of the
+  # charter on every dimension. It is both the reservation ceiling quote/reserve
+  # narrow from and the subject the runtime mints the child grant from.
+  requested_scope:
+    principal_ref:
+      type: principal
+      uri: runx:principal:member
+    resource_ref:
+      type: repository
+      uri: runx:repository:monorepo
+    resource_family: workspace
+    verbs:
+      - read
+    capabilities:
+      - filesystem_read
+    bounds:
+      repo_path_globs:
+        - "apps/**"
+      network_destinations:
+        - api.internal
+      max_fanout: 2
+      max_child_depth: 1
+    expires_at: 2026-06-30T00:00:00Z
+  payment_signal:
+    signal_type: effect_required
+    challenge_id: ch_accept_001
+    amount_minor: 125
+    currency: USD
+    rail: mock
+    counterparty: merchant:demo
+    operation: search.paid
+  rail_profile_ref: rail-profile:mock:test
+  realm: test
+  idempotency_seed: demo-accept-001
+caller:
+  answers:
+    agent_task.pay-quote.output:
+      payment_quote:
+        quote_id: quote_demo_001
+        amount_minor: 125
+        currency: USD
+        rails:
+          - mock
+        counterparty: merchant:demo
+        operation: search.paid
+      requested_payment_authority:
+        term_id: authority-term:payment:quote-demo-001
+        principal_ref:
+          type: host
+          uri: principal:operator:test
+        resource_ref:
+          type: surface
+          uri: merchant:demo
+        resource_family: effect
+        verbs:
+          - prepare
+          - commit
+        bounds:
+          effect_limits:
+            - family: payment
+              unit: USD
+              max_per_call_units: 125
+              channels:
+                - mock
+              realm: test
+        conditions: []
+        approvals: []
+        capabilities: []
+        issued_by_ref:
+          type: host
+          uri: authority:payment:test
+    agent_task.pay-reserve.output:
+      payment_decision:
+        decision_id: decision_payment_demo_001
+        choice: continue
+        inputs:
+          signal_refs: []
+          target_ref: null
+          opportunity_refs: []
+          selection_ref: null
+        proposed_intent:
+          purpose: complete a bounded payment
+          legitimacy: authorized by selected reservation decision
+          success_criteria: []
+          constraints: []
+          derived_from: []
+        selected_act_id: act_fulfill
+        selected_harness_ref: null
+        justification:
+          summary: reservation selected a bounded spend act
+          evidence_refs: []
+        closure: null
+        artifact_refs: []
+      reserved_payment_authority:
+        parent_authority:
+          term_id: authority-term:payment:quote-demo-001
+          principal_ref:
+            type: host
+            uri: principal:operator:test
+          resource_ref:
+            type: surface
+            uri: merchant:demo
+          resource_family: effect
+          verbs:
+            - prepare
+            - commit
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 125
+                max_per_run_units: 125
+                channels:
+                  - mock
+                realm: test
+                peer: merchant:demo
+                operation: search.paid
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+                authorization_form: single_use_capability
+          conditions: []
+          approvals: []
+          capabilities:
+            - effect_single_use_capability
+          issued_by_ref:
+            type: host
+            uri: authority:payment:test
+        child_authority:
+          term_id: authority-term:payment:reserve-demo-001
+          principal_ref:
+            type: host
+            uri: principal:operator:test
+          resource_ref:
+            type: surface
+            uri: merchant:demo
+          resource_family: effect
+          verbs:
+            - commit
+          capabilities:
+            - effect_single_use_capability
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 125
+                max_per_run_units: 125
+                channels:
+                  - mock
+                realm: test
+                peer: merchant:demo
+                operation: search.paid
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+                authorization_form: single_use_capability
+          conditions: []
+          approvals: []
+          issued_by_ref:
+            type: host
+            uri: authority:payment:test
+        reservation_decision:
+          decision_id: decision_payment_demo_001
+          choice: continue
+          inputs:
+            signal_refs: []
+            target_ref: null
+            opportunity_refs: []
+            selection_ref: null
+          proposed_intent:
+            purpose: complete a bounded payment
+            legitimacy: authorized by selected reservation decision
+            success_criteria: []
+            constraints: []
+            derived_from: []
+          selected_act_id: act_fulfill
+          selected_harness_ref: null
+          justification:
+            summary: reservation selected a bounded spend act
+            evidence_refs: []
+          closure: null
+          artifact_refs: []
+        subset_proof:
+          parent_authority_ref:
+            type: surface
+            uri: merchant:demo
+          comparison_algorithm: runx.payment-authority-subset.v1
+          result: subset
+          compared_terms:
+            - child_term_id: authority-term:payment:reserve-demo-001
+              parent_term_id: authority-term:payment:quote-demo-001
+              relation: subset
+          checked_at: 2026-05-22T00:00:00Z
+        child_harness_ref:
+          type: harness
+          uri: runx:harness:spend-accept_fulfill
+        spend_capability_binding:
+          child_harness_ref:
+            type: harness
+            uri: runx:harness:spend-accept_fulfill
+          act_id: act_fulfill
+          reservation_decision_id: decision_payment_demo_001
+          idempotency_key: payment:demo-accept-001
+          amount_minor: 125
+          currency: USD
+          counterparty: merchant:demo
+          rail: mock
+        consumed_spend_capability_refs: []
+      idempotency:
+        key: payment:demo-accept-001
+      spend_capability_ref:
+        type: credential
+        uri: capability:payment:demo-accept-001
+      approval:
+        required: false
+        status: not_required
+      core_requirements:
+        - payment_authority_subset
+        - reserve_before_rail
+        - receipt_before_success
+      open_questions: []
+    agent_task.pay-fulfill-rail-mock.output:
+      rail_result:
+        status: fulfilled
+        rail: mock
+        amount_minor: 125
+        currency: USD
+      rail_proof:
+        proof_ref: receipt-proof:mock:demo-accept-001
+        idempotency_key: payment:demo-accept-001
+      credential_envelope:
+        form: paid_tool_credential
+        credential_ref: credential:mock:demo-accept-001
+      redactions:
+        - rail_session_material
+      recovery_hint:
+        status: sealed
+  approvals:
+    spend.accept.approval: true
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: agent_act_closed
+metadata:
+  public_skill: spend
+  source_case: spend-accept-ceiling
+  source: skills-fixture

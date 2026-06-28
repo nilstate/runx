@@ -12,7 +12,9 @@ use crate::{Host, RuntimeError};
 pub enum ApprovalError {
     #[error(transparent)]
     Runtime(#[from] RuntimeError),
-    #[error("approval response payload from {actor:?} must be boolean, got {payload_type}")]
+    #[error(
+        "approval response payload from {actor:?} must be a boolean or {{approved: bool, reason?: string}}, got {payload_type}"
+    )]
     NonBooleanPayload {
         actor: ResolutionResponseActor,
         payload_type: &'static str,
@@ -30,10 +32,12 @@ pub enum ApprovalResolution {
     Approved {
         actor: ResolutionResponseActor,
         idempotency_key: String,
+        reason: Option<String>,
     },
     Denied {
         actor: ResolutionResponseActor,
         idempotency_key: String,
+        reason: Option<String>,
     },
     Pending {
         idempotency_key: String,
@@ -54,6 +58,14 @@ impl ApprovalResolution {
     pub fn actor(&self) -> Option<&ResolutionResponseActor> {
         match self {
             Self::Approved { actor, .. } | Self::Denied { actor, .. } => Some(actor),
+            Self::Pending { .. } => None,
+        }
+    }
+
+    #[must_use]
+    pub fn reason(&self) -> Option<&str> {
+        match self {
+            Self::Approved { reason, .. } | Self::Denied { reason, .. } => reason.as_deref(),
             Self::Pending { .. } => None,
         }
     }
@@ -157,21 +169,48 @@ pub fn approval_idempotency_key(gate: &ApprovalGate) -> Result<String, ApprovalE
 struct CachedApproval {
     actor: ResolutionResponseActor,
     approved: bool,
+    reason: Option<String>,
 }
 
 impl CachedApproval {
+    // The single choke point for an approval decision. The boolean stays the
+    // decision: a bare `true`/`false` (the human lane) is byte-identical to
+    // before, and an agent decision may also arrive as
+    // `{ "approved": bool, "reason"?: string }` so its justification rides onto
+    // the receipt. Every other shape (including an object whose `approved` is
+    // not strictly a boolean) is rejected fail-closed via NonBooleanPayload.
     fn from_response(response: ResolutionResponse) -> Result<Self, ApprovalError> {
         let payload_type = payload_type(&response.payload);
-        let JsonValue::Bool(approved) = response.payload else {
-            return Err(ApprovalError::NonBooleanPayload {
-                actor: response.actor,
-                payload_type,
-            });
+        let actor = response.actor;
+        let reject = || ApprovalError::NonBooleanPayload {
+            actor: actor.clone(),
+            payload_type,
         };
-        Ok(Self {
-            actor: response.actor,
-            approved,
-        })
+        match response.payload {
+            JsonValue::Bool(approved) => Ok(Self {
+                actor,
+                approved,
+                reason: None,
+            }),
+            JsonValue::Object(object) => {
+                let Some(JsonValue::Bool(approved)) = object.get("approved") else {
+                    return Err(reject());
+                };
+                let reason = match object.get("reason") {
+                    None | Some(JsonValue::Null) => None,
+                    Some(JsonValue::String(reason)) if !reason.trim().is_empty() => {
+                        Some(reason.clone())
+                    }
+                    Some(_) => return Err(reject()),
+                };
+                Ok(Self {
+                    actor,
+                    approved: *approved,
+                    reason,
+                })
+            }
+            _ => Err(reject()),
+        }
     }
 
     fn resolution(&self, idempotency_key: String) -> ApprovalResolution {
@@ -179,11 +218,13 @@ impl CachedApproval {
             ApprovalResolution::Approved {
                 actor: self.actor.clone(),
                 idempotency_key,
+                reason: self.reason.clone(),
             }
         } else {
             ApprovalResolution::Denied {
                 actor: self.actor.clone(),
                 idempotency_key,
+                reason: self.reason.clone(),
             }
         }
     }
@@ -208,6 +249,9 @@ fn resolved_event(
         JsonValue::String(actor_name(&approval.actor)),
     );
     data.insert("approved".to_owned(), JsonValue::Bool(approval.approved));
+    if let Some(reason) = &approval.reason {
+        data.insert("reason".to_owned(), JsonValue::String(reason.clone()));
+    }
     let decision = if approval.approved {
         "approved"
     } else {

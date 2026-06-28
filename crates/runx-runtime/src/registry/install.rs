@@ -350,6 +350,34 @@ fn trusted_manifest_keys(
     Ok(options.trusted_manifest_keys.clone())
 }
 
+struct DigestMismatch {
+    expected: String,
+    actual: String,
+}
+
+fn check_digest_link(
+    actual: Option<&str>,
+    expected: Option<&str>,
+    expected_label_when_missing: &str,
+) -> Result<(), DigestMismatch> {
+    match (actual, expected) {
+        (Some(actual), Some(expected)) if digest_matches(expected, actual) => Ok(()),
+        (Some(actual), Some(expected)) => Err(DigestMismatch {
+            expected: expected.to_owned(),
+            actual: actual.to_owned(),
+        }),
+        (Some(actual), None) => Err(DigestMismatch {
+            expected: expected_label_when_missing.to_owned(),
+            actual: actual.to_owned(),
+        }),
+        (None, Some(expected)) => Err(DigestMismatch {
+            expected: expected.to_owned(),
+            actual: "none".to_owned(),
+        }),
+        (None, None) => Ok(()),
+    }
+}
+
 fn validate_candidate_profile_digest(
     candidate: &InstallCandidate,
     allow_unsigned_local: bool,
@@ -367,31 +395,16 @@ fn validate_candidate_profile_digest(
                 .then_some(candidate.profile_digest.as_ref())
                 .flatten()
         });
-    match (profile_digest.as_ref(), expected_profile_digest) {
-        (Some(actual), Some(expected)) if digest_matches(expected, actual) => {}
-        (Some(actual), Some(expected)) => {
-            return Err(InstallError::ProfileDigestMismatch {
-                ref_name: candidate.r#ref.clone(),
-                expected: expected.clone(),
-                actual: actual.clone(),
-            });
-        }
-        (Some(actual), None) => {
-            return Err(InstallError::ProfileDigestMismatch {
-                ref_name: candidate.r#ref.clone(),
-                expected: "signed manifest profile digest".to_owned(),
-                actual: actual.clone(),
-            });
-        }
-        (None, Some(expected)) => {
-            return Err(InstallError::ProfileDigestMismatch {
-                ref_name: candidate.r#ref.clone(),
-                expected: expected.clone(),
-                actual: "none".to_owned(),
-            });
-        }
-        (None, None) => {}
-    }
+    check_digest_link(
+        profile_digest.as_deref(),
+        expected_profile_digest.map(String::as_str),
+        "signed manifest profile digest",
+    )
+    .map_err(|mismatch| InstallError::ProfileDigestMismatch {
+        ref_name: candidate.r#ref.clone(),
+        expected: mismatch.expected,
+        actual: mismatch.actual,
+    })?;
     Ok(profile_digest)
 }
 
@@ -404,47 +417,29 @@ fn validate_candidate_package_digest(
         .signed_manifest
         .as_ref()
         .and_then(|manifest| manifest.package_digest.as_ref());
-    match (actual.as_ref(), candidate.package_digest.as_ref()) {
-        (Some(actual), Some(expected)) if digest_matches(expected, actual) => Ok(()),
-        (Some(actual), Some(expected)) => Err(InstallError::PackageDigestMismatch {
-            ref_name: candidate.r#ref.clone(),
-            expected: expected.clone(),
-            actual: actual.clone(),
-        }),
-        (Some(actual), None) => Err(InstallError::PackageDigestMismatch {
-            ref_name: candidate.r#ref.clone(),
-            expected: "registry package digest".to_owned(),
-            actual: actual.clone(),
-        }),
-        (None, Some(expected)) => Err(InstallError::PackageDigestMismatch {
-            ref_name: candidate.r#ref.clone(),
-            expected: expected.clone(),
-            actual: "none".to_owned(),
-        }),
-        (None, None) => Ok(()),
-    }?;
+    check_digest_link(
+        actual.as_deref(),
+        candidate.package_digest.as_deref(),
+        "registry package digest",
+    )
+    .map_err(|mismatch| InstallError::PackageDigestMismatch {
+        ref_name: candidate.r#ref.clone(),
+        expected: mismatch.expected,
+        actual: mismatch.actual,
+    })?;
     if allow_unsigned_local && candidate.signed_manifest.is_none() {
         return Ok(());
     }
-    match (candidate.package_digest.as_ref(), signed) {
-        (Some(declared), Some(expected)) if digest_matches(expected, declared) => Ok(()),
-        (Some(declared), Some(expected)) => Err(InstallError::PackageDigestMismatch {
-            ref_name: candidate.r#ref.clone(),
-            expected: expected.clone(),
-            actual: declared.clone(),
-        }),
-        (Some(declared), None) => Err(InstallError::PackageDigestMismatch {
-            ref_name: candidate.r#ref.clone(),
-            expected: "signed manifest package digest".to_owned(),
-            actual: declared.clone(),
-        }),
-        (None, Some(expected)) => Err(InstallError::PackageDigestMismatch {
-            ref_name: candidate.r#ref.clone(),
-            expected: expected.clone(),
-            actual: "none".to_owned(),
-        }),
-        (None, None) => Ok(()),
-    }
+    check_digest_link(
+        candidate.package_digest.as_deref(),
+        signed.map(String::as_str),
+        "signed manifest package digest",
+    )
+    .map_err(|mismatch| InstallError::PackageDigestMismatch {
+        ref_name: candidate.r#ref.clone(),
+        expected: mismatch.expected,
+        actual: mismatch.actual,
+    })
 }
 
 fn validate_manifest_identity(

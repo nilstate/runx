@@ -24,13 +24,27 @@ writes.
 `ledger` parses one audit question into a bounded ledger query over principal,
 skill ref, status, and time range, then returns the receipts that satisfy it as
 id-keyed stubs (`receipt_id`, `skill_ref`, `status`, `created_at`), never a
-receipt body. When `proof` asks for it, the skill walks the link field across the
-matched receipts and confirms the hash chain is unbroken, naming any break by the
-two receipt ids that fail to link. The chain is the proof; a count that looks
-plausible is not. The skill answers the question in one or two sentences grounded
-only in the matched set and the verification result, and stops with
-`needs_more_evidence` when the ledger is silent rather than reporting a fabricated
-zero.
+receipt body. When `proof` asks for it, the skill confirms the matched stretch of
+the chain is intact, naming any break by the receipt ids involved. The chain is
+the proof; a count that looks plausible is not. The skill answers the question in
+one or two sentences grounded only in the matched set and the verification
+result, and stops with `needs_more_evidence` when the ledger is silent rather
+than reporting a fabricated zero.
+
+The skill ships two runners over the same `runx.ledger_answer.v1` packet. The
+default `ledger` runner is an agent task that reasons over a caller-supplied
+view. The `read` runner is a read-only `cli-tool` front to the shipped receipt
+engine: it shells `runx history --json` to list the matched receipts from the
+sandbox's own receipt store (rooted at `RUNX_RECEIPT_DIR`) and, when `proof` is
+requested, `runx verify --json` for the chain verdict. It is the in-sandbox way
+for an agent to read its OWN sealed receipts before a gated action, with no
+caller-supplied stubs. Both runners project to id-stubs only; neither returns a
+receipt body, act payload, or secret field.
+
+The `read` runner accepts one optional `receipts` input: explicit ledger rows
+for replay or controlled evaluation. When present it uses those rows directly
+instead of shelling `runx history`, which is how the inline harness seeds a
+deterministic ledger without a populated store.
 
 It queries and proves history across many runs; `receipt-auditor` audits the
 integrity of a single receipt chain. Its nearest neighbor is
@@ -69,10 +83,16 @@ match and a verified chain walk, not an aggregate health report.
    bodies, act payloads, proofs, and material refs stay out of the output.
 4. With zero matches, return `needs_more_evidence` and name the query that found
    nothing.
-5. When `proof` requests chain verification, walk the link field across the
-   matched receipts in sealed order and record `intact` plus any `breaks` by id
-   pair. When `proof` is absent, set `chain_verification.checked` to false and
-   leave `intact` null.
+5. When `proof` requests chain verification, take the chain verdict from the
+   engine's tree-rooted verify report (`runx verify`), not a hand-rolled link
+   walk: `intact` follows the report's overall validity, and each `break` is
+   derived from a tree's missing parent or a verification finding, named by the
+   receipt ids involved. When the engine has no verify keys
+   (`RUNX_RECEIPT_VERIFY_KID` / `RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64`
+   absent), it cannot prove production signatures, so the chain is reported
+   unverified (`checked: true`, `intact: null`), never silently intact. When
+   `proof` is absent, set `chain_verification.checked` to false and leave
+   `intact` null.
 6. Write a one or two sentence `summary` that answers the question from the
    matched set and the verification result only. The question bounds the answer;
    do not generalize from the matched slice to the whole ledger.
@@ -86,8 +106,11 @@ match and a verified chain walk, not an aggregate health report.
 - **Filter references an unknown principal or skill_ref:** treat as zero matches
   and return `needs_more_evidence`; do not guess a near match.
 - **Chain break found:** keep `decision: answered` but set
-  `chain_verification.intact` false and list the breaking id pairs; an intact
-  answer set with a broken chain is still a reportable result.
+  `chain_verification.intact` false and list the breaking id pairs from the
+  verify report; an intact answer set with a broken chain is still a reportable
+  result.
+- **Verify keys absent:** report `chain_verification.intact` null with
+  `checked: true`; the chain is unverified, not intact.
 - **Verification requested over an empty match set:** the stop is
   `needs_more_evidence` for the match, not a chain claim over nothing.
 - **Write, delete, or reseal framing in the question:** refuse; this skill holds
@@ -139,11 +162,14 @@ window, plus `proof: { verify_chain: true }`.
 Output: `decision: answered`. The resolved query is echoed for reproducibility.
 `matched_receipts` lists two sealed spend stubs by id with `skill_ref`, `status`,
 and `created_at`, no bodies. `chain_verification` reports `checked: true`,
-`intact: true`, `breaks: []` from a recorded link walk across both. The
-`summary` reads: two sealed spend runs over $500 ran for `principal:ops` in the
-window, and the link walk across both is unbroken. Had the window matched zero
-receipts, the run would stop at `needs_more_evidence` naming the query, not
-report a clean zero.
+`intact: true`, `breaks: []` from the engine's tree-rooted verify verdict over
+the store. The `summary` reads: two sealed spend runs over $500 ran for
+`principal:ops` in the window, and the verify verdict is intact. Had the window
+matched zero receipts, the run would stop at `needs_more_evidence` naming the
+query, not report a clean zero. Run through the `read` runner, the same answer
+comes straight from `runx history`/`runx verify` over the sandbox's own store;
+when the verify keys are absent the chain is reported unverified rather than
+intact.
 
 ## Inputs
 
@@ -152,3 +178,6 @@ report a clean zero.
   `status`, and `time_range` (`from`/`to`).
 - `proof` (optional): JSON requesting chain verification over the matched
   receipts, for example `{ "verify_chain": true }`.
+- `receipts` (optional, `read` runner only): explicit ledger rows for replay or
+  controlled evaluation; when present the `read` runner uses them instead of
+  shelling `runx history`.

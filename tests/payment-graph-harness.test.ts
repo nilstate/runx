@@ -28,8 +28,8 @@ const graphHarnessCaseCounts = new Map([
 ]);
 const graphFixtureCounts = new Map([
   ["charge", 3],
-  ["refund", 3],
-  ["spend", 4],
+  ["refund", 4],
+  ["spend", 5],
   ["stripe-pay", 1],
   ["x402-pay", 1],
 ]);
@@ -37,8 +37,8 @@ const graphStepCounts = new Map([
   ["charge", 15],
   ["mock-pay", 1],
   ["mpp-pay", 1],
-  ["refund", 12],
-  ["spend", 16],
+  ["refund", 16],
+  ["spend", 20],
   ["stripe-pay", 1],
   ["x402-pay", 1],
 ]);

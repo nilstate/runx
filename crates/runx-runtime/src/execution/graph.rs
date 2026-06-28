@@ -233,19 +233,6 @@ pub(crate) fn step_definitions(graph: &ExecutionGraph) -> Vec<SequentialGraphSte
         .collect()
 }
 
-pub(crate) fn find_step<'a>(
-    graph: &'a ExecutionGraph,
-    step_id: &str,
-) -> Result<&'a GraphStep, RuntimeError> {
-    graph
-        .steps
-        .iter()
-        .find(|step| step.id == step_id)
-        .ok_or_else(|| RuntimeError::StepMissing {
-            step_id: step_id.to_owned(),
-        })
-}
-
 pub(crate) fn skill_dir(
     graph_dir: &Path,
     step: &GraphStep,

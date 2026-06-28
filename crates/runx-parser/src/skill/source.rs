@@ -376,6 +376,7 @@ fn validate_agent_command_boundary(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use crate::graph::MintScopeSource;
     use runx_contracts::JsonValue;

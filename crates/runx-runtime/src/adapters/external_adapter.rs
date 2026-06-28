@@ -318,7 +318,7 @@ impl ExternalAdapterProcessSupervisor {
             stderr: _drained_stderr,
             duration_ms,
             cleanup_errors: _cleanup_errors,
-        } = run_external_adapter_process(command, manifest, invocation, credential_delivery)?;
+        } = run_external_adapter_process(command, manifest, invocation)?;
         if timed_out {
             return Err(ExternalAdapterSupervisorError::TimedOut {
                 timeout_ms: manifest.timeouts.invocation_ms,
@@ -798,10 +798,8 @@ fn run_external_adapter_process(
     command: &str,
     manifest: &ExternalAdapterManifest,
     invocation: &ExternalAdapterInvocation,
-    credential_delivery: &CredentialDelivery,
 ) -> Result<ProcessOutcome, ExternalAdapterSupervisorError> {
-    let sandbox =
-        external_adapter_sandbox_plan(command, manifest, invocation, credential_delivery)?;
+    let sandbox = external_adapter_sandbox_plan(command, manifest, invocation)?;
     let spec = ProcessSpec::new(
         "external adapter",
         sandbox.command.clone(),
@@ -824,11 +822,10 @@ fn external_adapter_sandbox_plan(
     command: &str,
     manifest: &ExternalAdapterManifest,
     invocation: &ExternalAdapterInvocation,
-    credential_delivery: &CredentialDelivery,
 ) -> Result<SandboxPlan, ExternalAdapterSupervisorError> {
     validate_external_adapter_sandbox_intent(manifest)?;
     let skill_directory = external_adapter_skill_directory(manifest, invocation)?;
-    let base_env = process_env(invocation, credential_delivery)?;
+    let base_env = process_env(invocation)?;
     let source = external_adapter_sandbox_source(command, manifest, &base_env)?;
     prepare_process_sandbox(&source, &skill_directory, &JsonObject::new(), &base_env).map_err(
         |error| ExternalAdapterSupervisorError::SandboxDenied {
@@ -966,7 +963,6 @@ fn external_adapter_cwd_policy(
 
 fn process_env(
     invocation: &ExternalAdapterInvocation,
-    _credential_delivery: &CredentialDelivery,
 ) -> Result<BTreeMap<String, String>, ExternalAdapterSupervisorError> {
     let mut env = BTreeMap::new();
     if let Some(scoped_env) = invocation.env.as_ref() {

@@ -249,6 +249,7 @@ fn required_verb_field(object: &JsonObject) -> Result<AuthorityVerb, RuntimeEffe
         "update" => Ok(AuthorityVerb::Update),
         "delete" => Ok(AuthorityVerb::Delete),
         "execute" => Ok(AuthorityVerb::Execute),
+        "revoke" => Ok(AuthorityVerb::Revoke),
         _ => Err(provider_permission_policy_error(format!(
             "verb {verb:?} is not supported"
         ))),
@@ -317,6 +318,39 @@ mod tests {
         };
         assert_eq!(context.required_scopes, vec!["repo.read"]);
         assert_eq!(context.granted_scopes, vec!["repo.read"]);
+        let grant_refs = effect
+            .authority_grant_refs(&admission)
+            .map_err(|error| io::Error::other(error.to_string()))?;
+        assert_eq!(grant_refs.len(), 1);
+        assert_eq!(grant_refs[0].reference_type, ReferenceType::Grant);
+        assert_eq!(grant_refs[0].uri, "runx:grant:github-mcp-read");
+        Ok(())
+    }
+
+    #[test]
+    fn admits_revoke_verb_through_grant_ref_path() -> Result<(), io::Error> {
+        let effect = ProviderPermissionEffect;
+        let step = test_step("revoke_grant", vec!["repo.write"], true, "revoke", false);
+        let inputs = JsonObject::new();
+        let env = provider_env("github-mcp-read", "repo.write");
+
+        let result = effect.admit(EffectStepRequest {
+            step: &step,
+            inputs: &inputs,
+            env: &env,
+            graph_dir: Path::new("."),
+        });
+        let admission = match result {
+            Ok(Some(admission)) => admission,
+            other => {
+                return Err(io::Error::other(format!(
+                    "unexpected provider permission admission: {other:?}"
+                )));
+            }
+        };
+
+        assert_eq!(admission.family(), PROVIDER_PERMISSION_EFFECT_FAMILY);
+        assert_eq!(admission.verb(), AuthorityVerb::Revoke);
         let grant_refs = effect
             .authority_grant_refs(&admission)
             .map_err(|error| io::Error::other(error.to_string()))?;

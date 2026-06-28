@@ -93,6 +93,9 @@ impl FamilySubsetComparator for ScopeBoundsComparator {
         Self::ALGORITHM
     }
 
+    // rust-style-allow: long-function - the exhaustive destructure of both bounds
+    // sides plus the single subset conjunction is one trust-boundary comparison;
+    // splitting it would let a forgotten field fail open.
     fn bounds_subset(&self, child: &AuthorityTerm, parent: &AuthorityTerm) -> bool {
         // Exhaustively destructure both sides so growing `AuthorityBounds` breaks
         // this function until the new field is classified as generic-narrowable
@@ -146,7 +149,10 @@ impl FamilySubsetComparator for ScopeBoundsComparator {
             )
             && items_subset(child_token_audiences, parent_token_audiences)
             && max_cost_units_subset(&child.bounds, &parent.bounds)
-            && optional_ref_bound_subset(child_max_runtime_ms.as_ref(), parent_max_runtime_ms.as_ref())
+            && optional_ref_bound_subset(
+                child_max_runtime_ms.as_ref(),
+                parent_max_runtime_ms.as_ref(),
+            )
             && optional_ref_bound_subset(child_max_fanout.as_ref(), parent_max_fanout.as_ref())
             && optional_ref_bound_subset(
                 child_max_child_depth.as_ref(),
@@ -474,7 +480,11 @@ mod tests {
             principal_ref: reference(ReferenceType::Principal, "runx:principal:agency"),
             resource_ref: reference(ReferenceType::Repository, "runx:repository:monorepo"),
             resource_family: AuthorityResourceFamily::Workspace,
-            verbs: vec![AuthorityVerb::Read, AuthorityVerb::Write, AuthorityVerb::Review],
+            verbs: vec![
+                AuthorityVerb::Read,
+                AuthorityVerb::Write,
+                AuthorityVerb::Review,
+            ],
             bounds: AuthorityBounds {
                 repo_path_globs: vec!["apps/**".into(), "packages/**".into()],
                 network_destinations: vec!["api.internal".into(), "cdn.internal".into()],
@@ -518,8 +528,8 @@ mod tests {
     }
 
     #[test]
-    fn valid_narrowing_yields_child_and_proof_the_validator_accepts()
-    -> Result<(), AttenuationError> {
+    fn valid_narrowing_yields_child_and_proof_the_validator_accepts() -> Result<(), AttenuationError>
+    {
         let parent = parent_charter();
         let (child, proof) = mint_attenuated(
             &parent,
@@ -531,7 +541,10 @@ mod tests {
         // The minted child is the requested narrowing with parent obligations
         // preserved.
         assert_eq!(child.verbs, vec![AuthorityVerb::Read]);
-        assert_eq!(child.capabilities, vec![AuthorityCapability::FilesystemRead]);
+        assert_eq!(
+            child.capabilities,
+            vec![AuthorityCapability::FilesystemRead]
+        );
         assert_eq!(child.conditions, parent.conditions);
         assert_eq!(child.approvals, parent.approvals);
         assert_eq!(child.resource_family, parent.resource_family);
@@ -546,10 +559,7 @@ mod tests {
             proof.compared_terms[0].relation,
             AuthoritySubsetRelation::Subset
         );
-        assert_eq!(
-            ensure_subset_proof(Some(&proof), &child, &parent),
-            Ok(())
-        );
+        assert_eq!(ensure_subset_proof(Some(&proof), &child, &parent), Ok(()));
         assert!(is_authority_subset(&child, &parent, &ScopeBoundsComparator));
         Ok(())
     }
@@ -584,8 +594,7 @@ mod tests {
         request.verbs = vec![AuthorityVerb::Delete];
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::VerbsNotSubset)
         );
     }
@@ -597,8 +606,7 @@ mod tests {
         request.capabilities = vec![AuthorityCapability::SecretRead];
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::CapabilitiesNotSubset)
         );
     }
@@ -611,8 +619,7 @@ mod tests {
         request.bounds.repo_path_globs = vec!["secrets/**".into()];
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ChildNotSubset)
         );
     }
@@ -624,8 +631,7 @@ mod tests {
         request.bounds.max_fanout = Some(99);
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ChildNotSubset)
         );
     }
@@ -638,8 +644,7 @@ mod tests {
         request.bounds.max_cost_units = Some(JsonNumber::U64(500));
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ChildNotSubset)
         );
     }
@@ -652,8 +657,7 @@ mod tests {
         request.bounds.max_cost_units = None;
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ChildNotSubset)
         );
     }
@@ -665,8 +669,7 @@ mod tests {
         let mut request = member_request();
         request.bounds.max_cost_units = Some(JsonNumber::U64(100));
 
-        let (child, _) =
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())?;
+        let (child, _) = mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())?;
         assert!(is_authority_subset(&child, &parent, &ScopeBoundsComparator));
         Ok(())
     }
@@ -701,8 +704,13 @@ mod tests {
             single_use_capability: false,
         }];
         assert_eq!(
-            mint_attenuated(&parent, &limit_request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(
+                &parent,
+                &limit_request,
+                &ScopeBoundsComparator,
+                checked_at()
+            )
+            .map(|_| ()),
             Err(AttenuationError::ChildNotSubset)
         );
 
@@ -713,8 +721,13 @@ mod tests {
             proof_kinds: Vec::new(),
         }];
         assert_eq!(
-            mint_attenuated(&parent, &guard_request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(
+                &parent,
+                &guard_request,
+                &ScopeBoundsComparator,
+                checked_at()
+            )
+            .map(|_| ()),
             Err(AttenuationError::ChildNotSubset)
         );
     }
@@ -726,8 +739,7 @@ mod tests {
         request.expires_at = Some("2027-01-01T00:00:00Z".into());
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ExpiryNotSubset)
         );
     }
@@ -739,8 +751,7 @@ mod tests {
         request.expires_at = None;
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ExpiryNotSubset)
         );
     }
@@ -752,8 +763,7 @@ mod tests {
         request.resource_family = AuthorityResourceFamily::Effect;
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ResourceFamilyMismatch)
         );
     }
@@ -765,8 +775,7 @@ mod tests {
         request.resource_ref = reference(ReferenceType::Repository, "runx:repository:other");
 
         assert_eq!(
-            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &request, &ScopeBoundsComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ResourceAddressMismatch)
         );
     }
@@ -790,7 +799,11 @@ mod tests {
         // the preservation is enforced, not incidental.
         child.conditions = Vec::new();
         child.approvals = Vec::new();
-        assert!(!is_authority_subset(&child, &parent, &ScopeBoundsComparator));
+        assert!(!is_authority_subset(
+            &child,
+            &parent,
+            &ScopeBoundsComparator
+        ));
         Ok(())
     }
 
@@ -855,14 +868,17 @@ mod tests {
         let (child, proof) =
             mint_attenuated(&parent, &request, &ExactAudienceComparator, checked_at())?;
         assert_eq!(proof.comparison_algorithm, "test.exact-audience.v1");
-        assert!(is_authority_subset(&child, &parent, &ExactAudienceComparator));
+        assert!(is_authority_subset(
+            &child,
+            &parent,
+            &ExactAudienceComparator
+        ));
 
         // A divergent audience fails the family bounds check.
         let mut widened = member_request();
         widened.bounds.token_audiences = vec!["aud:b".into()];
         assert_eq!(
-            mint_attenuated(&parent, &widened, &ExactAudienceComparator, checked_at())
-                .map(|_| ()),
+            mint_attenuated(&parent, &widened, &ExactAudienceComparator, checked_at()).map(|_| ()),
             Err(AttenuationError::ChildNotSubset)
         );
         Ok(())

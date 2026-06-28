@@ -1,5 +1,5 @@
 skill: settle-invoice
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: skill
@@ -17,7 +17,6 @@ runners:
       payment_plan: object
     artifacts:
       wrap_as: payment_plan_packet
-      packet: runx.invoice.v1
     inputs:
       invoice_ref:
         type: string
@@ -35,10 +34,10 @@ runners:
         type: json
         required: true
         description: "Payee name and account by reference or digest; a raw account number is reduced to a digest and the raw value is dropped."
-      spend_limit:
-        type: number
+      requested_scope:
+        type: object
         required: true
-        description: "Spend bound the settlement is authorized against; an amount over this bound forces an over_budget decision."
+        description: "Requested authority ceiling (AttenuationRequest) the settlement is authorized against; the same typed ceiling the spend/refund accepting runners narrow from. An amount over this ceiling forces an over_budget decision. The downstream spend lane reserves and mints against this exact ceiling, so the plan can never widen authority beyond it."
       rail:
         type: string
         required: false

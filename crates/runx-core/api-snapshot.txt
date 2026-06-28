@@ -52,6 +52,43 @@ pub fn runx_core::policy::authority_algebra::optional_exact_or_narrower<T: core:
 pub fn runx_core::policy::authority_algebra::optional_ref_bound_subset<T: core::cmp::Ord>(child: core::option::Option<&T>, parent: core::option::Option<&T>) -> bool
 pub fn runx_core::policy::authority_algebra::parent_items_preserved<T: core::cmp::PartialEq>(child: &[T], parent: &[T]) -> bool
 pub fn runx_core::policy::authority_algebra::same_reference_address(child: &runx_contracts::reference::Reference, parent: &runx_contracts::reference::Reference) -> bool
+pub mod runx_core::policy::authority_mint
+pub enum runx_core::policy::authority_mint::AttenuationError
+pub runx_core::policy::authority_mint::AttenuationError::CapabilitiesNotSubset
+pub runx_core::policy::authority_mint::AttenuationError::ChildNotSubset
+pub runx_core::policy::authority_mint::AttenuationError::ExpiryNotSubset
+pub runx_core::policy::authority_mint::AttenuationError::ResourceAddressMismatch
+pub runx_core::policy::authority_mint::AttenuationError::ResourceFamilyMismatch
+pub runx_core::policy::authority_mint::AttenuationError::VerbsNotSubset
+pub enum runx_core::policy::authority_mint::SubsetProofError
+pub runx_core::policy::authority_mint::SubsetProofError::Invalid
+pub runx_core::policy::authority_mint::SubsetProofError::Missing
+pub struct runx_core::policy::authority_mint::AttenuationRequest
+pub runx_core::policy::authority_mint::AttenuationRequest::bounds: runx_contracts::authority::AuthorityBounds
+pub runx_core::policy::authority_mint::AttenuationRequest::capabilities: alloc::vec::Vec<runx_contracts::authority::AuthorityCapability>
+pub runx_core::policy::authority_mint::AttenuationRequest::expires_at: core::option::Option<runx_contracts::schema::IsoDateTime>
+pub runx_core::policy::authority_mint::AttenuationRequest::principal_ref: runx_contracts::reference::Reference
+pub runx_core::policy::authority_mint::AttenuationRequest::resource_family: runx_contracts::authority::AuthorityResourceFamily
+pub runx_core::policy::authority_mint::AttenuationRequest::resource_ref: runx_contracts::reference::Reference
+pub runx_core::policy::authority_mint::AttenuationRequest::verbs: alloc::vec::Vec<runx_contracts::authority::AuthorityVerb>
+pub struct runx_core::policy::authority_mint::ScopeBoundsComparator
+impl runx_core::policy::authority_mint::ScopeBoundsComparator
+pub const runx_core::policy::authority_mint::ScopeBoundsComparator::ALGORITHM: &'static str
+impl runx_core::policy::authority_mint::FamilySubsetComparator for runx_core::policy::authority_mint::ScopeBoundsComparator
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::bounds_subset(&self, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> bool
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::comparison_algorithm(&self) -> &str
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::narrow_bounds(&self, parent: &runx_contracts::authority::AuthorityTerm, requested: &runx_contracts::authority::AuthorityBounds) -> runx_contracts::authority::AuthorityBounds
+pub trait runx_core::policy::authority_mint::FamilySubsetComparator
+pub fn runx_core::policy::authority_mint::FamilySubsetComparator::bounds_subset(&self, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> bool
+pub fn runx_core::policy::authority_mint::FamilySubsetComparator::comparison_algorithm(&self) -> &str
+pub fn runx_core::policy::authority_mint::FamilySubsetComparator::narrow_bounds(&self, parent: &runx_contracts::authority::AuthorityTerm, requested: &runx_contracts::authority::AuthorityBounds) -> runx_contracts::authority::AuthorityBounds
+impl runx_core::policy::authority_mint::FamilySubsetComparator for runx_core::policy::authority_mint::ScopeBoundsComparator
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::bounds_subset(&self, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> bool
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::comparison_algorithm(&self) -> &str
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::narrow_bounds(&self, parent: &runx_contracts::authority::AuthorityTerm, requested: &runx_contracts::authority::AuthorityBounds) -> runx_contracts::authority::AuthorityBounds
+pub fn runx_core::policy::authority_mint::ensure_subset_proof(proof: core::option::Option<&runx_contracts::authority::AuthoritySubsetProof>, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> core::result::Result<(), runx_core::policy::authority_mint::SubsetProofError>
+pub fn runx_core::policy::authority_mint::is_authority_subset(child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm, comparator: &dyn runx_core::policy::authority_mint::FamilySubsetComparator) -> bool
+pub fn runx_core::policy::authority_mint::mint_attenuated(parent: &runx_contracts::authority::AuthorityTerm, request: &runx_core::policy::authority_mint::AttenuationRequest, comparator: &dyn runx_core::policy::authority_mint::FamilySubsetComparator, checked_at: runx_contracts::schema::IsoDateTime) -> core::result::Result<(runx_contracts::authority::AuthorityTerm, runx_contracts::authority::AuthoritySubsetProof), runx_core::policy::authority_mint::AttenuationError>
 pub mod runx_core::policy::authority_proof
 pub fn runx_core::policy::authority_proof::build_authority_proof(options: &runx_core::policy::BuildAuthorityProofOptions) -> runx_contracts::policy_proof::AuthorityProof
 pub fn runx_core::policy::authority_proof::build_authority_proof_metadata(options: &runx_core::policy::BuildAuthorityProofOptions) -> runx_core::policy::AuthorityProofMetadata
@@ -76,6 +113,13 @@ pub runx_core::policy::AdmissionDecision::AllowMarked::norm_refs: alloc::vec::Ve
 pub runx_core::policy::AdmissionDecision::AllowMarked::reasons: alloc::vec::Vec<alloc::string::String>
 pub runx_core::policy::AdmissionDecision::Deny
 pub runx_core::policy::AdmissionDecision::Deny::reasons: alloc::vec::Vec<alloc::string::String>
+pub enum runx_core::policy::AttenuationError
+pub runx_core::policy::AttenuationError::CapabilitiesNotSubset
+pub runx_core::policy::AttenuationError::ChildNotSubset
+pub runx_core::policy::AttenuationError::ExpiryNotSubset
+pub runx_core::policy::AttenuationError::ResourceAddressMismatch
+pub runx_core::policy::AttenuationError::ResourceFamilyMismatch
+pub runx_core::policy::AttenuationError::VerbsNotSubset
 pub enum runx_core::policy::CredentialBindingDecision
 pub runx_core::policy::CredentialBindingDecision::Allow
 pub runx_core::policy::CredentialBindingDecision::Allow::reasons: alloc::vec::Vec<alloc::string::String>
@@ -117,6 +161,17 @@ pub runx_core::policy::SandboxProfile::UnrestrictedLocalDev
 pub runx_core::policy::SandboxProfile::WorkspaceWrite
 impl runx_core::policy::SandboxProfile
 pub fn runx_core::policy::SandboxProfile::as_str(&self) -> &'static str
+pub enum runx_core::policy::SubsetProofError
+pub runx_core::policy::SubsetProofError::Invalid
+pub runx_core::policy::SubsetProofError::Missing
+pub struct runx_core::policy::AttenuationRequest
+pub runx_core::policy::AttenuationRequest::bounds: runx_contracts::authority::AuthorityBounds
+pub runx_core::policy::AttenuationRequest::capabilities: alloc::vec::Vec<runx_contracts::authority::AuthorityCapability>
+pub runx_core::policy::AttenuationRequest::expires_at: core::option::Option<runx_contracts::schema::IsoDateTime>
+pub runx_core::policy::AttenuationRequest::principal_ref: runx_contracts::reference::Reference
+pub runx_core::policy::AttenuationRequest::resource_family: runx_contracts::authority::AuthorityResourceFamily
+pub runx_core::policy::AttenuationRequest::resource_ref: runx_contracts::reference::Reference
+pub runx_core::policy::AttenuationRequest::verbs: alloc::vec::Vec<runx_contracts::authority::AuthorityVerb>
 pub struct runx_core::policy::AuthorityEffectGuardDecision<'a>
 pub runx_core::policy::AuthorityEffectGuardDecision::family: &'a str
 pub runx_core::policy::AuthorityEffectGuardDecision::non_replay_required: bool
@@ -258,12 +313,27 @@ pub runx_core::policy::SandboxDeclaration::network: core::option::Option<bool>
 pub runx_core::policy::SandboxDeclaration::profile: runx_core::policy::SandboxProfile
 pub runx_core::policy::SandboxDeclaration::require_enforcement: core::option::Option<bool>
 pub runx_core::policy::SandboxDeclaration::writable_paths: core::option::Option<alloc::vec::Vec<alloc::string::String>>
+pub struct runx_core::policy::ScopeBoundsComparator
+impl runx_core::policy::authority_mint::ScopeBoundsComparator
+pub const runx_core::policy::authority_mint::ScopeBoundsComparator::ALGORITHM: &'static str
+impl runx_core::policy::authority_mint::FamilySubsetComparator for runx_core::policy::authority_mint::ScopeBoundsComparator
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::bounds_subset(&self, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> bool
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::comparison_algorithm(&self) -> &str
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::narrow_bounds(&self, parent: &runx_contracts::authority::AuthorityTerm, requested: &runx_contracts::authority::AuthorityBounds) -> runx_contracts::authority::AuthorityBounds
 pub struct runx_core::policy::ToolRefAdmission
 pub runx_core::policy::ToolRefAdmission::allowed: bool
 pub runx_core::policy::ToolRefAdmission::reason: &'static str
 impl runx_core::policy::ToolRefAdmission
 pub const fn runx_core::policy::ToolRefAdmission::allow() -> Self
 pub const fn runx_core::policy::ToolRefAdmission::deny(reason: &'static str) -> Self
+pub trait runx_core::policy::FamilySubsetComparator
+pub fn runx_core::policy::FamilySubsetComparator::bounds_subset(&self, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> bool
+pub fn runx_core::policy::FamilySubsetComparator::comparison_algorithm(&self) -> &str
+pub fn runx_core::policy::FamilySubsetComparator::narrow_bounds(&self, parent: &runx_contracts::authority::AuthorityTerm, requested: &runx_contracts::authority::AuthorityBounds) -> runx_contracts::authority::AuthorityBounds
+impl runx_core::policy::authority_mint::FamilySubsetComparator for runx_core::policy::authority_mint::ScopeBoundsComparator
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::bounds_subset(&self, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> bool
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::comparison_algorithm(&self) -> &str
+pub fn runx_core::policy::authority_mint::ScopeBoundsComparator::narrow_bounds(&self, parent: &runx_contracts::authority::AuthorityTerm, requested: &runx_contracts::authority::AuthorityBounds) -> runx_contracts::authority::AuthorityBounds
 pub fn runx_core::policy::admit_agent_tool_ref(value: &str) -> runx_core::policy::ToolRefAdmission
 pub fn runx_core::policy::admit_graph_step_scopes(request: &runx_core::policy::GraphScopeAdmissionRequest) -> runx_core::policy::GraphScopeAdmissionDecision
 pub fn runx_core::policy::admit_local_skill(skill: &runx_core::policy::LocalAdmissionSkill, options: &runx_core::policy::LocalAdmissionOptions) -> runx_core::policy::AdmissionDecision
@@ -278,10 +348,13 @@ pub fn runx_core::policy::build_authority_proof_metadata(options: &runx_core::po
 pub fn runx_core::policy::build_local_scope_admission(auth: core::option::Option<&runx_contracts::json::JsonValue>, grants: &[runx_core::policy::LocalAdmissionGrant], options: &runx_core::policy::LocalScopeAdmissionOptions) -> runx_contracts::policy_proof::ScopeAdmission
 pub fn runx_core::policy::compute_maturity(signals: &runx_contracts::maturity::MaturitySignals) -> runx_contracts::maturity::MaturityTier
 pub fn runx_core::policy::default_public_work_policy() -> runx_core::policy::RequiredPublicWorkPolicy
+pub fn runx_core::policy::ensure_subset_proof(proof: core::option::Option<&runx_contracts::authority::AuthoritySubsetProof>, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> core::result::Result<(), runx_core::policy::authority_mint::SubsetProofError>
 pub fn runx_core::policy::evaluate_authority_effect_guards<'a>(parent: &'a runx_contracts::authority::AuthorityTerm, child: &'a runx_contracts::authority::AuthorityTerm, family: &'a str) -> runx_core::policy::authority_algebra::AuthorityEffectGuardDecision<'a>
 pub fn runx_core::policy::evaluate_public_comment_opportunity(request: &runx_core::policy::PublicCommentOpportunityRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicCommentPolicyDecision
 pub fn runx_core::policy::evaluate_public_pull_request_candidate(request: &runx_core::policy::PublicPullRequestCandidateRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicPolicyDecision
+pub fn runx_core::policy::is_authority_subset(child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm, comparator: &dyn runx_core::policy::authority_mint::FamilySubsetComparator) -> bool
 pub fn runx_core::policy::is_reserved_runx_sandbox_env_name(name: &str) -> bool
+pub fn runx_core::policy::mint_attenuated(parent: &runx_contracts::authority::AuthorityTerm, request: &runx_core::policy::authority_mint::AttenuationRequest, comparator: &dyn runx_core::policy::authority_mint::FamilySubsetComparator, checked_at: runx_contracts::schema::IsoDateTime) -> core::result::Result<(runx_contracts::authority::AuthorityTerm, runx_contracts::authority::AuthoritySubsetProof), runx_core::policy::authority_mint::AttenuationError>
 pub fn runx_core::policy::normalize_public_work_policy(policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::RequiredPublicWorkPolicy
 pub fn runx_core::policy::normalize_sandbox_declaration(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>) -> runx_core::policy::RequiredSandboxDeclaration
 pub fn runx_core::policy::sandbox_requires_approval(sandbox: core::option::Option<&runx_core::policy::SandboxDeclaration>) -> bool

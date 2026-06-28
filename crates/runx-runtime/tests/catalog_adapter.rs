@@ -311,7 +311,11 @@ fn catalog_adapter_wraps_same_key_once_for_wrap_as_and_named_emits()
         "events must resolve at a single `.data` depth"
     );
     assert!(
-        json_path(&payload, &["data_operation_result", "data", "data", "events"]).is_none(),
+        json_path(
+            &payload,
+            &["data_operation_result", "data", "data", "events"]
+        )
+        .is_none(),
         "the payload must not be double-wrapped"
     );
     Ok(())

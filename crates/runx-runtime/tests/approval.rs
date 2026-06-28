@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use std::collections::VecDeque;
 
 use runx_contracts::{
@@ -19,6 +21,7 @@ fn approval_response_approved() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!(resolution.approved(), Some(true));
     assert_eq!(resolution.actor(), Some(&ResolutionResponseActor::Human));
+    assert_eq!(resolution.reason(), None);
     assert_eq!(host.requests.len(), 1);
     assert_approval_request(host.requests.first(), "req_approval")?;
     assert_resolution_events(&host.events, Some(true))?;
@@ -36,6 +39,7 @@ fn approval_response_denied() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!(resolution.approved(), Some(false));
     assert_eq!(resolution.actor(), Some(&ResolutionResponseActor::Human));
+    assert_eq!(resolution.reason(), None);
     assert_resolution_events(&host.events, Some(false))?;
     Ok(())
 }
@@ -93,6 +97,57 @@ fn approval_accepts_agent_actor_per_host_protocol() -> Result<(), Box<dyn std::e
 
     assert_eq!(resolution.approved(), Some(true));
     assert_eq!(resolution.actor(), Some(&ResolutionResponseActor::Agent));
+    assert_eq!(resolution.reason(), None);
+    Ok(())
+}
+
+#[test]
+fn approval_carries_agent_decision_reason_onto_resolution() -> Result<(), Box<dyn std::error::Error>>
+{
+    let parsed: ResolutionResponse = serde_json::from_str(
+        r#"{"actor":"agent","payload":{"approved":true,"reason":"verdict 5/5 met the rubric"}}"#,
+    )?;
+    let mut host = RecordingHost::with_responses([Some(parsed)]);
+
+    let resolution = request_approval(&mut host, "req_approval", gate())?;
+
+    assert_eq!(resolution.approved(), Some(true));
+    assert_eq!(resolution.actor(), Some(&ResolutionResponseActor::Agent));
+    assert_eq!(resolution.reason(), Some("verdict 5/5 met the rubric"));
+    assert_resolution_events(&host.events, Some(true))?;
+    assert_event_key(
+        resolved_event_data(&host.events),
+        "reason",
+        JsonValue::String("verdict 5/5 met the rubric".to_owned()),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn approval_object_payload_without_bool_approved_rejected_fail_closed()
+-> Result<(), Box<dyn std::error::Error>> {
+    let parsed: ResolutionResponse = serde_json::from_str(
+        r#"{"actor":"agent","payload":{"approved":"true","reason":"stringly bool"}}"#,
+    )?;
+    let mut host = RecordingHost::with_responses([Some(parsed)]);
+
+    let result = request_approval(&mut host, "req_approval", gate());
+
+    match result {
+        Err(ApprovalError::NonBooleanPayload {
+            actor,
+            payload_type,
+        }) => {
+            assert_eq!(actor, ResolutionResponseActor::Agent);
+            assert_eq!(payload_type, "object");
+        }
+        other => {
+            return Err(std::io::Error::other(format!(
+                "expected fail-closed non-boolean payload error, got {other:?}"
+            ))
+            .into());
+        }
+    }
     Ok(())
 }
 
@@ -247,6 +302,16 @@ fn assert_resolved_event(
         return Err(std::io::Error::other("missing resolution resolved event"));
     };
     assert_event_key(data, "approved", JsonValue::Bool(approved))
+}
+
+fn resolved_event_data(events: &[ExecutionEvent]) -> &Option<JsonValue> {
+    events
+        .iter()
+        .find_map(|event| match event {
+            ExecutionEvent::ResolutionResolved { data, .. } => Some(data),
+            _ => None,
+        })
+        .expect("missing resolution resolved event")
 }
 
 fn assert_event_key(

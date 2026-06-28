@@ -37,7 +37,12 @@ pub(super) fn build_step_output_projection(
 ) -> Result<StepOutputProjection, RuntimeError> {
     let mut projection = project_step_output(output);
     expose_declared_run_outputs(step, &projection.claim, &mut projection.outputs)?;
-    expose_effective_artifacts(step, extra_artifacts, &projection.claim, &mut projection.outputs)?;
+    expose_effective_artifacts(
+        step,
+        extra_artifacts,
+        &projection.claim,
+        &mut projection.outputs,
+    )?;
     Ok(projection)
 }
 
@@ -89,8 +94,10 @@ fn expose_artifact_packets(
 ) -> Result<(), RuntimeError> {
     if let Some(wrap_as) = wrap_as {
         reject_reserved_step_output_name(step, wrap_as, "artifact output")?;
-        let value = declared_claim_value(claim, wrap_as)
-            .map_or_else(|| data_envelope(JsonValue::Object(claim.clone())), data_envelope);
+        let value = declared_claim_value(claim, wrap_as).map_or_else(
+            || data_envelope(JsonValue::Object(claim.clone())),
+            data_envelope,
+        );
         outputs.insert(wrap_as.to_owned(), value);
     }
     if let Some(named_emits) = named_emits {

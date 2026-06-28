@@ -2,11 +2,13 @@
 // rust-style-allow: large-file because the proposal schema, the open reference
 // type vocabulary, the human-gate and outcome shapes, and the RunxSchema
 // reflection together form one cross-language wire surface.
-use serde::de::{self, Deserializer};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::schema::{Identity, IsoDateTime, NonEmptyString, Property, RunxSchema, object_schema};
+use crate::schema::{
+    Identity, IsoDateTime, NonEmptyString, Property, RunxSchema, deserialize_false_bool,
+    deserialize_true_bool, object_schema,
+};
 use crate::{JsonObject, Reference, ReferenceLink};
 
 pub const OPERATIONAL_PROPOSAL_SCHEMA: &str = "runx.operational_proposal.v1";
@@ -246,28 +248,4 @@ fn confidence_schema() -> Value {
 
 fn const_bool(value: bool) -> Value {
     json!({ "const": value, "type": "boolean" })
-}
-
-fn deserialize_true_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = bool::deserialize(deserializer)?;
-    if value {
-        Ok(true)
-    } else {
-        Err(de::Error::custom("value must be true"))
-    }
-}
-
-fn deserialize_false_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = bool::deserialize(deserializer)?;
-    if value {
-        Err(de::Error::custom("value must be false"))
-    } else {
-        Ok(false)
-    }
 }

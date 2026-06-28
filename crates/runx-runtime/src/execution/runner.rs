@@ -12,14 +12,14 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use runx_contracts::{ClosureDisposition, FanoutReceiptSyncPoint, JsonObject, Receipt};
+use runx_contracts::{ClosureDisposition, FanoutReceiptSyncPoint, JsonObject, JsonValue, Receipt};
 use runx_core::state_machine::{GraphStatus, SequentialGraphState, StepAdmissionWitness};
 use runx_parser::ExecutionGraph;
 use serde::{Deserialize, Serialize};
 
 use super::graph::load_graph;
 use crate::RuntimeError;
-use crate::adapter::{SkillAdapter, SkillOutput};
+use crate::adapter::{InvocationStatus, SkillAdapter, SkillOutput};
 use crate::effects::RuntimeEffectRegistry;
 use crate::host::{Host, NoopHost};
 use crate::journal::ExecutionJournal;
@@ -459,6 +459,79 @@ pub fn run_graph_file(graph_path: impl AsRef<Path>) -> Result<GraphRun, RuntimeE
         RuntimeOptions::from_process_env()?,
     );
     runtime.run_graph_file(graph_path.as_ref())
+}
+
+// Canonical graph-run payload builder + skill-output wrapper, shared by the
+// nested-step path (`runner::steps`) and the skill-front path
+// (`skill_front::graph`). `include_receipt_id` adds the `graph_receipt_id` field
+// that only the nested-step path surfaces. Every field is an infallible
+// clone/`format!`, so payload assembly is total.
+pub(crate) fn graph_run_payload(run: &GraphRun, include_receipt_id: bool) -> JsonValue {
+    let mut payload = JsonObject::new();
+    payload.insert(
+        "graph".to_owned(),
+        JsonValue::String(run.graph.name.clone()),
+    );
+    payload.insert(
+        "graph_status".to_owned(),
+        JsonValue::String(format!("{:?}", run.state.status)),
+    );
+    if include_receipt_id {
+        payload.insert(
+            "graph_receipt_id".to_owned(),
+            JsonValue::String(run.receipt.id.to_string()),
+        );
+    }
+    let mut step_outputs = JsonObject::new();
+    let mut step_summaries = Vec::new();
+    for step in &run.steps {
+        let mut summary = JsonObject::new();
+        summary.insert(
+            "step_id".to_owned(),
+            JsonValue::String(step.step_id.clone()),
+        );
+        summary.insert("skill".to_owned(), JsonValue::String(step.skill.clone()));
+        summary.insert(
+            "status".to_owned(),
+            JsonValue::String(if step.output.succeeded() {
+                "success".to_owned()
+            } else {
+                "failure".to_owned()
+            }),
+        );
+        summary.insert(
+            "receipt_id".to_owned(),
+            JsonValue::String(step.receipt.id.to_string()),
+        );
+        step_summaries.push(JsonValue::Object(summary));
+        step_outputs.insert(
+            step.step_id.clone(),
+            JsonValue::Object(step.outputs.clone()),
+        );
+    }
+    payload.insert("steps".to_owned(), JsonValue::Array(step_summaries));
+    payload.insert("step_outputs".to_owned(), JsonValue::Object(step_outputs));
+    JsonValue::Object(payload)
+}
+
+pub(crate) fn graph_run_skill_output(
+    payload: &JsonValue,
+    run: &GraphRun,
+) -> Result<SkillOutput, RuntimeError> {
+    let stdout = serde_json::to_string(payload)
+        .map_err(|source| RuntimeError::json("serializing graph payload", source))?;
+    Ok(SkillOutput {
+        status: if run.state.status == GraphStatus::Succeeded {
+            InvocationStatus::Success
+        } else {
+            InvocationStatus::Failure
+        },
+        stdout,
+        stderr: String::new(),
+        exit_code: Some(0),
+        duration_ms: 0,
+        metadata: JsonObject::new(),
+    })
 }
 
 #[cfg(test)]

@@ -82,6 +82,18 @@ pub enum HarnessReplayError {
     CliToolFeatureDisabled,
 }
 
+impl From<crate::execution::skill_front::SkillRunError> for HarnessReplayError {
+    fn from(error: crate::execution::skill_front::SkillRunError) -> Self {
+        use crate::execution::skill_front::SkillRunError;
+        match error {
+            SkillRunError::Runtime(error) => HarnessReplayError::Runtime(error),
+            other => HarnessReplayError::Runtime(RuntimeError::ReceiptInvalid {
+                message: other.to_string(),
+            }),
+        }
+    }
+}
+
 pub fn run_harness_fixture(
     fixture_path: impl AsRef<Path>,
 ) -> Result<HarnessReplayOutput, HarnessReplayError> {
@@ -352,12 +364,12 @@ fn run_skill_fixture<A>(
 where
     A: SkillAdapter,
 {
-    let (skill_name, invocation) = skill_fixture_invocation(fixture, skill_dir, &options)?;
+    let (skill_name, runner, invocation) = skill_fixture_invocation(fixture, skill_dir, &options)?;
     if invocation.source.source_type == runx_parser::SourceKind::Graph {
         if is_fixture_replay_graph(fixture) {
             return run_graph_replay_fixture(fixture, options);
         }
-        return run_graph_skill_fixture(fixture, skill_name, invocation, adapter, options);
+        return run_graph_skill_fixture(fixture, skill_name, runner, invocation, adapter, options);
     }
     let (skill_output, disposition, reason_code, summary) =
         run_skill_invocation(fixture, invocation, adapter)?;
@@ -384,9 +396,13 @@ where
     })
 }
 
+// rust-style-allow: long-function because the fixture graph turn keeps materialize,
+// run, and act-receipt minting in one path so it seals under the same instant and
+// signature policy as the production and inline fronts.
 fn run_graph_skill_fixture<A>(
     fixture: &HarnessFixture,
     skill_name: String,
+    runner: Option<SkillRunnerDefinition>,
     invocation: SkillInvocation,
     adapter: A,
     mut options: RuntimeOptions,
@@ -403,14 +419,39 @@ where
         })?;
     let graph = materialize_graph_inputs(graph, &invocation.inputs);
     overlay_harness_env(&mut options, &invocation.env);
-    options
+    let run_id = options
         .env
         .entry(crate::execution::runner::RUNX_RUN_ID_ENV.to_owned())
-        .or_insert_with(|| format!("harness-{}", fixture.name));
+        .or_insert_with(|| format!("harness-{}", fixture.name))
+        .clone();
+    // Capture the deterministic seal inputs before `options` moves into the
+    // runtime, so an `act:`-declaring runner can mint its domain receipt from the
+    // same instant and signature policy the graph trace sealed under.
+    let created_at = options.created_at.clone();
+    let signature_config = options.receipt_signature.clone();
     let runtime = Runtime::new(adapter, options);
     let mut host = FixtureHost::new(fixture);
     let graph_run = runtime.run_graph_with_host(&invocation.skill_directory, graph, &mut host)?;
+    // When the runner declares an `act:` block, seal the turn's primary receipt as
+    // its domain act through the SAME production minting entry, so the fixture and
+    // production/inline paths emit identical receipts. The graph trace receipt and
+    // per-step receipts remain as the execution trace. Borrow `graph_run` before
+    // `replay_output_from_graph` consumes it by value.
+    let minted = match runner.as_ref() {
+        Some(runner) => crate::execution::skill_front::graph_domain_act_receipt(
+            runner,
+            &invocation.inputs,
+            &graph_run,
+            &run_id,
+            &created_at,
+            &signature_config,
+        )?,
+        None => None,
+    };
     let mut output = replay_output_from_graph(fixture, graph_run);
+    if let Some(domain_receipt) = minted {
+        output.receipt = domain_receipt;
+    }
     if output.skill_output.is_none() {
         output.skill_output = output
             .steps
@@ -433,7 +474,7 @@ fn skill_fixture_invocation(
     fixture: &HarnessFixture,
     skill_dir: PathBuf,
     options: &RuntimeOptions,
-) -> Result<(String, SkillInvocation), HarnessReplayError> {
+) -> Result<(String, Option<SkillRunnerDefinition>, SkillInvocation), HarnessReplayError> {
     let skill = load_skill(&skill_dir)?;
     let runner = load_harness_runner(&skill_dir, fixture.runner.as_deref())?;
     let mut env = options.env.clone();
@@ -458,7 +499,7 @@ fn skill_fixture_invocation(
         env,
         credential_delivery: crate::credentials::CredentialDelivery::none(),
     };
-    Ok((skill_name, invocation))
+    Ok((skill_name, runner, invocation))
 }
 
 fn run_skill_invocation<A>(

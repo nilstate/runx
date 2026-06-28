@@ -1,5 +1,5 @@
 skill: spend
-version: "0.1.0"
+version: "0.1.1"
 catalog:
   kind: graph
   audience: operator
@@ -93,6 +93,120 @@ runners:
             - payment:spend
           mutation: true
           idempotency_key: spend-mock-fulfill
+          inputs:
+            payment_challenge: "{{payment_signal}}"
+            rail_profile_ref: "{{rail_profile_ref}}"
+            payment_admission: "{{payment_admission}}"
+          context:
+            reserved_payment_authority: reserve.payment_reservation_packet.data.reserved_payment_authority
+            spend_capability_ref: reserve.payment_reservation_packet.data.spend_capability_ref
+            idempotency: reserve.payment_reservation_packet.data.idempotency
+            quote_packet: quote.payment_quote_packet.data
+          artifacts:
+            wrap_as: effect_evidence_packet
+            packet: runx.effect.evidence.v1
+      policy:
+        guards:
+          - step: fulfill
+            field: approve-spend.payment_approval.data.approved
+            equals: true
+  accept:
+    default: false
+    type: graph
+    act:
+      purpose: Execute a governed outbound payment within the requested authority ceiling.
+      mint_authority:
+        source: requested_scope
+      requested_scope_from: requested_scope
+    inputs:
+      requested_scope:
+        type: object
+        required: true
+        description: Requested authority ceiling (AttenuationRequest) the spend must stay within. It is both the reservation ceiling quote/reserve narrow from and the subject the runtime mints the child grant from against the charter.
+      charter:
+        type: object
+        required: true
+        description: Parent charter authority term the requested ceiling attenuates from.
+      payment_signal:
+        type: object
+        required: true
+        description: Payment-required signal or challenge.
+      rail_profile_ref:
+        type: string
+        required: true
+        description: Configured rail profile reference.
+      payment_admission:
+        type: object
+        required: false
+        description: Hosted payment admission token and settlement identity.
+      realm:
+        type: string
+        required: false
+        description: Authority realm.
+      spend_policy:
+        type: object
+        required: false
+        description: Policy limits and approval thresholds.
+      approval_context:
+        type: object
+        required: false
+        description: Prior approval evidence.
+      idempotency_seed:
+        type: string
+        required: false
+        description: Stable idempotency material.
+    graph:
+      name: spend
+      charter_from: charter
+      steps:
+        - id: quote
+          skill: graph/pay-quote
+          runner: quote
+          scopes:
+            - payment:quote
+          inputs:
+            payment_signal: "{{payment_signal}}"
+            realm: "{{realm}}"
+            idempotency_seed: "{{idempotency_seed}}"
+          artifacts:
+            wrap_as: payment_quote_packet
+            packet: runx.payment.quote.v1
+        - id: reserve
+          skill: graph/pay-reserve
+          runner: reserve
+          scopes:
+            - payment:reserve
+          mutation: true
+          idempotency_key: pay-reserve
+          inputs:
+            parent_payment_authority: "{{requested_scope}}"
+            spend_policy: "{{spend_policy}}"
+            approval_context: "{{approval_context}}"
+            idempotency_seed: "{{idempotency_seed}}"
+          context:
+            payment_quote_packet: quote.payment_quote_packet.data
+          artifacts:
+            wrap_as: payment_reservation_packet
+            packet: runx.payment.reservation.v1
+        - id: approve-spend
+          run:
+            type: approval
+          inputs:
+            gate_id: spend.accept.approval
+            reason: Approve the reserved spend before the rail runner receives spend authority.
+          context:
+            payment_decision: reserve.payment_reservation_packet.data.payment_decision
+            reserved_payment_authority: reserve.payment_reservation_packet.data.reserved_payment_authority
+          artifacts:
+            wrap_as: payment_approval
+            packet: runx.payment.approval.v1
+        - id: fulfill
+          skill: graph/pay-fulfill-rail
+          runner: mock
+          scopes:
+            - payment:spend
+          mutation: true
+          idempotency_key: spend-accept-fulfill
           inputs:
             payment_challenge: "{{payment_signal}}"
             rail_profile_ref: "{{rail_profile_ref}}"

@@ -414,19 +414,9 @@ async fn call_tool_with_one_shot_rmcp_session(
     request: McpToolCallRequest,
     spawn_count: Arc<AtomicU64>,
 ) -> Result<JsonValue, McpTransportError> {
-    let mut child = spawn_tokio_mcp_server(&request.sandbox, &spawn_count)?;
-    let _stderr_drain = drain_tokio_stderr(child.stderr.take());
-    let error_state = RmcpTransportErrorState::default();
-    let mut service = serve_rmcp_client(&mut child, error_state.clone()).await?;
-    let arguments = rmcp_json_object(request.arguments)?;
-    let result = service
-        .peer()
-        .call_tool(rmcp::model::CallToolRequestParams::new(request.tool).with_arguments(arguments))
-        .await
-        .map_err(|error| rmcp_service_error(error, &error_state))
-        .and_then(rmcp_call_tool_result_json);
-    let _closed = service.close_with_timeout(Duration::from_millis(100)).await;
-    terminate_tokio_child(&mut child).await;
+    let mut session = McpSession::start(&request.sandbox, &spawn_count).await?;
+    let result = session.call_tool(request.tool, request.arguments).await;
+    session.close().await;
     result
 }
 

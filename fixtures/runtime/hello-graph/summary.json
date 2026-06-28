@@ -10,15 +10,15 @@
     "{\"message\":\"hello from graph\"}\n"
   ],
   "createdAt": "2026-05-18T00:00:00Z",
-  "graphSealDigest": "sha256:d2213925ec0850b1ba909e33fb88a596927aa3987edba18288d3f925665faa88",
+  "graphSealDigest": "sha256:961ace3a40f31870218d643ceb30dfceaa4854b0dbe06b96727e7b2c8a156a0e",
   "childSealDigests": [
-    "sha256:7f94184f4891b5c4c2a0084e5544275b6298f8e5e7dd9d78591249e3fa170f71",
-    "sha256:1cf06353023ac666dad1b48a63c3e70175ec9da423b352ae8f90ecf9995ef5a9"
+    "sha256:87202fd3cf2cf5bfb38f9f72f436aab7fc09657d01a2edba3cd62a3ffbf6c808",
+    "sha256:fbbb5f9876a198c85d7e003692228b7129d1649a8f0b550e37bfa9d8e214005e"
   ],
-  "enforcementProfileHash": "sha256:runtime-skeleton-enforcement",
-  "graphReceiptId": "sha256:802c0f62bcfc409109f73ccae9f17467c27a7349d8671e239da310b803ec681f",
+  "enforcementProfileHash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+  "graphReceiptId": "sha256:fa1eef80e10a8a9d8fd86a7f452b9b3f4e1e34a3a739450a3ffa6d072e9e5095",
   "childReceiptIds": [
-    "sha256:48412f439894bee2fc28f206cd7f184074d07c595dcd65bc1013c0fb362f7014",
-    "sha256:cd1feee223bbca64b08abd97a4dc84ef4528c18c626c327a7f8173a03aa435d4"
+    "sha256:438b012c185bc571b52655b86bf1003e35d07e2b2d1bc7cd0f9d45cfad564237",
+    "sha256:64a3cdd0ed1465742e0bfff1061234d17ae883fd70aad0fbca982a8e35e86a26"
   ]
 }
