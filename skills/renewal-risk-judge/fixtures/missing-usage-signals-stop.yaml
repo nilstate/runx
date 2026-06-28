@@ -1,0 +1,56 @@
+name: missing-usage-signals-stop
+kind: skill
+target: ..
+runner: judge
+inputs:
+  account_ref: acct_renewal_2048
+  support_history:
+    volume: 8
+    ticket_severity_avg: 3.1
+  payment_snapshot:
+    days_late: 9
+    churn_flag: false
+  operator_context:
+    delivery: separate governed send-as run with human approval
+caller:
+  answers:
+    agent_task.renewal-risk-judge.output:
+      renewal_risk:
+        schema: runx.support.renewal_risk.v1
+        status: refused
+        account_ref: acct_renewal_2048
+        decision:
+          risk_level: null
+          justification: Renewal risk was not judged because usage trend data is missing.
+        score:
+          fused: null
+          weights:
+            usage_trend: 0.5
+            support_pressure: 0.25
+            payment_pressure: 0.25
+          components:
+            usage_trend: null
+            support_pressure: 0.46
+            payment_pressure: 0.28
+        escalation:
+          route: data_quality_review
+          approval_required: false
+          downstream_lane: null
+        refusal:
+          reason: missing_usage_signals
+          missing_signals:
+            - usage_signals.trend
+            - usage_signals.mau_pct_change
+        evidence_refs:
+          - support_history:sealed:acct_renewal_2048
+          - payment_snapshot:sealed:acct_renewal_2048
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: renewal-risk-judge
+  source_case: missing-usage-signals-stop
+  source: skills-fixture

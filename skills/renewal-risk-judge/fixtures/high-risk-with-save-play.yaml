@@ -1,0 +1,62 @@
+name: high-risk-with-save-play
+kind: skill
+target: ..
+runner: judge
+inputs:
+  account_ref: acct_renewal_1042
+  usage_signals:
+    trend: declining
+    mau_pct_change: -42
+  support_history:
+    volume: 18
+    ticket_severity_avg: 4.4
+  payment_snapshot:
+    days_late: 17
+    churn_flag: true
+  operator_context:
+    content_ref_policy: digest-bound message content only
+    delivery: separate governed send-as run with human approval
+caller:
+  answers:
+    agent_task.renewal-risk-judge.output:
+      renewal_risk:
+        schema: runx.support.renewal_risk.v1
+        status: verdict
+        account_ref: acct_renewal_1042
+        decision:
+          risk_level: high
+          justification: Usage declined 42%, support volume and severity are high, and the account is 17 days late with churn flagged.
+        score:
+          fused: 0.86
+          weights:
+            usage_trend: 0.5
+            support_pressure: 0.25
+            payment_pressure: 0.25
+          components:
+            usage_trend: 0.9
+            support_pressure: 0.82
+            payment_pressure: 0.82
+        escalation:
+          route: human_approval
+          approval_required: true
+          downstream_lane: send-as
+          dispatch_name: send-as:renewal-risk-save-play
+        save_plan:
+          channel: email
+          audience: account_owner
+          content_ref: content:renewal-save-play:v1:sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        refusal: null
+        evidence_refs:
+          - usage_signals:sealed:acct_renewal_1042
+          - support_history:sealed:acct_renewal_1042
+          - payment_snapshot:sealed:acct_renewal_1042
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: renewal-risk-judge
+  source_case: high-risk-with-save-play
+  source: skills-fixture

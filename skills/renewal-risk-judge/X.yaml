@@ -1,0 +1,41 @@
+skill: renewal-risk-judge
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+runners:
+  judge:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: renewal-risk-judge
+    outputs:
+      renewal_risk: object
+    artifacts:
+      wrap_as: renewal_risk_packet
+      packet: runx.support.renewal_risk.v1
+    runx:
+      category: ops
+    inputs:
+      account_ref:
+        type: string
+        required: false
+        description: Stable account or renewal reference.
+      usage_signals:
+        type: json
+        required: false
+        description: Usage trend evidence with trend and mau_pct_change. Required for any verdict.
+      support_history:
+        type: json
+        required: true
+        description: Support pressure evidence with volume and ticket_severity_avg.
+      payment_snapshot:
+        type: json
+        required: true
+        description: Payment risk evidence with days_late and churn_flag.
+      operator_context:
+        type: json
+        required: false
+        description: Approval posture, content reference policy, and downstream send-as constraints.

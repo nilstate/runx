@@ -251,6 +251,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "20b8f78fee305165f010e501d5349897a384f323a1b98dbef864dbbc763c5a07",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/renewal-risk-judge",
+        version: "sha-e3e8a540f3cc",
+        digest: "fbe8ca17987b2e8998693036e268cd797f201ab6e186631fb61fb1d57113443c",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/research",
         version: "sha-65df55554027",
         digest: "4c729e750abddc00379902686439d90965e7c593b6bcb3606ef7e0bc66cecd66",

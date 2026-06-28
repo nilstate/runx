@@ -336,6 +336,13 @@
     "catalog_role": "context"
   },
   {
+    "skill_id": "runx/renewal-risk-judge",
+    "version": "sha-e3e8a540f3cc",
+    "digest": "fbe8ca17987b2e8998693036e268cd797f201ab6e186631fb61fb1d57113443c",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/research",
     "version": "sha-65df55554027",
     "digest": "4c729e750abddc00379902686439d90965e7c593b6bcb3606ef7e0bc66cecd66",
