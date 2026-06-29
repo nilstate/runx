@@ -1,0 +1,560 @@
+{
+  "status": "passed",
+  "runx_version": "runx-cli 0.6.14",
+  "receipt_ref": "runx:receipt:sha256:edbc4b5bf7adc3aafb6de9a7da7591032739ce1e4cc2c90c5af19ff465d6fdab",
+  "harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "approve-with-conditions-sla-gap",
+      "sealed-rejection-unbounded-liability",
+      "stop-missing-policy-no-write"
+    ],
+    "receipt_ids": [
+      "sha256:b04499df09998de3a7195edd4a1050c1433c911d50629ecaae3e33e701007453",
+      "sha256:320bd41080dbda1ca6570c1ad7d5b98d07aacb694f6df30fb7b5f702111d9027",
+      "sha256:b05af66b5287ec790aa76cb098b4534ac2745b12fd173772f887a33fe8c4c0e3"
+    ],
+    "graph_case_count": 0
+  },
+  "dogfood": {
+    "closure": {
+      "closed_at": "2026-06-29T05:45:26.698Z",
+      "disposition": "closed",
+      "reason_code": "process_closed",
+      "summary": "cli-tool decide completed"
+    },
+    "execution": {
+      "exit_code": 0,
+      "skill_claim": {
+        "data_store": {
+          "append_event": {
+            "aggregate_id": "vendor:acme-analytics",
+            "data_source_ref": "local://runx/vendor-risk-review",
+            "event": {
+              "conditions": [
+                "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+              ],
+              "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+              "created_at": "2026-06-29T05:00:00Z",
+              "decision": {
+                "approved": true,
+                "conditions": [
+                  "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+                ],
+                "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+                "rejected": false
+              },
+              "findings": {
+                "data_handling": {
+                  "block": false,
+                  "observed": "soc2",
+                  "reason": "data handling 'soc2' meets policy floor 'SOC2'",
+                  "required": "SOC2"
+                },
+                "hard_blocks": [],
+                "liability": {
+                  "block": false,
+                  "observed_amount": 50000,
+                  "reason": "liability appears bounded within policy"
+                },
+                "recoverable_conditions": [
+                  "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+                ]
+              },
+              "industry": "analytics",
+              "policy_id": "vrp-2026-06",
+              "type": "vendor_risk_review.decision_recorded",
+              "vendor_ref": "vendor:acme-analytics"
+            },
+            "expected_version": 2,
+            "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+            "resource": "vendor_risk_records",
+            "store_id": "vendor-risk-review-fixture"
+          },
+          "dependency": "registry:runx/data-store@0.1.2",
+          "read_projection": {
+            "aggregate_id": "vendor:acme-analytics",
+            "data_source_ref": "local://runx/vendor-risk-review",
+            "resource": "vendor_risk_records",
+            "store_id": "vendor-risk-review-fixture"
+          },
+          "sequence": [
+            "read_projection",
+            "decide",
+            "append_event"
+          ]
+        },
+        "decision": {
+          "approved": true,
+          "conditions": [
+            "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+          ],
+          "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+          "rejected": false
+        },
+        "escalation": {
+          "lane": null,
+          "no_receipt_ledger_state_read": true,
+          "no_stakeholder_notify": true,
+          "required": false
+        },
+        "evidence": {
+          "append_event_ready": true,
+          "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+          "expected_version": 2,
+          "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+          "package": "vendor-risk-review",
+          "policy_id": "vrp-2026-06",
+          "rules_applied": [
+            "reject unbounded or above-policy liability",
+            "reject data handling below policy floor",
+            "approve with conditions for recoverable SLA/termination gaps",
+            "stop before write for ambiguous vendor or incomplete policy"
+          ],
+          "vendor_ref": "vendor:acme-analytics",
+          "write_performed_by_skill": false
+        },
+        "risk_record": {
+          "conditions": [
+            "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+          ],
+          "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+          "created_at": "2026-06-29T05:00:00Z",
+          "decision": {
+            "approved": true,
+            "conditions": [
+              "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+            ],
+            "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+            "rejected": false
+          },
+          "findings": {
+            "data_handling": {
+              "block": false,
+              "observed": "soc2",
+              "reason": "data handling 'soc2' meets policy floor 'SOC2'",
+              "required": "SOC2"
+            },
+            "hard_blocks": [],
+            "liability": {
+              "block": false,
+              "observed_amount": 50000,
+              "reason": "liability appears bounded within policy"
+            },
+            "recoverable_conditions": [
+              "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+            ]
+          },
+          "industry": "analytics",
+          "policy_id": "vrp-2026-06",
+          "type": "vendor_risk_review.decision_recorded",
+          "vendor_ref": "vendor:acme-analytics"
+        }
+      },
+      "stderr": "",
+      "stdout": "{\n  \"decision\": {\n    \"approved\": true,\n    \"reason\": \"Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.\",\n    \"conditions\": [\n      \"Add SLA term required by vrp-2026-06: incident response within 24 hours.\"\n    ],\n    \"rejected\": false\n  },\n  \"risk_record\": {\n    \"type\": \"vendor_risk_review.decision_recorded\",\n    \"vendor_ref\": \"vendor:acme-analytics\",\n    \"industry\": \"analytics\",\n    \"decision\": {\n      \"approved\": true,\n      \"reason\": \"Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.\",\n      \"conditions\": [\n        \"Add SLA term required by vrp-2026-06: incident response within 24 hours.\"\n      ],\n      \"rejected\": false\n    },\n    \"conditions\": [\n      \"Add SLA term required by vrp-2026-06: incident response within 24 hours.\"\n    ],\n    \"policy_id\": \"vrp-2026-06\",\n    \"created_at\": \"2026-06-29T05:00:00Z\",\n    \"findings\": {\n      \"hard_blocks\": [],\n      \"recoverable_conditions\": [\n        \"Add SLA term required by vrp-2026-06: incident response within 24 hours.\"\n      ],\n      \"liability\": {\n        \"block\": false,\n        \"reason\": \"liability appears bounded within policy\",\n        \"observed_amount\": 50000\n      },\n      \"data_handling\": {\n        \"block\": false,\n        \"reason\": \"data handling 'soc2' meets policy floor 'SOC2'\",\n        \"observed\": \"soc2\",\n        \"required\": \"SOC2\"\n      }\n    },\n    \"contract_digest\": \"sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c\"\n  },\n  \"data_store\": {\n    \"dependency\": \"registry:runx/data-store@0.1.2\",\n    \"sequence\": [\n      \"read_projection\",\n      \"decide\",\n      \"append_event\"\n    ],\n    \"read_projection\": {\n      \"data_source_ref\": \"local://runx/vendor-risk-review\",\n      \"store_id\": \"vendor-risk-review-fixture\",\n      \"resource\": \"vendor_risk_records\",\n      \"aggregate_id\": \"vendor:acme-analytics\"\n    },\n    \"append_event\": {\n      \"data_source_ref\": \"local://runx/vendor-risk-review\",\n      \"store_id\": \"vendor-risk-review-fixture\",\n      \"resource\": \"vendor_risk_records\",\n      \"aggregate_id\": \"vendor:acme-analytics\",\n      \"expected_version\": 2,\n      \"idempotency_key\": \"vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97\",\n      \"event\": {\n        \"type\": \"vendor_risk_review.decision_recorded\",\n        \"vendor_ref\": \"vendor:acme-analytics\",\n        \"industry\": \"analytics\",\n        \"decision\": {\n          \"approved\": true,\n          \"reason\": \"Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.\",\n          \"conditions\": [\n            \"Add SLA term required by vrp-2026-06: incident response within 24 hours.\"\n          ],\n          \"rejected\": false\n        },\n        \"conditions\": [\n          \"Add SLA term required by vrp-2026-06: incident response within 24 hours.\"\n        ],\n        \"policy_id\": \"vrp-2026-06\",\n        \"created_at\": \"2026-06-29T05:00:00Z\",\n        \"findings\": {\n          \"hard_blocks\": [],\n          \"recoverable_conditions\": [\n            \"Add SLA term required by vrp-2026-06: incident response within 24 hours.\"\n          ],\n          \"liability\": {\n            \"block\": false,\n            \"reason\": \"liability appears bounded within policy\",\n            \"observed_amount\": 50000\n          },\n          \"data_handling\": {\n            \"block\": false,\n            \"reason\": \"data handling 'soc2' meets policy floor 'SOC2'\",\n            \"observed\": \"soc2\",\n            \"required\": \"SOC2\"\n          }\n        },\n        \"contract_digest\": \"sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c\"\n      }\n    }\n  },\n  \"escalation\": {\n    \"required\": false,\n    \"lane\": null,\n    \"no_stakeholder_notify\": true,\n    \"no_receipt_ledger_state_read\": true\n  },\n  \"evidence\": {\n    \"package\": \"vendor-risk-review\",\n    \"policy_id\": \"vrp-2026-06\",\n    \"vendor_ref\": \"vendor:acme-analytics\",\n    \"contract_digest\": \"sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c\",\n    \"expected_version\": 2,\n    \"idempotency_key\": \"vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97\",\n    \"rules_applied\": [\n      \"reject unbounded or above-policy liability\",\n      \"reject data handling below policy floor\",\n      \"approve with conditions for recoverable SLA/termination gaps\",\n      \"stop before write for ambiguous vendor or incomplete policy\"\n    ],\n    \"write_performed_by_skill\": false,\n    \"append_event_ready\": true\n  }\n}\n",
+      "structured_output": {
+        "data_store": {
+          "append_event": {
+            "aggregate_id": "vendor:acme-analytics",
+            "data_source_ref": "local://runx/vendor-risk-review",
+            "event": {
+              "conditions": [
+                "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+              ],
+              "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+              "created_at": "2026-06-29T05:00:00Z",
+              "decision": {
+                "approved": true,
+                "conditions": [
+                  "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+                ],
+                "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+                "rejected": false
+              },
+              "findings": {
+                "data_handling": {
+                  "block": false,
+                  "observed": "soc2",
+                  "reason": "data handling 'soc2' meets policy floor 'SOC2'",
+                  "required": "SOC2"
+                },
+                "hard_blocks": [],
+                "liability": {
+                  "block": false,
+                  "observed_amount": 50000,
+                  "reason": "liability appears bounded within policy"
+                },
+                "recoverable_conditions": [
+                  "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+                ]
+              },
+              "industry": "analytics",
+              "policy_id": "vrp-2026-06",
+              "type": "vendor_risk_review.decision_recorded",
+              "vendor_ref": "vendor:acme-analytics"
+            },
+            "expected_version": 2,
+            "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+            "resource": "vendor_risk_records",
+            "store_id": "vendor-risk-review-fixture"
+          },
+          "dependency": "registry:runx/data-store@0.1.2",
+          "read_projection": {
+            "aggregate_id": "vendor:acme-analytics",
+            "data_source_ref": "local://runx/vendor-risk-review",
+            "resource": "vendor_risk_records",
+            "store_id": "vendor-risk-review-fixture"
+          },
+          "sequence": [
+            "read_projection",
+            "decide",
+            "append_event"
+          ]
+        },
+        "decision": {
+          "approved": true,
+          "conditions": [
+            "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+          ],
+          "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+          "rejected": false
+        },
+        "escalation": {
+          "lane": null,
+          "no_receipt_ledger_state_read": true,
+          "no_stakeholder_notify": true,
+          "required": false
+        },
+        "evidence": {
+          "append_event_ready": true,
+          "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+          "expected_version": 2,
+          "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+          "package": "vendor-risk-review",
+          "policy_id": "vrp-2026-06",
+          "rules_applied": [
+            "reject unbounded or above-policy liability",
+            "reject data handling below policy floor",
+            "approve with conditions for recoverable SLA/termination gaps",
+            "stop before write for ambiguous vendor or incomplete policy"
+          ],
+          "vendor_ref": "vendor:acme-analytics",
+          "write_performed_by_skill": false
+        },
+        "risk_record": {
+          "conditions": [
+            "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+          ],
+          "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+          "created_at": "2026-06-29T05:00:00Z",
+          "decision": {
+            "approved": true,
+            "conditions": [
+              "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+            ],
+            "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+            "rejected": false
+          },
+          "findings": {
+            "data_handling": {
+              "block": false,
+              "observed": "soc2",
+              "reason": "data handling 'soc2' meets policy floor 'SOC2'",
+              "required": "SOC2"
+            },
+            "hard_blocks": [],
+            "liability": {
+              "block": false,
+              "observed_amount": 50000,
+              "reason": "liability appears bounded within policy"
+            },
+            "recoverable_conditions": [
+              "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+            ]
+          },
+          "industry": "analytics",
+          "policy_id": "vrp-2026-06",
+          "type": "vendor_risk_review.decision_recorded",
+          "vendor_ref": "vendor:acme-analytics"
+        }
+      }
+    },
+    "payload": {
+      "data_store": {
+        "append_event": {
+          "aggregate_id": "vendor:acme-analytics",
+          "data_source_ref": "local://runx/vendor-risk-review",
+          "event": {
+            "conditions": [
+              "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+            ],
+            "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+            "created_at": "2026-06-29T05:00:00Z",
+            "decision": {
+              "approved": true,
+              "conditions": [
+                "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+              ],
+              "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+              "rejected": false
+            },
+            "findings": {
+              "data_handling": {
+                "block": false,
+                "observed": "soc2",
+                "reason": "data handling 'soc2' meets policy floor 'SOC2'",
+                "required": "SOC2"
+              },
+              "hard_blocks": [],
+              "liability": {
+                "block": false,
+                "observed_amount": 50000,
+                "reason": "liability appears bounded within policy"
+              },
+              "recoverable_conditions": [
+                "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+              ]
+            },
+            "industry": "analytics",
+            "policy_id": "vrp-2026-06",
+            "type": "vendor_risk_review.decision_recorded",
+            "vendor_ref": "vendor:acme-analytics"
+          },
+          "expected_version": 2,
+          "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+          "resource": "vendor_risk_records",
+          "store_id": "vendor-risk-review-fixture"
+        },
+        "dependency": "registry:runx/data-store@0.1.2",
+        "read_projection": {
+          "aggregate_id": "vendor:acme-analytics",
+          "data_source_ref": "local://runx/vendor-risk-review",
+          "resource": "vendor_risk_records",
+          "store_id": "vendor-risk-review-fixture"
+        },
+        "sequence": [
+          "read_projection",
+          "decide",
+          "append_event"
+        ]
+      },
+      "decision": {
+        "approved": true,
+        "conditions": [
+          "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+        ],
+        "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+        "rejected": false
+      },
+      "escalation": {
+        "lane": null,
+        "no_receipt_ledger_state_read": true,
+        "no_stakeholder_notify": true,
+        "required": false
+      },
+      "evidence": {
+        "append_event_ready": true,
+        "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+        "expected_version": 2,
+        "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+        "package": "vendor-risk-review",
+        "policy_id": "vrp-2026-06",
+        "rules_applied": [
+          "reject unbounded or above-policy liability",
+          "reject data handling below policy floor",
+          "approve with conditions for recoverable SLA/termination gaps",
+          "stop before write for ambiguous vendor or incomplete policy"
+        ],
+        "vendor_ref": "vendor:acme-analytics",
+        "write_performed_by_skill": false
+      },
+      "risk_record": {
+        "conditions": [
+          "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+        ],
+        "contract_digest": "sha256:26e668fde626b58de4bf4611f4e05aaa0191492cc325a14a199acfceb8e11f7c",
+        "created_at": "2026-06-29T05:00:00Z",
+        "decision": {
+          "approved": true,
+          "conditions": [
+            "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+          ],
+          "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+          "rejected": false
+        },
+        "findings": {
+          "data_handling": {
+            "block": false,
+            "observed": "soc2",
+            "reason": "data handling 'soc2' meets policy floor 'SOC2'",
+            "required": "SOC2"
+          },
+          "hard_blocks": [],
+          "liability": {
+            "block": false,
+            "observed_amount": 50000,
+            "reason": "liability appears bounded within policy"
+          },
+          "recoverable_conditions": [
+            "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+          ]
+        },
+        "industry": "analytics",
+        "policy_id": "vrp-2026-06",
+        "type": "vendor_risk_review.decision_recorded",
+        "vendor_ref": "vendor:acme-analytics"
+      }
+    },
+    "receipt": {
+      "acts": [
+        {
+          "artifact_refs": [],
+          "closure": {
+            "closed_at": "2026-06-29T05:45:26.698Z",
+            "disposition": "closed",
+            "reason_code": "process_exit",
+            "summary": "cli-tool exited successfully"
+          },
+          "criterion_bindings": [
+            {
+              "criterion_id": "process_exit",
+              "evidence_refs": [],
+              "status": "verified",
+              "summary": "cli-tool exited successfully",
+              "verification_refs": []
+            }
+          ],
+          "form": "observation",
+          "id": "act_decide",
+          "intent": {
+            "constraints": [],
+            "derived_from": [],
+            "legitimacy": "Runtime graph execution was admitted by the local harness",
+            "purpose": "Run graph step decide",
+            "success_criteria": [
+              {
+                "criterion_id": "process_exit",
+                "required": true,
+                "statement": "cli-tool exits successfully"
+              }
+            ]
+          },
+          "source_refs": [],
+          "summary": "Executed graph step decide",
+          "target_refs": []
+        }
+      ],
+      "authority": {
+        "actor_ref": {
+          "type": "principal",
+          "uri": "runx:principal:local_runtime"
+        },
+        "attenuation": {
+          "parent_authority_ref": null,
+          "subset_proof": null
+        },
+        "authority_proof_refs": [],
+        "enforcement": {
+          "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+          "redaction_refs": [],
+          "setup_refs": [],
+          "teardown_refs": []
+        },
+        "grant_refs": [],
+        "scope_refs": [],
+        "terms": []
+      },
+      "canonicalization": "runx.receipt.c14n.v1",
+      "created_at": "2026-06-29T05:45:26.698Z",
+      "decisions": [
+        {
+          "artifact_refs": [],
+          "choice": "open",
+          "closure": null,
+          "decision_id": "dec_decide",
+          "inputs": {
+            "opportunity_refs": [],
+            "selection_ref": null,
+            "signal_refs": [],
+            "target_ref": null
+          },
+          "justification": {
+            "evidence_refs": [],
+            "summary": "runtime graph planner selected this node"
+          },
+          "proposed_intent": {
+            "constraints": [],
+            "derived_from": [],
+            "legitimacy": "Local graph execution requested this node",
+            "purpose": "Open runtime node decide",
+            "success_criteria": []
+          },
+          "selected_act_id": "act_decide",
+          "selected_harness_ref": null
+        }
+      ],
+      "digest": "sha256:bd9ef720142212151f599d057e5e98e2a837978ed557eefc0d16cfdae360d409",
+      "id": "sha256:edbc4b5bf7adc3aafb6de9a7da7591032739ce1e4cc2c90c5af19ff465d6fdab",
+      "idempotency": {
+        "content_hash": "sha256:run_decide_98ffc1fbc5d9-decide-content",
+        "intent_key": "sha256:run_decide_98ffc1fbc5d9-decide-intent",
+        "trigger_fingerprint": "sha256:run_decide_98ffc1fbc5d9-decide-trigger"
+      },
+      "issuer": {
+        "kid": "runx-demo-key",
+        "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+        "type": "hosted"
+      },
+      "lineage": {
+        "children": [],
+        "sync": []
+      },
+      "schema": "runx.receipt.v1",
+      "seal": {
+        "closed_at": "2026-06-29T05:45:26.698Z",
+        "criteria": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "disposition": "closed",
+        "last_observed_at": "2026-06-29T05:45:26.698Z",
+        "reason_code": "process_closed",
+        "summary": "cli-tool decide completed"
+      },
+      "signals": [],
+      "signature": {
+        "alg": "Ed25519",
+        "value": "base64:j2H-jdOFfQHx-nW9zGuF_kH8ToiMhoKtzC6CM-qEBRmBPfJlQYE0a190e1WeW06xMzoaOUllTZtBUsI8QnDmBQ"
+      },
+      "subject": {
+        "commitments": [],
+        "kind": "skill",
+        "ref": {
+          "type": "harness",
+          "uri": "hrn_run_decide_98ffc1fbc5d9_decide"
+        }
+      }
+    },
+    "receipt_id": "sha256:edbc4b5bf7adc3aafb6de9a7da7591032739ce1e4cc2c90c5af19ff465d6fdab",
+    "run_id": "run_decide_98ffc1fbc5d9",
+    "schema": "runx.skill_run.v1",
+    "skill_name": "vendor-risk-review",
+    "status": "sealed"
+  },
+  "verify": {
+    "status": "failure",
+    "error": {
+      "message": "runx verify requires trusted receipt verification keys. Set both RUNX_RECEIPT_VERIFY_KID and RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64, or pass --allow-local-development-signatures for local fixture receipts only.",
+      "code": "runtime_error"
+    }
+  }
+}
