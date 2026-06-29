@@ -1,0 +1,49 @@
+name: sealed-underperformer
+kind: skill
+target: ..
+runner: tune
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://roster-tuner/harness-cases":{"adapter":"data.sqlite","database_path":".runx/data/roster-tuner-harness.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+inputs:
+  case_id: case-rt-sealed-1
+  data_source_ref: tenant://roster-tuner/harness-cases
+  store_id: roster-tuner-harness-v1
+  resource: agency_cases
+  aggregate_id: case-rt-sealed-1
+  expected_version: 0
+  idempotency_key: case-rt-sealed-1:roster-tune:v1
+  roster:
+    - { member: writer-alpha, skill: draft-content, turn_count: 12 }
+    - { member: reviewer-beta, skill: review-skill, turn_count: 8 }
+    - { member: researcher-gamma, skill: deep-research, turn_count: 10 }
+  performance_norms:
+    refusal_threshold: 0.6
+    completion_time_threshold: 120
+    min_roster_size: 2
+  agency_event_schema_version: "1"
+caller:
+  answers:
+    agent_task.grade-member.output:
+      graded_member: writer-alpha
+      refusal_count: 9
+      refusal_rate: 0.75
+      avg_completion_time: 360
+      completion_ratio: 3.0
+      verdict: underperformer
+      reason: "writer-alpha refusal rate 0.75 exceeds threshold 0.6 and completion time 360s is 3x the 120s norm"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - read
+    - fold
+    - grade
+    - decide
+    - append
+metadata:
+  public_skill: roster-tuner
+  source_case: sealed-underperformer
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: tune
