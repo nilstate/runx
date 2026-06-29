@@ -1,10 +1,15 @@
 {
   "status": "passed",
+  "summary": "Canonical verification record for the reply-router delivery: all artifacts describe iwannabefree00/reply-router@sha-243e8add9e86, hosted harness passed two cases, and the Linux dogfood run produced the unsubscribe suppression receipt recorded in evidence_json.dogfood.",
   "runx_cli_version": "runx-cli 0.6.14",
   "published_ref": "iwannabefree00/reply-router@sha-243e8add9e86",
   "public_url": "https://runx.ai/x/iwannabefree00/reply-router@sha-243e8add9e86",
   "pr_url": "https://github.com/runxhq/runx/pull/175",
   "source_url": "https://github.com/iwannabefree00/runx/tree/reply-router-skill/skills/reply-router",
+  "x_yaml": "https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/SKILL.md",
+  "evidence_json": "https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/evidence.json",
+  "report": "https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/report.md",
   "install": {
     "command": "runx add iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai",
     "status": "passed"
@@ -28,6 +33,16 @@
     "head_sha": "5cc54fd7ad252021ff91bc57f6d8414e7176d7ea",
     "receipt_ref": "runx:receipt:sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791",
     "verification_json": "skills/reply-router/action-verification.json"
+  },
+  "dogfood": {
+    "package": "iwannabefree00/reply-router@sha-243e8add9e86",
+    "command": "runx skill iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai --json",
+    "receipt_ref": "runx:receipt:sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791",
+    "verify_verdict": "passed",
+    "harness_cases": [
+      "sealed_unsubscribe_suppression",
+      "stop_ambiguous_or_unsealed"
+    ]
   },
   "windows_note": "Local Windows runx harness reaches the known receipt-store os error 87; hosted publish harness and Linux GitHub Actions are the executed proof paths."
 }

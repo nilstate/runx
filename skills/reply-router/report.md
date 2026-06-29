@@ -7,7 +7,7 @@
 - Raw X.yaml artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/X.yaml
 - Raw SKILL.md artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/SKILL.md
 - Raw evidence artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/evidence.json
-- Raw verification artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/action-verification.json
+- Raw verification artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/verification.json
 - CLI used: `runx-cli 0.6.14`
 - Install command: `runx add iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai`
 - Run command: `runx skill iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai --json`
@@ -38,7 +38,7 @@
 - GitHub Actions run: https://github.com/iwannabefree00/runx/actions/runs/28358412442
 - Action status: `passed`
 - Dogfood receipt: `runx:receipt:sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791`
-- `skills/reply-router/action-verification.json` records the published ref, install output, dogfood output, receipt id, and runx verification output.
+- `skills/reply-router/verification.json` records the canonical published ref, hosted harness, dogfood receipt, verify verdict, and the Linux GitHub Actions run that produced the dogfood receipt.
 
 ## Operator value
 
