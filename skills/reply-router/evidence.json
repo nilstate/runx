@@ -1,0 +1,95 @@
+{
+  "status": "passed",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "publisher_owner": "iwannabefree00",
+  "package_name": "reply-router",
+  "version": "sha-243e8add9e86",
+  "package_ref": "iwannabefree00/reply-router@sha-243e8add9e86",
+  "public_url": "https://runx.ai/x/iwannabefree00/reply-router@sha-243e8add9e86",
+  "pr_url": "https://github.com/runxhq/runx/pull/175",
+  "source_url": "https://github.com/iwannabefree00/runx/tree/reply-router-skill/skills/reply-router",
+  "x_yaml": "skills/reply-router/X.yaml",
+  "skill_md": "skills/reply-router/SKILL.md",
+  "verification_json": "skills/reply-router/action-verification.json",
+  "publish_method": "Authenticated hosted publish through the runx public API using the GitHub-linked publish token; hosted registry ran the inline package harness and recorded status passed.",
+  "install_command": "runx add iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai",
+  "run_command": "runx skill iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai --json",
+  "hosted_harness": {
+    "status": "passed",
+    "endpoint": "https://api.runx.ai/v1/skills/iwannabefree00/reply-router@sha-243e8add9e86/harness",
+    "case_count": 2,
+    "case_names": [
+      "sealed_unsubscribe_suppression",
+      "stop_ambiguous_or_unsealed"
+    ],
+    "receipt_ids": [
+      "sha256:16c62fb5326eb78a8a65d0935114e3f4a6263e4068ca2f4b19f31500bdcdd343",
+      "sha256:831863b7403416597860d7553aa8c3059a32edd1536360b0630c602a62a5e6f8"
+    ]
+  },
+  "dogfood": {
+    "package": "iwannabefree00/reply-router@sha-243e8add9e86",
+    "command": "runx skill iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai --json",
+    "receipt_ref": "runx:receipt:sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791",
+    "verify_verdict": "passed",
+    "github_actions_run": "https://github.com/iwannabefree00/runx/actions/runs/28358412442",
+    "input": {
+      "inbound_reply": {
+        "content": "Please unsubscribe me from these product emails immediately. Stop emailing this address.",
+        "received_from": "prospect@example.com",
+        "received_at": "2026-06-29T08:15:00Z"
+      },
+      "original_send_receipt": {
+        "sealed": true,
+        "receipt_id": "runx:receipt:sha256:original-send-001",
+        "checksum": "sha256:original-send-checksum",
+        "principal": "runx:principal:sales-agent"
+      },
+      "suppression_policy": {
+        "unsubscribe_signals": [
+          "unsubscribe",
+          "stop emailing",
+          "remove me",
+          "opt out"
+        ],
+        "confidence_threshold": 0.8
+      },
+      "data_source_ref": "local://runx/reply-router",
+      "store_id": "reply-router-fixture"
+    },
+    "harness_cases": [
+      "sealed_unsubscribe_suppression",
+      "stop_ambiguous_or_unsealed"
+    ]
+  },
+  "observations": [
+    {
+      "name": "classification",
+      "detail": "Dogfood classified an inbound reply as unsubscribe with confidence above the supplied suppression_policy.confidence_threshold and evidence grounded in matched policy signals unsubscribe and stop emailing."
+    },
+    {
+      "name": "suppression_write",
+      "detail": "The unsubscribe case emits a registry:runx/data-store@0.1.2 append_event packet keyed by aggregate_id prospect@example.com, with expected_version 7, after_version 8, and idempotency_key derived from recipient + receipt_id + classification."
+    },
+    {
+      "name": "no_send",
+      "detail": "The skill performs no send and emits no routing_decision alongside an unsubscribe-class reply; any later send-as action is a separate governed run."
+    },
+    {
+      "name": "stop_case",
+      "detail": "The stop_ambiguous_or_unsealed harness case refuses an unsealed original_send_receipt, emits no suppression write, no routing decision, and routes to the human_approval lane."
+    },
+    {
+      "name": "hosted_harness",
+      "detail": "Hosted harness status passed with cases sealed_unsubscribe_suppression and stop_ambiguous_or_unsealed."
+    },
+    {
+      "name": "public_pr",
+      "detail": "PR #175 contains skills/reply-router/SKILL.md, X.yaml, run.mjs, action-verification.json, evidence.json, verification.json, and report.md."
+    },
+    {
+      "name": "operator_value",
+      "detail": "A new operator can install the package, classify replies, persist compliance suppressions for unsubscribe replies, and route non-unsubscribe replies only through bounded downstream send targets."
+    }
+  ]
+}

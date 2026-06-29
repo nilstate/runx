@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "published_ref": "iwannabefree00/reply-router@sha-243e8add9e86",
+  "public_url": "https://runx.ai/x/iwannabefree00/reply-router@sha-243e8add9e86",
+  "pr_url": "https://github.com/runxhq/runx/pull/175",
+  "source_url": "https://github.com/iwannabefree00/runx/tree/reply-router-skill/skills/reply-router",
+  "install": {
+    "command": "runx add iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai",
+    "status": "passed"
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "endpoint": "https://api.runx.ai/v1/skills/iwannabefree00/reply-router@sha-243e8add9e86/harness",
+    "case_count": 2,
+    "case_names": [
+      "sealed_unsubscribe_suppression",
+      "stop_ambiguous_or_unsealed"
+    ],
+    "receipt_ids": [
+      "sha256:16c62fb5326eb78a8a65d0935114e3f4a6263e4068ca2f4b19f31500bdcdd343",
+      "sha256:831863b7403416597860d7553aa8c3059a32edd1536360b0630c602a62a5e6f8"
+    ]
+  },
+  "github_actions": {
+    "status": "passed",
+    "run_url": "https://github.com/iwannabefree00/runx/actions/runs/28358412442",
+    "head_sha": "5cc54fd7ad252021ff91bc57f6d8414e7176d7ea",
+    "receipt_ref": "runx:receipt:sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791",
+    "verification_json": "skills/reply-router/action-verification.json"
+  },
+  "windows_note": "Local Windows runx harness reaches the known receipt-store os error 87; hosted publish harness and Linux GitHub Actions are the executed proof paths."
+}
