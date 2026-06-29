@@ -1,0 +1,529 @@
+{
+  "status": "passed",
+  "runx_version": "runx-cli 0.6.14",
+  "published_ref": "iwannabefree00/reply-router@sha-243e8add9e86",
+  "receipt_ref": "runx:receipt:sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791",
+  "harness": {
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "sealed_unsubscribe_suppression",
+      "stop_ambiguous_or_unsealed"
+    ],
+    "receipt_ids": [
+      "sha256:a895daa39ebb4c1755c03a20a84afadd8e1e6cb354e11255dc2dc8680ab8033a",
+      "sha256:ac44599e10ee235972286dc14d46ab79b9b60f6bb7f8392caec2ef23070ac817"
+    ],
+    "graph_case_count": 0
+  },
+  "install": {
+    "status": "success",
+    "registry": {
+      "action": "install",
+      "source": "remote",
+      "ref": "iwannabefree00/reply-router@sha-243e8add9e86",
+      "install": {
+        "status": "installed",
+        "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/reply-router/sha-243e8add9e86/SKILL.md",
+        "skill_name": "reply-router",
+        "source": "runx-registry",
+        "source_label": "runx registry",
+        "skill_id": "iwannabefree00/reply-router",
+        "version": "sha-243e8add9e86",
+        "digest": "sha256:ad41bc6109a4c27e1e5e60c2e5ef1eb36f470d6147675a5e19d27f00a360286b",
+        "profile_digest": "sha256:9a5cb355d67772668e632c616d2184c99d7539dbd674cda88ae26417e50cd56e",
+        "profile_state_path": "/home/runner/work/runx/runx/skills/iwannabefree00/reply-router/sha-243e8add9e86/.runx/profile.json",
+        "runner_names": [
+          "classify"
+        ],
+        "trust_tier": "community"
+      },
+      "receipt_metadata": {
+        "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/reply-router/sha-243e8add9e86/SKILL.md",
+        "digest": "sha256:ad41bc6109a4c27e1e5e60c2e5ef1eb36f470d6147675a5e19d27f00a360286b",
+        "install_count": 1,
+        "package_digest": "febe6cf94f8d03894e6c9aaa2a6acbd081591adf799bfedcbe06d22bbe32f0dd",
+        "profile_digest": "sha256:9a5cb355d67772668e632c616d2184c99d7539dbd674cda88ae26417e50cd56e",
+        "publisher": {
+          "display_name": "iwannabefree00",
+          "handle": "iwannabefree00",
+          "id": "user_b7db2f36021367136b434108",
+          "kind": "user"
+        },
+        "ref": "iwannabefree00/reply-router@sha-243e8add9e86",
+        "skill_id": "iwannabefree00/reply-router",
+        "source_label": "runx registry",
+        "status": "installed",
+        "trust_tier": "community",
+        "version": "sha-243e8add9e86"
+      }
+    }
+  },
+  "dogfood": {
+    "closure": {
+      "closed_at": "2026-06-29T08:20:18.953Z",
+      "disposition": "closed",
+      "reason_code": "process_closed",
+      "summary": "cli-tool classify completed"
+    },
+    "execution": {
+      "exit_code": 0,
+      "skill_claim": {
+        "classification": {
+          "confidence": 0.95,
+          "evidence": [
+            "matched suppression policy signal 'unsubscribe'",
+            "matched suppression policy signal 'stop emailing'"
+          ],
+          "type": "unsubscribe"
+        },
+        "escalation": {
+          "lane": null,
+          "no_routing_alongside_unsubscribe": true,
+          "no_send_performed": true,
+          "required": false
+        },
+        "evidence": {
+          "after_version": 8,
+          "aggregate_id": "prospect@example.com",
+          "before_version": 7,
+          "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+          "inbound_digest": "sha256:1087839a44c905d3aa3c4d65ddf66f4807f6cb7623b0aced1e6ff2f3a8e655db",
+          "matched_unsubscribe_signals": [
+            "unsubscribe",
+            "stop emailing"
+          ],
+          "no_attenuation_request": true,
+          "no_operational_proposal": true,
+          "original_send_checksum": "sha256:original-send-checksum",
+          "original_send_receipt_id": "runx:receipt:sha256:original-send-001",
+          "package": "reply-router",
+          "received_at": "2026-06-29T08:15:00Z",
+          "received_from": "prospect@example.com",
+          "routing_send_target": null,
+          "rules_applied": [
+            "refuse to classify unsealed original send receipts",
+            "suppress only when unsubscribe intent is grounded in suppression_policy",
+            "never route a send alongside unsubscribe",
+            "route non-unsubscribe replies only by naming a separate governed send-as run",
+            "stop ambiguous or low-confidence replies before write"
+          ],
+          "sends_now": false,
+          "summary": "unsubscribe-class reply wrote suppression packet and emitted no routing decision",
+          "suppression_policy_signals": [
+            "unsubscribe",
+            "stop emailing",
+            "remove me",
+            "opt out"
+          ],
+          "write_prepared": true
+        },
+        "routing_decision": null,
+        "suppression_result": {
+          "after_version": 8,
+          "aggregate_id": "prospect@example.com",
+          "append_event": {
+            "aggregate_id": "prospect@example.com",
+            "data_source_ref": "local://runx/reply-router",
+            "event": {
+              "classification": {
+                "confidence": 0.95,
+                "evidence": [
+                  "matched suppression policy signal 'unsubscribe'",
+                  "matched suppression policy signal 'stop emailing'"
+                ],
+                "type": "unsubscribe"
+              },
+              "created_at": "2026-06-29T08:15:00Z",
+              "original_send_receipt_id": "runx:receipt:sha256:original-send-001",
+              "policy_signal_refs": [
+                "unsubscribe",
+                "stop emailing"
+              ],
+              "principal": "runx:principal:sales-agent",
+              "received_at": "2026-06-29T08:15:00Z",
+              "recipient": "prospect@example.com",
+              "type": "reply_router.suppression_recorded"
+            },
+            "expected_version": 7,
+            "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+            "resource": "reply_suppressions",
+            "store_id": "reply-router-fixture"
+          },
+          "before_version": 7,
+          "dependency": "registry:runx/data-store@0.1.2",
+          "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+          "read_projection": {
+            "aggregate_id": "prospect@example.com",
+            "data_source_ref": "local://runx/reply-router",
+            "resource": "reply_suppressions",
+            "store_id": "reply-router-fixture"
+          },
+          "sequence": [
+            "read_projection",
+            "classify",
+            "append_event"
+          ]
+        }
+      },
+      "stderr": "",
+      "stdout": "{\n  \"classification\": {\n    \"type\": \"unsubscribe\",\n    \"confidence\": 0.95,\n    \"evidence\": [\n      \"matched suppression policy signal 'unsubscribe'\",\n      \"matched suppression policy signal 'stop emailing'\"\n    ]\n  },\n  \"suppression_result\": {\n    \"dependency\": \"registry:runx/data-store@0.1.2\",\n    \"sequence\": [\n      \"read_projection\",\n      \"classify\",\n      \"append_event\"\n    ],\n    \"read_projection\": {\n      \"data_source_ref\": \"local://runx/reply-router\",\n      \"store_id\": \"reply-router-fixture\",\n      \"resource\": \"reply_suppressions\",\n      \"aggregate_id\": \"prospect@example.com\"\n    },\n    \"append_event\": {\n      \"data_source_ref\": \"local://runx/reply-router\",\n      \"store_id\": \"reply-router-fixture\",\n      \"resource\": \"reply_suppressions\",\n      \"aggregate_id\": \"prospect@example.com\",\n      \"expected_version\": 7,\n      \"idempotency_key\": \"prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe\",\n      \"event\": {\n        \"type\": \"reply_router.suppression_recorded\",\n        \"recipient\": \"prospect@example.com\",\n        \"classification\": {\n          \"type\": \"unsubscribe\",\n          \"confidence\": 0.95,\n          \"evidence\": [\n            \"matched suppression policy signal 'unsubscribe'\",\n            \"matched suppression policy signal 'stop emailing'\"\n          ]\n        },\n        \"policy_signal_refs\": [\n          \"unsubscribe\",\n          \"stop emailing\"\n        ],\n        \"original_send_receipt_id\": \"runx:receipt:sha256:original-send-001\",\n        \"received_at\": \"2026-06-29T08:15:00Z\",\n        \"principal\": \"runx:principal:sales-agent\",\n        \"created_at\": \"2026-06-29T08:15:00Z\"\n      }\n    },\n    \"aggregate_id\": \"prospect@example.com\",\n    \"idempotency_key\": \"prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe\",\n    \"before_version\": 7,\n    \"after_version\": 8\n  },\n  \"routing_decision\": null,\n  \"escalation\": {\n    \"required\": false,\n    \"lane\": null,\n    \"no_send_performed\": true,\n    \"no_routing_alongside_unsubscribe\": true\n  },\n  \"evidence\": {\n    \"package\": \"reply-router\",\n    \"inbound_digest\": \"sha256:1087839a44c905d3aa3c4d65ddf66f4807f6cb7623b0aced1e6ff2f3a8e655db\",\n    \"received_from\": \"prospect@example.com\",\n    \"received_at\": \"2026-06-29T08:15:00Z\",\n    \"original_send_receipt_id\": \"runx:receipt:sha256:original-send-001\",\n    \"original_send_checksum\": \"sha256:original-send-checksum\",\n    \"suppression_policy_signals\": [\n      \"unsubscribe\",\n      \"stop emailing\",\n      \"remove me\",\n      \"opt out\"\n    ],\n    \"matched_unsubscribe_signals\": [\n      \"unsubscribe\",\n      \"stop emailing\"\n    ],\n    \"aggregate_id\": \"prospect@example.com\",\n    \"idempotency_key\": \"prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe\",\n    \"before_version\": 7,\n    \"after_version\": 8,\n    \"write_prepared\": true,\n    \"routing_send_target\": null,\n    \"sends_now\": false,\n    \"no_attenuation_request\": true,\n    \"no_operational_proposal\": true,\n    \"rules_applied\": [\n      \"refuse to classify unsealed original send receipts\",\n      \"suppress only when unsubscribe intent is grounded in suppression_policy\",\n      \"never route a send alongside unsubscribe\",\n      \"route non-unsubscribe replies only by naming a separate governed send-as run\",\n      \"stop ambiguous or low-confidence replies before write\"\n    ],\n    \"summary\": \"unsubscribe-class reply wrote suppression packet and emitted no routing decision\"\n  }\n}\n",
+      "structured_output": {
+        "classification": {
+          "confidence": 0.95,
+          "evidence": [
+            "matched suppression policy signal 'unsubscribe'",
+            "matched suppression policy signal 'stop emailing'"
+          ],
+          "type": "unsubscribe"
+        },
+        "escalation": {
+          "lane": null,
+          "no_routing_alongside_unsubscribe": true,
+          "no_send_performed": true,
+          "required": false
+        },
+        "evidence": {
+          "after_version": 8,
+          "aggregate_id": "prospect@example.com",
+          "before_version": 7,
+          "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+          "inbound_digest": "sha256:1087839a44c905d3aa3c4d65ddf66f4807f6cb7623b0aced1e6ff2f3a8e655db",
+          "matched_unsubscribe_signals": [
+            "unsubscribe",
+            "stop emailing"
+          ],
+          "no_attenuation_request": true,
+          "no_operational_proposal": true,
+          "original_send_checksum": "sha256:original-send-checksum",
+          "original_send_receipt_id": "runx:receipt:sha256:original-send-001",
+          "package": "reply-router",
+          "received_at": "2026-06-29T08:15:00Z",
+          "received_from": "prospect@example.com",
+          "routing_send_target": null,
+          "rules_applied": [
+            "refuse to classify unsealed original send receipts",
+            "suppress only when unsubscribe intent is grounded in suppression_policy",
+            "never route a send alongside unsubscribe",
+            "route non-unsubscribe replies only by naming a separate governed send-as run",
+            "stop ambiguous or low-confidence replies before write"
+          ],
+          "sends_now": false,
+          "summary": "unsubscribe-class reply wrote suppression packet and emitted no routing decision",
+          "suppression_policy_signals": [
+            "unsubscribe",
+            "stop emailing",
+            "remove me",
+            "opt out"
+          ],
+          "write_prepared": true
+        },
+        "routing_decision": null,
+        "suppression_result": {
+          "after_version": 8,
+          "aggregate_id": "prospect@example.com",
+          "append_event": {
+            "aggregate_id": "prospect@example.com",
+            "data_source_ref": "local://runx/reply-router",
+            "event": {
+              "classification": {
+                "confidence": 0.95,
+                "evidence": [
+                  "matched suppression policy signal 'unsubscribe'",
+                  "matched suppression policy signal 'stop emailing'"
+                ],
+                "type": "unsubscribe"
+              },
+              "created_at": "2026-06-29T08:15:00Z",
+              "original_send_receipt_id": "runx:receipt:sha256:original-send-001",
+              "policy_signal_refs": [
+                "unsubscribe",
+                "stop emailing"
+              ],
+              "principal": "runx:principal:sales-agent",
+              "received_at": "2026-06-29T08:15:00Z",
+              "recipient": "prospect@example.com",
+              "type": "reply_router.suppression_recorded"
+            },
+            "expected_version": 7,
+            "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+            "resource": "reply_suppressions",
+            "store_id": "reply-router-fixture"
+          },
+          "before_version": 7,
+          "dependency": "registry:runx/data-store@0.1.2",
+          "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+          "read_projection": {
+            "aggregate_id": "prospect@example.com",
+            "data_source_ref": "local://runx/reply-router",
+            "resource": "reply_suppressions",
+            "store_id": "reply-router-fixture"
+          },
+          "sequence": [
+            "read_projection",
+            "classify",
+            "append_event"
+          ]
+        }
+      }
+    },
+    "payload": {
+      "classification": {
+        "confidence": 0.95,
+        "evidence": [
+          "matched suppression policy signal 'unsubscribe'",
+          "matched suppression policy signal 'stop emailing'"
+        ],
+        "type": "unsubscribe"
+      },
+      "escalation": {
+        "lane": null,
+        "no_routing_alongside_unsubscribe": true,
+        "no_send_performed": true,
+        "required": false
+      },
+      "evidence": {
+        "after_version": 8,
+        "aggregate_id": "prospect@example.com",
+        "before_version": 7,
+        "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+        "inbound_digest": "sha256:1087839a44c905d3aa3c4d65ddf66f4807f6cb7623b0aced1e6ff2f3a8e655db",
+        "matched_unsubscribe_signals": [
+          "unsubscribe",
+          "stop emailing"
+        ],
+        "no_attenuation_request": true,
+        "no_operational_proposal": true,
+        "original_send_checksum": "sha256:original-send-checksum",
+        "original_send_receipt_id": "runx:receipt:sha256:original-send-001",
+        "package": "reply-router",
+        "received_at": "2026-06-29T08:15:00Z",
+        "received_from": "prospect@example.com",
+        "routing_send_target": null,
+        "rules_applied": [
+          "refuse to classify unsealed original send receipts",
+          "suppress only when unsubscribe intent is grounded in suppression_policy",
+          "never route a send alongside unsubscribe",
+          "route non-unsubscribe replies only by naming a separate governed send-as run",
+          "stop ambiguous or low-confidence replies before write"
+        ],
+        "sends_now": false,
+        "summary": "unsubscribe-class reply wrote suppression packet and emitted no routing decision",
+        "suppression_policy_signals": [
+          "unsubscribe",
+          "stop emailing",
+          "remove me",
+          "opt out"
+        ],
+        "write_prepared": true
+      },
+      "routing_decision": null,
+      "suppression_result": {
+        "after_version": 8,
+        "aggregate_id": "prospect@example.com",
+        "append_event": {
+          "aggregate_id": "prospect@example.com",
+          "data_source_ref": "local://runx/reply-router",
+          "event": {
+            "classification": {
+              "confidence": 0.95,
+              "evidence": [
+                "matched suppression policy signal 'unsubscribe'",
+                "matched suppression policy signal 'stop emailing'"
+              ],
+              "type": "unsubscribe"
+            },
+            "created_at": "2026-06-29T08:15:00Z",
+            "original_send_receipt_id": "runx:receipt:sha256:original-send-001",
+            "policy_signal_refs": [
+              "unsubscribe",
+              "stop emailing"
+            ],
+            "principal": "runx:principal:sales-agent",
+            "received_at": "2026-06-29T08:15:00Z",
+            "recipient": "prospect@example.com",
+            "type": "reply_router.suppression_recorded"
+          },
+          "expected_version": 7,
+          "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+          "resource": "reply_suppressions",
+          "store_id": "reply-router-fixture"
+        },
+        "before_version": 7,
+        "dependency": "registry:runx/data-store@0.1.2",
+        "idempotency_key": "prospect_example.com:runx:receipt:sha256:original-send-001:unsubscribe",
+        "read_projection": {
+          "aggregate_id": "prospect@example.com",
+          "data_source_ref": "local://runx/reply-router",
+          "resource": "reply_suppressions",
+          "store_id": "reply-router-fixture"
+        },
+        "sequence": [
+          "read_projection",
+          "classify",
+          "append_event"
+        ]
+      }
+    },
+    "receipt": {
+      "acts": [
+        {
+          "artifact_refs": [],
+          "closure": {
+            "closed_at": "2026-06-29T08:20:18.953Z",
+            "disposition": "closed",
+            "reason_code": "process_exit",
+            "summary": "cli-tool exited successfully"
+          },
+          "criterion_bindings": [
+            {
+              "criterion_id": "process_exit",
+              "evidence_refs": [],
+              "status": "verified",
+              "summary": "cli-tool exited successfully",
+              "verification_refs": []
+            }
+          ],
+          "form": "observation",
+          "id": "act_classify",
+          "intent": {
+            "constraints": [],
+            "derived_from": [],
+            "legitimacy": "Runtime graph execution was admitted by the local harness",
+            "purpose": "Run graph step classify",
+            "success_criteria": [
+              {
+                "criterion_id": "process_exit",
+                "required": true,
+                "statement": "cli-tool exits successfully"
+              }
+            ]
+          },
+          "source_refs": [],
+          "summary": "Executed graph step classify",
+          "target_refs": []
+        }
+      ],
+      "authority": {
+        "actor_ref": {
+          "type": "principal",
+          "uri": "runx:principal:local_runtime"
+        },
+        "attenuation": {
+          "parent_authority_ref": null,
+          "subset_proof": null
+        },
+        "authority_proof_refs": [],
+        "enforcement": {
+          "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+          "redaction_refs": [],
+          "setup_refs": [],
+          "teardown_refs": []
+        },
+        "grant_refs": [],
+        "scope_refs": [],
+        "terms": []
+      },
+      "canonicalization": "runx.receipt.c14n.v1",
+      "created_at": "2026-06-29T08:20:18.953Z",
+      "decisions": [
+        {
+          "artifact_refs": [],
+          "choice": "open",
+          "closure": null,
+          "decision_id": "dec_classify",
+          "inputs": {
+            "opportunity_refs": [],
+            "selection_ref": null,
+            "signal_refs": [],
+            "target_ref": null
+          },
+          "justification": {
+            "evidence_refs": [],
+            "summary": "runtime graph planner selected this node"
+          },
+          "proposed_intent": {
+            "constraints": [],
+            "derived_from": [],
+            "legitimacy": "Local graph execution requested this node",
+            "purpose": "Open runtime node classify",
+            "success_criteria": []
+          },
+          "selected_act_id": "act_classify",
+          "selected_harness_ref": null
+        }
+      ],
+      "digest": "sha256:b2c0917e5462af2810a667f5576210fc469d30b6446f86d3092c925b9d58fa0c",
+      "id": "sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791",
+      "idempotency": {
+        "content_hash": "sha256:run_classify_a8e0e498bce3-classify-content",
+        "intent_key": "sha256:run_classify_a8e0e498bce3-classify-intent",
+        "trigger_fingerprint": "sha256:run_classify_a8e0e498bce3-classify-trigger"
+      },
+      "issuer": {
+        "kid": "runx-demo-key",
+        "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+        "type": "hosted"
+      },
+      "lineage": {
+        "children": [],
+        "sync": []
+      },
+      "schema": "runx.receipt.v1",
+      "seal": {
+        "closed_at": "2026-06-29T08:20:18.953Z",
+        "criteria": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "disposition": "closed",
+        "last_observed_at": "2026-06-29T08:20:18.953Z",
+        "reason_code": "process_closed",
+        "summary": "cli-tool classify completed"
+      },
+      "signals": [],
+      "signature": {
+        "alg": "Ed25519",
+        "value": "base64:uadILhfa2j-EFe25AGfVsjcXnAT-nUj_d9FtULnE-wWHxCLF38XeplMEKoQJFGu_nzx21r5a7DADuWE-OZYiAA"
+      },
+      "subject": {
+        "commitments": [],
+        "kind": "skill",
+        "ref": {
+          "type": "harness",
+          "uri": "hrn_run_classify_a8e0e498bce3_classify"
+        }
+      }
+    },
+    "receipt_id": "sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791",
+    "registry_provenance": {
+      "digest": "sha256:ad41bc6109a4c27e1e5e60c2e5ef1eb36f470d6147675a5e19d27f00a360286b",
+      "profile_digest": "sha256:9a5cb355d67772668e632c616d2184c99d7539dbd674cda88ae26417e50cd56e",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "skill_id": "iwannabefree00/reply-router",
+      "trust_state": "trusted",
+      "trust_tier": "community",
+      "version": "sha-243e8add9e86"
+    },
+    "run_id": "run_classify_a8e0e498bce3",
+    "schema": "runx.skill_run.v1",
+    "skill_name": "reply-router",
+    "status": "sealed"
+  },
+  "verify": {
+    "status": "failure",
+    "error": {
+      "message": "runx verify requires trusted receipt verification keys. Set both RUNX_RECEIPT_VERIFY_KID and RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64, or pass --allow-local-development-signatures for local fixture receipts only.",
+      "code": "runtime_error"
+    }
+  }
+}
