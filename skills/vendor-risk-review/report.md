@@ -1,49 +1,45 @@
-# Vendor risk review skill delivery
+# Vendor risk review skill delivery report
 
-- Package: `vendor-risk-review`
-- Published ref: `iwannabefree00/vendor-risk-review@sha-cc5115a1c103`
-- Owner: `iwannabefree00`
-- Public URL: https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-cc5115a1c103
+- Package: `iwannabefree00/vendor-risk-review@sha-f73efbe9b874`
+- Public URL: https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-f73efbe9b874
 - PR: https://github.com/runxhq/runx/pull/172
-- Publish source: https://github.com/iwannabefree00/runx/tree/cc5115a1c1034577bb9bf14bcc9f68715326cd38/skills/vendor-risk-review
+- Source package path: `skills/vendor-risk-review/`
+- CLI used: `runx-cli 0.6.14`
+- Install command: `runx add iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai`
+- Run command: `runx skill iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai --json`
 
-## What shipped
+## What the skill does
 
-- Added `skills/vendor-risk-review/SKILL.md` with typed input/output documentation and the governed data-store seam.
-- Added `skills/vendor-risk-review/X.yaml` with three inline harness cases:
-  - `approve-with-conditions-sla-gap`
-  - `sealed-rejection-unbounded-liability`
-  - `stop-missing-policy-no-write`
-- Added `skills/vendor-risk-review/run.mjs`, a deterministic CLI runner for policy-based vendor relationship decisions.
-- Published the package through runx URL-as-publish from the public GitHub source after the interactive GitHub OAuth path returned 404.
+- Reads `contract_text`, `vendor_context`, `policy`, `data_source_ref`, and a pinned `store_id`.
+- Compares vendor contract terms against the supplied trust policy, including `required_sla_terms`, `max_liability`, `data_handling_floor`, `termination_window`, `policy_id`, and `created_at`.
+- Emits a typed `decision` and, when policy evidence is complete, appends a durable vendor risk event through `registry:runx/data-store@0.1.2`.
+- Uses `aggregate_id` equal to the vendor entity and an idempotency key derived from `vendor_ref + policy_id + decision`.
+- Stops before any write when policy fields are missing, vendor identity is ambiguous, or prior state is unreadable.
 
-## Decision behavior
+## Verification summary
 
-- Approves with conditions when the contract has recoverable SLA or termination gaps but no hard risk blockers.
-- Rejects when liability is unlimited, uncapped, unbounded, above `policy.max_liability`, or data handling is below `policy.data_handling_floor`.
-- Stops before write when the vendor is ambiguous, policy fields are missing, or prior projection state is unreadable.
-- Emits an append-event-ready risk record for `registry:runx/data-store@0.1.2` whenever the vendor and policy packet are complete.
+- Hosted registry harness: `passed`
+- Hosted harness endpoint: https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review@sha-f73efbe9b874/harness
+- Harness cases:
+  - `approve-with-conditions-sla-gap`: sealed approve-with-conditions path; missing SLA language is grounded in `policy.required_sla_terms`.
+  - `sealed-rejection-unbounded-liability`: sealed rejection path; refusal is grounded in liability/data-handling policy floors.
+  - `stop-missing-policy-no-write`: failed/stop path with no data-store write.
+- Hosted harness receipt ids:
+  - `sha256:b4038bf730b6f5a3150d669cb414ad9805ba3b8e87bb3bf32886d24b172156c1`
+  - `sha256:956be8c7d155300a9d5173c1193a2f09a557589d216337e6b831fe60df9a3705`
+  - `sha256:057a970f41271160885671b5bbadc8a003af901c840880e4f5c18efe472257ab`
 
-## Verification notes
+## Dogfood proof
 
-- `runx --version` output: `runx-cli 0.6.14`.
-- `runx registry read iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai --json` resolved owner, version, digest, profile digest, publisher, install command, and run command.
-- `runx add iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai --json` installed `SKILL.md`, `X.yaml`, and `run.mjs`.
-- `https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review/harness` returned HTTP 200 and listed all three declared harness cases.
-- GitHub Actions sealed the inline harness cases and emitted `action-verification.json` with receipt `runx:receipt:sha256:edbc4b5bf7adc3aafb6de9a7da7591032739ce1e4cc2c90c5af19ff465d6fdab`.
-- The workflow now dogfoods the published registry ref directly; on this Windows host, a post-publish rerun reaches receipt initialization but runx fails before execution with `receipt store is unreadable: os error 87`.
+- GitHub Actions run: https://github.com/iwannabefree00/runx/actions/runs/28356975016
+- Action status: `passed`
+- Dogfood receipt: `runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9`
+- `skills/vendor-risk-review/action-verification.json` records the published ref, receipt, case outputs, and runx verification output.
+- Frantic delivery `c7d9683f-e4dc-482e-a214-699317218c4b` passed machine verification `20/20`; the subsequent auto-review fallback reported an advisory review-infrastructure failure before judging the delivery.
 
-## User install/run/verify
+## Operator value
 
-- Install:
-  - `runx add iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai`
-- Run:
-  - `runx skill iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai --json`
-- Verify receipt:
-  - `runx verify --receipt <receipt.json> --json`
-
-## Why it is useful
-
-- Procurement or security operators can turn a supplied trust policy into a reproducible relationship-level approve/conditional/reject decision.
-- The output names the policy fields behind each condition or refusal instead of inventing unsupported risk claims.
-- The durable handoff is a CAS-style `append_event` packet for `registry:runx/data-store@0.1.2`, so future runs can remember both approvals with conditions and hard rejections.
+- A buyer can install the published package without private context and run it against a vendor contract plus trust policy.
+- The output is useful for procurement/security review because it turns vendor risk criteria into a durable, source-grounded decision record.
+- Rejections are intentionally durable records, so future operator runs do not reconsider a previously unsafe vendor relationship without new policy evidence.
+- The skill avoids the receipt ledger as state and keeps the governed notification/send-as lane outside this package.

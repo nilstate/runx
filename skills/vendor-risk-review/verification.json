@@ -1,60 +1,37 @@
 {
-  "status": "registry_published_preflight_passed",
-  "runx_cli": {
-    "path": "D:/Programs/runx/bin/runx.exe",
-    "version": "runx-cli 0.6.14",
-    "min_required": "0.6.14",
-    "ok": true
+  "status": "passed",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "published_ref": "iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
+  "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
+  "pr_url": "https://github.com/runxhq/runx/pull/172",
+  "source_url": "https://github.com/iwannabefree00/runx/tree/vendor-risk-review/skills/vendor-risk-review",
+  "install": {
+    "command": "runx add iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai",
+    "status": "passed"
   },
-  "github": {
-    "starred_runxhq_runx": true,
-    "fork": "https://github.com/iwannabefree00/runx",
-    "branch": "vendor-risk-review",
-    "pr_url": "https://github.com/runxhq/runx/pull/172",
-    "index_branch": "vendor-risk-review-index",
-    "index_commit": "cc5115a1c1034577bb9bf14bcc9f68715326cd38"
-  },
-  "skill": {
-    "name": "vendor-risk-review",
-    "version": "sha-cc5115a1c103",
-    "published_ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
-    "runner": "decide",
-    "source_type": "cli-tool"
-  },
-  "registry": {
-    "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
-    "public_url_http": 200,
-    "registry_read": "passed",
-    "clean_install": "passed",
-    "digest": "sha256:fc143a0eab60db135cf9abd20ba6746912fb6dccd96eac6f2253e17439998aed",
-    "profile_digest": "sha256:e612778fe1cedc5a217b5eccb9f21a1a98ed6f1972d13209f85727db30cd24ca",
-    "install_command": "runx add iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai",
-    "run_command": "runx skill iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai --json"
-  },
-  "harness": {
-    "inline_cases_present": true,
-    "case_count": 3,
-    "case_names": [
-      "approve-with-conditions-sla-gap",
-      "sealed-rejection-unbounded-liability",
-      "stop-missing-policy-no-write"
-    ],
-    "hosted_endpoint": "https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review/harness",
-    "hosted_endpoint_http": 200,
-    "hosted_endpoint_status": "not_recorded_declared_cases_available",
-    "github_actions_status": "passed"
-  },
-  "dogfood": {
-    "published_ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
-    "github_actions_receipt_ref": "runx:receipt:sha256:edbc4b5bf7adc3aafb6de9a7da7591032739ce1e4cc2c90c5af19ff465d6fdab",
-    "windows_postpublish_status": "blocked_by_runx_receipt_store_os_error_87_before_case_execution",
-    "approved_fixture_expected": true,
-    "conditions_count_expected": 1,
-    "append_event_ready_expected": true
-  },
-  "frantic_preflight": {
+  "hosted_harness": {
     "status": "passed",
-    "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
-    "source_url": "https://github.com/iwannabefree00/runx/tree/cc5115a1c1034577bb9bf14bcc9f68715326cd38/skills/vendor-risk-review"
-  }
+    "endpoint": "https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review@sha-f73efbe9b874/harness",
+    "case_count": 3,
+    "receipt_ids": [
+      "sha256:b4038bf730b6f5a3150d669cb414ad9805ba3b8e87bb3bf32886d24b172156c1",
+      "sha256:956be8c7d155300a9d5173c1193a2f09a557589d216337e6b831fe60df9a3705",
+      "sha256:057a970f41271160885671b5bbadc8a003af901c840880e4f5c18efe472257ab"
+    ]
+  },
+  "github_actions": {
+    "status": "passed",
+    "run_url": "https://github.com/iwannabefree00/runx/actions/runs/28356975016",
+    "head_sha": "618cc3bf1ec44b5bbde1437cfc92b022a1e07d14",
+    "receipt_ref": "runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
+    "verification_json": "skills/vendor-risk-review/action-verification.json"
+  },
+  "frantic_delivery": {
+    "claim_id": "ac081392-2657-48f3-90c6-2ffb92b112ba",
+    "delivery_id": "c7d9683f-e4dc-482e-a214-699317218c4b",
+    "machine_status": "passed",
+    "machine_summary": "Machine checks passed: 20/20. Review pending with human or llm.",
+    "auto_review_note": "Auto-review fallback failed before judging due Frantic review graph validation; it is advisory and not a worker rejection."
+  },
+  "windows_note": "Local Windows runx skill execution can hit receipt-store os error 87 before execution; hosted publish harness and Linux GitHub Actions are the executed proof paths for this package."
 }
