@@ -24,13 +24,14 @@ inputs:
 caller:
   answers:
     agent_task.grade-member.output:
-      graded_member: writer-alpha
-      refusal_count: 9
-      refusal_rate: 0.75
-      avg_completion_time: 360
-      completion_ratio: 3.0
-      verdict: underperformer
-      reason: "writer-alpha refusal rate 0.75 exceeds threshold 0.6 and completion time 360s is 3x the 120s norm"
+      grade_answer:
+        graded_member: writer-alpha
+        refusal_count: 9
+        refusal_rate: 0.75
+        avg_completion_time: 360
+        completion_ratio: 3.0
+        verdict: underperformer
+        reason: "writer-alpha refusal rate 0.75 exceeds threshold 0.6 and completion time 360s is 3x the 120s norm"
 expect:
   status: sealed
   receipt:

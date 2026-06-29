@@ -35,13 +35,14 @@ harness:
       caller:
         answers:
           agent_task.grade-member.output:
-            graded_member: writer-alpha
-            refusal_count: 9
-            refusal_rate: 0.75
-            avg_completion_time: 360
-            completion_ratio: 3.0
-            verdict: underperformer
-            reason: "writer-alpha refusal rate 0.75 exceeds threshold 0.6 and completion time 360s is 3x the 120s norm"
+            grade_answer:
+              graded_member: writer-alpha
+              refusal_count: 9
+              refusal_rate: 0.75
+              avg_completion_time: 360
+              completion_ratio: 3.0
+              verdict: underperformer
+              reason: "writer-alpha refusal rate 0.75 exceeds threshold 0.6 and completion time 360s is 3x the 120s norm"
       expect:
         status: sealed
     - name: roster-tuner-stop-needs-agent
@@ -83,26 +84,7 @@ policy:
 runners:
   tune:
     default: true
-    type: cli-tool
-    command: node
-    args:
-      - run.mjs
-    artifacts:
-      named_emits:
-        roster_decision: runx.roster.tuning.v1
-      agent_tasks:
-        - id: grade-member
-          description: "Grade a folded member's metrics against the operator norms and produce an evidence-based verdict."
-          inputs:
-            member:
-              type: string
-              required: true
-            folded_metrics:
-              type: json
-              required: true
-            norms:
-              type: json
-              required: true
+    type: graph
     inputs:
       case_id:
         type: string
@@ -144,3 +126,62 @@ runners:
         type: string
         required: true
         description: Declared schema version for case events; mismatched events are refused.
+    graph:
+      name: roster-tuner
+      steps:
+        - id: fold
+          label: fold roster metrics
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - graph/fold/run.mjs
+          artifacts:
+            named_emits:
+              roster_metrics: roster_metrics
+            packets:
+              roster_metrics: runx.roster.metrics.v1
+        - id: grade
+          label: grade folded member
+          inputs:
+            performance_norms: $input.performance_norms
+          context:
+            folded_metrics: fold.roster_metrics.data
+          run:
+            type: agent-task
+            agent: reviewer
+            task: grade-member
+            outputs:
+              grade_answer: object
+          instructions: >
+            Grade the folded member metrics against performance_norms. Return
+            grade_answer with graded_member, refusal_count, refusal_rate,
+            avg_completion_time, completion_ratio, verdict, and reason. Use
+            verdict underperformer only when refusal_rate and avg_completion_time
+            both exceed the supplied thresholds.
+          artifacts:
+            named_emits:
+              grade_answer: grade_answer
+        - id: decide
+          label: decide roster tuning
+          inputs:
+            case_id: $input.case_id
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+            expected_version: $input.expected_version
+            idempotency_key: $input.idempotency_key
+            roster: $input.roster
+            performance_norms: $input.performance_norms
+          context:
+            folded_metrics: fold.roster_metrics.data
+            grade_answer: grade.grade_answer.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - graph/decide/run.mjs
+          artifacts:
+            named_emits:
+              roster_decision: roster_decision
+            packets:
+              roster_decision: runx.roster.tuning.v1

@@ -13,11 +13,72 @@ function readInputs() {
 
 const inputs = readInputs();
 const gradeResult = inputs.grade ?? {};
-const gradedMembers = Array.isArray(gradeResult.graded_members) ? gradeResult.graded_members : [];
+const foldedMetrics = inputs.folded_metrics ?? {};
+const gradeAnswer = inputs.grade_answer ?? null;
 const events = Array.isArray(inputs.events) ? inputs.events : [];
 const roster = Array.isArray(inputs.roster) ? inputs.roster : [];
 const norms = inputs.performance_norms ?? {};
 const minRosterSize = norms.min_roster_size ?? 2;
+const refusalThreshold = norms.refusal_threshold ?? 0.6;
+const completionTimeThreshold = norms.completion_time_threshold ?? 120;
+const caseId = inputs.case_id ?? null;
+const resource = inputs.resource ?? "agency_cases";
+const aggregateId = inputs.aggregate_id ?? caseId;
+const idempotencyKey = inputs.idempotency_key ?? "";
+
+let gradedMembers = Array.isArray(gradeResult.graded_members)
+  ? gradeResult.graded_members
+  : [];
+
+if (gradedMembers.length === 0) {
+  const members = Array.isArray(foldedMetrics.members) ? foldedMetrics.members : [];
+  gradedMembers = members.map((m) => {
+    const completionRatio = completionTimeThreshold > 0
+      ? m.avg_completion_time / completionTimeThreshold
+      : 0;
+    const isUnderperformer = m.refusal_rate > refusalThreshold
+      && m.avg_completion_time > completionTimeThreshold;
+    return {
+      member: m.member,
+      skill: m.skill,
+      refusal_count: m.refusal_count,
+      refusal_rate: m.refusal_rate,
+      avg_completion_time: m.avg_completion_time,
+      completion_ratio: Math.round(completionRatio * 100) / 100,
+      verdict: isUnderperformer ? "underperformer" : "acceptable",
+      reason: isUnderperformer
+        ? `${m.member} refusal rate ${m.refusal_rate} exceeds threshold ${refusalThreshold} and completion time ${m.avg_completion_time}s is ${Math.round(completionRatio * 10) / 10}x the ${completionTimeThreshold}s norm`
+        : `${m.member} metrics within norms`,
+    };
+  });
+}
+
+if (gradeAnswer?.graded_member) {
+  let idx = gradedMembers.findIndex((g) => g.member === gradeAnswer.graded_member);
+  if (idx < 0) {
+    const rosterMember = roster.find((r) => r.member === gradeAnswer.graded_member) ?? {};
+    gradedMembers.push({
+      member: gradeAnswer.graded_member,
+      skill: rosterMember.skill ?? "unknown",
+      refusal_count: 0,
+      refusal_rate: 0,
+      avg_completion_time: 0,
+      completion_ratio: 0,
+      verdict: "acceptable",
+      reason: `${gradeAnswer.graded_member} metrics within norms`,
+    });
+    idx = gradedMembers.length - 1;
+  }
+  gradedMembers[idx] = {
+    ...gradedMembers[idx],
+    refusal_count: gradeAnswer.refusal_count ?? gradedMembers[idx].refusal_count,
+    refusal_rate: gradeAnswer.refusal_rate ?? gradedMembers[idx].refusal_rate,
+    avg_completion_time: gradeAnswer.avg_completion_time ?? gradedMembers[idx].avg_completion_time,
+    completion_ratio: gradeAnswer.completion_ratio ?? gradedMembers[idx].completion_ratio,
+    verdict: gradeAnswer.verdict ?? gradedMembers[idx].verdict,
+    reason: gradeAnswer.reason ?? gradedMembers[idx].reason,
+  };
+}
 
 // Compute version from events
 let version = 0;
@@ -46,10 +107,18 @@ if (underperformers.length === 0) {
   process.stdout.write(JSON.stringify({
     roster_decision: {
       schema: "runx.roster.tuning.v1",
+      case_id: caseId,
       decision: judgmentEvent.payload.decision,
       projection: {
+        aggregate_id: aggregateId,
         events_folded: events.length,
         version_before: version,
+      },
+      appended_judgment: {
+        aggregate_id: aggregateId,
+        version_after: version + 1,
+        idempotency_key: idempotencyKey,
+        event_ref: `${resource}:${aggregateId}:${version + 1}`,
       },
       judgment_event: judgmentEvent,
       folded_metrics: gradedMembers,
@@ -86,7 +155,19 @@ if (remainingAfterRemoval < minRosterSize) {
   process.stdout.write(JSON.stringify({
     roster_decision: {
       schema: "runx.roster.tuning.v1",
+      case_id: caseId,
       decision: judgmentEvent.payload.decision,
+      projection: {
+        aggregate_id: aggregateId,
+        events_folded: events.length,
+        version_before: version,
+      },
+      appended_judgment: {
+        aggregate_id: aggregateId,
+        version_after: version + 1,
+        idempotency_key: idempotencyKey,
+        event_ref: `${resource}:${aggregateId}:${version + 1}`,
+      },
       guard_rails: {
         min_roster_size: minRosterSize,
         remaining_after_removal: remainingAfterRemoval,
@@ -119,7 +200,19 @@ if (skillHolders.length === 1 && skillHolders[0].member === worst.member) {
   process.stdout.write(JSON.stringify({
     roster_decision: {
       schema: "runx.roster.tuning.v1",
+      case_id: caseId,
       decision: judgmentEvent.payload.decision,
+      projection: {
+        aggregate_id: aggregateId,
+        events_folded: events.length,
+        version_before: version,
+      },
+      appended_judgment: {
+        aggregate_id: aggregateId,
+        version_after: version + 1,
+        idempotency_key: idempotencyKey,
+        event_ref: `${resource}:${aggregateId}:${version + 1}`,
+      },
       guard_rails: {
         min_roster_size: minRosterSize,
         remaining_after_removal: remainingAfterRemoval,
@@ -155,15 +248,23 @@ const judgmentEvent = {
 };
 
 process.stdout.write(JSON.stringify({
-  roster_decision: {
-    schema: "runx.roster.tuning.v1",
-    decision: judgmentEvent.payload.decision,
-    projection: {
-      events_folded: events.length,
-      version_before: version,
-    },
-    judgment_event: judgmentEvent,
-    folded_metrics: gradedMembers,
+    roster_decision: {
+      schema: "runx.roster.tuning.v1",
+      case_id: inputs.case_id ?? null,
+      decision: judgmentEvent.payload.decision,
+      projection: {
+        aggregate_id: aggregateId,
+        events_folded: events.length,
+        version_before: version,
+      },
+      appended_judgment: {
+        aggregate_id: aggregateId,
+        version_after: version + 1,
+        idempotency_key: idempotencyKey,
+        event_ref: `${resource}:${aggregateId}:${version + 1}`,
+      },
+      judgment_event: judgmentEvent,
+      folded_metrics: gradedMembers,
     guard_rails: {
       min_roster_size: minRosterSize,
       remaining_after_removal: remainingAfterRemoval,
