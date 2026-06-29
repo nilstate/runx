@@ -1,0 +1,141 @@
+skill: list-hygiene-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_decay_re_permission
+      runner: default
+      inputs:
+        data_source_ref: local://runx/list-hygiene/harness
+        resource: contact_consent_events
+        aggregate_id: contact:decayed-001
+        expected_version: 4
+        idempotency_key: contact:decayed-001:list-hygiene:repermission:v1
+        engagement_history:
+          opens_count: 0
+          clicks_count: 0
+          hard_bounces: 0
+          recency_days: 121
+        bounce_policy:
+          hard_bounce_action: suppress
+          decay_threshold_days: 90
+        current_consent_state:
+          state: subscribed
+          version: 4
+          unsubscribe_marker: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: sealed_hard_bounce_suppress
+      runner: default
+      inputs:
+        data_source_ref: local://runx/list-hygiene/harness
+        resource: contact_consent_events
+        aggregate_id: contact:bounced-001
+        expected_version: 7
+        idempotency_key: contact:bounced-001:list-hygiene:suppress:v1
+        engagement_history:
+          opens_count: 2
+          clicks_count: 0
+          hard_bounces: 1
+          recency_days: 9
+        bounce_policy:
+          hard_bounce_action: suppress
+          decay_threshold_days: 90
+        current_consent_state:
+          state: subscribed
+          version: 7
+          unsubscribe_marker: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: stop_missing_or_stale_evidence
+      runner: default
+      inputs:
+        data_source_ref: local://runx/list-hygiene/harness
+        resource: contact_consent_events
+        aggregate_id: contact:stale-001
+        expected_version: 2
+        idempotency_key: contact:stale-001:list-hygiene:stale:v1
+        engagement_history:
+          opens_count: 0
+          clicks_count: 0
+          hard_bounces: 0
+          recency_days: 120
+        bounce_policy:
+          hard_bounce_action: suppress
+          decay_threshold_days: 90
+        current_consent_state:
+          state: subscribed
+          version: 3
+          unsubscribe_marker: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - outbound_send
+    - operational_proposal
+    - mint
+    - invented_contact_metrics
+
+emits:
+  - name: list_hygiene_judgment
+    packet: runx.list_hygiene_judgment.v1
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+      resource:
+        type: string
+        required: true
+      aggregate_id:
+        type: string
+        required: true
+      expected_version:
+        type: number
+        required: true
+      idempotency_key:
+        type: string
+        required: true
+      engagement_history:
+        type: json
+        required: true
+      bounce_policy:
+        type: json
+        required: true
+      current_consent_state:
+        type: json
+        required: true

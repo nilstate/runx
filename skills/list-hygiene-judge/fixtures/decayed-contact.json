@@ -1,0 +1,22 @@
+{
+  "data_source_ref": "local://runx/list-hygiene/demo",
+  "resource": "contact_consent_events",
+  "aggregate_id": "contact:demo-decayed",
+  "expected_version": 3,
+  "idempotency_key": "contact:demo-decayed:list-hygiene:2026-06-29",
+  "engagement_history": {
+    "opens_count": 0,
+    "clicks_count": 0,
+    "hard_bounces": 0,
+    "recency_days": 120
+  },
+  "bounce_policy": {
+    "hard_bounce_action": "suppress",
+    "decay_threshold_days": 90
+  },
+  "current_consent_state": {
+    "state": "subscribed",
+    "version": 3,
+    "unsubscribe_marker": false
+  }
+}
