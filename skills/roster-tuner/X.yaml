@@ -15,8 +15,6 @@ harness:
   cases:
     - name: roster-tuner-sealed-underperformer
       runner: tune
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-roster-tuner/harness-sealed":{"adapter":"data.local","store_id":"roster-tuner-sealed-v1","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
         case_id: case-rt-sealed-1
         data_source_ref: local://runx-roster-tuner/harness-sealed
@@ -48,8 +46,6 @@ harness:
         status: sealed
     - name: roster-tuner-stop-needs-agent
       runner: tune
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-roster-tuner/harness-stop":{"adapter":"data.local","store_id":"roster-tuner-stop-v1","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
         case_id: case-rt-stop-1
         data_source_ref: local://runx-roster-tuner/harness-stop
