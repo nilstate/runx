@@ -1,0 +1,68 @@
+{
+  "schema": "runx.verifiable_web_research.delivery_verification.v1",
+  "generated_at": "2026-06-22T15:35:00Z",
+  "runx_version": {
+    "command": "runx --version",
+    "stdout": "runx-cli 0.6.13",
+    "status": "passed"
+  },
+  "registry": {
+    "ref": "jienigoto/verifiable-web-research@sha-f0d326500848",
+    "public_url": "https://runx.ai/x/jienigoto/verifiable-web-research@sha-f0d326500848",
+    "read_command": "runx registry read jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai --json",
+    "read_status": "passed",
+    "install_command": "runx add jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai --json",
+    "install_status": "passed",
+    "digest": "7547a9783368d97b03be077d5ba822b3a817a6394634756091e9507f47775882",
+    "profile_digest": "6230275c1ddf69851b58e1028f002ff9bf83ffc61c9311a948889f857ddc83e6",
+    "publisher": "jienigoto",
+    "trust_tier": "community",
+    "runner_names": [
+      "default"
+    ]
+  },
+  "harness": {
+    "command": "runx harness ./skills/verifiable-web-research --receipt-dir .runx-delivery-receipts --json",
+    "status": "passed",
+    "case_count": 2,
+    "cases": [
+      {
+        "name": "verifiable-web-research-audit-ready-packet",
+        "status": "passed",
+        "receipt_id": "sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e"
+      },
+      {
+        "name": "verifiable-web-research-missing-fixture-fails",
+        "status": "passed",
+        "receipt_id": "sha256:c31b620b06736a5bb7507c8353619612618a440d5c41737d2780ccc1ff20f626"
+      }
+    ]
+  },
+  "receipt_verification": {
+    "signature_mode": "production",
+    "verify_kid": "local-harness-key",
+    "verify_public_key_base64": "IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=",
+    "verdicts": [
+      {
+        "command": "runx verify --receipt-dir .runx-delivery-receipts sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e --json",
+        "root_receipt_id": "sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e",
+        "valid": true,
+        "receipt_count": 1,
+        "findings": []
+      },
+      {
+        "command": "runx verify --receipt-dir .runx-delivery-receipts sha256:c31b620b06736a5bb7507c8353619612618a440d5c41737d2780ccc1ff20f626 --json",
+        "root_receipt_id": "sha256:c31b620b06736a5bb7507c8353619612618a440d5c41737d2780ccc1ff20f626",
+        "valid": true,
+        "receipt_count": 1,
+        "findings": []
+      }
+    ]
+  },
+  "dogfood": {
+    "command": "runx skill jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai -i objective=<text> -i source_fixture_path=builtin:ai-agent-frameworks -i verification_level=audit_ready -i max_claims=2 --json",
+    "status": "sealed",
+    "observed_receipt_id": "sha256:939eafcfcb9215633445658edc5e2b97b2a82211fcb4cc3e4955b7e942c5c83e",
+    "note": "The registry skill was admitted and sealed. Durable receipt verification in this file uses the harness receipts because the registry dogfood receipt file was not retained across the Windows/WSL receipt directory boundary."
+  }
+}

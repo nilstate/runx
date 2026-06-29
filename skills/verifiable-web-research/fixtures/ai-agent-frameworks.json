@@ -1,0 +1,30 @@
+{
+  "sources": [
+    {
+      "url": "https://example.org/langchain-pricing",
+      "final_url": "https://example.org/langchain-pricing",
+      "fetched_at": "2026-06-22T00:00:00Z",
+      "status": 200,
+      "content": "LangChain is open source. LangSmith is an optional hosted observability product with a free developer tier.",
+      "extracts": [
+        {
+          "claim": "LangChain has an open-source framework and an optional hosted observability product.",
+          "quote": "LangChain is open source. LangSmith is an optional hosted observability product with a free developer tier."
+        }
+      ]
+    },
+    {
+      "url": "https://example.org/crewai-docs",
+      "final_url": "https://example.org/crewai-docs",
+      "fetched_at": "2026-06-22T00:00:05Z",
+      "status": 200,
+      "content": "CrewAI provides a multi-agent framework with hosted enterprise options for teams.",
+      "extracts": [
+        {
+          "claim": "CrewAI offers a multi-agent framework with hosted enterprise options.",
+          "quote": "CrewAI provides a multi-agent framework with hosted enterprise options for teams."
+        }
+      ]
+    }
+  ]
+}

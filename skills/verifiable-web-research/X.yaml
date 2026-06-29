@@ -1,0 +1,100 @@
+skill: verifiable-web-research
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: verifiable-web-research-audit-ready-packet
+      runner: default
+      inputs:
+        objective: Compare captured AI agent framework evidence.
+        source_fixture_path: builtin:ai-agent-frameworks
+        verification_level: audit_ready
+        max_claims: 2
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: verifiable-web-research-missing-fixture-fails
+      runner: default
+      inputs:
+        objective: Reject runs without a captured source fixture.
+        verification_level: detailed
+      expect:
+        status: failure
+
+runx:
+  mutating: false
+  idempotency:
+    key: source_fixture_sha256
+  scopes:
+    - research.evidence.read
+  policy:
+    data_classification: public_web_snapshot_metadata
+    network:
+      allowed: []
+      forbidden:
+        - live network fetches during deterministic harness runs
+        - private or authenticated sources
+    verifier_notes:
+      - The runner uses already-fetched public source snapshots.
+      - Each claim includes an exact extract and a sha256 digest of the captured source content.
+  artifacts:
+    emits:
+      - verifiable_research_packet
+      - evidence_json
+      - report_md
+    wrap_as: verifiable_research_packet
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - research.evidence.read
+    policy:
+      reads:
+        - package-local public source fixtures
+      writes:
+        - evidence.json
+        - report.md
+      disallows:
+        - network calls
+        - credential material
+        - private source snapshots
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: Research question to answer from captured web evidence.
+      source_fixture_path:
+        type: string
+        required: true
+        description: Package-relative JSON fixture with captured source snapshots.
+      verification_level:
+        type: string
+        required: false
+        default: detailed
+        description: basic, detailed, or audit_ready.
+      max_claims:
+        type: number
+        required: false
+        default: 10
+        description: Maximum number of evidence claims to include.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill directory where artifacts should be written.
+    outputs:
+      verifiable_research_packet: object
+      evidence_json: object
+      report_md: string

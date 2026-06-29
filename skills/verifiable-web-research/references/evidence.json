@@ -1,0 +1,103 @@
+{
+  "schema": "runx.verifiable_web_research.delivery_evidence.v1",
+  "summary": "Published and verified a reusable Runx skill that builds auditable web research packets from captured source snapshots. The skill emits exact extracts, content digests, confidence reasoning, replay guidance, and optional evidence/report artifacts without reaching the network during execution.",
+  "skill": {
+    "name": "verifiable-web-research",
+    "published_ref": "jienigoto/verifiable-web-research@sha-f0d326500848",
+    "owner": "jienigoto",
+    "publisher_principal": "user_476edbcb37a0fa1c989987ad",
+    "registry": "https://api.runx.ai",
+    "public_url": "https://runx.ai/x/jienigoto/verifiable-web-research",
+    "versioned_public_url": "https://runx.ai/x/jienigoto/verifiable-web-research@sha-f0d326500848",
+    "source_url": "https://github.com/jienigoto/runx/tree/fd8ab4418d8bb9420b76d5d02178bcf53868755e/skills/verifiable-web-research",
+    "pr_url": "https://github.com/runxhq/runx/pull/112",
+    "digest": "7547a9783368d97b03be077d5ba822b3a817a6394634756091e9507f47775882",
+    "profile_digest": "6230275c1ddf69851b58e1028f002ff9bf83ffc61c9311a948889f857ddc83e6",
+    "trust_tier": "community"
+  },
+  "checks": {
+    "runx_cli": {
+      "status": "passed",
+      "command": "runx --version",
+      "output": "runx-cli 0.6.13"
+    },
+    "local_tests": {
+      "status": "passed",
+      "command": "node --test skills/verifiable-web-research/test.mjs",
+      "tests": 4
+    },
+    "local_harness": {
+      "status": "passed",
+      "command": "runx harness ./skills/verifiable-web-research --receipt-dir .runx-delivery-receipts --json",
+      "case_count": 2,
+      "case_names": [
+        "verifiable-web-research-audit-ready-packet",
+        "verifiable-web-research-missing-fixture-fails"
+      ],
+      "receipt_ids": [
+        "sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e",
+        "sha256:c31b620b06736a5bb7507c8353619612618a440d5c41737d2780ccc1ff20f626"
+      ]
+    },
+    "receipt_verification": {
+      "status": "passed",
+      "verify_command": "runx verify --receipt-dir .runx-delivery-receipts sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e --json",
+      "verify_kid": "local-harness-key",
+      "verify_public_key_base64": "IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=",
+      "valid_receipts": [
+        "sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e",
+        "sha256:c31b620b06736a5bb7507c8353619612618a440d5c41737d2780ccc1ff20f626"
+      ]
+    },
+    "registry_publish": {
+      "status": "published",
+      "command": "runx registry publish ./skills/verifiable-web-research/SKILL.md --registry https://api.runx.ai --json",
+      "install_command": "runx add jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai",
+      "run_command": "runx skill jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai"
+    },
+    "registry_readback": {
+      "status": "passed",
+      "command": "runx registry read jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai --json",
+      "runner_names": [
+        "default"
+      ],
+      "publisher_handle": "jienigoto",
+      "markdown_contract_checked": true
+    },
+    "registry_install": {
+      "status": "installed",
+      "command": "runx add jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai --json"
+    },
+    "registry_dogfood_run": {
+      "status": "sealed",
+      "command": "runx skill jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai -i objective=<text> -i source_fixture_path=builtin:ai-agent-frameworks -i verification_level=audit_ready -i max_claims=2 --json",
+      "receipt_id_observed": "sha256:939eafcfcb9215633445658edc5e2b97b2a82211fcb4cc3e4955b7e942c5c83e",
+      "note": "The registry skill was admitted and sealed. The durable receipt proof for this delivery is the local harness receipt set above, because the current Windows/WSL receipt directory boundary did not retain the dogfood receipt file."
+    },
+    "public_urls": {
+      "status": "passed",
+      "checked_urls": [
+        "https://runx.ai/x/jienigoto/verifiable-web-research",
+        "https://runx.ai/x/jienigoto/verifiable-web-research@sha-f0d326500848"
+      ],
+      "http_status": 200
+    }
+  },
+  "observations": [
+    "runx --version returned runx-cli 0.6.13, satisfying the stated CLI floor for the bounty.",
+    "The published registry ref is jienigoto/verifiable-web-research@sha-f0d326500848 under the authenticated jienigoto namespace.",
+    "runx registry read jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai --json resolves the package metadata, digest, profile digest, publisher, trust tier, and default runner.",
+    "runx add jienigoto/verifiable-web-research@sha-f0d326500848 --registry https://api.runx.ai --json installed the package from the remote registry.",
+    "The local harness passed both declared cases: an audit-ready packet from builtin:ai-agent-frameworks and a missing-fixture failure case.",
+    "runx verify returned valid=true for the harness receipt sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e with kid local-harness-key and public key IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=.",
+    "runx verify returned valid=true for the harness receipt sha256:c31b620b06736a5bb7507c8353619612618a440d5c41737d2780ccc1ff20f626 with the same public key.",
+    "The skill runner never reaches the network; it converts captured public source snapshots into auditable claims, extracts, digests, and replay instructions.",
+    "The versioned public adoption page https://runx.ai/x/jienigoto/verifiable-web-research@sha-f0d326500848 returned HTTP 200."
+  ],
+  "artifact_refs": {
+    "public_url": "https://runx.ai/x/jienigoto/verifiable-web-research@sha-f0d326500848",
+    "source_url": "https://github.com/jienigoto/runx/tree/fd8ab4418d8bb9420b76d5d02178bcf53868755e/skills/verifiable-web-research",
+    "pr_url": "https://github.com/runxhq/runx/pull/112",
+    "receipt_ref": "runx:receipt:sha256:e3d0d862edde1959bf7e14540554f9d8359f8b1b49eb500c02eae5601979333e"
+  }
+}

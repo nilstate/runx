@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "runx.verifiable_web_research.result.v1",
+  "type": "object",
+  "required": ["schema", "data"],
+  "properties": {
+    "schema": { "const": "runx.verifiable_web_research.result.v1" },
+    "data": {
+      "type": "object",
+      "required": ["objective", "verification_level", "summary", "claims", "verification_guide"],
+      "properties": {
+        "objective": { "type": "string", "minLength": 1 },
+        "verification_level": { "enum": ["basic", "detailed", "audit_ready"] },
+        "summary": { "type": "string" },
+        "claims": { "type": "array", "items": { "type": "object" } },
+        "verification_guide": { "type": "object" },
+        "evidence_archive": { "type": "object" },
+        "artifacts": { "type": "object" }
+      }
+    }
+  }
+}
