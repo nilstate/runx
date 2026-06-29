@@ -1,0 +1,24 @@
+{
+  "request_packet": {
+    "type": "export",
+    "subject_id": "sub_456",
+    "scope": ["profile"]
+  },
+  "requestor_proof": {
+    "identity_provider": "email-link",
+    "verified_at": null,
+    "assertion": ""
+  },
+  "policy": {
+    "jurisdiction": "CCPA-CA",
+    "lawful_bases": {
+      "profile": "contract"
+    },
+    "scope_bounds": ["profile"]
+  },
+  "data_source_ref": "local://runx/data-subject-request",
+  "store_id": "dsr-fixture-001",
+  "aggregate_id": "dsr:sub_456:export:2026-06-29",
+  "expected_version": 0,
+  "idempotency_key": "dsr:sub_456:export:2026-06-29:v1"
+}

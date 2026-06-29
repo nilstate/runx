@@ -1,0 +1,530 @@
+{
+  "closure": {
+    "closed_at": "2026-06-29T04:51:16.947Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool decide completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "data_store": {
+        "append_event": {
+          "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+          "data_source_ref": "local://runx/data-subject-request",
+          "event": {
+            "decision": {
+              "eligible": true,
+              "reason": "GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases."
+            },
+            "handoff_path": "handoff/dsr/sub_123/erasure.json",
+            "jurisdiction": "GDPR-EU",
+            "lawful_basis_verdict": {
+              "marketing_events": {
+                "in_scope_bounds": true,
+                "lawful_basis": "consent",
+                "permitted_for_decision": true
+              },
+              "profile": {
+                "in_scope_bounds": true,
+                "lawful_basis": "consent",
+                "permitted_for_decision": true
+              }
+            },
+            "request_type": "erasure",
+            "requested_scope": [
+              "profile",
+              "marketing_events"
+            ],
+            "requestor": {
+              "assertion_digest": "sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4",
+              "identity_provider": "acme-idp",
+              "verified_at": "2026-06-29T06:41:00Z"
+            },
+            "scope_bounds": [
+              "profile",
+              "marketing_events"
+            ],
+            "subject_id": "sub_123",
+            "type": "data_subject_request.verdict_recorded"
+          },
+          "expected_version": 0,
+          "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1",
+          "resource": "data_subject_requests",
+          "store_id": "dsr-fixture-001"
+        },
+        "dependency": "registry:runx/data-store@0.1.2",
+        "read_projection": {
+          "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+          "data_source_ref": "local://runx/data-subject-request",
+          "resource": "data_subject_requests",
+          "store_id": "dsr-fixture-001"
+        },
+        "sequence": [
+          "read_projection",
+          "decide",
+          "append_event"
+        ]
+      },
+      "decision": {
+        "eligible": true,
+        "reason": "GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases."
+      },
+      "escalation": {
+        "downstream_approval_required": true,
+        "jurisdiction": "GDPR-EU",
+        "no_operational_rail_fired": true,
+        "reason": "No escalation required before downstream approved processor.",
+        "required": false
+      },
+      "evidence": {
+        "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+        "assertion_digest": "sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4",
+        "expected_version": 0,
+        "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1",
+        "jurisdiction": "GDPR-EU",
+        "lawful_basis_verdict": {
+          "marketing_events": {
+            "in_scope_bounds": true,
+            "lawful_basis": "consent",
+            "permitted_for_decision": true
+          },
+          "profile": {
+            "in_scope_bounds": true,
+            "lawful_basis": "consent",
+            "permitted_for_decision": true
+          }
+        },
+        "receipt_notes": [
+          "decision recorded as append_event-ready verdict",
+          "no erasure/export rail fired by this skill",
+          "handoff emitted only when eligible"
+        ],
+        "refused_reason": null,
+        "request_type": "erasure",
+        "scope_bounds": [
+          "profile",
+          "marketing_events"
+        ],
+        "verified_requestor_ref": "acme-idp"
+      },
+      "handoff": {
+        "data_classes": [
+          "profile",
+          "marketing_events"
+        ],
+        "path": "handoff/dsr/sub_123/erasure.json",
+        "scopes": [
+          {
+            "data_class": "profile",
+            "lawful_basis": "consent",
+            "operation": "erasure"
+          },
+          {
+            "data_class": "marketing_events",
+            "lawful_basis": "consent",
+            "operation": "erasure"
+          }
+        ],
+        "subject_id": "sub_123"
+      }
+    },
+    "stderr": "",
+    "stdout": "{\n  \"decision\": {\n    \"eligible\": true,\n    \"reason\": \"GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases.\"\n  },\n  \"handoff\": {\n    \"path\": \"handoff/dsr/sub_123/erasure.json\",\n    \"subject_id\": \"sub_123\",\n    \"data_classes\": [\n      \"profile\",\n      \"marketing_events\"\n    ],\n    \"scopes\": [\n      {\n        \"data_class\": \"profile\",\n        \"lawful_basis\": \"consent\",\n        \"operation\": \"erasure\"\n      },\n      {\n        \"data_class\": \"marketing_events\",\n        \"lawful_basis\": \"consent\",\n        \"operation\": \"erasure\"\n      }\n    ]\n  },\n  \"escalation\": {\n    \"required\": false,\n    \"jurisdiction\": \"GDPR-EU\",\n    \"reason\": \"No escalation required before downstream approved processor.\",\n    \"no_operational_rail_fired\": true,\n    \"downstream_approval_required\": true\n  },\n  \"data_store\": {\n    \"dependency\": \"registry:runx/data-store@0.1.2\",\n    \"sequence\": [\n      \"read_projection\",\n      \"decide\",\n      \"append_event\"\n    ],\n    \"read_projection\": {\n      \"data_source_ref\": \"local://runx/data-subject-request\",\n      \"store_id\": \"dsr-fixture-001\",\n      \"resource\": \"data_subject_requests\",\n      \"aggregate_id\": \"dsr:sub_123:erasure:2026-06-29\"\n    },\n    \"append_event\": {\n      \"data_source_ref\": \"local://runx/data-subject-request\",\n      \"store_id\": \"dsr-fixture-001\",\n      \"resource\": \"data_subject_requests\",\n      \"aggregate_id\": \"dsr:sub_123:erasure:2026-06-29\",\n      \"expected_version\": 0,\n      \"idempotency_key\": \"dsr:sub_123:erasure:2026-06-29:v1\",\n      \"event\": {\n        \"type\": \"data_subject_request.verdict_recorded\",\n        \"request_type\": \"erasure\",\n        \"subject_id\": \"sub_123\",\n        \"jurisdiction\": \"GDPR-EU\",\n        \"decision\": {\n          \"eligible\": true,\n          \"reason\": \"GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases.\"\n        },\n        \"requested_scope\": [\n          \"profile\",\n          \"marketing_events\"\n        ],\n        \"scope_bounds\": [\n          \"profile\",\n          \"marketing_events\"\n        ],\n        \"lawful_basis_verdict\": {\n          \"profile\": {\n            \"lawful_basis\": \"consent\",\n            \"in_scope_bounds\": true,\n            \"permitted_for_decision\": true\n          },\n          \"marketing_events\": {\n            \"lawful_basis\": \"consent\",\n            \"in_scope_bounds\": true,\n            \"permitted_for_decision\": true\n          }\n        },\n        \"requestor\": {\n          \"identity_provider\": \"acme-idp\",\n          \"verified_at\": \"2026-06-29T06:41:00Z\",\n          \"assertion_digest\": \"sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4\"\n        },\n        \"handoff_path\": \"handoff/dsr/sub_123/erasure.json\"\n      }\n    }\n  },\n  \"evidence\": {\n    \"jurisdiction\": \"GDPR-EU\",\n    \"request_type\": \"erasure\",\n    \"verified_requestor_ref\": \"acme-idp\",\n    \"assertion_digest\": \"sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4\",\n    \"scope_bounds\": [\n      \"profile\",\n      \"marketing_events\"\n    ],\n    \"lawful_basis_verdict\": {\n      \"profile\": {\n        \"lawful_basis\": \"consent\",\n        \"in_scope_bounds\": true,\n        \"permitted_for_decision\": true\n      },\n      \"marketing_events\": {\n        \"lawful_basis\": \"consent\",\n        \"in_scope_bounds\": true,\n        \"permitted_for_decision\": true\n      }\n    },\n    \"aggregate_id\": \"dsr:sub_123:erasure:2026-06-29\",\n    \"expected_version\": 0,\n    \"idempotency_key\": \"dsr:sub_123:erasure:2026-06-29:v1\",\n    \"refused_reason\": null,\n    \"receipt_notes\": [\n      \"decision recorded as append_event-ready verdict\",\n      \"no erasure/export rail fired by this skill\",\n      \"handoff emitted only when eligible\"\n    ]\n  }\n}\n",
+    "structured_output": {
+      "data_store": {
+        "append_event": {
+          "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+          "data_source_ref": "local://runx/data-subject-request",
+          "event": {
+            "decision": {
+              "eligible": true,
+              "reason": "GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases."
+            },
+            "handoff_path": "handoff/dsr/sub_123/erasure.json",
+            "jurisdiction": "GDPR-EU",
+            "lawful_basis_verdict": {
+              "marketing_events": {
+                "in_scope_bounds": true,
+                "lawful_basis": "consent",
+                "permitted_for_decision": true
+              },
+              "profile": {
+                "in_scope_bounds": true,
+                "lawful_basis": "consent",
+                "permitted_for_decision": true
+              }
+            },
+            "request_type": "erasure",
+            "requested_scope": [
+              "profile",
+              "marketing_events"
+            ],
+            "requestor": {
+              "assertion_digest": "sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4",
+              "identity_provider": "acme-idp",
+              "verified_at": "2026-06-29T06:41:00Z"
+            },
+            "scope_bounds": [
+              "profile",
+              "marketing_events"
+            ],
+            "subject_id": "sub_123",
+            "type": "data_subject_request.verdict_recorded"
+          },
+          "expected_version": 0,
+          "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1",
+          "resource": "data_subject_requests",
+          "store_id": "dsr-fixture-001"
+        },
+        "dependency": "registry:runx/data-store@0.1.2",
+        "read_projection": {
+          "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+          "data_source_ref": "local://runx/data-subject-request",
+          "resource": "data_subject_requests",
+          "store_id": "dsr-fixture-001"
+        },
+        "sequence": [
+          "read_projection",
+          "decide",
+          "append_event"
+        ]
+      },
+      "decision": {
+        "eligible": true,
+        "reason": "GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases."
+      },
+      "escalation": {
+        "downstream_approval_required": true,
+        "jurisdiction": "GDPR-EU",
+        "no_operational_rail_fired": true,
+        "reason": "No escalation required before downstream approved processor.",
+        "required": false
+      },
+      "evidence": {
+        "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+        "assertion_digest": "sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4",
+        "expected_version": 0,
+        "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1",
+        "jurisdiction": "GDPR-EU",
+        "lawful_basis_verdict": {
+          "marketing_events": {
+            "in_scope_bounds": true,
+            "lawful_basis": "consent",
+            "permitted_for_decision": true
+          },
+          "profile": {
+            "in_scope_bounds": true,
+            "lawful_basis": "consent",
+            "permitted_for_decision": true
+          }
+        },
+        "receipt_notes": [
+          "decision recorded as append_event-ready verdict",
+          "no erasure/export rail fired by this skill",
+          "handoff emitted only when eligible"
+        ],
+        "refused_reason": null,
+        "request_type": "erasure",
+        "scope_bounds": [
+          "profile",
+          "marketing_events"
+        ],
+        "verified_requestor_ref": "acme-idp"
+      },
+      "handoff": {
+        "data_classes": [
+          "profile",
+          "marketing_events"
+        ],
+        "path": "handoff/dsr/sub_123/erasure.json",
+        "scopes": [
+          {
+            "data_class": "profile",
+            "lawful_basis": "consent",
+            "operation": "erasure"
+          },
+          {
+            "data_class": "marketing_events",
+            "lawful_basis": "consent",
+            "operation": "erasure"
+          }
+        ],
+        "subject_id": "sub_123"
+      }
+    }
+  },
+  "payload": {
+    "data_store": {
+      "append_event": {
+        "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+        "data_source_ref": "local://runx/data-subject-request",
+        "event": {
+          "decision": {
+            "eligible": true,
+            "reason": "GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases."
+          },
+          "handoff_path": "handoff/dsr/sub_123/erasure.json",
+          "jurisdiction": "GDPR-EU",
+          "lawful_basis_verdict": {
+            "marketing_events": {
+              "in_scope_bounds": true,
+              "lawful_basis": "consent",
+              "permitted_for_decision": true
+            },
+            "profile": {
+              "in_scope_bounds": true,
+              "lawful_basis": "consent",
+              "permitted_for_decision": true
+            }
+          },
+          "request_type": "erasure",
+          "requested_scope": [
+            "profile",
+            "marketing_events"
+          ],
+          "requestor": {
+            "assertion_digest": "sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4",
+            "identity_provider": "acme-idp",
+            "verified_at": "2026-06-29T06:41:00Z"
+          },
+          "scope_bounds": [
+            "profile",
+            "marketing_events"
+          ],
+          "subject_id": "sub_123",
+          "type": "data_subject_request.verdict_recorded"
+        },
+        "expected_version": 0,
+        "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1",
+        "resource": "data_subject_requests",
+        "store_id": "dsr-fixture-001"
+      },
+      "dependency": "registry:runx/data-store@0.1.2",
+      "read_projection": {
+        "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+        "data_source_ref": "local://runx/data-subject-request",
+        "resource": "data_subject_requests",
+        "store_id": "dsr-fixture-001"
+      },
+      "sequence": [
+        "read_projection",
+        "decide",
+        "append_event"
+      ]
+    },
+    "decision": {
+      "eligible": true,
+      "reason": "GDPR-EU erasure request is eligible: verified requestor and all requested classes are inside policy bounds with declared lawful bases."
+    },
+    "escalation": {
+      "downstream_approval_required": true,
+      "jurisdiction": "GDPR-EU",
+      "no_operational_rail_fired": true,
+      "reason": "No escalation required before downstream approved processor.",
+      "required": false
+    },
+    "evidence": {
+      "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+      "assertion_digest": "sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4",
+      "expected_version": 0,
+      "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1",
+      "jurisdiction": "GDPR-EU",
+      "lawful_basis_verdict": {
+        "marketing_events": {
+          "in_scope_bounds": true,
+          "lawful_basis": "consent",
+          "permitted_for_decision": true
+        },
+        "profile": {
+          "in_scope_bounds": true,
+          "lawful_basis": "consent",
+          "permitted_for_decision": true
+        }
+      },
+      "receipt_notes": [
+        "decision recorded as append_event-ready verdict",
+        "no erasure/export rail fired by this skill",
+        "handoff emitted only when eligible"
+      ],
+      "refused_reason": null,
+      "request_type": "erasure",
+      "scope_bounds": [
+        "profile",
+        "marketing_events"
+      ],
+      "verified_requestor_ref": "acme-idp"
+    },
+    "handoff": {
+      "data_classes": [
+        "profile",
+        "marketing_events"
+      ],
+      "path": "handoff/dsr/sub_123/erasure.json",
+      "scopes": [
+        {
+          "data_class": "profile",
+          "lawful_basis": "consent",
+          "operation": "erasure"
+        },
+        {
+          "data_class": "marketing_events",
+          "lawful_basis": "consent",
+          "operation": "erasure"
+        }
+      ],
+      "subject_id": "sub_123"
+    }
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-29T04:51:16.947Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_decide",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step decide",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step decide",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-29T04:51:16.947Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_decide",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node decide",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_decide",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:90635660f8b233053bf3d0c059d8bf0cf26f08bed8f9d000f9a61372acd3342a",
+    "id": "sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
+    "idempotency": {
+      "content_hash": "sha256:run_decide_3d528c3d2492-decide-content",
+      "intent_key": "sha256:run_decide_3d528c3d2492-decide-intent",
+      "trigger_fingerprint": "sha256:run_decide_3d528c3d2492-decide-trigger"
+    },
+    "issuer": {
+      "kid": "dsr-dogfood",
+      "public_key_sha256": "sha256:574a05ec9274e988ca5ec26efb937eecf08c9ad89bcb8bfce005b630da3046ee",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-29T04:51:16.947Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-29T04:51:16.947Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool decide completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:BLamxegFOtVzzpG2UwhYX4Aoik57dUlugSf3SVMUr8RwSZmckrPdhDeh0DsXWrq2kaeaSphsQ_HMMUWbyC-YCA"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_decide_3d528c3d2492_decide"
+      }
+    }
+  },
+  "receipt_id": "sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
+  "registry_provenance": {
+    "digest": "sha256:99da1950852b8306e3e6380422acc57c16128c9c7519901c06b077342e9f1b4c",
+    "profile_digest": "sha256:061158d7651e0a56d70c9fd0a4b4dd1c84095397c3a29913d1741e91ac999b38",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "luismireles12/data-subject-request",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-6a1d55a23739"
+  },
+  "run_id": "run_decide_3d528c3d2492",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "data-subject-request",
+  "status": "sealed"
+}

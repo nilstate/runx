@@ -1,0 +1,26 @@
+{
+  "request_packet": {
+    "type": "erasure",
+    "subject_id": "sub_123",
+    "scope": ["profile", "marketing_events"]
+  },
+  "requestor_proof": {
+    "identity_provider": "acme-idp",
+    "verified_at": "2026-06-29T06:41:00Z",
+    "assertion": "did:example:subject:sub_123#verified-session"
+  },
+  "policy": {
+    "jurisdiction": "GDPR-EU",
+    "lawful_bases": {
+      "profile": "consent",
+      "marketing_events": "consent",
+      "invoices": "legal_obligation"
+    },
+    "scope_bounds": ["profile", "marketing_events"]
+  },
+  "data_source_ref": "local://runx/data-subject-request",
+  "store_id": "dsr-fixture-001",
+  "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+  "expected_version": 0,
+  "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1"
+}

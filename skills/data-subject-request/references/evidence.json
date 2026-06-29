@@ -1,0 +1,174 @@
+{
+  "schema": "frantic.evidence.v1",
+  "bounty": "https://gofrantic.com/bounties/71",
+  "summary": "data-subject-request is a published Runx skill that decides bounded privacy requests, records a verdict-shaped append_event through the data-store contract, emits handoff only for eligible requests, and refuses unverified or out-of-scope requests without firing erasure/export rails.",
+  "package": {
+    "owner": "luismireles12",
+    "name": "data-subject-request",
+    "version": "sha-6a1d55a23739",
+    "registry_ref": "luismireles12/data-subject-request@sha-6a1d55a23739",
+    "public_url": "https://runx.ai/x/luismireles12/data-subject-request",
+    "digest": "sha256:99da1950852b8306e3e6380422acc57c16128c9c7519901c06b077342e9f1b4c",
+    "profile_digest": "sha256:061158d7651e0a56d70c9fd0a4b4dd1c84095397c3a29913d1741e91ac999b38"
+  },
+  "observations": [
+    {
+      "id": "cli-version",
+      "command": "runx --version",
+      "output": "runx-cli 0.6.14"
+    },
+    {
+      "id": "package-name",
+      "output": "Exact package name is data-subject-request; published registry ref is luismireles12/data-subject-request@sha-6a1d55a23739."
+    },
+    {
+      "id": "publish-method",
+      "command": "runx registry publish ./skills/data-subject-request/SKILL.md --registry https://api.runx.ai --json",
+      "output": {
+        "status": "success",
+        "skill_id": "luismireles12/data-subject-request",
+        "version": "sha-6a1d55a23739",
+        "digest": "99da1950852b8306e3e6380422acc57c16128c9c7519901c06b077342e9f1b4c",
+        "public_url": "https://runx.ai/x/luismireles12/data-subject-request"
+      }
+    },
+    {
+      "id": "clean-install",
+      "command": "HOME=/tmp/runx-dsr-home runx add luismireles12/data-subject-request@sha-6a1d55a23739 --registry https://api.runx.ai --json",
+      "output": "Clean install succeeded from the hosted registry."
+    },
+    {
+      "id": "local-harness",
+      "command": "runx harness ./skills/data-subject-request --receipt-dir ./skills/data-subject-request/references/local-harness --json",
+      "output": {
+        "status": "passed",
+        "case_count": 2,
+        "case_names": [
+          "sealed-verified-erasure",
+          "refuse-unverified-requestor"
+        ],
+        "receipt_ids": [
+          "sha256:5baf331bce4a1ddeb22077f04cbb5d0a82d049b66f2467cf4459464a061bbf67",
+          "sha256:279fc2885fbbdbe57334e83d0551529ee8aec56d3cd9e4cfe14eef4863c1ba6c"
+        ]
+      }
+    },
+    {
+      "id": "hosted-harness",
+      "command": "registry publish gate",
+      "output": {
+        "hosted_harness_status": "passed",
+        "status": "success"
+      }
+    },
+    {
+      "id": "dogfood",
+      "command": "runx skill luismireles12/data-subject-request@sha-6a1d55a23739 --registry https://api.runx.ai --receipt-dir /tmp/dsr-dogfood-receipts --json ...",
+      "output": {
+        "status": "sealed",
+        "disposition": "closed",
+        "receipt_ref": "runx:receipt:sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
+        "verify_verdict": "valid"
+      }
+    },
+    {
+      "id": "lawful-basis-verdict",
+      "output": {
+        "jurisdiction": "GDPR-EU",
+        "request_type": "erasure",
+        "scope_bounds": [
+          "profile",
+          "marketing_events"
+        ],
+        "lawful_basis_verdict": {
+          "profile": {
+            "lawful_basis": "consent",
+            "in_scope_bounds": true,
+            "permitted_for_decision": true
+          },
+          "marketing_events": {
+            "lawful_basis": "consent",
+            "in_scope_bounds": true,
+            "permitted_for_decision": true
+          }
+        }
+      }
+    },
+    {
+      "id": "verified-requestor",
+      "output": {
+        "verified_requestor_ref": "acme-idp",
+        "assertion_digest": "sha256:d379dd1db41bdce33eaba710ef483c51f0e2945009cf4b1ba9a14ce4c203afb4"
+      }
+    },
+    {
+      "id": "bounded-handoff",
+      "output": {
+        "handoff_path": "handoff/dsr/sub_123/erasure.json",
+        "subject_id": "sub_123",
+        "data_classes": [
+          "profile",
+          "marketing_events"
+        ],
+        "rail_fired": false,
+        "downstream_approval_required": true
+      }
+    },
+    {
+      "id": "data-store-state",
+      "output": {
+        "dependency": "registry:runx/data-store@0.1.2",
+        "sequence": [
+          "read_projection",
+          "decide",
+          "append_event"
+        ],
+        "data_source_ref": "local://runx/data-subject-request",
+        "store_id": "dsr-fixture-001",
+        "aggregate_id": "dsr:sub_123:erasure:2026-06-29",
+        "expected_version": 0,
+        "idempotency_key": "dsr:sub_123:erasure:2026-06-29:v1"
+      }
+    },
+    {
+      "id": "refusal-case",
+      "output": {
+        "case_name": "refuse-unverified-requestor",
+        "jurisdiction": "CCPA-CA",
+        "refused_reason": "unverified requestor for CCPA-CA: identity_provider, verified_at, and assertion are required",
+        "handoff_emitted": false
+      }
+    },
+    {
+      "id": "typed-outputs",
+      "output": [
+        "decision",
+        "handoff",
+        "escalation",
+        "data_store",
+        "evidence"
+      ]
+    }
+  ],
+  "dogfood": {
+    "package": "luismireles12/data-subject-request@sha-6a1d55a23739",
+    "input": "skills/data-subject-request/fixtures/sealed-verified-erasure.json",
+    "receipt_ref": "runx:receipt:sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "sealed-verified-erasure",
+        "status": "sealed"
+      },
+      {
+        "name": "refuse-unverified-requestor",
+        "status": "refused"
+      }
+    ]
+  },
+  "new_user": {
+    "install": "runx add luismireles12/data-subject-request@sha-6a1d55a23739 --registry https://api.runx.ai",
+    "run": "runx skill luismireles12/data-subject-request@sha-6a1d55a23739 --registry https://api.runx.ai --json < dsr-input.json",
+    "verify": "RUNX_RECEIPT_VERIFY_KID=dsr-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=<public key from verification.json> runx verify --receipt dogfood-receipt.json --json"
+  }
+}

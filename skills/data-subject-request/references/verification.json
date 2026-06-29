@@ -1,0 +1,59 @@
+{
+  "schema": "frantic.verification.v1",
+  "package": "luismireles12/data-subject-request@sha-6a1d55a23739",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "checks": [
+    {
+      "id": "package-published",
+      "status": "passed",
+      "evidence": "Registry publish returned status success for luismireles12/data-subject-request@sha-6a1d55a23739."
+    },
+    {
+      "id": "clean-install",
+      "status": "passed",
+      "evidence": "A fresh HOME installed the hosted package from https://api.runx.ai."
+    },
+    {
+      "id": "local-harness",
+      "status": "passed",
+      "evidence": "Inline harness passed 2/2 cases: sealed-verified-erasure and refuse-unverified-requestor."
+    },
+    {
+      "id": "dogfood-receipt",
+      "status": "passed",
+      "evidence": "Dogfood run sealed receipt sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62."
+    },
+    {
+      "id": "receipt-verify",
+      "status": "passed",
+      "evidence": "runx verify returned valid=true for the dogfood receipt."
+    },
+    {
+      "id": "no-operational-rail",
+      "status": "passed",
+      "evidence": "Output includes no_operational_rail_fired=true and downstream_approval_required=true."
+    }
+  ],
+  "receipt": {
+    "receipt_ref": "runx:receipt:sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
+    "verify_verdict": {
+      "valid": true,
+      "signature": {
+        "mode": "production",
+        "status": "valid",
+        "kid": "dsr-dogfood"
+      },
+      "content_address": "valid",
+      "digest": "valid"
+    },
+    "verify_public_key_base64": "Gk5lWkouGxDCXWMrhjrfPJzvzPlcuuqH08AmWgsjKis="
+  },
+  "artifacts": {
+    "evidence_json": "skills/data-subject-request/references/evidence.json",
+    "verification_json": "skills/data-subject-request/references/verification.json",
+    "report": "skills/data-subject-request/references/report.md",
+    "dogfood_run": "skills/data-subject-request/references/dogfood-run.json",
+    "verify_dogfood": "skills/data-subject-request/references/verify-dogfood.json",
+    "local_harness_receipts": "skills/data-subject-request/references/local-harness/"
+  }
+}

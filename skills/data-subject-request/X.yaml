@@ -1,0 +1,132 @@
+skill: data-subject-request
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - raw_subject_export
+    - direct_erasure_execution
+    - unverified_requestor
+    - scope_outside_policy_bounds
+
+harness:
+  cases:
+    - name: sealed-verified-erasure
+      inputs:
+        request_packet:
+          type: erasure
+          subject_id: sub_123
+          scope:
+            - profile
+            - marketing_events
+        requestor_proof:
+          identity_provider: acme-idp
+          verified_at: "2026-06-29T06:41:00Z"
+          assertion: did:example:subject:sub_123#verified-session
+        policy:
+          jurisdiction: GDPR-EU
+          lawful_bases:
+            profile: consent
+            marketing_events: consent
+            invoices: legal_obligation
+          scope_bounds:
+            - profile
+            - marketing_events
+        data_source_ref: local://runx/data-subject-request
+        store_id: dsr-fixture-001
+        aggregate_id: dsr:sub_123:erasure:2026-06-29
+        expected_version: 0
+        idempotency_key: dsr:sub_123:erasure:2026-06-29:v1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuse-unverified-requestor
+      inputs:
+        request_packet:
+          type: export
+          subject_id: sub_456
+          scope:
+            - profile
+        requestor_proof:
+          identity_provider: email-link
+          verified_at: null
+          assertion: ""
+        policy:
+          jurisdiction: CCPA-CA
+          lawful_bases:
+            profile: contract
+          scope_bounds:
+            - profile
+        data_source_ref: local://runx/data-subject-request
+        store_id: dsr-fixture-001
+        aggregate_id: dsr:sub_456:export:2026-06-29
+        expected_version: 0
+        idempotency_key: dsr:sub_456:export:2026-06-29:v1
+      expect:
+        status: failure
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      request_packet:
+        type: json
+        required: true
+        description: "Typed request packet containing type, subject_id, and requested scope array."
+      requestor_proof:
+        type: json
+        required: true
+        description: "Verified requestor proof containing identity_provider, verified_at, and assertion."
+      policy:
+        type: json
+        required: true
+        description: "Jurisdiction, lawful_bases by data class, and scope_bounds for the request."
+      data_source_ref:
+        type: string
+        required: true
+        description: "Logical data-store binding used for read_projection and append_event evidence."
+      store_id:
+        type: string
+        required: true
+        description: "Pinned fixture store id for deterministic hosted harness evidence."
+      aggregate_id:
+        type: string
+        required: true
+        description: "Subject request aggregate id."
+      expected_version:
+        type: number
+        required: true
+        description: "Current aggregate version required before append_event."
+      idempotency_key:
+        type: string
+        required: true
+        description: "Stable idempotency key for verdict append_event."
+    outputs:
+      decision: object
+      handoff: object
+      escalation: object
+      data_store: object
+      evidence: object
+    artifacts:
+      wrap_as: data_subject_request
+      packet: runx.data_subject_request.v1

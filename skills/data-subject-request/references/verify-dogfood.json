@@ -1,0 +1,25 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:90635660f8b233053bf3d0c059d8bf0cf26f08bed8f9d000f9a61372acd3342a",
+    "actual": "sha256:90635660f8b233053bf3d0c059d8bf0cf26f08bed8f9d000f9a61372acd3342a"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
+    "actual": "sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "dsr-dogfood"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
+}
