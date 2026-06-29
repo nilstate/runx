@@ -1,66 +1,96 @@
 {
-  "package": "list-hygiene-judge",
-  "version": "0.1.0",
-  "runx_version": "runx-cli 0.6.14",
-  "github_star": {
-    "repository": "runxhq/runx",
-    "viewer_has_starred": true,
-    "checked_with": "gh repo view runxhq/runx --json viewerHasStarred,stargazerCount"
-  },
-  "local_checks": [
-    {
-      "command": "git diff --check -- skills/list-hygiene-judge",
-      "status": "passed"
-    },
-    {
-      "command": "hidden/bidi/control-character scan on skills/list-hygiene-judge",
-      "status": "passed",
-      "output": "hidden-scan-complete"
-    }
-  ],
-  "harness_cases": [
-    {
-      "name": "sealed_decay_re_permission",
-      "decision_state": "re_permission",
-      "append_event_count": 1,
-      "observed_step_receipts": [
-        "sha256:bbb3467f5809c237a42b50b7fc0d6c68aeb34b97370a056767cd7c22bc794b4b",
-        "sha256:343da9a8887365f5811d237fb43f37c3612fcffa63cca8c327e3fccfbeb2c5d9",
-        "sha256:c545309a5aae6204b4326936794bb243d546a4eb8fe357d666ffedae1a3599ad"
-      ]
-    },
-    {
-      "name": "sealed_hard_bounce_suppress",
-      "decision_state": "suppress",
-      "append_event_count": 1,
-      "observed_step_receipts": [
-        "sha256:4f7c81c9e8fbba6fca8df7a594ae1ea41af2b2c38c2b1e531fe290e486daad36",
-        "sha256:186bbc6dd665de3f7dbad533c288bb79a862aa0a7d2b09760e7845d2631ad640",
-        "sha256:2bc61df2ff54ecd11bd8be598235348f75e23c3b8e6429fcdad388fb641382c9"
-      ]
-    },
-    {
-      "name": "stop_missing_or_stale_evidence",
-      "decision_state": "human_review",
-      "append_event_count": 0,
-      "observed_step_receipts": [
-        "sha256:447288fdb09a225f6dbc606f931da7c88245a45aaeb323c0b69026b9bc562adc",
-        "sha256:0bdbe61909cd75e56acbdc3fbb0b1b8b6e0d3a274ffe50c13d4af56cf5237693",
-        "sha256:eafdae98d72b1b389e101c1a0054787ae12891392a74b5f9b8baf4526b258881"
-      ]
-    }
-  ],
-  "local_windows_blocker": {
-    "command": "runx harness ./skills/list-hygiene-judge",
-    "status": "blocked_after_graph_execution",
-    "error": "receipt store is unreadable: The parameter is incorrect. (os error 87)",
-    "control": "The same receipt-store error reproduced on the upstream skills/data-store harness on this Windows machine.",
-    "notes": "Graph step execution reached the expected decision states and append counts before the native Windows receipt-store readback failed."
-  },
-  "publish_blocker": {
-    "command": "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai --owner rohitmulani63-ops --version 0.1.0 --profile ./skills/list-hygiene-judge/X.yaml --json",
-    "status": "blocked_by_publish_harness_on_windows",
-    "error": "Harness failed in the native publish preflight with receipt store is unreadable: The parameter is incorrect. (os error 87)."
-  }
+    "package":  "list-hygiene-judge",
+    "version":  "0.1.0",
+    "runx_version":  "runx-cli 0.6.14",
+    "hosted_registry":  {
+                            "status":  "published",
+                            "skill":  "rohitmulani63-ops/list-hygiene-judge",
+                            "version":  "sha-a3364df6aaa1",
+                            "digest":  "sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
+                            "trust":  "community",
+                            "public_url":  "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge",
+                            "run_command":  "runx skill rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1 --registry https://api.runx.ai"
+                        },
+    "github_star":  {
+                        "repository":  "runxhq/runx",
+                        "viewer_has_starred":  true,
+                        "checked_with":  "gh repo view runxhq/runx --json viewerHasStarred,stargazerCount"
+                    },
+    "local_checks":  [
+                         {
+                             "command":  "git diff --check -- skills/list-hygiene-judge",
+                             "status":  "passed"
+                         },
+                         {
+                             "command":  "hidden/bidi/control-character scan on skills/list-hygiene-judge",
+                             "status":  "passed",
+                             "output":  "hidden-scan-complete"
+                         },
+                         {
+                             "command":  "runx harness ./skills/list-hygiene-judge",
+                             "status":  "passed_linux_docker_desktop_hosted_like",
+                             "case_count":  4,
+                             "assertion_error_count":  0,
+                             "case_names":  [
+                                                "sealed_decay_re_permission",
+                                                "sealed_hard_bounce_suppress",
+                                                "stop_missing_or_stale_evidence",
+                                                "needs_agent_missing_decision_answer"
+                                            ],
+                             "receipt_ids":  [
+                                                 "sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95",
+                                                 "sha256:39fc0157fa71a78216f2b975b1fd16d25bc8eaa3c697e1885686838bcad9044a",
+                                                 "sha256:dcf27a3693944d57288ceae4781279580d9b8ff91ffe005b41e050e6b001b51e"
+                                             ]
+                         },
+                         {
+                             "command":  "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
+                             "status":  "passed",
+                             "result":  "registry publish success"
+                         },
+                         {
+                             "command":  "runx registry read rohitmulani63-ops/list-hygiene-judge --registry https://api.runx.ai",
+                             "status":  "passed",
+                             "result":  "version sha-a3364df6aaa1, digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b"
+                         }
+                     ],
+    "harness_cases":  [
+                          {
+                              "name":  "sealed_decay_re_permission",
+                              "decision_state":  "re_permission",
+                              "append_event_count":  1,
+                              "expected_status":  "sealed"
+                          },
+                          {
+                              "name":  "sealed_hard_bounce_suppress",
+                              "decision_state":  "suppress",
+                              "append_event_count":  1,
+                              "expected_status":  "sealed"
+                          },
+                          {
+                              "name":  "stop_missing_or_stale_evidence",
+                              "decision_state":  "human_review",
+                              "append_event_count":  0,
+                              "expected_status":  "sealed"
+                          },
+                          {
+                              "name":  "needs_agent_missing_decision_answer",
+                              "decision_state":  "pending_decision_answer",
+                              "append_event_count":  0,
+                              "expected_status":  "needs_agent"
+                          }
+                      ],
+    "publish_readiness":  {
+                              "runx_login":  "succeeded_with_github_oauth_read_user_user_email",
+                              "hosted_publish_gate_requirement":  "includes at least one stop/error case through needs_agent_missing_decision_answer",
+                              "windows_receipt_store_note":  "Native Windows receipt storage previously failed with os error 87, so final harness and publish are run through Docker Desktop Linux.",
+                              "packaged_tools":  "vendors data.local and data.sqlite tool manifests/runtimes under skills/list-hygiene-judge/tools so hosted publish can run the harness from uploaded package material",
+                              "harness_data_source":  "uses local:// with store_id for data.local hosted fixture validation"
+                          },
+    "safety":  {
+                   "secrets_touched":  false,
+                   "wallet_or_payment_touched":  false,
+                   "private_tokens_touched":  false,
+                   "payout_or_stripe_touched":  false
+               }
 }
-

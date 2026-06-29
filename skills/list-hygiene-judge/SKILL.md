@@ -13,6 +13,7 @@ The skill does not send messages, does not mint grants, and does not return an `
 ## Inputs
 
 - `data_source_ref`: data-store source reference for the contact event stream.
+- `store_id`: optional local fixture store id for harness validation; omit it for durable adapter-backed sources.
 - `resource`: resource name used by the contact list-hygiene stream.
 - `aggregate_id`: contact aggregate id.
 - `expected_version`: stream version required before append.
@@ -40,7 +41,7 @@ The graph returns:
 
 ## Data-store contract
 
-The graph uses the canonical data-store append path from `registry:runx/data-store@sha-83a2cad9dd67`, the live first-party registry package for source `data-store` version `0.1.2`, so clean installs resolve a pinned data-store contract.
+The graph calls the governed `data.source` tool directly for read_projection and append_event operations, matching the first-party data-store receipt boundary without requiring nested runner resolution during hosted publish. Harness cases pass `store_id` so hosted validation uses the packaged `data.local` fixture adapter instead of relying on a system SQLite binary.
 
 ## Refusals
 
@@ -65,3 +66,4 @@ Expected cases:
 - `sealed_decay_re_permission`
 - `sealed_hard_bounce_suppress`
 - `stop_missing_or_stale_evidence`
+- `needs_agent_missing_decision_answer`

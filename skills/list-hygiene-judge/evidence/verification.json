@@ -1,43 +1,52 @@
 {
-  "package": "list-hygiene-judge",
-  "version": "0.1.0",
-  "source_revision_expected": "pr-head",
-  "commands": [
-    {
-      "command": "runx --version",
-      "result": "runx-cli 0.6.14",
-      "status": "passed"
-    },
-    {
-      "command": "git diff --check -- skills/list-hygiene-judge",
-      "result": "no whitespace errors",
-      "status": "passed"
-    },
-    {
-      "command": "hidden/bidi/control-character scan on skills/list-hygiene-judge",
-      "result": "hidden-scan-complete",
-      "status": "passed"
-    },
-    {
-      "command": "runx harness ./skills/list-hygiene-judge",
-      "result": "graph cases reached expected decisions and append counts; final native harness summary blocked by Windows receipt-store os error 87",
-      "status": "blocked_on_windows"
-    },
-    {
-      "command": "runx harness ./skills/data-store",
-      "result": "same Windows receipt-store os error 87 reproduced on upstream data-store harness",
-      "status": "blocked_on_windows"
-    },
-    {
-      "command": "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai --owner rohitmulani63-ops --version 0.1.0 --profile ./skills/list-hygiene-judge/X.yaml --json",
-      "result": "blocked by native publish harness receipt-store os error 87 on Windows",
-      "status": "blocked_on_windows"
-    }
-  ],
-  "safety": {
-    "secrets_touched": false,
-    "wallet_or_payment_touched": false,
-    "private_tokens_touched": false
-  }
+    "package":  "list-hygiene-judge",
+    "version":  "0.1.0",
+    "source_revision_expected":  "pr-head",
+    "hosted_registry":  {
+                            "status":  "published",
+                            "skill":  "rohitmulani63-ops/list-hygiene-judge",
+                            "version":  "sha-a3364df6aaa1",
+                            "digest":  "sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
+                            "trust":  "community",
+                            "public_url":  "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge",
+                            "run_command":  "runx skill rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1 --registry https://api.runx.ai"
+                        },
+    "commands":  [
+                     {
+                         "command":  "runx --version",
+                         "result":  "runx-cli 0.6.14",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "git diff --check -- skills/list-hygiene-judge",
+                         "result":  "no whitespace errors",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "hidden/bidi/control-character scan on skills/list-hygiene-judge",
+                         "result":  "hidden-scan-complete",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "runx harness ./skills/list-hygiene-judge",
+                         "result":  "passed on Docker Desktop Linux with 4 graph cases, packaged data.local tools, no RUNX_REGISTRY_DIR, and no RUNX_DATA_SOURCES",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
+                         "result":  "registry publish success",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "runx registry read rohitmulani63-ops/list-hygiene-judge --registry https://api.runx.ai",
+                         "result":  "remote version sha-a3364df6aaa1, digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
+                         "status":  "passed"
+                     }
+                 ],
+    "safety":  {
+                   "secrets_touched":  false,
+                   "wallet_or_payment_touched":  false,
+                   "private_tokens_touched":  false,
+                   "payout_or_stripe_touched":  false
+               }
 }
-

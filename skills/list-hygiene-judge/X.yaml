@@ -12,7 +12,8 @@ harness:
     - name: sealed_decay_re_permission
       runner: judge
       inputs:
-        data_source_ref: "local-json://list-hygiene-judge-harness"
+        data_source_ref: "local://list-hygiene-judge-harness"
+        store_id: "list-hygiene-judge-harness"
         resource: "contacts.list_hygiene"
         aggregate_id: "contact:decay-re-permission"
         expected_version: 0
@@ -61,7 +62,8 @@ harness:
     - name: sealed_hard_bounce_suppress
       runner: judge
       inputs:
-        data_source_ref: "local-json://list-hygiene-judge-harness"
+        data_source_ref: "local://list-hygiene-judge-harness"
+        store_id: "list-hygiene-judge-harness"
         resource: "contacts.list_hygiene"
         aggregate_id: "contact:hard-bounce-suppress"
         expected_version: 0
@@ -109,7 +111,8 @@ harness:
     - name: stop_missing_or_stale_evidence
       runner: judge
       inputs:
-        data_source_ref: "local-json://list-hygiene-judge-harness"
+        data_source_ref: "local://list-hygiene-judge-harness"
+        store_id: "list-hygiene-judge-harness"
         resource: "contacts.list_hygiene"
         aggregate_id: "contact:stale-evidence-stop"
         expected_version: 4
@@ -152,6 +155,31 @@ harness:
         receipt:
           schema: runx.receipt.v1
           state: sealed
+
+    - name: needs_agent_missing_decision_answer
+      runner: judge
+      inputs:
+        data_source_ref: "local://list-hygiene-judge-harness"
+        store_id: "list-hygiene-judge-harness"
+        resource: "contacts.list_hygiene"
+        aggregate_id: "contact:missing-decision-answer"
+        expected_version: 0
+        idempotency_key: "lhj-missing-decision-answer-v0"
+        engagement_history:
+          opens_count: 0
+          clicks_count: 0
+          hard_bounces: 0
+          recency_days: 135
+        bounce_policy:
+          hard_bounce_action: "suppress"
+          decay_threshold_days: 90
+        current_consent_state:
+          state: "subscribed"
+          active_unsubscribe_marker: false
+          evidence_status: "read"
+          evidence_version: 0
+      expect:
+        status: needs_agent
 
 runners:
   decide:
@@ -199,6 +227,10 @@ runners:
         type: string
         required: true
         description: "Data-store source reference for the contact stream."
+      store_id:
+        type: string
+        required: false
+        description: "Optional local fixture store id for hosted harness validation."
       resource:
         type: string
         required: true
@@ -232,10 +264,13 @@ runners:
       steps:
         - id: read_contact
           label: read contact projection
-          skill: "registry:runx/data-store@sha-83a2cad9dd67"
-          runner: read_projection
+          tool: data.source
+          scopes:
+            - runx:data:read
           inputs:
+            operation: read_projection
             data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
 
@@ -257,10 +292,13 @@ runners:
           when:
             field: decide.list_hygiene_judge_packet.data.decision_state
             equals: suppress
-          skill: "registry:runx/data-store@sha-83a2cad9dd67"
-          runner: append_event
+          tool: data.source
+          scopes:
+            - runx:data:append
           inputs:
+            operation: append_event
             data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
             expected_version: "$input.expected_version"
@@ -273,10 +311,13 @@ runners:
           when:
             field: decide.list_hygiene_judge_packet.data.decision_state
             equals: re_permission
-          skill: "registry:runx/data-store@sha-83a2cad9dd67"
-          runner: append_event
+          tool: data.source
+          scopes:
+            - runx:data:append
           inputs:
+            operation: append_event
             data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
             expected_version: "$input.expected_version"
@@ -286,9 +327,12 @@ runners:
 
         - id: readback
           label: read recorded contact projection
-          skill: "registry:runx/data-store@sha-83a2cad9dd67"
-          runner: read_projection
+          tool: data.source
+          scopes:
+            - runx:data:read
           inputs:
+            operation: read_projection
             data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
