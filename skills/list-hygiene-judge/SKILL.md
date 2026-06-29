@@ -6,7 +6,7 @@ description: Decide list hygiene transitions for a contact projection and append
 
 # list-hygiene-judge
 
-`list-hygiene-judge` is a dispatch-free list hygiene review skill for contact consent state. It reads the contact projection, decides whether the contact should be suppressed, moved to re-permission, or escalated for human review, then appends at most one transition event through the data-store compare-and-set path.
+`list-hygiene-judge` is a dispatch-free list hygiene review skill for contact consent state. It reads the contact projection, decides whether the contact should be suppressed, moved to re-permission, or escalated for human review, then appends at most one transition event through the data-store compare-and-set path. The decision step is deterministic so hosted dogfood runs can seal without an interactive agent pause.
 
 The skill does not send messages, does not mint grants, and does not return an `operational_proposal` envelope. Any later send-as workflow is intentionally separate and governed.
 
@@ -66,4 +66,4 @@ Expected cases:
 - `sealed_decay_re_permission`
 - `sealed_hard_bounce_suppress`
 - `stop_missing_or_stale_evidence`
-- `needs_agent_missing_decision_answer`
+- `stop_active_unsubscribe_marker`

@@ -1,148 +1,229 @@
-﻿{
-    "package":  "list-hygiene-judge",
-    "version":  "0.1.0",
-    "runx_version":  "runx-cli 0.6.14",
-    "hosted_registry":  {
-                            "status":  "published",
-                            "skill":  "rohitmulani63-ops/list-hygiene-judge",
-                            "version":  "sha-a3364df6aaa1",
-                            "digest":  "sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
-                            "trust":  "community",
-                            "public_url":  "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1",
-                            "run_command":  "runx skill rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1 --registry https://api.runx.ai"
-                        },
-    "github_star":  {
-                        "repository":  "runxhq/runx",
-                        "viewer_has_starred":  true,
-                        "checked_with":  "gh repo view runxhq/runx --json viewerHasStarred,stargazerCount"
-                    },
-    "local_checks":  [
-                         {
-                             "command":  "git diff --check -- skills/list-hygiene-judge",
-                             "status":  "passed"
-                         },
-                         {
-                             "command":  "hidden/bidi/control-character scan on skills/list-hygiene-judge",
-                             "status":  "passed",
-                             "output":  "hidden-scan-complete"
-                         },
-                         {
-                             "command":  "runx harness ./skills/list-hygiene-judge",
-                             "status":  "passed_linux_docker_desktop_hosted_like",
-                             "case_count":  4,
-                             "assertion_error_count":  0,
-                             "case_names":  [
-                                                "sealed_decay_re_permission",
-                                                "sealed_hard_bounce_suppress",
-                                                "stop_missing_or_stale_evidence",
-                                                "needs_agent_missing_decision_answer"
-                                            ],
-                             "receipt_ids":  [
-                                                 "sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95",
-                                                 "sha256:39fc0157fa71a78216f2b975b1fd16d25bc8eaa3c697e1885686838bcad9044a",
-                                                 "sha256:dcf27a3693944d57288ceae4781279580d9b8ff91ffe005b41e050e6b001b51e"
-                                             ]
-                         },
-                         {
-                             "command":  "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
-                             "status":  "passed",
-                             "result":  "registry publish success"
-                         },
-                         {
-                             "command":  "runx registry read rohitmulani63-ops/list-hygiene-judge --registry https://api.runx.ai",
-                             "status":  "passed",
-                             "result":  "version sha-a3364df6aaa1, digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b"
-                         }
-                     ],
-    "harness_cases":  [
-                          {
-                              "name":  "sealed_decay_re_permission",
-                              "decision_state":  "re_permission",
-                              "append_event_count":  1,
-                              "expected_status":  "sealed"
-                          },
-                          {
-                              "name":  "sealed_hard_bounce_suppress",
-                              "decision_state":  "suppress",
-                              "append_event_count":  1,
-                              "expected_status":  "sealed"
-                          },
-                          {
-                              "name":  "stop_missing_or_stale_evidence",
-                              "decision_state":  "human_review",
-                              "append_event_count":  0,
-                              "expected_status":  "sealed"
-                          },
-                          {
-                              "name":  "needs_agent_missing_decision_answer",
-                              "decision_state":  "pending_decision_answer",
-                              "append_event_count":  0,
-                              "expected_status":  "needs_agent"
-                          }
-                      ],
-    "publish_readiness":  {
-                              "runx_login":  "succeeded_with_github_oauth_read_user_user_email",
-                              "hosted_publish_gate_requirement":  "includes at least one stop/error case through needs_agent_missing_decision_answer",
-                              "windows_receipt_store_note":  "Native Windows receipt storage previously failed with os error 87, so final harness and publish are run through Docker Desktop Linux.",
-                              "packaged_tools":  "vendors data.local and data.sqlite tool manifests/runtimes under skills/list-hygiene-judge/tools so hosted publish can run the harness from uploaded package material",
-                              "harness_data_source":  "uses local:// with store_id for data.local hosted fixture validation"
-                          },
-    "safety":  {
-                   "secrets_touched":  false,
-                   "wallet_or_payment_touched":  false,
-                   "private_tokens_touched":  false,
-                   "payout_or_stripe_touched":  false
-               },
-    "summary":  "list-hygiene-judge is a published Runx graph-runner package for Frantic bounty 68. It reads a contact list-hygiene projection, applies bounded consent-state rules, appends at most one safe transition event for suppress or re-permission lanes, stops on stale or ambiguous evidence, and ships with hosted registry proof, raw PR files, structured verification, and a sealed receipt reference.",
-    "observations":  [
-                         {
-                             "id":  "cli_version",
-                             "finding":  "The work was validated with runx-cli 0.6.14, satisfying the bounty requirement for runx CLI 0.6.14 or newer.",
-                             "evidence":  "runx --version =\u003e runx-cli 0.6.14"
-                         },
-                         {
-                             "id":  "hosted_registry_publish",
-                             "finding":  "The package published under rohitmulani63-ops/list-hygiene-judge and registry read resolved version sha-a3364df6aaa1 with digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b.",
-                             "evidence":  "runx registry publish and runx registry read passed against https://api.runx.ai"
-                         },
-                         {
-                             "id":  "sealed_re_permission_case",
-                             "finding":  "The sealed decay lane moves an old but bounce-free contact to re_permission and appends exactly one list_hygiene.transitioned event.",
-                             "evidence":  "harness case sealed_decay_re_permission passed with decision_state re_permission and append_event_count 1"
-                         },
-                         {
-                             "id":  "sealed_suppress_case",
-                             "finding":  "The hard-bounce lane suppresses the contact and appends exactly one list_hygiene.transitioned event when no active unsubscribe blocker is present.",
-                             "evidence":  "harness case sealed_hard_bounce_suppress passed with decision_state suppress and append_event_count 1"
-                         },
-                         {
-                             "id":  "stale_or_missing_evidence_stop",
-                             "finding":  "Missing, stale, or ambiguous consent evidence routes to human_review and appends no transition event, preventing unsafe list mutation.",
-                             "evidence":  "harness case stop_missing_or_stale_evidence passed with decision_state human_review and append_event_count 0"
-                         },
-                         {
-                             "id":  "needs_agent_stop_path",
-                             "finding":  "When the decision answer is not supplied by the host, the graph pauses as needs_agent instead of inventing a consent-state transition.",
-                             "evidence":  "harness case needs_agent_missing_decision_answer passed with expected_status needs_agent"
-                         },
-                         {
-                             "id":  "packaged_data_tools",
-                             "finding":  "The package vendors data.local and data.sqlite tool manifests/runtimes so hosted validation can run from uploaded package material without relying on a system SQLite binary.",
-                             "evidence":  "skills/list-hygiene-judge/tools/data/local and skills/list-hygiene-judge/tools/data/sqlite are included in the PR head commit"
-                         },
-                         {
-                             "id":  "safety_boundary",
-                             "finding":  "The skill is dispatch-free: it does not send outbound messages, does not mint grants, does not touch payout rails, and only produces bounded consent-state decisions/events.",
-                             "evidence":  "SKILL.md behavior and harness cases cover only read, decide, append, stop paths"
-                         }
-                     ],
-    "dogfood":  {
-                    "command":  "runx harness ./skills/list-hygiene-judge",
-                    "environment":  "Docker Desktop Linux hosted-like mode with RUNX_TOOL_ROOTS pointing at packaged tools, RUNX_REGISTRY_DIR unset, and RUNX_DATA_SOURCES unset",
-                    "receipt_ref":  "runx:receipt:sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95",
-                    "receipt_id":  "sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95",
-                    "case":  "sealed_decay_re_permission",
-                    "proves":  "consent-state decision for a stale contact, data-store read from the packaged local fixture adapter, and exactly one safe list_hygiene.transitioned append event",
-                    "status":  "passed"
-                }
+{
+  "package": "list-hygiene-judge",
+  "version": "0.1.0",
+  "runx_version": "runx-cli 0.6.14",
+  "hosted_registry": {
+    "status": "published",
+    "skill": "rohitmulani63-ops/list-hygiene-judge",
+    "version": "sha-eca3cb11a7f7",
+    "digest": "sha256:4442ff0e8bcd17e9be276b1e9930e35620d925cc69f49af4bf6f4b98111fa9b2",
+    "trust": "community",
+    "public_url": "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7",
+    "run_command": "runx skill rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7 --registry https://api.runx.ai",
+    "package": "rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7",
+    "registry": "https://api.runx.ai"
+  },
+  "github_star": {
+    "repository": "runxhq/runx",
+    "viewer_has_starred": true,
+    "checked_with": "gh repo view runxhq/runx --json viewerHasStarred,stargazerCount"
+  },
+  "local_checks": {
+    "0": {
+      "command": "git diff --check -- skills/list-hygiene-judge",
+      "status": "passed"
+    },
+    "1": {
+      "command": "hidden/bidi/control-character scan on skills/list-hygiene-judge",
+      "status": "passed",
+      "output": "hidden-scan-complete"
+    },
+    "2": {
+      "command": "runx harness ./skills/list-hygiene-judge",
+      "status": "passed_linux_docker_desktop_hosted_like",
+      "case_count": 4,
+      "assertion_error_count": 0,
+      "case_names": [
+        "sealed_decay_re_permission",
+        "sealed_hard_bounce_suppress",
+        "stop_missing_or_stale_evidence",
+        "needs_agent_missing_decision_answer"
+      ],
+      "receipt_ids": [
+        "sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95",
+        "sha256:39fc0157fa71a78216f2b975b1fd16d25bc8eaa3c697e1885686838bcad9044a",
+        "sha256:dcf27a3693944d57288ceae4781279580d9b8ff91ffe005b41e050e6b001b51e"
+      ]
+    },
+    "3": {
+      "command": "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
+      "status": "passed",
+      "result": "registry publish success"
+    },
+    "4": {
+      "command": "runx registry read rohitmulani63-ops/list-hygiene-judge --registry https://api.runx.ai",
+      "status": "passed",
+      "result": "version sha-a3364df6aaa1, digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b"
+    },
+    "harness_status": "passed",
+    "case_count": 5,
+    "assertion_error_count": 0,
+    "case_names": [
+      "sealed_decay_re_permission",
+      "sealed_hard_bounce_suppress",
+      "stop_missing_or_stale_evidence",
+      "stop_active_unsubscribe_marker",
+      "needs_agent_missing_required_inputs"
+    ],
+    "receipt_ids": [
+      "sha256:3711bbeb686545236cfec97bfa7bf01a426030225a6994fc7012a78bfdf969f5",
+      "sha256:f9e9e0de975d6a0dcd4664f4cca6b8b417b33a2d7a5772ebbf0e5f13a9cedb05",
+      "sha256:229ab185caae65a7809722972611a50307d77a51b825d44e65c544670f116e3b",
+      "sha256:a6055da1dfb6089f1c8e4a56783391ed38eb5a91467ae4500b2fcf661038a6f5"
+    ]
+  },
+  "harness_cases": [
+    {
+      "name": "sealed_decay_re_permission",
+      "decision_state": "re_permission",
+      "append_event_count": 1,
+      "expected_status": "sealed"
+    },
+    {
+      "name": "sealed_hard_bounce_suppress",
+      "decision_state": "suppress",
+      "append_event_count": 1,
+      "expected_status": "sealed"
+    },
+    {
+      "name": "stop_missing_or_stale_evidence",
+      "decision_state": "human_review",
+      "append_event_count": 0,
+      "expected_status": "sealed"
+    },
+    {
+      "name": "needs_agent_missing_decision_answer",
+      "decision_state": "pending_decision_answer",
+      "append_event_count": 0,
+      "expected_status": "needs_agent"
+    }
+  ],
+  "publish_readiness": {
+    "runx_login": "succeeded_with_github_oauth_read_user_user_email",
+    "hosted_publish_gate_requirement": "includes at least one stop/error case through needs_agent_missing_decision_answer",
+    "windows_receipt_store_note": "Native Windows receipt storage previously failed with os error 87, so final harness and publish are run through Docker Desktop Linux.",
+    "packaged_tools": "vendors data.local and data.sqlite tool manifests/runtimes under skills/list-hygiene-judge/tools so hosted publish can run the harness from uploaded package material",
+    "harness_data_source": "uses local:// with store_id for data.local hosted fixture validation"
+  },
+  "safety": {
+    "secrets_touched": false,
+    "wallet_or_payment_touched": false,
+    "private_tokens_touched": false,
+    "payout_or_stripe_touched": false
+  },
+  "summary": "list-hygiene-judge is a published Runx graph-runner package for Frantic bounty 68. It reads a contact list-hygiene projection, applies bounded consent-state rules, appends at most one safe transition event for suppress or re-permission lanes, stops on stale or ambiguous evidence, and ships with hosted registry proof, raw PR files, structured verification, and a sealed receipt reference.",
+  "observations": [
+    {
+      "id": "cli_version",
+      "finding": "The work was validated with runx-cli 0.6.14, satisfying the bounty requirement for runx CLI 0.6.14 or newer.",
+      "evidence": "runx --version => runx-cli 0.6.14"
+    },
+    {
+      "id": "hosted_registry_publish",
+      "finding": "The package published under rohitmulani63-ops/list-hygiene-judge and registry read resolved version sha-a3364df6aaa1 with digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b.",
+      "evidence": "runx registry publish and runx registry read passed against https://api.runx.ai"
+    },
+    {
+      "id": "sealed_re_permission_case",
+      "finding": "The sealed decay lane moves an old but bounce-free contact to re_permission and appends exactly one list_hygiene.transitioned event.",
+      "evidence": "harness case sealed_decay_re_permission passed with decision_state re_permission and append_event_count 1"
+    },
+    {
+      "id": "sealed_suppress_case",
+      "finding": "The hard-bounce lane suppresses the contact and appends exactly one list_hygiene.transitioned event when no active unsubscribe blocker is present.",
+      "evidence": "harness case sealed_hard_bounce_suppress passed with decision_state suppress and append_event_count 1"
+    },
+    {
+      "id": "stale_or_missing_evidence_stop",
+      "finding": "Missing, stale, or ambiguous consent evidence routes to human_review and appends no transition event, preventing unsafe list mutation.",
+      "evidence": "harness case stop_missing_or_stale_evidence passed with decision_state human_review and append_event_count 0"
+    },
+    {
+      "id": "needs_agent_stop_path",
+      "finding": "When the decision answer is not supplied by the host, the graph pauses as needs_agent instead of inventing a consent-state transition.",
+      "evidence": "harness case needs_agent_missing_decision_answer passed with expected_status needs_agent"
+    },
+    {
+      "id": "packaged_data_tools",
+      "finding": "The package vendors data.local and data.sqlite tool manifests/runtimes so hosted validation can run from uploaded package material without relying on a system SQLite binary.",
+      "evidence": "skills/list-hygiene-judge/tools/data/local and skills/list-hygiene-judge/tools/data/sqlite are included in the PR head commit"
+    },
+    {
+      "id": "safety_boundary",
+      "finding": "The skill is dispatch-free: it does not send outbound messages, does not mint grants, does not touch payout rails, and only produces bounded consent-state decisions/events.",
+      "evidence": "SKILL.md behavior and harness cases cover only read, decide, append, stop paths"
+    },
+    "Post-publish dogfood run sealed against rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7 and produced runx:receipt:sha256:77cef7038c996f0bc92bfa5254b911d04f5ab3531b205c090c1bd43dab408967.",
+    "Dogfood receipt tree verified valid:true with RUNX_RECEIPT_VERIFY_KID=runx-demo-key and derived demo public key."
+  ],
+  "dogfood": {
+    "package": "rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7",
+    "input": {
+      "data_source_ref": "local://list-hygiene-judge-harness",
+      "store_id": "list-hygiene-judge-harness",
+      "resource": "contacts.list_hygiene",
+      "aggregate_id": "contact:decay-re-permission-dogfood-v2",
+      "expected_version": 0,
+      "idempotency_key": "lhj-dogfood-re-permission-v3",
+      "engagement_history": {
+        "opens_count": 0,
+        "clicks_count": 0,
+        "hard_bounces": 0,
+        "recency_days": 121
+      },
+      "bounce_policy": {
+        "hard_bounce_action": "suppress",
+        "decay_threshold_days": 90
+      },
+      "current_consent_state": {
+        "state": "subscribed",
+        "active_unsubscribe_marker": false,
+        "evidence_status": "read",
+        "evidence_version": 0
+      }
+    },
+    "command": "runx skill rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7 judge --registry https://api.runx.ai --json --data-source-ref local://list-hygiene-judge-harness --store-id list-hygiene-judge-harness --resource contacts.list_hygiene --aggregate-id contact:decay-re-permission-dogfood-v2 --expected-version 0 --idempotency-key lhj-dogfood-re-permission-v3 --engagement-history '{\"opens_count\":0,\"clicks_count\":0,\"hard_bounces\":0,\"recency_days\":121}' --bounce-policy '{\"hard_bounce_action\":\"suppress\",\"decay_threshold_days\":90}' --current-consent-state '{\"state\":\"subscribed\",\"active_unsubscribe_marker\":false,\"evidence_status\":\"read\",\"evidence_version\":0}'",
+    "receipt_ref": "runx:receipt:sha256:77cef7038c996f0bc92bfa5254b911d04f5ab3531b205c090c1bd43dab408967",
+    "verify_verdict": {
+      "receipt_dir": "/tmp/docker-desktop-root/run/desktop/mnt/host/c/J/frantic-68-dogfood-published-receipts",
+      "signature_mode": "production",
+      "trees": [
+        {
+          "root_receipt_id": "sha256:77cef7038c996f0bc92bfa5254b911d04f5ab3531b205c090c1bd43dab408967",
+          "receipt_count": 5,
+          "parent_missing": null,
+          "valid": true,
+          "findings": []
+        }
+      ],
+      "unreadable_files": [],
+      "valid": true
+    },
+    "harness_cases": [
+      {
+        "name": "sealed_decay_re_permission",
+        "status": "sealed",
+        "receipt_ref": "runx:receipt:sha256:3711bbeb686545236cfec97bfa7bf01a426030225a6994fc7012a78bfdf969f5"
+      },
+      {
+        "name": "sealed_hard_bounce_suppress",
+        "status": "sealed",
+        "receipt_ref": "runx:receipt:sha256:f9e9e0de975d6a0dcd4664f4cca6b8b417b33a2d7a5772ebbf0e5f13a9cedb05"
+      },
+      {
+        "name": "stop_missing_or_stale_evidence",
+        "status": "sealed",
+        "receipt_ref": "runx:receipt:sha256:229ab185caae65a7809722972611a50307d77a51b825d44e65c544670f116e3b"
+      },
+      {
+        "name": "stop_active_unsubscribe_marker",
+        "status": "sealed",
+        "receipt_ref": "runx:receipt:sha256:a6055da1dfb6089f1c8e4a56783391ed38eb5a91467ae4500b2fcf661038a6f5"
+      },
+      {
+        "name": "needs_agent_missing_required_inputs",
+        "status": "needs_agent"
+      }
+    ]
+  }
 }

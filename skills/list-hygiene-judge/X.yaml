@@ -156,15 +156,15 @@ harness:
           schema: runx.receipt.v1
           state: sealed
 
-    - name: needs_agent_missing_decision_answer
+    - name: stop_active_unsubscribe_marker
       runner: judge
       inputs:
         data_source_ref: "local://list-hygiene-judge-harness"
         store_id: "list-hygiene-judge-harness"
         resource: "contacts.list_hygiene"
-        aggregate_id: "contact:missing-decision-answer"
+        aggregate_id: "contact:active-unsubscribe-stop"
         expected_version: 0
-        idempotency_key: "lhj-missing-decision-answer-v0"
+        idempotency_key: "lhj-active-unsubscribe-stop-v0"
         engagement_history:
           opens_count: 0
           clicks_count: 0
@@ -175,17 +175,43 @@ harness:
           decay_threshold_days: 90
         current_consent_state:
           state: "subscribed"
-          active_unsubscribe_marker: false
+          active_unsubscribe_marker: true
           evidence_status: "read"
           evidence_version: 0
+      caller:
+        answers:
+          agent_task.list-hygiene-judge.output:
+            decision_state: "human_review"
+            decision:
+              state: "human_review"
+              reason: "active unsubscribe marker blocks automated re-permission"
+            event:
+              event_type: "list_hygiene.review_required"
+              aggregate_id: "contact:active-unsubscribe-stop"
+              reason: "active unsubscribe marker blocks append"
+              evidence:
+                active_unsubscribe_marker: true
+            recorded_transition:
+              state: "human_review"
+              event_type: "list_hygiene.review_required"
+              append_allowed: false
+            append_event_count: 0
+      expect:
+        status: sealed
+
+    - name: needs_agent_missing_required_inputs
+      runner: judge
+      inputs: {}
       expect:
         status: needs_agent
 
 runners:
   decide:
-    type: agent-task
-    agent: operator
-    task: list-hygiene-judge
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
     outputs:
       decision_state: string
       decision: object
