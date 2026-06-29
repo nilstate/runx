@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 // Fold per-member metrics from the sealed case event stream.
-// Reads the projection events, tallies each member's turn count,
+// Reads events from data-store read_events, tallies each member's turn count,
 // refusal count, refusal rate, and average completion time.
 
 function readInputs() {
@@ -12,8 +12,7 @@ function readInputs() {
 }
 
 const inputs = readInputs();
-const projection = inputs.projection ?? {};
-const events = Array.isArray(projection.events) ? projection.events : [];
+const events = Array.isArray(inputs.events) ? inputs.events : [];
 const roster = Array.isArray(inputs.roster) ? inputs.roster : [];
 const declaredVersion = String(inputs.agency_event_schema_version ?? "1");
 const caseId = inputs.case_id ?? null;
