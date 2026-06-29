@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "sealed-escalates-high-severity-and-appends-case",
+    "sealed-stops-no-threshold-no-change",
+    "refuses-missing-policy-rules"
+  ],
+  "receipt_ids": [
+    "sha256:299dd2debe02c55b0e85bbf2ed96f2f978b26a18f8b54d85ad5699344ce6ecba",
+    "sha256:b2bea0ca7591ed2092d3720014edd2e87f78ccfd61f6f391cca00db27875fc78",
+    "sha256:99527138009c3546a00fe841ed660a300cfe4c51dc0377648a11894fd2135e54"
+  ],
+  "graph_case_count": 0
+}

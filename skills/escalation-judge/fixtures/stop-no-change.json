@@ -1,0 +1,39 @@
+{
+  "triage_packet": {
+    "classification": "support_question",
+    "severity": "low",
+    "confidence": 0.88,
+    "signals": ["docs_question"]
+  },
+  "thread_body": "User asks where the configuration flag is documented; no customer impact, renewal concern, or repeated failure is present.",
+  "policy_rules": {
+    "severity_thresholds": {
+      "sev2_customer_impact": {
+        "min_severity": "high",
+        "lane": "customer-risk-internal",
+        "target_rail": "slack-notify"
+      }
+    },
+    "churn_risk_signals": {
+      "renewal_blocked": {
+        "keywords": ["renewal blocked", "contract at risk"],
+        "lane": "customer-risk-external",
+        "target_rail": "send-as"
+      }
+    },
+    "escalation_lanes": {
+      "customer-risk-internal": {
+        "target_rail": "slack-notify",
+        "owner": "ops-duty"
+      },
+      "customer-risk-external": {
+        "target_rail": "send-as",
+        "owner": "account-duty"
+      }
+    }
+  },
+  "aggregate_id": "thread-gh-4920",
+  "expected_version": 2,
+  "idempotency_key": "escalation:thread-gh-4920:low:2026-06-29",
+  "store_id": "runx-escalation-cases"
+}

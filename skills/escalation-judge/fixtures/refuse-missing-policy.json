@@ -1,0 +1,12 @@
+{
+  "triage_packet": {
+    "classification": "production_incident",
+    "severity": "critical",
+    "confidence": 0.91
+  },
+  "thread_body": "Critical outage, but the caller did not provide an escalation policy.",
+  "aggregate_id": "thread-gh-5000",
+  "expected_version": 1,
+  "idempotency_key": "escalation:thread-gh-5000:critical:2026-06-29",
+  "store_id": "runx-escalation-cases"
+}

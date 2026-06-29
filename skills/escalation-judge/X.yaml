@@ -1,0 +1,143 @@
+skill: escalation-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed-escalates-high-severity-and-appends-case
+      inputs:
+        triage_packet:
+          classification: production_incident
+          severity: high
+          confidence: 0.93
+          signals:
+            - customer_impact_confirmed
+        thread_body: "Enterprise customer reports production outage affecting checkout for two regions; renewals team notes account is blocked until incident owner responds."
+        policy_rules:
+          severity_thresholds:
+            sev2_customer_impact:
+              min_severity: high
+              lane: customer-risk-internal
+              target_rail: slack-notify
+          churn_risk_signals:
+            renewal_blocked:
+              keywords:
+                - renewal
+                - blocked
+              lane: customer-risk-internal
+              target_rail: slack-notify
+          escalation_lanes:
+            customer-risk-internal:
+              target_rail: slack-notify
+              owner: ops-duty
+        aggregate_id: thread-gh-4821
+        expected_version: 7
+        idempotency_key: escalation:thread-gh-4821:sev2:2026-06-29
+        store_id: runx-escalation-cases
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: sealed-stops-no-threshold-no-change
+      inputs:
+        triage_packet:
+          classification: support_question
+          severity: low
+          confidence: 0.88
+          signals:
+            - docs_question
+        thread_body: "User asks where the configuration flag is documented; no customer impact, renewal concern, or repeated failure is present."
+        policy_rules:
+          severity_thresholds:
+            sev2_customer_impact:
+              min_severity: high
+              lane: customer-risk-internal
+              target_rail: slack-notify
+          churn_risk_signals:
+            renewal_blocked:
+              keywords:
+                - renewal blocked
+                - contract at risk
+              lane: customer-risk-external
+              target_rail: send-as
+          escalation_lanes:
+            customer-risk-internal:
+              target_rail: slack-notify
+              owner: ops-duty
+            customer-risk-external:
+              target_rail: send-as
+              owner: account-duty
+        aggregate_id: thread-gh-4920
+        expected_version: 2
+        idempotency_key: escalation:thread-gh-4920:low:2026-06-29
+        store_id: runx-escalation-cases
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuses-missing-policy-rules
+      inputs:
+        triage_packet:
+          classification: production_incident
+          severity: critical
+          confidence: 0.91
+        thread_body: "Critical outage, but the caller did not provide an escalation policy."
+        aggregate_id: thread-gh-5000
+        expected_version: 1
+        idempotency_key: escalation:thread-gh-5000:critical:2026-06-29
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: failed
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      wrap_as: escalation_judgment_packet
+      packet: runx.escalation.judgment.v1
+    inputs:
+      triage_packet:
+        type: json
+        required: true
+        description: "classification, severity, confidence, and optional signals from upstream triage."
+      thread_body:
+        type: string
+        required: true
+        description: "Sanitized source thread text or excerpt used to ground churn-risk signals."
+      policy_rules:
+        type: json
+        required: false
+        description: "Caller-owned severity thresholds, churn risk signals, and allowlisted escalation lanes."
+      aggregate_id:
+        type: string
+        required: true
+        description: "Stable thread id and data-store aggregate id."
+      expected_version:
+        type: number
+        required: true
+        description: "Projection version read before append_event."
+      idempotency_key:
+        type: string
+        required: true
+        description: "Stable idempotency key for append_event."
+      store_id:
+        type: string
+        required: false
+        description: "Pinned data-store id; defaults to runx-escalation-cases."

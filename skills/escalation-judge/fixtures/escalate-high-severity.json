@@ -1,0 +1,35 @@
+{
+  "triage_packet": {
+    "classification": "production_incident",
+    "severity": "high",
+    "confidence": 0.93,
+    "signals": ["customer_impact_confirmed"]
+  },
+  "thread_body": "Enterprise customer reports production outage affecting checkout for two regions; renewals team notes account is blocked until incident owner responds.",
+  "policy_rules": {
+    "severity_thresholds": {
+      "sev2_customer_impact": {
+        "min_severity": "high",
+        "lane": "customer-risk-internal",
+        "target_rail": "slack-notify"
+      }
+    },
+    "churn_risk_signals": {
+      "renewal_blocked": {
+        "keywords": ["renewal", "blocked"],
+        "lane": "customer-risk-internal",
+        "target_rail": "slack-notify"
+      }
+    },
+    "escalation_lanes": {
+      "customer-risk-internal": {
+        "target_rail": "slack-notify",
+        "owner": "ops-duty"
+      }
+    }
+  },
+  "aggregate_id": "thread-gh-4821",
+  "expected_version": 7,
+  "idempotency_key": "escalation:thread-gh-4821:sev2:2026-06-29",
+  "store_id": "runx-escalation-cases"
+}
