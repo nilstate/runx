@@ -1,4 +1,4 @@
-# list-hygiene-judge evidence report
+﻿# list-hygiene-judge evidence report
 
 This package adds a graph-runner skill for the Frantic `list hygiene judge` bounty.
 
@@ -60,7 +60,7 @@ Harness summary:
 Hosted registry:
 
 ```text
-public_url=https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge
+public_url=https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1
 skill=rohitmulani63-ops/list-hygiene-judge
 version=sha-a3364df6aaa1
 digest=sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b
@@ -71,3 +71,6 @@ receipt_ref=runx:receipt:sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f8
 ## Environment note
 
 Native Windows receipt storage previously failed with `os error 87`, so final harness and hosted publish were run from Docker Desktop Linux. The Linux harness passes and includes the hosted registry stop-case requirement.
+## Structured evidence for Frantic preflight
+
+The evidence_json file now includes a substantive summary, eight structured observations, and a dogfood block. The dogfood receipt is runx:receipt:sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95 from the sealed_decay_re_permission harness case. It proves the graph can read the packaged list-hygiene fixture, decide a stale-contact re-permission transition, and append exactly one safe list_hygiene.transitioned event while keeping stop paths for stale or missing evidence.

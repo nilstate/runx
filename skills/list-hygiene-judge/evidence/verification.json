@@ -1,4 +1,4 @@
-{
+﻿{
     "package":  "list-hygiene-judge",
     "version":  "0.1.0",
     "source_revision_expected":  "pr-head",
@@ -8,7 +8,7 @@
                             "version":  "sha-a3364df6aaa1",
                             "digest":  "sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
                             "trust":  "community",
-                            "public_url":  "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge",
+                            "public_url":  "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1",
                             "run_command":  "runx skill rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1 --registry https://api.runx.ai"
                         },
     "commands":  [
