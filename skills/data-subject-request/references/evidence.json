@@ -7,7 +7,7 @@
     "name": "data-subject-request",
     "version": "sha-6a1d55a23739",
     "registry_ref": "luismireles12/data-subject-request@sha-6a1d55a23739",
-    "public_url": "https://runx.ai/x/luismireles12/data-subject-request-6a1d55a23739",
+    "public_url": "https://runx.ai/x/luismireles12/data-subject-request@sha-6a1d55a23739",
     "digest": "sha256:99da1950852b8306e3e6380422acc57c16128c9c7519901c06b077342e9f1b4c",
     "profile_digest": "sha256:061158d7651e0a56d70c9fd0a4b4dd1c84095397c3a29913d1741e91ac999b38"
   },
@@ -29,7 +29,7 @@
         "skill_id": "luismireles12/data-subject-request",
         "version": "sha-6a1d55a23739",
         "digest": "99da1950852b8306e3e6380422acc57c16128c9c7519901c06b077342e9f1b4c",
-        "public_url": "https://runx.ai/x/luismireles12/data-subject-request-6a1d55a23739"
+        "public_url": "https://runx.ai/x/luismireles12/data-subject-request@sha-6a1d55a23739"
       }
     },
     {

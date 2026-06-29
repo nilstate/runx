@@ -15,7 +15,7 @@ under separate approval and receipt gates.
 ## Package
 
 - Package: `luismireles12/data-subject-request@sha-6a1d55a23739`
-- Public URL: `https://runx.ai/x/luismireles12/data-subject-request-6a1d55a23739`
+- Public URL: `https://runx.ai/x/luismireles12/data-subject-request@sha-6a1d55a23739`
 - Required CLI observed: `runx-cli 0.6.14`
 - Registry digest: `sha256:99da1950852b8306e3e6380422acc57c16128c9c7519901c06b077342e9f1b4c`
 
