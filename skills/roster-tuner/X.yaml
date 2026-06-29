@@ -1,5 +1,5 @@
 skill: roster-tuner
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: skill
@@ -164,7 +164,40 @@ runners:
             type: cli-tool
             command: node
             args:
-              - graph/fold/run.mjs
+              - -e
+              - |
+                const fs = require("node:fs");
+                const raw = process.env.RUNX_INPUTS_PATH ? fs.readFileSync(process.env.RUNX_INPUTS_PATH, "utf8") : process.env.RUNX_INPUTS_JSON || "{}";
+                const inputs = JSON.parse(raw);
+                const events = Array.isArray(inputs.events) ? inputs.events : [];
+                const roster = Array.isArray(inputs.roster) ? inputs.roster : [];
+                const declaredVersion = String(inputs.agency_event_schema_version ?? "1");
+                const caseId = inputs.case_id ?? null;
+                const members = {};
+                for (const member of roster) {
+                  members[member.member] = { member: member.member, skill: member.skill, turn_count: member.turn_count ?? 0, refusal_count: 0, completion_times: [] };
+                }
+                for (const entry of events) {
+                  const event = entry.event ?? entry ?? {};
+                  if (event.schema_version && String(event.schema_version) !== declaredVersion) {
+                    console.log(JSON.stringify({ stop: true, reason: "schema_version_mismatch", declared_version: declaredVersion, case_id: caseId }));
+                    process.exit(0);
+                  }
+                  const payload = event.payload ?? {};
+                  if (event.type === "turn" || event.type === "dispatch") {
+                    const name = payload.member ?? payload.dispatch?.member ?? null;
+                    if (name && members[name]) {
+                      if (payload.decision === "refuse" || payload.refused === true) members[name].refusal_count += 1;
+                      if (typeof payload.completion_time === "number") members[name].completion_times.push(payload.completion_time);
+                    }
+                  }
+                }
+                const folded = Object.values(members).map((member) => {
+                  const avg = member.completion_times.length ? member.completion_times.reduce((a, b) => a + b, 0) / member.completion_times.length : 0;
+                  const rate = member.turn_count ? member.refusal_count / member.turn_count : 0;
+                  return { member: member.member, skill: member.skill, turn_count: member.turn_count, refusal_count: member.refusal_count, refusal_rate: Math.round(rate * 100) / 100, avg_completion_time: Math.round(avg * 100) / 100 };
+                });
+                console.log(JSON.stringify({ roster_metrics: { schema: "runx.roster.metrics.v1", case_id: caseId, members: folded, events_folded: events.length, declared_schema_version: declaredVersion } }));
           artifacts:
             named_emits:
               roster_metrics: roster_metrics
@@ -209,7 +242,73 @@ runners:
             type: cli-tool
             command: node
             args:
-              - graph/decide/run.mjs
+              - -e
+              - |
+                const fs = require("node:fs");
+                const raw = process.env.RUNX_INPUTS_PATH ? fs.readFileSync(process.env.RUNX_INPUTS_PATH, "utf8") : process.env.RUNX_INPUTS_JSON || "{}";
+                const inputs = JSON.parse(raw);
+                const foldedMetrics = inputs.folded_metrics ?? {};
+                const gradeAnswer = inputs.grade_answer ?? null;
+                const events = Array.isArray(inputs.events) ? inputs.events : [];
+                const roster = Array.isArray(inputs.roster) ? inputs.roster : [];
+                const norms = inputs.performance_norms ?? {};
+                const minRosterSize = norms.min_roster_size ?? 2;
+                const refusalThreshold = norms.refusal_threshold ?? 0.6;
+                const completionTimeThreshold = norms.completion_time_threshold ?? 120;
+                const caseId = inputs.case_id ?? null;
+                const resource = inputs.resource ?? "agency_cases";
+                const aggregateId = inputs.aggregate_id ?? caseId;
+                const idempotencyKey = inputs.idempotency_key ?? "";
+                const sourceMembers = Array.isArray(foldedMetrics.members) ? foldedMetrics.members : [];
+                let gradedMembers = sourceMembers.map((member) => {
+                  const completionRatio = completionTimeThreshold > 0 ? member.avg_completion_time / completionTimeThreshold : 0;
+                  const under = member.refusal_rate > refusalThreshold && member.avg_completion_time > completionTimeThreshold;
+                  return {
+                    member: member.member,
+                    skill: member.skill,
+                    refusal_count: member.refusal_count,
+                    refusal_rate: member.refusal_rate,
+                    avg_completion_time: member.avg_completion_time,
+                    completion_ratio: Math.round(completionRatio * 100) / 100,
+                    verdict: under ? "underperformer" : "acceptable",
+                    reason: under
+                      ? `${member.member} refusal rate ${member.refusal_rate} exceeds threshold ${refusalThreshold} and completion time ${member.avg_completion_time}s is ${Math.round(completionRatio * 10) / 10}x the ${completionTimeThreshold}s norm`
+                      : `${member.member} metrics within norms`,
+                  };
+                });
+                if (gradeAnswer?.graded_member) {
+                  let index = gradedMembers.findIndex((member) => member.member === gradeAnswer.graded_member);
+                  if (index < 0) {
+                    const rosterMember = roster.find((member) => member.member === gradeAnswer.graded_member) ?? {};
+                    gradedMembers.push({ member: gradeAnswer.graded_member, skill: rosterMember.skill ?? "unknown", refusal_count: 0, refusal_rate: 0, avg_completion_time: 0, completion_ratio: 0, verdict: "acceptable", reason: `${gradeAnswer.graded_member} metrics within norms` });
+                    index = gradedMembers.length - 1;
+                  }
+                  gradedMembers[index] = { ...gradedMembers[index], refusal_count: gradeAnswer.refusal_count ?? gradedMembers[index].refusal_count, refusal_rate: gradeAnswer.refusal_rate ?? gradedMembers[index].refusal_rate, avg_completion_time: gradeAnswer.avg_completion_time ?? gradedMembers[index].avg_completion_time, completion_ratio: gradeAnswer.completion_ratio ?? gradedMembers[index].completion_ratio, verdict: gradeAnswer.verdict ?? gradedMembers[index].verdict, reason: gradeAnswer.reason ?? gradedMembers[index].reason };
+                }
+                let version = 0;
+                for (const entry of events) if (typeof entry.version === "number") version = entry.version;
+                const underperformers = gradedMembers.filter((member) => member.verdict === "underperformer").sort((a, b) => (b.refusal_rate + b.completion_ratio) - (a.refusal_rate + a.completion_ratio));
+                let decision = { underperformer: false, member_to_remove: null, replacement_candidate: null, reason: "No members exceed the refusal and completion time thresholds." };
+                const guardRails = { min_roster_size: minRosterSize, remaining_after_removal: roster.length, sole_skill_block: false };
+                if (underperformers.length) {
+                  const worst = underperformers[0];
+                  const remaining = roster.length - 1;
+                  guardRails.remaining_after_removal = remaining;
+                  const skillHolders = roster.filter((member) => member.skill === worst.skill);
+                  if (remaining < minRosterSize) {
+                    guardRails.triggered = "min_roster_guard";
+                    decision = { underperformer: true, member_to_remove: null, replacement_candidate: null, reason: `${worst.member} underperforms (${worst.reason}) but removal would reduce roster below min_roster_size ${minRosterSize}.` };
+                  } else if (skillHolders.length === 1 && skillHolders[0].member === worst.member) {
+                    guardRails.sole_skill_block = true;
+                    guardRails.triggered = "sole_skill_guard";
+                    decision = { underperformer: true, member_to_remove: null, replacement_candidate: null, reason: `${worst.member} underperforms (${worst.reason}) but is the sole holder of skill ${worst.skill}.` };
+                  } else {
+                    const replacement = roster.find((member) => member.skill === worst.skill && member.member !== worst.member)?.member ?? `replacement-needed:${worst.skill}`;
+                    decision = { underperformer: true, member_to_remove: worst.member, replacement_candidate: replacement, reason: worst.reason };
+                  }
+                }
+                const judgmentEvent = { type: "roster_tuned", payload: { decision, graded_members: gradedMembers } };
+                console.log(JSON.stringify({ roster_decision: { schema: "runx.roster.tuning.v1", case_id: caseId, decision, projection: { aggregate_id: aggregateId, events_folded: events.length, version_before: version }, appended_judgment: { aggregate_id: aggregateId, version_after: version + 1, idempotency_key: idempotencyKey, event_ref: `${resource}:${aggregateId}:${version + 1}` }, judgment_event: judgmentEvent, folded_metrics: gradedMembers, guard_rails: guardRails } }));
           artifacts:
             named_emits:
               roster_decision: roster_decision
