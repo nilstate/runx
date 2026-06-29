@@ -14,10 +14,16 @@ function readInputs() {
 const inputs = readInputs();
 const gradeResult = inputs.grade ?? {};
 const gradedMembers = Array.isArray(gradeResult.graded_members) ? gradeResult.graded_members : [];
-const projection = inputs.projection ?? {};
+const events = Array.isArray(inputs.events) ? inputs.events : [];
 const roster = Array.isArray(inputs.roster) ? inputs.roster : [];
 const norms = inputs.performance_norms ?? {};
 const minRosterSize = norms.min_roster_size ?? 2;
+
+// Compute version from events
+let version = 0;
+for (const entry of events) {
+  if (typeof entry.version === "number") version = entry.version;
+}
 
 // Find underperformers
 const underperformers = gradedMembers.filter((m) => m.verdict === "underperformer");
@@ -42,9 +48,8 @@ if (underperformers.length === 0) {
       schema: "runx.roster.tuning.v1",
       decision: judgmentEvent.payload.decision,
       projection: {
-        aggregate_id: projection.aggregate_id ?? null,
-        version_before: projection.version ?? 0,
-        events_folded: projection.events_folded ?? 0,
+        events_folded: events.length,
+        version_before: version,
       },
       judgment_event: judgmentEvent,
       folded_metrics: gradedMembers,
@@ -154,11 +159,9 @@ process.stdout.write(JSON.stringify({
     schema: "runx.roster.tuning.v1",
     decision: judgmentEvent.payload.decision,
     projection: {
-      aggregate_id: projection.aggregate_id ?? null,
-      version_before: projection.version ?? 0,
-      events_folded: projection.events_folded ?? 0,
+      events_folded: events.length,
+      version_before: version,
     },
-    appended_judgment: null,
     judgment_event: judgmentEvent,
     folded_metrics: gradedMembers,
     guard_rails: {
