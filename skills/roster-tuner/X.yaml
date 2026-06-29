@@ -16,11 +16,11 @@ harness:
     - name: roster-tuner-sealed-underperformer
       runner: tune
       env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://roster-tuner/harness-cases":{"adapter":"data.sqlite","database_path":".runx/data/roster-tuner-harness.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-roster-tuner/harness-sealed":{"adapter":"data.local","store_id":"roster-tuner-sealed-v1","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
         case_id: case-rt-sealed-1
-        data_source_ref: tenant://roster-tuner/harness-cases
-        store_id: roster-tuner-harness-v1
+        data_source_ref: local://runx-roster-tuner/harness-sealed
+        store_id: roster-tuner-sealed-v1
         resource: agency_cases
         aggregate_id: case-rt-sealed-1
         expected_version: 0
@@ -49,11 +49,11 @@ harness:
     - name: roster-tuner-stop-needs-agent
       runner: tune
       env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://roster-tuner/harness-cases":{"adapter":"data.sqlite","database_path":".runx/data/roster-tuner-harness.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-roster-tuner/harness-stop":{"adapter":"data.local","store_id":"roster-tuner-stop-v1","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
         case_id: case-rt-stop-1
-        data_source_ref: tenant://roster-tuner/harness-cases
-        store_id: roster-tuner-harness-v1
+        data_source_ref: local://runx-roster-tuner/harness-stop
+        store_id: roster-tuner-stop-v1
         resource: agency_cases
         aggregate_id: case-rt-stop-1
         expected_version: 0
@@ -87,7 +87,26 @@ policy:
 runners:
   tune:
     default: true
-    type: graph
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      named_emits:
+        roster_decision: runx.roster.tuning.v1
+      agent_tasks:
+        - id: grade-member
+          description: "Grade a folded member's metrics against the operator norms and produce an evidence-based verdict."
+          inputs:
+            member:
+              type: string
+              required: true
+            folded_metrics:
+              type: json
+              required: true
+            norms:
+              type: json
+              required: true
     inputs:
       case_id:
         type: string
@@ -129,52 +148,3 @@ runners:
         type: string
         required: true
         description: Declared schema version for case events; mismatched events are refused.
-    graph:
-      name: roster-tuner-tune
-      steps:
-        - id: read
-          skill: ../data-store
-          runner: read_events
-          inputs:
-            data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
-            resource: "$input.resource"
-            aggregate_id: "$input.aggregate_id"
-            limit: 500
-        - id: fold
-          skill: ./graph/fold
-          inputs:
-            case_id: "$input.case_id"
-            roster: "$input.roster"
-            agency_event_schema_version: "$input.agency_event_schema_version"
-          context:
-            events: read.data_operation_result.data.events
-        - id: grade
-          skill: ./graph/grade
-          inputs:
-            performance_norms: "$input.performance_norms"
-          context:
-            folded_metrics: fold.roster_metrics.data
-          artifacts:
-            wrap_as: grade_result
-            packet: runx.roster.grade.v1
-        - id: decide
-          skill: ./graph/decide
-          inputs:
-            roster: "$input.roster"
-            performance_norms: "$input.performance_norms"
-          context:
-            grade: grade.grade_result.data
-            events: read.data_operation_result.data.events
-        - id: append
-          skill: ../data-store
-          runner: append_event
-          inputs:
-            data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
-            resource: "$input.resource"
-            aggregate_id: "$input.aggregate_id"
-            expected_version: "$input.expected_version"
-            idempotency_key: "$input.idempotency_key"
-          context:
-            event: decide.roster_decision.data.judgment_event
