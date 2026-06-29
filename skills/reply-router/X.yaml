@@ -1,0 +1,132 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - send_message
+    - route_unsubscribe
+    - suppress_without_policy_signal
+    - classify_unsealed_receipt
+    - invent_reply_classification
+    - attenuation_request
+    - operational_proposal
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      inputs:
+        inbound_reply:
+          content: |
+            Please unsubscribe me from these product emails immediately. Stop emailing this address.
+          received_from: prospect@example.com
+          received_at: "2026-06-29T08:15:00Z"
+        original_send_receipt:
+          sealed: true
+          receipt_id: runx:receipt:sha256:original-send-001
+          checksum: sha256:original-send-checksum
+          principal: runx:principal:sales-agent
+          send_plan:
+            recipient: prospect@example.com
+            campaign: onboarding-drip
+            recipient_state_version: 7
+            allowed_targets:
+              interested: runx:send-target:sales-followup
+              objection: runx:send-target:objection-handling
+              out_of_office: runx:send-target:delay-resume
+              wrong_person: runx:send-target:contact-correction
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - stop emailing
+            - remove me
+            - opt out
+          confidence_threshold: 0.8
+        data_source_ref: local://runx/reply-router
+        store_id: reply-router-fixture
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: stop_ambiguous_or_unsealed
+      inputs:
+        inbound_reply:
+          content: |
+            Maybe later, but I am not sure this was meant for me.
+          received_from: unknown@example.com
+          received_at: "2026-06-29T08:16:00Z"
+        original_send_receipt:
+          sealed: false
+          receipt_id: ""
+          checksum: ""
+          principal: runx:principal:sales-agent
+          send_plan:
+            recipient: unknown@example.com
+            recipient_state_version: 0
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - stop emailing
+            - remove me
+          confidence_threshold: 0.85
+        data_source_ref: local://runx/reply-router
+        store_id: reply-router-fixture
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+
+runners:
+  classify:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: "Object with content, received_from, and received_at."
+      original_send_receipt:
+        type: json
+        required: true
+        description: "Sealed original-send receipt packet with send_plan, principal, receipt_id, checksum, and sealed."
+      suppression_policy:
+        type: json
+        required: true
+        description: "Suppression policy with unsubscribe_signals and confidence_threshold."
+      data_source_ref:
+        type: string
+        required: true
+        description: "Logical binding for registry:runx/data-store@0.1.2."
+      store_id:
+        type: string
+        required: true
+        description: "Pinned store id used for deterministic harness and receipts."
+    outputs:
+      classification: object
+      suppression_result: object
+      routing_decision: object
+      escalation: object
+      evidence: object
+    artifacts:
+      wrap_as: reply_router
+      packet: runx.reply_router.v1
