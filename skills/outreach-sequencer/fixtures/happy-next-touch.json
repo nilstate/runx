@@ -1,0 +1,33 @@
+{
+  "sequence_definition": {
+    "rules": {
+      "min_days_apart": 3,
+      "advance_on_bounce": true,
+      "principal": "account:outreach-bot"
+    },
+    "touches": [
+      {"index": 1, "channel": "email", "content_digest": "sha256:touch-1"},
+      {"index": 2, "channel": "email", "content_digest": "sha256:touch-2"},
+      {"index": 3, "channel": "email", "content_digest": "sha256:touch-3"},
+      {"index": 4, "channel": "email", "content_digest": "sha256:touch-4"},
+      {"index": 5, "channel": "email", "content_digest": "sha256:touch-5"}
+    ]
+  },
+  "aggregate_id": "seq-demo-001:contact-acme",
+  "contact_ref": "contact:acme:buyer",
+  "current_touch_index": 2,
+  "store_id": "runx-outreach-state",
+  "idempotency_key": "outreach:seq-demo-001:contact-acme:touch-2",
+  "expected_version": 4,
+  "prior_projection": {
+    "version": 4,
+    "events": [
+      {
+        "type": "sent",
+        "touch_index": 1,
+        "at": "2026-06-20T10:00:00Z",
+        "operation_result": {"event_id": "evt_sent_1", "version": 3}
+      }
+    ]
+  }
+}

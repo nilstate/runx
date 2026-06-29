@@ -1,0 +1,35 @@
+{
+  "sequence_definition": {
+    "rules": {
+      "min_days_apart": 3,
+      "principal": "account:outreach-bot"
+    },
+    "touches": [
+      {"index": 1, "channel": "email", "content_digest": "sha256:touch-1"},
+      {"index": 2, "channel": "email", "content_digest": "sha256:touch-2"}
+    ]
+  },
+  "aggregate_id": "seq-demo-002:contact-globex",
+  "contact_ref": "contact:globex:ops",
+  "current_touch_index": 2,
+  "store_id": "runx-outreach-state",
+  "idempotency_key": "outreach:seq-demo-002:contact-globex:touch-2",
+  "expected_version": 5,
+  "prior_projection": {
+    "version": 5,
+    "events": [
+      {
+        "type": "sent",
+        "touch_index": 1,
+        "at": "2026-06-21T10:00:00Z",
+        "operation_result": {"event_id": "evt_sent_1", "version": 3}
+      },
+      {
+        "type": "reply",
+        "touch_index": 1,
+        "at": "2026-06-22T14:30:00Z",
+        "operation_result": {"event_id": "evt_reply_1", "version": 5}
+      }
+    ]
+  }
+}

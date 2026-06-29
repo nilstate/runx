@@ -1,0 +1,153 @@
+skill: outreach-sequencer
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: happy_next_touch
+      inputs:
+        sequence_definition:
+          rules:
+            min_days_apart: 3
+            advance_on_bounce: true
+            principal: account:outreach-bot
+          touches:
+            - index: 1
+              channel: email
+              content_digest: sha256:touch-1
+            - index: 2
+              channel: email
+              content_digest: sha256:touch-2
+            - index: 3
+              channel: email
+              content_digest: sha256:touch-3
+            - index: 4
+              channel: email
+              content_digest: sha256:touch-4
+            - index: 5
+              channel: email
+              content_digest: sha256:touch-5
+        aggregate_id: seq-demo-001:contact-acme
+        contact_ref: contact:acme:buyer
+        current_touch_index: 2
+        store_id: runx-outreach-state
+        idempotency_key: outreach:seq-demo-001:contact-acme:touch-2
+        expected_version: 4
+        prior_projection:
+          version: 4
+          events:
+            - type: sent
+              touch_index: 1
+              at: "2026-06-20T10:00:00Z"
+              operation_result:
+                event_id: evt_sent_1
+                version: 3
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: stop_replied
+      inputs:
+        sequence_definition:
+          rules:
+            min_days_apart: 3
+            principal: account:outreach-bot
+          touches:
+            - index: 1
+              channel: email
+              content_digest: sha256:touch-1
+            - index: 2
+              channel: email
+              content_digest: sha256:touch-2
+        aggregate_id: seq-demo-002:contact-globex
+        contact_ref: contact:globex:ops
+        current_touch_index: 2
+        store_id: runx-outreach-state
+        idempotency_key: outreach:seq-demo-002:contact-globex:touch-2
+        expected_version: 5
+        prior_projection:
+          version: 5
+          events:
+            - type: sent
+              touch_index: 1
+              at: "2026-06-21T10:00:00Z"
+              operation_result:
+                event_id: evt_sent_1
+                version: 3
+            - type: reply
+              touch_index: 1
+              at: "2026-06-22T14:30:00Z"
+              operation_result:
+                event_id: evt_reply_1
+                version: 5
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: stop_missing_sequence_definition
+      inputs:
+        aggregate_id: seq-demo-003:contact-initech
+        contact_ref: contact:initech:finance
+        store_id: runx-outreach-state
+        idempotency_key: outreach:seq-demo-003:contact-initech:touch-1
+        expected_version: 1
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: failed
+
+runners:
+  sequence:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      wrap_as: outreach_decision_packet
+      packet: runx.outreach.sequencer.v1
+    inputs:
+      sequence_definition:
+        type: json
+        required: false
+        description: "Outreach sequence touches and rules."
+      aggregate_id:
+        type: string
+        required: true
+        description: "Sequence/contact aggregate id."
+      contact_ref:
+        type: string
+        required: true
+        description: "Stable contact reference."
+      current_touch_index:
+        type: number
+        required: false
+        description: "Optional explicit next touch index."
+      store_id:
+        type: string
+        required: true
+        description: "Pinned data-store id."
+      idempotency_key:
+        type: string
+        required: true
+        description: "Append idempotency key."
+      expected_version:
+        type: number
+        required: true
+        description: "Expected projection version."
+      prior_projection:
+        type: json
+        required: false
+        description: "Data-store read_projection result for this sequence/contact aggregate."

@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "happy_next_touch",
+    "stop_replied",
+    "stop_missing_sequence_definition"
+  ],
+  "receipt_ids": [
+    "sha256:6b135aa9222221e6dfdb8da422927fe3d9588842a897f91b87e09deec193f00d",
+    "sha256:7dda8c2b678c05e7c7408b4cce0b4b63e52d1456b701f74f8b691af6fd908248",
+    "sha256:3466673b720d13cfd69693299c09be424e2fc365080445b154f0ba34c23d092b"
+  ],
+  "graph_case_count": 0
+}

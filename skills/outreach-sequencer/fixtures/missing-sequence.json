@@ -1,0 +1,7 @@
+{
+  "aggregate_id": "seq-demo-003:contact-initech",
+  "contact_ref": "contact:initech:finance",
+  "store_id": "runx-outreach-state",
+  "idempotency_key": "outreach:seq-demo-003:contact-initech:touch-1",
+  "expected_version": 1
+}
