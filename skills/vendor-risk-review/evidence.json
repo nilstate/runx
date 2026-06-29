@@ -1,5 +1,6 @@
 {
   "status": "passed",
+  "summary": "Published vendor-risk-review runx skill evaluates vendor contract text against a supplied trust policy, writes durable source-grounded vendor risk records through data-store when safe, stops before write on missing or ambiguous policy context, and proves the canonical sha-f73efbe9b874 package with hosted harness and Linux dogfood verification.",
   "runx_cli_version": "runx-cli 0.6.14",
   "publisher_owner": "iwannabefree00",
   "package_name": "vendor-risk-review",
