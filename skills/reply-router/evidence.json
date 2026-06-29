@@ -1,5 +1,6 @@
 {
   "status": "passed",
+  "summary": "Published reply-router runx skill classifies inbound replies, writes durable unsubscribe suppression packets through data-store, stops on unsealed or ambiguous inputs, and proves install, hosted harness, and dogfood receipt verification for bounty #70.",
   "runx_cli_version": "runx-cli 0.6.14",
   "publisher_owner": "iwannabefree00",
   "package_name": "reply-router",
