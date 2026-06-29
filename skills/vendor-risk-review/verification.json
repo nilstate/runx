@@ -1,0 +1,48 @@
+{
+  "status": "partial_local_pass_waiting_registry_publish",
+  "runx_cli": {
+    "path": "D:/Programs/runx/bin/runx.exe",
+    "version": "runx-cli 0.6.14",
+    "min_required": "0.6.14",
+    "ok": true
+  },
+  "github": {
+    "starred_runxhq_runx": true,
+    "fork": "https://github.com/iwannabefree00/runx",
+    "branch": "vendor-risk-review",
+    "pr_url": "https://github.com/runxhq/runx/pull/172",
+    "head_commit": "vendor-risk-review branch head at delivery"
+  },
+  "skill": {
+    "name": "vendor-risk-review",
+    "version": "0.1.0",
+    "inspect_status": "ok",
+    "runner": "decide",
+    "source_type": "cli-tool"
+  },
+  "harness": {
+    "inline_cases_present": true,
+    "case_count": 3,
+    "case_names": [
+      "approve-with-conditions-sla-gap",
+      "sealed-rejection-unbounded-liability",
+      "stop-missing-policy-no-write"
+    ],
+    "local_windows_status": "blocked_by_runx_receipt_store_os_error_87_before_case_execution",
+    "remote_verifier_expected": "runx.skill_harness should execute X.yaml on a compatible receipt store"
+  },
+  "dogfood": {
+    "direct_runner_status": "passed",
+    "approved": true,
+    "conditions_count": 1,
+    "append_event_ready": true,
+    "receipt_ref": "runx:receipt:dogfood-direct-branch-head",
+    "verify_verdict": "direct-runner-output-validated; local runx receipt creation blocked by Windows receipt-store os error 87"
+  },
+  "registry": {
+    "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@0.1.0",
+    "publish_status": "waiting_for_runx_publish_login_or_non_windows_harness",
+    "install_command": "runx add iwannabefree00/vendor-risk-review@0.1.0 --registry https://api.runx.ai",
+    "run_command": "runx skill iwannabefree00/vendor-risk-review@0.1.0 --registry https://api.runx.ai --json"
+  }
+}
