@@ -10,12 +10,37 @@ inputs:
   store_id: roster-tuner-harness-v1
   resource: agency_cases
   aggregate_id: case-rt-sealed-1
-  expected_version: 0
+  expected_version: 12
   idempotency_key: case-rt-sealed-1:roster-tune:v1
   roster:
     - { member: writer-alpha, skill: draft-content, turn_count: 12 }
     - { member: reviewer-beta, skill: review-skill, turn_count: 8 }
     - { member: researcher-gamma, skill: deep-research, turn_count: 10 }
+  events:
+    - version: 1
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 2
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 3
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 4
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 5
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 6
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 7
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 8
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 9
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: refuse, completion_time: 360 } }
+    - version: 10
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: complete, completion_time: 360 } }
+    - version: 11
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: complete, completion_time: 360 } }
+    - version: 12
+      event: { schema_version: "1", type: turn, payload: { member: writer-alpha, decision: complete, completion_time: 360 } }
   performance_norms:
     refusal_threshold: 0.6
     completion_time_threshold: 120

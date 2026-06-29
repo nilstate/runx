@@ -32,6 +32,10 @@ runners:
         type: json
         required: true
         description: "Current roster as [{member, skill, turn_count}]."
+      events:
+        type: json
+        required: false
+        description: Optional sealed case event stream for harness fixtures.
       agency_event_schema_version:
         type: string
         required: true
