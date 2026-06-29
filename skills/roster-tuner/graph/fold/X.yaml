@@ -1,0 +1,38 @@
+skill: roster-tuner-fold
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/roster-tuner
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      named_emits:
+        roster_metrics: runx.roster.metrics.v1
+    inputs:
+      projection:
+        type: json
+        required: false
+        description: The case projection from data-store read_projection.
+      case_id:
+        type: string
+        required: true
+        description: The case aggregate id.
+      roster:
+        type: json
+        required: true
+        description: "Current roster as [{member, skill, turn_count}]."
+      agency_event_schema_version:
+        type: string
+        required: true
+        description: Declared schema version; mismatched events are refused.
