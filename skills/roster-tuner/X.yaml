@@ -1,0 +1,179 @@
+skill: roster-tuner
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+emits:
+  - name: roster_tuning_decision
+    packet: runx.roster.tuning.v1
+
+harness:
+  cases:
+    - name: roster-tuner-sealed-underperformer
+      runner: tune
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://roster-tuner/harness-cases":{"adapter":"data.sqlite","database_path":".runx/data/roster-tuner-harness.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        case_id: case-rt-sealed-1
+        data_source_ref: tenant://roster-tuner/harness-cases
+        store_id: roster-tuner-harness-v1
+        resource: agency_cases
+        aggregate_id: case-rt-sealed-1
+        expected_version: 0
+        idempotency_key: case-rt-sealed-1:roster-tune:v1
+        roster:
+          - { member: writer-alpha, skill: draft-content, turn_count: 12 }
+          - { member: reviewer-beta, skill: review-skill, turn_count: 8 }
+          - { member: researcher-gamma, skill: deep-research, turn_count: 10 }
+        performance_norms:
+          refusal_threshold: 0.6
+          completion_time_threshold: 120
+          min_roster_size: 2
+        agency_event_schema_version: "1"
+      caller:
+        answers:
+          agent_task.grade-member.output:
+            graded_member: writer-alpha
+            refusal_count: 9
+            refusal_rate: 0.75
+            avg_completion_time: 360
+            completion_ratio: 3.0
+            verdict: underperformer
+            reason: "writer-alpha refusal rate 0.75 exceeds threshold 0.6 and completion time 360s is 3x the 120s norm"
+      expect:
+        status: sealed
+    - name: roster-tuner-stop-needs-agent
+      runner: tune
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://roster-tuner/harness-cases":{"adapter":"data.sqlite","database_path":".runx/data/roster-tuner-harness.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        case_id: case-rt-stop-1
+        data_source_ref: tenant://roster-tuner/harness-cases
+        store_id: roster-tuner-harness-v1
+        resource: agency_cases
+        aggregate_id: case-rt-stop-1
+        expected_version: 0
+        idempotency_key: case-rt-stop-1:roster-tune:v1
+        roster:
+          - { member: writer-alpha, skill: draft-content, turn_count: 5 }
+          - { member: reviewer-beta, skill: review-skill, turn_count: 3 }
+        performance_norms:
+          refusal_threshold: 0.6
+          completion_time_threshold: 120
+          min_roster_size: 2
+        agency_event_schema_version: "1"
+      expect:
+        status: needs_agent
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - raw_sql_from_model
+    - unrestricted_export
+    - secret_material
+    - pii_without_projection
+    - roster_mutation_execution
+
+runners:
+  tune:
+    default: true
+    type: graph
+    inputs:
+      case_id:
+        type: string
+        required: true
+        description: The agency case identifier to tune.
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data source holding the sealed case event stream.
+      store_id:
+        type: string
+        required: false
+        description: Opt into the bundled data.local fixture store; omit for durable local SQLite.
+      resource:
+        type: string
+        required: true
+        description: Declared event resource or stream family for the case events.
+      aggregate_id:
+        type: string
+        required: true
+        description: The case aggregate id; same as case_id for partition keying.
+      expected_version:
+        type: number
+        required: true
+        description: Current stream version required before appending the judgment.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for the tuning judgment append.
+      roster:
+        type: json
+        required: true
+        description: "Current roster as [{member, skill, turn_count}]."
+      performance_norms:
+        type: json
+        required: true
+        description: "{refusal_threshold, completion_time_threshold, min_roster_size}."
+      agency_event_schema_version:
+        type: string
+        required: true
+        description: Declared schema version for case events; mismatched events are refused.
+    graph:
+      name: roster-tuner-tune
+      steps:
+        - id: read
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+        - id: fold
+          skill: ./graph/fold
+          inputs:
+            case_id: "$input.case_id"
+            roster: "$input.roster"
+            agency_event_schema_version: "$input.agency_event_schema_version"
+          context:
+            projection: read.data_operation_result.data
+        - id: grade
+          skill: ./graph/grade
+          inputs:
+            performance_norms: "$input.performance_norms"
+          context:
+            folded_metrics: fold.roster_metrics.data
+          artifacts:
+            wrap_as: grade_result
+            packet: runx.roster.grade.v1
+        - id: decide
+          skill: ./graph/decide
+          inputs:
+            roster: "$input.roster"
+            performance_norms: "$input.performance_norms"
+          context:
+            grade: grade.grade_result.data
+            projection: read.data_operation_result.data
+        - id: append
+          skill: ../data-store
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.roster_decision.data.judgment_event
