@@ -4,6 +4,10 @@
 - Public URL: https://runx.ai/x/iwannabefree00/reply-router@sha-243e8add9e86
 - PR: https://github.com/runxhq/runx/pull/175
 - Source package path: `skills/reply-router/`
+- Raw X.yaml artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/X.yaml
+- Raw SKILL.md artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/SKILL.md
+- Raw evidence artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/evidence.json
+- Raw verification artifact: https://raw.githubusercontent.com/iwannabefree00/runx/reply-router-skill/skills/reply-router/action-verification.json
 - CLI used: `runx-cli 0.6.14`
 - Install command: `runx add iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai`
 - Run command: `runx skill iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai --json`
@@ -19,6 +23,7 @@
 
 ## Verification summary
 
+- Exact `runx --version` output captured for this delivery: `runx-cli 0.6.14`
 - Hosted registry harness: `passed`
 - Hosted harness endpoint: https://api.runx.ai/v1/skills/iwannabefree00/reply-router@sha-243e8add9e86/harness
 - Harness cases:
