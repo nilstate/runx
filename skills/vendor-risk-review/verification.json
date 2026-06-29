@@ -1,10 +1,15 @@
 {
   "status": "passed",
+  "summary": "Canonical verification record for the vendor-risk-review delivery: all artifacts describe iwannabefree00/vendor-risk-review@sha-f73efbe9b874, hosted harness passed three cases, and the Linux dogfood run produced a sealed receipt recorded in evidence_json.dogfood.",
   "runx_cli_version": "runx-cli 0.6.14",
   "published_ref": "iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
   "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
   "pr_url": "https://github.com/runxhq/runx/pull/172",
   "source_url": "https://github.com/iwannabefree00/runx/tree/vendor-risk-review/skills/vendor-risk-review",
+  "x_yaml": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/SKILL.md",
+  "evidence_json": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/evidence.json",
+  "report": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/report.md",
   "install": {
     "command": "runx add iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai",
     "status": "passed"
@@ -26,12 +31,22 @@
     "receipt_ref": "runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
     "verification_json": "skills/vendor-risk-review/action-verification.json"
   },
+  "dogfood": {
+    "package": "iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
+    "command": "runx skill iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai --json",
+    "receipt_ref": "runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
+    "verify_verdict": "passed",
+    "harness_cases": [
+      "approve-with-conditions-sla-gap",
+      "sealed-rejection-unbounded-liability",
+      "stop-missing-policy-no-write"
+    ]
+  },
   "frantic_delivery": {
     "claim_id": "ac081392-2657-48f3-90c6-2ffb92b112ba",
     "delivery_id": "c7d9683f-e4dc-482e-a214-699317218c4b",
     "machine_status": "passed",
-    "machine_summary": "Machine checks passed: 20/20. Review pending with human or llm.",
-    "auto_review_note": "Auto-review fallback failed before judging due Frantic review graph validation; it is advisory and not a worker rejection."
+    "machine_summary": "Earlier delivery c7d9683f-e4dc-482e-a214-699317218c4b passed machine verification 20/20; this revised verification artifact removes version ambiguity and points Frantic at commit-pinned raw artifact URLs."
   },
   "windows_note": "Local Windows runx skill execution can hit receipt-store os error 87 before execution; hosted publish harness and Linux GitHub Actions are the executed proof paths for this package."
 }
