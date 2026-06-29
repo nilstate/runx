@@ -38,9 +38,11 @@ jobs:
           RUNX_RECEIPT_SIGN_KID: runx-demo-key
           RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
           RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+          PUBLISHED_REF: iwannabefree00/vendor-risk-review@sha-cc5115a1c103
         run: |
           mkdir -p receipts
-          runx skill skills/vendor-risk-review --json --receipt-dir receipts \
+          runx add "$PUBLISHED_REF" --registry https://api.runx.ai --json | tee install.json
+          runx skill "$PUBLISHED_REF" --registry https://api.runx.ai --json --receipt-dir receipts \
             --input contract_text="Acme Analytics will process only pseudonymized customer data under SOC2 controls. Liability is capped at USD 50000. Termination for convenience is available on 30 days notice. Support includes business-hours response but does not include the requested uptime credit language." \
             --input-json vendor_context='{"vendor_ref":"vendor:acme-analytics","industry":"analytics","history":{"current_version":2}}' \
             --input-json policy='{"required_sla_terms":["uptime credit","incident response within 24 hours"],"max_liability":100000,"data_handling_floor":"SOC2","termination_window":"30 days","policy_id":"vrp-2026-06","created_at":"2026-06-29T05:00:00Z"}' \
@@ -54,11 +56,13 @@ jobs:
           runx verify --receipt "receipts/${DOGFOOD_RECEIPT}.json" --json | tee verify.json
           jq -n \
             --arg runx_version "$(cat runx-version.txt)" \
+            --arg published_ref "$PUBLISHED_REF" \
             --arg receipt_ref "runx:receipt:${DOGFOOD_RECEIPT}" \
             --slurpfile harness harness.json \
+            --slurpfile install install.json \
             --slurpfile dogfood dogfood.json \
             --slurpfile verify verify.json \
-            '{status:"passed", runx_version:$runx_version, receipt_ref:$receipt_ref, harness:$harness[0], dogfood:$dogfood[0], verify:$verify[0]}' \
+            '{status:"passed", runx_version:$runx_version, published_ref:$published_ref, receipt_ref:$receipt_ref, harness:$harness[0], install:$install[0], dogfood:$dogfood[0], verify:$verify[0]}' \
             > skills/vendor-risk-review/action-verification.json
       - name: Commit verification
         run: |

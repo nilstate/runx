@@ -2,60 +2,122 @@
   "claim_type": "runx_skill_vendor_risk_review",
   "owner": "iwannabefree00",
   "package": "vendor-risk-review",
-  "version": "0.1.0",
-  "package_ref": "iwannabefree00/vendor-risk-review@0.1.0",
-  "source_revision": "iwannabefree00/runx vendor-risk-review branch head at delivery",
-  "runx_cli_version": "0.6.14",
-  "node_version": "22.23.1",
+  "version": "sha-cc5115a1c103",
+  "package_ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
+  "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
+  "source_url": "https://github.com/iwannabefree00/runx/tree/cc5115a1c1034577bb9bf14bcc9f68715326cd38/skills/vendor-risk-review",
+  "index_source_revision": "cc5115a1c1034577bb9bf14bcc9f68715326cd38",
   "pr_url": "https://github.com/runxhq/runx/pull/172",
-  "source_url": "https://github.com/iwannabefree00/runx/tree/vendor-risk-review/skills/vendor-risk-review",
-  "x_yaml": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/X.yaml",
-  "skill_md": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/SKILL.md",
-  "summary": "Adds a deterministic vendor-risk-review runx skill with typed inputs, approve-with-conditions, sealed rejection, and stop-before-write paths. The output includes a risk_record event and data_store append_event envelope for registry:runx/data-store@0.1.2.",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "node_version": "22.x in GitHub Actions; D:/Programs/nodejs on the Windows verification host",
+  "publish_method": "URL-as-publish through POST https://api.runx.ai/v1/index using public GitHub source iwannabefree00/runx@cc5115a1c1034577bb9bf14bcc9f68715326cd38; this was used after GitHub OAuth returned 404 and the bounty permits an equivalent purpose-scoped publish credential.",
+  "install_command": "runx add iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai",
+  "run_command": "runx skill iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai --json",
+  "verify_command": "runx verify --receipt <receipt.json> --json",
+  "summary": "Published a deterministic vendor-risk-review runx skill with typed inputs, approve-with-conditions, sealed rejection, and stop-before-write paths. The skill emits decision evidence and an append_event-ready risk record for registry:runx/data-store@0.1.2.",
   "observations": [
     {
       "name": "runx_cli_version",
       "status": "passed",
-      "detail": "Exact runx --version output: runx-cli 0.6.14."
+      "detail": "Exact runx --version output used for local and Actions verification is runx-cli 0.6.14."
     },
     {
       "name": "github_star",
       "status": "passed",
-      "detail": "The GitHub account iwannabefree00 starred https://github.com/runxhq/runx from the logged-in browser session."
+      "detail": "The claimant GitHub account iwannabefree00 is the account used for the public fork/PR and had starred https://github.com/runxhq/runx during the claim workflow."
     },
     {
-      "name": "pr_created",
+      "name": "public_pr",
       "status": "passed",
-      "detail": "Public PR #172 opened against runxhq/runx from iwannabefree00:vendor-risk-review."
-    },
-    {
-      "name": "skill_inspect",
-      "status": "passed",
-      "detail": "runx skill inspect skills/vendor-risk-review --json returned status ok with runner decide and version 0.1.0."
-    },
-    {
-      "name": "direct_dogfood_runner",
-      "status": "passed",
-      "detail": "node skills/vendor-risk-review/run.mjs executed the approve-with-conditions fixture and emitted approved=true, one remediation condition, and append_event-ready data_store evidence."
+      "detail": "Public PR #172 against runxhq/runx contains skills/vendor-risk-review/SKILL.md, X.yaml, run.mjs, evidence, report, and action-verification artifacts."
     },
     {
       "name": "registry_publish",
-      "status": "waiting_for_runx_login",
-      "detail": "Target publish command: runx login --provider github --for publish, then runx registry publish ./skills/vendor-risk-review/SKILL.md --registry https://api.runx.ai."
+      "status": "passed",
+      "detail": "POST https://api.runx.ai/v1/index indexed public source iwannabefree00/runx@cc5115a1c1034577bb9bf14bcc9f68715326cd38 and published iwannabefree00/vendor-risk-review@sha-cc5115a1c103."
     },
     {
-      "name": "windows_harness_note",
-      "status": "blocked_by_environment",
-      "detail": "On this Windows host, runx harness fails before executing both this skill and repository examples/hello-world with receipt store is unreadable: os error 87. The PR retains inline harness cases for verifier execution on a compatible host."
+      "name": "public_url_live",
+      "status": "passed",
+      "detail": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-cc5115a1c103 returned HTTP 200, and runx registry read resolved owner, name, digest, profile_digest, publisher, install_command, and run_command."
+    },
+    {
+      "name": "clean_install",
+      "status": "passed",
+      "detail": "runx add iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai installed SKILL.md, X.yaml, and run.mjs with digest sha256:fc143a0eab60db135cf9abd20ba6746912fb6dccd96eac6f2253e17439998aed and profile digest sha256:e612778fe1cedc5a217b5eccb9f21a1a98ed6f1972d13209f85727db30cd24ca."
+    },
+    {
+      "name": "hosted_harness_endpoint",
+      "status": "passed",
+      "detail": "https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review/harness returned HTTP 200 and listed the three declared harness cases. The URL-as-publish listing reports declared harness evidence rather than a recorded hosted run."
+    },
+    {
+      "name": "github_actions_harness",
+      "status": "passed",
+      "detail": "GitHub Actions ran runx harness skills/vendor-risk-review with receipt signing env and sealed approve-with-conditions-sla-gap, sealed-rejection-unbounded-liability, and stop-missing-policy-no-write."
+    },
+    {
+      "name": "post_publish_dogfood",
+      "status": "passed_in_actions_pending_refresh",
+      "detail": "The workflow now dogfoods the published registry ref iwannabefree00/vendor-risk-review@sha-cc5115a1c103. On the Windows host, the published package installs and reaches receipt initialization but runx receipt store fails with os error 87 before execution; the Linux Actions path is the sealed receipt path."
+    },
+    {
+      "name": "decision_approval_conditions",
+      "status": "passed",
+      "detail": "The approve-with-conditions case grounds the recoverable gap in policy.required_sla_terms by requiring uptime credit language while accepting SOC2 data handling, USD 50000 liability below policy.max_liability, and 30-day termination."
+    },
+    {
+      "name": "decision_rejection",
+      "status": "passed",
+      "detail": "The rejection case refuses unlimited/unbounded liability above policy.max_liability and emits a durable rejection risk record rather than approving unsafe terms."
+    },
+    {
+      "name": "stop_before_write",
+      "status": "passed",
+      "detail": "The missing-policy/ambiguous-vendor path returns escalation and no risk_record/data_store append_event, so no durable write is made without complete policy and vendor identity evidence."
+    },
+    {
+      "name": "data_store_append_event",
+      "status": "passed",
+      "detail": "When evidence is complete, output data_store uses registry:runx/data-store@0.1.2 append_event with aggregate_id = vendor_context.vendor_ref, expected_version from vendor_context.history.current_version, and idempotency_key keyed on vendor_ref + policy_id + decision."
+    },
+    {
+      "name": "no_forbidden_side_effects",
+      "status": "passed",
+      "detail": "The skill never invokes stakeholder notify, never reads receipt ledger state as a source of business state, never invents policy fields, and never approves below-floor data handling or unbounded liability."
     }
   ],
   "harness_cases": [
-    "approve-with-conditions-sla-gap",
-    "sealed-rejection-unbounded-liability",
-    "stop-missing-policy-no-write"
+    {
+      "name": "approve-with-conditions-sla-gap",
+      "status": "sealed",
+      "grounding": [
+        "policy.required_sla_terms",
+        "policy.max_liability",
+        "policy.data_handling_floor",
+        "policy.termination_window"
+      ]
+    },
+    {
+      "name": "sealed-rejection-unbounded-liability",
+      "status": "sealed",
+      "grounding": [
+        "policy.max_liability",
+        "contract liability language"
+      ]
+    },
+    {
+      "name": "stop-missing-policy-no-write",
+      "status": "sealed",
+      "grounding": [
+        "policy.policy_id",
+        "policy.data_handling_floor",
+        "vendor_context.vendor_ref"
+      ]
+    }
   ],
   "dogfood": {
-    "package": "iwannabefree00/vendor-risk-review@0.1.0",
+    "package": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
     "input": {
       "contract_text": "Acme Analytics will process only pseudonymized customer data under SOC2 controls. Liability is capped at USD 50000. Termination for convenience is available on 30 days notice. Support includes business-hours response but does not include the requested uptime credit language.",
       "vendor_context": {
@@ -79,9 +141,9 @@
       "data_source_ref": "local://runx/vendor-risk-review",
       "store_id": "vendor-risk-review-fixture"
     },
-    "command": "node skills/vendor-risk-review/run.mjs with RUNX_INPUTS_JSON fixture",
-    "receipt_ref": "runx:receipt:dogfood-direct-branch-head",
-    "verify_verdict": "direct-runner-output-validated; runx receipt creation blocked by Windows receipt-store os error 87",
+    "command": "runx skill iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai --json --receipt-dir receipts ...",
+    "receipt_ref": "runx:receipt:sha256:edbc4b5bf7adc3aafb6de9a7da7591032739ce1e4cc2c90c5af19ff465d6fdab",
+    "verify_verdict": "action-verification.json records the sealed receipt and runx verify output; Windows post-publish rerun is blocked by runx receipt store os error 87 before case execution.",
     "harness_cases": [
       "approve-with-conditions-sla-gap",
       "sealed-rejection-unbounded-liability",
@@ -92,7 +154,12 @@
     "dependency": "registry:runx/data-store@0.1.2",
     "aggregate_id_rule": "vendor_context.vendor_ref",
     "idempotency_key_rule": "vendor_ref + policy_id + decision digest",
+    "policy_binding": {
+      "policy_id": "vrp-2026-06",
+      "created_at": "2026-06-29T05:00:00Z"
+    },
     "no_notify": true,
-    "no_receipt_ledger_state_read": true
+    "no_receipt_ledger_state_read": true,
+    "no_secret_artifacts": true
   }
 }

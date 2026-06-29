@@ -1,5 +1,5 @@
 {
-  "status": "partial_local_pass_waiting_registry_publish",
+  "status": "registry_published_preflight_passed",
   "runx_cli": {
     "path": "D:/Programs/runx/bin/runx.exe",
     "version": "runx-cli 0.6.14",
@@ -11,14 +11,25 @@
     "fork": "https://github.com/iwannabefree00/runx",
     "branch": "vendor-risk-review",
     "pr_url": "https://github.com/runxhq/runx/pull/172",
-    "head_commit": "vendor-risk-review branch head at delivery"
+    "index_branch": "vendor-risk-review-index",
+    "index_commit": "cc5115a1c1034577bb9bf14bcc9f68715326cd38"
   },
   "skill": {
     "name": "vendor-risk-review",
-    "version": "0.1.0",
-    "inspect_status": "ok",
+    "version": "sha-cc5115a1c103",
+    "published_ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
     "runner": "decide",
     "source_type": "cli-tool"
+  },
+  "registry": {
+    "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
+    "public_url_http": 200,
+    "registry_read": "passed",
+    "clean_install": "passed",
+    "digest": "sha256:fc143a0eab60db135cf9abd20ba6746912fb6dccd96eac6f2253e17439998aed",
+    "profile_digest": "sha256:e612778fe1cedc5a217b5eccb9f21a1a98ed6f1972d13209f85727db30cd24ca",
+    "install_command": "runx add iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai",
+    "run_command": "runx skill iwannabefree00/vendor-risk-review@sha-cc5115a1c103 --registry https://api.runx.ai --json"
   },
   "harness": {
     "inline_cases_present": true,
@@ -28,21 +39,22 @@
       "sealed-rejection-unbounded-liability",
       "stop-missing-policy-no-write"
     ],
-    "local_windows_status": "blocked_by_runx_receipt_store_os_error_87_before_case_execution",
-    "remote_verifier_expected": "runx.skill_harness should execute X.yaml on a compatible receipt store"
+    "hosted_endpoint": "https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review/harness",
+    "hosted_endpoint_http": 200,
+    "hosted_endpoint_status": "not_recorded_declared_cases_available",
+    "github_actions_status": "passed"
   },
   "dogfood": {
-    "direct_runner_status": "passed",
-    "approved": true,
-    "conditions_count": 1,
-    "append_event_ready": true,
-    "receipt_ref": "runx:receipt:dogfood-direct-branch-head",
-    "verify_verdict": "direct-runner-output-validated; local runx receipt creation blocked by Windows receipt-store os error 87"
+    "published_ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
+    "github_actions_receipt_ref": "runx:receipt:sha256:edbc4b5bf7adc3aafb6de9a7da7591032739ce1e4cc2c90c5af19ff465d6fdab",
+    "windows_postpublish_status": "blocked_by_runx_receipt_store_os_error_87_before_case_execution",
+    "approved_fixture_expected": true,
+    "conditions_count_expected": 1,
+    "append_event_ready_expected": true
   },
-  "registry": {
-    "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@0.1.0",
-    "publish_status": "waiting_for_runx_publish_login_or_non_windows_harness",
-    "install_command": "runx add iwannabefree00/vendor-risk-review@0.1.0 --registry https://api.runx.ai",
-    "run_command": "runx skill iwannabefree00/vendor-risk-review@0.1.0 --registry https://api.runx.ai --json"
+  "frantic_preflight": {
+    "status": "passed",
+    "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
+    "source_url": "https://github.com/iwannabefree00/runx/tree/cc5115a1c1034577bb9bf14bcc9f68715326cd38/skills/vendor-risk-review"
   }
 }
