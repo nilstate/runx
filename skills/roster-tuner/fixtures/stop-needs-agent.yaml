@@ -1,0 +1,30 @@
+name: stop-needs-agent
+kind: skill
+target: ..
+runner: tune
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://roster-tuner/harness-cases":{"adapter":"data.sqlite","database_path":".runx/data/roster-tuner-harness.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+inputs:
+  case_id: case-rt-stop-1
+  data_source_ref: tenant://roster-tuner/harness-cases
+  store_id: roster-tuner-harness-v1
+  resource: agency_cases
+  aggregate_id: case-rt-stop-1
+  expected_version: 0
+  idempotency_key: case-rt-stop-1:roster-tune:v1
+  roster:
+    - { member: writer-alpha, skill: draft-content, turn_count: 5 }
+    - { member: reviewer-beta, skill: review-skill, turn_count: 3 }
+  performance_norms:
+    refusal_threshold: 0.6
+    completion_time_threshold: 120
+    min_roster_size: 2
+  agency_event_schema_version: "1"
+expect:
+  status: needs_agent
+metadata:
+  public_skill: roster-tuner
+  source_case: stop-needs-agent
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: tune
