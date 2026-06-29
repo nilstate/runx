@@ -105,11 +105,11 @@ harness:
         data_source_ref: local://runx/vendor-risk-review
         store_id: vendor-risk-review-fixture
       expect:
-        status: sealed
+        status: failure
         receipt:
           schema: runx.receipt.v1
           state: sealed
-          disposition: closed
+          disposition: failed
 
 runners:
   decide:

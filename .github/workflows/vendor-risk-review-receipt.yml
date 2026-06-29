@@ -38,7 +38,7 @@ jobs:
           RUNX_RECEIPT_SIGN_KID: runx-demo-key
           RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
           RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
-          PUBLISHED_REF: iwannabefree00/vendor-risk-review@sha-cc5115a1c103
+          PUBLISHED_REF: iwannabefree00/vendor-risk-review@sha-f73efbe9b874
         run: |
           mkdir -p receipts
           runx add "$PUBLISHED_REF" --registry https://api.runx.ai --json | tee install.json

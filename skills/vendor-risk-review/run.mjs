@@ -39,6 +39,7 @@ const expectedVersion = finiteNumber(history?.current_version) ? Number(history.
 
 if (stopReasons.length) {
   emit(buildStop(stopReasons));
+  process.exit(2);
 }
 
 const hardFindings = [];
