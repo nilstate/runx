@@ -1,0 +1,43 @@
+{
+  "package": "list-hygiene-judge",
+  "version": "0.1.0",
+  "source_revision_expected": "pr-head",
+  "commands": [
+    {
+      "command": "runx --version",
+      "result": "runx-cli 0.6.14",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check -- skills/list-hygiene-judge",
+      "result": "no whitespace errors",
+      "status": "passed"
+    },
+    {
+      "command": "hidden/bidi/control-character scan on skills/list-hygiene-judge",
+      "result": "hidden-scan-complete",
+      "status": "passed"
+    },
+    {
+      "command": "runx harness ./skills/list-hygiene-judge",
+      "result": "graph cases reached expected decisions and append counts; final native harness summary blocked by Windows receipt-store os error 87",
+      "status": "blocked_on_windows"
+    },
+    {
+      "command": "runx harness ./skills/data-store",
+      "result": "same Windows receipt-store os error 87 reproduced on upstream data-store harness",
+      "status": "blocked_on_windows"
+    },
+    {
+      "command": "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai --owner rohitmulani63-ops --version 0.1.0 --profile ./skills/list-hygiene-judge/X.yaml --json",
+      "result": "blocked by native publish harness receipt-store os error 87 on Windows",
+      "status": "blocked_on_windows"
+    }
+  ],
+  "safety": {
+    "secrets_touched": false,
+    "wallet_or_payment_touched": false,
+    "private_tokens_touched": false
+  }
+}
+

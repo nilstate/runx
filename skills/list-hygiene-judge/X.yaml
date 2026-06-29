@@ -1,0 +1,294 @@
+skill: list-hygiene-judge
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: sealed_decay_re_permission
+      runner: judge
+      inputs:
+        data_source_ref: "local-json://list-hygiene-judge-harness"
+        resource: "contacts.list_hygiene"
+        aggregate_id: "contact:decay-re-permission"
+        expected_version: 0
+        idempotency_key: "lhj-decay-re-permission-v0"
+        engagement_history:
+          opens_count: 0
+          clicks_count: 0
+          hard_bounces: 0
+          recency_days: 121
+        bounce_policy:
+          hard_bounce_action: "suppress"
+          decay_threshold_days: 90
+        current_consent_state:
+          state: "subscribed"
+          active_unsubscribe_marker: false
+          evidence_status: "read"
+          evidence_version: 0
+      caller:
+        answers:
+          agent_task.list-hygiene-judge.output:
+            decision_state: "re_permission"
+            decision:
+              state: "re_permission"
+              reason: "recency_days 121 is over decay_threshold_days 90 and no unsubscribe marker is present"
+            event:
+              event_type: "list_hygiene.transitioned"
+              aggregate_id: "contact:decay-re-permission"
+              from_state: "subscribed"
+              to_state: "re_permission"
+              reason: "stale engagement requires re-permission"
+              evidence:
+                recency_days: 121
+                decay_threshold_days: 90
+                hard_bounces: 0
+            recorded_transition:
+              state: "re_permission"
+              event_type: "list_hygiene.transitioned"
+              append_allowed: true
+            append_event_count: 1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: sealed_hard_bounce_suppress
+      runner: judge
+      inputs:
+        data_source_ref: "local-json://list-hygiene-judge-harness"
+        resource: "contacts.list_hygiene"
+        aggregate_id: "contact:hard-bounce-suppress"
+        expected_version: 0
+        idempotency_key: "lhj-hard-bounce-suppress-v0"
+        engagement_history:
+          opens_count: 2
+          clicks_count: 1
+          hard_bounces: 1
+          recency_days: 12
+        bounce_policy:
+          hard_bounce_action: "suppress"
+          decay_threshold_days: 90
+        current_consent_state:
+          state: "subscribed"
+          active_unsubscribe_marker: false
+          evidence_status: "read"
+          evidence_version: 0
+      caller:
+        answers:
+          agent_task.list-hygiene-judge.output:
+            decision_state: "suppress"
+            decision:
+              state: "suppress"
+              reason: "hard_bounces is greater than zero and hard_bounce_action is suppress"
+            event:
+              event_type: "list_hygiene.transitioned"
+              aggregate_id: "contact:hard-bounce-suppress"
+              from_state: "subscribed"
+              to_state: "suppress"
+              reason: "hard bounce evidence requires suppression"
+              evidence:
+                hard_bounces: 1
+                hard_bounce_action: "suppress"
+            recorded_transition:
+              state: "suppress"
+              event_type: "list_hygiene.transitioned"
+              append_allowed: true
+            append_event_count: 1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: stop_missing_or_stale_evidence
+      runner: judge
+      inputs:
+        data_source_ref: "local-json://list-hygiene-judge-harness"
+        resource: "contacts.list_hygiene"
+        aggregate_id: "contact:stale-evidence-stop"
+        expected_version: 4
+        idempotency_key: "lhj-stale-evidence-stop-v4"
+        engagement_history:
+          opens_count: 0
+          clicks_count: 0
+          hard_bounces: 0
+          recency_days: 200
+        bounce_policy:
+          hard_bounce_action: "suppress"
+          decay_threshold_days: 90
+        current_consent_state:
+          state: "subscribed"
+          active_unsubscribe_marker: false
+          evidence_status: "stale"
+          evidence_version: 3
+      caller:
+        answers:
+          agent_task.list-hygiene-judge.output:
+            decision_state: "human_review"
+            decision:
+              state: "human_review"
+              reason: "engagement evidence is stale for expected_version 4"
+            event:
+              event_type: "list_hygiene.review_required"
+              aggregate_id: "contact:stale-evidence-stop"
+              reason: "stale evidence blocks append"
+              evidence:
+                evidence_status: "stale"
+                evidence_version: 3
+                expected_version: 4
+            recorded_transition:
+              state: "human_review"
+              event_type: "list_hygiene.review_required"
+              append_allowed: false
+            append_event_count: 0
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+runners:
+  decide:
+    type: agent-task
+    agent: operator
+    task: list-hygiene-judge
+    outputs:
+      decision_state: string
+      decision: object
+      event: object
+      recorded_transition: object
+      append_event_count: number
+    artifacts:
+      wrap_as: list_hygiene_judge_packet
+      packet: runx.list_hygiene_judge.v1
+    inputs:
+      aggregate_id:
+        type: string
+        required: true
+        description: "Contact aggregate id."
+      expected_version:
+        type: number
+        required: true
+        description: "Current contact stream version required for compare-and-set append."
+      engagement_history:
+        type: json
+        required: true
+        description: "Evidence read for opens, clicks, hard bounces, and recency."
+      bounce_policy:
+        type: json
+        required: true
+        description: "Policy with hard_bounce_action and decay_threshold_days."
+      current_consent_state:
+        type: json
+        required: true
+        description: "Current consent projection and evidence/version posture."
+
+  judge:
+    default: true
+    type: graph
+    runx:
+      category: ops
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: "Data-store source reference for the contact stream."
+      resource:
+        type: string
+        required: true
+        description: "Contact list-hygiene resource name."
+      aggregate_id:
+        type: string
+        required: true
+        description: "Contact aggregate id."
+      expected_version:
+        type: number
+        required: true
+        description: "Current contact stream version required for compare-and-set append."
+      idempotency_key:
+        type: string
+        required: true
+        description: "Stable key so retries return the recorded transition instead of duplicating it."
+      engagement_history:
+        type: json
+        required: true
+        description: "Evidence read for opens, clicks, hard bounces, and recency."
+      bounce_policy:
+        type: json
+        required: true
+        description: "Policy with hard_bounce_action and decay_threshold_days."
+      current_consent_state:
+        type: json
+        required: true
+        description: "Current consent projection and evidence/version posture."
+    graph:
+      name: list-hygiene-judge
+      steps:
+        - id: read_contact
+          label: read contact projection
+          skill: "registry:runx/data-store@sha-83a2cad9dd67"
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+
+        - id: decide
+          label: decide list hygiene transition
+          skill: .
+          runner: decide
+          inputs:
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            engagement_history: "$input.engagement_history"
+            bounce_policy: "$input.bounce_policy"
+            current_consent_state: "$input.current_consent_state"
+          context:
+            contact_projection: read_contact.data_operation_result.data.projection
+
+        - id: append_suppress
+          label: append suppress transition
+          when:
+            field: decide.list_hygiene_judge_packet.data.decision_state
+            equals: suppress
+          skill: "registry:runx/data-store@sha-83a2cad9dd67"
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.list_hygiene_judge_packet.data.event
+
+        - id: append_re_permission
+          label: append re-permission transition
+          when:
+            field: decide.list_hygiene_judge_packet.data.decision_state
+            equals: re_permission
+          skill: "registry:runx/data-store@sha-83a2cad9dd67"
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.list_hygiene_judge_packet.data.event
+
+        - id: readback
+          label: read recorded contact projection
+          skill: "registry:runx/data-store@sha-83a2cad9dd67"
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"

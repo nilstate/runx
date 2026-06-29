@@ -1,0 +1,29 @@
+name: stop_missing_or_stale_evidence
+kind: skill
+target: ..
+runner: judge
+inputs:
+  data_source_ref: "local-json://list-hygiene-judge-harness"
+  resource: "contacts.list_hygiene"
+  aggregate_id: "contact:stale-evidence-stop"
+  expected_version: 4
+  idempotency_key: "lhj-stale-evidence-stop-v4"
+  engagement_history:
+    opens_count: 0
+    clicks_count: 0
+    hard_bounces: 0
+    recency_days: 200
+  bounce_policy:
+    hard_bounce_action: "suppress"
+    decay_threshold_days: 90
+  current_consent_state:
+    state: "subscribed"
+    active_unsubscribe_marker: false
+    evidence_status: "stale"
+    evidence_version: 3
+expect:
+  status: sealed
+  decision:
+    state: "human_review"
+  append_event_count: 0
+
