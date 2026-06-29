@@ -8,9 +8,11 @@
   "public_url": "https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
   "pr_url": "https://github.com/runxhq/runx/pull/172",
   "source_url": "https://github.com/iwannabefree00/runx/tree/vendor-risk-review/skills/vendor-risk-review",
-  "x_yaml": "skills/vendor-risk-review/X.yaml",
-  "skill_md": "skills/vendor-risk-review/SKILL.md",
-  "verification_json": "skills/vendor-risk-review/action-verification.json",
+  "x_yaml": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/SKILL.md",
+  "verification_json": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/action-verification.json",
+  "evidence_json": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/evidence.json",
+  "report": "https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/report.md",
   "publish_method": "Authenticated hosted publish through the runx public API using the GitHub-linked publish token; hosted registry reran the inline package harness and recorded status passed.",
   "install_command": "runx add iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai",
   "run_command": "runx skill iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai --json",
@@ -78,6 +80,22 @@
     ]
   },
   "observations": [
+    {
+      "name": "runx_version",
+      "detail": "Captured exact runx --version output: runx-cli 0.6.14."
+    },
+    {
+      "name": "x_yaml_raw_artifact",
+      "detail": "The X.yaml artifact is a directly fetchable raw.githubusercontent.com URL for skills/vendor-risk-review/X.yaml; the Frantic redelivery also supplies a commit-pinned x_yaml artifact URL."
+    },
+    {
+      "name": "canonical_version_consistency",
+      "detail": "All submitted delivery artifacts use the canonical published ref iwannabefree00/vendor-risk-review@sha-f73efbe9b874, including public_url, evidence_json, report, action-verification.json, hosted harness, and dogfood receipt."
+    },
+    {
+      "name": "structured_dogfood",
+      "detail": "The evidence_json.dogfood object names package, input, command, receipt_ref, verify_verdict, and all three harness_cases, with receipt_ref runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9 from the Linux GitHub Actions dogfood run."
+    },
     {
       "name": "registry_publication",
       "detail": "Published registry ref iwannabefree00/vendor-risk-review@sha-f73efbe9b874 is live at the submitted runx.ai public URL and installable through runx add."

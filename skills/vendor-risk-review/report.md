@@ -4,6 +4,10 @@
 - Public URL: https://runx.ai/x/iwannabefree00/vendor-risk-review@sha-f73efbe9b874
 - PR: https://github.com/runxhq/runx/pull/172
 - Source package path: `skills/vendor-risk-review/`
+- Raw X.yaml artifact: https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/X.yaml
+- Raw SKILL.md artifact: https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/SKILL.md
+- Raw evidence artifact: https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/evidence.json
+- Raw verification artifact: https://raw.githubusercontent.com/iwannabefree00/runx/vendor-risk-review/skills/vendor-risk-review/action-verification.json
 - CLI used: `runx-cli 0.6.14`
 - Install command: `runx add iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai`
 - Run command: `runx skill iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai --json`
@@ -18,6 +22,8 @@
 
 ## Verification summary
 
+- Canonical published ref for every submitted artifact: `iwannabefree00/vendor-risk-review@sha-f73efbe9b874`
+- Exact `runx --version` output captured for this delivery: `runx-cli 0.6.14`
 - Hosted registry harness: `passed`
 - Hosted harness endpoint: https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review@sha-f73efbe9b874/harness
 - Harness cases:
@@ -34,6 +40,7 @@
 - GitHub Actions run: https://github.com/iwannabefree00/runx/actions/runs/28356975016
 - Action status: `passed`
 - Dogfood receipt: `runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9`
+- Dogfood verify verdict: `passed`
 - `skills/vendor-risk-review/action-verification.json` records the published ref, receipt, case outputs, and runx verification output.
 - Frantic delivery `c7d9683f-e4dc-482e-a214-699317218c4b` passed machine verification `20/20`; the subsequent auto-review fallback reported an advisory review-infrastructure failure before judging the delivery.
 
