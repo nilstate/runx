@@ -2,7 +2,8 @@
   "schema": "runx.reply_router.evidence.v1",
   "package": "reply-router",
   "version": "0.1.0",
-  "runx_cli_version": "0.6.14",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "summary": "reply-router is a runx graph skill for inbound reply handling. It validates sealed original send receipts, grounds unsubscribe suppression in reply text and policy, emits a CAS append_event packet for recipient suppression, routes ordinary replies to a separate governed send-as lane, and blocks unsealed or ambiguous cases for human review without sending.",
   "artifact_summary": "reply-router is a runx graph skill that validates a sealed original_send_receipt, classifies inbound reply intent, appends a recipient-keyed suppression event for clear unsubscribe replies, emits a governed routing decision for normal replies, and blocks ambiguous or unsealed cases to a human lane without sending.",
   "public_star": {
     "repo": "runxhq/runx",
@@ -34,6 +35,50 @@
       "id": "local_windows_harness",
       "status": "blocked_by_host",
       "summary": "runx 0.6.14 on this Windows host fails signed receipt-store writes with os error 87 for both this package and the official examples/hello-world harness. This is a local host limitation; the graph profile is kept for hosted/Linux harness replay."
+    }
+  ],
+  "observations": [
+    {
+      "id": "runx_version",
+      "kind": "command",
+      "status": "success",
+      "summary": "npx --yes @runxhq/cli@latest --version returned runx-cli 0.6.14."
+    },
+    {
+      "id": "x_yaml_declares_graph",
+      "kind": "source_review",
+      "status": "success",
+      "summary": "X.yaml declares reply-router version 0.1.0 with default graph runner route and required harness cases."
+    },
+    {
+      "id": "sealed_unsubscribe_classification",
+      "kind": "fixture_run",
+      "status": "success",
+      "summary": "The sealed unsubscribe fixture classifies as unsubscribe with route=suppress and matched text evidence."
+    },
+    {
+      "id": "append_event_contract",
+      "kind": "fixture_run",
+      "status": "success",
+      "summary": "The suppression branch emits registry:runx/data-store@0.1.2 append_event with expected_version and deterministic idempotency key."
+    },
+    {
+      "id": "unsealed_stop",
+      "kind": "fixture_run",
+      "status": "success",
+      "summary": "The unsealed fixture classifies as needs_agent and does not emit suppression or routing output."
+    },
+    {
+      "id": "no_send_action",
+      "kind": "source_review",
+      "status": "success",
+      "summary": "No runner sends a message; route output names a later governed send-as lane only."
+    },
+    {
+      "id": "windows_receipt_store_limitation",
+      "kind": "host_limitation",
+      "status": "blocked",
+      "summary": "Signed receipt writing on this Windows host fails with os error 87 for this package and the official hello-world harness."
     }
   ],
   "harness_cases": [
