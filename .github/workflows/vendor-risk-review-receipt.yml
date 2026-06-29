@@ -1,0 +1,69 @@
+name: vendor-risk-review receipt
+
+on:
+  push:
+    branches:
+      - vendor-risk-review
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: vendor-risk-review
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install runx
+        run: |
+          curl -fsSL https://runx.ai/install | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Verify version
+        run: runx --version | tee runx-version.txt
+      - name: Harness
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-demo-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          mkdir -p receipts
+          runx harness skills/vendor-risk-review --receipt-dir receipts --json | tee harness.json
+      - name: Dogfood
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-demo-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          mkdir -p receipts
+          runx skill skills/vendor-risk-review --json --receipt-dir receipts \
+            --input contract_text="Acme Analytics will process only pseudonymized customer data under SOC2 controls. Liability is capped at USD 50000. Termination for convenience is available on 30 days notice. Support includes business-hours response but does not include the requested uptime credit language." \
+            --input-json vendor_context='{"vendor_ref":"vendor:acme-analytics","industry":"analytics","history":{"current_version":2}}' \
+            --input-json policy='{"required_sla_terms":["uptime credit","incident response within 24 hours"],"max_liability":100000,"data_handling_floor":"SOC2","termination_window":"30 days","policy_id":"vrp-2026-06","created_at":"2026-06-29T05:00:00Z"}' \
+            --input data_source_ref="local://runx/vendor-risk-review" \
+            --input store_id="vendor-risk-review-fixture" | tee dogfood.json
+          DOGFOOD_RECEIPT="$(jq -r '.receipt.id // .receipt_id // .id // empty' dogfood.json)"
+          if [ -z "$DOGFOOD_RECEIPT" ]; then
+            DOGFOOD_RECEIPT="$(find receipts -maxdepth 1 -name 'sha256:*.json' -printf '%f\n' | sed 's/\.json$//' | sort | tail -n 1)"
+          fi
+          test -n "$DOGFOOD_RECEIPT"
+          runx verify --receipt "receipts/${DOGFOOD_RECEIPT}.json" --json | tee verify.json
+          jq -n \
+            --arg runx_version "$(cat runx-version.txt)" \
+            --arg receipt_ref "runx:receipt:${DOGFOOD_RECEIPT}" \
+            --slurpfile harness harness.json \
+            --slurpfile dogfood dogfood.json \
+            --slurpfile verify verify.json \
+            '{status:"passed", runx_version:$runx_version, receipt_ref:$receipt_ref, harness:$harness[0], dogfood:$dogfood[0], verify:$verify[0]}' \
+            > skills/vendor-risk-review/action-verification.json
+      - name: Commit verification
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add skills/vendor-risk-review/action-verification.json
+          git commit -m "Add vendor risk review action verification [skip ci]" || exit 0
+          git push origin HEAD:vendor-risk-review
