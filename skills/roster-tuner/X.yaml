@@ -134,12 +134,13 @@ runners:
       steps:
         - id: read
           skill: ../data-store
-          runner: read_projection
+          runner: read_events
           inputs:
             data_source_ref: "$input.data_source_ref"
             store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
+            limit: 500
         - id: fold
           skill: ./graph/fold
           inputs:
@@ -147,7 +148,7 @@ runners:
             roster: "$input.roster"
             agency_event_schema_version: "$input.agency_event_schema_version"
           context:
-            projection: read.data_operation_result.data
+            events: read.data_operation_result.data.events
         - id: grade
           skill: ./graph/grade
           inputs:
@@ -164,7 +165,7 @@ runners:
             performance_norms: "$input.performance_norms"
           context:
             grade: grade.grade_result.data
-            projection: read.data_operation_result.data
+            events: read.data_operation_result.data.events
         - id: append
           skill: ../data-store
           runner: append_event
