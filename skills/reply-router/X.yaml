@@ -1,0 +1,211 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      inputs:
+        inbound_reply:
+          content: "Please unsubscribe me and stop sending these updates."
+          received_from: "recipient:ana@example.test"
+          received_at: "2026-06-29T05:55:00Z"
+        original_send_receipt:
+          sealed: true
+          receipt_id: "runx:receipt:send_001"
+          checksum: "sha256:9c6c5cb5d9f3b932e7b70cdd3d93f5a87a3f6381a8ad69f512a3ad9817dd3a9f"
+          principal:
+            type: "account"
+            ref: "account:growth-bot"
+          send_plan:
+            channel: "email"
+            send_class: "outreach"
+            audience:
+              type: "recipient"
+              ref: "recipient:ana@example.test"
+        suppression_policy:
+          unsubscribe_signals:
+            - "unsubscribe"
+            - "stop sending"
+            - "do not contact"
+          confidence_threshold: 0.9
+        store_projection:
+          store_id: "runx.reply-router.suppression.v1"
+          aggregate_id: "recipient:ana@example.test"
+          version: 7
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: graph_closed
+
+    - name: stop_ambiguous_or_unsealed
+      inputs:
+        inbound_reply:
+          content: "Maybe later. I am not sure what this is about."
+          received_from: "recipient:ben@example.test"
+          received_at: "2026-06-29T05:58:00Z"
+        original_send_receipt:
+          sealed: false
+          receipt_id: "runx:receipt:send_unsealed"
+          checksum: ""
+          principal:
+            type: "account"
+            ref: "account:growth-bot"
+          send_plan:
+            channel: "email"
+            send_class: "outreach"
+            audience:
+              type: "recipient"
+              ref: "recipient:ben@example.test"
+        suppression_policy:
+          unsubscribe_signals:
+            - "unsubscribe"
+            - "stop"
+            - "remove me"
+          confidence_threshold: 0.9
+        store_projection:
+          store_id: "runx.reply-router.suppression.v1"
+          aggregate_id: "recipient:ben@example.test"
+          version: 2
+      expect:
+        status: needs_agent
+
+runners:
+  route:
+    default: true
+    type: graph
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: "Inbound reply object with content, received_from, and received_at."
+      original_send_receipt:
+        type: json
+        required: true
+        description: "Sealed original send receipt evidence with send_plan, principal, receipt_id, and checksum."
+      suppression_policy:
+        type: json
+        required: true
+        description: "Unsubscribe signal list and confidence threshold."
+      store_projection:
+        type: json
+        required: false
+        description: "Current data-store projection used for CAS expected_version."
+    graph:
+      name: reply-router
+      steps:
+        - id: classify
+          label: classify reply and validate sealed send receipt
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            original_send_receipt: "$input.original_send_receipt"
+            suppression_policy: "$input.suppression_policy"
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - ./classify.mjs
+          artifacts:
+            named_emits:
+              classification_packet: decision
+            packets:
+              classification_packet: runx.reply.classification.v1
+
+        - id: append_suppression
+          label: append recipient suppression event
+          when:
+            field: classify.classification_packet.data.route
+            equals: suppress
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            original_send_receipt: "$input.original_send_receipt"
+            store_projection: "$input.store_projection"
+          context:
+            classification: classify.classification_packet.data.classification
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - ./append_event.mjs
+          artifacts:
+            named_emits:
+              suppression_packet: suppression_result
+            packets:
+              suppression_packet: runx.reply.suppression_event.v1
+
+        - id: emit_routing
+          label: emit governed reply routing decision
+          when:
+            field: classify.classification_packet.data.route
+            equals: route
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            original_send_receipt: "$input.original_send_receipt"
+          context:
+            classification: classify.classification_packet.data.classification
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - ./emit_route.mjs
+          artifacts:
+            named_emits:
+              routing_packet: routing_decision
+            packets:
+              routing_packet: runx.reply.routing.v1
+
+        - id: human_lane
+          label: block ambiguous or unsealed reply for agent review
+          when:
+            field: classify.classification_packet.data.route
+            equals: needs_agent
+          context:
+            classification: classify.classification_packet.data.classification
+            reason: classify.classification_packet.data.reason
+          run:
+            type: agent-task
+            agent: compliance
+            task: reply-router-review
+            outputs:
+              disposition: string
+              reviewed_classification: object
+              next_action: object
+          instructions: >
+            Review only the supplied classification and reason. Do not suppress
+            or route unless the missing evidence is supplied by the caller.
+
+  dogfood:
+    default: false
+    type: cli-tool
+    command: node
+    args:
+      - ./dogfood.mjs
+    timeout_seconds: 10
+    sandbox:
+      profile: readonly
+      cwd_policy: skill-directory
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: "Inbound reply object with content, received_from, and received_at."
+      original_send_receipt:
+        type: json
+        required: true
+        description: "Sealed original send receipt evidence."
+      suppression_policy:
+        type: json
+        required: true
+        description: "Unsubscribe signal list and confidence threshold."
+      store_projection:
+        type: json
+        required: false
+        description: "Current data-store projection used for CAS expected_version."

@@ -1,0 +1,54 @@
+{
+  "schema": "runx.reply_router.evidence.v1",
+  "package": "reply-router",
+  "version": "0.1.0",
+  "runx_cli_version": "0.6.14",
+  "artifact_summary": "reply-router is a runx graph skill that validates a sealed original_send_receipt, classifies inbound reply intent, appends a recipient-keyed suppression event for clear unsubscribe replies, emits a governed routing decision for normal replies, and blocks ambiguous or unsealed cases to a human lane without sending.",
+  "public_star": {
+    "repo": "runxhq/runx",
+    "verified_by": "GitHub API user/starred/runxhq/runx",
+    "result": "204 No Content"
+  },
+  "items": [
+    {
+      "id": "package_files",
+      "status": "present",
+      "summary": "SKILL.md, X.yaml, classify.mjs, append_event.mjs, emit_route.mjs, dogfood.mjs, and two JSON fixtures are included under skills/reply-router."
+    },
+    {
+      "id": "sealed_unsubscribe_suppression",
+      "status": "manual_cli_passed",
+      "summary": "classify.mjs returns route=suppress, classification.type=unsubscribe, confidence=0.99, and matched unsubscribe/stop-sending evidence for the sealed fixture."
+    },
+    {
+      "id": "append_event_cas",
+      "status": "manual_cli_passed",
+      "summary": "append_event.mjs emits registry:runx/data-store@0.1.2 append_event with store_id runx.reply-router.suppression.v1, aggregate_id recipient:ana@example.test, expected_version 7, before_version 7, after_version 8, and a deterministic idempotency key."
+    },
+    {
+      "id": "stop_ambiguous_or_unsealed",
+      "status": "manual_cli_passed",
+      "summary": "classify.mjs returns route=needs_agent and no suppression/routing output when original_send_receipt is unsealed."
+    },
+    {
+      "id": "local_windows_harness",
+      "status": "blocked_by_host",
+      "summary": "runx 0.6.14 on this Windows host fails signed receipt-store writes with os error 87 for both this package and the official examples/hello-world harness. This is a local host limitation; the graph profile is kept for hosted/Linux harness replay."
+    }
+  ],
+  "harness_cases": [
+    "sealed_unsubscribe_suppression",
+    "stop_ambiguous_or_unsealed"
+  ],
+  "dogfood": {
+    "runner": "dogfood",
+    "purpose": "Auxiliary cli-tool runner for deterministic local evidence when graph receipt sealing is unavailable on Windows.",
+    "receipt_ref": "not_recorded_local_windows_receipt_store_error_87"
+  },
+  "verification": {
+    "default_runner": "route",
+    "default_runner_type": "graph",
+    "hosted_expected": "Run runx harness ./skills/reply-router --json on a Linux host with receipt signing variables.",
+    "local_limitation": "Windows receipt store fails before a receipt id is written."
+  }
+}
