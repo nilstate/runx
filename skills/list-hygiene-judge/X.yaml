@@ -1,0 +1,151 @@
+skill: list-hygiene-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_decay_re_permission
+      runner: default
+      inputs:
+        data_source_ref: local://runx/list-hygiene/harness
+        resource: contact_consent_events
+        aggregate_id: contact:decayed-001
+        expected_version: 3
+        idempotency_key: contact:decayed-001:list-hygiene:re_permission:v1
+        engagement_history:
+          opens: 0
+          clicks: 0
+          hard_bounces: 0
+          recency_days: 120
+        bounce_policy:
+          hard_bounce_action: suppress
+          decay_threshold_days: 90
+        current_consent_state:
+          state: active
+          version: 3
+          unsubscribe_marker: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: sealed_hard_bounce_suppress
+      runner: default
+      inputs:
+        data_source_ref: local://runx/list-hygiene/harness
+        resource: contact_consent_events
+        aggregate_id: contact:bounced-001
+        expected_version: 1
+        idempotency_key: contact:bounced-001:list-hygiene:suppress:v1
+        engagement_history:
+          opens: 1
+          clicks: 0
+          hard_bounces: 3
+          recency_days: 20
+        bounce_policy:
+          hard_bounce_action: suppress
+          decay_threshold_days: 90
+        current_consent_state:
+          state: active
+          version: 1
+          unsubscribe_marker: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: stop_missing_or_stale_evidence
+      runner: default
+      inputs:
+        data_source_ref: local://runx/list-hygiene/harness
+        resource: contact_consent_events
+        aggregate_id: contact:stale-001
+        expected_version: 2
+        idempotency_key: contact:stale-001:list-hygiene:check:v1
+        engagement_history:
+          opens: 0
+          clicks: 0
+          hard_bounces: 0
+          recency_days: 150
+        bounce_policy:
+          hard_bounce_action: suppress
+          decay_threshold_days: 90
+        current_consent_state:
+          state: active
+          version: 4
+          unsubscribe_marker: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - outbound_send
+    - operational_proposal
+    - mint_grant
+    - invented_contact_metrics
+
+emits:
+  - name: hygiene_decision
+    packet: runx.list_hygiene.decision.v1
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Stable logical ref bound by the operator to the contact data adapter.
+      resource:
+        type: string
+        required: true
+        description: Declared event resource or stream family for contact consent transitions.
+      aggregate_id:
+        type: string
+        required: true
+        description: Contact stream partition key.
+      expected_version:
+        type: number
+        required: true
+        description: Current stream version required before append.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key scoped to this contact and decision cycle.
+      engagement_history:
+        type: json
+        required: true
+        description: Object with opens (int), clicks (int), hard_bounces (int), and recency_days (int).
+      bounce_policy:
+        type: json
+        required: true
+        description: Object with hard_bounce_action (suppress) and decay_threshold_days (int).
+      current_consent_state:
+        type: json
+        required: true
+        description: Object with state (active|pending|unsubscribed|unknown), version (int), and unsubscribe_marker (bool).
