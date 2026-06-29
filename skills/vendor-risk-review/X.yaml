@@ -1,0 +1,150 @@
+skill: vendor-risk-review
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - approve_unbounded_liability
+    - approve_below_policy_data_handling
+    - invent_policy_requirement
+    - invent_vendor_red_flag
+    - stakeholder_notify
+    - receipt_ledger_state_read
+
+harness:
+  cases:
+    - name: approve-with-conditions-sla-gap
+      inputs:
+        contract_text: |
+          Acme Analytics will process only pseudonymized customer data under SOC2 controls.
+          Liability is capped at USD 50000. Termination for convenience is available on 30 days notice.
+          Support includes business-hours response but does not include the requested uptime credit language.
+        vendor_context:
+          vendor_ref: vendor:acme-analytics
+          industry: analytics
+          history:
+            prior_decision: approved
+            current_version: 2
+            notes:
+              - "Prior low-risk analytics vendor record exists."
+        policy:
+          required_sla_terms:
+            - uptime credit
+            - incident response within 24 hours
+          max_liability: 100000
+          data_handling_floor: SOC2
+          termination_window: "30 days"
+          policy_id: vrp-2026-06
+          created_at: "2026-06-29T05:00:00Z"
+        data_source_ref: local://runx/vendor-risk-review
+        store_id: vendor-risk-review-fixture
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: sealed-rejection-unbounded-liability
+      inputs:
+        contract_text: |
+          RiskBox may process customer data under SOC2 controls. The customer accepts unlimited liability
+          for all indirect losses and waives any liability cap. Termination requires 30 days notice.
+        vendor_context:
+          vendor_ref: vendor:riskbox
+          industry: procurement
+          history:
+            prior_decision: needs_review
+            current_version: 4
+        policy:
+          required_sla_terms:
+            - incident response within 24 hours
+          max_liability: 75000
+          data_handling_floor: SOC2
+          termination_window: "30 days"
+          policy_id: vrp-2026-06
+          created_at: "2026-06-29T05:00:00Z"
+        data_source_ref: local://runx/vendor-risk-review
+        store_id: vendor-risk-review-fixture
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: stop-missing-policy-no-write
+      inputs:
+        contract_text: |
+          Vendor terms mention standard support and a liability cap, but the governing policy packet is incomplete.
+        vendor_context:
+          vendor_ref: ""
+          industry: hr
+          history:
+            current_version: 0
+        policy:
+          required_sla_terms:
+            - uptime credit
+          max_liability: 50000
+          data_handling_floor: ""
+          termination_window: "30 days"
+          policy_id: ""
+          created_at: "2026-06-29T05:00:00Z"
+        data_source_ref: local://runx/vendor-risk-review
+        store_id: vendor-risk-review-fixture
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      contract_text:
+        type: string
+        required: true
+        description: "Vendor contract text to review for liability, SLA, termination, and data-handling terms."
+      vendor_context:
+        type: json
+        required: true
+        description: "Object containing vendor_ref, history, and industry."
+      policy:
+        type: json
+        required: true
+        description: "Policy object with required_sla_terms, max_liability, data_handling_floor, termination_window, policy_id, and created_at."
+      data_source_ref:
+        type: string
+        required: true
+        description: "Logical binding for registry:runx/data-store@0.1.2 read_projection and append_event evidence."
+      store_id:
+        type: string
+        required: true
+        description: "Pinned store id for deterministic harness and receipt evidence."
+    outputs:
+      decision: object
+      risk_record: object
+      data_store: object
+      escalation: object
+      evidence: object
+    artifacts:
+      wrap_as: vendor_risk_review
+      packet: runx.vendor_risk_review.v1
