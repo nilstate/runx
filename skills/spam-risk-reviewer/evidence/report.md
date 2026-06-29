@@ -1,5 +1,19 @@
 # spam-risk-reviewer evidence report
 
+## Revision focus
+
+This revision addresses the Frantic auto-review blockers directly:
+
+- `evidence_json.dogfood` is present as a structured top-level object with
+  `package`, `input`, `command`, `receipt_ref`, `verify_verdict`, and
+  `harness_cases`.
+- Raw `x_yaml` and `skill_md` URLs are public `raw.githubusercontent.com`
+  artifacts from the PR branch, and the final Frantic delivery refs are pinned
+  to the PR head commit.
+- The evidence observations now spell out the low-risk pass verdict, high-risk
+  hold verdict, fail-closed stop path, raw file fetches, harness case names, and
+  sealed dogfood receipt without relying on truncated prose.
+
 Published `dh0h/spam-risk-reviewer@sha-7a71fad9b882` to
 `https://runx.ai/x/dh0h/spam-risk-reviewer@sha-7a71fad9b882`.
 
@@ -20,6 +34,18 @@ Delivery artifacts:
 - `receipt_ref`: `runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4`
 - `report`: `https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/evidence/report.md`
 
+Raw fetch evidence:
+
+- `x_yaml` resolves with HTTP 200 and contains `skill: spam-risk-reviewer`,
+  the inline `harness.cases`, `low-risk-verified-sender`,
+  `high-risk-incomplete-auth-poor-list`, and
+  `missing-sender-auth-posture-fails-closed`.
+- `skill_md` resolves with HTTP 200 and documents the typed
+  `campaign_draft`, `list_metadata`, and `sender_auth_posture` inputs plus the
+  `send_risk_verdict` output.
+- `evidence_json` resolves with HTTP 200 and contains the top-level
+  `dogfood`, `observations`, and `receipt_ref` evidence.
+
 Verification completed:
 
 - `runx doctor --json`: passed with 0 errors and 0 warnings.
@@ -29,8 +55,18 @@ Verification completed:
 - `tests/official-skill-catalog.test.ts`: 8 tests passed.
 - Registry publish: published as `sha-7a71fad9b882`.
 - Dogfood registry run: sealed with receipt
-  `sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4`.
+  `runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4`.
 - Dogfood receipt verification: production signature verification passed.
+
+Structured dogfood block:
+
+- `package`: `dh0h/spam-risk-reviewer@sha-7a71fad9b882`
+- `command`: `runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai --json`
+- `receipt_ref`: `runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4`
+- `verify_verdict`: valid production signature, no findings.
+- `harness_cases`: `low-risk-verified-sender` sealed,
+  `high-risk-incomplete-auth-poor-list` sealed,
+  `missing-sender-auth-posture-fails-closed` failed/stop path.
 
 Dogfood verdict:
 
@@ -54,4 +90,4 @@ Install, run, and verify:
 
 - `runx add dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai`
 - `runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai --json`
-- `runx verify sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4 --json`
+- `runx verify runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4 --json`

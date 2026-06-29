@@ -1,6 +1,6 @@
 {
   "schema": "runx.spam_risk_reviewer.verification.v1",
-  "generated_at": "2026-06-26T01:56:45Z",
+  "generated_at": "2026-06-29T04:17:33Z",
   "status": "passed",
   "checks": [
     {
@@ -28,6 +28,22 @@
       "test_count": 8
     },
     {
+      "name": "raw X.yaml fetch",
+      "command": "curl https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/X.yaml",
+      "status": "passed",
+      "http_status": 200,
+      "bytes": 3857,
+      "notes": "Raw PR file contains skill: spam-risk-reviewer and the required inline harness cases."
+    },
+    {
+      "name": "raw SKILL.md fetch",
+      "command": "curl https://raw.githubusercontent.com/dh0h/runx/codex/spam-risk-reviewer/skills/spam-risk-reviewer/SKILL.md",
+      "status": "passed",
+      "http_status": 200,
+      "bytes": 6191,
+      "notes": "Raw PR file contains the typed inputs and send_risk_verdict output description."
+    },
+    {
       "name": "registry publish",
       "command": "runx registry publish ./skills/spam-risk-reviewer/SKILL.md --registry https://api.runx.ai --json",
       "status": "passed",
@@ -38,14 +54,21 @@
       "name": "dogfood registry run",
       "command": "runx skill dh0h/spam-risk-reviewer@sha-7a71fad9b882 --registry https://api.runx.ai ... --json",
       "status": "passed",
-      "receipt_ref": "sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4"
+      "receipt_ref": "runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4"
     },
     {
       "name": "dogfood receipt verify",
-      "command": "runx verify sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4 --receipt-dir <dogfood-receipts> --json",
+      "command": "runx verify runx:receipt:sha256:4bba58318e0ded50fa4c950bf560c6a93edd4fb2fc6cb6b0e4c1d15a181432a4 --receipt-dir <dogfood-receipts> --json",
       "status": "passed",
       "valid": true,
       "signature_mode": "production"
+    },
+    {
+      "name": "frantic machine verification",
+      "command": "Frantic verifier run for claim a49fe1de-5c8f-46f6-961b-477bea0c05ed",
+      "status": "passed",
+      "summary": "Machine checks passed: 20/20. Review pending with human or llm.",
+      "notes": "The later revision evidence makes the dogfood block, raw X.yaml fetch, and full observations explicit for the auto-review layer."
     }
   ],
   "policy_notes": {
