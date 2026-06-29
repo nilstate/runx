@@ -144,16 +144,5 @@
                     "case":  "sealed_decay_re_permission",
                     "proves":  "consent-state decision for a stale contact, data-store read from the packaged local fixture adapter, and exactly one safe list_hygiene.transitioned append event",
                     "status":  "passed"
-                },
-    "artifact_refs":  {
-                          "public_url":  "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1",
-                          "source_url":  "https://github.com/rohitmulani63-ops/runx/tree/9a84e1df99480a884b6881dd49c1ade4b1903d80/skills/list-hygiene-judge",
-                          "pr_url":  "https://github.com/runxhq/runx/pull/177",
-                          "x_yaml":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/9a84e1df99480a884b6881dd49c1ade4b1903d80/skills/list-hygiene-judge/X.yaml",
-                          "skill_md":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/9a84e1df99480a884b6881dd49c1ade4b1903d80/skills/list-hygiene-judge/SKILL.md",
-                          "evidence_json":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/9a84e1df99480a884b6881dd49c1ade4b1903d80/skills/list-hygiene-judge/evidence/evidence.json",
-                          "verification_json":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/9a84e1df99480a884b6881dd49c1ade4b1903d80/skills/list-hygiene-judge/evidence/verification.json",
-                          "receipt_ref":  "runx:receipt:sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95",
-                          "report":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/9a84e1df99480a884b6881dd49c1ade4b1903d80/skills/list-hygiene-judge/evidence/report.md"
-                      }
+                }
 }
