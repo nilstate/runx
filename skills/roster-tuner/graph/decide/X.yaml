@@ -1,0 +1,38 @@
+skill: roster-tuner-decide
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/roster-tuner
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      named_emits:
+        roster_decision: runx.roster.tuning.v1
+    inputs:
+      grade:
+        type: json
+        required: false
+        description: The grade result from the grade step.
+      projection:
+        type: json
+        required: false
+        description: The case projection from data-store read_projection.
+      roster:
+        type: json
+        required: true
+        description: "Current roster as [{member, skill, turn_count}]."
+      performance_norms:
+        type: json
+        required: true
+        description: "{refusal_threshold, completion_time_threshold, min_roster_size}."
