@@ -2,7 +2,7 @@
   "status": "passed",
   "runx_version": "runx-cli 0.6.14",
   "published_ref": "iwannabefree00/reply-router@sha-243e8add9e86",
-  "receipt_ref": "runx:receipt:sha256:3a46a1839a7a2cf009963a7e97cd980c88cb504f3a8f553a2ee1a61c04ef602b",
+  "receipt_ref": "runx:receipt:sha256:aaf978a77b83e7ae4a11acd5cc4db12c75243e0f40e81e156758f2ab91fa7e7c",
   "harness": {
     "status": "passed",
     "case_count": 2,
@@ -13,8 +13,8 @@
       "stop_ambiguous_or_unsealed"
     ],
     "receipt_ids": [
-      "sha256:4549a1e4aa7172b8c3b68bcce1890e59beeaba0253443d452adc8f57a062702a",
-      "sha256:b5d58fe71e5b54679f296786d71662344a628bcbba7d2eec1e0db4d78319c2b2"
+      "sha256:42d98459de7d4422ba70265dd8bf3924a7ac6e8057866e8b64c9e284d4a090fa",
+      "sha256:8846777a90e0745f0abd347f11b380f1a1dcc1dd4f76b82cd145a66666fa7d0a"
     ],
     "graph_case_count": 0
   },
@@ -43,7 +43,7 @@
       "receipt_metadata": {
         "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/reply-router/sha-243e8add9e86/SKILL.md",
         "digest": "sha256:ad41bc6109a4c27e1e5e60c2e5ef1eb36f470d6147675a5e19d27f00a360286b",
-        "install_count": 2,
+        "install_count": 3,
         "package_digest": "febe6cf94f8d03894e6c9aaa2a6acbd081591adf799bfedcbe06d22bbe32f0dd",
         "profile_digest": "sha256:9a5cb355d67772668e632c616d2184c99d7539dbd674cda88ae26417e50cd56e",
         "publisher": {
@@ -63,7 +63,7 @@
   },
   "dogfood": {
     "closure": {
-      "closed_at": "2026-06-29T21:39:08.379Z",
+      "closed_at": "2026-06-29T21:49:40.816Z",
       "disposition": "closed",
       "reason_code": "process_closed",
       "summary": "cli-tool classify completed"
@@ -372,7 +372,7 @@
         {
           "artifact_refs": [],
           "closure": {
-            "closed_at": "2026-06-29T21:39:08.379Z",
+            "closed_at": "2026-06-29T21:49:40.816Z",
             "disposition": "closed",
             "reason_code": "process_exit",
             "summary": "cli-tool exited successfully"
@@ -427,7 +427,7 @@
         "terms": []
       },
       "canonicalization": "runx.receipt.c14n.v1",
-      "created_at": "2026-06-29T21:39:08.379Z",
+      "created_at": "2026-06-29T21:49:40.816Z",
       "decisions": [
         {
           "artifact_refs": [],
@@ -455,8 +455,8 @@
           "selected_harness_ref": null
         }
       ],
-      "digest": "sha256:93153d6c0ef9f1ba6921d37d9c4363cb18a6ef44ca0c0ea37e79305afd56859a",
-      "id": "sha256:3a46a1839a7a2cf009963a7e97cd980c88cb504f3a8f553a2ee1a61c04ef602b",
+      "digest": "sha256:2d39a71915d2ee8590917d77deff7eb5848c6d365dd0587ce40adf480c235acd",
+      "id": "sha256:aaf978a77b83e7ae4a11acd5cc4db12c75243e0f40e81e156758f2ab91fa7e7c",
       "idempotency": {
         "content_hash": "sha256:run_classify_a8e0e498bce3-classify-content",
         "intent_key": "sha256:run_classify_a8e0e498bce3-classify-intent",
@@ -473,7 +473,7 @@
       },
       "schema": "runx.receipt.v1",
       "seal": {
-        "closed_at": "2026-06-29T21:39:08.379Z",
+        "closed_at": "2026-06-29T21:49:40.816Z",
         "criteria": [
           {
             "criterion_id": "process_exit",
@@ -484,14 +484,14 @@
           }
         ],
         "disposition": "closed",
-        "last_observed_at": "2026-06-29T21:39:08.379Z",
+        "last_observed_at": "2026-06-29T21:49:40.816Z",
         "reason_code": "process_closed",
         "summary": "cli-tool classify completed"
       },
       "signals": [],
       "signature": {
         "alg": "Ed25519",
-        "value": "base64:uAUp7ABRkFPh3gBpNvvRsxpR9dee2ESsefSws9wAlrhl7m_rXWkrqjTseTGcRoHWKvsg1M8L8SEqauzCU627DQ"
+        "value": "base64:Do17A_eoE7CwJ6kNndRY11efLDQrPALecDaKfVrrC_2aXNLnwwrnVV8NGrypZIUi_kDJuQDh3NzV1vMNC75jDA"
       },
       "subject": {
         "commitments": [],
@@ -502,7 +502,7 @@
         }
       }
     },
-    "receipt_id": "sha256:3a46a1839a7a2cf009963a7e97cd980c88cb504f3a8f553a2ee1a61c04ef602b",
+    "receipt_id": "sha256:aaf978a77b83e7ae4a11acd5cc4db12c75243e0f40e81e156758f2ab91fa7e7c",
     "registry_provenance": {
       "digest": "sha256:ad41bc6109a4c27e1e5e60c2e5ef1eb36f470d6147675a5e19d27f00a360286b",
       "profile_digest": "sha256:9a5cb355d67772668e632c616d2184c99d7539dbd674cda88ae26417e50cd56e",
