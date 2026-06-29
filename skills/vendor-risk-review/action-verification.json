@@ -1,8 +1,8 @@
 {
   "status": "passed",
   "runx_version": "runx-cli 0.6.14",
-  "published_ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
-  "receipt_ref": "runx:receipt:sha256:3a3df82c87ceaf1c911ebc35840a000b38ec93d09ecaf47fc82c5b0628de95b0",
+  "published_ref": "iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
+  "receipt_ref": "runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
   "harness": {
     "status": "passed",
     "case_count": 3,
@@ -14,9 +14,9 @@
       "stop-missing-policy-no-write"
     ],
     "receipt_ids": [
-      "sha256:77f68084b8c9d1b9371330eea840494fd3b0fa80bf76b5e43ffebd87a3ff713a",
-      "sha256:fe8f2a3247c089e61f144a2bce712e9db6812ff4bc244598ac8a717e8de4a1f1",
-      "sha256:4537665319ec36ddbc448be80b55435e623a5eadba64828cd6b722491644728a"
+      "sha256:1fa0c44a3b4a4cd28e966129d38f06c7648288c0a3262227c8744c8b23a33a58",
+      "sha256:541c15fd3a02d56a622613233a35c567fb3d34ed9824f1514fc32cd830feaa81",
+      "sha256:1f1a6ab3b1d8a2db5d8a50afc58fbd5f39a0cb02c8d4319c61592cb50e9cd674"
     ],
     "graph_case_count": 0
   },
@@ -25,46 +25,47 @@
     "registry": {
       "action": "install",
       "source": "remote",
-      "ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
+      "ref": "iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
       "install": {
         "status": "installed",
-        "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/vendor-risk-review/sha-cc5115a1c103/SKILL.md",
+        "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/vendor-risk-review/sha-f73efbe9b874/SKILL.md",
         "skill_name": "vendor-risk-review",
         "source": "runx-registry",
         "source_label": "runx registry",
         "skill_id": "iwannabefree00/vendor-risk-review",
-        "version": "sha-cc5115a1c103",
-        "digest": "sha256:fc143a0eab60db135cf9abd20ba6746912fb6dccd96eac6f2253e17439998aed",
-        "profile_digest": "sha256:e612778fe1cedc5a217b5eccb9f21a1a98ed6f1972d13209f85727db30cd24ca",
-        "profile_state_path": "/home/runner/work/runx/runx/skills/iwannabefree00/vendor-risk-review/sha-cc5115a1c103/.runx/profile.json",
+        "version": "sha-f73efbe9b874",
+        "digest": "sha256:04a4606343d8bcfb6bd4150438ca9d1f2b3fd8ef3958409093b704563e687c4d",
+        "profile_digest": "sha256:6bece65c388c253a339ad990675731955082ed794136fa7998570f8b18ce5bf1",
+        "profile_state_path": "/home/runner/work/runx/runx/skills/iwannabefree00/vendor-risk-review/sha-f73efbe9b874/.runx/profile.json",
         "runner_names": [
           "decide"
         ],
         "trust_tier": "community"
       },
       "receipt_metadata": {
-        "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/vendor-risk-review/sha-cc5115a1c103/SKILL.md",
-        "digest": "sha256:fc143a0eab60db135cf9abd20ba6746912fb6dccd96eac6f2253e17439998aed",
-        "install_count": 2,
-        "package_digest": "c26cae324a1fd47637b69f8d47e5f498644691e360dc3e0581cb0230ca523406",
-        "profile_digest": "sha256:e612778fe1cedc5a217b5eccb9f21a1a98ed6f1972d13209f85727db30cd24ca",
+        "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/vendor-risk-review/sha-f73efbe9b874/SKILL.md",
+        "digest": "sha256:04a4606343d8bcfb6bd4150438ca9d1f2b3fd8ef3958409093b704563e687c4d",
+        "install_count": 4,
+        "package_digest": "499e980282fd2f7720bd2f22981861ad839dc85ee6be0cebf2bdadd48c53109e",
+        "profile_digest": "sha256:6bece65c388c253a339ad990675731955082ed794136fa7998570f8b18ce5bf1",
         "publisher": {
+          "display_name": "iwannabefree00",
           "handle": "iwannabefree00",
-          "id": "iwannabefree00",
-          "kind": "publisher"
+          "id": "user_b7db2f36021367136b434108",
+          "kind": "user"
         },
-        "ref": "iwannabefree00/vendor-risk-review@sha-cc5115a1c103",
+        "ref": "iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
         "skill_id": "iwannabefree00/vendor-risk-review",
         "source_label": "runx registry",
         "status": "installed",
         "trust_tier": "community",
-        "version": "sha-cc5115a1c103"
+        "version": "sha-f73efbe9b874"
       }
     }
   },
   "dogfood": {
     "closure": {
-      "closed_at": "2026-06-29T07:23:51.605Z",
+      "closed_at": "2026-06-29T07:53:10.078Z",
       "disposition": "closed",
       "reason_code": "process_closed",
       "summary": "cli-tool decide completed"
@@ -457,7 +458,7 @@
         {
           "artifact_refs": [],
           "closure": {
-            "closed_at": "2026-06-29T07:23:51.605Z",
+            "closed_at": "2026-06-29T07:53:10.078Z",
             "disposition": "closed",
             "reason_code": "process_exit",
             "summary": "cli-tool exited successfully"
@@ -512,7 +513,7 @@
         "terms": []
       },
       "canonicalization": "runx.receipt.c14n.v1",
-      "created_at": "2026-06-29T07:23:51.605Z",
+      "created_at": "2026-06-29T07:53:10.078Z",
       "decisions": [
         {
           "artifact_refs": [],
@@ -540,8 +541,8 @@
           "selected_harness_ref": null
         }
       ],
-      "digest": "sha256:05cf09dd5964f3ece3d316810e560ff130c080f1565a92609e31d0ac5bb29055",
-      "id": "sha256:3a3df82c87ceaf1c911ebc35840a000b38ec93d09ecaf47fc82c5b0628de95b0",
+      "digest": "sha256:90e069fee805107f412781dfa8e400fcb35947843b416003b59b2ed428bf7a5c",
+      "id": "sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
       "idempotency": {
         "content_hash": "sha256:run_decide_98ffc1fbc5d9-decide-content",
         "intent_key": "sha256:run_decide_98ffc1fbc5d9-decide-intent",
@@ -558,7 +559,7 @@
       },
       "schema": "runx.receipt.v1",
       "seal": {
-        "closed_at": "2026-06-29T07:23:51.605Z",
+        "closed_at": "2026-06-29T07:53:10.078Z",
         "criteria": [
           {
             "criterion_id": "process_exit",
@@ -569,14 +570,14 @@
           }
         ],
         "disposition": "closed",
-        "last_observed_at": "2026-06-29T07:23:51.605Z",
+        "last_observed_at": "2026-06-29T07:53:10.078Z",
         "reason_code": "process_closed",
         "summary": "cli-tool decide completed"
       },
       "signals": [],
       "signature": {
         "alg": "Ed25519",
-        "value": "base64:3dRCBNrpsDLF1-m14wotDZsBL5Fizkm_sJendlN38KXx4ucqprqZjOy6uVW9ylrh64fvv6fHU50r7Ee3FL-dBw"
+        "value": "base64:KFkpdG9p--1_gcqc0m2nYQkw7GEmO3C4RtYgZL0TVyuMcafTox0B7JFFYpA5hqjhPSXU7K1NCa2FUkphqstwCA"
       },
       "subject": {
         "commitments": [],
@@ -587,17 +588,17 @@
         }
       }
     },
-    "receipt_id": "sha256:3a3df82c87ceaf1c911ebc35840a000b38ec93d09ecaf47fc82c5b0628de95b0",
+    "receipt_id": "sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
     "registry_provenance": {
-      "digest": "sha256:fc143a0eab60db135cf9abd20ba6746912fb6dccd96eac6f2253e17439998aed",
-      "profile_digest": "sha256:e612778fe1cedc5a217b5eccb9f21a1a98ed6f1972d13209f85727db30cd24ca",
+      "digest": "sha256:04a4606343d8bcfb6bd4150438ca9d1f2b3fd8ef3958409093b704563e687c4d",
+      "profile_digest": "sha256:6bece65c388c253a339ad990675731955082ed794136fa7998570f8b18ce5bf1",
       "registry_key_id": "runx-registry-ed25519-v1",
       "registry_source": "remote https://api.runx.ai",
       "registry_source_fingerprint": "ba1ac16b631195fd",
       "skill_id": "iwannabefree00/vendor-risk-review",
       "trust_state": "trusted",
       "trust_tier": "community",
-      "version": "sha-cc5115a1c103"
+      "version": "sha-f73efbe9b874"
     },
     "run_id": "run_decide_98ffc1fbc5d9",
     "schema": "runx.skill_run.v1",
