@@ -1,0 +1,73 @@
+name: reply-router receipt
+
+on:
+  push:
+    branches:
+      - reply-router-skill
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reply-router-skill
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install runx
+        run: |
+          curl -fsSL https://runx.ai/install | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Verify version
+        run: runx --version | tee runx-version.txt
+      - name: Harness
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-demo-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          mkdir -p receipts
+          runx harness skills/reply-router --receipt-dir receipts --json | tee harness.json
+      - name: Dogfood
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-demo-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+          PUBLISHED_REF: iwannabefree00/reply-router@sha-243e8add9e86
+        run: |
+          mkdir -p receipts
+          runx add "$PUBLISHED_REF" --registry https://api.runx.ai --json | tee install.json
+          runx skill "$PUBLISHED_REF" --registry https://api.runx.ai --json --receipt-dir receipts \
+            --input-json inbound_reply='{"content":"Please unsubscribe me from these product emails immediately. Stop emailing this address.","received_from":"prospect@example.com","received_at":"2026-06-29T08:15:00Z"}' \
+            --input-json original_send_receipt='{"sealed":true,"receipt_id":"runx:receipt:sha256:original-send-001","checksum":"sha256:original-send-checksum","principal":"runx:principal:sales-agent","send_plan":{"recipient":"prospect@example.com","campaign":"onboarding-drip","recipient_state_version":7,"allowed_targets":{"interested":"runx:send-target:sales-followup","objection":"runx:send-target:objection-handling","out_of_office":"runx:send-target:delay-resume","wrong_person":"runx:send-target:contact-correction"}}}' \
+            --input-json suppression_policy='{"unsubscribe_signals":["unsubscribe","stop emailing","remove me","opt out"],"confidence_threshold":0.8}' \
+            --input data_source_ref="local://runx/reply-router" \
+            --input store_id="reply-router-fixture" | tee dogfood.json
+          DOGFOOD_RECEIPT="$(jq -r '.receipt.id // .receipt_id // .id // empty' dogfood.json)"
+          if [ -z "$DOGFOOD_RECEIPT" ]; then
+            DOGFOOD_RECEIPT="$(find receipts -maxdepth 1 -name 'sha256:*.json' -printf '%f\n' | sed 's/\.json$//' | sort | tail -n 1)"
+          fi
+          test -n "$DOGFOOD_RECEIPT"
+          runx verify --receipt "receipts/${DOGFOOD_RECEIPT}.json" --json | tee verify.json
+          jq -n \
+            --arg runx_version "$(cat runx-version.txt)" \
+            --arg published_ref "$PUBLISHED_REF" \
+            --arg receipt_ref "runx:receipt:${DOGFOOD_RECEIPT}" \
+            --slurpfile harness harness.json \
+            --slurpfile install install.json \
+            --slurpfile dogfood dogfood.json \
+            --slurpfile verify verify.json \
+            '{status:"passed", runx_version:$runx_version, published_ref:$published_ref, receipt_ref:$receipt_ref, harness:$harness[0], install:$install[0], dogfood:$dogfood[0], verify:$verify[0]}' \
+            > skills/reply-router/action-verification.json
+      - name: Commit verification
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add skills/reply-router/action-verification.json
+          git commit -m "Add reply router action verification [skip ci]" || exit 0
+          git push origin HEAD:reply-router-skill
