@@ -1,0 +1,70 @@
+{
+  "schema": "runx.list_hygiene_kg.evidence.v1",
+  "package": "list-hygiene-judge",
+  "version": "0.1.0",
+  "publisher_owner": "lxx197818",
+  "registry_ref": "lxx197818/list-hygiene-judge@0.1.0",
+  "public_url": "https://runx.ai/x/lxx197818/list-hygiene-judge@0.1.0",
+  "source_url": "https://github.com/lxx197818/runx/tree/codex/list-hygiene-judge-68/skills/list-hygiene-judge",
+  "pr_url": "https://github.com/runxhq/runx/pull/174",
+  "observations": {
+    "runx_version": "runx-cli 0.6.14",
+    "package_name": "list-hygiene-judge",
+    "harness_status": "passed",
+    "harness_cases": [
+      {
+        "name": "sealed_decay_re_permission",
+        "status": "sealed",
+        "receipt_id": "sha256:0fc6d1702b43ab6607812f33f9f59473df41e129895be2f9767912fa861ffc1c"
+      },
+      {
+        "name": "sealed_hard_bounce_suppress",
+        "status": "sealed",
+        "receipt_id": "sha256:cba5098de7c3e33ebe356a8b9a048ee41b1145fe1898c8fbac0a622c10d6004e"
+      },
+      {
+        "name": "stop_missing_or_stale_evidence",
+        "status": "sealed",
+        "receipt_id": "sha256:93c18d7501dd55de76957729d5d67e680df21c3b91d2278be3f6dfdac6c22034"
+      }
+    ],
+    "consent_state_verdict": {
+      "aggregate_id": "contact:demo-001",
+      "decision_state": "re_permission",
+      "reason": "recency_days=120 exceeds decay_threshold_days=90 with no unsubscribe marker.",
+      "recorded_new_state": "re_permission",
+      "idempotency_key": "contact:demo-001:list-hygiene:2026-06-29",
+      "receipt_id": "sha256:e6937a46f3813c19181a367d0702a79b7c6b2c88d16f93fd7157f3829f9b8c33"
+    },
+    "hard_bounce_case": {
+      "decision_state": "suppress",
+      "data_store_resource": "contact_consent_events",
+      "reason": "hard_bounces > 0 yields a contact.consent_state.suppressed append_event"
+    },
+    "stop_case": {
+      "decision_state": "stop",
+      "append_emitted": false,
+      "reason": "stale expected_version emits no append_event and routes to list_hygiene.review"
+    },
+    "safety": {
+      "no_send": true,
+      "no_operational_proposal": true,
+      "downstream_dispatch_by_name": "send-as",
+      "data_store_adapter_ref": "registry:runx/data-store@0.1.2"
+    }
+  },
+  "commands": {
+    "version": "runx --version",
+    "local_harness": "runx harness ./skills/list-hygiene-judge -j",
+    "publish": "runx login --provider github --for publish && runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
+    "install": "runx add lxx197818/list-hygiene-judge@0.1.0",
+    "dogfood": "runx skill lxx197818/list-hygiene-judge@0.1.0 --json ...",
+    "verify": "runx verify --receipt <receipt.json> --json"
+  },
+  "artifact_refs": {
+    "x_yaml": "https://raw.githubusercontent.com/lxx197818/runx/codex/list-hygiene-judge-68/skills/list-hygiene-judge/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/lxx197818/runx/codex/list-hygiene-judge-68/skills/list-hygiene-judge/SKILL.md",
+    "verification_json": "https://raw.githubusercontent.com/lxx197818/runx/codex/list-hygiene-judge-68/skills/list-hygiene-judge/references/verification.json",
+    "report": "https://raw.githubusercontent.com/lxx197818/runx/codex/list-hygiene-judge-68/skills/list-hygiene-judge/references/report.md"
+  }
+}

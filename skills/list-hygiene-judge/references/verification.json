@@ -1,0 +1,33 @@
+{
+  "schema": "runx.list_hygiene_kg.verification.v1",
+  "package": "list-hygiene-judge",
+  "version": "0.1.0",
+  "runx_version": "runx-cli 0.6.14",
+  "local_harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "sealed_decay_re_permission",
+      "sealed_hard_bounce_suppress",
+      "stop_missing_or_stale_evidence"
+    ],
+    "receipt_ids": [
+      "sha256:0fc6d1702b43ab6607812f33f9f59473df41e129895be2f9767912fa861ffc1c",
+      "sha256:cba5098de7c3e33ebe356a8b9a048ee41b1145fe1898c8fbac0a622c10d6004e",
+      "sha256:93c18d7501dd55de76957729d5d67e680df21c3b91d2278be3f6dfdac6c22034"
+    ]
+  },
+  "dogfood": {
+    "status": "sealed",
+    "receipt_id": "sha256:e6937a46f3813c19181a367d0702a79b7c6b2c88d16f93fd7157f3829f9b8c33",
+    "decision_state": "re_permission",
+    "append_status": "committed",
+    "after_version": 4
+  },
+  "hosted_registry": {
+    "status": "pending_publish",
+    "expected_public_url": "https://runx.ai/x/lxx197818/list-hygiene-judge@0.1.0",
+    "expected_registry_ref": "lxx197818/list-hygiene-judge@0.1.0"
+  }
+}
