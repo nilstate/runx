@@ -28,8 +28,7 @@ function readInputs() {
   if (Object.values(envInputs).some((value) => value !== undefined)) {
     return envInputs;
   }
-  const stdin = fs.readFileSync(0, "utf8").trim();
-  return stdin ? JSON.parse(stdin) : {};
+  return {};
 }
 
 function sha256(value) {
@@ -221,7 +220,7 @@ function decide(inputs) {
     no_send_performed: true,
   };
 
-  const status = eligible ? "sealed" : "refused";
+  const status = eligible ? "sealed" : "failure";
   const result = {
     status,
     decision,
