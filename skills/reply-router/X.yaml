@@ -1,0 +1,177 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      inputs:
+        inbound_reply:
+          reply_id: reply-unsubscribe-001
+          from:
+            address: subscriber@example.test
+          subject: "Re: Product update"
+          body: Please unsubscribe me from these messages.
+          received_at: "2026-06-29T10:00:00Z"
+        original_send_receipt:
+          schema: runx.receipt.v1
+          status: sealed
+          receipt_id: receipt-send-001
+          checksum: sha256:fixture-sealed-send-001
+          principal:
+            type: account
+            ref: account:campaign-operator
+          send_plan:
+            action_family: send-as
+            channel: email
+            audience:
+              type: recipient
+              ref: subscriber@example.test
+        suppression_policy:
+          data_source_ref: local://reply-router/harness
+          store_id: reply-router-harness-v1
+          resource: reply_suppressions
+          unsubscribe_phrases:
+            - unsubscribe me
+            - remove me
+      expect:
+        status: sealed
+
+    - name: stop_ambiguous_or_unsealed
+      inputs:
+        inbound_reply:
+          reply_id: reply-stop-001
+          from:
+            address: subscriber@example.test
+          subject: "Re: Product update"
+          body: Stop.
+          received_at: "2026-06-29T10:05:00Z"
+        original_send_receipt:
+          schema: runx.receipt.v1
+          status: open
+          receipt_id: receipt-send-unsealed-001
+          principal:
+            type: account
+            ref: account:campaign-operator
+          send_plan:
+            action_family: send-as
+            channel: email
+            audience:
+              type: recipient
+              ref: subscriber@example.test
+        suppression_policy:
+          data_source_ref: local://reply-router/harness
+          store_id: reply-router-harness-v1
+          resource: reply_suppressions
+          unsubscribe_phrases:
+            - unsubscribe me
+            - remove me
+      expect:
+        status: needs_agent
+
+emits:
+  - name: reply_routing
+    packet: runx.reply.routing.v1
+
+runners:
+  route:
+    default: true
+    type: graph
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: The bounded inbound reply, including a stable reply id, sender, body, and observed timestamp.
+      original_send_receipt:
+        type: json
+        required: true
+        description: The sealed runx receipt for the governed outbound message that this reply references.
+      suppression_policy:
+        type: json
+        required: true
+        description: Recipient suppression policy and the declared data source used for durable append-only suppression events.
+    graph:
+      name: reply-router
+      steps:
+        - id: classify
+          label: deterministically classify the inbound reply
+          skill: ./graph/classify-reply
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            original_send_receipt: "$input.original_send_receipt"
+            suppression_policy: "$input.suppression_policy"
+
+        - id: read-suppression
+          label: read the recipient suppression stream version
+          when:
+            field: classify.reply_classification.data.route
+            equals: suppress
+          skill: registry:runx/data-store@0.1.2
+          runner: read_projection
+          context:
+            data_source_ref: classify.reply_classification.data.data_source_ref
+            store_id: classify.reply_classification.data.store_id
+            resource: classify.reply_classification.data.resource
+            aggregate_id: classify.reply_classification.data.aggregate_id
+
+        - id: append-suppression
+          label: append the unsubscribe event with compare-and-swap
+          when:
+            field: classify.reply_classification.data.route
+            equals: suppress
+          skill: registry:runx/data-store@0.1.2
+          runner: append_event
+          context:
+            data_source_ref: classify.reply_classification.data.data_source_ref
+            store_id: classify.reply_classification.data.store_id
+            resource: classify.reply_classification.data.resource
+            aggregate_id: classify.reply_classification.data.aggregate_id
+            expected_version: read-suppression.data_operation_result.data.projection.version
+            idempotency_key: classify.reply_classification.data.idempotency_key
+            event: classify.reply_classification.data.suppression_event
+
+        - id: suppression-result
+          label: emit the committed suppression result
+          when:
+            field: classify.reply_classification.data.route
+            equals: suppress
+          skill: ./graph/emit-result
+          context:
+            classification: classify.reply_classification.data.classification
+            route: classify.reply_classification.data.route
+            reason: classify.reply_classification.data.reason
+            suppression_result: append-suppression.data_operation_result.data
+
+        - id: routing-result
+          label: emit a handoff decision without sending
+          when:
+            field: classify.reply_classification.data.route
+            equals: route
+          skill: ./graph/emit-result
+          context:
+            classification: classify.reply_classification.data.classification
+            route: classify.reply_classification.data.route
+            reason: classify.reply_classification.data.reason
+            routing_decision: classify.reply_classification.data.routing_decision
+
+        - id: stop-for-review
+          label: stop ambiguous or untrusted replies for an operator
+          when:
+            field: classify.reply_classification.data.route
+            equals: stop
+          run:
+            type: agent-task
+            agent: operator
+            task: reply-routing-review
+            outputs:
+              review_decision: object
+          context:
+            classification: classify.reply_classification.data.classification
+            reason: classify.reply_classification.data.reason
+            receipt_trust: classify.reply_classification.data.receipt_trust
+            evidence: classify.reply_classification.data.evidence

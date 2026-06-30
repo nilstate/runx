@@ -1,0 +1,46 @@
+skill: reply-router-classify
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: context
+
+emits:
+  - name: reply_classification
+    packet: runx.reply.classification.v1
+
+runners:
+  classify:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+      original_send_receipt:
+        type: json
+        required: true
+      suppression_policy:
+        type: json
+        required: true
+    outputs:
+      classification: string
+      route: string
+      reason: string
+      receipt_trust: object
+      evidence: object
+      data_source_ref: string
+      store_id: string
+      resource: string
+      aggregate_id: string
+      idempotency_key: string
+      suppression_event: object
+      routing_decision: object
+    artifacts:
+      wrap_as: reply_classification
+      packet: runx.reply.classification.v1

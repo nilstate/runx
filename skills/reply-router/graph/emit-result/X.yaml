@@ -1,0 +1,47 @@
+skill: reply-router-emit-result
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: context
+
+emits:
+  - name: reply_routing
+    packet: runx.reply.routing.v1
+
+runners:
+  emit:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      classification:
+        type: string
+        required: true
+      route:
+        type: string
+        required: true
+      reason:
+        type: string
+        required: true
+      suppression_result:
+        type: json
+        required: false
+      routing_decision:
+        type: json
+        required: false
+    outputs:
+      schema: string
+      classification: string
+      action: string
+      reason: string
+      suppression_result: object
+      routing_decision: object
+      send_side_effects: string
+    artifacts:
+      wrap_as: reply_routing
+      packet: runx.reply.routing.v1

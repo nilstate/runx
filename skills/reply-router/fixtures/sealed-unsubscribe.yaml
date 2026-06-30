@@ -1,0 +1,33 @@
+name: sealed unsubscribe appends recipient suppression
+skill: ../SKILL.md
+runner: route
+inputs:
+  inbound_reply:
+    reply_id: reply-fixture-001
+    from:
+      address: recipient@example.test
+    subject: "Re: Update"
+    body: Please unsubscribe me.
+    received_at: "2026-06-29T10:00:00Z"
+  original_send_receipt:
+    schema: runx.receipt.v1
+    status: sealed
+    receipt_id: receipt-fixture-001
+    checksum: sha256:fixture-receipt-001
+    principal:
+      type: account
+      ref: account:fixture
+    send_plan:
+      action_family: send-as
+      channel: email
+      audience:
+        type: recipient
+        ref: recipient@example.test
+  suppression_policy:
+    data_source_ref: local://reply-router/fixture
+    store_id: reply-router-fixture-v1
+    resource: reply_suppressions
+    unsubscribe_phrases:
+      - unsubscribe me
+expect:
+  status: sealed

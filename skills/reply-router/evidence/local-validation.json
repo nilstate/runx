@@ -1,0 +1,86 @@
+{
+  "schema": "runx.reply_router.validation.v1",
+  "observed_at": "2026-06-29T16:00:00+08:00",
+  "environment": {
+    "os": "windows",
+    "node": "v24.12.0",
+    "runx_cli": "0.6.14"
+  },
+  "checks": [
+    {
+      "name": "profile_parse_and_graph_validation",
+      "status": "passed",
+      "evidence": "The official CLI accepted the top-level profile and graph edges after validation fixes. With the production pinned registry refs restored, offline execution stops only because RUNX_REGISTRY_DIR is not configured."
+    },
+    {
+      "name": "sealed_unsubscribe_classification",
+      "status": "passed",
+      "evidence": {
+        "classification": "unsubscribe",
+        "route": "suppress",
+        "receipt_trusted": true,
+        "recipient_match": true
+      }
+    },
+    {
+      "name": "recipient_keyed_read_then_cas_append",
+      "status": "passed",
+      "evidence": {
+        "read_status": "read",
+        "projection_version": 0,
+        "append_status": "committed",
+        "before_version": 0,
+        "after_version": 1,
+        "provider": "local-json-event-store"
+      }
+    },
+    {
+      "name": "suppression_result_packet",
+      "status": "passed",
+      "evidence": {
+        "schema": "runx.reply.routing.v1",
+        "classification": "unsubscribe",
+        "action": "suppressed",
+        "send_side_effects": "none"
+      }
+    },
+    {
+      "name": "stop_ambiguous_or_unsealed",
+      "status": "passed",
+      "evidence": {
+        "classification": "ambiguous",
+        "route": "stop",
+        "receipt_trusted": false,
+        "receipt_reasons": [
+          "receipt is not sealed",
+          "checksum is missing"
+        ]
+      }
+    },
+    {
+      "name": "inline_harness_local_equivalent",
+      "status": "environment_blocked",
+      "passed_cases": [
+        "stop_ambiguous_or_unsealed"
+      ],
+      "blocked_cases": [
+        "sealed_unsubscribe_suppression"
+      ],
+      "blocker": "The Windows receipt store reports os error 87 after the data-store branch executes. The same runx CLI path is intended to be rerun in the hosted Linux publish harness."
+    },
+    {
+      "name": "javascript_syntax",
+      "status": "passed",
+      "files": [
+        "graph/classify-reply/run.mjs",
+        "graph/emit-result/run.mjs"
+      ]
+    }
+  ],
+  "claims_not_made": [
+    "No hosted registry harness has been run yet.",
+    "No hosted publish, clean install, dogfood run, or runx verify has been run yet.",
+    "No Frantic delivery has been submitted yet."
+  ]
+}
+
