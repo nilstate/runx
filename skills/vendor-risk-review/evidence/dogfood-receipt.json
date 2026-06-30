@@ -1,0 +1,189 @@
+{
+    "acts":  [
+                 {
+                     "artifact_refs":  [
+
+                                       ],
+                     "closure":  {
+                                     "closed_at":  "2026-06-30T12:59:41.313Z",
+                                     "disposition":  "closed",
+                                     "reason_code":  "process_exit",
+                                     "summary":  "cli-tool exited successfully"
+                                 },
+                     "criterion_bindings":  [
+                                                {
+                                                    "criterion_id":  "process_exit",
+                                                    "evidence_refs":  [
+
+                                                                      ],
+                                                    "status":  "verified",
+                                                    "summary":  "cli-tool exited successfully",
+                                                    "verification_refs":  [
+
+                                                                          ]
+                                                }
+                                            ],
+                     "form":  "observation",
+                     "id":  "act_judge",
+                     "intent":  {
+                                    "constraints":  [
+
+                                                    ],
+                                    "derived_from":  [
+
+                                                     ],
+                                    "legitimacy":  "Runtime graph execution was admitted by the local harness",
+                                    "purpose":  "Run graph step judge",
+                                    "success_criteria":  [
+                                                             {
+                                                                 "criterion_id":  "process_exit",
+                                                                 "required":  true,
+                                                                 "statement":  "cli-tool exits successfully"
+                                                             }
+                                                         ]
+                                },
+                     "source_refs":  [
+
+                                     ],
+                     "summary":  "Executed graph step judge",
+                     "target_refs":  [
+
+                                     ]
+                 }
+             ],
+    "authority":  {
+                      "actor_ref":  {
+                                        "type":  "principal",
+                                        "uri":  "runx:principal:local_runtime"
+                                    },
+                      "attenuation":  {
+                                          "parent_authority_ref":  null,
+                                          "subset_proof":  null
+                                      },
+                      "authority_proof_refs":  [
+
+                                               ],
+                      "enforcement":  {
+                                          "profile_hash":  "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+                                          "redaction_refs":  [
+
+                                                             ],
+                                          "setup_refs":  [
+
+                                                         ],
+                                          "teardown_refs":  [
+
+                                                            ]
+                                      },
+                      "grant_refs":  [
+
+                                     ],
+                      "scope_refs":  [
+
+                                     ],
+                      "terms":  [
+
+                                ]
+                  },
+    "canonicalization":  "runx.receipt.c14n.v1",
+    "created_at":  "2026-06-30T12:59:41.313Z",
+    "decisions":  [
+                      {
+                          "artifact_refs":  [
+
+                                            ],
+                          "choice":  "open",
+                          "closure":  null,
+                          "decision_id":  "dec_judge",
+                          "inputs":  {
+                                         "opportunity_refs":  [
+
+                                                              ],
+                                         "selection_ref":  null,
+                                         "signal_refs":  [
+
+                                                         ],
+                                         "target_ref":  null
+                                     },
+                          "justification":  {
+                                                "evidence_refs":  [
+
+                                                                  ],
+                                                "summary":  "runtime graph planner selected this node"
+                                            },
+                          "proposed_intent":  {
+                                                  "constraints":  [
+
+                                                                  ],
+                                                  "derived_from":  [
+
+                                                                   ],
+                                                  "legitimacy":  "Local graph execution requested this node",
+                                                  "purpose":  "Open runtime node judge",
+                                                  "success_criteria":  [
+
+                                                                       ]
+                                              },
+                          "selected_act_id":  "act_judge",
+                          "selected_harness_ref":  null
+                      }
+                  ],
+    "digest":  "sha256:e0c87f6fd84049a8aff2ac4cec38028f1832fcca53c468f89508d7772375c8de",
+    "id":  "sha256:9222ecb7a2f81d5542ac095e6f49c5dd97d8ba0127275f50f4bb808f9822d896",
+    "idempotency":  {
+                        "content_hash":  "sha256:run_judge_6c4c07a106c6-judge-content",
+                        "intent_key":  "sha256:run_judge_6c4c07a106c6-judge-intent",
+                        "trigger_fingerprint":  "sha256:run_judge_6c4c07a106c6-judge-trigger"
+                    },
+    "issuer":  {
+                   "kid":  "runx-demo-key",
+                   "public_key_sha256":  "sha256:139e3940e64b5491722088d9a0d741628fc826e09475d341a780acde3c4b8070",
+                   "type":  "hosted"
+               },
+    "lineage":  {
+                    "children":  [
+
+                                 ],
+                    "sync":  [
+
+                             ]
+                },
+    "schema":  "runx.receipt.v1",
+    "seal":  {
+                 "closed_at":  "2026-06-30T12:59:41.313Z",
+                 "criteria":  [
+                                  {
+                                      "criterion_id":  "process_exit",
+                                      "evidence_refs":  [
+
+                                                        ],
+                                      "status":  "verified",
+                                      "summary":  "cli-tool exited successfully",
+                                      "verification_refs":  [
+
+                                                            ]
+                                  }
+                              ],
+                 "disposition":  "closed",
+                 "last_observed_at":  "2026-06-30T12:59:41.313Z",
+                 "reason_code":  "process_closed",
+                 "summary":  "cli-tool judge completed"
+             },
+    "signals":  [
+
+                ],
+    "signature":  {
+                      "alg":  "Ed25519",
+                      "value":  "base64:3hN_r3cIB9hdRAyPeVGn5Tj5-vMlf9YpRdG7VB0YD1fHpmhEwwYzjDDjgIpKbc6I9fxM_IB68kPQWHMfSXYoCA"
+                  },
+    "subject":  {
+                    "commitments":  [
+
+                                    ],
+                    "kind":  "skill",
+                    "ref":  {
+                                "type":  "harness",
+                                "uri":  "hrn_run_judge_6c4c07a106c6_judge"
+                            }
+                }
+}

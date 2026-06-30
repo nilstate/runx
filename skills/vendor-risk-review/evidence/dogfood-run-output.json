@@ -1,0 +1,530 @@
+{
+  "closure": {
+    "closed_at": "2026-06-30T12:59:41.313Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool judge completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "data_store_append_event": {
+        "after_version": 3,
+        "aggregate_id": "vendor:acme-mailops",
+        "before_version": 2,
+        "event": {
+          "created_at": "2026-06-30T00:00:00Z",
+          "data_source_ref": "artifact://vendor-risk/acme-mailops-contract",
+          "decision": {
+            "approved": true,
+            "conditions": [
+              {
+                "code": "sla_uptime_below_floor",
+                "evidence": {
+                  "min_uptime_percent": 99.9,
+                  "observed_uptime_percent": 99
+                },
+                "policy_field": "policy.required_sla_terms.min_uptime_percent",
+                "reason": "SLA uptime is below the trust policy floor"
+              }
+            ],
+            "created_at": "2026-06-30T00:00:00Z",
+            "policy_id": "trust-policy-2026-06",
+            "reason": "approved with conditions",
+            "rejected": false,
+            "rejection_reasons": []
+          },
+          "policy_id": "trust-policy-2026-06",
+          "schema": "runx.vendor_risk_record.v1",
+          "vendor_ref": "vendor:acme-mailops"
+        },
+        "expected_version": 2,
+        "idempotency_key": "vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions",
+        "operation": "append_event",
+        "package": "registry:runx/data-store@0.1.2",
+        "store_id": "vendor-risk-store-main"
+      },
+      "decision": {
+        "approved": true,
+        "conditions": [
+          {
+            "code": "sla_uptime_below_floor",
+            "evidence": {
+              "min_uptime_percent": 99.9,
+              "observed_uptime_percent": 99
+            },
+            "policy_field": "policy.required_sla_terms.min_uptime_percent",
+            "reason": "SLA uptime is below the trust policy floor"
+          }
+        ],
+        "created_at": "2026-06-30T00:00:00Z",
+        "policy_id": "trust-policy-2026-06",
+        "reason": "approved with conditions",
+        "rejected": false,
+        "rejection_reasons": []
+      },
+      "escalation": null,
+      "evidence_summary": {
+        "contract_gaps": [
+          {
+            "code": "sla_uptime_below_floor",
+            "evidence": {
+              "min_uptime_percent": 99.9,
+              "observed_uptime_percent": 99
+            },
+            "policy_field": "policy.required_sla_terms.min_uptime_percent",
+            "reason": "SLA uptime is below the trust policy floor"
+          }
+        ],
+        "created_at": "2026-06-30T00:00:00Z",
+        "data_store": {
+          "after_version": 3,
+          "before_version": 2,
+          "idempotency_key": "vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions",
+          "store_id": "vendor-risk-store-main"
+        },
+        "grounded_policy_fields": [
+          {
+            "policy_field": "policy.required_sla_terms.support_response_hours",
+            "value": 24
+          },
+          {
+            "policy_field": "policy.policy_id",
+            "value": "trust-policy-2026-06"
+          },
+          {
+            "policy_field": "policy.created_at",
+            "value": "2026-06-30T00:00:00Z"
+          }
+        ],
+        "policy_id": "trust-policy-2026-06",
+        "rejection_reasons": [],
+        "vendor_ref": "vendor:acme-mailops"
+      },
+      "record_written": true,
+      "risk_record_event": {
+        "created_at": "2026-06-30T00:00:00Z",
+        "data_source_ref": "artifact://vendor-risk/acme-mailops-contract",
+        "decision": {
+          "approved": true,
+          "conditions": [
+            {
+              "code": "sla_uptime_below_floor",
+              "evidence": {
+                "min_uptime_percent": 99.9,
+                "observed_uptime_percent": 99
+              },
+              "policy_field": "policy.required_sla_terms.min_uptime_percent",
+              "reason": "SLA uptime is below the trust policy floor"
+            }
+          ],
+          "created_at": "2026-06-30T00:00:00Z",
+          "policy_id": "trust-policy-2026-06",
+          "reason": "approved with conditions",
+          "rejected": false,
+          "rejection_reasons": []
+        },
+        "policy_id": "trust-policy-2026-06",
+        "schema": "runx.vendor_risk_record.v1",
+        "vendor_ref": "vendor:acme-mailops"
+      }
+    },
+    "stderr": "",
+    "stdout": "{\n  \"decision\": {\n    \"approved\": true,\n    \"rejected\": false,\n    \"reason\": \"approved with conditions\",\n    \"conditions\": [\n      {\n        \"code\": \"sla_uptime_below_floor\",\n        \"reason\": \"SLA uptime is below the trust policy floor\",\n        \"policy_field\": \"policy.required_sla_terms.min_uptime_percent\",\n        \"evidence\": {\n          \"observed_uptime_percent\": 99,\n          \"min_uptime_percent\": 99.9\n        }\n      }\n    ],\n    \"rejection_reasons\": [],\n    \"policy_id\": \"trust-policy-2026-06\",\n    \"created_at\": \"2026-06-30T00:00:00Z\"\n  },\n  \"risk_record_event\": {\n    \"schema\": \"runx.vendor_risk_record.v1\",\n    \"vendor_ref\": \"vendor:acme-mailops\",\n    \"decision\": {\n      \"approved\": true,\n      \"rejected\": false,\n      \"reason\": \"approved with conditions\",\n      \"conditions\": [\n        {\n          \"code\": \"sla_uptime_below_floor\",\n          \"reason\": \"SLA uptime is below the trust policy floor\",\n          \"policy_field\": \"policy.required_sla_terms.min_uptime_percent\",\n          \"evidence\": {\n            \"observed_uptime_percent\": 99,\n            \"min_uptime_percent\": 99.9\n          }\n        }\n      ],\n      \"rejection_reasons\": [],\n      \"policy_id\": \"trust-policy-2026-06\",\n      \"created_at\": \"2026-06-30T00:00:00Z\"\n    },\n    \"policy_id\": \"trust-policy-2026-06\",\n    \"created_at\": \"2026-06-30T00:00:00Z\",\n    \"data_source_ref\": \"artifact://vendor-risk/acme-mailops-contract\"\n  },\n  \"data_store_append_event\": {\n    \"package\": \"registry:runx/data-store@0.1.2\",\n    \"operation\": \"append_event\",\n    \"store_id\": \"vendor-risk-store-main\",\n    \"aggregate_id\": \"vendor:acme-mailops\",\n    \"expected_version\": 2,\n    \"before_version\": 2,\n    \"after_version\": 3,\n    \"idempotency_key\": \"vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions\",\n    \"event\": {\n      \"schema\": \"runx.vendor_risk_record.v1\",\n      \"vendor_ref\": \"vendor:acme-mailops\",\n      \"decision\": {\n        \"approved\": true,\n        \"rejected\": false,\n        \"reason\": \"approved with conditions\",\n        \"conditions\": [\n          {\n            \"code\": \"sla_uptime_below_floor\",\n            \"reason\": \"SLA uptime is below the trust policy floor\",\n            \"policy_field\": \"policy.required_sla_terms.min_uptime_percent\",\n            \"evidence\": {\n              \"observed_uptime_percent\": 99,\n              \"min_uptime_percent\": 99.9\n            }\n          }\n        ],\n        \"rejection_reasons\": [],\n        \"policy_id\": \"trust-policy-2026-06\",\n        \"created_at\": \"2026-06-30T00:00:00Z\"\n      },\n      \"policy_id\": \"trust-policy-2026-06\",\n      \"created_at\": \"2026-06-30T00:00:00Z\",\n      \"data_source_ref\": \"artifact://vendor-risk/acme-mailops-contract\"\n    }\n  },\n  \"record_written\": true,\n  \"escalation\": null,\n  \"evidence_summary\": {\n    \"vendor_ref\": \"vendor:acme-mailops\",\n    \"policy_id\": \"trust-policy-2026-06\",\n    \"created_at\": \"2026-06-30T00:00:00Z\",\n    \"contract_gaps\": [\n      {\n        \"code\": \"sla_uptime_below_floor\",\n        \"reason\": \"SLA uptime is below the trust policy floor\",\n        \"policy_field\": \"policy.required_sla_terms.min_uptime_percent\",\n        \"evidence\": {\n          \"observed_uptime_percent\": 99,\n          \"min_uptime_percent\": 99.9\n        }\n      }\n    ],\n    \"rejection_reasons\": [],\n    \"data_store\": {\n      \"store_id\": \"vendor-risk-store-main\",\n      \"before_version\": 2,\n      \"after_version\": 3,\n      \"idempotency_key\": \"vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions\"\n    },\n    \"grounded_policy_fields\": [\n      {\n        \"policy_field\": \"policy.required_sla_terms.support_response_hours\",\n        \"value\": 24\n      },\n      {\n        \"policy_field\": \"policy.policy_id\",\n        \"value\": \"trust-policy-2026-06\"\n      },\n      {\n        \"policy_field\": \"policy.created_at\",\n        \"value\": \"2026-06-30T00:00:00Z\"\n      }\n    ]\n  }\n}\n",
+    "structured_output": {
+      "data_store_append_event": {
+        "after_version": 3,
+        "aggregate_id": "vendor:acme-mailops",
+        "before_version": 2,
+        "event": {
+          "created_at": "2026-06-30T00:00:00Z",
+          "data_source_ref": "artifact://vendor-risk/acme-mailops-contract",
+          "decision": {
+            "approved": true,
+            "conditions": [
+              {
+                "code": "sla_uptime_below_floor",
+                "evidence": {
+                  "min_uptime_percent": 99.9,
+                  "observed_uptime_percent": 99
+                },
+                "policy_field": "policy.required_sla_terms.min_uptime_percent",
+                "reason": "SLA uptime is below the trust policy floor"
+              }
+            ],
+            "created_at": "2026-06-30T00:00:00Z",
+            "policy_id": "trust-policy-2026-06",
+            "reason": "approved with conditions",
+            "rejected": false,
+            "rejection_reasons": []
+          },
+          "policy_id": "trust-policy-2026-06",
+          "schema": "runx.vendor_risk_record.v1",
+          "vendor_ref": "vendor:acme-mailops"
+        },
+        "expected_version": 2,
+        "idempotency_key": "vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions",
+        "operation": "append_event",
+        "package": "registry:runx/data-store@0.1.2",
+        "store_id": "vendor-risk-store-main"
+      },
+      "decision": {
+        "approved": true,
+        "conditions": [
+          {
+            "code": "sla_uptime_below_floor",
+            "evidence": {
+              "min_uptime_percent": 99.9,
+              "observed_uptime_percent": 99
+            },
+            "policy_field": "policy.required_sla_terms.min_uptime_percent",
+            "reason": "SLA uptime is below the trust policy floor"
+          }
+        ],
+        "created_at": "2026-06-30T00:00:00Z",
+        "policy_id": "trust-policy-2026-06",
+        "reason": "approved with conditions",
+        "rejected": false,
+        "rejection_reasons": []
+      },
+      "escalation": null,
+      "evidence_summary": {
+        "contract_gaps": [
+          {
+            "code": "sla_uptime_below_floor",
+            "evidence": {
+              "min_uptime_percent": 99.9,
+              "observed_uptime_percent": 99
+            },
+            "policy_field": "policy.required_sla_terms.min_uptime_percent",
+            "reason": "SLA uptime is below the trust policy floor"
+          }
+        ],
+        "created_at": "2026-06-30T00:00:00Z",
+        "data_store": {
+          "after_version": 3,
+          "before_version": 2,
+          "idempotency_key": "vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions",
+          "store_id": "vendor-risk-store-main"
+        },
+        "grounded_policy_fields": [
+          {
+            "policy_field": "policy.required_sla_terms.support_response_hours",
+            "value": 24
+          },
+          {
+            "policy_field": "policy.policy_id",
+            "value": "trust-policy-2026-06"
+          },
+          {
+            "policy_field": "policy.created_at",
+            "value": "2026-06-30T00:00:00Z"
+          }
+        ],
+        "policy_id": "trust-policy-2026-06",
+        "rejection_reasons": [],
+        "vendor_ref": "vendor:acme-mailops"
+      },
+      "record_written": true,
+      "risk_record_event": {
+        "created_at": "2026-06-30T00:00:00Z",
+        "data_source_ref": "artifact://vendor-risk/acme-mailops-contract",
+        "decision": {
+          "approved": true,
+          "conditions": [
+            {
+              "code": "sla_uptime_below_floor",
+              "evidence": {
+                "min_uptime_percent": 99.9,
+                "observed_uptime_percent": 99
+              },
+              "policy_field": "policy.required_sla_terms.min_uptime_percent",
+              "reason": "SLA uptime is below the trust policy floor"
+            }
+          ],
+          "created_at": "2026-06-30T00:00:00Z",
+          "policy_id": "trust-policy-2026-06",
+          "reason": "approved with conditions",
+          "rejected": false,
+          "rejection_reasons": []
+        },
+        "policy_id": "trust-policy-2026-06",
+        "schema": "runx.vendor_risk_record.v1",
+        "vendor_ref": "vendor:acme-mailops"
+      }
+    }
+  },
+  "payload": {
+    "data_store_append_event": {
+      "after_version": 3,
+      "aggregate_id": "vendor:acme-mailops",
+      "before_version": 2,
+      "event": {
+        "created_at": "2026-06-30T00:00:00Z",
+        "data_source_ref": "artifact://vendor-risk/acme-mailops-contract",
+        "decision": {
+          "approved": true,
+          "conditions": [
+            {
+              "code": "sla_uptime_below_floor",
+              "evidence": {
+                "min_uptime_percent": 99.9,
+                "observed_uptime_percent": 99
+              },
+              "policy_field": "policy.required_sla_terms.min_uptime_percent",
+              "reason": "SLA uptime is below the trust policy floor"
+            }
+          ],
+          "created_at": "2026-06-30T00:00:00Z",
+          "policy_id": "trust-policy-2026-06",
+          "reason": "approved with conditions",
+          "rejected": false,
+          "rejection_reasons": []
+        },
+        "policy_id": "trust-policy-2026-06",
+        "schema": "runx.vendor_risk_record.v1",
+        "vendor_ref": "vendor:acme-mailops"
+      },
+      "expected_version": 2,
+      "idempotency_key": "vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions",
+      "operation": "append_event",
+      "package": "registry:runx/data-store@0.1.2",
+      "store_id": "vendor-risk-store-main"
+    },
+    "decision": {
+      "approved": true,
+      "conditions": [
+        {
+          "code": "sla_uptime_below_floor",
+          "evidence": {
+            "min_uptime_percent": 99.9,
+            "observed_uptime_percent": 99
+          },
+          "policy_field": "policy.required_sla_terms.min_uptime_percent",
+          "reason": "SLA uptime is below the trust policy floor"
+        }
+      ],
+      "created_at": "2026-06-30T00:00:00Z",
+      "policy_id": "trust-policy-2026-06",
+      "reason": "approved with conditions",
+      "rejected": false,
+      "rejection_reasons": []
+    },
+    "escalation": null,
+    "evidence_summary": {
+      "contract_gaps": [
+        {
+          "code": "sla_uptime_below_floor",
+          "evidence": {
+            "min_uptime_percent": 99.9,
+            "observed_uptime_percent": 99
+          },
+          "policy_field": "policy.required_sla_terms.min_uptime_percent",
+          "reason": "SLA uptime is below the trust policy floor"
+        }
+      ],
+      "created_at": "2026-06-30T00:00:00Z",
+      "data_store": {
+        "after_version": 3,
+        "before_version": 2,
+        "idempotency_key": "vendor-risk:vendor acme mailops:trust policy 2026 06:approved:approved with conditions",
+        "store_id": "vendor-risk-store-main"
+      },
+      "grounded_policy_fields": [
+        {
+          "policy_field": "policy.required_sla_terms.support_response_hours",
+          "value": 24
+        },
+        {
+          "policy_field": "policy.policy_id",
+          "value": "trust-policy-2026-06"
+        },
+        {
+          "policy_field": "policy.created_at",
+          "value": "2026-06-30T00:00:00Z"
+        }
+      ],
+      "policy_id": "trust-policy-2026-06",
+      "rejection_reasons": [],
+      "vendor_ref": "vendor:acme-mailops"
+    },
+    "record_written": true,
+    "risk_record_event": {
+      "created_at": "2026-06-30T00:00:00Z",
+      "data_source_ref": "artifact://vendor-risk/acme-mailops-contract",
+      "decision": {
+        "approved": true,
+        "conditions": [
+          {
+            "code": "sla_uptime_below_floor",
+            "evidence": {
+              "min_uptime_percent": 99.9,
+              "observed_uptime_percent": 99
+            },
+            "policy_field": "policy.required_sla_terms.min_uptime_percent",
+            "reason": "SLA uptime is below the trust policy floor"
+          }
+        ],
+        "created_at": "2026-06-30T00:00:00Z",
+        "policy_id": "trust-policy-2026-06",
+        "reason": "approved with conditions",
+        "rejected": false,
+        "rejection_reasons": []
+      },
+      "policy_id": "trust-policy-2026-06",
+      "schema": "runx.vendor_risk_record.v1",
+      "vendor_ref": "vendor:acme-mailops"
+    }
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-30T12:59:41.313Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_judge",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step judge",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step judge",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-30T12:59:41.313Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_judge",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node judge",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_judge",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:e0c87f6fd84049a8aff2ac4cec38028f1832fcca53c468f89508d7772375c8de",
+    "id": "sha256:9222ecb7a2f81d5542ac095e6f49c5dd97d8ba0127275f50f4bb808f9822d896",
+    "idempotency": {
+      "content_hash": "sha256:run_judge_6c4c07a106c6-judge-content",
+      "intent_key": "sha256:run_judge_6c4c07a106c6-judge-intent",
+      "trigger_fingerprint": "sha256:run_judge_6c4c07a106c6-judge-trigger"
+    },
+    "issuer": {
+      "kid": "runx-demo-key",
+      "public_key_sha256": "sha256:139e3940e64b5491722088d9a0d741628fc826e09475d341a780acde3c4b8070",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-30T12:59:41.313Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-30T12:59:41.313Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool judge completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:3hN_r3cIB9hdRAyPeVGn5Tj5-vMlf9YpRdG7VB0YD1fHpmhEwwYzjDDjgIpKbc6I9fxM_IB68kPQWHMfSXYoCA"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_judge_6c4c07a106c6_judge"
+      }
+    }
+  },
+  "receipt_id": "sha256:9222ecb7a2f81d5542ac095e6f49c5dd97d8ba0127275f50f4bb808f9822d896",
+  "registry_provenance": {
+    "digest": "sha256:cddd104fef668ffb71db4681f6772070655fa9ff0993fc5f5ccd987787d2c5e9",
+    "profile_digest": "sha256:df25405214d0e94db02ce2bd1e37e9b083c194095f29e6198c6bd0debae8c8e8",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "rohitmulani63-ops/vendor-risk-review",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-a4f5ecb0c7a2"
+  },
+  "run_id": "run_judge_6c4c07a106c6",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "vendor-risk-review",
+  "status": "sealed"
+}

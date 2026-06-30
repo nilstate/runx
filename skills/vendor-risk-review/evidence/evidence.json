@@ -1,0 +1,70 @@
+{
+    "schema":  "frantic.evidence.vendor-risk-review.v1",
+    "summary":  "vendor-risk-review publishes a relationship-level vendor trust decision, records approved-with-conditions or rejected outcomes through the data-store append_event seam, and stops before write when policy evidence is missing.",
+    "runx_cli_version":  "runx-cli 0.6.14",
+    "publisher_owner":  "rohitmulani63-ops",
+    "package_name":  "vendor-risk-review",
+    "package_version":  "sha-a4f5ecb0c7a2",
+    "registry_ref":  "rohitmulani63-ops/vendor-risk-review@sha-a4f5ecb0c7a2",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/vendor-risk-review@sha-a4f5ecb0c7a2",
+    "pr_url":  "https://github.com/runxhq/runx/pull/189",
+    "publish_method":  "runx registry publish ./skills/vendor-risk-review/SKILL.md --registry https://api.runx.ai --json",
+    "install_command":  "runx add rohitmulani63-ops/vendor-risk-review@sha-a4f5ecb0c7a2 --registry https://api.runx.ai",
+    "dogfood":  {
+                    "package":  "rohitmulani63-ops/vendor-risk-review@sha-a4f5ecb0c7a2",
+                    "input":  "approve-with-conditions-sla-gap fixture",
+                    "command":  "runx skill rohitmulani63-ops/vendor-risk-review@sha-a4f5ecb0c7a2 --registry https://api.runx.ai judge -i contract_text=... -i data_source_ref=... -i store_id=... --input-json vendor_context=... --input-json policy=... --input-json prior_risk_record=... -j",
+                    "receipt_ref":  "runx:receipt:sha256:9222ecb7a2f81d5542ac095e6f49c5dd97d8ba0127275f50f4bb808f9822d896",
+                    "verify_verdict":  {
+                                           "valid":  true,
+                                           "receipt_id":  "sha256:9222ecb7a2f81d5542ac095e6f49c5dd97d8ba0127275f50f4bb808f9822d896",
+                                           "signature_status":  "valid",
+                                           "digest_status":  "valid",
+                                           "content_address_status":  "valid"
+                                       },
+                    "harness_cases":  [
+                                          {
+                                              "name":  "approve-with-conditions-sla-gap",
+                                              "status":  "sealed"
+                                          },
+                                          {
+                                              "name":  "reject-unbounded-liability-data-floor",
+                                              "status":  "sealed"
+                                          },
+                                          {
+                                              "name":  "missing-policy-stop",
+                                              "status":  "refused"
+                                          }
+                                      ]
+                },
+    "observations":  [
+                         {
+                             "key":  "decision_lane",
+                             "value":  "approved-with-conditions dogfood decision records approved true, rejected false, with condition sla_uptime_below_floor grounded in policy.required_sla_terms.min_uptime_percent"
+                         },
+                         {
+                             "key":  "rejection_lane",
+                             "value":  "rejection fixture records approved false, rejected true, with data_handling_below_floor and liability_above_policy_cap grounded in policy.data_handling_floor and policy.max_liability"
+                         },
+                         {
+                             "key":  "data_store_append",
+                             "value":  "output uses registry:runx/data-store@0.1.2 append_event with store_id vendor-risk-store-main, aggregate_id vendor entity, expected_version from prior_risk_record, before/after version, and idempotency_key"
+                         },
+                         {
+                             "key":  "policy_binding",
+                             "value":  "policy_id trust-policy-2026-06 and created_at 2026-06-30T00:00:00Z are copied into decision, risk_record_event, and evidence_summary"
+                         },
+                         {
+                             "key":  "harness",
+                             "value":  "Docker Linux harness status passed, cases approve-with-conditions-sla-gap, reject-unbounded-liability-data-floor, missing-policy-stop, assertion errors 0"
+                         },
+                         {
+                             "key":  "receipt",
+                             "value":  "runx:receipt:sha256:9222ecb7a2f81d5542ac095e6f49c5dd97d8ba0127275f50f4bb808f9822d896"
+                         },
+                         {
+                             "key":  "operator_value",
+                             "value":  "a downstream operator can install the skill, run the same fixtures, and inspect why a vendor relationship was accepted with conditions or rejected before any send-as notification is issued"
+                         }
+                     ]
+}
