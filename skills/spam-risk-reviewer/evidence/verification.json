@@ -1,0 +1,43 @@
+{
+    "schema":  "frantic.runx.skill.verification.v1",
+    "status":  "passed",
+    "package":  "rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c",
+    "checks":  [
+                   {
+                       "id":  "direct_runner_low_risk",
+                       "status":  "passed",
+                       "command":  "node skills/spam-risk-reviewer/run.mjs",
+                       "evidence":  "risk_level pass, preflight_clear true, blockers empty"
+                   },
+                   {
+                       "id":  "direct_runner_high_risk",
+                       "status":  "passed",
+                       "command":  "node skills/spam-risk-reviewer/run.mjs",
+                       "evidence":  "risk_level hold, preflight_clear false, needs_human escalation"
+                   },
+                   {
+                       "id":  "linux_harness",
+                       "status":  "passed",
+                       "command":  "runx harness ./skills/spam-risk-reviewer",
+                       "evidence":  "3 cases passed, 0 assertion errors with runx-cli 0.6.14 in Docker Linux"
+                   },
+                   {
+                       "id":  "registry_publish",
+                       "status":  "passed",
+                       "command":  "runx registry publish ./skills/spam-risk-reviewer/SKILL.md --registry https://api.runx.ai",
+                       "evidence":  "https://runx.ai/x/rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c"
+                   },
+                   {
+                       "id":  "dogfood",
+                       "status":  "sealed",
+                       "command":  "runx skill rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c judge",
+                       "evidence":  "runx:receipt:sha256:61f72d0b1ca4a66a5627933e5d3fd0437648c54d82f2b3ea55b4407af3f4c56e"
+                   },
+                   {
+                       "id":  "receipt_verify",
+                       "status":  "passed",
+                       "command":  "runx verify --receipt \u003cdogfood receipt\u003e --json",
+                       "evidence":  "valid true, digest valid, content address valid, signature valid"
+                   }
+               ]
+}

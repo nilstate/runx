@@ -1,0 +1,120 @@
+{
+    "schema":  "frantic.runx.skill.evidence.v1",
+    "bounty":  62,
+    "package":  "rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c",
+    "summary":  "Spam-risk-reviewer is a read-only runx pre-send judgment skill that reviews campaign draft, list hygiene, sender authentication, warm-up, and policy thresholds, then emits a typed send_risk_verdict that either clears send-as preflight or blocks the send and routes to human approval.",
+    "runx_cli_version":  "runx-cli 0.6.14",
+    "observations":  [
+                         {
+                             "id":  "cli_version",
+                             "status":  "passed",
+                             "summary":  "Validated with runx-cli 0.6.14 using Docker Linux for harness, publish, dogfood, and receipt verification."
+                         },
+                         {
+                             "id":  "package_name",
+                             "status":  "passed",
+                             "summary":  "Exact package name is spam-risk-reviewer and published registry package is rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c."
+                         },
+                         {
+                             "id":  "low-risk-verified-sender",
+                             "status":  "sealed",
+                             "summary":  "Harness case clears preflight only when SPF, DKIM, DMARC pass, warm-up is sufficient, list hygiene is within thresholds, and no risky terms are present."
+                         },
+                         {
+                             "id":  "high-risk-incomplete-auth",
+                             "status":  "sealed",
+                             "summary":  "Harness case returns risk_level hold, preflight_clear false, blockers for DKIM, bounce, complaint, stale list, warm-up, and risky terms, plus needs_human escalation."
+                         },
+                         {
+                             "id":  "missing-policy-stop",
+                             "status":  "failure_receipt",
+                             "summary":  "Harness stop/error case refuses missing policy input rather than inventing thresholds or risk signals."
+                         },
+                         {
+                             "id":  "direct_runner_low_risk",
+                             "status":  "passed",
+                             "summary":  "Direct node runner returned risk_level pass and preflight_clear true for the clean customer update input."
+                         },
+                         {
+                             "id":  "direct_runner_high_risk",
+                             "status":  "passed",
+                             "summary":  "Direct node runner returned risk_level hold and grounded blockers for the DKIM failure and poor list-hygiene input."
+                         },
+                         {
+                             "id":  "post_publish_dogfood",
+                             "status":  "sealed",
+                             "summary":  "Published registry package dogfood run sealed with runx:receipt:sha256:61f72d0b1ca4a66a5627933e5d3fd0437648c54d82f2b3ea55b4407af3f4c56e and returned risk_level pass, preflight_clear true, and no blockers."
+                         },
+                         {
+                             "id":  "dogfood_verify",
+                             "status":  "passed",
+                             "summary":  "runx verify returned valid true for digest, content address, and signature on the post-publish dogfood receipt."
+                         }
+                     ],
+    "dogfood":  {
+                    "package":  "rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c",
+                    "input":  {
+                                  "campaign_draft":  {
+                                                         "from":  "growth@example.test",
+                                                         "subject":  "Quarterly product update for customers",
+                                                         "content_digest":  "Opted-in customer update with release notes, support links, and no urgency claims."
+                                                     },
+                                  "list_metadata":  {
+                                                        "size":  2400,
+                                                        "bounce_rate":  0.011,
+                                                        "complaint_rate":  0.0005,
+                                                        "freshness_days":  34
+                                                    },
+                                  "sender_auth_posture":  {
+                                                              "spf_pass":  true,
+                                                              "dkim_pass":  true,
+                                                              "dmarc_pass":  true,
+                                                              "warm_up_days":  52
+                                                          },
+                                  "policy":  {
+                                                 "max_bounce_rate":  0.02,
+                                                 "max_complaint_rate":  0.001,
+                                                 "max_freshness_days":  90,
+                                                 "min_warm_up_days":  21,
+                                                 "risky_content_terms":  [
+                                                                             "guaranteed money",
+                                                                             "risk free profit",
+                                                                             "act now"
+                                                                         ]
+                                             }
+                              },
+                    "command":  "runx skill rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c judge --registry https://api.runx.ai -R ./skills/spam-risk-reviewer/evidence/dogfood-receipts -j --input-json campaign_draft=... --input-json list_metadata=... --input-json sender_auth_posture=... --input-json policy=...",
+                    "receipt_ref":  "runx:receipt:sha256:61f72d0b1ca4a66a5627933e5d3fd0437648c54d82f2b3ea55b4407af3f4c56e",
+                    "verify_verdict":  {
+                                           "valid":  true,
+                                           "digest_status":  "valid",
+                                           "content_address_status":  "valid",
+                                           "signature_status":  "valid",
+                                           "findings":  [
+
+                                                        ]
+                                       },
+                    "harness_cases":  [
+                                          {
+                                              "name":  "low-risk-verified-sender",
+                                              "status":  "sealed"
+                                          },
+                                          {
+                                              "name":  "high-risk-incomplete-auth",
+                                              "status":  "sealed"
+                                          },
+                                          {
+                                              "name":  "missing-policy-stop",
+                                              "status":  "failure"
+                                          }
+                                      ]
+                },
+    "artifacts":  {
+                      "pr_url":  "https://github.com/runxhq/runx/pull/188",
+                      "publish_digest":  "e75fe876352db909ffe9a6dbbae932ba2ae0f1cc66c4c50df7c9a45b75bdd0d1",
+                      "profile_digest":  "e1c27174785bc786651a06c143907974fc92aff2454f5f91fe3615d192d1d145",
+                      "install_command":  "runx add rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c --registry https://api.runx.ai",
+                      "run_command":  "runx skill rohitmulani63-ops/spam-risk-reviewer@sha-659b432d158c --registry https://api.runx.ai"
+                  }
+}
