@@ -1,0 +1,491 @@
+{
+  "closure": {
+    "closed_at": "2026-06-30T09:13:57.802Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool judge completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "append_event": {
+        "after_version": 4,
+        "aggregate_id": "thread_billing_1001",
+        "before_version": 3,
+        "cas": "expected_version",
+        "event": {
+          "case_id": "case_426f406dd768",
+          "evidence": [
+            {
+              "citation": "severity sev1",
+              "source": "triage_packet.severity",
+              "value": "sev1"
+            }
+          ],
+          "lane": "priority_support",
+          "threshold": "severity:sev1",
+          "type": "support.escalation_case_opened"
+        },
+        "expected_version": 3,
+        "gated": false,
+        "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+        "operation": "append_event",
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.support.escalation_cases.v1"
+      },
+      "case_id": "case_426f406dd768",
+      "decision": {
+        "escalate": true,
+        "lane": "priority_support",
+        "reason": "production outage or contractual risk"
+      },
+      "escalation_packet": {
+        "classification": {
+          "confidence": 0.94,
+          "severity": "sev1",
+          "type": "billing_outage"
+        },
+        "dispatch": {
+          "consequence": "separate_governed_run_required",
+          "named_run": "slack-notify",
+          "this_skill_sends": false
+        },
+        "principal": {
+          "ref": "caller_supplied_principal_required",
+          "type": "operator"
+        },
+        "schema": "runx.reply.routing.v1",
+        "send_target": {
+          "bounded": true,
+          "lane": "priority_support",
+          "target": "#priority-support",
+          "target_rail": "slack-notify"
+        },
+        "type": "runx.support.escalation_packet.v1"
+      },
+      "observations": [
+        {
+          "classification": "billing_outage",
+          "confidence": 0.94,
+          "severity": "sev1",
+          "signals": [
+            "production_down",
+            "enterprise_account"
+          ],
+          "type": "triage_packet"
+        },
+        {
+          "items": [
+            {
+              "citation": "severity sev1",
+              "source": "triage_packet.severity",
+              "value": "sev1"
+            }
+          ],
+          "type": "evidence"
+        },
+        {
+          "aggregate_id": "thread_billing_1001",
+          "open_case": false,
+          "type": "prior_case_projection_read",
+          "version": 3
+        },
+        {
+          "lane": "priority_support",
+          "target_rail": "slack-notify",
+          "threshold": "severity:sev1",
+          "type": "policy_threshold_matched"
+        },
+        {
+          "after_version": 4,
+          "aggregate_id": "thread_billing_1001",
+          "before_version": 3,
+          "case_id": "case_426f406dd768",
+          "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+          "type": "case_append"
+        }
+      ],
+      "prior_case_projection": {
+        "aggregate_id": "thread_billing_1001",
+        "open_case": false,
+        "operation": "read_projection",
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.support.escalation_cases.v1",
+        "version": 3
+      },
+      "schema": "runx.support.escalation_judge.v1",
+      "status": "sealed"
+    },
+    "stderr": "",
+    "stdout": "{\n  \"schema\": \"runx.support.escalation_judge.v1\",\n  \"status\": \"sealed\",\n  \"decision\": {\n    \"escalate\": true,\n    \"lane\": \"priority_support\",\n    \"reason\": \"production outage or contractual risk\"\n  },\n  \"case_id\": \"case_426f406dd768\",\n  \"prior_case_projection\": {\n    \"operation\": \"read_projection\",\n    \"store\": \"registry:runx/data-store@0.1.2\",\n    \"store_id\": \"runx.support.escalation_cases.v1\",\n    \"aggregate_id\": \"thread_billing_1001\",\n    \"version\": 3,\n    \"open_case\": false\n  },\n  \"append_event\": {\n    \"operation\": \"append_event\",\n    \"store\": \"registry:runx/data-store@0.1.2\",\n    \"store_id\": \"runx.support.escalation_cases.v1\",\n    \"aggregate_id\": \"thread_billing_1001\",\n    \"idempotency_key\": \"escalation-judge:thread_billing_1001:sev1\",\n    \"expected_version\": 3,\n    \"before_version\": 3,\n    \"after_version\": 4,\n    \"event\": {\n      \"type\": \"support.escalation_case_opened\",\n      \"case_id\": \"case_426f406dd768\",\n      \"lane\": \"priority_support\",\n      \"threshold\": \"severity:sev1\",\n      \"evidence\": [\n        {\n          \"source\": \"triage_packet.severity\",\n          \"value\": \"sev1\",\n          \"citation\": \"severity sev1\"\n        }\n      ]\n    },\n    \"gated\": false,\n    \"cas\": \"expected_version\"\n  },\n  \"escalation_packet\": {\n    \"schema\": \"runx.reply.routing.v1\",\n    \"type\": \"runx.support.escalation_packet.v1\",\n    \"classification\": {\n      \"type\": \"billing_outage\",\n      \"severity\": \"sev1\",\n      \"confidence\": 0.94\n    },\n    \"send_target\": {\n      \"lane\": \"priority_support\",\n      \"target_rail\": \"slack-notify\",\n      \"target\": \"#priority-support\",\n      \"bounded\": true\n    },\n    \"principal\": {\n      \"type\": \"operator\",\n      \"ref\": \"caller_supplied_principal_required\"\n    },\n    \"dispatch\": {\n      \"named_run\": \"slack-notify\",\n      \"consequence\": \"separate_governed_run_required\",\n      \"this_skill_sends\": false\n    }\n  },\n  \"observations\": [\n    {\n      \"type\": \"triage_packet\",\n      \"classification\": \"billing_outage\",\n      \"severity\": \"sev1\",\n      \"confidence\": 0.94,\n      \"signals\": [\n        \"production_down\",\n        \"enterprise_account\"\n      ]\n    },\n    {\n      \"type\": \"evidence\",\n      \"items\": [\n        {\n          \"source\": \"triage_packet.severity\",\n          \"value\": \"sev1\",\n          \"citation\": \"severity sev1\"\n        }\n      ]\n    },\n    {\n      \"type\": \"prior_case_projection_read\",\n      \"aggregate_id\": \"thread_billing_1001\",\n      \"version\": 3,\n      \"open_case\": false\n    },\n    {\n      \"type\": \"policy_threshold_matched\",\n      \"threshold\": \"severity:sev1\",\n      \"lane\": \"priority_support\",\n      \"target_rail\": \"slack-notify\"\n    },\n    {\n      \"type\": \"case_append\",\n      \"case_id\": \"case_426f406dd768\",\n      \"aggregate_id\": \"thread_billing_1001\",\n      \"idempotency_key\": \"escalation-judge:thread_billing_1001:sev1\",\n      \"before_version\": 3,\n      \"after_version\": 4\n    }\n  ]\n}\n",
+    "structured_output": {
+      "append_event": {
+        "after_version": 4,
+        "aggregate_id": "thread_billing_1001",
+        "before_version": 3,
+        "cas": "expected_version",
+        "event": {
+          "case_id": "case_426f406dd768",
+          "evidence": [
+            {
+              "citation": "severity sev1",
+              "source": "triage_packet.severity",
+              "value": "sev1"
+            }
+          ],
+          "lane": "priority_support",
+          "threshold": "severity:sev1",
+          "type": "support.escalation_case_opened"
+        },
+        "expected_version": 3,
+        "gated": false,
+        "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+        "operation": "append_event",
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.support.escalation_cases.v1"
+      },
+      "case_id": "case_426f406dd768",
+      "decision": {
+        "escalate": true,
+        "lane": "priority_support",
+        "reason": "production outage or contractual risk"
+      },
+      "escalation_packet": {
+        "classification": {
+          "confidence": 0.94,
+          "severity": "sev1",
+          "type": "billing_outage"
+        },
+        "dispatch": {
+          "consequence": "separate_governed_run_required",
+          "named_run": "slack-notify",
+          "this_skill_sends": false
+        },
+        "principal": {
+          "ref": "caller_supplied_principal_required",
+          "type": "operator"
+        },
+        "schema": "runx.reply.routing.v1",
+        "send_target": {
+          "bounded": true,
+          "lane": "priority_support",
+          "target": "#priority-support",
+          "target_rail": "slack-notify"
+        },
+        "type": "runx.support.escalation_packet.v1"
+      },
+      "observations": [
+        {
+          "classification": "billing_outage",
+          "confidence": 0.94,
+          "severity": "sev1",
+          "signals": [
+            "production_down",
+            "enterprise_account"
+          ],
+          "type": "triage_packet"
+        },
+        {
+          "items": [
+            {
+              "citation": "severity sev1",
+              "source": "triage_packet.severity",
+              "value": "sev1"
+            }
+          ],
+          "type": "evidence"
+        },
+        {
+          "aggregate_id": "thread_billing_1001",
+          "open_case": false,
+          "type": "prior_case_projection_read",
+          "version": 3
+        },
+        {
+          "lane": "priority_support",
+          "target_rail": "slack-notify",
+          "threshold": "severity:sev1",
+          "type": "policy_threshold_matched"
+        },
+        {
+          "after_version": 4,
+          "aggregate_id": "thread_billing_1001",
+          "before_version": 3,
+          "case_id": "case_426f406dd768",
+          "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+          "type": "case_append"
+        }
+      ],
+      "prior_case_projection": {
+        "aggregate_id": "thread_billing_1001",
+        "open_case": false,
+        "operation": "read_projection",
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.support.escalation_cases.v1",
+        "version": 3
+      },
+      "schema": "runx.support.escalation_judge.v1",
+      "status": "sealed"
+    }
+  },
+  "payload": {
+    "append_event": {
+      "after_version": 4,
+      "aggregate_id": "thread_billing_1001",
+      "before_version": 3,
+      "cas": "expected_version",
+      "event": {
+        "case_id": "case_426f406dd768",
+        "evidence": [
+          {
+            "citation": "severity sev1",
+            "source": "triage_packet.severity",
+            "value": "sev1"
+          }
+        ],
+        "lane": "priority_support",
+        "threshold": "severity:sev1",
+        "type": "support.escalation_case_opened"
+      },
+      "expected_version": 3,
+      "gated": false,
+      "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+      "operation": "append_event",
+      "store": "registry:runx/data-store@0.1.2",
+      "store_id": "runx.support.escalation_cases.v1"
+    },
+    "case_id": "case_426f406dd768",
+    "decision": {
+      "escalate": true,
+      "lane": "priority_support",
+      "reason": "production outage or contractual risk"
+    },
+    "escalation_packet": {
+      "classification": {
+        "confidence": 0.94,
+        "severity": "sev1",
+        "type": "billing_outage"
+      },
+      "dispatch": {
+        "consequence": "separate_governed_run_required",
+        "named_run": "slack-notify",
+        "this_skill_sends": false
+      },
+      "principal": {
+        "ref": "caller_supplied_principal_required",
+        "type": "operator"
+      },
+      "schema": "runx.reply.routing.v1",
+      "send_target": {
+        "bounded": true,
+        "lane": "priority_support",
+        "target": "#priority-support",
+        "target_rail": "slack-notify"
+      },
+      "type": "runx.support.escalation_packet.v1"
+    },
+    "observations": [
+      {
+        "classification": "billing_outage",
+        "confidence": 0.94,
+        "severity": "sev1",
+        "signals": [
+          "production_down",
+          "enterprise_account"
+        ],
+        "type": "triage_packet"
+      },
+      {
+        "items": [
+          {
+            "citation": "severity sev1",
+            "source": "triage_packet.severity",
+            "value": "sev1"
+          }
+        ],
+        "type": "evidence"
+      },
+      {
+        "aggregate_id": "thread_billing_1001",
+        "open_case": false,
+        "type": "prior_case_projection_read",
+        "version": 3
+      },
+      {
+        "lane": "priority_support",
+        "target_rail": "slack-notify",
+        "threshold": "severity:sev1",
+        "type": "policy_threshold_matched"
+      },
+      {
+        "after_version": 4,
+        "aggregate_id": "thread_billing_1001",
+        "before_version": 3,
+        "case_id": "case_426f406dd768",
+        "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+        "type": "case_append"
+      }
+    ],
+    "prior_case_projection": {
+      "aggregate_id": "thread_billing_1001",
+      "open_case": false,
+      "operation": "read_projection",
+      "store": "registry:runx/data-store@0.1.2",
+      "store_id": "runx.support.escalation_cases.v1",
+      "version": 3
+    },
+    "schema": "runx.support.escalation_judge.v1",
+    "status": "sealed"
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-30T09:13:57.802Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_judge",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step judge",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step judge",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-30T09:13:57.802Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_judge",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node judge",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_judge",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:ea4b29dbec13fc6546a70ea8040547ab00a252931a096d1750aa641b4dbe1de4",
+    "id": "sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7",
+    "idempotency": {
+      "content_hash": "sha256:run_judge_faf24bae98c5-judge-content",
+      "intent_key": "sha256:run_judge_faf24bae98c5-judge-intent",
+      "trigger_fingerprint": "sha256:run_judge_faf24bae98c5-judge-trigger"
+    },
+    "issuer": {
+      "kid": "runx-runtime-prod-fixture-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-30T09:13:57.802Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-30T09:13:57.802Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool judge completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:G3Rm7dmDRDM5ICWo2zBJ-rM6U0JWAmSmbxr8Tp9ZCa_LK9RgkHA2DlhRSPH_QPK0JJUKp2BmKQ-3fM-b6YqZAg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_judge_faf24bae98c5_judge"
+      }
+    }
+  },
+  "receipt_id": "sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7",
+  "registry_provenance": {
+    "digest": "sha256:e32e5e78320718b2d548e56a2100d3d06f81b7f5f67637fae0b473874337e13d",
+    "profile_digest": "sha256:27e79ffb04b4a55a6316b2a462f93b8a5ac022c8c8d81573a43541a5d33c47be",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "vidshidden/escalation-judge",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-8bdc1d12bfae"
+  },
+  "run_id": "run_judge_faf24bae98c5",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "escalation-judge",
+  "status": "sealed"
+}

@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/runner/work/runx/runx/skills/escalation-judge/evidence/dogfood-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}
