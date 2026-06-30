@@ -2,6 +2,7 @@
   "schema": "frantic.evidence.v1",
   "bounty": "#69",
   "package_name": "escalation-judge",
+  "runx_cli_version": "runx-cli 0.6.14",
   "summary": "Published escalation-judge runx skill. The skill reads a support triage packet, thread body, prior case projection, and policy rules; it decides whether escalation is warranted; it appends a governed case event and emits a typed escalation packet only when a declared policy threshold is crossed.",
   "published": {
     "skill_id": "vidshidden/escalation-judge",
@@ -135,5 +136,83 @@
     "No-threshold case returns decision.escalate false with no case id, no append event, no escalation packet, and no_change stop state.",
     "Ambiguous low confidence routes to human review through stop_state.state needs_human and nonzero CLI stop handling.",
     "Undeclared lanes are refused during policy validation; severity and churn signals are only taken from declared policy and supplied triage/thread inputs."
+  ],
+  "observations": [
+    {
+      "type": "runx_cli_version",
+      "value": "runx-cli 0.6.14"
+    },
+    {
+      "type": "hosted_harness",
+      "status": "passed",
+      "case_names": [
+        "sealed_high_severity_escalation",
+        "stop_no_threshold_no_change",
+        "ambiguous_low_confidence_needs_agent"
+      ],
+      "receipt_refs": [
+        "runx:receipt:sha256:71c23abd221652ff488e9e545ce411ab36605aec6a4f1efc4b9bcc2af534f7ef",
+        "runx:receipt:sha256:8b605d176674a703058c8f7fb924c1e56f8df76b512e0fb0473f91bb9e1cf998",
+        "runx:receipt:sha256:f8e09fe933182d016a274595e9380d67c168c6b0db96f3b9a5d42d65abfcdbdb"
+      ]
+    },
+    {
+      "type": "high_severity_decision",
+      "decision": {
+        "escalate": true,
+        "lane": "priority_support",
+        "reason": "production outage or contractual risk"
+      },
+      "threshold": {
+        "type": "policy_threshold_matched",
+        "threshold": "severity:sev1",
+        "lane": "priority_support",
+        "target_rail": "slack-notify"
+      },
+      "case_id": "case_426f406dd768",
+      "target_rail": "slack-notify"
+    },
+    {
+      "type": "prior_projection_read",
+      "aggregate_id": "thread_billing_1001",
+      "version": 3,
+      "open_case": false
+    },
+    {
+      "type": "case_append",
+      "case_id": "case_426f406dd768",
+      "before_version": 3,
+      "after_version": 4,
+      "store": "registry:runx/data-store@0.1.2"
+    },
+    {
+      "type": "no_threshold_stop",
+      "decision": {
+        "escalate": false,
+        "lane": null,
+        "reason": "no_change"
+      },
+      "stop_state": {
+        "state": "no_change",
+        "reason": "no severity threshold or churn-risk signal crossed policy"
+      },
+      "has_case_id": false,
+      "has_packet": false
+    },
+    {
+      "type": "needs_human_stop",
+      "status": "needs_human",
+      "stop_state": {
+        "state": "needs_human",
+        "reason_code": "ambiguous_confidence",
+        "message": "triage_packet.confidence is too low for deterministic escalation."
+      }
+    },
+    {
+      "type": "dogfood_verify",
+      "receipt_ref": "runx:receipt:sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e",
+      "valid": true,
+      "run_id": "run_judge_faf24bae98c5"
+    }
   ]
 }
