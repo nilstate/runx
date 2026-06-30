@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/roster/metrics/v1.json",
+  "x-runx-packet-id": "runx.roster.metrics.v1",
+  "type": "object",
+  "properties": {
+    "schema": { "type": "string" },
+    "case_id": { "type": ["string", "null"] },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "member": { "type": "string" },
+          "skill": { "type": "string" },
+          "turn_count": { "type": "number" },
+          "refusal_count": { "type": "number" },
+          "refusal_rate": { "type": "number" },
+          "avg_completion_time": { "type": "number" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "events_folded": { "type": "number" },
+    "declared_schema_version": { "type": "string" }
+  },
+  "additionalProperties": true
+}

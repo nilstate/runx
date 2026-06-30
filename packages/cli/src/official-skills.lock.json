@@ -357,6 +357,13 @@
     "catalog_role": "context"
   },
   {
+    "skill_id": "runx/roster-tuner",
+    "version": "sha-46a6900342cb",
+    "digest": "275246aafad54016bfa2bccc7affe23faff51f4e82bca01bbf855c5134573510",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/run-history-analyst",
     "version": "sha-0ec78eb20018",
     "digest": "1a1441365a20b74442998656478fc3d530f2d09f25f811d970b403a8a7920df4",

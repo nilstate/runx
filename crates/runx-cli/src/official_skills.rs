@@ -266,6 +266,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "6fc1b341d55e3c6be8a5f7693dfe3312654b89a14f88fe42e4ffc84a65a9cd09",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/roster-tuner",
+        version: "sha-46a6900342cb",
+        digest: "275246aafad54016bfa2bccc7affe23faff51f4e82bca01bbf855c5134573510",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/run-history-analyst",
         version: "sha-0ec78eb20018",
         digest: "1a1441365a20b74442998656478fc3d530f2d09f25f811d970b403a8a7920df4",
