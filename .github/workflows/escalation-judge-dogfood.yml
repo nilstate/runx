@@ -21,13 +21,17 @@ jobs:
 
       - name: Install runx 0.6.14
         run: |
+          set -euo pipefail
           curl -L -s https://github.com/runxhq/runx/releases/download/cli-v0.6.14/runx-0.6.14-x86_64-unknown-linux-musl.tar.gz -o /tmp/runx.tar.gz
           mkdir -p /tmp/runx
           tar -xzf /tmp/runx.tar.gz -C /tmp/runx
+          install -m 0755 "$(find /tmp/runx -type f -name runx | head -n 1)" /tmp/runx/runx
+          /tmp/runx/runx --version
           echo "/tmp/runx" >> "$GITHUB_PATH"
 
       - name: Clean install published package
         run: |
+          set -euo pipefail
           mkdir -p skills/escalation-judge/evidence
           runx add vidshidden/escalation-judge@sha-8bdc1d12bfae \
             --registry https://api.runx.ai \
@@ -40,6 +44,7 @@ jobs:
           RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
           RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
         run: |
+          set -euo pipefail
           mkdir -p skills/escalation-judge/evidence/dogfood-receipts
           TRIAGE="$(jq -c '.triage_packet' skills/escalation-judge/fixtures/high-severity.json)"
           POLICY="$(jq -c '.policy_rules' skills/escalation-judge/fixtures/high-severity.json)"
@@ -66,12 +71,14 @@ jobs:
           RUNX_RECEIPT_VERIFY_KID: runx-runtime-prod-fixture-key
           RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64: IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=
         run: |
+          set -euo pipefail
           runx verify \
             --receipt-dir skills/escalation-judge/evidence/dogfood-receipts \
             --json | tee skills/escalation-judge/evidence/dogfood-verify.json
 
       - name: Commit dogfood evidence
         run: |
+          set -euo pipefail
           git config user.name "VidsHidden"
           git config user.email "zhengxinyu515@gmail.com"
           git add skills/escalation-judge/evidence/clean-install.json \
