@@ -11,7 +11,7 @@ This delivery implements and publishes the requested `escalation-judge` runx ski
 - Hosted harness: https://runx.ai/x/vidshidden/escalation-judge#harness
 - Harness status: passed, 3 cases
 - Harness receipts: runx:receipt:sha256:71c23abd221652ff488e9e545ce411ab36605aec6a4f1efc4b9bcc2af534f7ef, runx:receipt:sha256:8b605d176674a703058c8f7fb924c1e56f8df76b512e0fb0473f91bb9e1cf998, runx:receipt:sha256:f8e09fe933182d016a274595e9380d67c168c6b0db96f3b9a5d42d65abfcdbdb
-- Dogfood receipt: runx:receipt:sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7
+- Dogfood receipt: runx:receipt:sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e
 
 ## Behavior
 
@@ -23,6 +23,6 @@ This delivery implements and publishes the requested `escalation-judge` runx ski
 
 - Hosted publish harness passed all three cases and produced sealed receipt refs listed above.
 - Clean install passed with `runx add vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai`.
-- Ubuntu Actions dogfood passed with `runx skill vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai --json`; `runx verify` returned `valid: true` for `runx:receipt:sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7`.
+- Ubuntu Actions dogfood passed with `runx skill vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai --json`; `runx verify` returned `valid: true` for `runx:receipt:sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e`.
 - Windows local `runx skill` resolved trusted registry provenance but hit the known receipt-store `os error 87`; the raw output is committed as `dogfood-output-windows.json`.
 - `.github/workflows/escalation-judge-dogfood.yml` reruns the same dogfood on Ubuntu and commits `dogfood-output.json`, `dogfood-verify.json`, and receipt files.

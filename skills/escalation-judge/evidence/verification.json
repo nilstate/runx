@@ -32,7 +32,7 @@
   },
   "dogfood": {
     "status": "sealed",
-    "receipt_ref": "runx:receipt:sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7",
+    "receipt_ref": "runx:receipt:sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e",
     "verify_valid": true,
     "windows_status": "failure",
     "windows_error": "receipt store is unreadable: 参数错误。 (os error 87)",
@@ -43,5 +43,5 @@
       "skills/escalation-judge/evidence/dogfood-receipts"
     ]
   },
-  "receipt_ref": "runx:receipt:sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7"
+  "receipt_ref": "runx:receipt:sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e"
 }
