@@ -7,6 +7,13 @@ This delivery implements and publishes the requested `escalation-judge` runx ski
 - Package: `escalation-judge`
 - Registry ref: `vidshidden/escalation-judge@sha-8bdc1d12bfae`
 - Public URL: https://runx.ai/x/vidshidden/escalation-judge@sha-8bdc1d12bfae
+- PR URL: https://github.com/runxhq/runx/pull/184
+- Source URL: https://github.com/VidsHidden/runx/tree/escalation-judge/skills/escalation-judge
+- Raw X.yaml: https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/X.yaml
+- Raw SKILL.md: https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/SKILL.md
+- Evidence JSON: https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/evidence/evidence.json
+- Verification JSON: https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/evidence/verification.json
+- Report URL: https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/evidence/report.md
 - runx CLI: `0.6.14`
 - Hosted harness: https://runx.ai/x/vidshidden/escalation-judge#harness
 - Harness status: passed, 3 cases

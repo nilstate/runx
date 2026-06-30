@@ -110,11 +110,48 @@
     "profile_digest": "sha256:27e79ffb04b4a55a6316b2a462f93b8a5ac022c8c8d81573a43541a5d33c47be"
   },
   "dogfood": {
+    "package": "vidshidden/escalation-judge@sha-8bdc1d12bfae",
+    "input": {
+      "fixture": "skills/escalation-judge/fixtures/high-severity.json",
+      "triage_packet": {
+        "type": "triage_packet",
+        "classification": "billing_outage",
+        "severity": "sev1",
+        "confidence": 0.94,
+        "signals": [
+          "production_down",
+          "enterprise_account"
+        ]
+      },
+      "aggregate_id": "thread_billing_1001",
+      "expected_version": 3,
+      "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+      "policy_threshold": "severity:sev1"
+    },
     "command": "runx skill vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai --json",
     "status": "sealed",
     "receipt_ref": "runx:receipt:sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e",
     "run_id": "run_judge_faf24bae98c5",
-    "verify_valid": true,
+    "verify_verdict": {
+      "valid": true,
+      "signature_mode": "production",
+      "root_receipt_id": "sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e",
+      "findings": []
+    },
+    "harness_cases": [
+      {
+        "name": "sealed_high_severity_escalation",
+        "status": "sealed"
+      },
+      {
+        "name": "stop_no_threshold_no_change",
+        "status": "sealed"
+      },
+      {
+        "name": "ambiguous_low_confidence_needs_agent",
+        "status": "refused"
+      }
+    ],
     "windows_attempt_status": "failure",
     "windows_attempt_note": "Resolved the remote registry package and trusted provenance, then failed writing the Windows receipt store with os error 87. GitHub Actions workflow escalation-judge-dogfood.yml reruns the same dogfood on Ubuntu and commits durable dogfood-output.json and dogfood-verify.json.",
     "registry_provenance": {
@@ -211,8 +248,24 @@
     {
       "type": "dogfood_verify",
       "receipt_ref": "runx:receipt:sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e",
-      "valid": true,
+      "verify_verdict": {
+        "valid": true,
+        "signature_mode": "production",
+        "root_receipt_id": "sha256:75f9cfa03468681a6d87e9ebfa4b9f791a1ece7e8bfdc94cb379f9c57090e25e",
+        "findings": []
+      },
       "run_id": "run_judge_faf24bae98c5"
+    },
+    {
+      "type": "artifact_urls",
+      "public_url": "https://runx.ai/x/vidshidden/escalation-judge@sha-8bdc1d12bfae",
+      "pr_url": "https://github.com/runxhq/runx/pull/184",
+      "source_url": "https://github.com/VidsHidden/runx/tree/escalation-judge/skills/escalation-judge",
+      "x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/X.yaml",
+      "skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/SKILL.md",
+      "evidence_json": "https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/evidence/evidence.json",
+      "verification_json": "https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/evidence/verification.json",
+      "report": "https://raw.githubusercontent.com/VidsHidden/runx/escalation-judge/skills/escalation-judge/evidence/report.md"
     }
   ]
 }
