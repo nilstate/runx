@@ -46,3 +46,4 @@ Expected cases:
 
 - `low-risk-verified-sender`
 - `high-risk-incomplete-auth`
+- `missing-policy-stop`

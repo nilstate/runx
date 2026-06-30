@@ -1,0 +1,5 @@
+{
+    "case":  "missing-policy-stop",
+    "purpose":  "missing policy refuses instead of inventing thresholds",
+    "expected_status":  "failure"
+}
