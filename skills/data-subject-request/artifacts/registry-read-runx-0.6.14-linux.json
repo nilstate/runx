@@ -1,0 +1,51 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+    "skill": {
+      "skill_id": "fengyangxxx/data-subject-request",
+      "owner": "fengyangxxx",
+      "name": "data-subject-request",
+      "description": "Judge a data subject request, record the sealed verdict in data-store, and emit only a bounded handoff for downstream erasure or export.",
+      "category": "ops",
+      "version": "sha-5e61052d6ca5",
+      "digest": "ad2cfa0cd1b8f2bb0e2c2ae6e397df24d4c9d74675316e03a276da60b4b74c77",
+      "markdown": "---\nname: data-subject-request\ndescription: Judge a data subject request, record the sealed verdict in data-store, and emit only a bounded handoff for downstream erasure or export.\nrunx:\n  category: privacy\n---\n\n# Data Subject Request\n\nJudge whether a data subject request is in policy without erasing, exporting, or\nsending any data. The skill reads a request packet, requestor proof, policy\nbounds, and prior request state. It emits one typed verdict, records that verdict\nthrough `data-store`, and returns a bounded handoff that a separate governed\noperator run may consume.\n\nThis is not a legal authority and does not replace counsel. It is an execution\nboundary for policy evidence: the receipt proves which inputs were inspected,\nwhich lawful basis was named, which scope was allowed or refused, and which\ndurable verdict was appended.\n\n## Inputs\n\n- `request_packet`: `type`, `subject_id`, and `scope`. Scope must include the\n  request id, requested data classes, and requested scopes.\n- `requestor_proof`: `identity_provider`, `verified_at`, and `assertion`. The\n  assertion must bind the requestor to the same subject and carry a stable proof\n  reference or digest.\n- `policy`: `jurisdiction`, `trusted_identity_providers`, `lawful_bases`, and\n  `scope_bounds`. The trusted provider list is required evidence for accepting\n  the proof issuer.\n- `data_source_ref` and `store_id`: the pinned data-store binding used for the\n  subject request event stream.\n- `aggregate_id`, `expected_version`, and `idempotency_key`: the subject request\n  entity, optimistic concurrency version, and retry-safe verdict write key.\n\n## Verdict Contract\n\nThe output is `runx.privacy.data_subject_request.v1` data:\n\n- `decision{eligible,reason}` always appears.\n- `handoff{path,subject_id,data_classes,scopes}` appears only when eligible.\n- `escalation` explains whether a human lane is required.\n- `verdict_event` is the exact deterministic event recorded by\n  `data-store.append_event`.\n- `observations` name the lawful-basis verdict, jurisdiction reason, verified\n  requestor reference, identity assertion digest, scope bounds, bounded handoff,\n  `aggregate_id`, `expected_version`, and `idempotency_key`.\n\nThe packet must not contain an `operational_proposal` envelope. A downstream\ndriver may issue a separate governed run by name, but this skill does not fire\nthat rail.\n\n## State Model\n\nState is durable in `registry:runx/data-store@0.1.2`. The graph uses the\ngithub-sync-style shape:\n\n1. `read_projection` loads any prior decision for the subject request entity.\n2. `data-subject-request-decide` judges identity, scope, and lawful basis.\n3. `append_event` records the verdict with `expected_version` and\n   `idempotency_key`.\n4. `read_projection` reads back the durable state for receipt evidence.\n\nThe aggregate id is the subject request entity, not a tenant-wide stream. The\nappend is an ungated CAS write that records the decision itself; consequences\nremain downstream.\n\n## Consequence Boundary\n\nEligible erasure returns a handoff such as\n`downstream.data-store.append_event.subject.erasure`. A downstream operator must\nissue a separate governed `data-store.append_event` run that appends a\n`subject.erasure` tombstone. Erasure is event-sourced; there is no delete\noperation in this skill.\n\nEligible export returns a handoff to a separate read path. A downstream operator\nmust run `read_projection`, `redact-pii`, and `send-as` under explicit approval.\nThis skill does not read raw content, redact content, or deliver content.\n\nAmbiguous identity, missing proof, untrusted identity providers, scope disputes,\nor data classes outside `policy.scope_bounds` escalate to a human lane or block\nas `needs_agent`. The skill must refuse to invent an identity, lawful basis, or\nscope that is not grounded in the inputs.\n\n## Local Harness\n\nRun:\n\n```bash\nrunx harness ./skills/data-subject-request --json\n```\n\nThe inline harness has two cases:\n\n- `eligible-erasure-records-verdict`: a verified GDPR erasure request for\n  `profile` and `support_tickets` seals, emits a bounded erasure handoff, and\n  records the verdict via `data-store.append_event`.\n- `unverified-requestor-refused-no-handoff`: an unsigned email proof and an\n  out-of-scope `payment_methods` export request seal a deterministic refusal\n  naming the jurisdiction and lawful-basis/scope grounds, with no handoff.\n\n## Example Invocation\n\n```bash\nrunx skill data-subject-request --json \\\n  --input-json request_packet='{\"type\":\"erasure\",\"subject_id\":\"subject:customer_4242\",\"scope\":{\"request_id\":\"dsr-2026-06-30-001\",\"data_classes\":[\"profile\",\"support_tickets\"],\"requested_scopes\":[\"profile\",\"support_tickets\"]}}' \\\n  --input-json requestor_proof='{\"identity_provider\":\"account-session\",\"verified_at\":\"2026-06-30T14:20:00Z\",\"assertion\":{\"subject_id\":\"subject:customer_4242\",\"assertion_ref\":\"acct-session:customer_4242:2026-06-30\",\"assertion_digest\":\"sha256:9d64a60e8d0c8080e88f9472c0e0ffdfad9424c2e42eb570c0f46ff3e4e73116\"}}' \\\n  --input-json policy='{\"jurisdiction\":\"GDPR\",\"trusted_identity_providers\":[\"account-session\"],\"lawful_bases\":{\"erasure\":\"GDPR Article 17 erasure after withdrawn consent\"},\"scope_bounds\":{\"data_classes\":[\"profile\",\"support_tickets\"],\"erasure_allowed\":[\"profile\",\"support_tickets\"],\"export_allowed\":[\"profile\",\"support_tickets\"]}}' \\\n  -i data_source_ref=local://runx-data-subject-request/harness \\\n  -i store_id=data-subject-request-harness-v1 \\\n  -i aggregate_id=dsr:subject:customer_4242:request:dsr-2026-06-30-001 \\\n  --input-json expected_version=0 \\\n  -i idempotency_key=dsr-2026-06-30-001:verdict:v1\n```\n\nThe runner computes only bounded policy checks from the supplied packet. If it\ncannot prove identity, scope, and lawful basis from those inputs, the correct\nresult is a sealed refusal or human escalation, not a guessed verdict.",
+      "profile_digest": "d9c6a8b8dcd974de6f922a8288f73843cb7b5bda6778adfdfe8ab2867012e581",
+      "runner_names": [
+        "decide",
+        "judge"
+      ],
+      "source_type": "agent",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_69446dfb22822d5fdc22562d",
+        "handle": "fengyangxxx",
+        "display_name": "fy"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_69446dfb22822d5fdc22562d",
+          "status": "declared",
+          "summary": "fy",
+          "issued_at": "2026-06-30T16:01:25.215Z",
+          "metadata": {
+            "publisher_display_name": "fy",
+            "publisher_handle": "fengyangxxx",
+            "publisher_id": "user_69446dfb22822d5fdc22562d",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai",
+      "run_command": "runx skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai"
+    }
+  }
+}

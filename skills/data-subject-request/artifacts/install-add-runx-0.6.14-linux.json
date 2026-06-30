@@ -1,0 +1,44 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/runx-clean/skills/fengyangxxx/data-subject-request/sha-5e61052d6ca5/SKILL.md",
+      "skill_name": "data-subject-request",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "fengyangxxx/data-subject-request",
+      "version": "sha-5e61052d6ca5",
+      "digest": "sha256:ad2cfa0cd1b8f2bb0e2c2ae6e397df24d4c9d74675316e03a276da60b4b74c77",
+      "profile_digest": "sha256:d9c6a8b8dcd974de6f922a8288f73843cb7b5bda6778adfdfe8ab2867012e581",
+      "profile_state_path": "/tmp/runx-clean/skills/fengyangxxx/data-subject-request/sha-5e61052d6ca5/.runx/profile.json",
+      "runner_names": [
+        "decide",
+        "judge"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/runx-clean/skills/fengyangxxx/data-subject-request/sha-5e61052d6ca5/SKILL.md",
+      "digest": "sha256:ad2cfa0cd1b8f2bb0e2c2ae6e397df24d4c9d74675316e03a276da60b4b74c77",
+      "install_count": 3,
+      "package_digest": "b7065cdcec59bda57404fc533b690dc89a5e5e635bbac4bcec584bfa55f36dcf",
+      "profile_digest": "sha256:d9c6a8b8dcd974de6f922a8288f73843cb7b5bda6778adfdfe8ab2867012e581",
+      "publisher": {
+        "display_name": "fy",
+        "handle": "fengyangxxx",
+        "id": "user_69446dfb22822d5fdc22562d",
+        "kind": "user"
+      },
+      "ref": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+      "skill_id": "fengyangxxx/data-subject-request",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-5e61052d6ca5"
+    }
+  }
+}

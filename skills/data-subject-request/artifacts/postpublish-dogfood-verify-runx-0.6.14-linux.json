@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/repo/.runx-test-receipts-data-subject-request-dogfood-postpublish-fixture",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+      "receipt_count": 5,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

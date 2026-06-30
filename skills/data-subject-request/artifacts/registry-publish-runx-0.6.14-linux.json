@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "fengyangxxx/data-subject-request",
+      "owner": "fengyangxxx",
+      "name": "data-subject-request",
+      "version": "sha-5e61052d6ca5",
+      "digest": "ad2cfa0cd1b8f2bb0e2c2ae6e397df24d4c9d74675316e03a276da60b4b74c77",
+      "profile_digest": "d9c6a8b8dcd974de6f922a8288f73843cb7b5bda6778adfdfe8ab2867012e581",
+      "trust_tier": "community",
+      "install_command": "runx add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai",
+      "run_command": "runx skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/fengyangxxx/data-subject-request"
+    }
+  }
+}

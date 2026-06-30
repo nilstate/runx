@@ -1,0 +1,23 @@
+{
+  "description": "Judge a data subject request, record the sealed verdict in data-store, and emit only a bounded handoff for downstream erasure or export.",
+  "name": "data-subject-request",
+  "registry_provenance": {
+    "digest": "sha256:ad2cfa0cd1b8f2bb0e2c2ae6e397df24d4c9d74675316e03a276da60b4b74c77",
+    "profile_digest": "sha256:d9c6a8b8dcd974de6f922a8288f73843cb7b5bda6778adfdfe8ab2867012e581",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "fengyangxxx/data-subject-request",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-5e61052d6ca5"
+  },
+  "runners": [
+    "decide",
+    "judge"
+  ],
+  "schema": "runx.skill.inspect.v1",
+  "skill_path": "/root/.runx/registry-skills/ba1ac16b631195fd/fengyangxxx/data-subject-request/sha-5e61052d6ca5/b5e60333c769f1d8/fengyangxxx/data-subject-request/sha-5e61052d6ca5",
+  "status": "ok",
+  "version": "0.1.0"
+}

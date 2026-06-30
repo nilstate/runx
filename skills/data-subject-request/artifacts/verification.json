@@ -1,0 +1,214 @@
+{
+  "schema": "frantic.runx.data_subject_request.verification.v1",
+  "status": "ready_for_qa_not_submitted",
+  "generated_at": "2026-06-30T16:20:37.121Z",
+  "package": {
+    "owner": "fengyangxxx",
+    "name": "data-subject-request",
+    "version": "sha-5e61052d6ca5",
+    "registry_ref": "fengyangxxx/data-subject-request@sha-5e61052d6ca5"
+  },
+  "checks": {
+    "runx_version_0_6_14_or_newer": true,
+    "package_name_exact": true,
+    "publisher_owner_exact": true,
+    "registry_publish_success": true,
+    "registry_read_success": true,
+    "remote_inspect_success": true,
+    "clean_install_success": true,
+    "local_harness_passed": true,
+    "hosted_harness_passed_by_publish": true,
+    "postpublish_dogfood_sealed": true,
+    "dogfood_receipt_is_postpublish_registry_ref": true,
+    "dogfood_command_present": true,
+    "dogfood_verify_valid": true,
+    "evidence_observations_include_required_fields": true,
+    "no_operational_proposal_in_dogfood_output": true,
+    "doctor_success": true,
+    "min_evidence_items_6": true,
+    "no_tokens_or_secrets_in_public_artifacts_known": true,
+    "final_qa_pass_required": true
+  },
+  "artifact_files": [
+    "skills/data-subject-request/artifacts/runx-version-0.6.14-linux.txt",
+    "skills/data-subject-request/artifacts/registry-publish-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/registry-read-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/install-add-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/local-harness-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/postpublish-dogfood-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/postpublish-dogfood-verify-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/postpublish-dogfood-root-receipt-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/remote-skill-inspect-runx-0.6.14-linux.json",
+    "skills/data-subject-request/artifacts/doctor-local-source.json"
+  ],
+  "delivery_fields_expected_after_final_commit": [
+    "public_url",
+    "source_url",
+    "pr_url",
+    "x_yaml",
+    "skill_md",
+    "evidence_json",
+    "verification_json",
+    "receipt_ref",
+    "report"
+  ],
+  "receipt_ref": "runx:receipt:sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+  "dogfood": {
+    "package": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+    "input": "skills/data-subject-request/fixtures/dogfood-erasure-input.json",
+    "command": "npx -y @runxhq/cli@0.6.14 skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --json -R .runx-test-receipts-data-subject-request-dogfood-postpublish-fixture --input-json request_packet=<fixtures/dogfood-erasure-input.json.request_packet> --input-json requestor_proof=<fixtures/dogfood-erasure-input.json.requestor_proof> --input-json policy=<fixtures/dogfood-erasure-input.json.policy> -i data_source_ref=<fixture.data_source_ref> -i store_id=<fixture.store_id> -i aggregate_id=<fixture.aggregate_id> -i idempotency_key=<fixture.idempotency_key> --input-json expected_version=<fixture.expected_version>",
+    "status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+    "receipt_id": "sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+    "receipt_artifact": "skills/data-subject-request/artifacts/postpublish-dogfood-root-receipt-runx-0.6.14-linux.json",
+    "verify_command": "npx -y @runxhq/cli@0.6.14 verify sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8 --receipt-dir .runx-test-receipts-data-subject-request-dogfood-postpublish-fixture --json",
+    "verify_verdict": {
+      "valid": true,
+      "signature_mode": "production",
+      "root_receipt_id": "sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+      "receipt_count": 5,
+      "findings": []
+    },
+    "harness_cases": [
+      {
+        "name": "eligible-erasure-records-verdict",
+        "status": "sealed",
+        "receipt_id": "sha256:1104ce5cb414b391b03f68dc3a0a14e3237ba9f9d934fa7f65a5963f63f6923d",
+        "expected": "decision.eligible true; bounded erasure handoff emitted; subject_request.verdict_recorded appended"
+      },
+      {
+        "name": "unverified-requestor-refused-no-handoff",
+        "status": "refused_policy_denied",
+        "receipt_id": "sha256:7475dfb674888c6cde3538e4ea8c80c300df097b25a351aac47f0b4c13a4497d",
+        "expected": "unverified requestor and out-of-bounds payment_methods scope refused with no handoff; readback guard blocks closed graph"
+      }
+    ],
+    "decision": {
+      "eligible": true,
+      "reason": "GDPR erasure request is eligible: verified account-session proof matches subject:customer_7001, lawful basis is supplied, and scope is bounded to profile, marketing_preferences."
+    },
+    "handoff": {
+      "data_classes": [
+        "profile",
+        "marketing_preferences"
+      ],
+      "path": "downstream.data-store.append_event.subject.erasure",
+      "scopes": {
+        "downstream_operator_required": true,
+        "erasure_event_type": "subject.erasure",
+        "rail_effect": "none",
+        "request_type": "erasure",
+        "requested_scopes": [
+          "profile",
+          "marketing_preferences"
+        ]
+      },
+      "subject_id": "subject:customer_7001"
+    },
+    "verdict_event": {
+      "payload": {
+        "data_store": {
+          "aggregate_id": "dsr:subject:customer_7001:request:dsr-2026-06-30-dogfood-001",
+          "expected_version": 0,
+          "idempotency_key": "dsr-2026-06-30-dogfood-001:verdict:v1",
+          "prior_projection_seen": true,
+          "prior_projection_version": 0
+        },
+        "decision": {
+          "eligible": true,
+          "reason": "GDPR erasure request is eligible: verified account-session proof matches subject:customer_7001, lawful basis is supplied, and scope is bounded to profile, marketing_preferences."
+        },
+        "escalation": {
+          "lane": "none",
+          "reason": "Requestor identity, subject match, lawful basis, and scope all pass policy.",
+          "required": false
+        },
+        "handoff": {
+          "data_classes": [
+            "profile",
+            "marketing_preferences"
+          ],
+          "path": "downstream.data-store.append_event.subject.erasure",
+          "scopes": {
+            "downstream_operator_required": true,
+            "erasure_event_type": "subject.erasure",
+            "rail_effect": "none",
+            "request_type": "erasure",
+            "requested_scopes": [
+              "profile",
+              "marketing_preferences"
+            ]
+          },
+          "subject_id": "subject:customer_7001"
+        },
+        "legal": {
+          "jurisdiction": "GDPR",
+          "lawful_basis": "GDPR Article 17 erasure after withdrawn consent, with retention exceptions screened by policy."
+        },
+        "packet": "runx.privacy.data_subject_request.v1",
+        "request": {
+          "data_classes": [
+            "profile",
+            "marketing_preferences"
+          ],
+          "request_id": "dsr-2026-06-30-dogfood-001",
+          "requested_scopes": [
+            "profile",
+            "marketing_preferences"
+          ],
+          "subject_id": "subject:customer_7001",
+          "type": "erasure"
+        },
+        "requestor": {
+          "assertion_ref": "acct-session:customer_7001:2026-06-30",
+          "identity_assertion_digest": "sha256:6f41f68e5636f1b542f47370f214d1f58870d7bc4b8a8c922fc8ab9601aa3f3c",
+          "identity_provider": "account-session",
+          "verified_at": "2026-06-30T14:45:00Z"
+        },
+        "scope_bounds": {
+          "data_classes": [
+            "profile",
+            "support_tickets",
+            "marketing_preferences"
+          ],
+          "requested_scopes": [
+            "profile",
+            "marketing_preferences"
+          ]
+        }
+      },
+      "type": "subject_request.verdict_recorded"
+    },
+    "graph_status": "Succeeded",
+    "step_receipts": [
+      {
+        "receipt_id": "sha256:0c0262bfc708d71e691155b2a24fd46d150ce115a7cd9569438d5f58e1c3488c",
+        "status": "success"
+      },
+      {
+        "receipt_id": "sha256:d591a480077c983ee921ad60d9d344baac10afd4efb4e65fff7756ab3c657bac",
+        "status": "success"
+      },
+      {
+        "receipt_id": "sha256:247ff818e44779bdce5eeeb6608e62f9940c4e2fa181707b69e7312db3fac42b",
+        "status": "success"
+      },
+      {
+        "receipt_id": "sha256:e344ac5edce02a6d8329ad3171b8011be6221c57109cd87543b6621ebd5aea63",
+        "status": "success"
+      }
+    ]
+  },
+  "prior_review_regression": [
+    {
+      "prior_issue": "Earlier worker delivery missed evidence_json.dogfood.command",
+      "new_evidence": "dogfood.command is present in this evidence_json and commands.md with the post-publish runx skill command",
+      "status": "addressed"
+    },
+    {
+      "prior_issue": "Earlier worker delivery had unverifiable receipt evidence",
+      "new_evidence": "postpublish-dogfood-verify-runx-0.6.14-linux.json shows valid=true for the submitted receipt id",
+      "status": "addressed"
+    }
+  ]
+}
