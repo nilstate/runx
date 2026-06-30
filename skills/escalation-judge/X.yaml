@@ -1,0 +1,225 @@
+skill: escalation-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_high_severity_escalation
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: billing_outage
+          severity: sev1
+          confidence: 0.94
+          signals:
+            - production_down
+            - enterprise_account
+        thread_body: "Customer reports production billing checkout is down for all enterprise seats. They mention renewal risk and executive visibility if this is not handled today."
+        policy_rules:
+          severity_thresholds:
+            sev1:
+              lane: priority_support
+              target_rail: slack-notify
+              reason: production outage or contractual risk
+            sev2:
+              lane: support_lead
+              target_rail: slack-notify
+              reason: degraded support issue
+          churn_risk_signals:
+            - renewal risk
+            - cancellation
+            - executive visibility
+          escalation_lanes:
+            priority_support:
+              target_rail: slack-notify
+              target: "#priority-support"
+            support_lead:
+              target_rail: slack-notify
+              target: "#support-leads"
+        aggregate_id: thread_billing_1001
+        expected_version: 3
+        idempotency_key: escalation-judge:thread_billing_1001:sev1
+        prior_case_projection:
+          aggregate_id: thread_billing_1001
+          version: 3
+          open_case: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: stop_no_threshold_no_change
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: how_to_question
+          severity: sev4
+          confidence: 0.91
+          signals:
+            - documentation_request
+        thread_body: "Customer asks where to find the billing export documentation. The thread is routine and contains only a documentation lookup request with no business-risk request."
+        policy_rules:
+          severity_thresholds:
+            sev1:
+              lane: priority_support
+              target_rail: slack-notify
+              reason: production outage or contractual risk
+            sev2:
+              lane: support_lead
+              target_rail: slack-notify
+              reason: degraded support issue
+          churn_risk_signals:
+            - renewal risk
+            - cancellation
+            - executive visibility
+          escalation_lanes:
+            priority_support:
+              target_rail: slack-notify
+              target: "#priority-support"
+            support_lead:
+              target_rail: slack-notify
+              target: "#support-leads"
+        aggregate_id: thread_docs_2002
+        expected_version: 1
+        idempotency_key: escalation-judge:thread_docs_2002:no-change
+        prior_case_projection:
+          aggregate_id: thread_docs_2002
+          version: 1
+          open_case: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: ambiguous_low_confidence_needs_agent
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: unclear_request
+          severity: sev2
+          confidence: 0.42
+          signals:
+            - ambiguous_customer_impact
+        thread_body: "Customer says the workflow feels wrong but gives no clear impact, affected account, or requested route."
+        policy_rules:
+          severity_thresholds:
+            sev1:
+              lane: priority_support
+              target_rail: slack-notify
+              reason: production outage or contractual risk
+            sev2:
+              lane: support_lead
+              target_rail: slack-notify
+              reason: degraded support issue
+          churn_risk_signals:
+            - renewal risk
+            - cancellation
+            - executive visibility
+          escalation_lanes:
+            priority_support:
+              target_rail: slack-notify
+              target: "#priority-support"
+            support_lead:
+              target_rail: slack-notify
+              target: "#support-leads"
+        aggregate_id: thread_ambiguous_3003
+        expected_version: 2
+        idempotency_key: escalation-judge:thread_ambiguous_3003:needs-human
+        prior_case_projection:
+          aggregate_id: thread_ambiguous_3003
+          version: 2
+          open_case: false
+      expect:
+        status: failure
+
+runx:
+  mutating: true
+  category: support
+  scopes:
+    - support.thread.read
+    - data_store.case.append
+    - escalation.packet.emit
+  policy:
+    data_classification: bounded_support_context
+    state:
+      store: registry:runx/data-store@0.1.2
+      store_id: runx.support.escalation_cases.v1
+      shape: read_projection -> decide -> append_event
+      append: ungated CAS write with idempotency_key and expected_version
+    verifier_notes:
+      - Do not emit an escalation packet when decision.escalate is false.
+      - Do not route to undeclared lanes.
+      - Do not post or send; only name the downstream governed rail.
+  artifacts:
+    emits:
+      - runx.support.escalation_judge.v1
+    wrap_as: escalation_judge_packet
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - support.thread.read
+      - data_store.case.append
+      - escalation.packet.emit
+    policy:
+      reads:
+        - caller supplied triage packet
+        - caller supplied thread body
+        - caller supplied prior-case projection
+        - caller supplied escalation policy
+      writes:
+        - registry:runx/data-store@0.1.2 append_event for escalation cases
+      disallows:
+        - Slack posts
+        - email sends
+        - paging
+        - undeclared escalation lanes
+        - invented severity or churn signals
+    artifacts:
+      wrap_as: escalation_judge_packet
+      packet: runx.support.escalation_judge.v1
+    inputs:
+      triage_packet:
+        type: json
+        required: true
+        description: Support triage packet with classification, severity, confidence, and optional signals.
+      thread_body:
+        type: string
+        required: true
+        description: Bounded support thread body supplied by the caller.
+      policy_rules:
+        type: json
+        required: true
+        description: Escalation policy with severity thresholds, churn risk signals, and declared lanes.
+      aggregate_id:
+        type: string
+        required: true
+        description: Thread id and data-store aggregate id.
+      expected_version:
+        type: number
+        required: true
+        description: CAS expected version read from the prior-case projection.
+      idempotency_key:
+        type: string
+        required: true
+        description: Idempotency key for append_event.
+    outputs:
+      decision: object
+      case_id: string
+      escalation_packet: object
+      append_event: object
+      stop_state: object

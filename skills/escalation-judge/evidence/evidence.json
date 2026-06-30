@@ -1,0 +1,135 @@
+{
+  "schema": "frantic.evidence.v1",
+  "bounty": "#69",
+  "package_name": "escalation-judge",
+  "summary": "Published escalation-judge runx skill. The skill reads a support triage packet, thread body, prior case projection, and policy rules; it decides whether escalation is warranted; it appends a governed case event and emits a typed escalation packet only when a declared policy threshold is crossed.",
+  "published": {
+    "skill_id": "vidshidden/escalation-judge",
+    "version": "sha-8bdc1d12bfae",
+    "registry_ref": "vidshidden/escalation-judge@sha-8bdc1d12bfae",
+    "public_url": "https://runx.ai/x/vidshidden/escalation-judge@sha-8bdc1d12bfae",
+    "install_command": "runx add vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai",
+    "run_command": "runx skill vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai",
+    "digest": "sha256:e32e5e78320718b2d548e56a2100d3d06f81b7f5f67637fae0b473874337e13d",
+    "profile_digest": "sha256:27e79ffb04b4a55a6316b2a462f93b8a5ac022c8c8d81573a43541a5d33c47be",
+    "trust_tier": "community",
+    "maturity": "beta"
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "sealed_high_severity_escalation",
+      "stop_no_threshold_no_change",
+      "ambiguous_low_confidence_needs_agent"
+    ],
+    "receipt_ids": [
+      "sha256:71c23abd221652ff488e9e545ce411ab36605aec6a4f1efc4b9bcc2af534f7ef",
+      "sha256:8b605d176674a703058c8f7fb924c1e56f8df76b512e0fb0473f91bb9e1cf998",
+      "sha256:f8e09fe933182d016a274595e9380d67c168c6b0db96f3b9a5d42d65abfcdbdb"
+    ],
+    "graph_case_count": 0,
+    "evidence_id": "runx-harness:vidshidden/escalation-judge:sha-8bdc1d12bfae",
+    "evidence_url": "https://runx.ai/x/vidshidden/escalation-judge#harness"
+  },
+  "local_runner_observations": {
+    "high_severity": {
+      "decision": {
+        "escalate": true,
+        "lane": "priority_support",
+        "reason": "production outage or contractual risk"
+      },
+      "threshold": {
+        "type": "policy_threshold_matched",
+        "threshold": "severity:sev1",
+        "lane": "priority_support",
+        "target_rail": "slack-notify"
+      },
+      "case_id": "case_426f406dd768",
+      "target_rail": "slack-notify",
+      "append_event": {
+        "operation": "append_event",
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.support.escalation_cases.v1",
+        "aggregate_id": "thread_billing_1001",
+        "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+        "expected_version": 3,
+        "before_version": 3,
+        "after_version": 4,
+        "event": {
+          "type": "support.escalation_case_opened",
+          "case_id": "case_426f406dd768",
+          "lane": "priority_support",
+          "threshold": "severity:sev1",
+          "evidence": [
+            {
+              "source": "triage_packet.severity",
+              "value": "sev1",
+              "citation": "severity sev1"
+            }
+          ]
+        },
+        "gated": false,
+        "cas": "expected_version"
+      }
+    },
+    "no_threshold": {
+      "decision": {
+        "escalate": false,
+        "lane": null,
+        "reason": "no_change"
+      },
+      "stop_state": {
+        "state": "no_change",
+        "reason": "no severity threshold or churn-risk signal crossed policy"
+      },
+      "has_case_id": false,
+      "has_packet": false
+    },
+    "needs_human": {
+      "status": "needs_human",
+      "decision": {
+        "escalate": false,
+        "lane": null,
+        "reason": "ambiguous_confidence"
+      },
+      "stop_state": {
+        "state": "needs_human",
+        "reason_code": "ambiguous_confidence",
+        "message": "triage_packet.confidence is too low for deterministic escalation."
+      }
+    }
+  },
+  "clean_install": {
+    "status": "success",
+    "destination": "skills/escalation-judge/evidence/clean-install",
+    "digest": "sha256:e32e5e78320718b2d548e56a2100d3d06f81b7f5f67637fae0b473874337e13d",
+    "profile_digest": "sha256:27e79ffb04b4a55a6316b2a462f93b8a5ac022c8c8d81573a43541a5d33c47be"
+  },
+  "dogfood": {
+    "command": "runx skill vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai --json",
+    "windows_attempt_status": "failure",
+    "windows_attempt_note": "Resolved the remote registry package and trusted provenance, then failed writing the Windows receipt store with os error 87. GitHub Actions workflow escalation-judge-dogfood.yml reruns the same dogfood on Ubuntu and commits durable dogfood-output.json and dogfood-verify.json.",
+    "registry_provenance": {
+      "digest": "sha256:e32e5e78320718b2d548e56a2100d3d06f81b7f5f67637fae0b473874337e13d",
+      "profile_digest": "sha256:27e79ffb04b4a55a6316b2a462f93b8a5ac022c8c8d81573a43541a5d33c47be",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "skill_id": "vidshidden/escalation-judge",
+      "trust_state": "trusted",
+      "trust_tier": "community",
+      "version": "sha-8bdc1d12bfae"
+    }
+  },
+  "acceptance_notes": [
+    "Exact package name is escalation-judge.",
+    "Hosted publish harness passed sealed_high_severity_escalation, stop_no_threshold_no_change, and ambiguous_low_confidence_needs_agent.",
+    "High severity crosses severity:sev1, reads prior projection version 3, appends case_id case_426f406dd768 through registry:runx/data-store@0.1.2 semantics, and emits target rail slack-notify without sending.",
+    "No-threshold case returns decision.escalate false with no case id, no append event, no escalation packet, and no_change stop state.",
+    "Ambiguous low confidence routes to human review through stop_state.state needs_human and nonzero CLI stop handling.",
+    "Undeclared lanes are refused during policy validation; severity and churn signals are only taken from declared policy and supplied triage/thread inputs."
+  ]
+}

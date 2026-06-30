@@ -1,0 +1,44 @@
+{
+  "schema": "frantic.verification.v1",
+  "bounty": "#69",
+  "package": "vidshidden/escalation-judge@sha-8bdc1d12bfae",
+  "runx_cli": "0.6.14",
+  "public_url": "https://runx.ai/x/vidshidden/escalation-judge@sha-8bdc1d12bfae",
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 3,
+    "case_names": [
+      "sealed_high_severity_escalation",
+      "stop_no_threshold_no_change",
+      "ambiguous_low_confidence_needs_agent"
+    ],
+    "receipt_refs": [
+      "runx:receipt:sha256:71c23abd221652ff488e9e545ce411ab36605aec6a4f1efc4b9bcc2af534f7ef",
+      "runx:receipt:sha256:8b605d176674a703058c8f7fb924c1e56f8df76b512e0fb0473f91bb9e1cf998",
+      "runx:receipt:sha256:f8e09fe933182d016a274595e9380d67c168c6b0db96f3b9a5d42d65abfcdbdb"
+    ],
+    "evidence_id": "runx-harness:vidshidden/escalation-judge:sha-8bdc1d12bfae",
+    "evidence_url": "https://runx.ai/x/vidshidden/escalation-judge#harness"
+  },
+  "clean_install": {
+    "command": "runx add vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai",
+    "status": "success",
+    "digest": "sha256:e32e5e78320718b2d548e56a2100d3d06f81b7f5f67637fae0b473874337e13d"
+  },
+  "local_runner": {
+    "high_severity": "passed",
+    "no_threshold": "passed",
+    "needs_human_stop": "passed"
+  },
+  "dogfood": {
+    "windows_status": "failure",
+    "windows_error": "receipt store is unreadable: 参数错误。 (os error 87)",
+    "ubuntu_actions_workflow": ".github/workflows/escalation-judge-dogfood.yml",
+    "expected_outputs": [
+      "skills/escalation-judge/evidence/dogfood-output.json",
+      "skills/escalation-judge/evidence/dogfood-verify.json",
+      "skills/escalation-judge/evidence/dogfood-receipts"
+    ]
+  },
+  "receipt_ref": "runx:receipt:sha256:71c23abd221652ff488e9e545ce411ab36605aec6a4f1efc4b9bcc2af534f7ef"
+}

@@ -1,0 +1,42 @@
+{
+  "triage_packet": {
+    "classification": "unclear_request",
+    "severity": "sev2",
+    "confidence": 0.42,
+    "signals": ["ambiguous_customer_impact"]
+  },
+  "thread_body": "Customer says the workflow feels wrong but gives no clear impact, affected account, or requested route.",
+  "policy_rules": {
+    "severity_thresholds": {
+      "sev1": {
+        "lane": "priority_support",
+        "target_rail": "slack-notify",
+        "reason": "production outage or contractual risk"
+      },
+      "sev2": {
+        "lane": "support_lead",
+        "target_rail": "slack-notify",
+        "reason": "degraded support issue"
+      }
+    },
+    "churn_risk_signals": ["renewal risk", "cancellation", "executive visibility"],
+    "escalation_lanes": {
+      "priority_support": {
+        "target_rail": "slack-notify",
+        "target": "#priority-support"
+      },
+      "support_lead": {
+        "target_rail": "slack-notify",
+        "target": "#support-leads"
+      }
+    }
+  },
+  "aggregate_id": "thread_ambiguous_3003",
+  "expected_version": 2,
+  "idempotency_key": "escalation-judge:thread_ambiguous_3003:needs-human",
+  "prior_case_projection": {
+    "aggregate_id": "thread_ambiguous_3003",
+    "version": 2,
+    "open_case": false
+  }
+}

@@ -1,0 +1,85 @@
+name: escalation-judge dogfood
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - escalation-judge
+    paths:
+      - "skills/escalation-judge/**"
+      - ".github/workflows/escalation-judge-dogfood.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  dogfood:
+    if: ${{ !contains(github.event.head_commit.message, '[skip dogfood]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install runx 0.6.14
+        run: |
+          curl -L -s https://github.com/runxhq/runx/releases/download/cli-v0.6.14/runx-0.6.14-x86_64-unknown-linux-musl.tar.gz -o /tmp/runx.tar.gz
+          mkdir -p /tmp/runx
+          tar -xzf /tmp/runx.tar.gz -C /tmp/runx
+          echo "/tmp/runx" >> "$GITHUB_PATH"
+
+      - name: Clean install published package
+        run: |
+          mkdir -p skills/escalation-judge/evidence
+          runx add vidshidden/escalation-judge@sha-8bdc1d12bfae \
+            --registry https://api.runx.ai \
+            --to skills/escalation-judge/evidence/clean-install \
+            --json | tee skills/escalation-judge/evidence/clean-install.json
+
+      - name: Dogfood published package
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-runtime-prod-fixture-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          mkdir -p skills/escalation-judge/evidence/dogfood-receipts
+          TRIAGE="$(jq -c '.triage_packet' skills/escalation-judge/fixtures/high-severity.json)"
+          POLICY="$(jq -c '.policy_rules' skills/escalation-judge/fixtures/high-severity.json)"
+          PROJECTION="$(jq -c '.prior_case_projection' skills/escalation-judge/fixtures/high-severity.json)"
+          THREAD_BODY="$(jq -r '.thread_body' skills/escalation-judge/fixtures/high-severity.json)"
+          AGGREGATE_ID="$(jq -r '.aggregate_id' skills/escalation-judge/fixtures/high-severity.json)"
+          EXPECTED_VERSION="$(jq -r '.expected_version' skills/escalation-judge/fixtures/high-severity.json)"
+          IDEMPOTENCY_KEY="$(jq -r '.idempotency_key' skills/escalation-judge/fixtures/high-severity.json)"
+          runx skill vidshidden/escalation-judge@sha-8bdc1d12bfae \
+            --registry https://api.runx.ai \
+            --input-json triage_packet "$TRIAGE" \
+            --input-json policy_rules "$POLICY" \
+            --input-json prior_case_projection "$PROJECTION" \
+            -i "thread_body=$THREAD_BODY" \
+            -i "aggregate_id=$AGGREGATE_ID" \
+            --input-json expected_version "$EXPECTED_VERSION" \
+            -i "idempotency_key=$IDEMPOTENCY_KEY" \
+            --json \
+            -R skills/escalation-judge/evidence/dogfood-receipts \
+            | tee skills/escalation-judge/evidence/dogfood-output.json
+
+      - name: Verify dogfood receipt
+        env:
+          RUNX_RECEIPT_VERIFY_KID: runx-runtime-prod-fixture-key
+          RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64: IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=
+        run: |
+          runx verify \
+            --receipt-dir skills/escalation-judge/evidence/dogfood-receipts \
+            --json | tee skills/escalation-judge/evidence/dogfood-verify.json
+
+      - name: Commit dogfood evidence
+        run: |
+          git config user.name "VidsHidden"
+          git config user.email "zhengxinyu515@gmail.com"
+          git add skills/escalation-judge/evidence/clean-install.json \
+            skills/escalation-judge/evidence/dogfood-output.json \
+            skills/escalation-judge/evidence/dogfood-verify.json \
+            skills/escalation-judge/evidence/dogfood-receipts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Add escalation-judge dogfood evidence [skip dogfood]"
+          git push

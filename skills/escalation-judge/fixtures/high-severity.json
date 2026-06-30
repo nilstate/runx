@@ -1,0 +1,42 @@
+{
+  "triage_packet": {
+    "classification": "billing_outage",
+    "severity": "sev1",
+    "confidence": 0.94,
+    "signals": ["production_down", "enterprise_account"]
+  },
+  "thread_body": "Customer reports production billing checkout is down for all enterprise seats. They mention renewal risk and executive visibility if this is not handled today.",
+  "policy_rules": {
+    "severity_thresholds": {
+      "sev1": {
+        "lane": "priority_support",
+        "target_rail": "slack-notify",
+        "reason": "production outage or contractual risk"
+      },
+      "sev2": {
+        "lane": "support_lead",
+        "target_rail": "slack-notify",
+        "reason": "degraded support issue"
+      }
+    },
+    "churn_risk_signals": ["renewal risk", "cancellation", "executive visibility"],
+    "escalation_lanes": {
+      "priority_support": {
+        "target_rail": "slack-notify",
+        "target": "#priority-support"
+      },
+      "support_lead": {
+        "target_rail": "slack-notify",
+        "target": "#support-leads"
+      }
+    }
+  },
+  "aggregate_id": "thread_billing_1001",
+  "expected_version": 3,
+  "idempotency_key": "escalation-judge:thread_billing_1001:sev1",
+  "prior_case_projection": {
+    "aggregate_id": "thread_billing_1001",
+    "version": 3,
+    "open_case": false
+  }
+}

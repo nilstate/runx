@@ -1,0 +1,42 @@
+{
+  "triage_packet": {
+    "classification": "how_to_question",
+    "severity": "sev4",
+    "confidence": 0.91,
+    "signals": ["documentation_request"]
+  },
+  "thread_body": "Customer asks where to find the billing export documentation. The thread is routine and contains only a documentation lookup request with no business-risk request.",
+  "policy_rules": {
+    "severity_thresholds": {
+      "sev1": {
+        "lane": "priority_support",
+        "target_rail": "slack-notify",
+        "reason": "production outage or contractual risk"
+      },
+      "sev2": {
+        "lane": "support_lead",
+        "target_rail": "slack-notify",
+        "reason": "degraded support issue"
+      }
+    },
+    "churn_risk_signals": ["renewal risk", "cancellation", "executive visibility"],
+    "escalation_lanes": {
+      "priority_support": {
+        "target_rail": "slack-notify",
+        "target": "#priority-support"
+      },
+      "support_lead": {
+        "target_rail": "slack-notify",
+        "target": "#support-leads"
+      }
+    }
+  },
+  "aggregate_id": "thread_docs_2002",
+  "expected_version": 1,
+  "idempotency_key": "escalation-judge:thread_docs_2002:no-change",
+  "prior_case_projection": {
+    "aggregate_id": "thread_docs_2002",
+    "version": 1,
+    "open_case": false
+  }
+}
