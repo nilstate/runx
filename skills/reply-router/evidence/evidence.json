@@ -1,4 +1,4 @@
-﻿{
+{
     "schema":  "frantic.runx.skill.evidence.v1",
     "bounty":  "runx skill: reply router",
     "bounty_number":  70,
@@ -146,5 +146,49 @@
                                               "receipt_ref":  null
                                           }
                                       ]
-                }
+                },
+    "summary":  "Reply-router classifies inbound replies from sealed sends, records unsubscribe suppressions through recipient-keyed compare-and-set data-store writes, emits bounded routing decisions for safe non-unsubscribe replies, and stops ambiguous or unsealed inputs for human review.",
+    "runx_cli_version":  "runx-cli 0.6.14",
+    "observations":  [
+                         {
+                             "id":  "cli_version",
+                             "status":  "passed",
+                             "summary":  "Validated with runx-cli 0.6.14 in Docker Linux for the local harness and post-publish dogfood path."
+                         },
+                         {
+                             "id":  "local_harness",
+                             "status":  "passed",
+                             "summary":  "runx harness ./skills/reply-router passed with 3 cases and 0 assertion errors."
+                         },
+                         {
+                             "id":  "sealed_unsubscribe_suppression",
+                             "status":  "passed",
+                             "summary":  "Sealed unsubscribe reply records one recipient-keyed suppression event through append_event."
+                         },
+                         {
+                             "id":  "sealed_interested_route",
+                             "status":  "passed",
+                             "summary":  "Sealed interested reply emits a bounded runx.reply.routing.v1 decision and does not send directly."
+                         },
+                         {
+                             "id":  "stop_ambiguous_or_unsealed",
+                             "status":  "passed",
+                             "summary":  "Ambiguous or unsealed reply path stops safely for human review without mutating state."
+                         },
+                         {
+                             "id":  "post_publish_dogfood",
+                             "status":  "sealed",
+                             "summary":  "Published skill rohitmulani63-ops/reply-router@sha-a3bebc6 was dogfooded from the registry and sealed receipt runx:receipt:sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51."
+                         },
+                         {
+                             "id":  "dogfood_verify",
+                             "status":  "passed",
+                             "summary":  "runx verify returned valid true for digest, content address, and signature on the post-publish dogfood receipt."
+                         },
+                         {
+                             "id":  "public_artifacts",
+                             "status":  "passed",
+                             "summary":  "Public runx registry URL, PR URL, raw X.yaml, SKILL.md, verification JSON, evidence JSON, and report links were fetched with HTTP 200 before preflight."
+                         }
+                     ]
 }
