@@ -27,9 +27,9 @@
 - Hosted registry harness: `passed`
 - Hosted harness endpoint: https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review@sha-f73efbe9b874/harness
 - Harness cases:
-  - `approve-with-conditions-sla-gap`: sealed approve-with-conditions path; missing SLA language is grounded in `policy.required_sla_terms`.
-  - `sealed-rejection-unbounded-liability`: sealed rejection path; refusal is grounded in liability/data-handling policy floors.
-  - `stop-missing-policy-no-write`: failed/stop path with no data-store write.
+  - `approve-with-conditions-sla-gap`: status `sealed`; approve-with-conditions path grounded in `policy.required_sla_terms`.
+  - `sealed-rejection-unbounded-liability`: status `sealed`; rejection path grounded in liability/data-handling policy floors.
+  - `stop-missing-policy-no-write`: status `refused`; failed/stop path with no data-store write.
 - Hosted harness receipt ids:
   - `sha256:b4038bf730b6f5a3150d669cb414ad9805ba3b8e87bb3bf32886d24b172156c1`
   - `sha256:956be8c7d155300a9d5173c1193a2f09a557589d216337e6b831fe60df9a3705`
@@ -42,6 +42,15 @@
 - Dogfood receipt: `runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9`
 - Dogfood verify verdict: `passed`
 - `skills/vendor-risk-review/verification.json` records the canonical published ref, hosted harness, dogfood receipt, verify verdict, and the Linux GitHub Actions run that produced the dogfood receipt.
+- `evidence_json.review_gate_summary` is placed near the top of the JSON so review sees the required fields before any truncation:
+  - dogfood `before_version`: `2`
+  - dogfood `after_version`: `3`
+  - dogfood `idempotency_key`: `vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97`
+  - dogfood `receipt_ref`: `runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9`
+  - dogfood verify status: `passed`
+- `evidence_json.x_yaml_harness_cases` mirrors the raw `X.yaml` inline harness cases with expected statuses and data-store dependency `registry:runx/data-store@0.1.2`.
+- `evidence_json.dogfood_output.data_store.append_event` records the public dogfood append event fields: `aggregate_id=vendor:acme-analytics`, `expected_version=2`, `after_version=3`, and the idempotency key above.
+- `evidence_json.receipt_verify_json` includes the captured verify command and JSON-shaped verdict for the dogfood receipt, so the receipt check is visible even if the review runner does not dereference `receipt_ref`.
 - Frantic delivery `c7d9683f-e4dc-482e-a214-699317218c4b` passed machine verification `20/20`; the subsequent auto-review fallback reported an advisory review-infrastructure failure before judging the delivery.
 
 ## Operator value

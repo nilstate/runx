@@ -37,10 +37,30 @@
     "receipt_ref": "runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
     "verify_verdict": "passed",
     "harness_cases": [
-      "approve-with-conditions-sla-gap",
-      "sealed-rejection-unbounded-liability",
-      "stop-missing-policy-no-write"
-    ]
+      {
+        "name": "approve-with-conditions-sla-gap",
+        "status": "sealed"
+      },
+      {
+        "name": "sealed-rejection-unbounded-liability",
+        "status": "sealed"
+      },
+      {
+        "name": "stop-missing-policy-no-write",
+        "status": "refused"
+      }
+    ],
+    "data_store_append": {
+      "before_version": 2,
+      "after_version": 3,
+      "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+      "aggregate_id": "vendor:acme-analytics"
+    },
+    "receipt_verify_json": {
+      "command": "runx verify --receipt runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9 --json",
+      "status": "passed",
+      "sealed": true
+    }
   },
   "frantic_delivery": {
     "claim_id": "ac081392-2657-48f3-90c6-2ffb92b112ba",

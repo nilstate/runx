@@ -17,6 +17,89 @@
   "publish_method": "Authenticated hosted publish through the runx public API using the GitHub-linked publish token; hosted registry reran the inline package harness and recorded status passed.",
   "install_command": "runx add iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai",
   "run_command": "runx skill iwannabefree00/vendor-risk-review@sha-f73efbe9b874 --registry https://api.runx.ai --json",
+  "review_gate_summary": {
+    "x_yaml_raw_url_commit_pinned": "Frantic redelivery supplies x_yaml as a raw.githubusercontent.com URL pinned to the PR head commit; the inline harness cases below are copied from skills/vendor-risk-review/X.yaml for reviewer visibility.",
+    "dogfood_before_version": 2,
+    "dogfood_after_version": 3,
+    "dogfood_idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+    "dogfood_receipt_ref": "runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
+    "dogfood_verify_status": "passed"
+  },
+  "x_yaml_harness_cases": [
+    {
+      "name": "approve-with-conditions-sla-gap",
+      "expect_status": "sealed",
+      "required_policy_fields": [
+        "required_sla_terms",
+        "max_liability",
+        "data_handling_floor",
+        "termination_window",
+        "policy_id",
+        "created_at"
+      ],
+      "data_store_dependency": "registry:runx/data-store@0.1.2",
+      "write_shape": "append_event under aggregate_id vendor:acme-analytics with expected_version from read_projection"
+    },
+    {
+      "name": "sealed-rejection-unbounded-liability",
+      "expect_status": "sealed",
+      "policy_grounding": [
+        "policy.max_liability",
+        "policy.data_handling_floor"
+      ],
+      "data_store_dependency": "registry:runx/data-store@0.1.2",
+      "write_shape": "durable rejected vendor risk record, not a notification or authority grant"
+    },
+    {
+      "name": "stop-missing-policy-no-write",
+      "expect_status": "failure",
+      "stop_reason": "missing policy fields or ambiguous vendor identity",
+      "write_performed": false,
+      "human_lane": "human_approval"
+    }
+  ],
+  "dogfood_output": {
+    "decision": {
+      "approved": true,
+      "rejected": false,
+      "reason": "Approved with conditions under vrp-2026-06: recoverable gaps must be remediated before procurement completion.",
+      "conditions": [
+        "Add SLA term required by vrp-2026-06: incident response within 24 hours."
+      ]
+    },
+    "policy_id": "vrp-2026-06",
+    "policy_created_at": "2026-06-29T05:00:00Z",
+    "vendor_ref": "vendor:acme-analytics",
+    "data_store": {
+      "dependency": "registry:runx/data-store@0.1.2",
+      "read_projection": {
+        "data_source_ref": "local://runx/vendor-risk-review",
+        "store_id": "vendor-risk-review-fixture",
+        "resource": "vendor_risk_records",
+        "aggregate_id": "vendor:acme-analytics"
+      },
+      "append_event": {
+        "data_source_ref": "local://runx/vendor-risk-review",
+        "store_id": "vendor-risk-review-fixture",
+        "resource": "vendor_risk_records",
+        "aggregate_id": "vendor:acme-analytics",
+        "expected_version": 2,
+        "after_version": 3,
+        "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97"
+      }
+    }
+  },
+  "receipt_verify_json": {
+    "command": "runx verify --receipt runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9 --json",
+    "receipt_ref": "runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9",
+    "status": "passed",
+    "verdict": {
+      "sealed": true,
+      "schema": "runx.receipt.v1",
+      "verify_verdict": "passed"
+    },
+    "source": "Linux GitHub Actions dogfood verification recorded in skills/vendor-risk-review/verification.json and action evidence."
+  },
   "hosted_harness": {
     "status": "passed",
     "endpoint": "https://api.runx.ai/v1/skills/iwannabefree00/vendor-risk-review@sha-f73efbe9b874/harness",
@@ -75,10 +158,27 @@
       "store_id": "vendor-risk-review-fixture"
     },
     "harness_cases": [
-      "approve-with-conditions-sla-gap",
-      "sealed-rejection-unbounded-liability",
-      "stop-missing-policy-no-write"
-    ]
+      {
+        "name": "approve-with-conditions-sla-gap",
+        "status": "sealed"
+      },
+      {
+        "name": "sealed-rejection-unbounded-liability",
+        "status": "sealed"
+      },
+      {
+        "name": "stop-missing-policy-no-write",
+        "status": "refused"
+      }
+    ],
+    "data_store_append": {
+      "before_version": 2,
+      "after_version": 3,
+      "idempotency_key": "vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97",
+      "aggregate_id": "vendor:acme-analytics",
+      "policy_id": "vrp-2026-06",
+      "created_at": "2026-06-29T05:00:00Z"
+    }
   },
   "observations": [
     {
@@ -95,7 +195,7 @@
     },
     {
       "name": "structured_dogfood",
-      "detail": "The evidence_json.dogfood object names package, input, command, receipt_ref, verify_verdict, and all three harness_cases, with receipt_ref runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9 from the Linux GitHub Actions dogfood run."
+      "detail": "The evidence_json.dogfood object names package, input, command, receipt_ref, verify_verdict, and all three harness_cases with per-case status objects; receipt_ref is runx:receipt:sha256:39ac11170b0aa565bb96ba58d1e6115c149ce068906478dd5fb930d36442d5f9 from the Linux GitHub Actions dogfood run."
     },
     {
       "name": "registry_publication",
@@ -107,7 +207,7 @@
     },
     {
       "name": "approval_condition_grounding",
-      "detail": "The approve-with-conditions case grounds its condition in policy.required_sla_terms: the contract lacks uptime credit language while meeting SOC2, max liability, and termination requirements."
+      "detail": "The approve-with-conditions dogfood output grounds its condition in policy.required_sla_terms: the contract lacks incident response within 24 hours while meeting SOC2, max liability, and termination requirements."
     },
     {
       "name": "rejection_grounding",
@@ -119,7 +219,7 @@
     },
     {
       "name": "data_store_append",
-      "detail": "Successful review paths append a vendor risk record through registry:runx/data-store@0.1.2 using aggregate_id equal to the vendor entity, expected_version from read_projection, and idempotency_key derived from vendor_ref + policy_id + decision."
+      "detail": "Dogfood append_event evidence: aggregate_id vendor:acme-analytics, expected_version/before_version 2, after_version 3, idempotency_key vendor:acme-analytics:vrp-2026-06:approved:3d5ea4cbef355c97, policy_id vrp-2026-06, created_at 2026-06-29T05:00:00Z."
     },
     {
       "name": "dogfood_receipt",
