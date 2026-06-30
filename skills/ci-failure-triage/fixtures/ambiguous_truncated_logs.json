@@ -1,0 +1,38 @@
+{
+  "case": "ambiguous_truncated_logs",
+  "inputs": {
+    "ci_failure": {
+      "logs": "> pnpm test\nFAIL packages/api/src/createInvoice.test.ts\n... output truncated ...\nProcess exited with code 1",
+      "commit": {
+        "sha": "9c3f112",
+        "message": "Refactor invoice helpers",
+        "changed_files": [
+          "packages/api/src/createInvoice.ts",
+          "packages/api/src/currency.ts"
+        ]
+      },
+      "repo_state": {
+        "branch": "feature/refactor-invoice-helpers",
+        "base_branch": "main",
+        "latest_main_green": "unknown",
+        "prior_run_for_same_sha": null
+      }
+    },
+    "repo_config": {
+      "ci_provider": "github-actions",
+      "default_issue_lane": "issue-intake",
+      "remediation_lane": "issue-to-pr",
+      "review_note_lane": "pr-review-note"
+    },
+    "escalation_policy": {
+      "min_confidence": 0.85
+    }
+  },
+  "expected_status": "needs_agent",
+  "expected_no_fields": [
+    "routing_decision",
+    "rerun_verdict",
+    "page_note"
+  ],
+  "reason": "The log excerpt is truncated, the base branch state is unknown, and no concrete root cause is visible."
+}

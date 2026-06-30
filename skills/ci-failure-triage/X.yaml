@@ -1,0 +1,147 @@
+skill: ci-failure-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+runx:
+  mutating: false
+  artifacts:
+    emits:
+      - ci_triage_packet
+    wrap_as: ci_triage_packet
+    packet: runx.ci.triage.v1
+
+harness:
+  cases:
+    - name: real_break_clear_logs
+      runner: triage
+      inputs:
+        ci_failure:
+          logs: |
+            > pnpm test --filter api
+            FAIL packages/api/src/createInvoice.test.ts
+              createInvoice
+                applies account currency
+
+            Expected: "USD"
+            Received: "EUR"
+
+            at packages/api/src/createInvoice.test.ts:42:18
+            Commit 4f8f0a7 changed packages/api/src/createInvoice.ts and replaced
+            account.defaultCurrency with customer.billingCurrency.
+          commit:
+            sha: 4f8f0a7
+            message: Use billing currency in invoice creation
+            changed_files:
+              - packages/api/src/createInvoice.ts
+              - packages/api/src/createInvoice.test.ts
+          repo_state:
+            branch: feature/billing-currency
+            base_branch: main
+            latest_main_green: true
+            prior_run_for_same_sha: null
+        repo_config:
+          ci_provider: github-actions
+          default_issue_lane: issue-intake
+          remediation_lane: issue-to-pr
+          review_note_lane: pr-review-note
+        escalation_policy:
+          min_confidence: 0.75
+      caller:
+        answers:
+          agent_task.ci-failure-triage.output:
+            classification:
+              verdict: real-break
+              confidence: 0.91
+              evidence_refs:
+                - logs:test-failure:createInvoice.currency
+                - commit:4f8f0a7:packages/api/src/createInvoice.ts
+            routing_decision:
+              recommended_lane: issue-to-pr
+              rationale: The failing assertion names a deterministic expected/received currency mismatch, main is green, and the commit changed the invoice currency selection path.
+            rerun_verdict: null
+            page_note: null
+            escalation: null
+            refusal: null
+            handoff:
+              downstream_lanes:
+                - issue-intake
+                - issue-to-pr
+                - pr-review-note
+              dispatch_rule: Dispatch by naming only. This skill emits a read-only triage packet; a separate governed run decides whether to open an issue, author a PR, or leave a review note.
+            safeguards:
+              mutating_actions_taken: []
+              disallowed_actions:
+                - open_tracking_item
+                - rerun_ci
+                - page_operator
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: ambiguous_truncated_logs
+      runner: triage
+      inputs:
+        ci_failure:
+          logs: |
+            > pnpm test
+            FAIL packages/api/src/createInvoice.test.ts
+            ... output truncated ...
+            Process exited with code 1
+          commit:
+            sha: 9c3f112
+            message: Refactor invoice helpers
+            changed_files:
+              - packages/api/src/createInvoice.ts
+              - packages/api/src/currency.ts
+          repo_state:
+            branch: feature/refactor-invoice-helpers
+            base_branch: main
+            latest_main_green: unknown
+            prior_run_for_same_sha: null
+        repo_config:
+          ci_provider: github-actions
+          default_issue_lane: issue-intake
+          remediation_lane: issue-to-pr
+          review_note_lane: pr-review-note
+        escalation_policy:
+          min_confidence: 0.85
+      expect:
+        status: needs_agent
+
+runners:
+  triage:
+    default: true
+    type: agent-task
+    agent: builder
+    task: ci-failure-triage
+    outputs:
+      classification: object
+      rerun_verdict: object
+      page_note: object
+      routing_decision: object
+      escalation: object
+      refusal: object
+      handoff: object
+      safeguards: object
+    artifacts:
+      wrap_as: ci_triage_packet
+      packet: runx.ci.triage.v1
+    inputs:
+      ci_failure:
+        type: json
+        required: true
+        description: CI failure packet with logs, commit, and repo_state fields.
+      repo_config:
+        type: json
+        required: true
+        description: Repository CI provider, known lane names, and routing vocabulary.
+      escalation_policy:
+        type: json
+        required: true
+        description: Confidence threshold and human-escalation rules for this triage run.

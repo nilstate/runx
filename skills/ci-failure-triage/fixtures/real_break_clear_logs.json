@@ -1,0 +1,45 @@
+{
+  "case": "real_break_clear_logs",
+  "inputs": {
+    "ci_failure": {
+      "logs": "> pnpm test --filter api\nFAIL packages/api/src/createInvoice.test.ts\n  createInvoice\n    applies account currency\n\nExpected: \"USD\"\nReceived: \"EUR\"\n\nat packages/api/src/createInvoice.test.ts:42:18\nCommit 4f8f0a7 changed packages/api/src/createInvoice.ts and replaced account.defaultCurrency with customer.billingCurrency.",
+      "commit": {
+        "sha": "4f8f0a7",
+        "message": "Use billing currency in invoice creation",
+        "changed_files": [
+          "packages/api/src/createInvoice.ts",
+          "packages/api/src/createInvoice.test.ts"
+        ]
+      },
+      "repo_state": {
+        "branch": "feature/billing-currency",
+        "base_branch": "main",
+        "latest_main_green": true,
+        "prior_run_for_same_sha": null
+      }
+    },
+    "repo_config": {
+      "ci_provider": "github-actions",
+      "default_issue_lane": "issue-intake",
+      "remediation_lane": "issue-to-pr",
+      "review_note_lane": "pr-review-note"
+    },
+    "escalation_policy": {
+      "min_confidence": 0.75
+    }
+  },
+  "expected_packet": {
+    "classification": {
+      "verdict": "real-break",
+      "confidence_min": 0.75,
+      "required_evidence_refs": [
+        "logs:test-failure:createInvoice.currency",
+        "commit:4f8f0a7:packages/api/src/createInvoice.ts"
+      ]
+    },
+    "routing_decision": {
+      "recommended_lane": "issue-to-pr"
+    },
+    "mutating_actions_taken": []
+  }
+}
