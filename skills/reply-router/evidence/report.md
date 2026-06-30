@@ -1,4 +1,4 @@
-﻿# reply-router Frantic #70 report
+# reply-router Frantic #70 report
 
 ## Summary
 
