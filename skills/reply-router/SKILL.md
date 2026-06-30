@@ -1,8 +1,8 @@
 ---
 name: reply-router
 description: Classify inbound replies to governed sends, durably suppress recipients who explicitly unsubscribe, route ordinary replies without sending, and stop ambiguous or untrusted cases for review.
-source: https://github.com/runxhq/runx/tree/main/skills/reply-router
 links:
+  source: https://github.com/runxhq/runx/tree/main/skills/reply-router
   repository: https://github.com/runxhq/runx
 runx:
   category: growth
