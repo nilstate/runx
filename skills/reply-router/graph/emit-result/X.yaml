@@ -17,7 +17,7 @@ runners:
     type: cli-tool
     command: node
     args:
-      - run.mjs
+      - zz-run.mjs
     inputs:
       classification:
         type: string

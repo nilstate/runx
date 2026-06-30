@@ -46,4 +46,3 @@ function requiredString(value, name) {
 function objectOrEmpty(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
-
