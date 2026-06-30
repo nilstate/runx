@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "zdfgu113/prospect-sequence@sha-b4a3b8668802",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/runx-prospect-install/zdfgu113/prospect-sequence/sha-b4a3b8668802/SKILL.md",
+      "skill_name": "prospect-sequence",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "zdfgu113/prospect-sequence",
+      "version": "sha-b4a3b8668802",
+      "digest": "sha256:693b9f8e694ef8f543b81136efbc64d6554e1b2f1000d4ac49edb6e12358ab06",
+      "profile_digest": "sha256:e5309e236c14102626b2371e7410fb04008dbab301ae02b5c24674b9972a2e69",
+      "profile_state_path": "/tmp/runx-prospect-install/zdfgu113/prospect-sequence/sha-b4a3b8668802/.runx/profile.json",
+      "runner_names": [
+        "decide"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/runx-prospect-install/zdfgu113/prospect-sequence/sha-b4a3b8668802/SKILL.md",
+      "digest": "sha256:693b9f8e694ef8f543b81136efbc64d6554e1b2f1000d4ac49edb6e12358ab06",
+      "install_count": 1,
+      "package_digest": "c64bd529136cfab8e4382982292d12a8082a417406d467a1bc89ef6975ad5f07",
+      "profile_digest": "sha256:e5309e236c14102626b2371e7410fb04008dbab301ae02b5c24674b9972a2e69",
+      "publisher": {
+        "display_name": "zdfgu113",
+        "handle": "zdfgu113",
+        "id": "user_029f74b8258386ff624c5320",
+        "kind": "user"
+      },
+      "ref": "zdfgu113/prospect-sequence@sha-b4a3b8668802",
+      "skill_id": "zdfgu113/prospect-sequence",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-b4a3b8668802"
+    }
+  }
+}

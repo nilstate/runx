@@ -1,0 +1,133 @@
+{
+  "summary": "prospect-sequence is published as a community runx skill, has a passing two-case harness, sealed local and published dogfood receipts, valid receipt verification, and a gated send_proposal that performs no send.",
+  "package": {
+    "owner": "zdfgu113",
+    "name": "prospect-sequence",
+    "version": "sha-b4a3b8668802",
+    "registry": "https://api.runx.ai",
+    "public_url": "https://runx.ai/x/zdfgu113/prospect-sequence",
+    "install_command": "runx add zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai",
+    "run_command": "runx skill zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai"
+  },
+  "observations": [
+    {
+      "id": "runx_cli_version",
+      "evidence": "Captured `runx --version` output: runx-cli 0.6.13"
+    },
+    {
+      "id": "published_package",
+      "evidence": "Published `zdfgu113/prospect-sequence@sha-b4a3b8668802` to https://api.runx.ai with public URL https://runx.ai/x/zdfgu113/prospect-sequence"
+    },
+    {
+      "id": "local_harness",
+      "evidence": "Local harness passed 2 cases with zero assertion errors: public-sources-yield-sourced-sequence and private-or-missing-sources-refuse."
+    },
+    {
+      "id": "dogfood_receipt",
+      "evidence": "Local dogfood sealed receipt sha256:9d5e4f26a9e8b99f4eabaa6c7e50626a45498446b900872d236bbc053814a3df and verified valid:true."
+    },
+    {
+      "id": "published_install",
+      "evidence": "New-user install command succeeded for zdfgu113/prospect-sequence@sha-b4a3b8668802 into /tmp/runx-prospect-install."
+    },
+    {
+      "id": "published_dogfood",
+      "evidence": "Published package dogfood sealed receipt sha256:697160868f5c1f292fe3bfc9b50287fe0b896ecb33a573bda7aed41f0b08ec69 and verified valid:true."
+    },
+    {
+      "id": "send_gate",
+      "evidence": "The output send_proposal is gated, targets send-as, and records performs_send:false."
+    },
+    {
+      "id": "source_guard",
+      "evidence": "The runner refuses loopback, RFC1918, .local, non-HTTP, missing-text, and off-allowlist sources before using account facts."
+    }
+  ],
+  "local_verification": {
+    "runx_version": "runx-cli 0.6.13",
+    "harness_command": "runx harness ./.tmp/frantic-prospect-sequence -R /home/zjs/runx-prospect-receipts --json",
+    "harness_status": "passed",
+    "harness_cases": [
+      "public-sources-yield-sourced-sequence",
+      "private-or-missing-sources-refuse"
+    ],
+    "dogfood_status": "sealed",
+    "dogfood_receipt_id": "sha256:9d5e4f26a9e8b99f4eabaa6c7e50626a45498446b900872d236bbc053814a3df",
+    "receipt_verify_valid": true
+  },
+  "published_verification": {
+    "registry_read_status": "success",
+    "install_status": "success",
+    "published_dogfood_status": "sealed",
+    "published_dogfood_receipt_id": "sha256:697160868f5c1f292fe3bfc9b50287fe0b896ecb33a573bda7aed41f0b08ec69",
+    "published_receipt_verify_valid": true
+  },
+  "dogfood": {
+    "package": "zdfgu113/prospect-sequence@sha-b4a3b8668802",
+    "command": "runx skill zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai -R /home/zjs/runx-prospect-published-receipts --input-json prospect=<json> --input-json icp=<json> --input-json source_allowlist=<json> --json",
+    "receipt_ref": "runx:receipt:sha256:697160868f5c1f292fe3bfc9b50287fe0b896ecb33a573bda7aed41f0b08ec69",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "public-sources-yield-sourced-sequence",
+        "status": "sealed"
+      },
+      {
+        "name": "private-or-missing-sources-refuse",
+        "status": "refused"
+      }
+    ],
+    "input": {
+      "prospect": {
+        "company": "Northwind Software",
+        "contact": "Head of Platform"
+      },
+      "icp": {
+        "product": "Runx governed agent workflows",
+        "audience": "platform and security operators",
+        "pain_points": [
+          "manual release evidence review",
+          "supply-chain approval drift"
+        ],
+        "value_props": [
+          "produce sealed evidence packets before operational changes",
+          "keep human approval gates before sending or mutating state"
+        ]
+      },
+      "source_allowlist": {
+        "allowed_hosts": [
+          "example.com"
+        ],
+        "sources": [
+          {
+            "url": "https://example.com/northwind-release-notes",
+            "title": "Northwind release notes"
+          },
+          {
+            "url": "https://example.com/northwind-security",
+            "title": "Northwind security page"
+          }
+        ]
+      }
+    },
+    "output_summary": "Prepared a sourced 4-touch outreach sequence for Northwind Software; send is gated through send-as.",
+    "sequence_length": 4,
+    "send_proposal": {
+      "gated": true,
+      "consumer": "send-as",
+      "performs_send": false
+    }
+  },
+  "artifacts": {
+    "harness": "references/harness.json",
+    "dogfood": "references/dogfood.json",
+    "dogfood_receipt": "references/dogfood-receipt.json",
+    "verification": "references/verification.json",
+    "publish": "references/publish.json",
+    "published_verification": "references/published-verification.json",
+    "install": "references/install.json",
+    "published_dogfood": "references/published-dogfood.json",
+    "published_dogfood_receipt": "references/published-dogfood-receipt.json",
+    "published_receipt_verify": "references/published-receipt-verify.json"
+  }
+}

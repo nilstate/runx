@@ -1,0 +1,101 @@
+skill: prospect-sequence
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: public-sources-yield-sourced-sequence
+      runner: decide
+      inputs:
+        prospect:
+          company: Northwind Software
+          contact: Head of Platform
+        icp:
+          product: Runx governed agent workflows
+          audience: platform and security operators
+          pain_points:
+            - manual release evidence review
+            - supply-chain approval drift
+          value_props:
+            - produce sealed evidence packets before operational changes
+            - keep human approval gates before sending or mutating state
+        source_allowlist:
+          allowed_hosts:
+            - example.com
+          sources:
+            - url: https://example.com/northwind-release-notes
+              title: Northwind release notes
+              text: Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes.
+            - url: https://example.com/northwind-security
+              title: Northwind security page
+              text: Northwind Software says platform and security operators review changes before production release.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: private-or-missing-sources-refuse
+      runner: decide
+      inputs:
+        prospect:
+          company: Northwind Software
+          contact: Head of Platform
+        icp:
+          product: Runx governed agent workflows
+          audience: platform operators
+          pain_points:
+            - manual release evidence review
+          value_props:
+            - produce sealed evidence packets
+        source_allowlist:
+          allowed_hosts:
+            - example.com
+          sources:
+            - url: http://127.0.0.1/internal-account-notes
+              title: Internal account notes
+              text: Private CRM note that must not be used.
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      summary: string
+      research: json
+      sequence: json
+      send_proposal: json
+      refusal: json
+    artifacts:
+      wrap_as: prospect_sequence_decision
+      packet: runx.prospect_sequence.v1
+    inputs:
+      prospect:
+        type: json
+        required: true
+        description: Prospect account and optional contact or role.
+      icp:
+        type: json
+        required: true
+        description: Product, audience, pain points, and value propositions used to shape the angle.
+      source_allowlist:
+        type: json
+        required: true
+        description: Allowed public hosts and source snippets hydrated through the governed HTTP front.

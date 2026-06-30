@@ -1,0 +1,28 @@
+{
+  "prospect": {
+    "company": "Northwind Software",
+    "contact": "Head of Platform"
+  },
+  "icp": {
+    "product": "Runx governed agent workflows",
+    "audience": "platform operators",
+    "pain_points": [
+      "manual release evidence review"
+    ],
+    "value_props": [
+      "produce sealed evidence packets"
+    ]
+  },
+  "source_allowlist": {
+    "allowed_hosts": [
+      "example.com"
+    ],
+    "sources": [
+      {
+        "url": "http://127.0.0.1/internal-account-notes",
+        "title": "Internal account notes",
+        "text": "Private CRM note that must not be used."
+      }
+    ]
+  }
+}

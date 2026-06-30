@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "zdfgu113/prospect-sequence",
+      "owner": "zdfgu113",
+      "name": "prospect-sequence",
+      "version": "sha-b4a3b8668802",
+      "digest": "693b9f8e694ef8f543b81136efbc64d6554e1b2f1000d4ac49edb6e12358ab06",
+      "profile_digest": "e5309e236c14102626b2371e7410fb04008dbab301ae02b5c24674b9972a2e69",
+      "trust_tier": "community",
+      "install_command": "runx add zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/zdfgu113/prospect-sequence"
+    }
+  }
+}

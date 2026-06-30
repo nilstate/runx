@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "zdfgu113/prospect-sequence@sha-b4a3b8668802",
+    "skill": {
+      "skill_id": "zdfgu113/prospect-sequence",
+      "owner": "zdfgu113",
+      "name": "prospect-sequence",
+      "description": "Research a prospect from allowlisted public sources, synthesize a cited outreach angle, draft a multi-touch sequence, and emit only a gated send proposal.",
+      "category": "growth",
+      "version": "sha-b4a3b8668802",
+      "digest": "693b9f8e694ef8f543b81136efbc64d6554e1b2f1000d4ac49edb6e12358ab06",
+      "markdown": "---\nname: prospect-sequence\nversion: 0.1.0\ndescription: Research a prospect from allowlisted public sources, synthesize a cited outreach angle, draft a multi-touch sequence, and emit only a gated send proposal.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nlinks:\n  source: https://github.com/zdfgu113/runx/tree/codex/prospect-sequence/skills/prospect-sequence\nrunx:\n  category: growth\n  input_resolution:\n    required:\n      - prospect\n      - icp\n      - source_allowlist\n---\n\n# Prospect Sequence\n\nResearch a prospect from allowlisted public source snippets, synthesize a cited\naccount angle, draft a four-touch outreach sequence, and emit a gated\n`send_proposal` for the `send-as` catalog skill. The skill never sends a\nmessage, signs an external request, mutates a CRM, scrapes private networks, or\nuses non-allowlisted sources.\n\n## When to use this skill\n\nUse it when an operator needs a checkable, source-backed outreach draft before a\nhuman or governed send skill decides whether anything should be sent. The output\nkeeps every account-specific claim tied to a supplied public source URL.\n\n## When not to use this skill\n\nDo not use it for scraping, private-network targets, off-allowlist URLs,\nunsourced account claims, spam sending, or bypassing consent and operator\napproval. If no allowlisted public source is present, the skill refuses and emits\nno send proposal.\n\n## Procedure\n\n1. Require typed inputs `prospect`, `icp`, and `source_allowlist`.\n2. Accept only `http` or `https` source URLs whose host appears in\n   `source_allowlist.allowed_hosts` when that list is supplied.\n3. Refuse loopback, RFC1918, `.local`, non-HTTP, missing-text, or\n   off-allowlist sources before using any account fact.\n4. Extract account facts only from the accepted public source snippets.\n5. Synthesize one outreach angle that cites the source URL used for the claim.\n6. Draft a four-touch sequence that stays scoped to the cited public evidence.\n7. Emit `send_proposal` only as a gated proposed Effect for `send-as`; the\n   proposal records that this skill performs no send.\n8. Refuse with `no_allowlisted_public_sources` when the source evidence is too\n   thin or blocked by the SSRF guard.\n\n## Output\n\nThe runner emits `runx.prospect_sequence.v1` with:\n\n- `summary`: short decision summary.\n- `research`: `{ sources[], angle }`, with source URLs and extracted facts.\n- `sequence`: ordered outreach touches.\n- `send_proposal`: gated proposal for `send-as`, or `null` on refusal.\n- `refusal`: refusal reason and blocked source details when applicable.\n\n## Example\n\n```bash\nrunx skill ./skills/prospect-sequence \\\n  --input-json prospect='{\"company\":\"Northwind Software\",\"contact\":\"Head of Platform\"}' \\\n  --input-json icp='{\"product\":\"Runx governed agent workflows\",\"audience\":\"platform and security operators\",\"pain_points\":[\"manual release evidence review\"],\"value_props\":[\"produce sealed evidence packets before operational changes\"]}' \\\n  --input-json source_allowlist='{\"allowed_hosts\":[\"example.com\"],\"sources\":[{\"url\":\"https://example.com/northwind-release-notes\",\"title\":\"Northwind release notes\",\"text\":\"Northwind Software described manual release evidence review in its public release notes.\"}]}' \\\n  --json\n```\n\n## Inputs\n\n- `prospect` (required): object with `company` and optional `contact` or `role`.\n- `icp` (required): object with `product`, `audience`, `pain_points`, and\n  `value_props`.\n- `source_allowlist` (required): object with `allowed_hosts` and `sources[]`.\n  Each source must include `url`, `title`, and public source `text`.\n\n## Safety Notes\n\n- The runner is deterministic over supplied source snippets; a consuming product\n  can hydrate those snippets through its governed HTTP front.\n- The SSRF guard rejects private, loopback, local, off-allowlist, or non-HTTP\n  targets.\n- The `send_proposal` is not a send. It is a gated effect proposal that a\n  separate `send-as` skill must review and execute only with policy approval.",
+      "profile_digest": "e5309e236c14102626b2371e7410fb04008dbab301ae02b5c24674b9972a2e69",
+      "runner_names": [
+        "decide"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_029f74b8258386ff624c5320",
+        "handle": "zdfgu113",
+        "display_name": "zdfgu113"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_029f74b8258386ff624c5320",
+          "status": "declared",
+          "summary": "zdfgu113",
+          "issued_at": "2026-06-30T06:34:38.433Z",
+          "metadata": {
+            "publisher_display_name": "zdfgu113",
+            "publisher_handle": "zdfgu113",
+            "publisher_id": "user_029f74b8258386ff624c5320",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai"
+    }
+  }
+}

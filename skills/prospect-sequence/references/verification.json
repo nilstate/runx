@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/zjs/runx-prospect-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:9d5e4f26a9e8b99f4eabaa6c7e50626a45498446b900872d236bbc053814a3df",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "public-sources-yield-sourced-sequence",
+    "private-or-missing-sources-refuse"
+  ],
+  "receipt_ids": [
+    "sha256:eadaa984e3b37f05d5bb418c91cf0539973fe5cf438dd0dbf2896c4c57157943",
+    "sha256:a266e891807eaa1407acedf735244dd7158553213c129f5e10a15a7d3f51d3f1"
+  ],
+  "graph_case_count": 0
+}

@@ -1,0 +1,362 @@
+{
+  "closure": {
+    "closed_at": "2026-06-30T06:35:05.067Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool decide completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "research": {
+        "angle": "Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes",
+        "sources": [
+          {
+            "facts": [
+              "Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes."
+            ],
+            "title": "Northwind release notes",
+            "url": "https://example.com/northwind-release-notes"
+          },
+          {
+            "facts": [
+              "Northwind Software says platform and security operators review changes before production release."
+            ],
+            "title": "Northwind security page",
+            "url": "https://example.com/northwind-security"
+          }
+        ]
+      },
+      "send_proposal": {
+        "effect": {
+          "consumer": "send-as",
+          "kind": "send_proposal",
+          "performs_send": false
+        },
+        "gated": true,
+        "id": "send:52bfd53b003fcc4251943bdd",
+        "prospect": {
+          "company": "Northwind Software",
+          "contact": "Head of Platform"
+        },
+        "required_review": [
+          "confirm recipient consent or legitimate outreach basis",
+          "operator approval before send-as"
+        ],
+        "sequence_length": 4
+      },
+      "sequence": [
+        {
+          "body": "Hi Head of Platform, I noticed Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes. (https://example.com/northwind-release-notes). Runx governed agent workflows may help platform and security operators produce sealed evidence packets before operational changes. Worth comparing notes?",
+          "channel": "email",
+          "subject": "Northwind Software and manual release evidence review",
+          "touch": 1
+        },
+        {
+          "body": "Following up with the specific angle: Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes If this is a priority, I can share a short checklist tailored to your public workflow.",
+          "channel": "email",
+          "subject": "Quick follow-up on Northwind Software",
+          "touch": 2
+        },
+        {
+          "body": "A useful first step is mapping the current manual release evidence review process, the approval owner, and the failure mode. Runx governed agent workflows fits when that process needs a repeatable evidence trail.",
+          "channel": "email",
+          "subject": "Checklist for manual release evidence review",
+          "touch": 3
+        },
+        {
+          "body": "I will close the loop unless manual release evidence review is active this quarter. If helpful, I can send a one-page plan based only on public sources already cited above.",
+          "channel": "email",
+          "subject": "Close the loop?",
+          "touch": 4
+        }
+      ],
+      "summary": "Prepared a sourced 4-touch outreach sequence for Northwind Software; send is gated through send-as."
+    },
+    "stderr": "",
+    "stdout": "{\n  \"summary\": \"Prepared a sourced 4-touch outreach sequence for Northwind Software; send is gated through send-as.\",\n  \"research\": {\n    \"sources\": [\n      {\n        \"title\": \"Northwind release notes\",\n        \"url\": \"https://example.com/northwind-release-notes\",\n        \"facts\": [\n          \"Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes.\"\n        ]\n      },\n      {\n        \"title\": \"Northwind security page\",\n        \"url\": \"https://example.com/northwind-security\",\n        \"facts\": [\n          \"Northwind Software says platform and security operators review changes before production release.\"\n        ]\n      }\n    ],\n    \"angle\": \"Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes\"\n  },\n  \"sequence\": [\n    {\n      \"touch\": 1,\n      \"channel\": \"email\",\n      \"subject\": \"Northwind Software and manual release evidence review\",\n      \"body\": \"Hi Head of Platform, I noticed Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes. (https://example.com/northwind-release-notes). Runx governed agent workflows may help platform and security operators produce sealed evidence packets before operational changes. Worth comparing notes?\"\n    },\n    {\n      \"touch\": 2,\n      \"channel\": \"email\",\n      \"subject\": \"Quick follow-up on Northwind Software\",\n      \"body\": \"Following up with the specific angle: Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes If this is a priority, I can share a short checklist tailored to your public workflow.\"\n    },\n    {\n      \"touch\": 3,\n      \"channel\": \"email\",\n      \"subject\": \"Checklist for manual release evidence review\",\n      \"body\": \"A useful first step is mapping the current manual release evidence review process, the approval owner, and the failure mode. Runx governed agent workflows fits when that process needs a repeatable evidence trail.\"\n    },\n    {\n      \"touch\": 4,\n      \"channel\": \"email\",\n      \"subject\": \"Close the loop?\",\n      \"body\": \"I will close the loop unless manual release evidence review is active this quarter. If helpful, I can send a one-page plan based only on public sources already cited above.\"\n    }\n  ],\n  \"send_proposal\": {\n    \"id\": \"send:52bfd53b003fcc4251943bdd\",\n    \"gated\": true,\n    \"effect\": {\n      \"kind\": \"send_proposal\",\n      \"consumer\": \"send-as\",\n      \"performs_send\": false\n    },\n    \"prospect\": {\n      \"company\": \"Northwind Software\",\n      \"contact\": \"Head of Platform\"\n    },\n    \"sequence_length\": 4,\n    \"required_review\": [\n      \"confirm recipient consent or legitimate outreach basis\",\n      \"operator approval before send-as\"\n    ]\n  }\n}\n",
+    "structured_output": {
+      "research": {
+        "angle": "Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes",
+        "sources": [
+          {
+            "facts": [
+              "Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes."
+            ],
+            "title": "Northwind release notes",
+            "url": "https://example.com/northwind-release-notes"
+          },
+          {
+            "facts": [
+              "Northwind Software says platform and security operators review changes before production release."
+            ],
+            "title": "Northwind security page",
+            "url": "https://example.com/northwind-security"
+          }
+        ]
+      },
+      "send_proposal": {
+        "effect": {
+          "consumer": "send-as",
+          "kind": "send_proposal",
+          "performs_send": false
+        },
+        "gated": true,
+        "id": "send:52bfd53b003fcc4251943bdd",
+        "prospect": {
+          "company": "Northwind Software",
+          "contact": "Head of Platform"
+        },
+        "required_review": [
+          "confirm recipient consent or legitimate outreach basis",
+          "operator approval before send-as"
+        ],
+        "sequence_length": 4
+      },
+      "sequence": [
+        {
+          "body": "Hi Head of Platform, I noticed Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes. (https://example.com/northwind-release-notes). Runx governed agent workflows may help platform and security operators produce sealed evidence packets before operational changes. Worth comparing notes?",
+          "channel": "email",
+          "subject": "Northwind Software and manual release evidence review",
+          "touch": 1
+        },
+        {
+          "body": "Following up with the specific angle: Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes If this is a priority, I can share a short checklist tailored to your public workflow.",
+          "channel": "email",
+          "subject": "Quick follow-up on Northwind Software",
+          "touch": 2
+        },
+        {
+          "body": "A useful first step is mapping the current manual release evidence review process, the approval owner, and the failure mode. Runx governed agent workflows fits when that process needs a repeatable evidence trail.",
+          "channel": "email",
+          "subject": "Checklist for manual release evidence review",
+          "touch": 3
+        },
+        {
+          "body": "I will close the loop unless manual release evidence review is active this quarter. If helpful, I can send a one-page plan based only on public sources already cited above.",
+          "channel": "email",
+          "subject": "Close the loop?",
+          "touch": 4
+        }
+      ],
+      "summary": "Prepared a sourced 4-touch outreach sequence for Northwind Software; send is gated through send-as."
+    }
+  },
+  "payload": {
+    "research": {
+      "angle": "Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes",
+      "sources": [
+        {
+          "facts": [
+            "Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes."
+          ],
+          "title": "Northwind release notes",
+          "url": "https://example.com/northwind-release-notes"
+        },
+        {
+          "facts": [
+            "Northwind Software says platform and security operators review changes before production release."
+          ],
+          "title": "Northwind security page",
+          "url": "https://example.com/northwind-security"
+        }
+      ]
+    },
+    "send_proposal": {
+      "effect": {
+        "consumer": "send-as",
+        "kind": "send_proposal",
+        "performs_send": false
+      },
+      "gated": true,
+      "id": "send:52bfd53b003fcc4251943bdd",
+      "prospect": {
+        "company": "Northwind Software",
+        "contact": "Head of Platform"
+      },
+      "required_review": [
+        "confirm recipient consent or legitimate outreach basis",
+        "operator approval before send-as"
+      ],
+      "sequence_length": 4
+    },
+    "sequence": [
+      {
+        "body": "Hi Head of Platform, I noticed Northwind Software described manual release evidence review and supply-chain approval drift in its public release notes. (https://example.com/northwind-release-notes). Runx governed agent workflows may help platform and security operators produce sealed evidence packets before operational changes. Worth comparing notes?",
+        "channel": "email",
+        "subject": "Northwind Software and manual release evidence review",
+        "touch": 1
+      },
+      {
+        "body": "Following up with the specific angle: Northwind Software appears to be dealing with manual release evidence review; position Runx governed agent workflows around produce sealed evidence packets before operational changes. Source: https://example.com/northwind-release-notes If this is a priority, I can share a short checklist tailored to your public workflow.",
+        "channel": "email",
+        "subject": "Quick follow-up on Northwind Software",
+        "touch": 2
+      },
+      {
+        "body": "A useful first step is mapping the current manual release evidence review process, the approval owner, and the failure mode. Runx governed agent workflows fits when that process needs a repeatable evidence trail.",
+        "channel": "email",
+        "subject": "Checklist for manual release evidence review",
+        "touch": 3
+      },
+      {
+        "body": "I will close the loop unless manual release evidence review is active this quarter. If helpful, I can send a one-page plan based only on public sources already cited above.",
+        "channel": "email",
+        "subject": "Close the loop?",
+        "touch": 4
+      }
+    ],
+    "summary": "Prepared a sourced 4-touch outreach sequence for Northwind Software; send is gated through send-as."
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-30T06:35:05.067Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_decide",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step decide",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step decide",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:runtime-skeleton-enforcement",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-30T06:35:05.067Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_decide",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node decide",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_decide",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:9fc69563b7bcf392507c679ef95d96f72c3083fcf885d934eb2e6dc81ea26d05",
+    "id": "sha256:697160868f5c1f292fe3bfc9b50287fe0b896ecb33a573bda7aed41f0b08ec69",
+    "idempotency": {
+      "content_hash": "sha256:run_decide_645a58d0d829-decide-content",
+      "intent_key": "sha256:run_decide_645a58d0d829-decide-intent",
+      "trigger_fingerprint": "sha256:run_decide_645a58d0d829-decide-trigger"
+    },
+    "issuer": {
+      "kid": "runx-demo-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-30T06:35:05.067Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-30T06:35:05.067Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool decide completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:1gSM4IOvjoJlSUp_szHrU3TitTaBLgduwxEmK-D_q8D1dinoZVWHq8ybx6xiejSCGarUmGVBI4he2rLUm_0MDw"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_decide_645a58d0d829_decide"
+      }
+    }
+  },
+  "receipt_id": "sha256:697160868f5c1f292fe3bfc9b50287fe0b896ecb33a573bda7aed41f0b08ec69",
+  "registry_provenance": {
+    "digest": "sha256:693b9f8e694ef8f543b81136efbc64d6554e1b2f1000d4ac49edb6e12358ab06",
+    "profile_digest": "sha256:e5309e236c14102626b2371e7410fb04008dbab301ae02b5c24674b9972a2e69",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "zdfgu113/prospect-sequence",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-b4a3b8668802"
+  },
+  "run_id": "run_decide_645a58d0d829",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "prospect-sequence",
+  "status": "sealed"
+}
