@@ -23,7 +23,7 @@
     "receipt_metadata": {
       "destination": "/home/runner/work/runx/runx/skills/escalation-judge/evidence/clean-install/vidshidden/escalation-judge/sha-8bdc1d12bfae/SKILL.md",
       "digest": "sha256:e32e5e78320718b2d548e56a2100d3d06f81b7f5f67637fae0b473874337e13d",
-      "install_count": 3,
+      "install_count": 4,
       "package_digest": "1062b0a1eb29e842068a24ba80e86cb2711c25a02a3d9b29e9f9a57805ee0e98",
       "profile_digest": "sha256:27e79ffb04b4a55a6316b2a462f93b8a5ac022c8c8d81573a43541a5d33c47be",
       "publisher": {
