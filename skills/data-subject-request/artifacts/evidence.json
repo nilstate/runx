@@ -61,11 +61,11 @@
   },
   "source": {
     "pr_url": "https://github.com/runxhq/runx/pull/192",
-    "source_url": "https://github.com/fengyangxxx/runx/tree/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request",
-    "commit_used_for_publish": "f9675dfe46709886ea009f2245145bb87f21b359",
+    "source_url": "exact immutable source_url delivery field for the final PR head commit",
+    "commit_used_for_publish": "final delivery PR head commit; see exact source_url/x_yaml/skill_md artifact_refs reviewed by QA",
     "branch": "fy/frantic-71-data-subject-request",
-    "x_yaml": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/X.yaml",
-    "skill_md": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/SKILL.md",
+    "x_yaml": "exact immutable x_yaml delivery field for the final PR head commit",
+    "skill_md": "exact immutable skill_md delivery field for the final PR head commit",
     "package_paths": [
       "skills/data-subject-request/X.yaml",
       "skills/data-subject-request/SKILL.md",
@@ -275,17 +275,17 @@
     },
     {
       "name": "source_url",
-      "value": "https://github.com/fengyangxxx/runx/tree/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request",
+      "value": "exact immutable source_url delivery field for the final PR head commit",
       "evidence_ref": "GitHub fork tree"
     },
     {
       "name": "raw_x_yaml",
-      "value": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/X.yaml",
+      "value": "exact immutable x_yaml delivery field for the final PR head commit",
       "evidence_ref": "raw.githubusercontent.com"
     },
     {
       "name": "raw_skill_md",
-      "value": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/SKILL.md",
+      "value": "exact immutable skill_md delivery field for the final PR head commit",
       "evidence_ref": "raw.githubusercontent.com"
     },
     {
@@ -490,7 +490,7 @@
     "qa_required_before_submit": true,
     "exact_payload_must_be_recomputed_after_final_commit": true
   },
-  "summary": "Published runx data-subject-request skill evidence for Frantic #71: runx-cli 0.6.14 publish/install/local harness/hosted publish/post-publish dogfood/receipt verify all recorded with immutable PR artifacts and no Frantic delivery submitted before QA.",
+  "summary": "Published runx data-subject-request skill evidence for Frantic #71: runx-cli 0.6.14 publish/install/local harness/hosted publish/post-publish dogfood/receipt verify are recorded, while final source_url/x_yaml/skill_md are the exact immutable delivery artifact fields reviewed by QA.",
   "observation_details": {
     "runx_version_output": "runx-cli 0.6.14",
     "publisher_owner": "fengyangxxx",
@@ -499,9 +499,9 @@
     "registry_ref": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
     "public_url": "https://runx.ai/x/fengyangxxx/data-subject-request@sha-5e61052d6ca5",
     "pr_url": "https://github.com/runxhq/runx/pull/192",
-    "source_url": "https://github.com/fengyangxxx/runx/tree/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request",
-    "raw_x_yaml": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/X.yaml",
-    "raw_skill_md": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/SKILL.md",
+    "source_url": "exact immutable source_url delivery field for the final PR head commit",
+    "raw_x_yaml": "exact immutable x_yaml delivery field for the final PR head commit",
+    "raw_skill_md": "exact immutable skill_md delivery field for the final PR head commit",
     "verification_json": "skills/data-subject-request/artifacts/verification.json",
     "publish_method": "runx registry publish ./skills/data-subject-request/SKILL.md --registry https://api.runx.ai --profile ./skills/data-subject-request/X.yaml",
     "install_command": "npx -y @runxhq/cli@0.6.14 add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --to /tmp/runx-clean --json",

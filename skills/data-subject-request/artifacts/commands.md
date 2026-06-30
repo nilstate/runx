@@ -1,6 +1,7 @@
 # data-subject-request Frantic #71 evidence commands
 
 Final package: fengyangxxx/data-subject-request@sha-5e61052d6ca5
+Final source/raw URLs: use the exact immutable artifact_refs in the QA-reviewed Frantic payload.
 PR: https://github.com/runxhq/runx/pull/192
 Receipt: runx:receipt:sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8
 

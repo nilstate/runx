@@ -211,5 +211,5 @@
       "status": "addressed"
     }
   ],
-  "summary": "Verification packet for Frantic #71 data-subject-request: validates exact package name/version, registry publish/read, clean install, local harness, hosted publish, post-publish dogfood receipt, runx verify, CI evidence and final-QA requirement."
+  "summary": "Verification packet for Frantic #71 data-subject-request: validates exact package name/version, registry publish/read, clean install, local harness, hosted publish, post-publish dogfood receipt, runx verify, CI evidence, and requires final source/raw URLs to be taken from exact QA-reviewed payload fields."
 }

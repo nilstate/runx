@@ -7,8 +7,8 @@ Status: ready for independent QA; not submitted to Frantic.
 - Owner/package/version: `fengyangxxx/data-subject-request@sha-5e61052d6ca5`.
 - Public registry page: https://runx.ai/x/fengyangxxx/data-subject-request@sha-5e61052d6ca5 (canonical listing also resolves at https://runx.ai/x/fengyangxxx/data-subject-request).
 - PR: https://github.com/runxhq/runx/pull/192.
-- Source used for publish: https://github.com/fengyangxxx/runx/tree/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request.
-- Raw package files for review: https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/X.yaml and https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/SKILL.md.
+- Source/provenance: the exact immutable `source_url` delivery field for the final PR head commit reviewed by QA.
+- Raw package files for review: the exact immutable `x_yaml` and `skill_md` delivery fields for the final PR head commit reviewed by QA.
 
 ## What the skill does
 
