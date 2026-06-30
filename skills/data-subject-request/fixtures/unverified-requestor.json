@@ -1,0 +1,28 @@
+{
+  "request_packet": {
+    "type": "export",
+    "subject_id": "subject:customer-456",
+    "scope": ["profile", "billing_history"],
+    "request_id": "dsr-2026-06-30-002"
+  },
+  "requestor_proof": {
+    "identity_provider": "email_link_only",
+    "verified_at": "",
+    "assertion": "",
+    "requestor_ref": "requestor:unverified"
+  },
+  "policy": {
+    "jurisdiction": "EU-GDPR",
+    "lawful_bases": {
+      "erasure": ["withdrawn_consent", "article_17"],
+      "export": ["article_15_access"]
+    },
+    "scope_bounds": ["profile", "marketing_preferences", "support_tickets"],
+    "trusted_identity_providers": ["verified_sso", "gov_id"],
+    "policy_id": "dsr-policy-2026-06"
+  },
+  "data_source_ref": "local://runx/data-subject-request",
+  "store_id": "data-subject-request-fixture",
+  "expected_version": 2
+}
+

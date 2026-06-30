@@ -1,0 +1,28 @@
+{
+  "request_packet": {
+    "type": "erasure",
+    "subject_id": "subject:customer-123",
+    "scope": ["profile", "marketing_preferences"],
+    "request_id": "dsr-2026-06-30-001"
+  },
+  "requestor_proof": {
+    "identity_provider": "verified_sso",
+    "verified_at": "2026-06-30T10:00:00Z",
+    "assertion": "sha256:5b7d5a1c0a8e9a4f6b3d2c1a9f0e8d7c6b5a493827161514131211100f0e0d0c",
+    "requestor_ref": "requestor:customer-123"
+  },
+  "policy": {
+    "jurisdiction": "EU-GDPR",
+    "lawful_bases": {
+      "erasure": ["withdrawn_consent", "article_17"],
+      "export": ["article_15_access"]
+    },
+    "scope_bounds": ["profile", "marketing_preferences", "support_tickets"],
+    "trusted_identity_providers": ["verified_sso", "gov_id"],
+    "policy_id": "dsr-policy-2026-06"
+  },
+  "data_source_ref": "local://runx/data-subject-request",
+  "store_id": "data-subject-request-fixture",
+  "expected_version": 4
+}
+

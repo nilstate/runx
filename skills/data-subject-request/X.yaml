@@ -1,0 +1,150 @@
+skill: data-subject-request
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - delete_subject_data_directly
+    - export_subject_data_directly
+    - invent_requestor_identity
+    - invent_lawful_basis
+    - scope_outside_policy_bounds
+    - operational_proposal_envelope
+    - auto_send_or_auto_erase
+
+harness:
+  cases:
+    - name: verified-erasure-records-verdict
+      inputs:
+        request_packet:
+          type: erasure
+          subject_id: subject:customer-123
+          scope:
+            - profile
+            - marketing_preferences
+          request_id: dsr-2026-06-30-001
+        requestor_proof:
+          identity_provider: verified_sso
+          verified_at: "2026-06-30T10:00:00Z"
+          assertion: "sha256:5b7d5a1c0a8e9a4f6b3d2c1a9f0e8d7c6b5a493827161514131211100f0e0d0c"
+          requestor_ref: requestor:customer-123
+        policy:
+          jurisdiction: EU-GDPR
+          lawful_bases:
+            erasure:
+              - withdrawn_consent
+              - article_17
+            export:
+              - article_15_access
+          scope_bounds:
+            - profile
+            - marketing_preferences
+            - support_tickets
+          trusted_identity_providers:
+            - verified_sso
+            - gov_id
+          policy_id: dsr-policy-2026-06
+        data_source_ref: local://runx/data-subject-request
+        store_id: data-subject-request-fixture
+        expected_version: 4
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: stop-unverified-requestor-no-handoff
+      inputs:
+        request_packet:
+          type: export
+          subject_id: subject:customer-456
+          scope:
+            - profile
+            - billing_history
+          request_id: dsr-2026-06-30-002
+        requestor_proof:
+          identity_provider: email_link_only
+          verified_at: ""
+          assertion: ""
+          requestor_ref: requestor:unverified
+        policy:
+          jurisdiction: EU-GDPR
+          lawful_bases:
+            erasure:
+              - withdrawn_consent
+              - article_17
+            export:
+              - article_15_access
+          scope_bounds:
+            - profile
+            - marketing_preferences
+            - support_tickets
+          trusted_identity_providers:
+            - verified_sso
+            - gov_id
+          policy_id: dsr-policy-2026-06
+        data_source_ref: local://runx/data-subject-request
+        store_id: data-subject-request-fixture
+        expected_version: 2
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      request_packet:
+        type: json
+        required: true
+        description: "Request packet with type, subject_id, scope, and request_id."
+      requestor_proof:
+        type: json
+        required: true
+        description: "Trusted identity assertion with identity_provider, verified_at, assertion digest, and requestor_ref."
+      policy:
+        type: json
+        required: true
+        description: "Policy containing jurisdiction, lawful_bases, scope_bounds, trusted_identity_providers, and policy_id."
+      data_source_ref:
+        type: string
+        required: true
+        description: "Logical data-store binding for request-decision state."
+      store_id:
+        type: string
+        required: true
+        description: "Pinned data-store id for deterministic harness and dogfood runs."
+      expected_version:
+        type: number
+        required: false
+        description: "Expected current request stream version before append_event."
+    outputs:
+      decision: object
+      handoff: object
+      escalation: object
+      data_store: object
+      evidence: object
+    artifacts:
+      wrap_as: data_subject_request
+      packet: runx.data_subject_request.v1
+
