@@ -27,8 +27,8 @@
 - Hosted registry harness: `passed`
 - Hosted harness endpoint: https://api.runx.ai/v1/skills/iwannabefree00/reply-router@sha-243e8add9e86/harness
 - Harness cases:
-  - `sealed_unsubscribe_suppression`: sealed unsubscribe path; writes a suppression append_event packet and emits no routing decision.
-  - `stop_ambiguous_or_unsealed`: failed stop path; unsealed/malformed receipt causes human escalation, no suppression write, and no routing decision.
+  - `sealed_unsubscribe_suppression`: status `sealed`; writes a suppression append_event packet and emits no routing decision.
+  - `stop_ambiguous_or_unsealed`: status `refused`; unsealed/malformed receipt causes human escalation, no suppression write, and no routing decision.
 - Hosted receipt ids:
   - `sha256:16c62fb5326eb78a8a65d0935114e3f4a6263e4068ca2f4b19f31500bdcdd343`
   - `sha256:831863b7403416597860d7553aa8c3059a32edd1536360b0630c602a62a5e6f8`
@@ -39,6 +39,16 @@
 - Action status: `passed`
 - Dogfood receipt: `runx:receipt:sha256:c05323d5e2df75fe6f0fd2ba2aae3a8322e347033ecd84831a9bacde5d51e791`
 - `skills/reply-router/verification.json` records the canonical published ref, hosted harness, dogfood receipt, verify verdict, and the Linux GitHub Actions run that produced the dogfood receipt.
+- `evidence_json.dogfood.harness_cases` records per-case outcomes as objects, not bare names:
+  - `{ "name": "sealed_unsubscribe_suppression", "status": "sealed" }`
+  - `{ "name": "stop_ambiguous_or_unsealed", "status": "refused" }`
+- Second routed dogfood capture in `evidence_json.dogfood_routed_reply` proves the non-unsubscribe path:
+  - inbound reply: “Yes, this looks interesting. Please tell me more and let's schedule a quick call.”
+  - classification: `interested`
+  - `routing_decision.schema`: `runx.reply.routing.v1`
+  - `routing_decision.send_target`: `runx:send-target:sales-followup`
+  - named downstream dispatch: `dispatch.form=named_governed_send_as_run`, `dispatch.run_name=reply-router-followup`
+  - safety: `dispatch.sends_now=false`, `suppression_result=null`, and this skill performs no send.
 
 ## Operator value
 

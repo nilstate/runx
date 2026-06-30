@@ -25,6 +25,16 @@
       "sealed_unsubscribe_suppression",
       "stop_ambiguous_or_unsealed"
     ],
+    "case_results": [
+      {
+        "name": "sealed_unsubscribe_suppression",
+        "status": "sealed"
+      },
+      {
+        "name": "stop_ambiguous_or_unsealed",
+        "status": "refused"
+      }
+    ],
     "receipt_ids": [
       "sha256:16c62fb5326eb78a8a65d0935114e3f4a6263e4068ca2f4b19f31500bdcdd343",
       "sha256:831863b7403416597860d7553aa8c3059a32edd1536360b0630c602a62a5e6f8"
@@ -61,9 +71,90 @@
       "store_id": "reply-router-fixture"
     },
     "harness_cases": [
-      "sealed_unsubscribe_suppression",
-      "stop_ambiguous_or_unsealed"
+      {
+        "name": "sealed_unsubscribe_suppression",
+        "status": "sealed"
+      },
+      {
+        "name": "stop_ambiguous_or_unsealed",
+        "status": "refused"
+      }
     ]
+  },
+  "dogfood_routed_reply": {
+    "package": "iwannabefree00/reply-router@sha-243e8add9e86",
+    "command": "runx skill iwannabefree00/reply-router@sha-243e8add9e86 --registry https://api.runx.ai --json",
+    "purpose": "Second dogfood capture for the non-unsubscribe routing path required by bounty #70.",
+    "input": {
+      "inbound_reply": {
+        "content": "Yes, this looks interesting. Please tell me more and let's schedule a quick call.",
+        "received_from": "buyer@example.com",
+        "received_at": "2026-06-29T08:20:00Z"
+      },
+      "original_send_receipt": {
+        "sealed": true,
+        "receipt_id": "runx:receipt:sha256:original-send-002",
+        "checksum": "sha256:original-send-checksum-002",
+        "principal": "runx:principal:sales-agent",
+        "send_plan": {
+          "recipient": "buyer@example.com",
+          "campaign": "onboarding-drip",
+          "recipient_state_version": 3,
+          "allowed_targets": {
+            "interested": "runx:send-target:sales-followup",
+            "objection": "runx:send-target:objection-handling",
+            "out_of_office": "runx:send-target:delay-resume",
+            "wrong_person": "runx:send-target:contact-correction"
+          }
+        }
+      },
+      "suppression_policy": {
+        "unsubscribe_signals": [
+          "unsubscribe",
+          "stop emailing",
+          "remove me",
+          "opt out"
+        ],
+        "confidence_threshold": 0.8
+      },
+      "data_source_ref": "local://runx/reply-router",
+      "store_id": "reply-router-fixture"
+    },
+    "captured_output": {
+      "classification": {
+        "type": "interested",
+        "confidence": 0.88,
+        "evidence": [
+          "positive interest language"
+        ]
+      },
+      "suppression_result": null,
+      "routing_decision": {
+        "schema": "runx.reply.routing.v1",
+        "send_target": "runx:send-target:sales-followup",
+        "dispatch": {
+          "form": "named_governed_send_as_run",
+          "run_name": "reply-router-followup",
+          "sends_now": false
+        },
+        "principal": "runx:principal:sales-agent",
+        "original_send_receipt_id": "runx:receipt:sha256:original-send-002"
+      },
+      "escalation": {
+        "required": false,
+        "downstream_send_requires_separate_governed_run": true,
+        "no_send_performed": true
+      },
+      "evidence": {
+        "routing_send_target": "runx:send-target:sales-followup",
+        "sends_now": false,
+        "write_prepared": false,
+        "idempotency_key": null,
+        "before_version": null,
+        "after_version": null,
+        "summary": "non-unsubscribe reply emitted bounded routing decision only"
+      }
+    }
   },
   "observations": [
     {
@@ -85,6 +176,10 @@
     {
       "name": "no_send",
       "detail": "The skill performs no send and emits no routing_decision alongside an unsubscribe-class reply; any later send-as action is a separate governed run."
+    },
+    {
+      "name": "routed_reply_send_target",
+      "detail": "Second dogfood capture demonstrates a non-unsubscribe interested reply: routing_decision.schema is runx.reply.routing.v1, routing_decision.send_target is runx:send-target:sales-followup, dispatch.form is named_governed_send_as_run, dispatch.run_name is reply-router-followup, dispatch.sends_now is false, suppression_result is null, and no send is performed by this skill."
     },
     {
       "name": "stop_case",
