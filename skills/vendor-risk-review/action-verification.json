@@ -2,7 +2,7 @@
   "status": "passed",
   "runx_version": "runx-cli 0.6.14",
   "published_ref": "iwannabefree00/vendor-risk-review@sha-f73efbe9b874",
-  "receipt_ref": "runx:receipt:sha256:46b80a828330482cd6eb308142e105c93c4e54515a07b9cb163c8b61aeecea96",
+  "receipt_ref": "runx:receipt:sha256:b05131288f0ae4ca605c3c61295f0fbfc0d70273bd4e68d687acf297e0f03135",
   "harness": {
     "status": "passed",
     "case_count": 3,
@@ -14,9 +14,9 @@
       "stop-missing-policy-no-write"
     ],
     "receipt_ids": [
-      "sha256:7e141dfc1b874c65b2703f4303b54725724fb7e3318220b5da7701c5522f2d28",
-      "sha256:7121a390c344d78ffa8c0f97d2ff360169a85e0a7d0edd48896ae5a8e2743dcf",
-      "sha256:aaf6144fc54cdae5bd7f37d8b45d2921bcccb3e12af98594e561abc02c16ea01"
+      "sha256:9f37be25fe470f9b416dbfa3a217be2d3442a7cfaaf1fdfdca9d7847c44ee75d",
+      "sha256:e82569a0d31e2aada2b7b42afb8b1960167428446f05250a015d903073f379b8",
+      "sha256:181e316000bae16fa927c97a2d6a8659c44b8f92d1d42cca8dab05726a9bfb49"
     ],
     "graph_case_count": 0
   },
@@ -45,7 +45,7 @@
       "receipt_metadata": {
         "destination": "/home/runner/work/runx/runx/skills/iwannabefree00/vendor-risk-review/sha-f73efbe9b874/SKILL.md",
         "digest": "sha256:04a4606343d8bcfb6bd4150438ca9d1f2b3fd8ef3958409093b704563e687c4d",
-        "install_count": 7,
+        "install_count": 8,
         "package_digest": "499e980282fd2f7720bd2f22981861ad839dc85ee6be0cebf2bdadd48c53109e",
         "profile_digest": "sha256:6bece65c388c253a339ad990675731955082ed794136fa7998570f8b18ce5bf1",
         "publisher": {
@@ -65,7 +65,7 @@
   },
   "dogfood": {
     "closure": {
-      "closed_at": "2026-06-29T21:46:31.988Z",
+      "closed_at": "2026-06-30T04:44:51.675Z",
       "disposition": "closed",
       "reason_code": "process_closed",
       "summary": "cli-tool decide completed"
@@ -458,7 +458,7 @@
         {
           "artifact_refs": [],
           "closure": {
-            "closed_at": "2026-06-29T21:46:31.988Z",
+            "closed_at": "2026-06-30T04:44:51.675Z",
             "disposition": "closed",
             "reason_code": "process_exit",
             "summary": "cli-tool exited successfully"
@@ -513,7 +513,7 @@
         "terms": []
       },
       "canonicalization": "runx.receipt.c14n.v1",
-      "created_at": "2026-06-29T21:46:31.988Z",
+      "created_at": "2026-06-30T04:44:51.675Z",
       "decisions": [
         {
           "artifact_refs": [],
@@ -541,8 +541,8 @@
           "selected_harness_ref": null
         }
       ],
-      "digest": "sha256:b18defede5e5b85127800556b9f029c09aaec274890b4ac2be3f360ace233c35",
-      "id": "sha256:46b80a828330482cd6eb308142e105c93c4e54515a07b9cb163c8b61aeecea96",
+      "digest": "sha256:c5e5e4f021032bb11e28ec5106a80523351e8884ee7cc35aa42f3f1187ded496",
+      "id": "sha256:b05131288f0ae4ca605c3c61295f0fbfc0d70273bd4e68d687acf297e0f03135",
       "idempotency": {
         "content_hash": "sha256:run_decide_98ffc1fbc5d9-decide-content",
         "intent_key": "sha256:run_decide_98ffc1fbc5d9-decide-intent",
@@ -559,7 +559,7 @@
       },
       "schema": "runx.receipt.v1",
       "seal": {
-        "closed_at": "2026-06-29T21:46:31.988Z",
+        "closed_at": "2026-06-30T04:44:51.675Z",
         "criteria": [
           {
             "criterion_id": "process_exit",
@@ -570,14 +570,14 @@
           }
         ],
         "disposition": "closed",
-        "last_observed_at": "2026-06-29T21:46:31.988Z",
+        "last_observed_at": "2026-06-30T04:44:51.675Z",
         "reason_code": "process_closed",
         "summary": "cli-tool decide completed"
       },
       "signals": [],
       "signature": {
         "alg": "Ed25519",
-        "value": "base64:vGUJP-pGWtL12476str_3OHn-dB5fqvcci544WbpWVSUiGFGFmjBg526JnT_jExhdzfjS1fuoDgWLDzg_FLaDQ"
+        "value": "base64:6fCItv00tSC4JI2sO-16BZurIgxgMke1BQGLTd6-8RKfYSFiLXw7wmaiHBdLoEDbUcDVDQd2-bRY7lruvc6rDA"
       },
       "subject": {
         "commitments": [],
@@ -588,7 +588,7 @@
         }
       }
     },
-    "receipt_id": "sha256:46b80a828330482cd6eb308142e105c93c4e54515a07b9cb163c8b61aeecea96",
+    "receipt_id": "sha256:b05131288f0ae4ca605c3c61295f0fbfc0d70273bd4e68d687acf297e0f03135",
     "registry_provenance": {
       "digest": "sha256:04a4606343d8bcfb6bd4150438ca9d1f2b3fd8ef3958409093b704563e687c4d",
       "profile_digest": "sha256:6bece65c388c253a339ad990675731955082ed794136fa7998570f8b18ce5bf1",
