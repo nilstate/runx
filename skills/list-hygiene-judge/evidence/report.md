@@ -73,14 +73,14 @@ receipt_ref=runx:receipt:sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f8
 Native Windows receipt storage previously failed with `os error 87`, so final harness and hosted publish were run from Docker Desktop Linux. The Linux harness passes and includes the hosted registry stop-case requirement.
 ## Structured evidence for Frantic preflight
 
-The evidence_json file now includes a substantive summary, eight structured observations, and a dogfood block. The dogfood receipt is runx:receipt:sha256:35eda8eb771914707c43fc325c472f644f943e734d6116f85b48e6a744eadd95 from the sealed_decay_re_permission harness case. It proves the graph can read the packaged list-hygiene fixture, decide a stale-contact re-permission transition, and append exactly one safe list_hygiene.transitioned event while keeping stop paths for stale or missing evidence.
+The evidence_json file now includes a substantive summary, eight structured observations, and a dogfood block. The dogfood receipt is runx:receipt:sha256:ec5f7ddfb85a204c627a227540896a87361969b160b55e3a6a85f8dd33a95523 from the post-publish package run, not a harness fixture seal. It proves the published package can read the list-hygiene fixture, decide a hard-bounce suppression transition, and append exactly one safe list_hygiene.transitioned event while keeping stop paths for stale or missing evidence.
 
 ## Post-publish dogfood evidence
 
-- Package: `rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7`
-- Public URL: https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7
-- Registry digest: `sha256:4442ff0e8bcd17e9be276b1e9930e35620d925cc69f49af4bf6f4b98111fa9b2`
-- Dogfood receipt: `runx:receipt:sha256:77cef7038c996f0bc92bfa5254b911d04f5ab3531b205c090c1bd43dab408967`
-- Verify verdict: `valid: true`, receipt count `5`, findings `0`
+- Package: `rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1`
+- Public URL: https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1
+- Registry digest: `sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b`
+- Dogfood receipt: `runx:receipt:sha256:ec5f7ddfb85a204c627a227540896a87361969b160b55e3a6a85f8dd33a95523`
+- Verify verdict: `valid: true`, digest `valid`, content address `valid`, signature `valid`, findings `0`
 - Harness cases: sealed_decay_re_permission=sealed, sealed_hard_bounce_suppress=sealed, stop_missing_or_stale_evidence=sealed, stop_active_unsubscribe_marker=sealed, needs_agent_missing_required_inputs=needs_agent
-- Dogfood command: `runx skill rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7 judge --registry https://api.runx.ai --json --data-source-ref local://list-hygiene-judge-harness --store-id list-hygiene-judge-harness --resource contacts.list_hygiene --aggregate-id contact:decay-re-permission-dogfood-v2 --expected-version 0 --idempotency-key lhj-dogfood-re-permission-v3 --engagement-history '{"opens_count":0,"clicks_count":0,"hard_bounces":0,"recency_days":121}' --bounce-policy '{"hard_bounce_action":"suppress","decay_threshold_days":90}' --current-consent-state '{"state":"subscribed","active_unsubscribe_marker":false,"evidence_status":"read","evidence_version":0}'`
+- Dogfood command: `runx skill rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1 judge --registry https://api.runx.ai -i data_source_ref=local://list-hygiene-judge-dogfood-linux -i store_id=list-hygiene-judge-dogfood-linux -i resource=contacts.list_hygiene -i aggregate_id=contact:dogfood-hard-bounce-linux -i idempotency_key=lhj-dogfood-hard-bounce-linux-v0 --input-json expected_version=0 --input-json engagement_history='{"opens_count":2,"clicks_count":1,"hard_bounces":1,"recency_days":12}' --input-json bounce_policy='{"hard_bounce_action":"suppress","decay_threshold_days":90}' --input-json current_consent_state='{"state":"subscribed","active_unsubscribe_marker":false,"evidence_status":"read","evidence_version":0}' --json -R /receipts; runx resume run_judge_b4ca5b97d0cb dogfood-answers.json -R /receipts --json`

@@ -1,90 +1,102 @@
 {
-  "package": "list-hygiene-judge",
-  "version": "0.1.0",
-  "source_revision_expected": "pr-head",
-  "hosted_registry": {
-    "package": "rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7",
-    "version": "sha-eca3cb11a7f7",
-    "digest": "sha256:4442ff0e8bcd17e9be276b1e9930e35620d925cc69f49af4bf6f4b98111fa9b2",
-    "public_url": "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7",
-    "registry": "https://api.runx.ai"
-  },
-  "commands": [
-    {
-      "command": "runx --version",
-      "result": "runx-cli 0.6.14",
-      "status": "passed"
-    },
-    {
-      "command": "git diff --check -- skills/list-hygiene-judge",
-      "result": "no whitespace errors",
-      "status": "passed"
-    },
-    {
-      "command": "hidden/bidi/control-character scan on skills/list-hygiene-judge",
-      "result": "hidden-scan-complete",
-      "status": "passed"
-    },
-    {
-      "command": "runx harness ./skills/list-hygiene-judge",
-      "result": "passed on Docker Desktop Linux with 4 graph cases, packaged data.local tools, no RUNX_REGISTRY_DIR, and no RUNX_DATA_SOURCES",
-      "status": "passed"
-    },
-    {
-      "command": "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
-      "result": "registry publish success",
-      "status": "passed"
-    },
-    {
-      "command": "runx registry read rohitmulani63-ops/list-hygiene-judge --registry https://api.runx.ai",
-      "result": "remote version sha-a3364df6aaa1, digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
-      "status": "passed"
-    },
-    "runx skill rohitmulani63-ops/list-hygiene-judge@sha-eca3cb11a7f7 judge --registry https://api.runx.ai --json --data-source-ref local://list-hygiene-judge-harness --store-id list-hygiene-judge-harness --resource contacts.list_hygiene --aggregate-id contact:decay-re-permission-dogfood-v2 --expected-version 0 --idempotency-key lhj-dogfood-re-permission-v3 --engagement-history '{\"opens_count\":0,\"clicks_count\":0,\"hard_bounces\":0,\"recency_days\":121}' --bounce-policy '{\"hard_bounce_action\":\"suppress\",\"decay_threshold_days\":90}' --current-consent-state '{\"state\":\"subscribed\",\"active_unsubscribe_marker\":false,\"evidence_status\":\"read\",\"evidence_version\":0}'",
-    "runx verify -j --receipt-dir C:/J/frantic-68-dogfood-published-receipts sha256:77cef7038c996f0bc92bfa5254b911d04f5ab3531b205c090c1bd43dab408967"
-  ],
-  "safety": {
-    "secrets_touched": false,
-    "wallet_or_payment_touched": false,
-    "private_tokens_touched": false,
-    "payout_or_stripe_touched": false
-  },
-  "harness": {
-    "status": "passed",
-    "case_count": 5,
-    "assertion_error_count": 0,
-    "case_names": [
-      "sealed_decay_re_permission",
-      "sealed_hard_bounce_suppress",
-      "stop_missing_or_stale_evidence",
-      "stop_active_unsubscribe_marker",
-      "needs_agent_missing_required_inputs"
-    ],
-    "receipt_ids": [
-      "sha256:3711bbeb686545236cfec97bfa7bf01a426030225a6994fc7012a78bfdf969f5",
-      "sha256:f9e9e0de975d6a0dcd4664f4cca6b8b417b33a2d7a5772ebbf0e5f13a9cedb05",
-      "sha256:229ab185caae65a7809722972611a50307d77a51b825d44e65c544670f116e3b",
-      "sha256:a6055da1dfb6089f1c8e4a56783391ed38eb5a91467ae4500b2fcf661038a6f5"
-    ]
-  },
-  "dogfood": {
-    "receipt_ref": "runx:receipt:sha256:77cef7038c996f0bc92bfa5254b911d04f5ab3531b205c090c1bd43dab408967",
-    "verify_verdict": {
-      "receipt_dir": "/tmp/docker-desktop-root/run/desktop/mnt/host/c/J/frantic-68-dogfood-published-receipts",
-      "signature_mode": "production",
-      "trees": [
-        {
-          "root_receipt_id": "sha256:77cef7038c996f0bc92bfa5254b911d04f5ab3531b205c090c1bd43dab408967",
-          "receipt_count": 5,
-          "parent_missing": null,
-          "valid": true,
-          "findings": []
-        }
-      ],
-      "unreadable_files": [],
-      "valid": true
-    },
-    "output_path": "C:/J/frantic-68-dogfood-published-output.json",
-    "verify_output_path": "C:/J/frantic-68-dogfood-verify-output.json"
-  }
+    "package":  "list-hygiene-judge",
+    "version":  "0.1.0",
+    "source_revision_expected":  "pr-head",
+    "hosted_registry":  {
+                            "package":  "rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1",
+                            "version":  "sha-a3364df6aaa1",
+                            "digest":  "sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
+                            "public_url":  "https://runx.ai/x/rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1",
+                            "registry":  "https://api.runx.ai"
+                        },
+    "commands":  [
+                     {
+                         "command":  "runx --version",
+                         "result":  "runx-cli 0.6.14",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "git diff --check -- skills/list-hygiene-judge",
+                         "result":  "no whitespace errors",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "hidden/bidi/control-character scan on skills/list-hygiene-judge",
+                         "result":  "hidden-scan-complete",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "runx harness ./skills/list-hygiene-judge",
+                         "result":  "passed on Docker Desktop Linux with 4 graph cases, packaged data.local tools, no RUNX_REGISTRY_DIR, and no RUNX_DATA_SOURCES",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
+                         "result":  "registry publish success",
+                         "status":  "passed"
+                     },
+                     {
+                         "command":  "runx registry read rohitmulani63-ops/list-hygiene-judge --registry https://api.runx.ai",
+                         "result":  "remote version sha-a3364df6aaa1, digest sha256:24fde586aaff95059c250c77a37aeaf41d0277902a99353d37a76ac8137c691b",
+                         "status":  "passed"
+                     },
+                     "runx skill rohitmulani63-ops/list-hygiene-judge@sha-a3364df6aaa1 judge --registry https://api.runx.ai -i data_source_ref=local://list-hygiene-judge-dogfood-linux -i store_id=list-hygiene-judge-dogfood-linux -i resource=contacts.list_hygiene -i aggregate_id=contact:dogfood-hard-bounce-linux -i idempotency_key=lhj-dogfood-hard-bounce-linux-v0 --input-json expected_version=0 --input-json engagement_history=\u0027{\"opens_count\":2,\"clicks_count\":1,\"hard_bounces\":1,\"recency_days\":12}\u0027 --input-json bounce_policy=\u0027{\"hard_bounce_action\":\"suppress\",\"decay_threshold_days\":90}\u0027 --input-json current_consent_state=\u0027{\"state\":\"subscribed\",\"active_unsubscribe_marker\":false,\"evidence_status\":\"read\",\"evidence_version\":0}\u0027 --json -R /receipts; runx resume run_judge_b4ca5b97d0cb dogfood-answers.json -R /receipts --json",
+                     "runx verify --receipt /receipts/sha256:ec5f7ddfb85a204c627a227540896a87361969b160b55e3a6a85f8dd33a95523.json --json"
+                 ],
+    "safety":  {
+                   "secrets_touched":  false,
+                   "wallet_or_payment_touched":  false,
+                   "private_tokens_touched":  false,
+                   "payout_or_stripe_touched":  false
+               },
+    "harness":  {
+                    "status":  "passed",
+                    "case_count":  5,
+                    "assertion_error_count":  0,
+                    "case_names":  [
+                                       "sealed_decay_re_permission",
+                                       "sealed_hard_bounce_suppress",
+                                       "stop_missing_or_stale_evidence",
+                                       "stop_active_unsubscribe_marker",
+                                       "needs_agent_missing_required_inputs"
+                                   ],
+                    "receipt_ids":  [
+                                        "sha256:3711bbeb686545236cfec97bfa7bf01a426030225a6994fc7012a78bfdf969f5",
+                                        "sha256:f9e9e0de975d6a0dcd4664f4cca6b8b417b33a2d7a5772ebbf0e5f13a9cedb05",
+                                        "sha256:229ab185caae65a7809722972611a50307d77a51b825d44e65c544670f116e3b",
+                                        "sha256:a6055da1dfb6089f1c8e4a56783391ed38eb5a91467ae4500b2fcf661038a6f5"
+                                    ]
+                },
+    "dogfood":  {
+                    "receipt_ref":  "runx:receipt:sha256:ec5f7ddfb85a204c627a227540896a87361969b160b55e3a6a85f8dd33a95523",
+                    "verify_verdict":  {
+                                           "schema":  "runx.verify_verdict.v1",
+                                           "receipt_id":  "sha256:ec5f7ddfb85a204c627a227540896a87361969b160b55e3a6a85f8dd33a95523",
+                                           "valid":  true,
+                                           "digest":  {
+                                                          "status":  "valid",
+                                                          "expected":  "sha256:a5b2ddb0b2e38d80edce4316cc0efb820ced2c263a5356f5ab1a845e39b0e59c",
+                                                          "actual":  "sha256:a5b2ddb0b2e38d80edce4316cc0efb820ced2c263a5356f5ab1a845e39b0e59c"
+                                                      },
+                                           "content_address":  {
+                                                                   "status":  "valid",
+                                                                   "expected":  "sha256:ec5f7ddfb85a204c627a227540896a87361969b160b55e3a6a85f8dd33a95523",
+                                                                   "actual":  "sha256:ec5f7ddfb85a204c627a227540896a87361969b160b55e3a6a85f8dd33a95523"
+                                                               },
+                                           "signature":  {
+                                                             "mode":  "production",
+                                                             "status":  "valid",
+                                                             "kid":  "runx-demo-key"
+                                                         },
+                                           "lineage":  {
+                                                           "status":  "unverified",
+                                                           "message":  "single receipt verification cannot prove receipt-tree lineage"
+                                                       },
+                                           "findings":  [
+
+                                                        ]
+                                       },
+                    "output_path":  "C:/J/frantic-runx/dogfood-resume.json",
+                    "verify_output_path":  "C:/J/frantic-runx/dogfood-verify.json"
+                }
 }
