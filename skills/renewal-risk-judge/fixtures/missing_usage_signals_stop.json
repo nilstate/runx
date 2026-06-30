@@ -1,0 +1,20 @@
+{
+  "usage_signals": {
+    "mau_pct_change": -22
+  },
+  "support_history": {
+    "volume": 4,
+    "ticket_severity_avg": 2.8
+  },
+  "payment_snapshot": {
+    "days_late": 3,
+    "churn_flag": false
+  },
+  "expected": {
+    "schema": "runx.support.renewal_risk.v1",
+    "decision.risk_level": "stop",
+    "refused": true,
+    "save_plan": null,
+    "reason_includes": "missing usage_signals.trend"
+  }
+}

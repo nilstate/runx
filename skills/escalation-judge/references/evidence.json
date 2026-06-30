@@ -1,0 +1,60 @@
+{
+  "bounty": 69,
+  "package": "escalation-judge",
+  "version": "0.1.0",
+  "prepared_at": "2026-06-30T00:00:00Z",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "publisher_owner": "<pending-owner>",
+  "registry_ref": "<owner>/escalation-judge@0.1.0",
+  "public_url": "<pending publish: https://runx.ai/x/<owner>/escalation-judge@0.1.0>",
+  "source_url": "<pending public source URL>",
+  "pr_url": "<pending public PR against runxhq/runx>",
+  "x_yaml": "<pending raw PR URL>/skills/escalation-judge/X.yaml",
+  "skill_md": "<pending raw PR URL>/skills/escalation-judge/SKILL.md",
+  "verification_json": "verification.json",
+  "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/escalation-judge/SKILL.md --registry https://api.runx.ai",
+  "install_command": "runx add <owner>/escalation-judge@0.1.0",
+  "local_harness_command": "C:\\Users\\DFGS\\Documents\\自动化盈利\\tools\\runx-0.6.14\\runx-0.6.14-x86_64-pc-windows-msvc\\runx.exe harness ./skills/escalation-judge",
+  "hosted_harness_status": "pending publish",
+  "receipt_ref": "<pending post-publish dogfood receipt>",
+  "verify_verdict": "pending post-publish runx verify",
+  "dogfood": {
+    "package": "<owner>/escalation-judge@0.1.0",
+    "input": {
+      "triage_packet": {
+        "classification": "billing_outage",
+        "severity": "sev1",
+        "confidence": 0.93
+      },
+      "thread_body": "Enterprise renewal blocked; CFO says they will cancel unless the outage is prioritized today.",
+      "aggregate_id": "thread:dogfood-escalation-001",
+      "expected_version": 0,
+      "idempotency_key": "thread:dogfood-escalation-001:escalation:2026-06-30"
+    },
+    "command": "runx skill <owner>/escalation-judge@0.1.0 --json ...",
+    "receipt_ref": "<pending post-publish dogfood receipt>",
+    "verify_verdict": "pending",
+    "harness_cases": [
+      {
+        "name": "sealed_priority_escalation",
+        "status": "pending local harness"
+      },
+      {
+        "name": "stop_no_threshold_no_change",
+        "status": "pending local harness"
+      }
+    ]
+  },
+  "observations": [
+    "runx --version output: runx-cli 0.6.14",
+    "sealed_priority_escalation decision: escalate=true, lane=priority_support",
+    "sealed_priority_escalation named policy threshold matched: sev2_or_higher_priority_support; severity sev1 >= sev2",
+    "sealed_priority_escalation grounded churn signals cited: renewal_blocked from thread phrases renewal blocked and will cancel",
+    "prior-case projection read: registry:runx/data-store@0.1.2 support_escalation_cases aggregate_id=thread:priority-001 version=0 with no prior escalation",
+    "case_id appended via append_event to data-store with idempotency_key=thread:priority-001:escalation:v1",
+    "named target rail: slack://support-priority; downstream driver slack-notify; this skill does not post",
+    "stop_no_threshold_no_change decision: escalate=false, reason=no_change, no case opened and no packet emitted",
+    "Harness case names: sealed_priority_escalation, stop_no_threshold_no_change",
+    "Receipt id is pending post-publish dogfood run"
+  ]
+}

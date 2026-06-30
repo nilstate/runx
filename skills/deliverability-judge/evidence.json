@@ -1,0 +1,115 @@
+{
+  "schema": "frantic.runx_skill_evidence.v1",
+  "bounty": 65,
+  "package": "deliverability-judge",
+  "version": "0.1.0",
+  "prepared_at": "2026-06-30T07:30:00Z",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "publisher_owner": "TODO: publish owner after GitHub login",
+  "registry_ref": "TODO: <owner>/deliverability-judge@0.1.0 or registry sha version",
+  "public_url": "TODO: https://runx.ai/x/<owner>/deliverability-judge@<version>",
+  "source_url": "TODO: public source/provenance URL after PR branch exists",
+  "pr_url": "TODO: https://github.com/runxhq/runx/pull/<number>",
+  "raw_x_yaml": "TODO: raw URL from PR head commit",
+  "raw_skill_md": "TODO: raw URL from PR head commit",
+  "verification_json": "verification.json",
+  "receipt_ref": "TODO: post-publish dogfood receipt_ref",
+  "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/deliverability-judge/SKILL.md --registry https://api.runx.ai",
+  "install_command": "runx add <owner>/deliverability-judge@<version>",
+  "local_harness_command": "runx harness ./skills/deliverability-judge --receipt-dir ./.runx-receipts --json",
+  "hosted_harness_status": "TODO: run after registry publish",
+  "dogfood_command": "TODO post-publish: runx skill <owner>/deliverability-judge@<version> --json ...; runx verify --receipt <receipt.json> --json",
+  "observations": {
+    "harness_case_names": [
+      "sealed_healthy_signals_continue",
+      "contradictory_signals_escalate"
+    ],
+    "verdict": {
+      "state": "healthy",
+      "confidence_window": [
+        0.84,
+        0.93
+      ],
+      "reason": "All sealed deliverability signals satisfy operator thresholds."
+    },
+    "signal_evaluations": [
+      {
+        "name": "postmaster_report",
+        "sealed_source": "google-postmaster://example.com/reputation/2026-06-30",
+        "timestamp": "2026-06-30T07:00:00Z",
+        "metric": "reputation_score",
+        "value": 96,
+        "policy": ">= 80",
+        "pass": true
+      },
+      {
+        "name": "bounce_metrics",
+        "sealed_source": "esp://example.com/bounces/2026-06-30",
+        "timestamp": "2026-06-30T07:01:00Z",
+        "metric": "bounce_pct",
+        "value": 0.4,
+        "policy": "<= 2",
+        "pass": true
+      },
+      {
+        "name": "complaint_metrics",
+        "sealed_source": "esp://example.com/complaints/2026-06-30",
+        "timestamp": "2026-06-30T07:02:00Z",
+        "metric": "complaint_pct",
+        "value": 0.02,
+        "policy": "<= 0.1",
+        "pass": true
+      },
+      {
+        "name": "placement_probe",
+        "sealed_source": "seedlist://example.com/probe/2026-06-30",
+        "timestamp": "2026-06-30T07:03:00Z",
+        "metric": "inbox_pct",
+        "value": 97,
+        "policy": ">= 90",
+        "pass": true
+      }
+    ],
+    "recommendation": {
+      "action": "continue",
+      "evidence_hash": "sha256:1668a0c0a3b883f6e67ffa181b79a75d6853dc57ada91df148c5e063af40810c",
+      "read_only": true
+    },
+    "refused_reason": {
+      "code": "contradictory_signals",
+      "reason": "Signals contradict: strong reputation or placement conflicts with out-of-policy negative rates, so no recommendation is emitted.",
+      "contradicting_or_missing_signals": [
+        "postmaster_report_vs_bounce_metrics",
+        "placement_probe_vs_negative_rates"
+      ]
+    },
+    "receipt_id": "TODO: unavailable locally because Windows runx receipt store failed before sealing",
+    "authority_boundary": {
+      "minted": false,
+      "effects_emitted": false,
+      "operational_proposal_v1": false,
+      "attenuation_request": false,
+      "sends_executed": false,
+      "throttle_applied": false,
+      "state_held": false
+    }
+  },
+  "dogfood": {
+    "package": "TODO: <owner>/deliverability-judge@<version>",
+    "input": "fixtures/healthy-evidence.json + fixtures/operator-policy.json",
+    "command": "TODO: post-publish runx skill command",
+    "receipt_ref": "TODO",
+    "verify_verdict": "TODO",
+    "harness_cases": [
+      {
+        "name": "sealed_healthy_signals_continue",
+        "status": "local runner logic passed; receipt not sealed on this Windows host"
+      },
+      {
+        "name": "contradictory_signals_escalate",
+        "status": "local runner logic passed; receipt not sealed on this Windows host"
+      }
+    ]
+  }
+}
+

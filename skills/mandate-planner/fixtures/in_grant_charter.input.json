@@ -1,0 +1,27 @@
+{
+  "objective": "Triage flaky release checks and propose a bounded follow-up plan.",
+  "proposed_charter": {
+    "candidate_roster": [
+      {
+        "role": "release-analyst",
+        "skill": "flaky-test-judge",
+        "scope": "read test receipts and propose disposition"
+      },
+      {
+        "role": "pr-drafter",
+        "skill": "issue-to-pr",
+        "scope": "draft a temporary quarantine PR only after operator handoff"
+      }
+    ],
+    "requested_limits": {
+      "max_turns": 6,
+      "spend": 25
+    },
+    "done_check": "Verify a sealed review receipt exists and the draft plan passes acceptance checks."
+  },
+  "authority_grant": {
+    "granted_spend": 50,
+    "granted_roles": ["release-analyst", "pr-drafter"],
+    "max_turns": 8
+  }
+}

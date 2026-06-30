@@ -1,0 +1,19 @@
+{
+  "uri": "local://runbooks/checkout-5xx",
+  "sealed": true,
+  "digest": "sha256:9c8a7fc7e5d9810fcfe8e5afee0fef298b5597e8de5e2792d980e7d3a3b8d7f6",
+  "service": "checkout",
+  "version": "2026-06-30",
+  "allowed_actions": [
+    "acknowledge",
+    "escalate"
+  ],
+  "page_target": "pagerduty://services/checkout/primary",
+  "incident_pr_target": "github://runxhq/runx/incidents/checkout",
+  "pr_review_note_template": "Incident {alert_id}: {service} {severity} via {signal_name}. Runbook digest {runbook_digest}. Proposed lane: issue-to-pr plus pr-review-note; live page is separate.",
+  "escalation": {
+    "lane": "checkout.primary_oncall",
+    "human_approval_lane": "incident-commander"
+  }
+}
+

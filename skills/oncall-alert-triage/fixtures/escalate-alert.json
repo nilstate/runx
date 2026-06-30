@@ -1,0 +1,12 @@
+{
+  "id": "alert-checkout-5xx-20260630",
+  "service": "checkout",
+  "severity": "p1",
+  "signal": {
+    "name": "checkout_5xx_rate",
+    "value": 8.7,
+    "threshold": 2.0,
+    "unit": "percent"
+  }
+}
+

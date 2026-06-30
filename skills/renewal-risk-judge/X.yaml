@@ -1,0 +1,92 @@
+skill: renewal-risk-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: high_risk_with_save_play
+      runner: default
+      inputs:
+        usage_signals:
+          trend: declining
+          mau_pct_change: -38
+        support_history:
+          volume: 11
+          ticket_severity_avg: 4.2
+        payment_snapshot:
+          days_late: 12
+          churn_flag: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: missing_usage_signals_stop
+      runner: default
+      inputs:
+        usage_signals:
+          mau_pct_change: -22
+        support_history:
+          volume: 4
+          ticket_severity_avg: 2.8
+        payment_snapshot:
+          days_late: 3
+          churn_flag: false
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+policy:
+  allow:
+    - provider: usage-signals
+      method: READ
+      scope: runx:usage:read
+    - provider: support-history
+      method: READ
+      scope: runx:support:read
+    - provider: payment-snapshot
+      method: READ
+      scope: runx:payment-snapshot:read
+  deny:
+    - public_send
+    - outbound_send
+    - money_rail
+    - discount_apply
+    - price_quote
+    - operational_proposal
+    - mint
+    - invented_usage_signals
+    - invented_payment_lateness
+
+emits:
+  - name: runx.support.renewal_risk.v1
+    packet: runx.support.renewal_risk.v1
+    dispatch_by_name: send-as
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      usage_signals:
+        type: json
+        required: true
+      support_history:
+        type: json
+        required: true
+      payment_snapshot:
+        type: json
+        required: true

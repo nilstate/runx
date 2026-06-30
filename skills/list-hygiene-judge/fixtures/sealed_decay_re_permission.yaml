@@ -1,0 +1,23 @@
+name: sealed_decay_re_permission
+inputs:
+  data_source_ref: registry:runx/data-store@0.1.2/harness/list-hygiene
+  resource: contact_consent_events
+  aggregate_id: contact:decayed-001
+  expected_version: 4
+  idempotency_key: contact:decayed-001:list-hygiene:repermission:v1
+  engagement_history:
+    opens_count: 0
+    clicks_count: 0
+    hard_bounces: 0
+    recency_days: 121
+  bounce_policy:
+    hard_bounce_action: suppress
+    decay_threshold_days: 90
+  current_consent_state:
+    state: subscribed
+    version: 4
+    unsubscribe_marker: false
+expected:
+  decision_state: re_permission
+  append_event: true
+  matched_threshold: recency_days > decay_threshold_days

@@ -1,0 +1,12 @@
+{
+  "id": "alert-billing-latency-20260630",
+  "service": "billing",
+  "severity": "p2",
+  "signal": {
+    "name": "billing_latency_p95",
+    "value": 2500,
+    "threshold": 1000,
+    "unit": "ms"
+  }
+}
+

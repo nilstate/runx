@@ -1,0 +1,103 @@
+skill: flaky-test-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: quarantine_justified
+      runner: default
+      inputs:
+        test_run_history:
+          sample_size: 20
+          runs:
+            - {status: passed, duration: 3.1, logs: "ok"}
+            - {status: failed, duration: 30.0, logs: "Error: test timed out after 30000ms while waiting for worker"}
+            - {status: passed, duration: 3.0, logs: "ok"}
+            - {status: passed, duration: 3.2, logs: "ok"}
+            - {status: failed, duration: 30.0, logs: "Timeout waiting for response from fake clock"}
+            - {status: passed, duration: 3.3, logs: "ok"}
+            - {status: failed, duration: 30.0, logs: "deadline exceeded: timeout in fixture server"}
+            - {status: passed, duration: 3.2, logs: "ok"}
+            - {status: passed, duration: 3.1, logs: "ok"}
+            - {status: failed, duration: 30.0, logs: "timed out waiting for queue drain"}
+            - {status: passed, duration: 2.9, logs: "ok"}
+            - {status: passed, duration: 3.0, logs: "ok"}
+            - {status: failed, duration: 30.0, logs: "timeout after 30000ms during teardown"}
+            - {status: passed, duration: 3.1, logs: "ok"}
+            - {status: passed, duration: 3.2, logs: "ok"}
+            - {status: failed, duration: 30.0, logs: "Timeout: browser fixture did not become ready"}
+            - {status: passed, duration: 3.2, logs: "ok"}
+            - {status: failed, duration: 4.8, logs: "AssertionError: expected retry count to equal 2"}
+            - {status: passed, duration: 3.0, logs: "ok"}
+            - {status: passed, duration: 3.3, logs: "ok"}
+        test_metadata:
+          test_path: tests/release/flaky_timeout.spec.ts
+          suite: release-gate
+          tags: [integration, release-blocker]
+        release_policy:
+          flake_threshold_pct: 70
+          min_sample_size: 20
+          max_quarantine_days: 10
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: missing_run_history
+      runner: default
+      inputs:
+        test_run_history:
+          sample_size: 0
+          runs: []
+        test_metadata:
+          test_path: tests/release/no_history.spec.ts
+          suite: release-gate
+          tags: [integration]
+        release_policy:
+          flake_threshold_pct: 70
+          min_sample_size: 20
+          max_quarantine_days: 10
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      disposition: object
+      quarantine_packet: object
+      escalation: object
+      dispatch_target: object
+      evidence: object
+    artifacts:
+      wrap_as: flaky_test_triage
+      packet: runx.flaky.test_triage.v1
+    inputs:
+      test_run_history:
+        type: json
+        required: true
+        description: "Run history shaped as {runs:[{status,duration,logs}],sample_size}."
+      test_metadata:
+        type: json
+        required: true
+        description: "Test metadata shaped as {test_path,suite,tags}."
+      release_policy:
+        type: json
+        required: true
+        description: "Release policy shaped as {flake_threshold_pct,min_sample_size,max_quarantine_days}."

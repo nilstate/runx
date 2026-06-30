@@ -1,0 +1,84 @@
+{
+  "schema": "frantic.runx_skill.verification.v1",
+  "package": "spam-risk-reviewer",
+  "version": "0.1.0",
+  "runx_binary": "C:\\Users\\DFGS\\Documents\\自动化盈利\\tools\\runx-0.6.14\\runx-0.6.14-x86_64-pc-windows-msvc\\runx.exe",
+  "commands": [
+    {
+      "name": "runx_version",
+      "command": "runx --version",
+      "status": "passed",
+      "output": "runx-cli 0.6.14"
+    },
+    {
+      "name": "skill_inspect",
+      "command": "runx skill inspect .\\skills\\spam-risk-reviewer --json",
+      "status": "passed",
+      "output_summary": {
+        "schema": "runx.skill.inspect.v1",
+        "status": "ok",
+        "name": "spam-risk-reviewer",
+        "version": "0.1.0",
+        "runners": [
+          "default"
+        ]
+      }
+    },
+    {
+      "name": "local_harness_without_signer",
+      "command": "runx harness .\\skills\\spam-risk-reviewer --json",
+      "status": "blocked",
+      "observed_error": "governed runtime receipt signing requires RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE"
+    },
+    {
+      "name": "local_harness_with_demo_signer_and_ascii_receipt_dir",
+      "command": "RUNX_RECEIPT_SIGN_KID=runx-demo-key RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted RUNX_RECEIPT_DIR=C:\\tmp\\runx-frantic-spam-receipts runx harness .\\skills\\spam-risk-reviewer --json",
+      "status": "blocked_by_windows_receipt_store",
+      "observed_error": "receipt store is unreadable: 参数错误。 (os error 87)",
+      "case_names": [
+        "low-risk-verified-sender",
+        "high-risk-incomplete-auth-poor-list"
+      ]
+    },
+    {
+      "name": "runx_skill_local_attempt",
+      "command": "runx skill .\\skills\\spam-risk-reviewer --json --input-json ...",
+      "status": "blocked_by_windows_receipt_store",
+      "observed_error": "receipt store is unreadable: 参数错误。 (os error 87)"
+    },
+    {
+      "name": "direct_runner_low_risk",
+      "command": "node skills/spam-risk-reviewer/run.mjs with RUNX_INPUT_* JSON",
+      "status": "passed",
+      "output_summary": {
+        "schema": "send_risk_verdict",
+        "risk_level": "pass",
+        "preflight_clear": true,
+        "blockers": []
+      }
+    },
+    {
+      "name": "direct_runner_high_risk",
+      "command": "node skills/spam-risk-reviewer/run.mjs with high-risk fixture RUNX_INPUT_* JSON",
+      "status": "passed",
+      "output_summary": {
+        "schema": "send_risk_verdict",
+        "risk_level": "hold",
+        "preflight_clear": false,
+        "blockers_include": [
+          "DKIM authentication did not pass",
+          "bounce_rate 0.071 exceeds policy threshold 0.02"
+        ],
+        "needs_human_lane": "send-as.human_approval"
+      }
+    }
+  ],
+  "pending_for_delivery": [
+    "Frantic claim cooldown/identity state must be cleared by main agent.",
+    "Publish with verified GitHub owner that stars runxhq/runx.",
+    "Open public PR against runxhq/runx containing skills/spam-risk-reviewer/X.yaml, SKILL.md, fixtures, and harness evidence.",
+    "Run hosted registry harness after publish.",
+    "Run post-publish dogfood via runx skill <owner>/spam-risk-reviewer@0.1.0 --json and verify its receipt.",
+    "Replace placeholder artifact URLs and receipt_ref in evidence/report."
+  ]
+}

@@ -1,0 +1,23 @@
+name: sealed_hard_bounce_suppress
+inputs:
+  data_source_ref: registry:runx/data-store@0.1.2/harness/list-hygiene
+  resource: contact_consent_events
+  aggregate_id: contact:bounced-001
+  expected_version: 7
+  idempotency_key: contact:bounced-001:list-hygiene:suppress:v1
+  engagement_history:
+    opens_count: 2
+    clicks_count: 0
+    hard_bounces: 1
+    recency_days: 9
+  bounce_policy:
+    hard_bounce_action: suppress
+    decay_threshold_days: 90
+  current_consent_state:
+    state: subscribed
+    version: 7
+    unsubscribe_marker: false
+expected:
+  decision_state: suppress
+  append_event: true
+  matched_threshold: hard_bounces > 0

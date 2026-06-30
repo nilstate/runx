@@ -1,0 +1,23 @@
+name: stop_missing_or_stale_evidence
+inputs:
+  data_source_ref: registry:runx/data-store@0.1.2/harness/list-hygiene
+  resource: contact_consent_events
+  aggregate_id: contact:stale-001
+  expected_version: 2
+  idempotency_key: contact:stale-001:list-hygiene:stale:v1
+  engagement_history:
+    opens_count: 0
+    clicks_count: 0
+    hard_bounces: 0
+    recency_days: 120
+  bounce_policy:
+    hard_bounce_action: suppress
+    decay_threshold_days: 90
+  current_consent_state:
+    state: subscribed
+    version: 3
+    unsubscribe_marker: false
+expected:
+  decision_state: stop
+  append_event: false
+  stop_code: stale_expected_version

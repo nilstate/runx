@@ -1,0 +1,37 @@
+{
+  "test_run_history": {
+    "sample_size": 20,
+    "runs": [
+      {"status": "passed", "duration": 3.1, "logs": "ok"},
+      {"status": "failed", "duration": 30.0, "logs": "Error: test timed out after 30000ms while waiting for worker"},
+      {"status": "passed", "duration": 3.0, "logs": "ok"},
+      {"status": "passed", "duration": 3.2, "logs": "ok"},
+      {"status": "failed", "duration": 30.0, "logs": "Timeout waiting for response from fake clock"},
+      {"status": "passed", "duration": 3.3, "logs": "ok"},
+      {"status": "failed", "duration": 30.0, "logs": "deadline exceeded: timeout in fixture server"},
+      {"status": "passed", "duration": 3.2, "logs": "ok"},
+      {"status": "passed", "duration": 3.1, "logs": "ok"},
+      {"status": "failed", "duration": 30.0, "logs": "timed out waiting for queue drain"},
+      {"status": "passed", "duration": 2.9, "logs": "ok"},
+      {"status": "passed", "duration": 3.0, "logs": "ok"},
+      {"status": "failed", "duration": 30.0, "logs": "timeout after 30000ms during teardown"},
+      {"status": "passed", "duration": 3.1, "logs": "ok"},
+      {"status": "passed", "duration": 3.2, "logs": "ok"},
+      {"status": "failed", "duration": 30.0, "logs": "Timeout: browser fixture did not become ready"},
+      {"status": "passed", "duration": 3.2, "logs": "ok"},
+      {"status": "failed", "duration": 4.8, "logs": "AssertionError: expected retry count to equal 2"},
+      {"status": "passed", "duration": 3.0, "logs": "ok"},
+      {"status": "passed", "duration": 3.3, "logs": "ok"}
+    ]
+  },
+  "test_metadata": {
+    "test_path": "tests/release/flaky_timeout.spec.ts",
+    "suite": "release-gate",
+    "tags": ["integration", "release-blocker"]
+  },
+  "release_policy": {
+    "flake_threshold_pct": 70,
+    "min_sample_size": 20,
+    "max_quarantine_days": 10
+  }
+}

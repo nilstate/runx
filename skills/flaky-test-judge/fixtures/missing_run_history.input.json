@@ -1,0 +1,16 @@
+{
+  "test_run_history": {
+    "sample_size": 0,
+    "runs": []
+  },
+  "test_metadata": {
+    "test_path": "tests/release/no_history.spec.ts",
+    "suite": "release-gate",
+    "tags": ["integration"]
+  },
+  "release_policy": {
+    "flake_threshold_pct": 70,
+    "min_sample_size": 20,
+    "max_quarantine_days": 10
+  }
+}

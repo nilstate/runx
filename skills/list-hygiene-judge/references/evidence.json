@@ -1,0 +1,72 @@
+{
+  "bounty": 68,
+  "package": "list-hygiene-judge",
+  "version": "0.1.0",
+  "prepared_at": "2026-06-30T00:00:00Z",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "publisher_owner": "<pending-owner>",
+  "registry_ref": "<owner>/list-hygiene-judge@0.1.0",
+  "public_url": "<pending publish: https://runx.ai/x/<owner>/list-hygiene-judge@0.1.0>",
+  "source_url": "<pending public source URL>",
+  "pr_url": "<pending public PR against runxhq/runx>",
+  "x_yaml": "<pending raw PR URL>/skills/list-hygiene-judge/X.yaml",
+  "skill_md": "<pending raw PR URL>/skills/list-hygiene-judge/SKILL.md",
+  "verification_json": "verification.json",
+  "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/list-hygiene-judge/SKILL.md --registry https://api.runx.ai",
+  "install_command": "runx add <owner>/list-hygiene-judge@0.1.0",
+  "local_harness_command": "C:\\Users\\DFGS\\Documents\\自动化盈利\\tools\\runx-0.6.14\\runx-0.6.14-x86_64-pc-windows-msvc\\runx.exe harness ./skills/list-hygiene-judge",
+  "hosted_harness_status": "pending publish",
+  "receipt_ref": "<pending post-publish dogfood receipt>",
+  "verify_verdict": "pending post-publish runx verify",
+  "dogfood": {
+    "package": "<owner>/list-hygiene-judge@0.1.0",
+    "input": {
+      "aggregate_id": "contact:dogfood-decayed-001",
+      "expected_version": 4,
+      "idempotency_key": "contact:dogfood-decayed-001:list-hygiene:2026-06-30",
+      "engagement_history": {
+        "opens_count": 0,
+        "clicks_count": 0,
+        "hard_bounces": 0,
+        "recency_days": 121
+      },
+      "bounce_policy": {
+        "hard_bounce_action": "suppress",
+        "decay_threshold_days": 90
+      },
+      "current_consent_state": {
+        "state": "subscribed",
+        "version": 4,
+        "unsubscribe_marker": false
+      }
+    },
+    "command": "runx skill <owner>/list-hygiene-judge@0.1.0 --json ...",
+    "receipt_ref": "<pending post-publish dogfood receipt>",
+    "verify_verdict": "pending",
+    "harness_cases": [
+      {
+        "name": "sealed_decay_re_permission",
+        "status": "pending local harness"
+      },
+      {
+        "name": "sealed_hard_bounce_suppress",
+        "status": "pending local harness"
+      },
+      {
+        "name": "stop_missing_or_stale_evidence",
+        "status": "pending local harness"
+      }
+    ]
+  },
+  "observations": [
+    "runx --version output: runx-cli 0.6.14",
+    "sealed_decay_re_permission verdict: decision.state=re_permission because recency_days=121 exceeds decay_threshold_days=90 and no unsubscribe marker is present",
+    "sealed_decay_re_permission records new_state=re_permission for aggregate_id=contact:decayed-001 bound to idempotency_key=contact:decayed-001:list-hygiene:repermission:v1",
+    "sealed_hard_bounce_suppress verdict: decision.state=suppress because hard_bounces=1 was read from registry:runx/data-store@0.1.2/harness/list-hygiene and hard_bounce_action=suppress",
+    "stop_missing_or_stale_evidence verdict: stale_expected_version; expected_version=2 does not match projection version=3, so no append_event is emitted",
+    "Pinned data-store adapter registry:runx/data-store@0.1.2 with store_id=runx-list-hygiene-judge-store-v1",
+    "Downstream delivery is named send-as; this skill never sends and emits no operational_proposal envelope",
+    "Harness case names: sealed_decay_re_permission, sealed_hard_bounce_suppress, stop_missing_or_stale_evidence",
+    "Sealed receipt id is pending post-publish dogfood run"
+  ]
+}

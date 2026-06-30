@@ -1,0 +1,113 @@
+skill: deliverability-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_healthy_signals_continue
+      runner: default
+      inputs:
+        evidence:
+          postmaster_report:
+            sealed: true
+            source: google-postmaster://example.com/reputation/2026-06-30
+            timestamp: "2026-06-30T07:00:00Z"
+            reputation_score: 96
+          bounce_metrics:
+            sealed: true
+            source: esp://example.com/bounces/2026-06-30
+            timestamp: "2026-06-30T07:01:00Z"
+            bounce_pct: 0.4
+          complaint_metrics:
+            sealed: true
+            source: esp://example.com/complaints/2026-06-30
+            timestamp: "2026-06-30T07:02:00Z"
+            complaint_pct: 0.02
+          placement_probe:
+            sealed: true
+            source: seedlist://example.com/probe/2026-06-30
+            timestamp: "2026-06-30T07:03:00Z"
+            inbox_pct: 97
+        policy:
+          min_reputation_score: 80
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: contradictory_signals_escalate
+      runner: default
+      inputs:
+        evidence:
+          postmaster_report:
+            sealed: true
+            source: google-postmaster://example.com/reputation/2026-06-30
+            timestamp: "2026-06-30T07:00:00Z"
+            reputation_score: 95
+          bounce_metrics:
+            sealed: true
+            source: esp://example.com/bounces/2026-06-30
+            timestamp: "2026-06-30T07:01:00Z"
+            bounce_pct: 8.5
+          complaint_metrics:
+            sealed: true
+            source: esp://example.com/complaints/2026-06-30
+            timestamp: "2026-06-30T07:02:00Z"
+            complaint_pct: 0.03
+          placement_probe:
+            sealed: true
+            source: seedlist://example.com/probe/2026-06-30
+            timestamp: "2026-06-30T07:03:00Z"
+            inbox_pct: 94
+        policy:
+          min_reputation_score: 80
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+policy:
+  allow:
+    - provider: deliverability-evidence
+      method: READ
+      scope: deliverability:evidence:read
+  deny:
+    - effect.emit
+    - throttle.apply
+    - send.execute
+    - authority.mint
+    - operational_proposal
+    - attenuation_request
+
+emits:
+  - name: deliverability_verdict
+    packet: runx.deliverability.verdict.v1
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      evidence:
+        type: json
+        required: true
+      policy:
+        type: json
+        required: true
+

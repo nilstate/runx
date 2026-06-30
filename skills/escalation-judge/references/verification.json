@@ -1,0 +1,34 @@
+{
+  "package": "escalation-judge",
+  "version": "0.1.0",
+  "runx_cli": {
+    "path": "C:\\Users\\DFGS\\Documents\\自动化盈利\\tools\\runx-0.6.14\\runx-0.6.14-x86_64-pc-windows-msvc\\runx.exe",
+    "version_output": "runx-cli 0.6.14"
+  },
+  "commands": [
+    {
+      "name": "runx --version",
+      "command": "C:\\Users\\DFGS\\Documents\\自动化盈利\\tools\\runx-0.6.14\\runx-0.6.14-x86_64-pc-windows-msvc\\runx.exe --version",
+      "status": "passed",
+      "output": "runx-cli 0.6.14"
+    },
+    {
+      "name": "local harness",
+      "command": "C:\\Users\\DFGS\\Documents\\自动化盈利\\tools\\runx-0.6.14\\runx-0.6.14-x86_64-pc-windows-msvc\\runx.exe harness ./skills/escalation-judge",
+      "status": "pending",
+      "output": ""
+    }
+  ],
+  "harness_cases": [
+    "sealed_priority_escalation",
+    "stop_no_threshold_no_change"
+  ],
+  "publish_verification": {
+    "registry_publish": "pending",
+    "clean_install": "pending",
+    "hosted_harness": "pending",
+    "dogfood_receipt": "pending",
+    "runx_verify": "pending",
+    "frantic_preflight": "pending"
+  }
+}

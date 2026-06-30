@@ -1,0 +1,109 @@
+skill: mandate-planner
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: in_grant_charter
+      runner: default
+      inputs:
+        objective: Triage flaky release checks and propose a bounded follow-up plan.
+        proposed_charter:
+          candidate_roster:
+            - role: release-analyst
+              skill: flaky-test-judge
+              scope: read test receipts and propose disposition
+            - role: pr-drafter
+              skill: issue-to-pr
+              scope: draft a temporary quarantine PR only after operator handoff
+          requested_limits:
+            max_turns: 6
+            spend: 25
+          done_check: "Verify a sealed review receipt exists and the draft plan passes acceptance checks."
+        authority_grant:
+          granted_spend: 50
+          granted_roles: [release-analyst, pr-drafter]
+          max_turns: 8
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: out_of_grant_charter
+      runner: human-approval-lane
+      inputs:
+        objective: Open an agency case with an ungranted deployer role.
+        proposed_charter:
+          candidate_roster:
+            - role: release-analyst
+              skill: flaky-test-judge
+              scope: read test receipts and propose disposition
+            - role: deployer
+              skill: release
+              scope: merge and deploy a disable
+          requested_limits:
+            max_turns: 12
+            spend: 80
+          done_check: ""
+        authority_grant:
+          granted_spend: 50
+          granted_roles: [release-analyst, pr-drafter]
+          max_turns: 8
+      expect:
+        status: needs_agent
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      recommended_charter: object
+      escalation: object
+      dispatch_target: object
+      evidence: object
+    artifacts:
+      wrap_as: mandate_planner_verdict
+      packet: runx.agency.mandate_planner.v1
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "Operator objective for the proposed agency charter."
+      proposed_charter:
+        type: json
+        required: true
+        description: "Proposed charter shaped as {candidate_roster:[{role,skill,scope}],requested_limits:{max_turns,spend},done_check}."
+      authority_grant:
+        type: json
+        required: true
+        description: "Authority grant shaped as {granted_spend,granted_roles,max_turns}."
+  human-approval-lane:
+    type: agent-task
+    agent: mandate-planner-human-approval
+    task: out-of-grant-charter-review
+    outputs:
+      human_approval_request: object
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "Operator objective for the proposed agency charter."
+      proposed_charter:
+        type: json
+        required: true
+        description: "Proposed charter that was rejected by the validator."
+      authority_grant:
+        type: json
+        required: true
+        description: "Authority grant used for fail-closed review."

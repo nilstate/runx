@@ -1,0 +1,138 @@
+skill: oncall-alert-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_escalate_checkout_alert
+      runner: default
+      inputs:
+        alert:
+          id: alert-checkout-5xx-20260630
+          service: checkout
+          severity: p1
+          signal:
+            name: checkout_5xx_rate
+            value: 8.7
+            threshold: 2.0
+            unit: percent
+        runbook_ref:
+          uri: local://runbooks/checkout-5xx
+          sealed: true
+          digest: sha256:9c8a7fc7e5d9810fcfe8e5afee0fef298b5597e8de5e2792d980e7d3a3b8d7f6
+          service: checkout
+          version: "2026-06-30"
+          allowed_actions:
+            - acknowledge
+            - escalate
+          page_target: pagerduty://services/checkout/primary
+          incident_pr_target: github://runxhq/runx/incidents/checkout
+          pr_review_note_template: "Incident {alert_id}: {service} {severity} via {signal_name}. Runbook digest {runbook_digest}. Proposed lane: issue-to-pr plus pr-review-note; live page is separate."
+          escalation:
+            lane: checkout.primary_oncall
+            human_approval_lane: incident-commander
+        oncall_policy:
+          services:
+            checkout:
+              page_target: pagerduty://services/checkout/primary
+              incident_pr_target: github://runxhq/runx/incidents/checkout
+              allowed_actions:
+                - acknowledge
+                - escalate
+              escalation: checkout.primary_oncall
+          escalation_rules:
+            - id: checkout-p1-5xx
+              service: checkout
+              severity: p1
+              signal_name: checkout_5xx_rate
+              action: escalate
+              clause: "checkout p1 5xx rate above threshold must escalate to primary oncall and create an incident PR target."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: stop_unsealed_runbook_needs_agent
+      runner: default
+      inputs:
+        alert:
+          id: alert-billing-latency-20260630
+          service: billing
+          severity: p2
+          signal:
+            name: billing_latency_p95
+            value: 2500
+            threshold: 1000
+            unit: ms
+        runbook_ref:
+          uri: local://runbooks/billing-latency
+          sealed: false
+          digest: null
+          service: billing
+        oncall_policy:
+          services:
+            billing:
+              page_target: pagerduty://services/billing/primary
+              incident_pr_target: github://runxhq/runx/incidents/billing
+              allowed_actions:
+                - acknowledge
+                - escalate
+              escalation: billing.primary_oncall
+          escalation_rules:
+            - id: billing-p2-latency
+              service: billing
+              severity: p2
+              signal_name: billing_latency_p95
+              action: escalate
+              clause: "billing p2 latency alerts require sealed runbook evidence before packet emission."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+policy:
+  allow:
+    - provider: runbook-store
+      method: READ
+      scope: runbook:read
+    - provider: policy-store
+      method: READ
+      scope: oncall-policy:read
+  deny:
+    - page.send
+    - pull_request.open
+    - fix.apply
+    - authority.mint
+    - attenuation_request
+
+emits:
+  - name: triage_packet
+    packet: runx.oncall.triage.v1
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      alert:
+        type: json
+        required: true
+      runbook_ref:
+        type: json
+        required: true
+      oncall_policy:
+        type: json
+        required: true
+

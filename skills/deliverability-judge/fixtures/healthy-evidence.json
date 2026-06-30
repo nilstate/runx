@@ -1,0 +1,27 @@
+{
+  "postmaster_report": {
+    "sealed": true,
+    "source": "google-postmaster://example.com/reputation/2026-06-30",
+    "timestamp": "2026-06-30T07:00:00Z",
+    "reputation_score": 96
+  },
+  "bounce_metrics": {
+    "sealed": true,
+    "source": "esp://example.com/bounces/2026-06-30",
+    "timestamp": "2026-06-30T07:01:00Z",
+    "bounce_pct": 0.4
+  },
+  "complaint_metrics": {
+    "sealed": true,
+    "source": "esp://example.com/complaints/2026-06-30",
+    "timestamp": "2026-06-30T07:02:00Z",
+    "complaint_pct": 0.02
+  },
+  "placement_probe": {
+    "sealed": true,
+    "source": "seedlist://example.com/probe/2026-06-30",
+    "timestamp": "2026-06-30T07:03:00Z",
+    "inbox_pct": 97
+  }
+}
+

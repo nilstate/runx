@@ -1,0 +1,114 @@
+{
+  "schema": "frantic.runx_batch_verification.v1",
+  "verified_at": "2026-06-30T08:18:00Z",
+  "environment": {
+    "os": "Ubuntu-24.04 under WSL",
+    "runx_cli": "runx-cli 0.6.14",
+    "repository": "runxhq/runx",
+    "pull_request": "https://github.com/runxhq/runx/pull/182",
+    "notes": [
+      "Windows runx receipt-store errors were avoided by rerunning the same packages under WSL.",
+      "All package harnesses below passed with zero assertion errors.",
+      "These are local governed-run receipts from the WSL harness pass; final Frantic delivery still requires registry publish and hosted/post-publish receipt verification."
+    ]
+  },
+  "packages": [
+    {
+      "bounty": 62,
+      "package": "spam-risk-reviewer",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": ["low-risk-verified-sender", "high-risk-incomplete-auth-poor-list"],
+      "receipt_ids": [
+        "sha256:7ef0f269689bc2ff35226fe3133e8613d525811118b6bc7937317049f9f43205",
+        "sha256:c314f48cb5f012444d2f660e2005bafdeabf9ad07509bcbc9d02d6cf3195ca84"
+      ],
+      "assertion_error_count": 0
+    },
+    {
+      "bounty": 63,
+      "package": "renewal-risk-judge",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": ["high_risk_with_save_play", "missing_usage_signals_stop"],
+      "receipt_ids": [
+        "sha256:fff1a2c2cdd14a4f216ea25024afbf2fef0795746f7d6b449125750ef9cfd8c9",
+        "sha256:d6044a8b757ebdaa041d975c7460d76b9e16bfbc001bcf6b6edfa30aa29a5a4d"
+      ],
+      "assertion_error_count": 0
+    },
+    {
+      "bounty": 64,
+      "package": "oncall-alert-triage",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": ["sealed_escalate_checkout_alert", "stop_unsealed_runbook_needs_agent"],
+      "receipt_ids": [
+        "sha256:3f46d77af5f51dbdf4c221355cdcb9dbb5cb861790f8cfd1591e60b037a514ce",
+        "sha256:6de43ed8bc3a5ec997420dae427e147d19c766b2849c1dd22987fa574760133e"
+      ],
+      "assertion_error_count": 0
+    },
+    {
+      "bounty": 65,
+      "package": "deliverability-judge",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": ["sealed_healthy_signals_continue", "contradictory_signals_escalate"],
+      "receipt_ids": [
+        "sha256:f78b9de7ca479a87ac1a96da677b9b0157a907a6936557ef1a1e0884b67111c2",
+        "sha256:fb738b92286084fda544eeda8a96fb3abad76c483a1f409857252f5cf335a4bb"
+      ],
+      "assertion_error_count": 0
+    },
+    {
+      "bounty": 66,
+      "package": "flaky-test-judge",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": ["quarantine_justified", "missing_run_history"],
+      "receipt_ids": [
+        "sha256:e3133233b7c9235b70a0afee183830d1f58be9cce2927c36cbfa167fa98ad318",
+        "sha256:2d790adb8c32d545bc9a2fc51eebc58c26fa225ff58b832697b0c4aaad6ef660"
+      ],
+      "assertion_error_count": 0
+    },
+    {
+      "bounty": 67,
+      "package": "mandate-planner",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": ["in_grant_charter", "out_of_grant_charter"],
+      "receipt_ids": [
+        "sha256:6279b810f16e3fa727a1ca0cd4c3beb8fc707b90dba5bcb96f2304bcdcbcd5e2"
+      ],
+      "assertion_error_count": 0,
+      "human_lane_note": "out_of_grant_charter is expected to stop at needs_agent and therefore does not create a sealed receipt."
+    },
+    {
+      "bounty": 68,
+      "package": "list-hygiene-judge",
+      "status": "passed",
+      "case_count": 3,
+      "case_names": ["sealed_decay_re_permission", "sealed_hard_bounce_suppress", "stop_missing_or_stale_evidence"],
+      "receipt_ids": [
+        "sha256:3e6a6fb9143fbb53d2f828b8d5835793951dca72b310c096ecb9563e2d84914a",
+        "sha256:8849d3de1593b0257fee66919ef60a228053f412e3f56373357c38547dcf3bae",
+        "sha256:e4706337c606d5440cb0985f2453975a5289f9a1da7f36c40072d54c3a5ae490"
+      ],
+      "assertion_error_count": 0
+    },
+    {
+      "bounty": 69,
+      "package": "escalation-judge",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": ["sealed_priority_escalation", "stop_no_threshold_no_change"],
+      "receipt_ids": [
+        "sha256:67940c880083d596b4842a8d6f54f80f6018219cae28c2752bfba9ec595743fa",
+        "sha256:3e19f43f9f58884c677c324a27727d09124215ac5be7b6a275a77e8955246361"
+      ],
+      "assertion_error_count": 0
+    }
+  ]
+}

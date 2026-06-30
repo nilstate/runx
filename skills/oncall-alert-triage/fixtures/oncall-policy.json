@@ -1,0 +1,24 @@
+{
+  "services": {
+    "checkout": {
+      "page_target": "pagerduty://services/checkout/primary",
+      "incident_pr_target": "github://runxhq/runx/incidents/checkout",
+      "allowed_actions": [
+        "acknowledge",
+        "escalate"
+      ],
+      "escalation": "checkout.primary_oncall"
+    }
+  },
+  "escalation_rules": [
+    {
+      "id": "checkout-p1-5xx",
+      "service": "checkout",
+      "severity": "p1",
+      "signal_name": "checkout_5xx_rate",
+      "action": "escalate",
+      "clause": "checkout p1 5xx rate above threshold must escalate to primary oncall and create an incident PR target."
+    }
+  ]
+}
+

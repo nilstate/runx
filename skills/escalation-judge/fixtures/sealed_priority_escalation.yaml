@@ -1,0 +1,35 @@
+name: sealed_priority_escalation
+inputs:
+  triage_packet:
+    classification: billing_outage
+    severity: sev1
+    confidence: 0.93
+  thread_body: "Enterprise renewal blocked; CFO says they will cancel unless the billing outage is prioritized today."
+  policy_rules:
+    severity_order:
+      - sev4
+      - sev3
+      - sev2
+      - sev1
+    severity_thresholds:
+      priority_support:
+        name: sev2_or_higher_priority_support
+        minimum_severity: sev2
+    churn_risk_signals:
+      - name: renewal_blocked
+        phrases:
+          - renewal blocked
+          - will cancel
+        lane: priority_support
+    escalation_lanes:
+      priority_support:
+        target_rail: slack://support-priority
+        driver: slack-notify
+  aggregate_id: thread:priority-001
+  expected_version: 0
+  idempotency_key: thread:priority-001:escalation:v1
+expected:
+  decision_escalate: true
+  lane: priority_support
+  append_event: true
+  target_rail: slack://support-priority

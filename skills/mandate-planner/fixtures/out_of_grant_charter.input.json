@@ -1,0 +1,27 @@
+{
+  "objective": "Open an agency case with an ungranted deployer role.",
+  "proposed_charter": {
+    "candidate_roster": [
+      {
+        "role": "release-analyst",
+        "skill": "flaky-test-judge",
+        "scope": "read test receipts and propose disposition"
+      },
+      {
+        "role": "deployer",
+        "skill": "release",
+        "scope": "merge and deploy a disable"
+      }
+    ],
+    "requested_limits": {
+      "max_turns": 12,
+      "spend": 80
+    },
+    "done_check": ""
+  },
+  "authority_grant": {
+    "granted_spend": 50,
+    "granted_roles": ["release-analyst", "pr-drafter"],
+    "max_turns": 8
+  }
+}

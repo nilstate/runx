@@ -1,0 +1,77 @@
+{
+  "schema": "frantic.runx_skill_evidence.v1",
+  "bounty": 64,
+  "package": "oncall-alert-triage",
+  "version": "0.1.0",
+  "prepared_at": "2026-06-30T07:30:00Z",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "publisher_owner": "TODO: publish owner after GitHub login",
+  "registry_ref": "TODO: <owner>/oncall-alert-triage@0.1.0 or registry sha version",
+  "public_url": "TODO: https://runx.ai/x/<owner>/oncall-alert-triage@<version>",
+  "source_url": "TODO: public source/provenance URL after PR branch exists",
+  "pr_url": "TODO: https://github.com/runxhq/runx/pull/<number>",
+  "raw_x_yaml": "TODO: raw URL from PR head commit",
+  "raw_skill_md": "TODO: raw URL from PR head commit",
+  "verification_json": "verification.json",
+  "receipt_ref": "TODO: post-publish dogfood receipt_ref",
+  "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/oncall-alert-triage/SKILL.md --registry https://api.runx.ai",
+  "install_command": "runx add <owner>/oncall-alert-triage@<version>",
+  "local_harness_command": "runx harness ./skills/oncall-alert-triage --receipt-dir ./.runx-receipts --json",
+  "hosted_harness_status": "TODO: run after registry publish",
+  "dogfood_command": "TODO post-publish: runx skill <owner>/oncall-alert-triage@<version> --json ...; runx verify --receipt <receipt.json> --json",
+  "observations": {
+    "harness_case_names": [
+      "sealed_escalate_checkout_alert",
+      "stop_unsealed_runbook_needs_agent"
+    ],
+    "decision_action": "escalate",
+    "decision_reason": "checkout-p1-5xx matched checkout/p1/checkout_5xx_rate.",
+    "sealed_runbook_digest": "sha256:9c8a7fc7e5d9810fcfe8e5afee0fef298b5597e8de5e2792d980e7d3a3b8d7f6",
+    "policy_clauses_applied": [
+      {
+        "id": "checkout-p1-5xx",
+        "action": "escalate",
+        "clause": "checkout p1 5xx rate above threshold must escalate to primary oncall and create an incident PR target."
+      }
+    ],
+    "packet": {
+      "schema": "runx.oncall.triage.v1",
+      "page_target": "pagerduty://services/checkout/primary",
+      "incident_pr_target": "github://runxhq/runx/incidents/checkout",
+      "pr_review_note_body": "Incident alert-checkout-5xx-20260630: checkout p1 via checkout_5xx_rate. Runbook digest sha256:9c8a7fc7e5d9810fcfe8e5afee0fef298b5597e8de5e2792d980e7d3a3b8d7f6. Proposed lane: issue-to-pr plus pr-review-note; live page is separate."
+    },
+    "stop_reason": {
+      "code": "runbook_unsealed",
+      "reason": "Runbook is missing or unsealed; no triage packet can be emitted.",
+      "needs_agent": true,
+      "packet_emitted": false
+    },
+    "receipt_id": "TODO: unavailable locally because Windows runx receipt store failed before sealing",
+    "authority_boundary": {
+      "minted": false,
+      "attenuation_request": false,
+      "effects_emitted": false,
+      "pages_sent": false,
+      "pull_requests_opened": false,
+      "fixes_applied": false
+    }
+  },
+  "dogfood": {
+    "package": "TODO: <owner>/oncall-alert-triage@<version>",
+    "input": "fixtures/escalate-alert.json + fixtures/sealed-runbook.json + fixtures/oncall-policy.json",
+    "command": "TODO: post-publish runx skill command",
+    "receipt_ref": "TODO",
+    "verify_verdict": "TODO",
+    "harness_cases": [
+      {
+        "name": "sealed_escalate_checkout_alert",
+        "status": "local runner logic passed; receipt not sealed on this Windows host"
+      },
+      {
+        "name": "stop_unsealed_runbook_needs_agent",
+        "status": "local runner logic passed; receipt not sealed on this Windows host"
+      }
+    ]
+  }
+}
+

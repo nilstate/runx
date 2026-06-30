@@ -1,0 +1,92 @@
+{
+  "schema": "frantic.runx_skill_verification.v1",
+  "bounty": 64,
+  "package": "oncall-alert-triage",
+  "version": "0.1.0",
+  "runx_cli": {
+    "path": "C:\\Users\\DFGS\\Documents\\自动化盈利\\tools\\runx-0.6.14\\runx-0.6.14-x86_64-pc-windows-msvc\\runx.exe",
+    "version_command": "runx --version",
+    "version_output": "runx-cli 0.6.14"
+  },
+  "checks": [
+    {
+      "name": "skill inspect",
+      "command": "runx skill inspect .\\skills\\oncall-alert-triage -j",
+      "status": "passed",
+      "summary": {
+        "schema": "runx.skill.inspect.v1",
+        "status": "ok",
+        "name": "oncall-alert-triage",
+        "version": "0.1.0",
+        "runners": [
+          "default"
+        ]
+      }
+    },
+    {
+      "name": "local harness",
+      "command": "runx harness .\\skills\\oncall-alert-triage --receipt-dir .\\.runx-receipts --json",
+      "status": "blocked_by_local_runx_windows_receipt_store",
+      "output": {
+        "status": "failed",
+        "case_count": 2,
+        "assertion_error_count": 2,
+        "assertion_errors": [
+          "sealed_escalate_checkout_alert: receipt store is unreadable: 参数错误。 (os error 87)",
+          "stop_unsealed_runbook_needs_agent: receipt store is unreadable: 参数错误。 (os error 87)"
+        ],
+        "case_names": [
+          "sealed_escalate_checkout_alert",
+          "stop_unsealed_runbook_needs_agent"
+        ],
+        "receipt_ids": []
+      },
+      "signing_env_used": {
+        "RUNX_RECEIPT_SIGN_KID": "runx-demo-key",
+        "RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64": "public runx demo seed from repository docs, not a production secret",
+        "RUNX_RECEIPT_SIGN_ISSUER_TYPE": "hosted"
+      }
+    },
+    {
+      "name": "direct runner happy fixture",
+      "command": "node run.mjs with fixtures/escalate-alert.json, fixtures/sealed-runbook.json, fixtures/oncall-policy.json",
+      "status": "passed",
+      "assertions": [
+        "decision.action == escalate",
+        "packet.schema == runx.oncall.triage.v1",
+        "packet.page_target and packet.incident_pr_target are bound",
+        "authority.minted == false and effects_emitted == false"
+      ]
+    },
+    {
+      "name": "direct runner stop fixture",
+      "command": "node run.mjs with fixtures/billing-alert.json, fixtures/unsealed-runbook.json, fixtures/billing-policy.json",
+      "status": "passed",
+      "assertions": [
+        "stop.code == runbook_unsealed",
+        "escalation.status == needs_agent",
+        "packet == null"
+      ]
+    }
+  ],
+  "publish_readiness": {
+    "local_package_files_present": true,
+    "local_parse_ok": true,
+    "local_harness_green": false,
+    "hosted_harness_green": false,
+    "published": false,
+    "post_publish_dogfood_receipt": false,
+    "pr_opened": false,
+    "frantic_delivered": false
+  },
+  "remaining_required_actions": [
+    "Claim/publish cooldown must clear and GitHub identity/star requirement must be satisfied by the publishing account.",
+    "Copy skills/oncall-alert-triage package into a public runxhq/runx PR branch.",
+    "Run local harness on a host where runx receipt store can seal receipts, or with a fixed Windows receipt store.",
+    "Publish registry package with exact name oncall-alert-triage.",
+    "Run hosted harness after publish.",
+    "Run post-publish dogfood with registry ref and verify the emitted receipt.",
+    "Fill public_url, source_url, pr_url, raw_x_yaml, raw_skill_md, receipt_ref, and final report URLs before Frantic delivery."
+  ]
+}
+

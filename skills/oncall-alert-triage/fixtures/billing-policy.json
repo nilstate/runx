@@ -1,0 +1,24 @@
+{
+  "services": {
+    "billing": {
+      "page_target": "pagerduty://services/billing/primary",
+      "incident_pr_target": "github://runxhq/runx/incidents/billing",
+      "allowed_actions": [
+        "acknowledge",
+        "escalate"
+      ],
+      "escalation": "billing.primary_oncall"
+    }
+  },
+  "escalation_rules": [
+    {
+      "id": "billing-p2-latency",
+      "service": "billing",
+      "severity": "p2",
+      "signal_name": "billing_latency_p95",
+      "action": "escalate",
+      "clause": "billing p2 latency alerts require sealed runbook evidence before packet emission."
+    }
+  ]
+}
+

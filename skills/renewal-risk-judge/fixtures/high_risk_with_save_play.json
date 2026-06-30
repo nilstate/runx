@@ -1,0 +1,20 @@
+{
+  "usage_signals": {
+    "trend": "declining",
+    "mau_pct_change": -38
+  },
+  "support_history": {
+    "volume": 11,
+    "ticket_severity_avg": 4.2
+  },
+  "payment_snapshot": {
+    "days_late": 12,
+    "churn_flag": true
+  },
+  "expected": {
+    "schema": "runx.support.renewal_risk.v1",
+    "decision.risk_level": "high",
+    "save_plan.channel": "email",
+    "save_plan.content_ref": "content://renewal-save/high-risk-usage-support-payment-v1"
+  }
+}

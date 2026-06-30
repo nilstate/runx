@@ -1,0 +1,139 @@
+{
+  "schema": "frantic.runx_skill.evidence.v1",
+  "bounty": 62,
+  "prepared_at": "2026-06-30T00:00:00-07:00",
+  "package": {
+    "name": "spam-risk-reviewer",
+    "version": "0.1.0",
+    "registry_ref": "<owner>/spam-risk-reviewer@0.1.0",
+    "publisher_owner": "<pending>",
+    "source_revision": "<pending-public-pr-head-commit>"
+  },
+  "artifacts": {
+    "public_url": "<pending: https://runx.ai/x/<owner>/spam-risk-reviewer@0.1.0>",
+    "source_url": "<pending: public source/provenance URL>",
+    "pr_url": "<pending: https://github.com/runxhq/runx/pull/<number>>",
+    "x_yaml": "<pending raw PR-head URL for skills/spam-risk-reviewer/X.yaml>",
+    "skill_md": "<pending raw PR-head URL for skills/spam-risk-reviewer/SKILL.md>",
+    "evidence_json": "<pending public URL to this evidence.json>",
+    "verification_json": "<pending public URL to verification.json>",
+    "receipt_ref": "<pending post-publish dogfood receipt>",
+    "report": "<pending public URL to report.md>"
+  },
+  "observations": {
+    "runx_version_output": "runx-cli 0.6.14",
+    "package_name": "spam-risk-reviewer",
+    "risk_level_verdicts": {
+      "low-risk-verified-sender": "pass",
+      "high-risk-incomplete-auth-poor-list": "hold"
+    },
+    "reasoning": [
+      "Automated preflight_clear is true only when SPF, DKIM, DMARC pass and list metrics are below policy thresholds.",
+      "DKIM failure, warm-up below 14 days, bounce_rate above 0.02, complaint_rate above 0.001, or freshness above 90 days blocks preflight and routes to send-as.human_approval.",
+      "Content flags are recorded as evidence; they do not invent authentication or list health values."
+    ],
+    "authentication_signals_verified": {
+      "low-risk-verified-sender": {
+        "spf_pass": true,
+        "dkim_pass": true,
+        "dmarc_pass": true,
+        "warm_up_days": 45
+      },
+      "high-risk-incomplete-auth-poor-list": {
+        "spf_pass": true,
+        "dkim_pass": false,
+        "dmarc_pass": true,
+        "warm_up_days": 6
+      }
+    },
+    "list_hygiene_metrics_compared_to_policy": {
+      "thresholds": {
+        "bounce_rate_max": 0.02,
+        "complaint_rate_max": 0.001,
+        "freshness_days_max": 90,
+        "warm_up_days_min": 14
+      },
+      "low-risk-verified-sender": {
+        "size": 12500,
+        "bounce_rate": 0.003,
+        "complaint_rate": 0.0002,
+        "freshness": 21
+      },
+      "high-risk-incomplete-auth-poor-list": {
+        "size": 88000,
+        "bounce_rate": 0.071,
+        "complaint_rate": 0.0024,
+        "freshness": 132
+      }
+    },
+    "content_risk_flags": {
+      "low-risk-verified-sender": [],
+      "high-risk-incomplete-auth-poor-list": [
+        "urgency_language"
+      ]
+    },
+    "blockers": {
+      "low-risk-verified-sender": [],
+      "high-risk-incomplete-auth-poor-list": [
+        "DKIM authentication did not pass",
+        "sender warm-up 6 days is below policy minimum 14",
+        "bounce_rate 0.071 exceeds policy threshold 0.02",
+        "complaint_rate 0.0024 exceeds policy threshold 0.001",
+        "list freshness 132 days exceeds policy max 90"
+      ]
+    },
+    "harness_case_names": [
+      "low-risk-verified-sender",
+      "high-risk-incomplete-auth-poor-list"
+    ],
+    "receipt_id": "<pending post-publish dogfood receipt id>",
+    "hosted_harness_status": "pending_publish",
+    "local_harness_status": "blocked_by_windows_receipt_store_os_error_87",
+    "publish_method": "pending: runx login --provider github --for publish; runx registry publish ./skills/spam-risk-reviewer/SKILL.md --registry https://api.runx.ai",
+    "install_command": "pending after publish: runx add <owner>/spam-risk-reviewer@0.1.0",
+    "dogfood_command": "pending after publish: runx skill <owner>/spam-risk-reviewer@0.1.0 --json ...",
+    "runx_verify_verdict": "pending post-publish receipt"
+  },
+  "dogfood": {
+    "package": "./skills/spam-risk-reviewer",
+    "input": {
+      "campaign_draft": {
+        "from": "newsletter@example.com",
+        "subject": "June product notes for active customers",
+        "content_digest": "Monthly release notes and support office hours."
+      },
+      "list_metadata": {
+        "size": 12500,
+        "bounce_rate": 0.003,
+        "complaint_rate": 0.0002,
+        "freshness": 21
+      },
+      "sender_auth_posture": {
+        "spf_pass": true,
+        "dkim_pass": true,
+        "dmarc_pass": true,
+        "warm_up_days": 45
+      }
+    },
+    "command": "node skills/spam-risk-reviewer/run.mjs with RUNX_INPUT_CAMPAIGN_DRAFT, RUNX_INPUT_LIST_METADATA, RUNX_INPUT_SENDER_AUTH_POSTURE",
+    "local_runner_verdict": {
+      "risk_level": "pass",
+      "preflight_clear": true,
+      "blockers": []
+    },
+    "receipt_ref": "<pending post-publish dogfood receipt>",
+    "verify_verdict": "<pending>",
+    "harness_cases": [
+      {
+        "name": "low-risk-verified-sender",
+        "status": "expected-sealed; local harness blocked by receipt store before case execution"
+      },
+      {
+        "name": "high-risk-incomplete-auth-poor-list",
+        "status": "expected-sealed; local harness blocked by receipt store before case execution"
+      }
+    ]
+  },
+  "private_access_used": false,
+  "secrets_included": false
+}

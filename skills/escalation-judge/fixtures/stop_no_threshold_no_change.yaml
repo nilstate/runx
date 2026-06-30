@@ -1,0 +1,35 @@
+name: stop_no_threshold_no_change
+inputs:
+  triage_packet:
+    classification: how_to
+    severity: sev4
+    confidence: 0.88
+  thread_body: "Customer asks where to find the CSV export setting. No outage, legal risk, churn threat, or executive visibility."
+  policy_rules:
+    severity_order:
+      - sev4
+      - sev3
+      - sev2
+      - sev1
+    severity_thresholds:
+      priority_support:
+        name: sev2_or_higher_priority_support
+        minimum_severity: sev2
+    churn_risk_signals:
+      - name: renewal_blocked
+        phrases:
+          - renewal blocked
+          - will cancel
+        lane: priority_support
+    escalation_lanes:
+      priority_support:
+        target_rail: slack://support-priority
+        driver: slack-notify
+  aggregate_id: thread:howto-001
+  expected_version: 0
+  idempotency_key: thread:howto-001:escalation:v1
+expected:
+  decision_escalate: false
+  reason: no_change
+  append_event: false
+  packet_emitted: false
