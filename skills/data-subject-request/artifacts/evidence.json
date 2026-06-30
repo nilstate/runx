@@ -237,49 +237,155 @@
       }
     ]
   },
-  "observations": {
-    "runx_version_output": "runx-cli 0.6.14",
-    "publisher_owner": "fengyangxxx",
-    "package_name": "data-subject-request",
-    "package_version": "sha-5e61052d6ca5",
-    "registry_ref": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
-    "public_url": "https://runx.ai/x/fengyangxxx/data-subject-request@sha-5e61052d6ca5",
-    "pr_url": "https://github.com/runxhq/runx/pull/192",
-    "source_url": "https://github.com/fengyangxxx/runx/tree/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request",
-    "raw_x_yaml": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/X.yaml",
-    "raw_skill_md": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/SKILL.md",
-    "verification_json": "skills/data-subject-request/artifacts/verification.json",
-    "publish_method": "runx registry publish ./skills/data-subject-request/SKILL.md --registry https://api.runx.ai --profile ./skills/data-subject-request/X.yaml",
-    "install_command": "npx -y @runxhq/cli@0.6.14 add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --to /tmp/runx-clean --json",
-    "hosted_harness_status": "registry publish returned status=success and publish.status=published after hosted validation; earlier hosted harness failure was fixed before this publish artifact",
-    "dogfood_command": "npx -y @runxhq/cli@0.6.14 skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --json -R .runx-test-receipts-data-subject-request-dogfood-postpublish-fixture --input-json request_packet=<fixtures/dogfood-erasure-input.json.request_packet> --input-json requestor_proof=<fixtures/dogfood-erasure-input.json.requestor_proof> --input-json policy=<fixtures/dogfood-erasure-input.json.policy> -i data_source_ref=<fixture.data_source_ref> -i store_id=<fixture.store_id> -i aggregate_id=<fixture.aggregate_id> -i idempotency_key=<fixture.idempotency_key> --input-json expected_version=<fixture.expected_version>",
-    "receipt_ref": "runx:receipt:sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
-    "runx_verify_verdict": "valid=true",
-    "lawful_basis_verdict": "GDPR Article 17 erasure after withdrawn consent, with retention exceptions screened by policy. => eligible",
-    "jurisdiction_reason": "GDPR policy supplied for request dsr-2026-06-30-dogfood-001.",
-    "verified_requestor_ref": "acct-session:customer_7001:2026-06-30",
-    "identity_assertion_digest": "sha256:6f41f68e5636f1b542f47370f214d1f58870d7bc4b8a8c922fc8ab9601aa3f3c",
-    "scope_bounds": [
-      "profile",
-      "support_tickets",
-      "marketing_preferences"
-    ],
-    "bounded_handoff": "downstream.data-store.append_event.subject.erasure for profile, marketing_preferences only",
-    "data_store_aggregate_id": "dsr:subject:customer_7001:request:dsr-2026-06-30-dogfood-001",
-    "expected_version": 0,
-    "idempotency_key": "dsr-2026-06-30-dogfood-001:verdict:v1",
-    "refused_reason": "Harness case unverified-requestor-refused-no-handoff is expected policy_denied: untrusted unsigned-email provider plus payment_methods outside CCPA scope_bounds, with no handoff.",
-    "harness_case_names": [
-      "eligible-erasure-records-verdict",
-      "unverified-requestor-refused-no-handoff"
-    ],
-    "receipt_id": "sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
-    "new_user_instructions": [
-      "runx add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai",
-      "runx skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --json ...",
-      "npx -y @runxhq/cli@0.6.14 verify sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8 --receipt-dir .runx-test-receipts-data-subject-request-dogfood-postpublish-fixture --json"
-    ]
-  },
+  "observations": [
+    {
+      "name": "runx_version_output",
+      "value": "runx-cli 0.6.14",
+      "evidence_ref": "skills/data-subject-request/artifacts/runx-version-0.6.14-linux.txt"
+    },
+    {
+      "name": "publisher_owner",
+      "value": "fengyangxxx",
+      "evidence_ref": "registry-publish-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "package_name",
+      "value": "data-subject-request",
+      "evidence_ref": "registry-publish-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "package_version",
+      "value": "sha-5e61052d6ca5",
+      "evidence_ref": "registry-publish-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "registry_ref",
+      "value": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+      "evidence_ref": "registry-read-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "public_url",
+      "value": "https://runx.ai/x/fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+      "evidence_ref": "registry-publish-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "pr_url",
+      "value": "https://github.com/runxhq/runx/pull/192",
+      "evidence_ref": "GitHub PR #192"
+    },
+    {
+      "name": "source_url",
+      "value": "https://github.com/fengyangxxx/runx/tree/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request",
+      "evidence_ref": "GitHub fork tree"
+    },
+    {
+      "name": "raw_x_yaml",
+      "value": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/X.yaml",
+      "evidence_ref": "raw.githubusercontent.com"
+    },
+    {
+      "name": "raw_skill_md",
+      "value": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/SKILL.md",
+      "evidence_ref": "raw.githubusercontent.com"
+    },
+    {
+      "name": "publish_method",
+      "value": "runx registry publish ./skills/data-subject-request/SKILL.md --registry https://api.runx.ai --profile ./skills/data-subject-request/X.yaml",
+      "evidence_ref": "commands.md"
+    },
+    {
+      "name": "install_command",
+      "value": "npx -y @runxhq/cli@0.6.14 add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --to /tmp/runx-clean --json",
+      "evidence_ref": "install-add-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "hosted_harness_status",
+      "value": "registry publish returned status=success and publish.status=published after hosted validation; earlier hosted harness failure was fixed before this publish artifact",
+      "evidence_ref": "registry-publish-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "dogfood_command",
+      "value": "npx -y @runxhq/cli@0.6.14 skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --json -R .runx-test-receipts-data-subject-request-dogfood-postpublish-fixture --input-json request_packet=<fixtures/dogfood-erasure-input.json.request_packet> --input-json requestor_proof=<fixtures/dogfood-erasure-input.json.requestor_proof> --input-json policy=<fixtures/dogfood-erasure-input.json.policy> -i data_source_ref=<fixture.data_source_ref> -i store_id=<fixture.store_id> -i aggregate_id=<fixture.aggregate_id> -i idempotency_key=<fixture.idempotency_key> --input-json expected_version=<fixture.expected_version>",
+      "evidence_ref": "evidence_json.dogfood.command"
+    },
+    {
+      "name": "receipt_ref",
+      "value": "runx:receipt:sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "runx_verify_verdict",
+      "value": "valid=true",
+      "evidence_ref": "postpublish-dogfood-verify-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "lawful_basis_verdict",
+      "value": "GDPR Article 17 erasure after withdrawn consent, with retention exceptions screened by policy. => eligible",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "jurisdiction_reason",
+      "value": "GDPR policy supplied for request dsr-2026-06-30-dogfood-001.",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "verified_requestor_ref",
+      "value": "acct-session:customer_7001:2026-06-30",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "identity_assertion_digest",
+      "value": "sha256:6f41f68e5636f1b542f47370f214d1f58870d7bc4b8a8c922fc8ab9601aa3f3c",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "scope_bounds",
+      "value": [
+        "profile",
+        "support_tickets",
+        "marketing_preferences"
+      ],
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "bounded_handoff",
+      "value": "downstream.data-store.append_event.subject.erasure for profile, marketing_preferences only",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "data_store_aggregate_id",
+      "value": "dsr:subject:customer_7001:request:dsr-2026-06-30-dogfood-001",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "expected_version",
+      "value": 0,
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "idempotency_key",
+      "value": "dsr-2026-06-30-dogfood-001:verdict:v1",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json structured_output"
+    },
+    {
+      "name": "refused_reason",
+      "value": "Harness case unverified-requestor-refused-no-handoff is expected policy_denied: untrusted unsigned-email provider plus payment_methods outside CCPA scope_bounds, with no handoff.",
+      "evidence_ref": "X.yaml harness case unverified-requestor-refused-no-handoff"
+    },
+    {
+      "name": "harness_case_names",
+      "value": [
+        "eligible-erasure-records-verdict",
+        "unverified-requestor-refused-no-handoff"
+      ],
+      "evidence_ref": "local-harness-runx-0.6.14-linux.json"
+    },
+    {
+      "name": "receipt_id",
+      "value": "sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+      "evidence_ref": "postpublish-dogfood-runx-0.6.14-linux.json"
+    }
+  ],
   "checks": {
     "local_harness": {
       "status": "passed",
@@ -383,5 +489,49 @@
     "not_submitted": true,
     "qa_required_before_submit": true,
     "exact_payload_must_be_recomputed_after_final_commit": true
+  },
+  "summary": "Published runx data-subject-request skill evidence for Frantic #71: runx-cli 0.6.14 publish/install/local harness/hosted publish/post-publish dogfood/receipt verify all recorded with immutable PR artifacts and no Frantic delivery submitted before QA.",
+  "observation_details": {
+    "runx_version_output": "runx-cli 0.6.14",
+    "publisher_owner": "fengyangxxx",
+    "package_name": "data-subject-request",
+    "package_version": "sha-5e61052d6ca5",
+    "registry_ref": "fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+    "public_url": "https://runx.ai/x/fengyangxxx/data-subject-request@sha-5e61052d6ca5",
+    "pr_url": "https://github.com/runxhq/runx/pull/192",
+    "source_url": "https://github.com/fengyangxxx/runx/tree/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request",
+    "raw_x_yaml": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/X.yaml",
+    "raw_skill_md": "https://raw.githubusercontent.com/fengyangxxx/runx/f9675dfe46709886ea009f2245145bb87f21b359/skills/data-subject-request/SKILL.md",
+    "verification_json": "skills/data-subject-request/artifacts/verification.json",
+    "publish_method": "runx registry publish ./skills/data-subject-request/SKILL.md --registry https://api.runx.ai --profile ./skills/data-subject-request/X.yaml",
+    "install_command": "npx -y @runxhq/cli@0.6.14 add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --to /tmp/runx-clean --json",
+    "hosted_harness_status": "registry publish returned status=success and publish.status=published after hosted validation; earlier hosted harness failure was fixed before this publish artifact",
+    "dogfood_command": "npx -y @runxhq/cli@0.6.14 skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --json -R .runx-test-receipts-data-subject-request-dogfood-postpublish-fixture --input-json request_packet=<fixtures/dogfood-erasure-input.json.request_packet> --input-json requestor_proof=<fixtures/dogfood-erasure-input.json.requestor_proof> --input-json policy=<fixtures/dogfood-erasure-input.json.policy> -i data_source_ref=<fixture.data_source_ref> -i store_id=<fixture.store_id> -i aggregate_id=<fixture.aggregate_id> -i idempotency_key=<fixture.idempotency_key> --input-json expected_version=<fixture.expected_version>",
+    "receipt_ref": "runx:receipt:sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+    "runx_verify_verdict": "valid=true",
+    "lawful_basis_verdict": "GDPR Article 17 erasure after withdrawn consent, with retention exceptions screened by policy. => eligible",
+    "jurisdiction_reason": "GDPR policy supplied for request dsr-2026-06-30-dogfood-001.",
+    "verified_requestor_ref": "acct-session:customer_7001:2026-06-30",
+    "identity_assertion_digest": "sha256:6f41f68e5636f1b542f47370f214d1f58870d7bc4b8a8c922fc8ab9601aa3f3c",
+    "scope_bounds": [
+      "profile",
+      "support_tickets",
+      "marketing_preferences"
+    ],
+    "bounded_handoff": "downstream.data-store.append_event.subject.erasure for profile, marketing_preferences only",
+    "data_store_aggregate_id": "dsr:subject:customer_7001:request:dsr-2026-06-30-dogfood-001",
+    "expected_version": 0,
+    "idempotency_key": "dsr-2026-06-30-dogfood-001:verdict:v1",
+    "refused_reason": "Harness case unverified-requestor-refused-no-handoff is expected policy_denied: untrusted unsigned-email provider plus payment_methods outside CCPA scope_bounds, with no handoff.",
+    "harness_case_names": [
+      "eligible-erasure-records-verdict",
+      "unverified-requestor-refused-no-handoff"
+    ],
+    "receipt_id": "sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8",
+    "new_user_instructions": [
+      "runx add fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai",
+      "runx skill fengyangxxx/data-subject-request@sha-5e61052d6ca5 --registry https://api.runx.ai --json ...",
+      "npx -y @runxhq/cli@0.6.14 verify sha256:261771ae3340aa2439a152f1138b0bbd662fa177fea6da44bd07a6b1505bfde8 --receipt-dir .runx-test-receipts-data-subject-request-dogfood-postpublish-fixture --json"
+    ]
   }
 }

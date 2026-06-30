@@ -210,5 +210,6 @@
       "new_evidence": "postpublish-dogfood-verify-runx-0.6.14-linux.json shows valid=true for the submitted receipt id",
       "status": "addressed"
     }
-  ]
+  ],
+  "summary": "Verification packet for Frantic #71 data-subject-request: validates exact package name/version, registry publish/read, clean install, local harness, hosted publish, post-publish dogfood receipt, runx verify, CI evidence and final-QA requirement."
 }
