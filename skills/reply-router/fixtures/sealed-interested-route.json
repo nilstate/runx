@@ -1,0 +1,5 @@
+{
+  "case": "sealed_interested_route",
+  "purpose": "interested reply emits bounded send-as routing decision and does not suppress",
+  "send_target": "send-as:reply-router:interested-follow-up"
+}

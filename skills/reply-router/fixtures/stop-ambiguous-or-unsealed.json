@@ -1,0 +1,4 @@
+{
+  "case": "stop_ambiguous_or_unsealed",
+  "purpose": "unsealed or ambiguous reply blocks to needs_agent without suppression or routing"
+}

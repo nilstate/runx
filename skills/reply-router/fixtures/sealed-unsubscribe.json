@@ -1,0 +1,6 @@
+{
+  "case": "sealed_unsubscribe_suppression",
+  "purpose": "unsubscribe reply commits recipient-keyed suppression via CAS append_event",
+  "aggregate_id": "recipient:casey@example.test",
+  "idempotency_key": "reply-router-unsubscribe-casey-v0"
+}
