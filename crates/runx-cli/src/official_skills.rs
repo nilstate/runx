@@ -206,6 +206,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "f32f21b6ed6c03f5623bc98f2823365ebcabc721cedf64e8a67c556613a35f59",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/outreach-sequencer",
+        version: "sha-4fa79af84905",
+        digest: "e1860ab37decf86bcacd30b8665f7b91bde369c7f503a73ba38a3d8dc7495ae0",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/overlay-generator",
         version: "sha-b5dc11a7088d",
         digest: "e19bbe8dc5f3bf732dc265a1808819587e67759fdf3014d89bc9bf6629400b18",

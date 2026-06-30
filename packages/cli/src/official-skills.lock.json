@@ -273,6 +273,13 @@
     "catalog_role": "canonical"
   },
   {
+    "skill_id": "runx/outreach-sequencer",
+    "version": "sha-4fa79af84905",
+    "digest": "e1860ab37decf86bcacd30b8665f7b91bde369c7f503a73ba38a3d8dc7495ae0",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/overlay-generator",
     "version": "sha-b5dc11a7088d",
     "digest": "e19bbe8dc5f3bf732dc265a1808819587e67759fdf3014d89bc9bf6629400b18",
