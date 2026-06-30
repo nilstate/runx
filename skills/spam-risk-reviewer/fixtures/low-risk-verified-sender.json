@@ -1,0 +1,6 @@
+{
+  "case": "low-risk-verified-sender",
+  "purpose": "verified sender and clean list clears send-as preflight",
+  "expected_risk_level": "pass",
+  "expected_preflight_clear": true
+}

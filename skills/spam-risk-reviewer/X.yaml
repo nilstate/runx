@@ -1,0 +1,122 @@
+skill: spam-risk-reviewer
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: low-risk-verified-sender
+      runner: judge
+      inputs:
+        campaign_draft:
+          from: "ops@example.test"
+          subject: "Quarterly customer update"
+          content_digest: "Product update for opted-in customers with release notes and support links."
+        list_metadata:
+          size: 1250
+          bounce_rate: 0.008
+          complaint_rate: 0.0004
+          freshness_days: 21
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: true
+          dmarc_pass: true
+          warm_up_days: 45
+        policy:
+          max_bounce_rate: 0.02
+          max_complaint_rate: 0.001
+          max_freshness_days: 90
+          min_warm_up_days: 21
+          risky_content_terms:
+            - "guaranteed money"
+            - "risk free profit"
+            - "act now"
+      caller:
+        answers:
+          agent_task.spam-risk-reviewer.output:
+            risk_level: pass
+            preflight_clear: true
+            blockers: []
+            escalation: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: high-risk-incomplete-auth
+      runner: judge
+      inputs:
+        campaign_draft:
+          from: "sales@example.test"
+          subject: "Act now for guaranteed money"
+          content_digest: "Cold list campaign using act now language and guaranteed money claims."
+        list_metadata:
+          size: 9100
+          bounce_rate: 0.087
+          complaint_rate: 0.003
+          freshness_days: 180
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: false
+          dmarc_pass: true
+          warm_up_days: 3
+        policy:
+          max_bounce_rate: 0.02
+          max_complaint_rate: 0.001
+          max_freshness_days: 90
+          min_warm_up_days: 21
+          risky_content_terms:
+            - "guaranteed money"
+            - "risk free profit"
+            - "act now"
+      caller:
+        answers:
+          agent_task.spam-risk-reviewer.output:
+            risk_level: hold
+            preflight_clear: false
+            escalation: needs_human
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      risk_level: string
+      preflight_clear: boolean
+      blockers: object
+      evidence_summary: object
+      send_risk_verdict: object
+      escalation: string
+    artifacts:
+      wrap_as: spam_risk_packet
+      packet: runx.spam_risk_review.v1
+    inputs:
+      campaign_draft:
+        type: json
+        required: true
+        description: "Bounded campaign draft with sender, subject, and content digest."
+      list_metadata:
+        type: json
+        required: true
+        description: "Audience size and hygiene metrics."
+      sender_auth_posture:
+        type: json
+        required: true
+        description: "SPF, DKIM, DMARC, and warm-up status."
+      policy:
+        type: json
+        required: true
+        description: "Spam-risk thresholds and risky content terms."

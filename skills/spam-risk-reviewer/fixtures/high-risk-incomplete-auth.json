@@ -1,0 +1,6 @@
+{
+  "case": "high-risk-incomplete-auth",
+  "purpose": "DKIM failure and poor list hygiene block send-as preflight and route to human approval",
+  "expected_risk_level": "hold",
+  "expected_preflight_clear": false
+}
