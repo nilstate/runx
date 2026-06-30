@@ -72,6 +72,18 @@
       }
     },
     {
+      "id": "pr-url",
+      "claim": "The public PR URL for the submitted package is https://github.com/runxhq/runx/pull/170.",
+      "output": {
+        "pr_url": "https://github.com/runxhq/runx/pull/170",
+        "package_path": "skills/data-subject-request",
+        "raw_files": [
+          "skills/data-subject-request/X.yaml",
+          "skills/data-subject-request/SKILL.md"
+        ]
+      }
+    },
+    {
       "id": "lawful-basis-verdict",
       "output": {
         "jurisdiction": "GDPR-EU",
@@ -153,6 +165,7 @@
   "dogfood": {
     "package": "luismireles12/data-subject-request@sha-6a1d55a23739",
     "input": "skills/data-subject-request/fixtures/sealed-verified-erasure.json",
+    "command": "runx skill luismireles12/data-subject-request@sha-6a1d55a23739 --registry https://api.runx.ai --json < dsr-input.json",
     "receipt_ref": "runx:receipt:sha256:5829de0b2de2a313871602e43c95f88bbf998ce446b4091c78e5a9d4cd383b62",
     "verify_verdict": "valid",
     "harness_cases": [
