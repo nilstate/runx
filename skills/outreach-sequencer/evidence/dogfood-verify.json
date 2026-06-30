@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/runner/work/runx/runx/skills/outreach-sequencer/evidence/dogfood-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

@@ -1,0 +1,626 @@
+{
+  "closure": {
+    "closed_at": "2026-06-30T16:27:04.909Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool judge completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "append_event": {
+        "after_version": 8,
+        "aggregate_id": "seq-acme-001:contact-jane",
+        "before_version": 7,
+        "cas": "expected_version",
+        "event": {
+          "decision_id": "decision_8920a12b7a72",
+          "dispatch_idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+          "eligible": true,
+          "prior_touch_index": 2,
+          "touch_index": 3,
+          "type": "outreach.next_touch_decided"
+        },
+        "expected_version": 7,
+        "gated": false,
+        "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+        "operation": "append_event",
+        "operation_result": {
+          "after_version": 8,
+          "before_version": 7,
+          "operation": "append_event",
+          "status": "planned"
+        },
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.outreach.sequence_state.v1"
+      },
+      "decision": {
+        "eligible": true,
+        "reason": "next_touch_due"
+      },
+      "engagement_events": [
+        {
+          "occurred_at": "2026-06-20T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "receipt_ref": "runx:receipt:fixture-touch1",
+            "status": "ok"
+          },
+          "touch_index": 1,
+          "type": "touch_sent"
+        },
+        {
+          "occurred_at": "2026-06-25T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "receipt_ref": "runx:receipt:fixture-touch2",
+            "status": "ok"
+          },
+          "touch_index": 2,
+          "type": "touch_sent"
+        }
+      ],
+      "engagement_projection": {
+        "aggregate_id": "seq-acme-001:contact-jane",
+        "operation": "read_projection",
+        "operation_result": {
+          "operation": "read_projection",
+          "receipt_ref": "runx:receipt:fixture-read-happy",
+          "status": "ok"
+        },
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.outreach.sequence_state.v1",
+        "version": 7
+      },
+      "escalation": {
+        "lane": null,
+        "required": false
+      },
+      "next_touch_packet": {
+        "audience": "jane@example.invalid",
+        "audience_role": "buyer",
+        "channel": "email",
+        "content_digest": "sha256:touch3",
+        "dispatch": {
+          "consequence": "separate_governed_run_required",
+          "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+          "named_run": "send-as",
+          "this_skill_sends": false
+        },
+        "principal": "sales-dev",
+        "schema": "runx.outreach.next_touch.v1",
+        "send_class": "outreach",
+        "touch_index": 3
+      },
+      "observations": [
+        {
+          "aggregate_id": "seq-acme-001:contact-jane",
+          "operation_result": {
+            "operation": "read_projection",
+            "receipt_ref": "runx:receipt:fixture-read-happy",
+            "status": "ok"
+          },
+          "store_id": "runx.outreach.sequence_state.v1",
+          "type": "engagement_projection_read",
+          "version": 7
+        },
+        {
+          "events": [
+            {
+              "occurred_at": "2026-06-20T12:00:00Z",
+              "operation_result": {
+                "operation": "append_event",
+                "receipt_ref": "runx:receipt:fixture-touch1",
+                "status": "ok"
+              },
+              "touch_index": 1,
+              "type": "touch_sent"
+            },
+            {
+              "occurred_at": "2026-06-25T12:00:00Z",
+              "operation_result": {
+                "operation": "append_event",
+                "receipt_ref": "runx:receipt:fixture-touch2",
+                "status": "ok"
+              },
+              "touch_index": 2,
+              "type": "touch_sent"
+            }
+          ],
+          "type": "engagement_events_examined"
+        },
+        {
+          "current_touch_index": 2,
+          "type": "sequence_position"
+        },
+        {
+          "eligible": true,
+          "reason": "next_touch_due",
+          "type": "eligibility_verdict"
+        },
+        {
+          "after_version": 8,
+          "before_version": 7,
+          "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+          "operation_result": {
+            "after_version": 8,
+            "before_version": 7,
+            "operation": "append_event",
+            "status": "planned"
+          },
+          "type": "append_event"
+        },
+        {
+          "channel": "email",
+          "content_digest": "sha256:touch3",
+          "index": 3,
+          "send_class": "outreach",
+          "type": "next_touch"
+        }
+      ],
+      "schema": "runx.outreach.sequencer.v1",
+      "status": "sealed"
+    },
+    "stderr": "",
+    "stdout": "{\n  \"schema\": \"runx.outreach.sequencer.v1\",\n  \"status\": \"sealed\",\n  \"decision\": {\n    \"eligible\": true,\n    \"reason\": \"next_touch_due\"\n  },\n  \"engagement_projection\": {\n    \"operation\": \"read_projection\",\n    \"store\": \"registry:runx/data-store@0.1.2\",\n    \"store_id\": \"runx.outreach.sequence_state.v1\",\n    \"aggregate_id\": \"seq-acme-001:contact-jane\",\n    \"version\": 7,\n    \"operation_result\": {\n      \"operation\": \"read_projection\",\n      \"receipt_ref\": \"runx:receipt:fixture-read-happy\",\n      \"status\": \"ok\"\n    }\n  },\n  \"engagement_events\": [\n    {\n      \"type\": \"touch_sent\",\n      \"touch_index\": 1,\n      \"occurred_at\": \"2026-06-20T12:00:00Z\",\n      \"operation_result\": {\n        \"operation\": \"append_event\",\n        \"receipt_ref\": \"runx:receipt:fixture-touch1\",\n        \"status\": \"ok\"\n      }\n    },\n    {\n      \"type\": \"touch_sent\",\n      \"touch_index\": 2,\n      \"occurred_at\": \"2026-06-25T12:00:00Z\",\n      \"operation_result\": {\n        \"operation\": \"append_event\",\n        \"receipt_ref\": \"runx:receipt:fixture-touch2\",\n        \"status\": \"ok\"\n      }\n    }\n  ],\n  \"append_event\": {\n    \"operation\": \"append_event\",\n    \"store\": \"registry:runx/data-store@0.1.2\",\n    \"store_id\": \"runx.outreach.sequence_state.v1\",\n    \"aggregate_id\": \"seq-acme-001:contact-jane\",\n    \"idempotency_key\": \"outreach-sequencer:seq-acme-001:contact-jane:touch3\",\n    \"expected_version\": 7,\n    \"before_version\": 7,\n    \"after_version\": 8,\n    \"gated\": false,\n    \"cas\": \"expected_version\",\n    \"event\": {\n      \"type\": \"outreach.next_touch_decided\",\n      \"decision_id\": \"decision_8920a12b7a72\",\n      \"eligible\": true,\n      \"touch_index\": 3,\n      \"prior_touch_index\": 2,\n      \"dispatch_idempotency_key\": \"outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch\"\n    },\n    \"operation_result\": {\n      \"operation\": \"append_event\",\n      \"status\": \"planned\",\n      \"before_version\": 7,\n      \"after_version\": 8\n    }\n  },\n  \"next_touch_packet\": {\n    \"schema\": \"runx.outreach.next_touch.v1\",\n    \"send_class\": \"outreach\",\n    \"principal\": \"sales-dev\",\n    \"channel\": \"email\",\n    \"audience\": \"jane@example.invalid\",\n    \"audience_role\": \"buyer\",\n    \"touch_index\": 3,\n    \"content_digest\": \"sha256:touch3\",\n    \"dispatch\": {\n      \"named_run\": \"send-as\",\n      \"idempotency_key\": \"outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch\",\n      \"consequence\": \"separate_governed_run_required\",\n      \"this_skill_sends\": false\n    }\n  },\n  \"escalation\": {\n    \"required\": false,\n    \"lane\": null\n  },\n  \"observations\": [\n    {\n      \"type\": \"engagement_projection_read\",\n      \"operation_result\": {\n        \"operation\": \"read_projection\",\n        \"receipt_ref\": \"runx:receipt:fixture-read-happy\",\n        \"status\": \"ok\"\n      },\n      \"aggregate_id\": \"seq-acme-001:contact-jane\",\n      \"store_id\": \"runx.outreach.sequence_state.v1\",\n      \"version\": 7\n    },\n    {\n      \"type\": \"engagement_events_examined\",\n      \"events\": [\n        {\n          \"type\": \"touch_sent\",\n          \"touch_index\": 1,\n          \"occurred_at\": \"2026-06-20T12:00:00Z\",\n          \"operation_result\": {\n            \"operation\": \"append_event\",\n            \"receipt_ref\": \"runx:receipt:fixture-touch1\",\n            \"status\": \"ok\"\n          }\n        },\n        {\n          \"type\": \"touch_sent\",\n          \"touch_index\": 2,\n          \"occurred_at\": \"2026-06-25T12:00:00Z\",\n          \"operation_result\": {\n            \"operation\": \"append_event\",\n            \"receipt_ref\": \"runx:receipt:fixture-touch2\",\n            \"status\": \"ok\"\n          }\n        }\n      ]\n    },\n    {\n      \"type\": \"sequence_position\",\n      \"current_touch_index\": 2\n    },\n    {\n      \"type\": \"eligibility_verdict\",\n      \"eligible\": true,\n      \"reason\": \"next_touch_due\"\n    },\n    {\n      \"type\": \"append_event\",\n      \"operation_result\": {\n        \"operation\": \"append_event\",\n        \"status\": \"planned\",\n        \"before_version\": 7,\n        \"after_version\": 8\n      },\n      \"idempotency_key\": \"outreach-sequencer:seq-acme-001:contact-jane:touch3\",\n      \"before_version\": 7,\n      \"after_version\": 8\n    },\n    {\n      \"type\": \"next_touch\",\n      \"index\": 3,\n      \"channel\": \"email\",\n      \"send_class\": \"outreach\",\n      \"content_digest\": \"sha256:touch3\"\n    }\n  ]\n}\n",
+    "structured_output": {
+      "append_event": {
+        "after_version": 8,
+        "aggregate_id": "seq-acme-001:contact-jane",
+        "before_version": 7,
+        "cas": "expected_version",
+        "event": {
+          "decision_id": "decision_8920a12b7a72",
+          "dispatch_idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+          "eligible": true,
+          "prior_touch_index": 2,
+          "touch_index": 3,
+          "type": "outreach.next_touch_decided"
+        },
+        "expected_version": 7,
+        "gated": false,
+        "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+        "operation": "append_event",
+        "operation_result": {
+          "after_version": 8,
+          "before_version": 7,
+          "operation": "append_event",
+          "status": "planned"
+        },
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.outreach.sequence_state.v1"
+      },
+      "decision": {
+        "eligible": true,
+        "reason": "next_touch_due"
+      },
+      "engagement_events": [
+        {
+          "occurred_at": "2026-06-20T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "receipt_ref": "runx:receipt:fixture-touch1",
+            "status": "ok"
+          },
+          "touch_index": 1,
+          "type": "touch_sent"
+        },
+        {
+          "occurred_at": "2026-06-25T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "receipt_ref": "runx:receipt:fixture-touch2",
+            "status": "ok"
+          },
+          "touch_index": 2,
+          "type": "touch_sent"
+        }
+      ],
+      "engagement_projection": {
+        "aggregate_id": "seq-acme-001:contact-jane",
+        "operation": "read_projection",
+        "operation_result": {
+          "operation": "read_projection",
+          "receipt_ref": "runx:receipt:fixture-read-happy",
+          "status": "ok"
+        },
+        "store": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.outreach.sequence_state.v1",
+        "version": 7
+      },
+      "escalation": {
+        "lane": null,
+        "required": false
+      },
+      "next_touch_packet": {
+        "audience": "jane@example.invalid",
+        "audience_role": "buyer",
+        "channel": "email",
+        "content_digest": "sha256:touch3",
+        "dispatch": {
+          "consequence": "separate_governed_run_required",
+          "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+          "named_run": "send-as",
+          "this_skill_sends": false
+        },
+        "principal": "sales-dev",
+        "schema": "runx.outreach.next_touch.v1",
+        "send_class": "outreach",
+        "touch_index": 3
+      },
+      "observations": [
+        {
+          "aggregate_id": "seq-acme-001:contact-jane",
+          "operation_result": {
+            "operation": "read_projection",
+            "receipt_ref": "runx:receipt:fixture-read-happy",
+            "status": "ok"
+          },
+          "store_id": "runx.outreach.sequence_state.v1",
+          "type": "engagement_projection_read",
+          "version": 7
+        },
+        {
+          "events": [
+            {
+              "occurred_at": "2026-06-20T12:00:00Z",
+              "operation_result": {
+                "operation": "append_event",
+                "receipt_ref": "runx:receipt:fixture-touch1",
+                "status": "ok"
+              },
+              "touch_index": 1,
+              "type": "touch_sent"
+            },
+            {
+              "occurred_at": "2026-06-25T12:00:00Z",
+              "operation_result": {
+                "operation": "append_event",
+                "receipt_ref": "runx:receipt:fixture-touch2",
+                "status": "ok"
+              },
+              "touch_index": 2,
+              "type": "touch_sent"
+            }
+          ],
+          "type": "engagement_events_examined"
+        },
+        {
+          "current_touch_index": 2,
+          "type": "sequence_position"
+        },
+        {
+          "eligible": true,
+          "reason": "next_touch_due",
+          "type": "eligibility_verdict"
+        },
+        {
+          "after_version": 8,
+          "before_version": 7,
+          "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+          "operation_result": {
+            "after_version": 8,
+            "before_version": 7,
+            "operation": "append_event",
+            "status": "planned"
+          },
+          "type": "append_event"
+        },
+        {
+          "channel": "email",
+          "content_digest": "sha256:touch3",
+          "index": 3,
+          "send_class": "outreach",
+          "type": "next_touch"
+        }
+      ],
+      "schema": "runx.outreach.sequencer.v1",
+      "status": "sealed"
+    }
+  },
+  "payload": {
+    "append_event": {
+      "after_version": 8,
+      "aggregate_id": "seq-acme-001:contact-jane",
+      "before_version": 7,
+      "cas": "expected_version",
+      "event": {
+        "decision_id": "decision_8920a12b7a72",
+        "dispatch_idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+        "eligible": true,
+        "prior_touch_index": 2,
+        "touch_index": 3,
+        "type": "outreach.next_touch_decided"
+      },
+      "expected_version": 7,
+      "gated": false,
+      "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+      "operation": "append_event",
+      "operation_result": {
+        "after_version": 8,
+        "before_version": 7,
+        "operation": "append_event",
+        "status": "planned"
+      },
+      "store": "registry:runx/data-store@0.1.2",
+      "store_id": "runx.outreach.sequence_state.v1"
+    },
+    "decision": {
+      "eligible": true,
+      "reason": "next_touch_due"
+    },
+    "engagement_events": [
+      {
+        "occurred_at": "2026-06-20T12:00:00Z",
+        "operation_result": {
+          "operation": "append_event",
+          "receipt_ref": "runx:receipt:fixture-touch1",
+          "status": "ok"
+        },
+        "touch_index": 1,
+        "type": "touch_sent"
+      },
+      {
+        "occurred_at": "2026-06-25T12:00:00Z",
+        "operation_result": {
+          "operation": "append_event",
+          "receipt_ref": "runx:receipt:fixture-touch2",
+          "status": "ok"
+        },
+        "touch_index": 2,
+        "type": "touch_sent"
+      }
+    ],
+    "engagement_projection": {
+      "aggregate_id": "seq-acme-001:contact-jane",
+      "operation": "read_projection",
+      "operation_result": {
+        "operation": "read_projection",
+        "receipt_ref": "runx:receipt:fixture-read-happy",
+        "status": "ok"
+      },
+      "store": "registry:runx/data-store@0.1.2",
+      "store_id": "runx.outreach.sequence_state.v1",
+      "version": 7
+    },
+    "escalation": {
+      "lane": null,
+      "required": false
+    },
+    "next_touch_packet": {
+      "audience": "jane@example.invalid",
+      "audience_role": "buyer",
+      "channel": "email",
+      "content_digest": "sha256:touch3",
+      "dispatch": {
+        "consequence": "separate_governed_run_required",
+        "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+        "named_run": "send-as",
+        "this_skill_sends": false
+      },
+      "principal": "sales-dev",
+      "schema": "runx.outreach.next_touch.v1",
+      "send_class": "outreach",
+      "touch_index": 3
+    },
+    "observations": [
+      {
+        "aggregate_id": "seq-acme-001:contact-jane",
+        "operation_result": {
+          "operation": "read_projection",
+          "receipt_ref": "runx:receipt:fixture-read-happy",
+          "status": "ok"
+        },
+        "store_id": "runx.outreach.sequence_state.v1",
+        "type": "engagement_projection_read",
+        "version": 7
+      },
+      {
+        "events": [
+          {
+            "occurred_at": "2026-06-20T12:00:00Z",
+            "operation_result": {
+              "operation": "append_event",
+              "receipt_ref": "runx:receipt:fixture-touch1",
+              "status": "ok"
+            },
+            "touch_index": 1,
+            "type": "touch_sent"
+          },
+          {
+            "occurred_at": "2026-06-25T12:00:00Z",
+            "operation_result": {
+              "operation": "append_event",
+              "receipt_ref": "runx:receipt:fixture-touch2",
+              "status": "ok"
+            },
+            "touch_index": 2,
+            "type": "touch_sent"
+          }
+        ],
+        "type": "engagement_events_examined"
+      },
+      {
+        "current_touch_index": 2,
+        "type": "sequence_position"
+      },
+      {
+        "eligible": true,
+        "reason": "next_touch_due",
+        "type": "eligibility_verdict"
+      },
+      {
+        "after_version": 8,
+        "before_version": 7,
+        "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+        "operation_result": {
+          "after_version": 8,
+          "before_version": 7,
+          "operation": "append_event",
+          "status": "planned"
+        },
+        "type": "append_event"
+      },
+      {
+        "channel": "email",
+        "content_digest": "sha256:touch3",
+        "index": 3,
+        "send_class": "outreach",
+        "type": "next_touch"
+      }
+    ],
+    "schema": "runx.outreach.sequencer.v1",
+    "status": "sealed"
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-06-30T16:27:04.909Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_judge",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step judge",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step judge",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-06-30T16:27:04.909Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_judge",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node judge",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_judge",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:68f3e36a9da83b7d7111c951894e4cd9d1246c61c48212363b5b72674d82eec5",
+    "id": "sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
+    "idempotency": {
+      "content_hash": "sha256:run_judge_bc5b2b090582-judge-content",
+      "intent_key": "sha256:run_judge_bc5b2b090582-judge-intent",
+      "trigger_fingerprint": "sha256:run_judge_bc5b2b090582-judge-trigger"
+    },
+    "issuer": {
+      "kid": "runx-runtime-prod-fixture-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-06-30T16:27:04.909Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-06-30T16:27:04.909Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool judge completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:D3Y2cs-jScww6WPqZN0SeIfpOxH-V2EqIQAQRmArYLQsioDQD7Y9dzca_8yISFO7iwrPfqDK-URnRburVnTEBQ"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_judge_bc5b2b090582_judge"
+      }
+    }
+  },
+  "receipt_id": "sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
+  "registry_provenance": {
+    "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e",
+    "profile_digest": "sha256:f5e1afd4c63da3dfd5292264e10cb03cf2ca84612927277136932c79b8dc021b",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "vidshidden/outreach-sequencer",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-8248a4585211"
+  },
+  "run_id": "run_judge_bc5b2b090582",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "outreach-sequencer",
+  "status": "sealed"
+}

@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "vidshidden/outreach-sequencer@sha-8248a4585211",
+    "install": {
+      "status": "installed",
+      "destination": "/home/runner/work/runx/runx/skills/outreach-sequencer/evidence/clean-install/vidshidden/outreach-sequencer/sha-8248a4585211/SKILL.md",
+      "skill_name": "outreach-sequencer",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "vidshidden/outreach-sequencer",
+      "version": "sha-8248a4585211",
+      "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e",
+      "profile_digest": "sha256:f5e1afd4c63da3dfd5292264e10cb03cf2ca84612927277136932c79b8dc021b",
+      "profile_state_path": "/home/runner/work/runx/runx/skills/outreach-sequencer/evidence/clean-install/vidshidden/outreach-sequencer/sha-8248a4585211/.runx/profile.json",
+      "runner_names": [
+        "judge"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/home/runner/work/runx/runx/skills/outreach-sequencer/evidence/clean-install/vidshidden/outreach-sequencer/sha-8248a4585211/SKILL.md",
+      "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e",
+      "install_count": 2,
+      "package_digest": "2458ce837db4cfe997eddaca640a0ca9d2aa6d250385fd90e21a165c8272c4ba",
+      "profile_digest": "sha256:f5e1afd4c63da3dfd5292264e10cb03cf2ca84612927277136932c79b8dc021b",
+      "publisher": {
+        "display_name": "薪宇",
+        "handle": "vidshidden",
+        "id": "user_9c5d6c8f9504a7bf31aacfd5",
+        "kind": "user"
+      },
+      "ref": "vidshidden/outreach-sequencer@sha-8248a4585211",
+      "skill_id": "vidshidden/outreach-sequencer",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-8248a4585211"
+    }
+  }
+}

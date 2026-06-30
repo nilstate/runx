@@ -19,8 +19,8 @@
 - Hosted harness status: passed, cases happy_next_touch, stop_replied, missing_state_needs_agent.
 - Clean install command: `runx add vidshidden/outreach-sequencer@sha-8248a4585211 --registry https://api.runx.ai`.
 - Dogfood command: `runx skill vidshidden/outreach-sequencer@sha-8248a4585211 --registry https://api.runx.ai --json -R skills/outreach-sequencer/evidence/dogfood-receipts`.
-- Dogfood receipt: pending-ubuntu-dogfood.
-- runx verify verdict: pending or not valid yet; signature mode pending.
+- Dogfood receipt: runx:receipt:sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec.
+- runx verify verdict: valid; signature mode production.
 - Windows local dogfood status: failure; expected receipt-store issue is recorded in dogfood-output-windows.json.
 
 ## Behavior

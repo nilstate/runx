@@ -31,9 +31,9 @@
     "missing_state_needs_agent": "passed"
   },
   "dogfood": {
-    "status": "pending_ubuntu",
-    "receipt_ref": "pending-ubuntu-dogfood",
-    "verify_valid": false,
+    "status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
+    "verify_valid": true,
     "windows_status": "failure",
     "windows_error": "receipt store is unreadable: 参数错误。 (os error 87)",
     "ubuntu_actions_workflow": ".github/workflows/outreach-sequencer-dogfood.yml",
@@ -43,5 +43,5 @@
       "skills/outreach-sequencer/evidence/dogfood-receipt.json"
     ]
   },
-  "receipt_ref": "pending-ubuntu-dogfood"
+  "receipt_ref": "runx:receipt:sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec"
 }

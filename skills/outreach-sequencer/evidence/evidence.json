@@ -55,15 +55,14 @@
       }
     },
     "command": "runx skill vidshidden/outreach-sequencer@sha-8248a4585211 --registry https://api.runx.ai --json -R skills/outreach-sequencer/evidence/dogfood-receipts",
-    "status": "pending_ubuntu",
-    "receipt_ref": "pending-ubuntu-dogfood",
+    "status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
+    "run_id": "run_judge_bc5b2b090582",
     "verify_verdict": {
-      "valid": false,
-      "signature_mode": null,
-      "root_receipt_id": null,
-      "findings": [
-        "Ubuntu dogfood verify has not been recorded yet."
-      ]
+      "valid": true,
+      "signature_mode": "production",
+      "root_receipt_id": "sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
+      "findings": []
     },
     "harness_cases": [
       {
@@ -220,15 +219,14 @@
     },
     {
       "type": "dogfood_verify",
-      "receipt_ref": "pending-ubuntu-dogfood",
+      "receipt_ref": "runx:receipt:sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
       "verify_verdict": {
-        "valid": false,
-        "signature_mode": null,
-        "root_receipt_id": null,
-        "findings": [
-          "Ubuntu dogfood verify has not been recorded yet."
-        ]
-      }
+        "valid": true,
+        "signature_mode": "production",
+        "root_receipt_id": "sha256:07dc416636da29e35ec4b3672001506737990080c11e76954a2f84da5e4e49ec",
+        "findings": []
+      },
+      "run_id": "run_judge_bc5b2b090582"
     },
     {
       "type": "artifact_urls",
