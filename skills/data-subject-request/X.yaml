@@ -1,0 +1,273 @@
+skill: data-subject-request
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+  runtime_path: data-adapter
+
+emits:
+  - name: data_subject_request_decision
+    packet: runx.privacy.data_subject_request.v1
+
+harness:
+  cases:
+    - name: eligible-erasure-records-verdict
+      runner: decide
+      inputs:
+        request_packet:
+          type: erasure
+          subject_id: subject:customer_4242
+          scope:
+            request_id: dsr-2026-06-30-001
+            data_classes:
+              - profile
+              - support_tickets
+            requested_scopes:
+              - profile
+              - support_tickets
+        requestor_proof:
+          identity_provider: account-session
+          verified_at: "2026-06-30T14:20:00Z"
+          assertion:
+            subject_id: subject:customer_4242
+            assurance: authenticated-session
+            assertion_ref: acct-session:customer_4242:2026-06-30
+            assertion_digest: sha256:9d64a60e8d0c8080e88f9472c0e0ffdfad9424c2e42eb570c0f46ff3e4e73116
+        policy:
+          jurisdiction: GDPR
+          trusted_identity_providers:
+            - account-session
+            - notarized-id
+          lawful_bases:
+            erasure: GDPR Article 17 erasure after withdrawn consent, with retention exceptions screened by policy.
+            export: GDPR Article 15 access where the verified data subject requests a bounded copy.
+          scope_bounds:
+            data_classes:
+              - profile
+              - support_tickets
+              - marketing_preferences
+            erasure_allowed:
+              - profile
+              - support_tickets
+              - marketing_preferences
+            export_allowed:
+              - profile
+              - support_tickets
+              - marketing_preferences
+        data_source_ref: local://runx-data-subject-request/harness
+        store_id: data-subject-request-harness-v1
+        aggregate_id: dsr:subject:customer_4242:request:dsr-2026-06-30-001
+        expected_version: 0
+        idempotency_key: dsr-2026-06-30-001:verdict:v1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: unverified-requestor-refused-no-handoff
+      runner: decide
+      inputs:
+        request_packet:
+          type: export
+          subject_id: subject:customer_9999
+          scope:
+            request_id: dsr-2026-06-30-002
+            data_classes:
+              - profile
+              - payment_methods
+            requested_scopes:
+              - profile
+              - payment_methods
+        requestor_proof:
+          identity_provider: unsigned-email
+          verified_at: ""
+          assertion:
+            subject_id: subject:customer_9999
+            assurance: missing-verification
+            assertion_ref: email:unverified:customer_9999
+            assertion_digest: sha256:bf68a7a6b9f2f234e4b57e9dc1e9c769928ffb1fe34e89d347ad77a04d2a6040
+        policy:
+          jurisdiction: CCPA
+          trusted_identity_providers:
+            - account-session
+            - notarized-id
+          lawful_bases:
+            erasure: CCPA deletion request only after verified consumer identity and bounded exceptions review.
+            export: CCPA access request only after verified consumer identity and bounded data-class scope.
+          scope_bounds:
+            data_classes:
+              - profile
+              - support_tickets
+            erasure_allowed:
+              - profile
+              - support_tickets
+            export_allowed:
+              - profile
+              - support_tickets
+        data_source_ref: local://runx-data-subject-request/harness
+        store_id: data-subject-request-harness-v1
+        aggregate_id: dsr:subject:customer_9999:request:dsr-2026-06-30-002
+        expected_version: 0
+        idempotency_key: dsr-2026-06-30-002:verdict:v1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+          reason_code: graph_blocked
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - raw_pii_export
+    - direct_erasure
+    - direct_send
+    - unbounded_subject_scope
+    - untrusted_identity_provider
+    - operational_proposal
+
+runners:
+  decide:
+    default: true
+    type: graph
+    inputs:
+      request_packet:
+        type: json
+        required: true
+        description: request_packet{type,subject_id,scope}; scope names the request id, data classes, and requested scopes.
+      requestor_proof:
+        type: json
+        required: true
+        description: requestor_proof{identity_provider,verified_at,assertion}; assertion must identify the same subject and carry a digestable proof ref.
+      policy:
+        type: json
+        required: true
+        description: policy{jurisdiction,lawful_bases,scope_bounds}; optional trusted_identity_providers restrict accepted proof issuers.
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data-store binding for the subject request event stream.
+      store_id:
+        type: string
+        required: true
+        description: Pinned data-store id for deterministic harness and dogfood receipts.
+      aggregate_id:
+        type: string
+        required: true
+        description: Subject request entity stream id; use the request entity, not a broad customer or tenant id.
+      expected_version:
+        type: number
+        required: true
+        description: Current stream version required by the CAS append_event that records the verdict.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable verdict write key so retries do not append duplicate decisions.
+    graph:
+      name: data-subject-request
+      steps:
+        - id: read-prior-decision
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: subject_requests
+            aggregate_id: "$input.aggregate_id"
+        - id: decide
+          label: verify identity, scope, and lawful basis before any handoff
+          skill: .
+          runner: judge
+          inputs:
+            request_packet: "$input.request_packet"
+            requestor_proof: "$input.requestor_proof"
+            policy: "$input.policy"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            prior_decision: read-prior-decision.data_operation_result.data.projection
+        - id: record-verdict
+          tool: data.source
+          scopes:
+            - runx:data:append
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: subject_requests
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.data_subject_request_decision.data.verdict_event
+        - id: readback
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: subject_requests
+            aggregate_id: "$input.aggregate_id"
+      policy:
+        guards:
+          - step: readback
+            field: decide.data_subject_request_decision.data.decision.eligible
+            equals: true
+
+  judge:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      handoff: object
+      escalation: object
+      verdict_event: object
+      observations: object
+    artifacts:
+      wrap_as: data_subject_request_decision
+      packet: runx.privacy.data_subject_request.v1
+    inputs:
+      request_packet:
+        type: json
+        required: true
+        description: request_packet{type,subject_id,scope}; scope names the request id, data classes, and requested scopes.
+      requestor_proof:
+        type: json
+        required: true
+        description: requestor_proof{identity_provider,verified_at,assertion}; assertion must identify the same subject and carry a digestable proof ref.
+      policy:
+        type: json
+        required: true
+        description: policy{jurisdiction,lawful_bases,scope_bounds}; trusted_identity_providers restrict accepted proof issuers.
+      aggregate_id:
+        type: string
+        required: true
+        description: Subject request entity stream id; use the request entity, not a broad customer or tenant id.
+      expected_version:
+        type: number
+        required: true
+        description: Current stream version required by the CAS append_event that records the verdict.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable verdict write key so retries do not append duplicate decisions.
+      prior_decision:
+        type: json
+        required: false
+        description: Prior subject request projection read from data-store before this verdict.

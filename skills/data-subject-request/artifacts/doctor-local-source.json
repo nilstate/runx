@@ -1,0 +1,388 @@
+{
+  "schema": "runx.doctor.v1",
+  "status": "success",
+  "summary": {
+    "errors": 0,
+    "warnings": 13,
+    "infos": 0
+  },
+  "diagnostics": [
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "reduce.reduction has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "agency-advance",
+        "step": "decide"
+      },
+      "location": {
+        "path": "skills/agency/X.yaml",
+        "json_pointer": "/runners/advance/graph/steps/decide/context/mandate"
+      },
+      "evidence": {
+        "reference": "reduce.reduction.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/agency/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:d12777c81d29a6523f4c0434e56a33677e3343cb1ad89bfd7227215508881775"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "classify.lane_packet has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "business-ops-route-and-append",
+        "step": "persist-route"
+      },
+      "location": {
+        "path": "skills/business-ops/X.yaml",
+        "json_pointer": "/runners/route_and_append/graph/steps/persist-route/context/event"
+      },
+      "evidence": {
+        "reference": "classify.lane_packet.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/business-ops/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:b17bfabbf667f82639df465245a5d2ef66ba197aaa8ec46bb1f010dad1b0c9a0"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "fetch-source.fetch_result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "governed-outbound",
+        "step": "scrub-content"
+      },
+      "location": {
+        "path": "skills/governed-outbound/X.yaml",
+        "json_pointer": "/runners/governed-outbound/graph/steps/scrub-content/context/content"
+      },
+      "evidence": {
+        "reference": "fetch-source.fetch_result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/governed-outbound/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:9e9110ee85fde6d55831173a6cbdbb6444efaacaf9ff416f7ca226cdacbd3d37"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scrub-content.redaction_report has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "governed-outbound",
+        "step": "approve-send"
+      },
+      "location": {
+        "path": "skills/governed-outbound/X.yaml",
+        "json_pointer": "/runners/governed-outbound/graph/steps/approve-send/context/decision"
+      },
+      "evidence": {
+        "reference": "scrub-content.redaction_report.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/governed-outbound/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:2581bfb8a05ddcfe4f6e4b6a4ff6730039cdce7489c91836ef0dfee66023c82f"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "post-notice.send_plan has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "governed-outbound",
+        "step": "seal-run"
+      },
+      "location": {
+        "path": "skills/governed-outbound/X.yaml",
+        "json_pointer": "/runners/governed-outbound/graph/steps/seal-run/context/evidence"
+      },
+      "evidence": {
+        "reference": "post-notice.send_plan.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/governed-outbound/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:f8c6506822d63f3515a4d72ef4419fa6ce969cf543b8e4b6bf14652c0e3a107c"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scafld-plan.result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "author-spec"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/author-spec/context/spec_path"
+      },
+      "evidence": {
+        "reference": "scafld-plan.result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:bfb1f1d11b26557340e7fa5db396685852833913b3f049687ab04ea82979cf6e"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scafld-approve.result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "read-approved-spec"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/read-approved-spec/context/path"
+      },
+      "evidence": {
+        "reference": "scafld-approve.result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:2fa6c050644b9d3d16589bf2c91c8e5ec64de38125a41e82aa076b6a5745cc8b"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "capture-harness-context.harness_context has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "package-pull-request"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/package-pull-request/context/harness_context"
+      },
+      "evidence": {
+        "reference": "capture-harness-context.harness_context.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:e13d6575601f25ba750ec6eec1e02d004d1c885d9462fd69b807eb1c407641e9"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scafld-handoff.result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "package-pull-request"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/package-pull-request/context/handoff_markdown"
+      },
+      "evidence": {
+        "reference": "scafld-handoff.result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:7aba22826433b263377889f0d3474bb1a2b24aad6197d2e0c9238a74ffb0af5a"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scafld-build.result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "package-pull-request"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/package-pull-request/context/build_result"
+      },
+      "evidence": {
+        "reference": "scafld-build.result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:edf46f58c4c6348d3f06557e53a4588c19fdd6183c30ed86dd7df10a3a376a72"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scafld-review.result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "package-pull-request"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/package-pull-request/context/review_result"
+      },
+      "evidence": {
+        "reference": "scafld-review.result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:d746c69b4d878a0ef1adfde6f1a1b05b6b3e136344d3fbef9862fd87ddbbc342"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scafld-complete.result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "package-pull-request"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/package-pull-request/context/completion_result"
+      },
+      "evidence": {
+        "reference": "scafld-complete.result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:3f7eedbcb025f41c6cb18250c272e191b65c98b113ce951d123663dca8b955fa"
+    },
+    {
+      "id": "runx.graph.context.schema_missing",
+      "severity": "warning",
+      "title": "Graph context producer has no packet schema",
+      "message": "scafld-final-status.result has no packet metadata, so doctor cannot verify packet paths.",
+      "target": {
+        "kind": "graph",
+        "ref": "issue-to-pr",
+        "step": "package-pull-request"
+      },
+      "location": {
+        "path": "skills/issue-to-pr/X.yaml",
+        "json_pointer": "/runners/issue-to-pr/graph/steps/package-pull-request/context/status_snapshot"
+      },
+      "evidence": {
+        "reference": "scafld-final-status.result.data"
+      },
+      "repairs": [
+        {
+          "id": "add_output_packet",
+          "kind": "edit_yaml",
+          "confidence": "medium",
+          "risk": "low",
+          "path": "skills/issue-to-pr/X.yaml",
+          "requires_human_review": false
+        }
+      ],
+      "instance_id": "sha256:fa05dbed91992d045cae60fbc6ae42ba171c258010cacca8808a3c4e6da42d6d"
+    }
+  ]
+}

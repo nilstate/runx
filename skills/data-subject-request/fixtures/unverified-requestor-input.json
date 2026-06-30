@@ -1,0 +1,39 @@
+{
+  "request_packet": {
+    "type": "export",
+    "subject_id": "subject:customer_9999",
+    "scope": {
+      "request_id": "dsr-2026-06-30-002",
+      "data_classes": ["profile", "payment_methods"],
+      "requested_scopes": ["profile", "payment_methods"]
+    }
+  },
+  "requestor_proof": {
+    "identity_provider": "unsigned-email",
+    "verified_at": "",
+    "assertion": {
+      "subject_id": "subject:customer_9999",
+      "assurance": "missing-verification",
+      "assertion_ref": "email:unverified:customer_9999",
+      "assertion_digest": "sha256:bf68a7a6b9f2f234e4b57e9dc1e9c769928ffb1fe34e89d347ad77a04d2a6040"
+    }
+  },
+  "policy": {
+    "jurisdiction": "CCPA",
+    "trusted_identity_providers": ["account-session", "notarized-id"],
+    "lawful_bases": {
+      "erasure": "CCPA deletion request only after verified consumer identity and bounded exceptions review.",
+      "export": "CCPA access request only after verified consumer identity and bounded data-class scope."
+    },
+    "scope_bounds": {
+      "data_classes": ["profile", "support_tickets"],
+      "erasure_allowed": ["profile", "support_tickets"],
+      "export_allowed": ["profile", "support_tickets"]
+    }
+  },
+  "data_source_ref": "local://runx-data-subject-request/harness",
+  "store_id": "data-subject-request-harness-v1",
+  "aggregate_id": "dsr:subject:customer_9999:request:dsr-2026-06-30-002",
+  "expected_version": 0,
+  "idempotency_key": "dsr-2026-06-30-002:verdict:v1"
+}

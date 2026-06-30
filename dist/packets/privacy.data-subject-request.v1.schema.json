@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/privacy/data-subject-request/v1.json",
+  "x-runx-packet-id": "runx.privacy.data_subject_request.v1",
+  "type": "object",
+  "properties": {
+    "decision": {
+      "type": "object",
+      "properties": {
+        "eligible": { "type": "boolean" },
+        "reason": { "type": "string" }
+      },
+      "required": ["eligible", "reason"],
+      "additionalProperties": true
+    },
+    "handoff": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "subject_id": { "type": "string" },
+        "data_classes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "scopes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "escalation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "verdict_event": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": ["decision", "escalation", "verdict_event", "observations"],
+  "additionalProperties": true
+}

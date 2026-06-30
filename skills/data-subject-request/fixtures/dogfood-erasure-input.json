@@ -1,0 +1,39 @@
+{
+  "request_packet": {
+    "type": "erasure",
+    "subject_id": "subject:customer_7001",
+    "scope": {
+      "request_id": "dsr-2026-06-30-dogfood-001",
+      "data_classes": ["profile", "marketing_preferences"],
+      "requested_scopes": ["profile", "marketing_preferences"]
+    }
+  },
+  "requestor_proof": {
+    "identity_provider": "account-session",
+    "verified_at": "2026-06-30T14:45:00Z",
+    "assertion": {
+      "subject_id": "subject:customer_7001",
+      "assurance": "authenticated-session",
+      "assertion_ref": "acct-session:customer_7001:2026-06-30",
+      "assertion_digest": "sha256:6f41f68e5636f1b542f47370f214d1f58870d7bc4b8a8c922fc8ab9601aa3f3c"
+    }
+  },
+  "policy": {
+    "jurisdiction": "GDPR",
+    "trusted_identity_providers": ["account-session", "notarized-id"],
+    "lawful_bases": {
+      "erasure": "GDPR Article 17 erasure after withdrawn consent, with retention exceptions screened by policy.",
+      "export": "GDPR Article 15 access where the verified data subject requests a bounded copy."
+    },
+    "scope_bounds": {
+      "data_classes": ["profile", "support_tickets", "marketing_preferences"],
+      "erasure_allowed": ["profile", "support_tickets", "marketing_preferences"],
+      "export_allowed": ["profile", "support_tickets", "marketing_preferences"]
+    }
+  },
+  "data_source_ref": "local://runx-data-subject-request/dogfood",
+  "store_id": "data-subject-request-dogfood-v1",
+  "aggregate_id": "dsr:subject:customer_7001:request:dsr-2026-06-30-dogfood-001",
+  "expected_version": 0,
+  "idempotency_key": "dsr-2026-06-30-dogfood-001:verdict:v1"
+}

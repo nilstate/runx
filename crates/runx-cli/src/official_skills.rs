@@ -41,6 +41,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "5af0e2dd3dd2116874e4fb886e0424f4b944c136b3430a10c31e400a0249113b",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/data-subject-request",
+        version: "sha-6393a7059dcf",
+        digest: "23315800a48a1c6fedb1a7252ef790064ef693a0af425d2a12db3f90d4d1ed6d",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/deep-research-brief",
         version: "sha-c2d071df7f50",
         digest: "08cefe802c15e5be7d32ae9a363a6c42168e86f7fab92890e5ce5c994af367c9",

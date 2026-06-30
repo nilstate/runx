@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "eligible-erasure-records-verdict",
+    "unverified-requestor-refused-no-handoff"
+  ],
+  "receipt_ids": [
+    "sha256:1104ce5cb414b391b03f68dc3a0a14e3237ba9f9d934fa7f65a5963f63f6923d",
+    "sha256:7475dfb674888c6cde3538e4ea8c80c300df097b25a351aac47f0b4c13a4497d"
+  ],
+  "graph_case_count": 2
+}
