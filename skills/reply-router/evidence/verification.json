@@ -1,0 +1,57 @@
+﻿{
+    "schema":  "frantic.runx.skill.verification.v1",
+    "status":  "passed",
+    "runx_cli_version":  "0.6.14",
+    "package":  "rohitmulani63-ops/reply-router@sha-a3bebc6",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/reply-router",
+    "receipt_ref":  "runx:receipt:sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+    "checks":  [
+                   {
+                       "id":  "local_harness",
+                       "status":  "passed",
+                       "detail":  "3 cases passed with 0 assertion errors in Docker Linux"
+                   },
+                   {
+                       "id":  "registry_publish",
+                       "status":  "passed",
+                       "detail":  "Remote registry publish accepted package and publish harness"
+                   },
+                   {
+                       "id":  "dogfood_post_publish",
+                       "status":  "passed",
+                       "detail":  "Published skill classified unsubscribe and committed recipient-keyed suppression append_event"
+                   },
+                   {
+                       "id":  "runx_verify",
+                       "status":  "passed",
+                       "detail":  "runx verify returned valid=true for post-publish dogfood receipt"
+                   }
+               ],
+    "verify_verdict":  {
+                           "schema":  "runx.verify_verdict.v1",
+                           "receipt_id":  "sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+                           "valid":  true,
+                           "digest":  {
+                                          "status":  "valid",
+                                          "expected":  "sha256:4f913e4dfe8e99438f57a299a368aac46d1042ba820f4e743572e09f799a314b",
+                                          "actual":  "sha256:4f913e4dfe8e99438f57a299a368aac46d1042ba820f4e743572e09f799a314b"
+                                      },
+                           "content_address":  {
+                                                   "status":  "valid",
+                                                   "expected":  "sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+                                                   "actual":  "sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51"
+                                               },
+                           "signature":  {
+                                             "mode":  "production",
+                                             "status":  "valid",
+                                             "kid":  "runx-demo-key"
+                                         },
+                           "lineage":  {
+                                           "status":  "unverified",
+                                           "message":  "single receipt verification cannot prove receipt-tree lineage"
+                                       },
+                           "findings":  [
+
+                                        ]
+                       }
+}

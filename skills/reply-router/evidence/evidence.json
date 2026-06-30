@@ -1,0 +1,150 @@
+﻿{
+    "schema":  "frantic.runx.skill.evidence.v1",
+    "bounty":  "runx skill: reply router",
+    "bounty_number":  70,
+    "package":  "rohitmulani63-ops/reply-router@sha-a3bebc6",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/reply-router",
+    "source_summary":  "Adds reply-router as a dispatch-free Runx skill for inbound reply classification, unsubscribe suppression via recipient-keyed CAS append_event, and safe typed routing decisions for non-unsubscribe replies.",
+    "items":  [
+                  {
+                      "id":  "local_harness",
+                      "status":  "passed",
+                      "command":  "runx harness ./skills/reply-router",
+                      "runx_cli":  "0.6.14",
+                      "case_count":  3,
+                      "assertion_error_count":  0,
+                      "cases":  [
+                                    "sealed_unsubscribe_suppression",
+                                    "sealed_interested_route",
+                                    "stop_ambiguous_or_unsealed"
+                                ]
+                  },
+                  {
+                      "id":  "registry_publish",
+                      "status":  "published",
+                      "package":  "rohitmulani63-ops/reply-router@sha-a3bebc6",
+                      "digest":  "ad785d000a2aac68791e0123cd36aec02e06cbfefba7a88893fa0a6e5271ddbc",
+                      "profile_digest":  "8b76ceff7e777790132d3684bdb156c939332f636fd8f983961873ea49b827bc",
+                      "trust_tier":  "community",
+                      "public_url":  "https://runx.ai/x/rohitmulani63-ops/reply-router"
+                  },
+                  {
+                      "id":  "post_publish_dogfood",
+                      "status":  "sealed",
+                      "receipt_ref":  "runx:receipt:sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+                      "classification_type":  "unsubscribe",
+                      "append_event_count":  1,
+                      "suppression_result":  {
+                                                 "after_version":  1,
+                                                 "aggregate_id":  "recipient:dogfood@example.test",
+                                                 "before_version":  0,
+                                                 "idempotency_key":  "reply-router-dogfood-v0"
+                                             },
+                      "readback_projection":  {
+                                                  "aggregate_id":  "recipient:dogfood@example.test",
+                                                  "event_count":  1,
+                                                  "event_digests":  [
+                                                                        "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8"
+                                                                    ],
+                                                  "last_event_ref":  "reply.suppression:recipient:dogfood@example.test:1",
+                                                  "last_event_type":  "reply_router.suppression_recorded",
+                                                  "resource":  "reply.suppression",
+                                                  "version":  1
+                                              }
+                  },
+                  {
+                      "id":  "runx_verify",
+                      "status":  "valid",
+                      "receipt_id":  "sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+                      "signature_status":  "valid",
+                      "digest_status":  "valid",
+                      "content_address_status":  "valid"
+                  }
+              ],
+    "dogfood":  {
+                    "package":  "rohitmulani63-ops/reply-router@sha-a3bebc6",
+                    "input":  {
+                                  "data_source_ref":  "local://reply-router-dogfood",
+                                  "store_id":  "reply-router-dogfood",
+                                  "resource":  "reply.suppression",
+                                  "aggregate_id":  "recipient:dogfood@example.test",
+                                  "expected_version":  0,
+                                  "idempotency_key":  "reply-router-dogfood-v0",
+                                  "inbound_reply":  {
+                                                        "content":  "unsubscribe me from future outreach please",
+                                                        "received_from":  "dogfood@example.test",
+                                                        "received_at":  "2026-06-30T12:18:00Z"
+                                                    },
+                                  "original_send_receipt":  {
+                                                                "sealed":  true,
+                                                                "receipt_id":  "runx:receipt:sha256:dogfood-original-send",
+                                                                "checksum":  "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+                                                                "principal":  "account:growth-team",
+                                                                "send_plan":  {
+                                                                                  "channel":  "email",
+                                                                                  "audience_ref":  "dogfood@example.test",
+                                                                                  "content_ref":  "campaign:reply-router-dogfood"
+                                                                              }
+                                                            },
+                                  "suppression_policy":  {
+                                                             "unsubscribe_signals":  [
+                                                                                         "unsubscribe",
+                                                                                         "stop emailing",
+                                                                                         "remove me",
+                                                                                         "opt out",
+                                                                                         "do not contact"
+                                                                                     ],
+                                                             "confidence_threshold":  0.8
+                                                         }
+                              },
+                    "command":  "runx skill rohitmulani63-ops/reply-router@sha-a3bebc6 --registry https://api.runx.ai -R ./skills/reply-router/evidence/dogfood-receipts -j ...",
+                    "receipt_ref":  "runx:receipt:sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+                    "verify_verdict":  {
+                                           "schema":  "runx.verify_verdict.v1",
+                                           "receipt_id":  "sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+                                           "valid":  true,
+                                           "digest":  {
+                                                          "status":  "valid",
+                                                          "expected":  "sha256:4f913e4dfe8e99438f57a299a368aac46d1042ba820f4e743572e09f799a314b",
+                                                          "actual":  "sha256:4f913e4dfe8e99438f57a299a368aac46d1042ba820f4e743572e09f799a314b"
+                                                      },
+                                           "content_address":  {
+                                                                   "status":  "valid",
+                                                                   "expected":  "sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51",
+                                                                   "actual":  "sha256:f342f3f02527ee8cf9a7ea4e8d297a4911121d93b1cbda096f0e5ed7a4901b51"
+                                                               },
+                                           "signature":  {
+                                                             "mode":  "production",
+                                                             "status":  "valid",
+                                                             "kid":  "runx-demo-key"
+                                                         },
+                                           "lineage":  {
+                                                           "status":  "unverified",
+                                                           "message":  "single receipt verification cannot prove receipt-tree lineage"
+                                                       },
+                                           "findings":  [
+
+                                                        ]
+                                       },
+                    "harness_cases":  [
+                                          {
+                                              "name":  "sealed_unsubscribe_suppression",
+                                              "status":  "sealed",
+                                              "expected":  "unsubscribe suppression CAS append_event",
+                                              "receipt_ref":  "runx:receipt:sha256:2a578af7c2f0c945bbffca33bfd1d9110348e54a8df7d96b3fdc380eda7d512b"
+                                          },
+                                          {
+                                              "name":  "sealed_interested_route",
+                                              "status":  "sealed",
+                                              "expected":  "interested routing decision only",
+                                              "receipt_ref":  "runx:receipt:sha256:c8abee8fa3c3355c9aa655074d2bec21948d8de8e5f164cdeadaa83fc8e71519"
+                                          },
+                                          {
+                                              "name":  "stop_ambiguous_or_unsealed",
+                                              "status":  "needs_agent",
+                                              "expected":  "missing sealed receipt blocks without write or route",
+                                              "receipt_ref":  null
+                                          }
+                                      ]
+                }
+}

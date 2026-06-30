@@ -1,0 +1,1641 @@
+{
+  "schema": "runx.graph_skill_state.v1",
+  "run_id": "run_judge_7edb7caa6945",
+  "runner_name": "judge",
+  "graph_inputs": {
+    "aggregate_id": "recipient:dogfood@example.test",
+    "data_source_ref": "local://reply-router-dogfood",
+    "expected_version": 0,
+    "idempotency_key": "reply-router-dogfood-v0",
+    "inbound_reply": {
+      "content": "unsubscribe me from future outreach please",
+      "received_at": "2026-06-30T12:18:00Z",
+      "received_from": "dogfood@example.test"
+    },
+    "original_send_receipt": {
+      "checksum": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "principal": "account:growth-team",
+      "receipt_id": "runx:receipt:sha256:dogfood-original-send",
+      "sealed": true,
+      "send_plan": {
+        "audience_ref": "dogfood@example.test",
+        "channel": "email",
+        "content_ref": "campaign:reply-router-dogfood"
+      }
+    },
+    "resource": "reply.suppression",
+    "store_id": "reply-router-dogfood",
+    "suppression_policy": {
+      "confidence_threshold": 0.8,
+      "unsubscribe_signals": [
+        "unsubscribe",
+        "stop emailing",
+        "remove me",
+        "opt out",
+        "do not contact"
+      ]
+    }
+  },
+  "checkpoint": {
+    "graph_name": "reply-router",
+    "state": {
+      "graphId": "reply-router",
+      "status": "running",
+      "steps": [
+        {
+          "stepId": "read_recipient",
+          "status": "succeeded",
+          "attempts": 1,
+          "startedAt": "2026-06-30T12:09:29.990Z",
+          "completedAt": "2026-06-30T12:09:29.990Z",
+          "receiptId": "sha256:f9b8ddf5d6b7db8fe7685cc73e2fa2bb82f734dd6e4b5c5a765e0484f626a60e",
+          "outputs": {
+            "data_operation_result": {
+              "data": {
+                "after_version": 0,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 0,
+                "data_source_ref": "local://reply-router-dogfood",
+                "event_digest": null,
+                "event_ref": null,
+                "events": [],
+                "idempotency_key": null,
+                "operation": "read_projection",
+                "projection": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "event_count": 0,
+                  "event_digests": [],
+                  "last_event_ref": null,
+                  "last_event_type": null,
+                  "resource": "reply.suppression",
+                  "version": 0
+                },
+                "projection_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+                "provider": "local-json-event-store",
+                "provider_evidence": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "provider": "local-json-event-store",
+                  "resource": "reply.suppression",
+                  "storage_class": "local-fixture",
+                  "store_id": "reply-router-dogfood"
+                },
+                "redactions": [],
+                "resource": "reply.suppression",
+                "result_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+                "rows": [],
+                "schema": "runx.data.operation_result.v1",
+                "status": "read",
+                "stop_conditions": []
+              }
+            },
+            "raw": "{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}",
+            "skill_claim": {
+              "after_version": 0,
+              "aggregate_id": "recipient:dogfood@example.test",
+              "before_version": 0,
+              "data_operation_result": {
+                "data": {
+                  "after_version": 0,
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "before_version": 0,
+                  "data_source_ref": "local://reply-router-dogfood",
+                  "event_digest": null,
+                  "event_ref": null,
+                  "events": [],
+                  "idempotency_key": null,
+                  "operation": "read_projection",
+                  "projection": {
+                    "aggregate_id": "recipient:dogfood@example.test",
+                    "event_count": 0,
+                    "event_digests": [],
+                    "last_event_ref": null,
+                    "last_event_type": null,
+                    "resource": "reply.suppression",
+                    "version": 0
+                  },
+                  "projection_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+                  "provider": "local-json-event-store",
+                  "provider_evidence": {
+                    "aggregate_id": "recipient:dogfood@example.test",
+                    "provider": "local-json-event-store",
+                    "resource": "reply.suppression",
+                    "storage_class": "local-fixture",
+                    "store_id": "reply-router-dogfood"
+                  },
+                  "redactions": [],
+                  "resource": "reply.suppression",
+                  "result_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+                  "rows": [],
+                  "schema": "runx.data.operation_result.v1",
+                  "status": "read",
+                  "stop_conditions": []
+                }
+              },
+              "data_source_ref": "local://reply-router-dogfood",
+              "event_digest": null,
+              "event_ref": null,
+              "events": [],
+              "idempotency_key": null,
+              "operation": "read_projection",
+              "projection": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "event_count": 0,
+                "event_digests": [],
+                "last_event_ref": null,
+                "last_event_type": null,
+                "resource": "reply.suppression",
+                "version": 0
+              },
+              "projection_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+              "provider": "local-json-event-store",
+              "provider_evidence": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "provider": "local-json-event-store",
+                "resource": "reply.suppression",
+                "storage_class": "local-fixture",
+                "store_id": "reply-router-dogfood"
+              },
+              "redactions": [],
+              "resource": "reply.suppression",
+              "result_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+              "rows": [],
+              "schema": "runx.data.operation_result.v1",
+              "status": "read",
+              "stop_conditions": []
+            },
+            "status": "success",
+            "stderr": "",
+            "stdout": "{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}"
+          }
+        },
+        {
+          "stepId": "classify",
+          "status": "succeeded",
+          "attempts": 1,
+          "startedAt": "2026-06-30T12:09:29.990Z",
+          "completedAt": "2026-06-30T12:09:29.990Z",
+          "receiptId": "sha256:f559fefe61786034c48a0c0b22cd58a9655c4800599e08c939a246acef2a2447",
+          "outputs": {
+            "raw": "{\n  \"classification_type\": \"unsubscribe\",\n  \"classification\": {\n    \"type\": \"unsubscribe\",\n    \"confidence\": 0.99,\n    \"evidence\": {\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"content_excerpt\": \"unsubscribe me from future outreach please\",\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"checksum\": \"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\n      \"received_from\": \"dogfood@example.test\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_event\": {\n    \"event_type\": \"reply_router.suppression_recorded\",\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"recipient\": \"dogfood@example.test\",\n    \"reason\": \"unsubscribe intent matched policy signal\",\n    \"evidence\": {\n      \"classification_type\": \"unsubscribe\",\n      \"confidence\": 0.99,\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_result\": {\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"idempotency_key\": \"reply-router-dogfood-v0\",\n    \"before_version\": 0,\n    \"after_version\": 1\n  },\n  \"routing_decision\": null,\n  \"escalation_lane\": null,\n  \"append_event_count\": 1\n}\n",
+            "reply_router_packet": {
+              "data": {
+                "append_event_count": 1,
+                "classification": {
+                  "confidence": 0.99,
+                  "evidence": {
+                    "checksum": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+                    "content_excerpt": "unsubscribe me from future outreach please",
+                    "matched_unsubscribe_signals": [
+                      "unsubscribe"
+                    ],
+                    "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                    "received_at": "2026-06-30T12:18:00Z",
+                    "received_from": "dogfood@example.test"
+                  },
+                  "type": "unsubscribe"
+                },
+                "classification_type": "unsubscribe",
+                "escalation_lane": null,
+                "routing_decision": null,
+                "suppression_event": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "event_type": "reply_router.suppression_recorded",
+                  "evidence": {
+                    "classification_type": "unsubscribe",
+                    "confidence": 0.99,
+                    "matched_unsubscribe_signals": [
+                      "unsubscribe"
+                    ],
+                    "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                    "received_at": "2026-06-30T12:18:00Z"
+                  },
+                  "reason": "unsubscribe intent matched policy signal",
+                  "recipient": "dogfood@example.test"
+                },
+                "suppression_result": {
+                  "after_version": 1,
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "before_version": 0,
+                  "idempotency_key": "reply-router-dogfood-v0"
+                }
+              }
+            },
+            "skill_claim": {
+              "append_event_count": 1,
+              "classification": {
+                "confidence": 0.99,
+                "evidence": {
+                  "checksum": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+                  "content_excerpt": "unsubscribe me from future outreach please",
+                  "matched_unsubscribe_signals": [
+                    "unsubscribe"
+                  ],
+                  "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                  "received_at": "2026-06-30T12:18:00Z",
+                  "received_from": "dogfood@example.test"
+                },
+                "type": "unsubscribe"
+              },
+              "classification_type": "unsubscribe",
+              "escalation_lane": null,
+              "routing_decision": null,
+              "suppression_event": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "event_type": "reply_router.suppression_recorded",
+                "evidence": {
+                  "classification_type": "unsubscribe",
+                  "confidence": 0.99,
+                  "matched_unsubscribe_signals": [
+                    "unsubscribe"
+                  ],
+                  "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                  "received_at": "2026-06-30T12:18:00Z"
+                },
+                "reason": "unsubscribe intent matched policy signal",
+                "recipient": "dogfood@example.test"
+              },
+              "suppression_result": {
+                "after_version": 1,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 0,
+                "idempotency_key": "reply-router-dogfood-v0"
+              }
+            },
+            "status": "success",
+            "stderr": "",
+            "stdout": "{\n  \"classification_type\": \"unsubscribe\",\n  \"classification\": {\n    \"type\": \"unsubscribe\",\n    \"confidence\": 0.99,\n    \"evidence\": {\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"content_excerpt\": \"unsubscribe me from future outreach please\",\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"checksum\": \"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\n      \"received_from\": \"dogfood@example.test\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_event\": {\n    \"event_type\": \"reply_router.suppression_recorded\",\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"recipient\": \"dogfood@example.test\",\n    \"reason\": \"unsubscribe intent matched policy signal\",\n    \"evidence\": {\n      \"classification_type\": \"unsubscribe\",\n      \"confidence\": 0.99,\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_result\": {\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"idempotency_key\": \"reply-router-dogfood-v0\",\n    \"before_version\": 0,\n    \"after_version\": 1\n  },\n  \"routing_decision\": null,\n  \"escalation_lane\": null,\n  \"append_event_count\": 1\n}\n"
+          }
+        },
+        {
+          "stepId": "append_suppression",
+          "status": "succeeded",
+          "attempts": 1,
+          "startedAt": "2026-06-30T12:09:29.990Z",
+          "completedAt": "2026-06-30T12:09:29.990Z",
+          "receiptId": "sha256:2cacb8750bf51b5e8be2e4296defbcf29c76ee9778bea05717b164dc27d8522e",
+          "outputs": {
+            "data_operation_result": {
+              "data": {
+                "after_version": 1,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 0,
+                "data_source_ref": "local://reply-router-dogfood",
+                "event_digest": "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8",
+                "event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                "events": [],
+                "idempotency_key": "reply-router-dogfood-v0",
+                "operation": "append_event",
+                "projection_digest": "sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884",
+                "provider": "local-json-event-store",
+                "provider_evidence": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "provider": "local-json-event-store",
+                  "resource": "reply.suppression",
+                  "storage_class": "local-fixture",
+                  "store_id": "reply-router-dogfood"
+                },
+                "redactions": [],
+                "resource": "reply.suppression",
+                "result_digest": "sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475",
+                "rows": [],
+                "schema": "runx.data.operation_result.v1",
+                "status": "committed",
+                "stop_conditions": []
+              }
+            },
+            "raw": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}",
+            "skill_claim": {
+              "after_version": 1,
+              "aggregate_id": "recipient:dogfood@example.test",
+              "before_version": 0,
+              "data_operation_result": {
+                "data": {
+                  "after_version": 1,
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "before_version": 0,
+                  "data_source_ref": "local://reply-router-dogfood",
+                  "event_digest": "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8",
+                  "event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                  "events": [],
+                  "idempotency_key": "reply-router-dogfood-v0",
+                  "operation": "append_event",
+                  "projection_digest": "sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884",
+                  "provider": "local-json-event-store",
+                  "provider_evidence": {
+                    "aggregate_id": "recipient:dogfood@example.test",
+                    "provider": "local-json-event-store",
+                    "resource": "reply.suppression",
+                    "storage_class": "local-fixture",
+                    "store_id": "reply-router-dogfood"
+                  },
+                  "redactions": [],
+                  "resource": "reply.suppression",
+                  "result_digest": "sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475",
+                  "rows": [],
+                  "schema": "runx.data.operation_result.v1",
+                  "status": "committed",
+                  "stop_conditions": []
+                }
+              },
+              "data_source_ref": "local://reply-router-dogfood",
+              "event_digest": "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8",
+              "event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+              "events": [],
+              "idempotency_key": "reply-router-dogfood-v0",
+              "operation": "append_event",
+              "projection_digest": "sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884",
+              "provider": "local-json-event-store",
+              "provider_evidence": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "provider": "local-json-event-store",
+                "resource": "reply.suppression",
+                "storage_class": "local-fixture",
+                "store_id": "reply-router-dogfood"
+              },
+              "redactions": [],
+              "resource": "reply.suppression",
+              "result_digest": "sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475",
+              "rows": [],
+              "schema": "runx.data.operation_result.v1",
+              "status": "committed",
+              "stop_conditions": []
+            },
+            "status": "success",
+            "stderr": "",
+            "stdout": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}"
+          }
+        },
+        {
+          "stepId": "readback",
+          "status": "succeeded",
+          "attempts": 1,
+          "startedAt": "2026-06-30T12:09:29.990Z",
+          "completedAt": "2026-06-30T12:09:29.990Z",
+          "receiptId": "sha256:58ba998ba407998638802dc4b6f4e86b2abd9eb5b49b1e9545b059a72b57881e",
+          "outputs": {
+            "data_operation_result": {
+              "data": {
+                "after_version": 1,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 1,
+                "data_source_ref": "local://reply-router-dogfood",
+                "event_digest": null,
+                "event_ref": null,
+                "events": [],
+                "idempotency_key": null,
+                "operation": "read_projection",
+                "projection": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "event_count": 1,
+                  "event_digests": [
+                    "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8"
+                  ],
+                  "last_event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                  "last_event_type": "reply_router.suppression_recorded",
+                  "resource": "reply.suppression",
+                  "version": 1
+                },
+                "projection_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+                "provider": "local-json-event-store",
+                "provider_evidence": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "provider": "local-json-event-store",
+                  "resource": "reply.suppression",
+                  "storage_class": "local-fixture",
+                  "store_id": "reply-router-dogfood"
+                },
+                "redactions": [],
+                "resource": "reply.suppression",
+                "result_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+                "rows": [],
+                "schema": "runx.data.operation_result.v1",
+                "status": "read",
+                "stop_conditions": []
+              }
+            },
+            "raw": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}",
+            "skill_claim": {
+              "after_version": 1,
+              "aggregate_id": "recipient:dogfood@example.test",
+              "before_version": 1,
+              "data_operation_result": {
+                "data": {
+                  "after_version": 1,
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "before_version": 1,
+                  "data_source_ref": "local://reply-router-dogfood",
+                  "event_digest": null,
+                  "event_ref": null,
+                  "events": [],
+                  "idempotency_key": null,
+                  "operation": "read_projection",
+                  "projection": {
+                    "aggregate_id": "recipient:dogfood@example.test",
+                    "event_count": 1,
+                    "event_digests": [
+                      "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8"
+                    ],
+                    "last_event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                    "last_event_type": "reply_router.suppression_recorded",
+                    "resource": "reply.suppression",
+                    "version": 1
+                  },
+                  "projection_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+                  "provider": "local-json-event-store",
+                  "provider_evidence": {
+                    "aggregate_id": "recipient:dogfood@example.test",
+                    "provider": "local-json-event-store",
+                    "resource": "reply.suppression",
+                    "storage_class": "local-fixture",
+                    "store_id": "reply-router-dogfood"
+                  },
+                  "redactions": [],
+                  "resource": "reply.suppression",
+                  "result_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+                  "rows": [],
+                  "schema": "runx.data.operation_result.v1",
+                  "status": "read",
+                  "stop_conditions": []
+                }
+              },
+              "data_source_ref": "local://reply-router-dogfood",
+              "event_digest": null,
+              "event_ref": null,
+              "events": [],
+              "idempotency_key": null,
+              "operation": "read_projection",
+              "projection": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "event_count": 1,
+                "event_digests": [
+                  "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8"
+                ],
+                "last_event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                "last_event_type": "reply_router.suppression_recorded",
+                "resource": "reply.suppression",
+                "version": 1
+              },
+              "projection_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+              "provider": "local-json-event-store",
+              "provider_evidence": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "provider": "local-json-event-store",
+                "resource": "reply.suppression",
+                "storage_class": "local-fixture",
+                "store_id": "reply-router-dogfood"
+              },
+              "redactions": [],
+              "resource": "reply.suppression",
+              "result_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+              "rows": [],
+              "schema": "runx.data.operation_result.v1",
+              "status": "read",
+              "stop_conditions": []
+            },
+            "status": "success",
+            "stderr": "",
+            "stdout": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}"
+          }
+        }
+      ]
+    },
+    "steps": [
+      {
+        "step_id": "read_recipient",
+        "attempt": 1,
+        "skill": "tool:data.source",
+        "runner": null,
+        "fanout_group": null,
+        "output": {
+          "status": "Success",
+          "stdout": "{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}",
+          "stderr": "",
+          "exit_code": 0,
+          "duration_ms": 101,
+          "metadata": {}
+        },
+        "outputs": {
+          "data_operation_result": {
+            "data": {
+              "after_version": 0,
+              "aggregate_id": "recipient:dogfood@example.test",
+              "before_version": 0,
+              "data_source_ref": "local://reply-router-dogfood",
+              "event_digest": null,
+              "event_ref": null,
+              "events": [],
+              "idempotency_key": null,
+              "operation": "read_projection",
+              "projection": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "event_count": 0,
+                "event_digests": [],
+                "last_event_ref": null,
+                "last_event_type": null,
+                "resource": "reply.suppression",
+                "version": 0
+              },
+              "projection_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+              "provider": "local-json-event-store",
+              "provider_evidence": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "provider": "local-json-event-store",
+                "resource": "reply.suppression",
+                "storage_class": "local-fixture",
+                "store_id": "reply-router-dogfood"
+              },
+              "redactions": [],
+              "resource": "reply.suppression",
+              "result_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+              "rows": [],
+              "schema": "runx.data.operation_result.v1",
+              "status": "read",
+              "stop_conditions": []
+            }
+          },
+          "raw": "{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}",
+          "skill_claim": {
+            "after_version": 0,
+            "aggregate_id": "recipient:dogfood@example.test",
+            "before_version": 0,
+            "data_operation_result": {
+              "data": {
+                "after_version": 0,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 0,
+                "data_source_ref": "local://reply-router-dogfood",
+                "event_digest": null,
+                "event_ref": null,
+                "events": [],
+                "idempotency_key": null,
+                "operation": "read_projection",
+                "projection": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "event_count": 0,
+                  "event_digests": [],
+                  "last_event_ref": null,
+                  "last_event_type": null,
+                  "resource": "reply.suppression",
+                  "version": 0
+                },
+                "projection_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+                "provider": "local-json-event-store",
+                "provider_evidence": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "provider": "local-json-event-store",
+                  "resource": "reply.suppression",
+                  "storage_class": "local-fixture",
+                  "store_id": "reply-router-dogfood"
+                },
+                "redactions": [],
+                "resource": "reply.suppression",
+                "result_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+                "rows": [],
+                "schema": "runx.data.operation_result.v1",
+                "status": "read",
+                "stop_conditions": []
+              }
+            },
+            "data_source_ref": "local://reply-router-dogfood",
+            "event_digest": null,
+            "event_ref": null,
+            "events": [],
+            "idempotency_key": null,
+            "operation": "read_projection",
+            "projection": {
+              "aggregate_id": "recipient:dogfood@example.test",
+              "event_count": 0,
+              "event_digests": [],
+              "last_event_ref": null,
+              "last_event_type": null,
+              "resource": "reply.suppression",
+              "version": 0
+            },
+            "projection_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+            "provider": "local-json-event-store",
+            "provider_evidence": {
+              "aggregate_id": "recipient:dogfood@example.test",
+              "provider": "local-json-event-store",
+              "resource": "reply.suppression",
+              "storage_class": "local-fixture",
+              "store_id": "reply-router-dogfood"
+            },
+            "redactions": [],
+            "resource": "reply.suppression",
+            "result_digest": "sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a",
+            "rows": [],
+            "schema": "runx.data.operation_result.v1",
+            "status": "read",
+            "stop_conditions": []
+          },
+          "status": "success",
+          "stderr": "",
+          "stdout": "{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":0,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":0,\"event_digests\":[],\"last_event_ref\":null,\"last_event_type\":null,\"resource\":\"reply.suppression\",\"version\":0},\"projection_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:f1643337cd406f44ea7413fafc97461e9f1c2ce3437a0f78ad79d214657c9f4a\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}"
+        },
+        "receipt": {
+          "schema": "runx.receipt.v1",
+          "id": "sha256:f9b8ddf5d6b7db8fe7685cc73e2fa2bb82f734dd6e4b5c5a765e0484f626a60e",
+          "created_at": "2026-06-30T12:09:29.990Z",
+          "canonicalization": "runx.receipt.c14n.v1",
+          "issuer": {
+            "type": "hosted",
+            "kid": "runx-demo-key",
+            "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f"
+          },
+          "signature": {
+            "alg": "Ed25519",
+            "value": "base64:4ErHjPMFQ7_vqHLI6zqiTtgY31PjOQs4huFNSDvxwu6pJpaJgJErZjOiDW3cHoaUNOSMKj-ca-1zlPvktqAICQ"
+          },
+          "digest": "sha256:c3d3fd5fbdf4397e6f29399c3638b6c6bda27321350fac277475544f0d0f44a3",
+          "idempotency": {
+            "intent_key": "sha256:reply-router-read_recipient-intent",
+            "trigger_fingerprint": "sha256:reply-router-read_recipient-trigger",
+            "content_hash": "sha256:reply-router-read_recipient-content"
+          },
+          "subject": {
+            "kind": "skill",
+            "ref": {
+              "type": "harness",
+              "uri": "hrn_reply-router_read_recipient"
+            },
+            "commitments": []
+          },
+          "authority": {
+            "actor_ref": {
+              "type": "principal",
+              "uri": "runx:principal:local_runtime"
+            },
+            "grant_refs": [],
+            "scope_refs": [],
+            "authority_proof_refs": [],
+            "attenuation": {
+              "parent_authority_ref": null,
+              "subset_proof": null
+            },
+            "terms": [],
+            "enforcement": {
+              "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+              "redaction_refs": [],
+              "setup_refs": [],
+              "teardown_refs": []
+            }
+          },
+          "signals": [],
+          "decisions": [
+            {
+              "decision_id": "dec_read_recipient",
+              "choice": "open",
+              "inputs": {
+                "signal_refs": [],
+                "target_ref": null,
+                "opportunity_refs": [],
+                "selection_ref": null
+              },
+              "proposed_intent": {
+                "purpose": "Open runtime node read_recipient",
+                "legitimacy": "Local graph execution requested this node",
+                "success_criteria": [],
+                "constraints": [],
+                "derived_from": []
+              },
+              "selected_act_id": "act_read_recipient",
+              "selected_harness_ref": null,
+              "justification": {
+                "summary": "runtime graph planner selected this node",
+                "evidence_refs": []
+              },
+              "closure": null,
+              "artifact_refs": []
+            }
+          ],
+          "acts": [
+            {
+              "id": "act_read_recipient",
+              "form": "observation",
+              "intent": {
+                "purpose": "Run graph step read_recipient",
+                "legitimacy": "Runtime graph execution was admitted by the local harness",
+                "success_criteria": [
+                  {
+                    "criterion_id": "process_exit",
+                    "statement": "cli-tool exits successfully",
+                    "required": true
+                  }
+                ],
+                "constraints": [],
+                "derived_from": []
+              },
+              "summary": "Executed graph step read_recipient",
+              "criterion_bindings": [
+                {
+                  "criterion_id": "process_exit",
+                  "status": "verified",
+                  "evidence_refs": [],
+                  "verification_refs": [],
+                  "summary": "cli-tool exited successfully"
+                }
+              ],
+              "source_refs": [],
+              "target_refs": [],
+              "artifact_refs": [],
+              "closure": {
+                "disposition": "closed",
+                "reason_code": "process_exit",
+                "summary": "cli-tool exited successfully",
+                "closed_at": "2026-06-30T12:09:29.990Z"
+              }
+            }
+          ],
+          "seal": {
+            "disposition": "closed",
+            "reason_code": "process_closed",
+            "summary": "step read_recipient completed",
+            "closed_at": "2026-06-30T12:09:29.990Z",
+            "last_observed_at": "2026-06-30T12:09:29.990Z",
+            "criteria": [
+              {
+                "criterion_id": "process_exit",
+                "status": "verified",
+                "evidence_refs": [],
+                "verification_refs": [],
+                "summary": "cli-tool exited successfully"
+              }
+            ]
+          },
+          "lineage": {
+            "children": [],
+            "sync": []
+          }
+        },
+        "admission_witness": {
+          "stepId": "read_recipient",
+          "receiptId": "sha256:f9b8ddf5d6b7db8fe7685cc73e2fa2bb82f734dd6e4b5c5a765e0484f626a60e"
+        }
+      },
+      {
+        "step_id": "classify",
+        "attempt": 1,
+        "skill": "classify",
+        "runner": "classify",
+        "fanout_group": null,
+        "output": {
+          "status": "Success",
+          "stdout": "{\n  \"classification_type\": \"unsubscribe\",\n  \"classification\": {\n    \"type\": \"unsubscribe\",\n    \"confidence\": 0.99,\n    \"evidence\": {\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"content_excerpt\": \"unsubscribe me from future outreach please\",\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"checksum\": \"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\n      \"received_from\": \"dogfood@example.test\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_event\": {\n    \"event_type\": \"reply_router.suppression_recorded\",\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"recipient\": \"dogfood@example.test\",\n    \"reason\": \"unsubscribe intent matched policy signal\",\n    \"evidence\": {\n      \"classification_type\": \"unsubscribe\",\n      \"confidence\": 0.99,\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_result\": {\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"idempotency_key\": \"reply-router-dogfood-v0\",\n    \"before_version\": 0,\n    \"after_version\": 1\n  },\n  \"routing_decision\": null,\n  \"escalation_lane\": null,\n  \"append_event_count\": 1\n}\n",
+          "stderr": "",
+          "exit_code": 0,
+          "duration_ms": 94,
+          "metadata": {}
+        },
+        "outputs": {
+          "raw": "{\n  \"classification_type\": \"unsubscribe\",\n  \"classification\": {\n    \"type\": \"unsubscribe\",\n    \"confidence\": 0.99,\n    \"evidence\": {\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"content_excerpt\": \"unsubscribe me from future outreach please\",\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"checksum\": \"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\n      \"received_from\": \"dogfood@example.test\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_event\": {\n    \"event_type\": \"reply_router.suppression_recorded\",\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"recipient\": \"dogfood@example.test\",\n    \"reason\": \"unsubscribe intent matched policy signal\",\n    \"evidence\": {\n      \"classification_type\": \"unsubscribe\",\n      \"confidence\": 0.99,\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_result\": {\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"idempotency_key\": \"reply-router-dogfood-v0\",\n    \"before_version\": 0,\n    \"after_version\": 1\n  },\n  \"routing_decision\": null,\n  \"escalation_lane\": null,\n  \"append_event_count\": 1\n}\n",
+          "reply_router_packet": {
+            "data": {
+              "append_event_count": 1,
+              "classification": {
+                "confidence": 0.99,
+                "evidence": {
+                  "checksum": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+                  "content_excerpt": "unsubscribe me from future outreach please",
+                  "matched_unsubscribe_signals": [
+                    "unsubscribe"
+                  ],
+                  "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                  "received_at": "2026-06-30T12:18:00Z",
+                  "received_from": "dogfood@example.test"
+                },
+                "type": "unsubscribe"
+              },
+              "classification_type": "unsubscribe",
+              "escalation_lane": null,
+              "routing_decision": null,
+              "suppression_event": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "event_type": "reply_router.suppression_recorded",
+                "evidence": {
+                  "classification_type": "unsubscribe",
+                  "confidence": 0.99,
+                  "matched_unsubscribe_signals": [
+                    "unsubscribe"
+                  ],
+                  "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                  "received_at": "2026-06-30T12:18:00Z"
+                },
+                "reason": "unsubscribe intent matched policy signal",
+                "recipient": "dogfood@example.test"
+              },
+              "suppression_result": {
+                "after_version": 1,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 0,
+                "idempotency_key": "reply-router-dogfood-v0"
+              }
+            }
+          },
+          "skill_claim": {
+            "append_event_count": 1,
+            "classification": {
+              "confidence": 0.99,
+              "evidence": {
+                "checksum": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+                "content_excerpt": "unsubscribe me from future outreach please",
+                "matched_unsubscribe_signals": [
+                  "unsubscribe"
+                ],
+                "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                "received_at": "2026-06-30T12:18:00Z",
+                "received_from": "dogfood@example.test"
+              },
+              "type": "unsubscribe"
+            },
+            "classification_type": "unsubscribe",
+            "escalation_lane": null,
+            "routing_decision": null,
+            "suppression_event": {
+              "aggregate_id": "recipient:dogfood@example.test",
+              "event_type": "reply_router.suppression_recorded",
+              "evidence": {
+                "classification_type": "unsubscribe",
+                "confidence": 0.99,
+                "matched_unsubscribe_signals": [
+                  "unsubscribe"
+                ],
+                "original_receipt_id": "runx:receipt:sha256:dogfood-original-send",
+                "received_at": "2026-06-30T12:18:00Z"
+              },
+              "reason": "unsubscribe intent matched policy signal",
+              "recipient": "dogfood@example.test"
+            },
+            "suppression_result": {
+              "after_version": 1,
+              "aggregate_id": "recipient:dogfood@example.test",
+              "before_version": 0,
+              "idempotency_key": "reply-router-dogfood-v0"
+            }
+          },
+          "status": "success",
+          "stderr": "",
+          "stdout": "{\n  \"classification_type\": \"unsubscribe\",\n  \"classification\": {\n    \"type\": \"unsubscribe\",\n    \"confidence\": 0.99,\n    \"evidence\": {\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"content_excerpt\": \"unsubscribe me from future outreach please\",\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"checksum\": \"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\n      \"received_from\": \"dogfood@example.test\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_event\": {\n    \"event_type\": \"reply_router.suppression_recorded\",\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"recipient\": \"dogfood@example.test\",\n    \"reason\": \"unsubscribe intent matched policy signal\",\n    \"evidence\": {\n      \"classification_type\": \"unsubscribe\",\n      \"confidence\": 0.99,\n      \"matched_unsubscribe_signals\": [\n        \"unsubscribe\"\n      ],\n      \"original_receipt_id\": \"runx:receipt:sha256:dogfood-original-send\",\n      \"received_at\": \"2026-06-30T12:18:00Z\"\n    }\n  },\n  \"suppression_result\": {\n    \"aggregate_id\": \"recipient:dogfood@example.test\",\n    \"idempotency_key\": \"reply-router-dogfood-v0\",\n    \"before_version\": 0,\n    \"after_version\": 1\n  },\n  \"routing_decision\": null,\n  \"escalation_lane\": null,\n  \"append_event_count\": 1\n}\n"
+        },
+        "receipt": {
+          "schema": "runx.receipt.v1",
+          "id": "sha256:f559fefe61786034c48a0c0b22cd58a9655c4800599e08c939a246acef2a2447",
+          "created_at": "2026-06-30T12:09:29.990Z",
+          "canonicalization": "runx.receipt.c14n.v1",
+          "issuer": {
+            "type": "hosted",
+            "kid": "runx-demo-key",
+            "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f"
+          },
+          "signature": {
+            "alg": "Ed25519",
+            "value": "base64:u46CisEYOoCAgEBRTZeQeXVZO7BYg6VqgWSInpbYi0qDuTbQ35TKtc0ekx0b424UMndAu7_4cAn9x4W74PEOBw"
+          },
+          "digest": "sha256:11f0a0b17f61044f73a240ecac4a5d22bc8c462bae07235bdaeac123196e8667",
+          "idempotency": {
+            "intent_key": "sha256:reply-router-classify-intent",
+            "trigger_fingerprint": "sha256:reply-router-classify-trigger",
+            "content_hash": "sha256:reply-router-classify-content"
+          },
+          "subject": {
+            "kind": "skill",
+            "ref": {
+              "type": "harness",
+              "uri": "hrn_reply-router_classify"
+            },
+            "commitments": []
+          },
+          "authority": {
+            "actor_ref": {
+              "type": "principal",
+              "uri": "runx:principal:local_runtime"
+            },
+            "grant_refs": [],
+            "scope_refs": [],
+            "authority_proof_refs": [],
+            "attenuation": {
+              "parent_authority_ref": null,
+              "subset_proof": null
+            },
+            "terms": [],
+            "enforcement": {
+              "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+              "redaction_refs": [],
+              "setup_refs": [],
+              "teardown_refs": []
+            }
+          },
+          "signals": [],
+          "decisions": [
+            {
+              "decision_id": "dec_classify",
+              "choice": "open",
+              "inputs": {
+                "signal_refs": [],
+                "target_ref": null,
+                "opportunity_refs": [],
+                "selection_ref": null
+              },
+              "proposed_intent": {
+                "purpose": "Open runtime node classify",
+                "legitimacy": "Local graph execution requested this node",
+                "success_criteria": [],
+                "constraints": [],
+                "derived_from": []
+              },
+              "selected_act_id": "act_classify",
+              "selected_harness_ref": null,
+              "justification": {
+                "summary": "runtime graph planner selected this node",
+                "evidence_refs": []
+              },
+              "closure": null,
+              "artifact_refs": []
+            }
+          ],
+          "acts": [
+            {
+              "id": "act_classify",
+              "form": "observation",
+              "intent": {
+                "purpose": "Run graph step classify",
+                "legitimacy": "Runtime graph execution was admitted by the local harness",
+                "success_criteria": [
+                  {
+                    "criterion_id": "process_exit",
+                    "statement": "cli-tool exits successfully",
+                    "required": true
+                  }
+                ],
+                "constraints": [],
+                "derived_from": []
+              },
+              "summary": "Executed graph step classify",
+              "criterion_bindings": [
+                {
+                  "criterion_id": "process_exit",
+                  "status": "verified",
+                  "evidence_refs": [],
+                  "verification_refs": [],
+                  "summary": "cli-tool exited successfully"
+                }
+              ],
+              "source_refs": [],
+              "target_refs": [],
+              "artifact_refs": [],
+              "closure": {
+                "disposition": "closed",
+                "reason_code": "process_exit",
+                "summary": "cli-tool exited successfully",
+                "closed_at": "2026-06-30T12:09:29.990Z"
+              }
+            }
+          ],
+          "seal": {
+            "disposition": "closed",
+            "reason_code": "process_closed",
+            "summary": "step classify completed",
+            "closed_at": "2026-06-30T12:09:29.990Z",
+            "last_observed_at": "2026-06-30T12:09:29.990Z",
+            "criteria": [
+              {
+                "criterion_id": "process_exit",
+                "status": "verified",
+                "evidence_refs": [],
+                "verification_refs": [],
+                "summary": "cli-tool exited successfully"
+              }
+            ]
+          },
+          "lineage": {
+            "children": [],
+            "sync": []
+          }
+        },
+        "admission_witness": {
+          "stepId": "classify",
+          "receiptId": "sha256:f559fefe61786034c48a0c0b22cd58a9655c4800599e08c939a246acef2a2447"
+        }
+      },
+      {
+        "step_id": "append_suppression",
+        "attempt": 1,
+        "skill": "tool:data.source",
+        "runner": null,
+        "fanout_group": null,
+        "output": {
+          "status": "Success",
+          "stdout": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}",
+          "stderr": "",
+          "exit_code": 0,
+          "duration_ms": 130,
+          "metadata": {}
+        },
+        "outputs": {
+          "data_operation_result": {
+            "data": {
+              "after_version": 1,
+              "aggregate_id": "recipient:dogfood@example.test",
+              "before_version": 0,
+              "data_source_ref": "local://reply-router-dogfood",
+              "event_digest": "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8",
+              "event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+              "events": [],
+              "idempotency_key": "reply-router-dogfood-v0",
+              "operation": "append_event",
+              "projection_digest": "sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884",
+              "provider": "local-json-event-store",
+              "provider_evidence": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "provider": "local-json-event-store",
+                "resource": "reply.suppression",
+                "storage_class": "local-fixture",
+                "store_id": "reply-router-dogfood"
+              },
+              "redactions": [],
+              "resource": "reply.suppression",
+              "result_digest": "sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475",
+              "rows": [],
+              "schema": "runx.data.operation_result.v1",
+              "status": "committed",
+              "stop_conditions": []
+            }
+          },
+          "raw": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}",
+          "skill_claim": {
+            "after_version": 1,
+            "aggregate_id": "recipient:dogfood@example.test",
+            "before_version": 0,
+            "data_operation_result": {
+              "data": {
+                "after_version": 1,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 0,
+                "data_source_ref": "local://reply-router-dogfood",
+                "event_digest": "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8",
+                "event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                "events": [],
+                "idempotency_key": "reply-router-dogfood-v0",
+                "operation": "append_event",
+                "projection_digest": "sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884",
+                "provider": "local-json-event-store",
+                "provider_evidence": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "provider": "local-json-event-store",
+                  "resource": "reply.suppression",
+                  "storage_class": "local-fixture",
+                  "store_id": "reply-router-dogfood"
+                },
+                "redactions": [],
+                "resource": "reply.suppression",
+                "result_digest": "sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475",
+                "rows": [],
+                "schema": "runx.data.operation_result.v1",
+                "status": "committed",
+                "stop_conditions": []
+              }
+            },
+            "data_source_ref": "local://reply-router-dogfood",
+            "event_digest": "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8",
+            "event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+            "events": [],
+            "idempotency_key": "reply-router-dogfood-v0",
+            "operation": "append_event",
+            "projection_digest": "sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884",
+            "provider": "local-json-event-store",
+            "provider_evidence": {
+              "aggregate_id": "recipient:dogfood@example.test",
+              "provider": "local-json-event-store",
+              "resource": "reply.suppression",
+              "storage_class": "local-fixture",
+              "store_id": "reply-router-dogfood"
+            },
+            "redactions": [],
+            "resource": "reply.suppression",
+            "result_digest": "sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475",
+            "rows": [],
+            "schema": "runx.data.operation_result.v1",
+            "status": "committed",
+            "stop_conditions": []
+          },
+          "status": "success",
+          "stderr": "",
+          "stdout": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":0,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\",\"event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"events\":[],\"idempotency_key\":\"reply-router-dogfood-v0\",\"operation\":\"append_event\",\"projection_digest\":\"sha256:473956c6cafba5c1f4c11f0baaac171e11c8e955d02eebb3ea83f5b0a1bd4884\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:25dc3ca46fb827619ac89b608b6d2705c95009fa9bf150ddc80231d703297475\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"committed\",\"stop_conditions\":[]}"
+        },
+        "receipt": {
+          "schema": "runx.receipt.v1",
+          "id": "sha256:2cacb8750bf51b5e8be2e4296defbcf29c76ee9778bea05717b164dc27d8522e",
+          "created_at": "2026-06-30T12:09:29.990Z",
+          "canonicalization": "runx.receipt.c14n.v1",
+          "issuer": {
+            "type": "hosted",
+            "kid": "runx-demo-key",
+            "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f"
+          },
+          "signature": {
+            "alg": "Ed25519",
+            "value": "base64:8aqJLl6TS-Pg_KpxoGEiWA-FMjeAaH08_iJ33MyHT8vnrlh1O6f-IF811OlWTux-vTZiQQk2G2F2Gx95a78ZDg"
+          },
+          "digest": "sha256:a046a9bad55cda7acfb45618093a02ef3e3ba0c47d4cc803543cc9c68ca90a58",
+          "idempotency": {
+            "intent_key": "sha256:reply-router-append_suppression-intent",
+            "trigger_fingerprint": "sha256:reply-router-append_suppression-trigger",
+            "content_hash": "sha256:reply-router-append_suppression-content"
+          },
+          "subject": {
+            "kind": "skill",
+            "ref": {
+              "type": "harness",
+              "uri": "hrn_reply-router_append_suppression"
+            },
+            "commitments": []
+          },
+          "authority": {
+            "actor_ref": {
+              "type": "principal",
+              "uri": "runx:principal:local_runtime"
+            },
+            "grant_refs": [],
+            "scope_refs": [],
+            "authority_proof_refs": [],
+            "attenuation": {
+              "parent_authority_ref": null,
+              "subset_proof": null
+            },
+            "terms": [],
+            "enforcement": {
+              "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+              "redaction_refs": [],
+              "setup_refs": [],
+              "teardown_refs": []
+            }
+          },
+          "signals": [],
+          "decisions": [
+            {
+              "decision_id": "dec_append_suppression",
+              "choice": "open",
+              "inputs": {
+                "signal_refs": [],
+                "target_ref": null,
+                "opportunity_refs": [],
+                "selection_ref": null
+              },
+              "proposed_intent": {
+                "purpose": "Open runtime node append_suppression",
+                "legitimacy": "Local graph execution requested this node",
+                "success_criteria": [],
+                "constraints": [],
+                "derived_from": []
+              },
+              "selected_act_id": "act_append_suppression",
+              "selected_harness_ref": null,
+              "justification": {
+                "summary": "runtime graph planner selected this node",
+                "evidence_refs": []
+              },
+              "closure": null,
+              "artifact_refs": []
+            }
+          ],
+          "acts": [
+            {
+              "id": "act_append_suppression",
+              "form": "observation",
+              "intent": {
+                "purpose": "Run graph step append_suppression",
+                "legitimacy": "Runtime graph execution was admitted by the local harness",
+                "success_criteria": [
+                  {
+                    "criterion_id": "process_exit",
+                    "statement": "cli-tool exits successfully",
+                    "required": true
+                  }
+                ],
+                "constraints": [],
+                "derived_from": []
+              },
+              "summary": "Executed graph step append_suppression",
+              "criterion_bindings": [
+                {
+                  "criterion_id": "process_exit",
+                  "status": "verified",
+                  "evidence_refs": [],
+                  "verification_refs": [],
+                  "summary": "cli-tool exited successfully"
+                }
+              ],
+              "source_refs": [],
+              "target_refs": [],
+              "artifact_refs": [],
+              "closure": {
+                "disposition": "closed",
+                "reason_code": "process_exit",
+                "summary": "cli-tool exited successfully",
+                "closed_at": "2026-06-30T12:09:29.990Z"
+              }
+            }
+          ],
+          "seal": {
+            "disposition": "closed",
+            "reason_code": "process_closed",
+            "summary": "step append_suppression completed",
+            "closed_at": "2026-06-30T12:09:29.990Z",
+            "last_observed_at": "2026-06-30T12:09:29.990Z",
+            "criteria": [
+              {
+                "criterion_id": "process_exit",
+                "status": "verified",
+                "evidence_refs": [],
+                "verification_refs": [],
+                "summary": "cli-tool exited successfully"
+              }
+            ]
+          },
+          "lineage": {
+            "children": [],
+            "sync": []
+          }
+        },
+        "admission_witness": {
+          "stepId": "append_suppression",
+          "receiptId": "sha256:2cacb8750bf51b5e8be2e4296defbcf29c76ee9778bea05717b164dc27d8522e"
+        }
+      },
+      {
+        "step_id": "readback",
+        "attempt": 1,
+        "skill": "tool:data.source",
+        "runner": null,
+        "fanout_group": null,
+        "output": {
+          "status": "Success",
+          "stdout": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}",
+          "stderr": "",
+          "exit_code": 0,
+          "duration_ms": 105,
+          "metadata": {}
+        },
+        "outputs": {
+          "data_operation_result": {
+            "data": {
+              "after_version": 1,
+              "aggregate_id": "recipient:dogfood@example.test",
+              "before_version": 1,
+              "data_source_ref": "local://reply-router-dogfood",
+              "event_digest": null,
+              "event_ref": null,
+              "events": [],
+              "idempotency_key": null,
+              "operation": "read_projection",
+              "projection": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "event_count": 1,
+                "event_digests": [
+                  "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8"
+                ],
+                "last_event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                "last_event_type": "reply_router.suppression_recorded",
+                "resource": "reply.suppression",
+                "version": 1
+              },
+              "projection_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+              "provider": "local-json-event-store",
+              "provider_evidence": {
+                "aggregate_id": "recipient:dogfood@example.test",
+                "provider": "local-json-event-store",
+                "resource": "reply.suppression",
+                "storage_class": "local-fixture",
+                "store_id": "reply-router-dogfood"
+              },
+              "redactions": [],
+              "resource": "reply.suppression",
+              "result_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+              "rows": [],
+              "schema": "runx.data.operation_result.v1",
+              "status": "read",
+              "stop_conditions": []
+            }
+          },
+          "raw": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}",
+          "skill_claim": {
+            "after_version": 1,
+            "aggregate_id": "recipient:dogfood@example.test",
+            "before_version": 1,
+            "data_operation_result": {
+              "data": {
+                "after_version": 1,
+                "aggregate_id": "recipient:dogfood@example.test",
+                "before_version": 1,
+                "data_source_ref": "local://reply-router-dogfood",
+                "event_digest": null,
+                "event_ref": null,
+                "events": [],
+                "idempotency_key": null,
+                "operation": "read_projection",
+                "projection": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "event_count": 1,
+                  "event_digests": [
+                    "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8"
+                  ],
+                  "last_event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+                  "last_event_type": "reply_router.suppression_recorded",
+                  "resource": "reply.suppression",
+                  "version": 1
+                },
+                "projection_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+                "provider": "local-json-event-store",
+                "provider_evidence": {
+                  "aggregate_id": "recipient:dogfood@example.test",
+                  "provider": "local-json-event-store",
+                  "resource": "reply.suppression",
+                  "storage_class": "local-fixture",
+                  "store_id": "reply-router-dogfood"
+                },
+                "redactions": [],
+                "resource": "reply.suppression",
+                "result_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+                "rows": [],
+                "schema": "runx.data.operation_result.v1",
+                "status": "read",
+                "stop_conditions": []
+              }
+            },
+            "data_source_ref": "local://reply-router-dogfood",
+            "event_digest": null,
+            "event_ref": null,
+            "events": [],
+            "idempotency_key": null,
+            "operation": "read_projection",
+            "projection": {
+              "aggregate_id": "recipient:dogfood@example.test",
+              "event_count": 1,
+              "event_digests": [
+                "sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8"
+              ],
+              "last_event_ref": "reply.suppression:recipient:dogfood@example.test:1",
+              "last_event_type": "reply_router.suppression_recorded",
+              "resource": "reply.suppression",
+              "version": 1
+            },
+            "projection_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+            "provider": "local-json-event-store",
+            "provider_evidence": {
+              "aggregate_id": "recipient:dogfood@example.test",
+              "provider": "local-json-event-store",
+              "resource": "reply.suppression",
+              "storage_class": "local-fixture",
+              "store_id": "reply-router-dogfood"
+            },
+            "redactions": [],
+            "resource": "reply.suppression",
+            "result_digest": "sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3",
+            "rows": [],
+            "schema": "runx.data.operation_result.v1",
+            "status": "read",
+            "stop_conditions": []
+          },
+          "status": "success",
+          "stderr": "",
+          "stdout": "{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_operation_result\":{\"data\":{\"after_version\":1,\"aggregate_id\":\"recipient:dogfood@example.test\",\"before_version\":1,\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}},\"data_source_ref\":\"local://reply-router-dogfood\",\"event_digest\":null,\"event_ref\":null,\"events\":[],\"idempotency_key\":null,\"operation\":\"read_projection\",\"projection\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"event_count\":1,\"event_digests\":[\"sha256:489a08723a224260e40e8e9ea5b9823d1c717e4188ff3200d894670ecbd8cfc8\"],\"last_event_ref\":\"reply.suppression:recipient:dogfood@example.test:1\",\"last_event_type\":\"reply_router.suppression_recorded\",\"resource\":\"reply.suppression\",\"version\":1},\"projection_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"provider\":\"local-json-event-store\",\"provider_evidence\":{\"aggregate_id\":\"recipient:dogfood@example.test\",\"provider\":\"local-json-event-store\",\"resource\":\"reply.suppression\",\"storage_class\":\"local-fixture\",\"store_id\":\"reply-router-dogfood\"},\"redactions\":[],\"resource\":\"reply.suppression\",\"result_digest\":\"sha256:035f9a1535ce9d73472fd3183941164114bee8fc2deb6f01d3580cbec3b3d0d3\",\"rows\":[],\"schema\":\"runx.data.operation_result.v1\",\"status\":\"read\",\"stop_conditions\":[]}"
+        },
+        "receipt": {
+          "schema": "runx.receipt.v1",
+          "id": "sha256:58ba998ba407998638802dc4b6f4e86b2abd9eb5b49b1e9545b059a72b57881e",
+          "created_at": "2026-06-30T12:09:29.990Z",
+          "canonicalization": "runx.receipt.c14n.v1",
+          "issuer": {
+            "type": "hosted",
+            "kid": "runx-demo-key",
+            "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f"
+          },
+          "signature": {
+            "alg": "Ed25519",
+            "value": "base64:uZE-3Eg6y2lct-Ymhwpw0kCmL1oGuARh925_5qGdN9wvGTsonXyAHOXdvithSlr9ZMXvjMcZuEYsNSlClZTHBQ"
+          },
+          "digest": "sha256:444e93c20a8031ce0a4ceeab80c702079d58c00aa2ed2606055594c6a74b527f",
+          "idempotency": {
+            "intent_key": "sha256:reply-router-readback-intent",
+            "trigger_fingerprint": "sha256:reply-router-readback-trigger",
+            "content_hash": "sha256:reply-router-readback-content"
+          },
+          "subject": {
+            "kind": "skill",
+            "ref": {
+              "type": "harness",
+              "uri": "hrn_reply-router_readback"
+            },
+            "commitments": []
+          },
+          "authority": {
+            "actor_ref": {
+              "type": "principal",
+              "uri": "runx:principal:local_runtime"
+            },
+            "grant_refs": [],
+            "scope_refs": [],
+            "authority_proof_refs": [],
+            "attenuation": {
+              "parent_authority_ref": null,
+              "subset_proof": null
+            },
+            "terms": [],
+            "enforcement": {
+              "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+              "redaction_refs": [],
+              "setup_refs": [],
+              "teardown_refs": []
+            }
+          },
+          "signals": [],
+          "decisions": [
+            {
+              "decision_id": "dec_readback",
+              "choice": "open",
+              "inputs": {
+                "signal_refs": [],
+                "target_ref": null,
+                "opportunity_refs": [],
+                "selection_ref": null
+              },
+              "proposed_intent": {
+                "purpose": "Open runtime node readback",
+                "legitimacy": "Local graph execution requested this node",
+                "success_criteria": [],
+                "constraints": [],
+                "derived_from": []
+              },
+              "selected_act_id": "act_readback",
+              "selected_harness_ref": null,
+              "justification": {
+                "summary": "runtime graph planner selected this node",
+                "evidence_refs": []
+              },
+              "closure": null,
+              "artifact_refs": []
+            }
+          ],
+          "acts": [
+            {
+              "id": "act_readback",
+              "form": "observation",
+              "intent": {
+                "purpose": "Run graph step readback",
+                "legitimacy": "Runtime graph execution was admitted by the local harness",
+                "success_criteria": [
+                  {
+                    "criterion_id": "process_exit",
+                    "statement": "cli-tool exits successfully",
+                    "required": true
+                  }
+                ],
+                "constraints": [],
+                "derived_from": []
+              },
+              "summary": "Executed graph step readback",
+              "criterion_bindings": [
+                {
+                  "criterion_id": "process_exit",
+                  "status": "verified",
+                  "evidence_refs": [],
+                  "verification_refs": [],
+                  "summary": "cli-tool exited successfully"
+                }
+              ],
+              "source_refs": [],
+              "target_refs": [],
+              "artifact_refs": [],
+              "closure": {
+                "disposition": "closed",
+                "reason_code": "process_exit",
+                "summary": "cli-tool exited successfully",
+                "closed_at": "2026-06-30T12:09:29.990Z"
+              }
+            }
+          ],
+          "seal": {
+            "disposition": "closed",
+            "reason_code": "process_closed",
+            "summary": "step readback completed",
+            "closed_at": "2026-06-30T12:09:29.990Z",
+            "last_observed_at": "2026-06-30T12:09:29.990Z",
+            "criteria": [
+              {
+                "criterion_id": "process_exit",
+                "status": "verified",
+                "evidence_refs": [],
+                "verification_refs": [],
+                "summary": "cli-tool exited successfully"
+              }
+            ]
+          },
+          "lineage": {
+            "children": [],
+            "sync": []
+          }
+        },
+        "admission_witness": {
+          "stepId": "readback",
+          "receiptId": "sha256:58ba998ba407998638802dc4b6f4e86b2abd9eb5b49b1e9545b059a72b57881e"
+        }
+      }
+    ],
+    "sync_points": [],
+    "journal": {
+      "entries": [
+        {
+          "event": {
+            "type": "step_started",
+            "message": "step read_recipient started",
+            "data": {
+              "act_id": "act_read_recipient",
+              "kind": "act_started",
+              "step_id": "read_recipient"
+            }
+          }
+        },
+        {
+          "event": {
+            "type": "step_completed",
+            "message": "step read_recipient completed",
+            "data": {
+              "act_id": "act_read_recipient",
+              "disposition": "closed",
+              "kind": "act_closed",
+              "step_id": "read_recipient"
+            }
+          }
+        },
+        {
+          "event": {
+            "type": "step_started",
+            "message": "step classify started",
+            "data": {
+              "act_id": "act_classify",
+              "kind": "act_started",
+              "step_id": "classify"
+            }
+          }
+        },
+        {
+          "event": {
+            "type": "step_completed",
+            "message": "step classify completed",
+            "data": {
+              "act_id": "act_classify",
+              "disposition": "closed",
+              "kind": "act_closed",
+              "step_id": "classify"
+            }
+          }
+        },
+        {
+          "event": {
+            "type": "step_started",
+            "message": "step append_suppression started",
+            "data": {
+              "act_id": "act_append_suppression",
+              "kind": "act_started",
+              "step_id": "append_suppression"
+            }
+          }
+        },
+        {
+          "event": {
+            "type": "step_completed",
+            "message": "step append_suppression completed",
+            "data": {
+              "act_id": "act_append_suppression",
+              "disposition": "closed",
+              "kind": "act_closed",
+              "step_id": "append_suppression"
+            }
+          }
+        },
+        {
+          "event": {
+            "type": "step_started",
+            "message": "step readback started",
+            "data": {
+              "act_id": "act_readback",
+              "kind": "act_started",
+              "step_id": "readback"
+            }
+          }
+        },
+        {
+          "event": {
+            "type": "step_completed",
+            "message": "step readback completed",
+            "data": {
+              "act_id": "act_readback",
+              "disposition": "closed",
+              "kind": "act_closed",
+              "step_id": "readback"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
