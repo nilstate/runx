@@ -231,7 +231,7 @@
     {
       "type": "artifact_urls",
       "public_url": "https://runx.ai/x/vidshidden/outreach-sequencer@sha-8248a4585211",
-      "pr_url": "https://github.com/runxhq/runx/pull/PLACEHOLDER",
+      "pr_url": "https://github.com/runxhq/runx/pull/193",
       "source_url": "https://github.com/VidsHidden/runx/tree/outreach-sequencer/skills/outreach-sequencer",
       "x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/X.yaml",
       "skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/SKILL.md",
