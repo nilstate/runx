@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-06-30T00:00:00Z",
+  "runx_version": "runx-cli 0.6.14",
+  "command": "runx harness ./skills/escalation-judge --json",
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "case_names": [
+    "escalate-critical-churn-risk",
+    "stop-no-policy-threshold",
+    "refuse-missing-policy"
+  ],
+  "receipt_ids": [
+    "sha256:7ecf19582e08f907c8b1aeab49df09e6239c62d07dcdba29fb6788c43bdde77e",
+    "sha256:f76f94d071685e24ce3be7b77952a718b824d544bf2928a47745033a422e4a84",
+    "sha256:b407147429bd887c828e3bd18f9bafac3fd31a213e9bb6e634f0b1d09c368dec"
+  ],
+  "scope": "Local pre-publish harness only; hosted harness and post-publish dogfood receipt are intentionally not claimed here."
+}
+

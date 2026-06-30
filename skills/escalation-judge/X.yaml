@@ -1,0 +1,143 @@
+skill: escalation-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: escalate-critical-churn-risk
+      inputs:
+        data_source_ref: local://escalation-judge/harness
+        aggregate_id: thread-critical-001
+        expected_version: 0
+        idempotency_key: thread-critical-001:escalate:v1
+        triage_packet:
+          classification: account_access
+          severity: critical
+          confidence: 0.96
+        thread_body: Enterprise customer reports a production lockout and says renewal is at risk today.
+        policy_rules:
+          severity_thresholds:
+            priority_support: high
+            executive_review: critical
+          churn_risk_signals:
+            - renewal is at risk
+          escalation_lanes:
+            executive_review: slack-notify
+            priority_support: slack-notify
+            legal_review: send-as
+      expect:
+        status: sealed
+    - name: stop-no-policy-threshold
+      inputs:
+        data_source_ref: local://escalation-judge/harness
+        aggregate_id: thread-routine-002
+        expected_version: 0
+        idempotency_key: thread-routine-002:no-change:v1
+        triage_packet:
+          classification: how_to
+          severity: low
+          confidence: 0.92
+        thread_body: Customer asks where to find the setup guide.
+        policy_rules:
+          severity_thresholds:
+            priority_support: high
+            executive_review: critical
+          churn_risk_signals:
+            - renewal is at risk
+          escalation_lanes:
+            executive_review: slack-notify
+            priority_support: slack-notify
+      expect:
+        status: sealed
+    - name: refuse-missing-policy
+      inputs:
+        data_source_ref: local://escalation-judge/harness
+        aggregate_id: thread-missing-policy-003
+        expected_version: 0
+        idempotency_key: thread-missing-policy-003:refuse:v1
+        triage_packet:
+          classification: bug
+          severity: high
+          confidence: 0.88
+        thread_body: Production is unavailable.
+        policy_rules: {}
+      expect:
+        status: sealed
+
+emits:
+  - name: escalation_decision
+    packet: runx.decision.v1
+  - name: escalation_packet
+    packet: runx.decision.v1
+
+runners:
+  judge:
+    default: true
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+      aggregate_id:
+        type: string
+        required: true
+        description: Stable support thread id.
+      expected_version:
+        type: number
+        required: true
+      idempotency_key:
+        type: string
+        required: true
+      triage_packet:
+        type: json
+        required: true
+      thread_body:
+        type: string
+        required: true
+      policy_rules:
+        type: json
+        required: true
+    graph:
+      name: escalation-judge
+      steps:
+        - id: read-prior-case
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: escalation-judge-cases-v1
+            resource: support_escalation_cases
+            aggregate_id: "$input.aggregate_id"
+        - id: decide
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - graph/judge/run.mjs
+          context:
+            prior_case_projection: read-prior-case.data_operation_result.data.projection
+          artifacts:
+            named_emits:
+              escalation_decision: escalation_decision
+            packets:
+              escalation_decision: runx.decision.v1
+        - id: append-case
+          when:
+            field: decide.escalation_decision.data.decision.escalate
+            equals: true
+          skill: ../data-store
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: escalation-judge-cases-v1
+            resource: support_escalation_cases
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.escalation_decision.data.case_event

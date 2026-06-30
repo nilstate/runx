@@ -1,0 +1,41 @@
+skill: escalation-judge-decision
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      triage_packet:
+        type: json
+        required: true
+      thread_body:
+        type: string
+        required: true
+      policy_rules:
+        type: json
+        required: true
+      aggregate_id:
+        type: string
+        required: true
+      expected_version:
+        type: number
+        required: true
+      idempotency_key:
+        type: string
+        required: true
+      prior_case_projection:
+        type: json
+        required: false
+    artifacts:
+      named_emits:
+        escalation_decision: runx.business.lane.v1
