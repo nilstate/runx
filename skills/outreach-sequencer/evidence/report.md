@@ -4,7 +4,7 @@
 
 - Package: vidshidden/outreach-sequencer@sha-8248a4585211
 - Public URL: https://runx.ai/x/vidshidden/outreach-sequencer@sha-8248a4585211
-- PR URL: https://github.com/runxhq/runx/pull/PLACEHOLDER
+- PR URL: https://github.com/runxhq/runx/pull/193
 - Source URL: https://github.com/VidsHidden/runx/tree/outreach-sequencer/skills/outreach-sequencer
 - Raw X.yaml: https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/X.yaml
 - Raw SKILL.md: https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/SKILL.md
