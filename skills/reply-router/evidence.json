@@ -1,0 +1,43 @@
+{
+  "schema": "runx.bounty.evidence.v1",
+  "bounty": 70,
+  "skill": "reply-router",
+  "claim_id": "3a9f6f23-1ebb-4dfa-97e8-be7d7f2f3d6f",
+  "summary": "Reply Router classifies inbound replies against a sealed original send receipt and suppression policy, emits unsubscribe suppression packets with CAS coordinates, emits bounded routing decisions for follow-up, and refuses ambiguous or unsealed inputs.",
+  "observations": [
+    {
+      "claim_type": "typed_inputs",
+      "detail": "route_reply requires inbound_reply, original_send_receipt, suppression_policy, data_source_ref, aggregate_id, expected_version, and idempotency_key."
+    },
+    {
+      "claim_type": "typed_outputs",
+      "detail": "route_reply emits classification, suppression_result, routing_decision, and escalation_lane."
+    },
+    {
+      "claim_type": "unsubscribe_boundary",
+      "detail": "The unsubscribe harness answer emits runx.data.operation_result.v1 with operation append_event, aggregate id, expected version, idempotency key, and reply.unsubscribe_suppressed event payload."
+    },
+    {
+      "claim_type": "send_boundary",
+      "detail": "The interested-route harness answer emits runx.reply.routing.v1 naming send-as:reply-followup and does not send."
+    },
+    {
+      "claim_type": "stop_condition",
+      "detail": "The ambiguous/unsealed fixture expects needs_agent and has no caller answer, proving the runner stops rather than classifying unsafe input."
+    },
+    {
+      "claim_type": "runx_cli_version",
+      "detail": "npx @runxhq/cli@0.6.14 reports runx-cli 0.6.14."
+    },
+    {
+      "claim_type": "verification_blocker",
+      "detail": "Windows native sealed receipt writing fails with os error 87 during receipt-store directory sync, blocking local harness and registry publish from this machine."
+    }
+  ],
+  "artifact_notes": {
+    "x_yaml": "skills/reply-router/X.yaml",
+    "skill_md": "skills/reply-router/SKILL.md",
+    "fixtures": "skills/reply-router/fixtures",
+    "verification_json": "skills/reply-router/verification.json"
+  }
+}

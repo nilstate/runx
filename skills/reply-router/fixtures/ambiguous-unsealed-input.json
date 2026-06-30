@@ -1,0 +1,27 @@
+{
+  "inbound_reply": {
+    "content": "Maybe later, not sure who should handle this.",
+    "received_from": "buyer@example.com",
+    "received_at": "2026-06-30T11:00:00Z"
+  },
+  "original_send_receipt": {
+    "send_plan": {
+      "recipient": "buyer@example.com",
+      "sequence_id": "seq-acme-002"
+    },
+    "principal": "runx:principal:sales-ops",
+    "receipt_id": "runx:receipt:sha256:unsealed-send-demo",
+    "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sealed": false
+  },
+  "suppression_policy": {
+    "unsubscribe_signals": ["unsubscribe", "opt out"],
+    "confidence_threshold": 0.8
+  },
+  "data_source_ref": "local://reply-router/harness",
+  "store_id": "reply-router-harness-v2-stop-store",
+  "resource": "reply_suppressions",
+  "aggregate_id": "recipient_buyer_example_com",
+  "expected_version": 0,
+  "idempotency_key": "recipient_buyer_example_com_seq_acme_002_ambiguous_v1"
+}

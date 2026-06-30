@@ -1,0 +1,34 @@
+{
+  "schema": "runx.bounty.verification.v1",
+  "bounty": 70,
+  "skill": "reply-router",
+  "claim_id": "3a9f6f23-1ebb-4dfa-97e8-be7d7f2f3d6f",
+  "generated_at": "2026-06-30T23:15:00Z",
+  "checks": [
+    {
+      "name": "runx_cli_version",
+      "status": "passed",
+      "command": "npx.cmd -y @runxhq/cli@0.6.14 --version",
+      "detail": "runx-cli 0.6.14"
+    },
+    {
+      "name": "skill_inspect",
+      "status": "passed",
+      "command": "npx.cmd -y @runxhq/cli@0.6.14 skill inspect ./skills/reply-router route_reply --json",
+      "detail": "Inspect returned status ok, runner route_reply, type agent-task, and typed inputs."
+    },
+    {
+      "name": "inline_harness_windows",
+      "status": "blocked",
+      "command": "npx.cmd -y @runxhq/cli@0.6.14 harness ./skills/reply-router --json",
+      "detail": "The needs_agent case runs, but sealed cases fail on Windows while writing sealed receipts: receipt store is unreadable: os error 87. Source inspection traced this to directory fsync in the native receipt store on Windows."
+    },
+    {
+      "name": "registry_publish",
+      "status": "blocked",
+      "command": "npx.cmd -y @runxhq/cli@0.6.14 registry publish ./skills/reply-router/SKILL.md --registry https://api.runx.ai --version 0.1.0 --json",
+      "detail": "Publish invokes the same local Windows harness path and is blocked by the sealed receipt store os error 87 before upload."
+    }
+  ],
+  "result": "blocked_on_windows_receipt_store"
+}

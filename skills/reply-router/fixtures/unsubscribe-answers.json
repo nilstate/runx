@@ -1,0 +1,49 @@
+{
+  "answers": {
+    "agent_task.classify-reply.output": {
+      "classification": {
+        "type": "unsubscribe",
+        "confidence": 0.98,
+        "evidence": [
+          "Reply text contains 'unsubscribe'.",
+          "Reply text contains 'stop all outreach'.",
+          "original_send_receipt.sealed is true."
+        ]
+      },
+      "suppression_event": {
+        "type": "reply.unsubscribe_suppressed",
+        "payload": {
+          "schema": "runx.reply.routing.v1",
+          "recipient": "buyer@example.com",
+          "aggregate_id": "recipient_buyer_example_com",
+          "principal": "runx:principal:sales-ops",
+          "original_receipt_id": "runx:receipt:sha256:sealed-send-demo",
+          "classification": {
+            "type": "unsubscribe",
+            "confidence": 0.98
+          },
+          "matched_signals": [
+            "unsubscribe",
+            "stop all outreach"
+          ],
+          "policy": {
+            "confidence_threshold": 0.8
+          },
+          "decision": {
+            "suppress": true,
+            "route_send": false,
+            "reason": "Recipient explicitly opted out; compliance block must be durable."
+          }
+        }
+      },
+      "routing_decision": null,
+      "escalation": {
+        "lane": "none",
+        "reason": "Suppression committed; no send target emitted."
+      },
+      "closure": {
+        "disposition": "closed"
+      }
+    }
+  }
+}

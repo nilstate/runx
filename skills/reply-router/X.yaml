@@ -1,0 +1,216 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+emits:
+  - name: reply_routing
+    packet: runx.reply.routing.v1
+  - name: suppression_result
+    packet: runx.data.operation_result.v1
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      runner: route_reply
+      inputs:
+        inbound_reply:
+          content: "Please unsubscribe me and stop all outreach."
+          received_from: "buyer@example.com"
+          received_at: "2026-06-30T10:00:00Z"
+        original_send_receipt:
+          send_plan:
+            recipient: "buyer@example.com"
+            sequence_id: "seq-acme-001"
+          principal: "runx:principal:sales-ops"
+          receipt_id: "runx:receipt:sha256:sealed-send-demo"
+          checksum: "sha256:0e1d7f3c3e1a9f1a2b3c4d5e6f708192aabbccddeeff00112233445566778899"
+          sealed: true
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - stop all outreach
+          confidence_threshold: 0.8
+        data_source_ref: "local://reply-router/harness"
+        store_id: reply-router-harness-v2-store
+        resource: reply_suppressions
+        aggregate_id: "recipient_buyer_example_com"
+        expected_version: 0
+        idempotency_key: "recipient_buyer_example_com_seq_acme_001_unsubscribe_v1"
+      caller:
+        answers:
+          agent_task.route-reply.output:
+            classification:
+              type: unsubscribe
+              confidence: 0.98
+              evidence:
+                - "Reply text contains 'unsubscribe'."
+                - "Reply text contains 'stop all outreach'."
+                - "original_send_receipt.sealed is true."
+            suppression_result:
+              schema: runx.data.operation_result.v1
+              status: ready_to_append
+              operation: append_event
+              data_source_ref: "local://reply-router/harness"
+              resource: reply_suppressions
+              aggregate_id: "recipient_buyer_example_com"
+              idempotency_key: "recipient_buyer_example_com_seq_acme_001_unsubscribe_v1"
+              before_version: 0
+              after_version: 1
+              event:
+                type: reply.unsubscribe_suppressed
+                payload:
+                  schema: runx.reply.routing.v1
+                  recipient: "buyer@example.com"
+                  aggregate_id: "recipient_buyer_example_com"
+                  principal: "runx:principal:sales-ops"
+                  original_receipt_id: "runx:receipt:sha256:sealed-send-demo"
+                  matched_signals:
+                    - unsubscribe
+                    - stop all outreach
+                  decision:
+                    suppress: true
+                    route_send: false
+                    reason: "Recipient explicitly opted out; compliance block must be durable."
+            routing_decision: null
+            escalation_lane:
+              lane: none
+              reason: "Suppression packet emitted; this skill does not send."
+      expect:
+        status: sealed
+    - name: sealed_interested_route
+      runner: route_reply
+      inputs:
+        inbound_reply:
+          content: "This looks useful. Can you send pricing details?"
+          received_from: "buyer@example.com"
+          received_at: "2026-06-30T12:00:00Z"
+        original_send_receipt:
+          send_plan:
+            recipient: "buyer@example.com"
+            sequence_id: "seq-acme-003"
+          principal: "runx:principal:sales-ops"
+          receipt_id: "runx:receipt:sha256:sealed-send-demo-3"
+          checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          sealed: true
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - opt out
+          confidence_threshold: 0.8
+        data_source_ref: "local://reply-router/harness"
+        store_id: reply-router-harness-v2-route-store
+        resource: reply_suppressions
+        aggregate_id: "recipient_buyer_example_com"
+        expected_version: 0
+        idempotency_key: "recipient_buyer_example_com_seq_acme_003_interested_v1"
+      caller:
+        answers:
+          agent_task.route-reply.output:
+            classification:
+              type: interested
+              confidence: 0.91
+              evidence:
+                - "Reply asks for pricing details."
+                - "No suppression signal appears in the reply."
+                - "original_send_receipt.sealed is true."
+            suppression_result: null
+            routing_decision:
+              schema: runx.reply.routing.v1
+              classification: interested
+              confidence: 0.91
+              send_target: send-as:reply-followup
+              principal: "runx:principal:sales-ops"
+              original_receipt_id: "runx:receipt:sha256:sealed-send-demo-3"
+              reason: "Interested reply should be handled by a separate governed send-as run."
+            escalation_lane:
+              lane: none
+              reason: "Route emitted without sending."
+      expect:
+        status: sealed
+    - name: stop_ambiguous_or_unsealed
+      runner: route_reply
+      inputs:
+        inbound_reply:
+          content: "Maybe later, not sure who should handle this."
+          received_from: "buyer@example.com"
+          received_at: "2026-06-30T11:00:00Z"
+        original_send_receipt:
+          send_plan:
+            recipient: "buyer@example.com"
+            sequence_id: "seq-acme-002"
+          principal: "runx:principal:sales-ops"
+          receipt_id: "runx:receipt:sha256:unsealed-send-demo"
+          checksum: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          sealed: false
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - opt out
+          confidence_threshold: 0.8
+        data_source_ref: "local://reply-router/harness"
+        store_id: reply-router-harness-v2-stop-store
+        resource: reply_suppressions
+        aggregate_id: "recipient_buyer_example_com"
+        expected_version: 0
+        idempotency_key: "recipient_buyer_example_com_seq_acme_002_ambiguous_v1"
+      expect:
+        status: needs_agent
+
+runners:
+  route_reply:
+    default: true
+    type: agent-task
+    agent: operator
+    task: route-reply
+    outputs:
+      classification: object
+      suppression_result: object
+      routing_decision: object
+      escalation_lane: object
+    artifacts:
+      named_emits:
+        suppression_result: runx.data.operation_result.v1
+        routing_decision: runx.reply.routing.v1
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: Reply packet with content, received_from, and received_at.
+      original_send_receipt:
+        type: json
+        required: true
+        description: Sealed original send receipt with send_plan, principal, receipt_id, checksum, and sealed status.
+      suppression_policy:
+        type: json
+        required: true
+        description: Suppression policy with unsubscribe_signals and confidence_threshold.
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data source that stores recipient suppression events.
+      store_id:
+        type: string
+        required: false
+        description: Optional deterministic local fixture store id.
+      resource:
+        type: string
+        required: false
+        default: reply_suppressions
+        description: Declared event resource for suppression records.
+      aggregate_id:
+        type: string
+        required: true
+        description: Recipient-keyed aggregate id, for example recipient:buyer@example.com.
+      expected_version:
+        type: number
+        required: true
+        description: Current recipient suppression stream version read before the write.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable key derived from recipient, original send, and classification.
