@@ -110,6 +110,10 @@
   },
   "dogfood": {
     "command": "runx skill vidshidden/escalation-judge@sha-8bdc1d12bfae --registry https://api.runx.ai --json",
+    "status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:d6b926aadbb3845ffad32c382985b08d7e535c0d32ab8ddb2a2d0342ef74f8f7",
+    "run_id": "run_judge_faf24bae98c5",
+    "verify_valid": true,
     "windows_attempt_status": "failure",
     "windows_attempt_note": "Resolved the remote registry package and trusted provenance, then failed writing the Windows receipt store with os error 87. GitHub Actions workflow escalation-judge-dogfood.yml reruns the same dogfood on Ubuntu and commits durable dogfood-output.json and dogfood-verify.json.",
     "registry_provenance": {
