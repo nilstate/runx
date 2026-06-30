@@ -79,12 +79,16 @@ jobs:
       - name: Commit dogfood evidence
         run: |
           set -euo pipefail
+          receipt_file="$(find skills/escalation-judge/evidence/dogfood-receipts -type f -name '*.json' | head -n 1)"
+          if [ -n "$receipt_file" ]; then
+            cp "$receipt_file" skills/escalation-judge/evidence/dogfood-receipt.json
+          fi
           git config user.name "VidsHidden"
           git config user.email "zhengxinyu515@gmail.com"
           git add skills/escalation-judge/evidence/clean-install.json \
             skills/escalation-judge/evidence/dogfood-output.json \
             skills/escalation-judge/evidence/dogfood-verify.json \
-            skills/escalation-judge/evidence/dogfood-receipts
+            skills/escalation-judge/evidence/dogfood-receipt.json
           if git diff --cached --quiet; then
             exit 0
           fi
