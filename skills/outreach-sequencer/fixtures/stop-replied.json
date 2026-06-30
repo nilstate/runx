@@ -1,0 +1,76 @@
+{
+  "sequence_definition": {
+    "touches": [
+      {
+        "index": 1,
+        "channel": "email",
+        "principal": "sales-dev",
+        "audience": "buyer",
+        "subject": "Quick fit check",
+        "content_digest": "sha256:touch1"
+      },
+      {
+        "index": 2,
+        "channel": "email",
+        "principal": "sales-dev",
+        "audience": "buyer",
+        "subject": "Proof point",
+        "content_digest": "sha256:touch2"
+      },
+      {
+        "index": 3,
+        "channel": "email",
+        "principal": "sales-dev",
+        "audience": "buyer",
+        "subject": "Relevant workflow",
+        "content_digest": "sha256:touch3"
+      }
+    ],
+    "rules": {
+      "min_days_apart": 3,
+      "stop_on": ["replied", "unsubscribed"]
+    }
+  },
+  "aggregate_id": "seq-acme-002:contact-lee",
+  "contact_ref": {
+    "principal": "sales-dev",
+    "audience": "lee@example.invalid",
+    "channel": "email"
+  },
+  "current_touch_index": 2,
+  "store_id": "runx.outreach.sequence_state.v1",
+  "idempotency_key": "outreach-sequencer:seq-acme-002:contact-lee:reply-stop",
+  "expected_version": 4,
+  "engagement_projection": {
+    "aggregate_id": "seq-acme-002:contact-lee",
+    "store_id": "runx.outreach.sequence_state.v1",
+    "version": 4,
+    "operation_result": {
+      "operation": "read_projection",
+      "status": "ok",
+      "receipt_ref": "runx:receipt:fixture-read-stop"
+    },
+    "events": [
+      {
+        "type": "touch_sent",
+        "touch_index": 2,
+        "occurred_at": "2026-06-24T12:00:00Z",
+        "operation_result": {
+          "operation": "append_event",
+          "status": "ok",
+          "receipt_ref": "runx:receipt:fixture-touch2"
+        }
+      },
+      {
+        "type": "replied",
+        "occurred_at": "2026-06-27T12:00:00Z",
+        "operation_result": {
+          "operation": "append_event",
+          "status": "ok",
+          "receipt_ref": "runx:receipt:fixture-reply"
+        }
+      }
+    ],
+    "now": "2026-06-30T12:00:00Z"
+  }
+}

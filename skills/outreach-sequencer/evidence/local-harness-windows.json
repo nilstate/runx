@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "case_count": 2,
+  "assertion_error_count": 2,
+  "assertion_errors": [
+    "happy_next_touch: receipt store is unreadable: 参数错误。 (os error 87)",
+    "stop_replied: receipt store is unreadable: 参数错误。 (os error 87)"
+  ],
+  "case_names": [
+    "happy_next_touch",
+    "stop_replied"
+  ],
+  "receipt_ids": [],
+  "graph_case_count": 0
+}

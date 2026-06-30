@@ -1,0 +1,106 @@
+name: outreach-sequencer dogfood
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - outreach-sequencer
+    paths:
+      - "skills/outreach-sequencer/**"
+      - ".github/workflows/outreach-sequencer-dogfood.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  dogfood:
+    if: ${{ !contains(github.event.head_commit.message, '[skip dogfood]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install runx 0.6.14
+        run: |
+          set -euo pipefail
+          curl -L -s https://github.com/runxhq/runx/releases/download/cli-v0.6.14/runx-0.6.14-x86_64-unknown-linux-musl.tar.gz -o /tmp/runx.tar.gz
+          mkdir -p /tmp/runx
+          tar -xzf /tmp/runx.tar.gz -C /tmp/runx
+          install -m 0755 "$(find /tmp/runx -type f -name runx | head -n 1)" /tmp/runx/runx
+          /tmp/runx/runx --version
+          echo "/tmp/runx" >> "$GITHUB_PATH"
+
+      - name: Clean install published package
+        run: |
+          set -euo pipefail
+          mkdir -p skills/outreach-sequencer/evidence
+          runx add vidshidden/outreach-sequencer@sha-8248a4585211 \
+            --registry https://api.runx.ai \
+            --to skills/outreach-sequencer/evidence/clean-install \
+            --json | tee skills/outreach-sequencer/evidence/clean-install.json
+
+      - name: Dogfood published package
+        env:
+          RUNX_RECEIPT_SIGN_KID: runx-runtime-prod-fixture-key
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          set -euo pipefail
+          mkdir -p skills/outreach-sequencer/evidence/dogfood-receipts
+          SEQUENCE="$(jq -c '.sequence_definition' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          CONTACT="$(jq -c '.contact_ref' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          ENGAGEMENT="$(jq -c '.engagement_projection' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          AGGREGATE_ID="$(jq -r '.aggregate_id' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          CURRENT_TOUCH_INDEX="$(jq -r '.current_touch_index' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          STORE_ID="$(jq -r '.store_id' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          EXPECTED_VERSION="$(jq -r '.expected_version' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          IDEMPOTENCY_KEY="$(jq -r '.idempotency_key' skills/outreach-sequencer/fixtures/happy-next-touch.json)"
+          runx skill vidshidden/outreach-sequencer@sha-8248a4585211 \
+            --registry https://api.runx.ai \
+            --input-json sequence_definition "$SEQUENCE" \
+            -i "aggregate_id=$AGGREGATE_ID" \
+            --input-json contact_ref "$CONTACT" \
+            --input-json current_touch_index "$CURRENT_TOUCH_INDEX" \
+            -i "store_id=$STORE_ID" \
+            -i "idempotency_key=$IDEMPOTENCY_KEY" \
+            --input-json expected_version "$EXPECTED_VERSION" \
+            --input-json engagement_projection "$ENGAGEMENT" \
+            --json \
+            -R skills/outreach-sequencer/evidence/dogfood-receipts \
+            | tee skills/outreach-sequencer/evidence/dogfood-output.json
+
+      - name: Verify dogfood receipt
+        env:
+          RUNX_RECEIPT_VERIFY_KID: runx-runtime-prod-fixture-key
+          RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64: IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=
+        run: |
+          set -euo pipefail
+          runx verify \
+            --receipt-dir skills/outreach-sequencer/evidence/dogfood-receipts \
+            --json | tee skills/outreach-sequencer/evidence/dogfood-verify.json
+
+      - name: Build evidence packet
+        run: |
+          set -euo pipefail
+          node skills/outreach-sequencer/evidence/build-evidence.mjs
+
+      - name: Commit dogfood evidence
+        run: |
+          set -euo pipefail
+          receipt_file="$(find skills/outreach-sequencer/evidence/dogfood-receipts -type f -name '*.json' | head -n 1)"
+          if [ -n "$receipt_file" ]; then
+            cp "$receipt_file" skills/outreach-sequencer/evidence/dogfood-receipt.json
+          fi
+          git config user.name "VidsHidden"
+          git config user.email "zhengxinyu515@gmail.com"
+          git add skills/outreach-sequencer/evidence/clean-install.json \
+            skills/outreach-sequencer/evidence/dogfood-output.json \
+            skills/outreach-sequencer/evidence/dogfood-verify.json \
+            skills/outreach-sequencer/evidence/dogfood-receipt.json \
+            skills/outreach-sequencer/evidence/evidence.json \
+            skills/outreach-sequencer/evidence/verification.json \
+            skills/outreach-sequencer/evidence/report.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Add outreach-sequencer dogfood evidence [skip dogfood]"
+          git push

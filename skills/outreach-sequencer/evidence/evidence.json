@@ -1,0 +1,245 @@
+{
+  "schema": "frantic.evidence.v1",
+  "bounty": "#74",
+  "package_name": "outreach-sequencer",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "summary": "Published outreach-sequencer runx skill. The skill reads a pinned data-store engagement projection for one sequence/contact aggregate, decides whether the next touch is eligible, appends an ungated decision event, and emits a handoff-only runx.outreach.next_touch.v1 packet for a separate governed send-as run.",
+  "published": {
+    "skill_id": "vidshidden/outreach-sequencer",
+    "version": "sha-8248a4585211",
+    "registry_ref": "vidshidden/outreach-sequencer@sha-8248a4585211",
+    "public_url": "https://runx.ai/x/vidshidden/outreach-sequencer@sha-8248a4585211",
+    "install_command": "runx add vidshidden/outreach-sequencer@sha-8248a4585211 --registry https://api.runx.ai",
+    "run_command": "runx skill vidshidden/outreach-sequencer@sha-8248a4585211 --registry https://api.runx.ai",
+    "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e",
+    "profile_digest": "sha256:f5e1afd4c63da3dfd5292264e10cb03cf2ca84612927277136932c79b8dc021b",
+    "trust_tier": "community",
+    "maturity": "beta"
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "happy_next_touch",
+      "stop_replied",
+      "missing_state_needs_agent"
+    ],
+    "receipt_ids": [
+      "sha256:0cc476175ec20f917b0f751f4a7215041607100c02d37cf245fe5acf00b7e27f",
+      "sha256:8e0e53664b9b2e6ccbc4974083babba979751827cb983308176efe50bc0dbb36",
+      "sha256:55945b1c9000f5267ed98f939de071d4676d6b0f34f571625dc28095a69defad"
+    ],
+    "graph_case_count": 0,
+    "evidence_id": "runx-harness:vidshidden/outreach-sequencer:sha-8248a4585211",
+    "evidence_url": "https://runx.ai/x/vidshidden/outreach-sequencer#harness"
+  },
+  "clean_install": {
+    "status": "success",
+    "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e",
+    "profile_digest": "sha256:f5e1afd4c63da3dfd5292264e10cb03cf2ca84612927277136932c79b8dc021b"
+  },
+  "dogfood": {
+    "package": "vidshidden/outreach-sequencer@sha-8248a4585211",
+    "input": {
+      "fixture": "skills/outreach-sequencer/fixtures/happy-next-touch.json",
+      "aggregate_id": "seq-acme-001:contact-jane",
+      "store_id": "runx.outreach.sequence_state.v1",
+      "current_touch_index": 2,
+      "next_touch_index": 3,
+      "engagement_projection_operation_result": {
+        "operation": "read_projection",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-read-happy"
+      }
+    },
+    "command": "runx skill vidshidden/outreach-sequencer@sha-8248a4585211 --registry https://api.runx.ai --json -R skills/outreach-sequencer/evidence/dogfood-receipts",
+    "status": "pending_ubuntu",
+    "receipt_ref": "pending-ubuntu-dogfood",
+    "verify_verdict": {
+      "valid": false,
+      "signature_mode": null,
+      "root_receipt_id": null,
+      "findings": [
+        "Ubuntu dogfood verify has not been recorded yet."
+      ]
+    },
+    "harness_cases": [
+      {
+        "name": "happy_next_touch",
+        "status": "sealed"
+      },
+      {
+        "name": "stop_replied",
+        "status": "sealed"
+      },
+      {
+        "name": "missing_state_needs_agent",
+        "status": "refused"
+      }
+    ],
+    "windows_attempt_status": "failure",
+    "windows_attempt_note": "Windows resolved trusted registry provenance, then failed writing the local receipt store with os error 87. The outreach-sequencer dogfood workflow reruns the same dogfood on Ubuntu and commits durable dogfood-output.json, dogfood-verify.json, and dogfood-receipt.json.",
+    "registry_provenance": {
+      "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e",
+      "profile_digest": "sha256:f5e1afd4c63da3dfd5292264e10cb03cf2ca84612927277136932c79b8dc021b",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "skill_id": "vidshidden/outreach-sequencer",
+      "trust_state": "trusted",
+      "trust_tier": "community",
+      "version": "sha-8248a4585211"
+    }
+  },
+  "observations": [
+    {
+      "type": "runx_cli_version",
+      "value": "runx-cli 0.6.14"
+    },
+    {
+      "type": "hosted_harness",
+      "status": "passed",
+      "case_names": [
+        "happy_next_touch",
+        "stop_replied",
+        "missing_state_needs_agent"
+      ],
+      "receipt_refs": [
+        "runx:receipt:sha256:0cc476175ec20f917b0f751f4a7215041607100c02d37cf245fe5acf00b7e27f",
+        "runx:receipt:sha256:8e0e53664b9b2e6ccbc4974083babba979751827cb983308176efe50bc0dbb36",
+        "runx:receipt:sha256:55945b1c9000f5267ed98f939de071d4676d6b0f34f571625dc28095a69defad"
+      ]
+    },
+    {
+      "type": "eligibility_verdict",
+      "decision": {
+        "eligible": true,
+        "reason": "next_touch_due"
+      },
+      "reason": "next_touch_due",
+      "packet_schema": "runx.outreach.next_touch.v1",
+      "send_class": "outreach"
+    },
+    {
+      "type": "engagement_events_examined",
+      "operation_result": {
+        "operation": "read_projection",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-read-happy"
+      },
+      "events": [
+        {
+          "type": "touch_sent",
+          "touch_index": 1,
+          "occurred_at": "2026-06-20T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "status": "ok",
+            "receipt_ref": "runx:receipt:fixture-touch1"
+          }
+        },
+        {
+          "type": "touch_sent",
+          "touch_index": 2,
+          "occurred_at": "2026-06-25T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "status": "ok",
+            "receipt_ref": "runx:receipt:fixture-touch2"
+          }
+        }
+      ]
+    },
+    {
+      "type": "append_event",
+      "operation_result": {
+        "operation": "append_event",
+        "status": "planned",
+        "before_version": 7,
+        "after_version": 8
+      },
+      "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+      "before_version": 7,
+      "after_version": 8
+    },
+    {
+      "type": "next_touch",
+      "index": 3,
+      "channel": "email",
+      "audience": "jane@example.invalid",
+      "content_digest": "sha256:touch3",
+      "dispatch": {
+        "named_run": "send-as",
+        "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+        "consequence": "separate_governed_run_required",
+        "this_skill_sends": false
+      }
+    },
+    {
+      "type": "stop_replied",
+      "decision": {
+        "eligible": false,
+        "reason": "replied"
+      },
+      "stop_state": {
+        "state": "stopped",
+        "reason": "engagement stream contains replied",
+        "operation_result": {
+          "operation": "append_event",
+          "status": "ok",
+          "receipt_ref": "runx:receipt:fixture-reply"
+        }
+      },
+      "has_packet": false,
+      "refused_reason": {
+        "type": "refused_reason",
+        "reason": "replied",
+        "linked_operation_result": {
+          "operation": "append_event",
+          "status": "ok",
+          "receipt_ref": "runx:receipt:fixture-reply"
+        }
+      }
+    },
+    {
+      "type": "missing_state_escalation",
+      "status": "needs_agent",
+      "escalation": {
+        "required": true,
+        "lane": "human_approval",
+        "reason_code": "unreadable_engagement_state",
+        "message": "engagement_projection.operation_result must be an ok read_projection."
+      },
+      "stop_state": {
+        "state": "needs_human",
+        "reason_code": "unreadable_engagement_state",
+        "message": "engagement_projection.operation_result must be an ok read_projection."
+      }
+    },
+    {
+      "type": "dogfood_verify",
+      "receipt_ref": "pending-ubuntu-dogfood",
+      "verify_verdict": {
+        "valid": false,
+        "signature_mode": null,
+        "root_receipt_id": null,
+        "findings": [
+          "Ubuntu dogfood verify has not been recorded yet."
+        ]
+      }
+    },
+    {
+      "type": "artifact_urls",
+      "public_url": "https://runx.ai/x/vidshidden/outreach-sequencer@sha-8248a4585211",
+      "pr_url": "https://github.com/runxhq/runx/pull/PLACEHOLDER",
+      "source_url": "https://github.com/VidsHidden/runx/tree/outreach-sequencer/skills/outreach-sequencer",
+      "x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/X.yaml",
+      "skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/SKILL.md",
+      "evidence_json": "https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/evidence/evidence.json",
+      "verification_json": "https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/evidence/verification.json",
+      "report": "https://raw.githubusercontent.com/VidsHidden/runx/outreach-sequencer/skills/outreach-sequencer/evidence/report.md"
+    }
+  ]
+}

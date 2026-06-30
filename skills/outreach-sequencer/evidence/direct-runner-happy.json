@@ -1,0 +1,154 @@
+{
+  "schema": "runx.outreach.sequencer.v1",
+  "status": "sealed",
+  "decision": {
+    "eligible": true,
+    "reason": "next_touch_due"
+  },
+  "engagement_projection": {
+    "operation": "read_projection",
+    "store": "registry:runx/data-store@0.1.2",
+    "store_id": "runx.outreach.sequence_state.v1",
+    "aggregate_id": "seq-acme-001:contact-jane",
+    "version": 7,
+    "operation_result": {
+      "operation": "read_projection",
+      "status": "ok",
+      "receipt_ref": "runx:receipt:fixture-read-happy"
+    }
+  },
+  "engagement_events": [
+    {
+      "type": "touch_sent",
+      "touch_index": 1,
+      "occurred_at": "2026-06-20T12:00:00Z",
+      "operation_result": {
+        "operation": "append_event",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-touch1"
+      }
+    },
+    {
+      "type": "touch_sent",
+      "touch_index": 2,
+      "occurred_at": "2026-06-25T12:00:00Z",
+      "operation_result": {
+        "operation": "append_event",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-touch2"
+      }
+    }
+  ],
+  "append_event": {
+    "operation": "append_event",
+    "store": "registry:runx/data-store@0.1.2",
+    "store_id": "runx.outreach.sequence_state.v1",
+    "aggregate_id": "seq-acme-001:contact-jane",
+    "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+    "expected_version": 7,
+    "before_version": 7,
+    "after_version": 8,
+    "gated": false,
+    "cas": "expected_version",
+    "event": {
+      "type": "outreach.next_touch_decided",
+      "decision_id": "decision_8920a12b7a72",
+      "eligible": true,
+      "touch_index": 3,
+      "prior_touch_index": 2,
+      "dispatch_idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch"
+    },
+    "operation_result": {
+      "operation": "append_event",
+      "status": "planned",
+      "before_version": 7,
+      "after_version": 8
+    }
+  },
+  "next_touch_packet": {
+    "schema": "runx.outreach.next_touch.v1",
+    "send_class": "outreach",
+    "principal": "sales-dev",
+    "channel": "email",
+    "audience": "jane@example.invalid",
+    "audience_role": "buyer",
+    "touch_index": 3,
+    "content_digest": "sha256:touch3",
+    "dispatch": {
+      "named_run": "send-as",
+      "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3:dispatch",
+      "consequence": "separate_governed_run_required",
+      "this_skill_sends": false
+    }
+  },
+  "escalation": {
+    "required": false,
+    "lane": null
+  },
+  "observations": [
+    {
+      "type": "engagement_projection_read",
+      "operation_result": {
+        "operation": "read_projection",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-read-happy"
+      },
+      "aggregate_id": "seq-acme-001:contact-jane",
+      "store_id": "runx.outreach.sequence_state.v1",
+      "version": 7
+    },
+    {
+      "type": "engagement_events_examined",
+      "events": [
+        {
+          "type": "touch_sent",
+          "touch_index": 1,
+          "occurred_at": "2026-06-20T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "status": "ok",
+            "receipt_ref": "runx:receipt:fixture-touch1"
+          }
+        },
+        {
+          "type": "touch_sent",
+          "touch_index": 2,
+          "occurred_at": "2026-06-25T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "status": "ok",
+            "receipt_ref": "runx:receipt:fixture-touch2"
+          }
+        }
+      ]
+    },
+    {
+      "type": "sequence_position",
+      "current_touch_index": 2
+    },
+    {
+      "type": "eligibility_verdict",
+      "eligible": true,
+      "reason": "next_touch_due"
+    },
+    {
+      "type": "append_event",
+      "operation_result": {
+        "operation": "append_event",
+        "status": "planned",
+        "before_version": 7,
+        "after_version": 8
+      },
+      "idempotency_key": "outreach-sequencer:seq-acme-001:contact-jane:touch3",
+      "before_version": 7,
+      "after_version": 8
+    },
+    {
+      "type": "next_touch",
+      "index": 3,
+      "channel": "email",
+      "send_class": "outreach",
+      "content_digest": "sha256:touch3"
+    }
+  ]
+}

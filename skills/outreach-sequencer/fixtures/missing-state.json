@@ -1,0 +1,40 @@
+{
+  "sequence_definition": {
+    "touches": [
+      {
+        "index": 1,
+        "channel": "email",
+        "principal": "sales-dev",
+        "audience": "buyer",
+        "subject": "Quick fit check",
+        "content_digest": "sha256:touch1"
+      }
+    ],
+    "rules": {
+      "min_days_apart": 3,
+      "stop_on": ["replied", "unsubscribed"]
+    }
+  },
+  "aggregate_id": "seq-acme-003:contact-missing",
+  "contact_ref": {
+    "principal": "sales-dev",
+    "audience": "missing@example.invalid",
+    "channel": "email"
+  },
+  "current_touch_index": 0,
+  "store_id": "runx.outreach.sequence_state.v1",
+  "idempotency_key": "outreach-sequencer:seq-acme-003:contact-missing:needs-agent",
+  "expected_version": 0,
+  "engagement_projection": {
+    "aggregate_id": "seq-acme-003:contact-missing",
+    "store_id": "runx.outreach.sequence_state.v1",
+    "version": 0,
+    "operation_result": {
+      "operation": "read_projection",
+      "status": "missing",
+      "receipt_ref": "runx:receipt:fixture-read-missing"
+    },
+    "events": [],
+    "now": "2026-06-30T12:00:00Z"
+  }
+}

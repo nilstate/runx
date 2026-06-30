@@ -1,0 +1,18 @@
+{
+  "error": {
+    "code": "skill_error",
+    "message": "receipt store is unreadable: 参数错误。 (os error 87)"
+  },
+  "registry_provenance": {
+    "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e",
+    "profile_digest": "sha256:f5e1afd4c63da3dfd5292264e10cb03cf2ca84612927277136932c79b8dc021b",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "vidshidden/outreach-sequencer",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-8248a4585211"
+  },
+  "status": "failure"
+}

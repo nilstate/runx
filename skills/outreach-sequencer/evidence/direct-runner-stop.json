@@ -1,0 +1,100 @@
+{
+  "schema": "runx.outreach.sequencer.v1",
+  "status": "sealed",
+  "decision": {
+    "eligible": false,
+    "reason": "replied"
+  },
+  "engagement_projection": {
+    "operation": "read_projection",
+    "store": "registry:runx/data-store@0.1.2",
+    "store_id": "runx.outreach.sequence_state.v1",
+    "aggregate_id": "seq-acme-002:contact-lee",
+    "version": 4,
+    "operation_result": {
+      "operation": "read_projection",
+      "status": "ok",
+      "receipt_ref": "runx:receipt:fixture-read-stop"
+    }
+  },
+  "engagement_events": [
+    {
+      "type": "touch_sent",
+      "touch_index": 2,
+      "occurred_at": "2026-06-24T12:00:00Z",
+      "operation_result": {
+        "operation": "append_event",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-touch2"
+      }
+    },
+    {
+      "type": "replied",
+      "occurred_at": "2026-06-27T12:00:00Z",
+      "operation_result": {
+        "operation": "append_event",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-reply"
+      }
+    }
+  ],
+  "stop_state": {
+    "state": "stopped",
+    "reason": "engagement stream contains replied",
+    "operation_result": {
+      "operation": "append_event",
+      "status": "ok",
+      "receipt_ref": "runx:receipt:fixture-reply"
+    }
+  },
+  "observations": [
+    {
+      "type": "engagement_projection_read",
+      "operation_result": {
+        "operation": "read_projection",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-read-stop"
+      },
+      "aggregate_id": "seq-acme-002:contact-lee",
+      "store_id": "runx.outreach.sequence_state.v1",
+      "version": 4
+    },
+    {
+      "type": "engagement_events_examined",
+      "events": [
+        {
+          "type": "touch_sent",
+          "touch_index": 2,
+          "occurred_at": "2026-06-24T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "status": "ok",
+            "receipt_ref": "runx:receipt:fixture-touch2"
+          }
+        },
+        {
+          "type": "replied",
+          "occurred_at": "2026-06-27T12:00:00Z",
+          "operation_result": {
+            "operation": "append_event",
+            "status": "ok",
+            "receipt_ref": "runx:receipt:fixture-reply"
+          }
+        }
+      ]
+    },
+    {
+      "type": "sequence_position",
+      "current_touch_index": 2
+    },
+    {
+      "type": "refused_reason",
+      "reason": "replied",
+      "linked_operation_result": {
+        "operation": "append_event",
+        "status": "ok",
+        "receipt_ref": "runx:receipt:fixture-reply"
+      }
+    }
+  ]
+}

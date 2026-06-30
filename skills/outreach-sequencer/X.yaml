@@ -1,0 +1,285 @@
+skill: outreach-sequencer
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: happy_next_touch
+      runner: judge
+      inputs:
+        sequence_definition:
+          touches:
+            - index: 1
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Quick fit check"
+              content_digest: sha256:touch1
+            - index: 2
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Proof point"
+              content_digest: sha256:touch2
+            - index: 3
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Relevant workflow"
+              content_digest: sha256:touch3
+            - index: 4
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Last useful note"
+              content_digest: sha256:touch4
+            - index: 5
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Close the loop"
+              content_digest: sha256:touch5
+          rules:
+            min_days_apart: 3
+            stop_on:
+              - replied
+              - unsubscribed
+        aggregate_id: seq-acme-001:contact-jane
+        contact_ref:
+          principal: sales-dev
+          audience: jane@example.invalid
+          channel: email
+        current_touch_index: 2
+        store_id: runx.outreach.sequence_state.v1
+        idempotency_key: outreach-sequencer:seq-acme-001:contact-jane:touch3
+        expected_version: 7
+        engagement_projection:
+          aggregate_id: seq-acme-001:contact-jane
+          store_id: runx.outreach.sequence_state.v1
+          version: 7
+          operation_result:
+            operation: read_projection
+            status: ok
+            receipt_ref: runx:receipt:fixture-read-happy
+          events:
+            - type: touch_sent
+              touch_index: 1
+              occurred_at: "2026-06-20T12:00:00Z"
+              operation_result:
+                operation: append_event
+                status: ok
+                receipt_ref: runx:receipt:fixture-touch1
+            - type: touch_sent
+              touch_index: 2
+              occurred_at: "2026-06-25T12:00:00Z"
+              operation_result:
+                operation: append_event
+                status: ok
+                receipt_ref: runx:receipt:fixture-touch2
+          now: "2026-06-30T12:00:00Z"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: stop_replied
+      runner: judge
+      inputs:
+        sequence_definition:
+          touches:
+            - index: 1
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Quick fit check"
+              content_digest: sha256:touch1
+            - index: 2
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Proof point"
+              content_digest: sha256:touch2
+            - index: 3
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Relevant workflow"
+              content_digest: sha256:touch3
+          rules:
+            min_days_apart: 3
+            stop_on:
+              - replied
+              - unsubscribed
+        aggregate_id: seq-acme-002:contact-lee
+        contact_ref:
+          principal: sales-dev
+          audience: lee@example.invalid
+          channel: email
+        current_touch_index: 2
+        store_id: runx.outreach.sequence_state.v1
+        idempotency_key: outreach-sequencer:seq-acme-002:contact-lee:reply-stop
+        expected_version: 4
+        engagement_projection:
+          aggregate_id: seq-acme-002:contact-lee
+          store_id: runx.outreach.sequence_state.v1
+          version: 4
+          operation_result:
+            operation: read_projection
+            status: ok
+            receipt_ref: runx:receipt:fixture-read-stop
+          events:
+            - type: touch_sent
+              touch_index: 2
+              occurred_at: "2026-06-24T12:00:00Z"
+              operation_result:
+                operation: append_event
+                status: ok
+                receipt_ref: runx:receipt:fixture-touch2
+            - type: replied
+              occurred_at: "2026-06-27T12:00:00Z"
+              operation_result:
+                operation: append_event
+                status: ok
+                receipt_ref: runx:receipt:fixture-reply
+          now: "2026-06-30T12:00:00Z"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: missing_state_needs_agent
+      runner: judge
+      inputs:
+        sequence_definition:
+          touches:
+            - index: 1
+              channel: email
+              principal: sales-dev
+              audience: buyer
+              subject: "Quick fit check"
+              content_digest: sha256:touch1
+          rules:
+            min_days_apart: 3
+            stop_on:
+              - replied
+              - unsubscribed
+        aggregate_id: seq-acme-003:contact-missing
+        contact_ref:
+          principal: sales-dev
+          audience: missing@example.invalid
+          channel: email
+        current_touch_index: 0
+        store_id: runx.outreach.sequence_state.v1
+        idempotency_key: outreach-sequencer:seq-acme-003:contact-missing:needs-agent
+        expected_version: 0
+        engagement_projection:
+          aggregate_id: seq-acme-003:contact-missing
+          store_id: runx.outreach.sequence_state.v1
+          version: 0
+          operation_result:
+            operation: read_projection
+            status: missing
+            receipt_ref: runx:receipt:fixture-read-missing
+          events: []
+          now: "2026-06-30T12:00:00Z"
+      expect:
+        status: failure
+
+runx:
+  mutating: true
+  category: outreach
+  scopes:
+    - outreach.sequence.read
+    - data_store.sequence.append
+    - send_as.handoff.emit
+  policy:
+    data_classification: bounded_outreach_context
+    state:
+      store: registry:runx/data-store@0.1.2
+      store_id: runx.outreach.sequence_state.v1
+      shape: read_projection -> decide -> append_event
+      append: ungated CAS write with idempotency_key and expected_version
+    verifier_notes:
+      - Do not emit next_touch_packet after reply or unsubscribe.
+      - Do not dispatch, send, mint authority, or emit proposal envelopes.
+      - The downstream send-as run must be separate and governed.
+  artifacts:
+    emits:
+      - runx.outreach.next_touch.v1
+    wrap_as: outreach_sequence_packet
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - outreach.sequence.read
+      - data_store.sequence.append
+      - send_as.handoff.emit
+    policy:
+      reads:
+        - caller supplied sequence_definition
+        - caller supplied engagement projection
+        - caller supplied contact_ref
+      writes:
+        - registry:runx/data-store@0.1.2 append_event for outreach decision
+      disallows:
+        - email sends
+        - message posts
+        - authority minting
+        - proposal envelopes
+        - invented engagement events
+    artifacts:
+      wrap_as: outreach_sequence_packet
+      packet: runx.outreach.next_touch.v1
+    inputs:
+      sequence_definition:
+        type: json
+        required: true
+        description: Sequence definition with touches and rules.
+      aggregate_id:
+        type: string
+        required: true
+        description: Sequence/contact aggregate id.
+      contact_ref:
+        type: json
+        required: true
+        description: Contact handoff reference with principal, audience, and optional channel.
+      current_touch_index:
+        type: number
+        required: false
+        description: Last completed touch index. Inferred from engagement events when absent.
+      store_id:
+        type: string
+        required: true
+        description: Pinned data-store id.
+      idempotency_key:
+        type: string
+        required: true
+        description: Idempotency key for append_event.
+      expected_version:
+        type: number
+        required: true
+        description: CAS expected version read from engagement projection.
+      engagement_projection:
+        type: json
+        required: true
+        description: Bounded data-store read projection for the aggregate.
+    outputs:
+      decision: object
+      append_event: object
+      next_touch_packet: object
+      escalation: object
+      stop_state: object

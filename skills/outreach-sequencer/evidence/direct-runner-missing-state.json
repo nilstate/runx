@@ -1,0 +1,19 @@
+{
+  "schema": "runx.outreach.sequencer.v1",
+  "status": "needs_agent",
+  "decision": {
+    "eligible": false,
+    "reason": "unreadable_engagement_state"
+  },
+  "escalation": {
+    "required": true,
+    "lane": "human_approval",
+    "reason_code": "unreadable_engagement_state",
+    "message": "engagement_projection.operation_result must be an ok read_projection."
+  },
+  "stop_state": {
+    "state": "needs_human",
+    "reason_code": "unreadable_engagement_state",
+    "message": "engagement_projection.operation_result must be an ok read_projection."
+  }
+}

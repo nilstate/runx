@@ -1,0 +1,47 @@
+{
+  "schema": "frantic.verification.v1",
+  "bounty": "#74",
+  "package": "vidshidden/outreach-sequencer@sha-8248a4585211",
+  "runx_cli": "0.6.14",
+  "public_url": "https://runx.ai/x/vidshidden/outreach-sequencer@sha-8248a4585211",
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 3,
+    "case_names": [
+      "happy_next_touch",
+      "stop_replied",
+      "missing_state_needs_agent"
+    ],
+    "receipt_refs": [
+      "runx:receipt:sha256:0cc476175ec20f917b0f751f4a7215041607100c02d37cf245fe5acf00b7e27f",
+      "runx:receipt:sha256:8e0e53664b9b2e6ccbc4974083babba979751827cb983308176efe50bc0dbb36",
+      "runx:receipt:sha256:55945b1c9000f5267ed98f939de071d4676d6b0f34f571625dc28095a69defad"
+    ],
+    "evidence_id": "runx-harness:vidshidden/outreach-sequencer:sha-8248a4585211",
+    "evidence_url": "https://runx.ai/x/vidshidden/outreach-sequencer#harness"
+  },
+  "clean_install": {
+    "command": "runx add vidshidden/outreach-sequencer@sha-8248a4585211 --registry https://api.runx.ai",
+    "status": "success",
+    "digest": "sha256:53610c96d9f26634e7b1887fe0770d80007d7535960da60be9b959936eef839e"
+  },
+  "local_runner": {
+    "happy_next_touch": "passed",
+    "stop_replied": "passed",
+    "missing_state_needs_agent": "passed"
+  },
+  "dogfood": {
+    "status": "pending_ubuntu",
+    "receipt_ref": "pending-ubuntu-dogfood",
+    "verify_valid": false,
+    "windows_status": "failure",
+    "windows_error": "receipt store is unreadable: 参数错误。 (os error 87)",
+    "ubuntu_actions_workflow": ".github/workflows/outreach-sequencer-dogfood.yml",
+    "expected_outputs": [
+      "skills/outreach-sequencer/evidence/dogfood-output.json",
+      "skills/outreach-sequencer/evidence/dogfood-verify.json",
+      "skills/outreach-sequencer/evidence/dogfood-receipt.json"
+    ]
+  },
+  "receipt_ref": "pending-ubuntu-dogfood"
+}
