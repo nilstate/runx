@@ -226,6 +226,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "991ec474c6013ce9d29d84df810c14db567328607018c4de9606ba3952d8b9c7",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/prospect-sequence",
+        version: "sha-600560c04285",
+        digest: "0569de06069526ada7ce1bb23d5979348696f0e77b6c602ec506850626c19a14",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/receipt-auditor",
         version: "sha-acbe46a62851",
         digest: "155c522fb8e029bc4bd83863ea0960e23a8936c47977b70052aa9b119675d61e",
