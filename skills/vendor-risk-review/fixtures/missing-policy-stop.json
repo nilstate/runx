@@ -1,0 +1,10 @@
+{
+  "contract_text": "Vendor provides SOC 2 controls and 30 day termination notice.",
+  "vendor_context": {
+    "vendor_ref": "vendor:unclear-policy",
+    "history": "New vendor.",
+    "industry": "operations"
+  },
+  "data_source_ref": "artifact://vendor-risk/missing-policy",
+  "store_id": "vendor-risk-store-main"
+}

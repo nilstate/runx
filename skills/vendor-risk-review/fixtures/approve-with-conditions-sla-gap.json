@@ -1,0 +1,24 @@
+{
+  "contract_text": "Vendor provides SOC 2 Type II controls, encryption at rest, a signed DPA, liability capped at USD 50000, and 30 day termination notice. Service uptime commitment is 99.0 percent.",
+  "vendor_context": {
+    "vendor_ref": "vendor:acme-mailops",
+    "history": "Existing email operations vendor with one renewal cycle.",
+    "industry": "email operations"
+  },
+  "policy": {
+    "required_sla_terms": {
+      "min_uptime_percent": 99.9,
+      "support_response_hours": 24
+    },
+    "max_liability": 100000,
+    "data_handling_floor": ["soc 2", "encryption", "dpa"],
+    "termination_window": 30,
+    "policy_id": "trust-policy-2026-06",
+    "created_at": "2026-06-30T00:00:00Z"
+  },
+  "data_source_ref": "artifact://vendor-risk/acme-mailops-contract",
+  "store_id": "vendor-risk-store-main",
+  "prior_risk_record": {
+    "version": 2
+  }
+}

@@ -1,0 +1,142 @@
+skill: vendor-risk-review
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: approve-with-conditions-sla-gap
+      runner: judge
+      inputs:
+        contract_text: "Vendor provides SOC 2 Type II controls, encryption at rest, a signed DPA, liability capped at USD 50000, and 30 day termination notice. Service uptime commitment is 99.0 percent."
+        vendor_context:
+          vendor_ref: "vendor:acme-mailops"
+          history: "Existing email operations vendor with one renewal cycle."
+          industry: "email operations"
+        policy:
+          required_sla_terms:
+            min_uptime_percent: 99.9
+            support_response_hours: 24
+          max_liability: 100000
+          data_handling_floor:
+            - "soc 2"
+            - "encryption"
+            - "dpa"
+          termination_window: 30
+          policy_id: "trust-policy-2026-06"
+          created_at: "2026-06-30T00:00:00Z"
+        data_source_ref: "artifact://vendor-risk/acme-mailops-contract"
+        store_id: "vendor-risk-store-main"
+        prior_risk_record:
+          version: 2
+      caller:
+        answers:
+          agent_task.vendor-risk-review.output:
+            decision:
+              approved: true
+              rejected: false
+            record_written: true
+            escalation: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: reject-unbounded-liability-data-floor
+      runner: judge
+      inputs:
+        contract_text: "Vendor may process customer data without SOC 2 evidence or DPA. Encryption is not guaranteed. Liability is unlimited and termination requires 120 days."
+        vendor_context:
+          vendor_ref: "vendor:bulkdata-sync"
+          history: "New data sync vendor."
+          industry: "data processing"
+        policy:
+          required_sla_terms:
+            min_uptime_percent: 99.5
+            support_response_hours: 24
+          max_liability: 75000
+          data_handling_floor:
+            - "soc 2"
+            - "encryption"
+            - "dpa"
+          termination_window: 45
+          policy_id: "trust-policy-2026-06"
+          created_at: "2026-06-30T00:00:00Z"
+        data_source_ref: "artifact://vendor-risk/bulkdata-sync-contract"
+        store_id: "vendor-risk-store-main"
+        prior_risk_record:
+          version: 4
+      caller:
+        answers:
+          agent_task.vendor-risk-review.output:
+            decision:
+              approved: false
+              rejected: true
+            record_written: true
+            escalation: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: missing-policy-stop
+      runner: judge
+      inputs:
+        contract_text: "Vendor provides SOC 2 controls and 30 day termination notice."
+        vendor_context:
+          vendor_ref: "vendor:unclear-policy"
+          history: "New vendor."
+          industry: "operations"
+        data_source_ref: "artifact://vendor-risk/missing-policy"
+        store_id: "vendor-risk-store-main"
+      expect:
+        status: failure
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      risk_record_event: object
+      data_store_append_event: object
+      record_written: boolean
+      escalation: string
+      evidence_summary: object
+    artifacts:
+      wrap_as: vendor_risk_packet
+      packet: runx.vendor_risk_review.v1
+    inputs:
+      contract_text:
+        type: string
+        required: true
+        description: "Bounded contract text or summary to judge."
+      vendor_context:
+        type: json
+        required: true
+        description: "Vendor identifier, history, and industry context."
+      policy:
+        type: json
+        required: true
+        description: "Trust policy fields and thresholds."
+      data_source_ref:
+        type: string
+        required: true
+        description: "Public-safe source reference for the contract packet."
+      store_id:
+        type: string
+        required: true
+        description: "Pinned data-store identifier."
+      prior_risk_record:
+        type: json
+        required: false
+        description: "Read projection result carrying the current version."

@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "approve-with-conditions-sla-gap",
+    "reject-unbounded-liability-data-floor",
+    "missing-policy-stop"
+  ],
+  "receipt_ids": [
+    "sha256:a24ef0f1b0888c2888edf697636648c1e773140f6d71453d96eb89c03a99f209",
+    "sha256:38d1747fa6ff0538e013083573b63bf66ad32fcdf551a00389763159c85848ce",
+    "sha256:eca4181b5b07de91a4ba82e97116e3887aced14b1c124f526ecde80452b7fb6d"
+  ],
+  "graph_case_count": 0
+}
