@@ -1,0 +1,54 @@
+{
+  "summary": "Verification packet for deliverability-judge 0.1.0.",
+  "package": {
+    "owner": "pay4love1",
+    "name": "deliverability-judge",
+    "version": "0.1.0",
+    "pr_url": "https://github.com/runxhq/runx/pull/204"
+  },
+  "checks": [
+    {
+      "name": "exact_package_name",
+      "status": "pass",
+      "evidence": "SKILL.md and X.yaml both use deliverability-judge."
+    },
+    {
+      "name": "read_only_behavior",
+      "status": "pass",
+      "evidence": "The runner emits only JSON verdicts and never sends mail, throttles traffic, writes state, mints authority, or emits effects."
+    },
+    {
+      "name": "healthy_case",
+      "status": "pass",
+      "evidence": "Sealed healthy evidence produces verdict.state=healthy and recommendation.action=continue."
+    },
+    {
+      "name": "contradictory_case",
+      "status": "pass",
+      "evidence": "Contradictory sealed evidence produces verdict.state=escalate and omits recommendation."
+    },
+    {
+      "name": "runx_cli_version",
+      "status": "pass",
+      "evidence": "runx-cli 0.6.14."
+    },
+    {
+      "name": "registry_publish",
+      "status": "blocked",
+      "evidence": "Local Windows publish failed in runx receipt/sandbox runtime before final hosted harness. Needs runx GitHub publish login and Linux/hosted publish completion."
+    },
+    {
+      "name": "dogfood_receipt",
+      "status": "blocked",
+      "evidence": "Requires successful registry publish and dogfood run through runx skill pay4love1/deliverability-judge@0.1.0 --json."
+    }
+  ],
+  "expected_final_commands": [
+    "runx login --provider github --for publish",
+    "runx registry publish ./skills/deliverability-judge/SKILL.md --registry https://api.runx.ai --owner pay4love1 --version 0.1.0 --json",
+    "runx registry read pay4love1/deliverability-judge@0.1.0 --registry https://api.runx.ai --json",
+    "runx add pay4love1/deliverability-judge@0.1.0 --registry https://api.runx.ai --json",
+    "runx skill pay4love1/deliverability-judge@0.1.0 --json",
+    "runx verify <receipt_ref> --json"
+  ]
+}

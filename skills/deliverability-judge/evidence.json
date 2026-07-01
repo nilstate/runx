@@ -1,0 +1,51 @@
+{
+  "summary": "deliverability-judge 0.1.0 is a read-only runx skill that fuses sealed deliverability evidence into a continue, throttle, pause, or escalation verdict.",
+  "observations": [
+    {
+      "name": "runx_version",
+      "value": "runx-cli 0.6.14",
+      "meets_requirement": true
+    },
+    {
+      "name": "package_name",
+      "value": "deliverability-judge",
+      "meets_requirement": true
+    },
+    {
+      "name": "github_star",
+      "value": "pay4love1 currently stars https://github.com/runxhq/runx, verified through the GitHub API before submission preparation.",
+      "meets_requirement": true
+    },
+    {
+      "name": "source_pr",
+      "value": "https://github.com/runxhq/runx/pull/204",
+      "meets_requirement": true
+    },
+    {
+      "name": "local_direct_runner_healthy_case",
+      "value": "node run.mjs returned verdict.state=healthy and recommendation.action=continue for sealed healthy signals.",
+      "meets_requirement": true
+    },
+    {
+      "name": "local_direct_runner_contradictory_case",
+      "value": "node run.mjs returned verdict.state=escalate and no recommendation for contradictory sealed signals.",
+      "meets_requirement": true
+    },
+    {
+      "name": "windows_runx_harness_blocker",
+      "value": "runx harness and registry publish were attempted locally on Windows, but the CLI failed in receipt/sandbox runtime paths before skill logic execution. Linux hosted harness/publish is still required for final delivery.",
+      "meets_requirement": false
+    }
+  ],
+  "commands": [
+    "runx --version",
+    "node run.mjs",
+    "runx registry publish ./skills/deliverability-judge/SKILL.md --registry https://api.runx.ai"
+  ],
+  "artifacts": {
+    "source_url": "https://github.com/runxhq/runx/pull/204",
+    "pr_url": "https://github.com/runxhq/runx/pull/204",
+    "local_output": "skills/deliverability-judge/harness-evidence/local-output.md"
+  },
+  "version": "0.1.0"
+}
