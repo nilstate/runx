@@ -1,0 +1,48 @@
+{
+  "name": "escalation-judge-escalates-critical-churn",
+  "inputs": {
+    "triage_packet": {
+      "classification": "support-triage-reply",
+      "severity": "critical",
+      "confidence": 0.94
+    },
+    "thread_body": "The customer says they will churn today unless executive support restores access before renewal.",
+    "policy_rules": {
+      "severity_thresholds": {
+        "high": {
+          "lane": "priority_support",
+          "reason": "high_or_critical_customer_impact"
+        }
+      },
+      "churn_risk_signals": [
+        {
+          "signal": "explicit_churn",
+          "lane": "priority_support",
+          "patterns": ["will churn", "before renewal"]
+        }
+      ],
+      "escalation_lanes": {
+        "priority_support": {
+          "target_rail": "slack://support-priority",
+          "description": "Priority internal support escalation lane."
+        }
+      }
+    },
+    "aggregate_id": "thread-4821",
+    "expected_version": 0,
+    "idempotency_key": "thread-4821:escalate:v1",
+    "data_source_ref": "local://runx-escalation-judge/default",
+    "store_id": "escalation-judge-local-v1",
+    "prior_case_projection": {}
+  },
+  "expected": {
+    "status": "sealed",
+    "decision": {
+      "escalate": true,
+      "lane": "priority_support",
+      "reason": "severity_threshold_matched"
+    },
+    "packet": "runx.escalation.packet.v1",
+    "case_event": "escalation.case_opened"
+  }
+}

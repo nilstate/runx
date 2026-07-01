@@ -1,0 +1,7 @@
+{
+  "schema": "runx.frantic.verification.v1",
+  "package": "escalation-judge",
+  "version": "0.1.0",
+  "status": "pending",
+  "checks": []
+}

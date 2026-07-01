@@ -1,0 +1,8 @@
+{
+  "schema": "runx.frantic.evidence.v1",
+  "package": "escalation-judge",
+  "version": "0.1.0",
+  "observations": [
+    "Pending final update after local harness, registry publish, PR creation, clean install, dogfood receipt, and verification."
+  ]
+}

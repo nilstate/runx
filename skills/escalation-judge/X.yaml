@@ -1,0 +1,256 @@
+skill: escalation-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: escalation-judge-escalates-critical-churn
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: support-triage-reply
+          severity: critical
+          confidence: 0.94
+        thread_body: "The customer says they will churn today unless executive support restores access before renewal."
+        policy_rules:
+          severity_thresholds:
+            high:
+              lane: priority_support
+              reason: high_or_critical_customer_impact
+          churn_risk_signals:
+            - signal: explicit_churn
+              lane: priority_support
+              patterns:
+                - will churn
+                - before renewal
+          escalation_lanes:
+            priority_support:
+              target_rail: slack://support-priority
+              description: Priority internal support escalation lane.
+        aggregate_id: thread-4821
+        expected_version: 0
+        idempotency_key: thread-4821:escalate:v1
+        data_source_ref: local://runx-escalation-judge/default
+        store_id: escalation-judge-local-v1
+        resource: escalation_cases
+        prior_case_projection: {}
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: escalation-judge-no-change-low-risk
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: support-triage-reply
+          severity: low
+          confidence: 0.88
+        thread_body: "The user asks for a status update and has not mentioned churn, legal review, executives, or deadlines."
+        policy_rules:
+          severity_thresholds:
+            high:
+              lane: priority_support
+              reason: high_or_critical_customer_impact
+          churn_risk_signals:
+            - signal: explicit_churn
+              lane: priority_support
+              patterns:
+                - will churn
+                - cancel before renewal
+          escalation_lanes:
+            priority_support:
+              target_rail: slack://support-priority
+              description: Priority internal support escalation lane.
+        aggregate_id: thread-1002
+        expected_version: 0
+        idempotency_key: thread-1002:judge:v1
+        data_source_ref: local://runx-escalation-judge/default
+        store_id: escalation-judge-local-v1
+        resource: escalation_cases
+        prior_case_projection: {}
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - slack_post
+    - send_email
+    - page_on_call
+    - invented_policy
+    - invented_severity
+    - undeclared_lane
+
+emits:
+  - name: decision
+    packet: runx.escalation_judge.decision.v1
+  - name: escalation_packet
+    packet: runx.escalation.packet.v1
+  - name: case_event
+    packet: runx.escalation.case_event.v1
+
+runners:
+  case_flow:
+    type: graph
+    inputs:
+      triage_packet:
+        type: json
+        required: true
+        description: Support triage classification with classification, severity, and confidence.
+      thread_body:
+        type: string
+        required: true
+        description: Support thread body.
+      policy_rules:
+        type: json
+        required: true
+        description: Escalation policy with thresholds, churn signals, and lanes.
+      aggregate_id:
+        type: string
+        required: true
+        description: Thread id and data-store aggregate id.
+      expected_version:
+        type: number
+        required: true
+        description: Current case stream version for CAS append.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for the case append.
+      data_source_ref:
+        type: string
+        required: false
+        default: local://runx-escalation-judge/default
+        description: Logical data source to bind through data-store.
+      store_id:
+        type: string
+        required: false
+        default: escalation-judge-local-v1
+        description: Optional deterministic local fixture store id.
+      resource:
+        type: string
+        required: false
+        default: escalation_cases
+        description: Data-store resource for escalation case events.
+    graph:
+      name: escalation-judge-case-flow
+      steps:
+        - id: read_projection
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+        - id: decide
+          skill: .
+          runner: judge
+          inputs:
+            triage_packet: "$input.triage_packet"
+            thread_body: "$input.thread_body"
+            policy_rules: "$input.policy_rules"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+          context:
+            prior_case_projection: read_projection.data_operation_result.data
+        - id: append_case
+          when:
+            field: decide.decision.data.escalate
+            equals: true
+          skill: ../data-store
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.case_event.data
+
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      named_emits:
+        decision: runx.escalation_judge.decision.v1
+        escalation_packet: runx.escalation.packet.v1
+        case_event: runx.escalation.case_event.v1
+    outputs:
+      decision: object
+      case_id: string
+      escalation_packet: object
+      data_store_operation: object
+      observations: array
+    inputs:
+      triage_packet:
+        type: json
+        required: true
+        description: Support triage classification with classification, severity, and confidence.
+      thread_body:
+        type: string
+        required: true
+        description: Support thread body.
+      policy_rules:
+        type: json
+        required: true
+        description: Escalation policy with thresholds, churn signals, and lanes.
+      aggregate_id:
+        type: string
+        required: true
+        description: Thread id and data-store aggregate id.
+      expected_version:
+        type: number
+        required: true
+        description: Current case stream version for CAS append.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for the case append.
+      data_source_ref:
+        type: string
+        required: false
+        default: local://runx-escalation-judge/default
+        description: Logical data source to bind through data-store.
+      store_id:
+        type: string
+        required: false
+        default: escalation-judge-local-v1
+        description: Optional deterministic local fixture store id.
+      resource:
+        type: string
+        required: false
+        default: escalation_cases
+        description: Data-store resource for escalation case events.
+      prior_case_projection:
+        type: json
+        required: false
+        description: Prior read_projection result for the aggregate id.

@@ -1,0 +1,48 @@
+{
+  "name": "escalation-judge-no-change-low-risk",
+  "inputs": {
+    "triage_packet": {
+      "classification": "support-triage-reply",
+      "severity": "low",
+      "confidence": 0.88
+    },
+    "thread_body": "The user asks for a status update and has not mentioned churn, legal review, executives, or deadlines.",
+    "policy_rules": {
+      "severity_thresholds": {
+        "high": {
+          "lane": "priority_support",
+          "reason": "high_or_critical_customer_impact"
+        }
+      },
+      "churn_risk_signals": [
+        {
+          "signal": "explicit_churn",
+          "lane": "priority_support",
+          "patterns": ["will churn", "cancel before renewal"]
+        }
+      ],
+      "escalation_lanes": {
+        "priority_support": {
+          "target_rail": "slack://support-priority",
+          "description": "Priority internal support escalation lane."
+        }
+      }
+    },
+    "aggregate_id": "thread-1002",
+    "expected_version": 0,
+    "idempotency_key": "thread-1002:judge:v1",
+    "data_source_ref": "local://runx-escalation-judge/default",
+    "store_id": "escalation-judge-local-v1",
+    "prior_case_projection": {}
+  },
+  "expected": {
+    "status": "sealed",
+    "decision": {
+      "escalate": false,
+      "lane": null,
+      "reason": "no_threshold_matched"
+    },
+    "packet": null,
+    "case_event": null
+  }
+}
