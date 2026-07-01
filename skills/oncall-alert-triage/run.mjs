@@ -7,7 +7,9 @@ function main() {
   const alert = objectValue(inputs.alert, "alert");
   const runbookRef = objectValue(inputs.runbook_ref, "runbook_ref");
   const oncallPolicy = objectValue(inputs.oncall_policy, "oncall_policy");
-  process.stdout.write(`${JSON.stringify(triage(alert, runbookRef, oncallPolicy), null, 2)}\n`);
+  const result = triage(alert, runbookRef, oncallPolicy);
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  if (result.refusal.reason) process.exitCode = 64;
 }
 
 function triage(alert, runbookRef, oncallPolicy) {

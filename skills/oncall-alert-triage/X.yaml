@@ -1,5 +1,5 @@
 skill: oncall-alert-triage
-version: "0.1.1"
+version: "0.1.2"
 
 catalog:
   kind: skill
@@ -64,10 +64,12 @@ harness:
                 - escalate
         operator_context: Missing or unsealed runbooks must block packet emission and route to human approval.
       expect:
-        status: sealed
+        status: failure
         receipt:
           schema: runx.receipt.v1
           state: sealed
+          disposition: failed
+          reason_code: process_failed
 
 runners:
   triage:

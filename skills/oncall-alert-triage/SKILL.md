@@ -29,8 +29,8 @@ It verifies that the service is in policy, the runbook is sealed, and the
 runbook or policy binds the targets needed for any packet. When the alert is
 eligible for escalation or auto-remediation, it emits one packet that names the
 page target, incident PR target, PR review note body, optional fix bundle, and
-escalation route. When the evidence is missing or unsafe, it stops and returns
-a sealed refusal instead of inventing a target.
+escalation route. When the evidence is missing or unsafe, it fails closed with
+a refusal reason instead of inventing a target.
 
 ## When To Use It
 
@@ -98,7 +98,7 @@ The harness covers two cases:
   `runx.oncall.triage.v1` packet and seals.
 - `oncall-alert-triage-missing-runbook-refusal`: a service without a declared
   policy and without a sealed runbook emits no packet, records the refusal
-  reason, and seals the result for audit.
+  reason, and exits with a receipt-backed failure for audit.
 
 ## Evidence Requirements
 
