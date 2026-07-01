@@ -1,0 +1,13 @@
+{
+  "triage_packet": {"classification": "account_access", "severity": "critical", "confidence": 0.96},
+  "thread_body": "Enterprise customer reports a production lockout and says renewal is at risk today.",
+  "policy_rules": {
+    "severity_thresholds": {"priority_support": "high", "executive_review": "critical"},
+    "churn_risk_signals": ["renewal is at risk"],
+    "escalation_lanes": {"executive_review": "slack-notify", "priority_support": "slack-notify"}
+  },
+  "aggregate_id": "thread-critical-001",
+  "expected_version": 0,
+  "idempotency_key": "thread-critical-001:escalate:v1"
+}
+
