@@ -1,0 +1,20 @@
+{
+  "recorded_at": "2026-07-01T06:20:32Z",
+  "runx_version": "runx-cli 0.6.14",
+  "command": "runx harness ./skills/oncall-alert-triage --json",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "case_names": [
+    "oncall-alert-triage-escalate-sealed",
+    "oncall-alert-triage-missing-runbook-needs-agent"
+  ],
+  "receipt_ids": [
+    "sha256:bdeed79ed4d4dc4b606ca332fc58696dd3ed0fb36bd19adda682e34d834b35ac"
+  ],
+  "signing_profile": {
+    "kid": "runx-demo-key",
+    "issuer_type": "hosted",
+    "seed_source": "public demo seed documented by runx"
+  }
+}
