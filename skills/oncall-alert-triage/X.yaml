@@ -1,8 +1,8 @@
 skill: oncall-alert-triage
-version: "0.1.2"
+version: "0.1.3"
 
 catalog:
-  kind: skill
+  kind: graph
   audience: public
   visibility: public
   role: context
@@ -36,12 +36,35 @@ harness:
                 - acknowledge
                 - escalate
         operator_context: Keep live paging and incident PR creation in downstream governed lanes. This skill only emits the triage packet.
+      caller:
+        answers:
+          agent_task.oncall-alert-triage.output:
+            decision:
+              action: escalate
+              reason: The alert is page-severity, the service is declared in policy, and the sealed runbook binds page and incident PR targets.
+            triage_packet:
+              schema: runx.oncall.triage.v1
+              page_target: pagerduty:checkout-primary
+              incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
+              pr_review_note_body: "Escalate checkout-api latency: attach graph, rollback candidate, and current saturation metrics."
+              fix_bundle: null
+              escalation: human_oncall_required
+              evidence:
+                alert_id: alert-2026-07-01-checkout-latency
+                service: checkout-api
+                severity: page
+                signal: p95 latency above 2500ms for 12 minutes with error budget burn 8x
+                runbook_digest: sha256:7bbd657f2d41e65d9e6d38e37f722ba6efbc0f835ac815fb7649b25b182a18d4
+                policy_clause: checkout-api.escalation_rules
+                side_effects: none
+            refusal:
+              reason: null
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
           state: sealed
-    - name: oncall-alert-triage-missing-runbook-refusal
+    - name: oncall-alert-triage-missing-runbook-needs-agent
       runner: triage
       inputs:
         alert:
@@ -64,16 +87,60 @@ harness:
                 - escalate
         operator_context: Missing or unsealed runbooks must block packet emission and route to human approval.
       expect:
-        status: failure
+        status: needs_agent
         receipt:
           schema: runx.receipt.v1
           state: sealed
-          disposition: failed
-          reason_code: process_failed
 
 runners:
+  agent:
+    type: agent
+
   triage:
     default: true
+    type: graph
+    act:
+      form: review
+      purpose: Review one on-call alert against sealed runbook evidence and declared service policy.
+    inputs:
+      alert:
+        type: json
+        required: true
+        description: Alert record with id, service, severity, and signal.
+      runbook_ref:
+        type: json
+        required: true
+        description: Sealed runbook reference and digest plus target bindings.
+      oncall_policy:
+        type: json
+        required: true
+        description: Declared services and escalation rules.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for downstream dispatch and approvals.
+    graph:
+      name: oncall-alert-triage
+      steps:
+        - id: packet
+          label: review alert evidence
+          run:
+            type: agent-task
+            agent: reviewer
+            task: oncall-alert-triage
+            outputs:
+              decision: object
+              triage_packet: object
+              refusal: object
+          instructions: |
+            Review exactly one alert against runbook_ref and oncall_policy. Refuse to emit a packet when the service is undeclared, the runbook is unsealed or lacks a digest, or page_target and incident_pr_target cannot both be bound. Never invent a remediation step, escalation route, authority, page, comment, or pull request. For an eligible page-severity alert, return decision.action=escalate and exactly one runx.oncall.triage.v1 packet containing the bound page_target, incident_pr_target, pr_review_note_body, optional fix_bundle, escalation, and evidence. This step only judges and packages; it performs no external effect.
+          artifacts:
+            named_emits:
+              triage_packet: triage_packet
+            packets:
+              triage_packet: runx.oncall.triage.v1
+
+  dogfood:
     type: cli-tool
     command: node
     args:
@@ -103,4 +170,4 @@ runners:
       operator_context:
         type: string
         required: false
-        description: Operator constraints for downstream dispatch and approvals.
+        description: Operator constraints for deterministic post-publish dogfood.

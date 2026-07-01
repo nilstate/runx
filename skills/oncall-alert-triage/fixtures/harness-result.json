@@ -2,20 +2,20 @@
   "schema": "runx.oncall_alert_triage.harness_result.v1",
   "runx_cli": "runx-cli 0.6.14",
   "command": "runx harness ./skills/oncall-alert-triage --receipt-dir <tmp> --json",
-  "source_revision_before_commit": "e550cca103635ad7cc9f04449f429444123ee87a",
+  "source_revision_before_commit": "2b24aba116706494c88228debddbabc592e296a6",
   "status": "passed",
   "case_count": 2,
   "assertion_error_count": 0,
   "case_names": [
     "oncall-alert-triage-escalate-sealed",
-    "oncall-alert-triage-missing-runbook-refusal"
+    "oncall-alert-triage-missing-runbook-needs-agent"
   ],
   "receipt_ids": [
-    "sha256:6f2cda4c63fafe9bd4edbfb07489703be422e67202bb97f4768e4b3af175dd84",
-    "sha256:03134d8aba75c4cd22c2dc7cbc31fe27337da87e109c51675f85cd2deab38f56"
+    "sha256:51b81ddf078c60570a3e527a137b6235ac9f6d8fab45d777a2b657a5e83eeffa"
   ],
+  "graph_case_count": 2,
   "notes": [
-    "Runner is a deterministic Node.js cli-tool; it emits no external side effects.",
-    "Missing or unsafe evidence fails closed with a receipt-backed refusal instead of inventing targets."
+    "Default runner is a graph with a thin review act; the deterministic Node.js dogfood runner emits no external side effects.",
+    "Missing or unsafe evidence stops at needs_agent when no caller answer is supplied instead of inventing targets."
   ]
 }

@@ -12,6 +12,11 @@ escalated, auto-remediated, suppressed, or stopped for a human. It is a
 read-only judgment skill: it never pages a person, opens an incident PR, posts a
 review note, mints authority, or executes a remediation step.
 
+The default `triage` runner is a graph with a thin `review` act. Its packet step
+is an agent-mediated judgment, so an unattended run stops at `needs_agent`
+instead of fabricating a decision. The bounded `dogfood` runner applies the
+same checked contract deterministically for reproducible post-publish evidence.
+
 The useful output is a single `runx.oncall.triage.v1` packet. A downstream
 driver or operator may later route that packet to separate governed runs, such
 as a live page, an incident PR package behind a human merge gate, or a
@@ -29,8 +34,8 @@ It verifies that the service is in policy, the runbook is sealed, and the
 runbook or policy binds the targets needed for any packet. When the alert is
 eligible for escalation or auto-remediation, it emits one packet that names the
 page target, incident PR target, PR review note body, optional fix bundle, and
-escalation route. When the evidence is missing or unsafe, it fails closed with
-a refusal reason instead of inventing a target.
+escalation route. When the evidence is missing or unsafe, it stops for an agent
+or fails closed with a refusal reason instead of inventing a target.
 
 ## When To Use It
 
@@ -96,9 +101,9 @@ The harness covers two cases:
 - `oncall-alert-triage-escalate-sealed`: a page-severity `checkout-api` alert
   with a sealed runbook and in-policy service emits one
   `runx.oncall.triage.v1` packet and seals.
-- `oncall-alert-triage-missing-runbook-refusal`: a service without a declared
-  policy and without a sealed runbook emits no packet, records the refusal
-  reason, and exits with a receipt-backed failure for audit.
+- `oncall-alert-triage-missing-runbook-needs-agent`: a service without a
+  declared policy and without a sealed runbook omits caller answers, emits no
+  packet, and stops at `needs_agent` for human review.
 
 ## Evidence Requirements
 
