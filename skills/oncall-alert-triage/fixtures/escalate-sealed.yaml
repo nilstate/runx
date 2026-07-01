@@ -1,0 +1,23 @@
+alert:
+  id: alert-2026-07-01-checkout-latency
+  service: checkout-api
+  severity: page
+  signal: p95 latency above 2500ms for 12 minutes with error budget burn 8x
+runbook_ref:
+  uri: fixture://runbooks/checkout-api-latency
+  digest: sha256:7bbd657f2d41e65d9e6d38e37f722ba6efbc0f835ac815fb7649b25b182a18d4
+  sealed: true
+  escalation:
+    page_target: pagerduty:checkout-primary
+    incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
+    pr_review_note_body: "Escalate checkout-api latency: attach graph, rollback candidate, and current saturation metrics."
+oncall_policy:
+  services:
+    - checkout-api
+  escalation_rules:
+    checkout-api:
+      page_target: pagerduty:checkout-primary
+      incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
+      allowed_actions:
+        - acknowledge
+        - escalate

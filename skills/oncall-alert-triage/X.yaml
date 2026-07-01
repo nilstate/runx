@@ -1,0 +1,131 @@
+skill: oncall-alert-triage
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: oncall-alert-triage-escalate-sealed
+      runner: triage
+      inputs:
+        alert:
+          id: alert-2026-07-01-checkout-latency
+          service: checkout-api
+          severity: page
+          signal: p95 latency above 2500ms for 12 minutes with error budget burn 8x
+        runbook_ref:
+          uri: fixture://runbooks/checkout-api-latency
+          digest: sha256:7bbd657f2d41e65d9e6d38e37f722ba6efbc0f835ac815fb7649b25b182a18d4
+          sealed: true
+          escalation:
+            page_target: pagerduty:checkout-primary
+            incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
+            pr_review_note_body: "Escalate checkout-api latency: attach graph, rollback candidate, and current saturation metrics."
+        oncall_policy:
+          services:
+            - checkout-api
+          escalation_rules:
+            checkout-api:
+              page_target: pagerduty:checkout-primary
+              incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
+              allowed_actions:
+                - acknowledge
+                - escalate
+        operator_context: Keep live paging and incident PR creation in downstream governed lanes. This skill only emits the triage packet.
+      caller:
+        answers:
+          agent_task.oncall-alert-triage.output:
+            decision:
+              action: escalate
+              reason: The alert is page-severity, the service is declared in policy, and the sealed runbook binds page and incident PR targets.
+            triage_packet:
+              schema: runx.oncall.triage.v1
+              page_target: pagerduty:checkout-primary
+              incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
+              pr_review_note_body: "Escalate checkout-api latency: attach graph, rollback candidate, and current saturation metrics."
+              fix_bundle: null
+              escalation: human_oncall_required
+              evidence:
+                alert_id: alert-2026-07-01-checkout-latency
+                service: checkout-api
+                runbook_digest: sha256:7bbd657f2d41e65d9e6d38e37f722ba6efbc0f835ac815fb7649b25b182a18d4
+                policy_clause: checkout-api.escalation_rules
+            refusal:
+              reason: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+    - name: oncall-alert-triage-missing-runbook-needs-agent
+      runner: triage
+      inputs:
+        alert:
+          id: alert-2026-07-01-shadow-worker
+          service: shadow-worker
+          severity: page
+          signal: worker queue depth above threshold but no sealed runbook is available
+        runbook_ref:
+          uri: fixture://runbooks/shadow-worker-missing
+          sealed: false
+        oncall_policy:
+          services:
+            - checkout-api
+          escalation_rules:
+            checkout-api:
+              page_target: pagerduty:checkout-primary
+              incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
+              allowed_actions:
+                - acknowledge
+                - escalate
+        operator_context: Missing or unsealed runbooks must block packet emission and route to human approval.
+      expect:
+        status: needs_agent
+
+runners:
+  triage:
+    default: true
+    type: agent-task
+    agent: operator
+    task: oncall-alert-triage
+    outputs:
+      decision: object
+      triage_packet: object
+      refusal: object
+    artifacts:
+      wrap_as: triage_packet
+      packet: runx.oncall.triage.v1
+    runx:
+      category: ops
+    instructions: >
+      Produce one bounded on-call alert triage decision. Read the alert,
+      runbook_ref, and oncall_policy as evidence. Refuse to emit a packet when
+      the service is not declared in oncall_policy, when the runbook is missing
+      or unsealed, or when no page_target or incident_pr_target can be bound.
+      For an escalate or auto_remediate decision, emit exactly one
+      runx.oncall.triage.v1 packet with page_target, incident_pr_target,
+      pr_review_note_body, optional fix_bundle, and escalation. Do not page,
+      open an incident PR, comment on a PR, mint authority, request attenuation,
+      or execute remediation. Downstream governed lanes consume the packet by
+      name after human/operator approval.
+    inputs:
+      alert:
+        type: object
+        required: true
+        description: Alert record with id, service, severity, and signal.
+      runbook_ref:
+        type: object
+        required: true
+        description: Sealed runbook reference and digest plus target bindings.
+      oncall_policy:
+        type: object
+        required: true
+        description: Declared services and escalation rules.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for downstream dispatch and approvals.
