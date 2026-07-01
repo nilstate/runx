@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-07-01T22:35:54.751Z",
+    "closed_at": "2026-07-01T22:49:24.830Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool dogfood completed"
@@ -96,7 +96,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-07-01T22:35:54.751Z",
+          "closed_at": "2026-07-01T22:49:24.830Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -151,7 +151,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-07-01T22:35:54.751Z",
+    "created_at": "2026-07-01T22:49:24.830Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -179,8 +179,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:471b19ca4353f49740a57a675701106c8d7295a1228e7c6482ca38a9fa3837e9",
-    "id": "sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
+    "digest": "sha256:e5e107fff75a81885f41eb2e0f85baa1cb039fd9a9ef7d7a6bfb1e6452f267ab",
+    "id": "sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0",
     "idempotency": {
       "content_hash": "sha256:run_dogfood_92b8103f34d9-dogfood-content",
       "intent_key": "sha256:run_dogfood_92b8103f34d9-dogfood-intent",
@@ -197,7 +197,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-07-01T22:35:54.751Z",
+      "closed_at": "2026-07-01T22:49:24.830Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -208,14 +208,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-07-01T22:35:54.751Z",
+      "last_observed_at": "2026-07-01T22:49:24.830Z",
       "reason_code": "process_closed",
       "summary": "cli-tool dogfood completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:YKbLrgpLQKR9Nobz-WWnc3MtpcrCAa8ao72vSGapZ7L4fCm8KwDIcqvGNqLE0Bn-kFP4G46rQ8MXvMsVjvV3DQ"
+      "value": "base64:Gjp6FsEwp6V-anLACwHaiysGSbvf4K4KFklkC4smyCxQWfKZjR8qZDIPdhEPKc8JIVvt-9nqRL82PeVYBx9SDQ"
     },
     "subject": {
       "commitments": [],
@@ -226,7 +226,7 @@
       }
     }
   },
-  "receipt_id": "sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
+  "receipt_id": "sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0",
   "registry_provenance": {
     "digest": "sha256:05ad76437d615972406f07f0e47c023b81af8af674137a33e66fae8f7bbb382c",
     "profile_digest": "sha256:a835d0fa2783e6e88e0bb2b2037241c9059a242f1f1e0af0b94828a2951cd469",
@@ -236,7 +236,7 @@
     "skill_id": "armstrongsam25/reply-router",
     "trust_state": "trusted",
     "trust_tier": "community",
-    "version": "sha-31c0fd71d95a"
+    "version": "sha-0625cc484acf"
   },
   "run_id": "run_dogfood_92b8103f34d9",
   "schema": "runx.skill_run.v1",

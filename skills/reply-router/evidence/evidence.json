@@ -3,19 +3,19 @@
   "package": "reply-router",
   "version": "0.1.0",
   "publisher_owner": "armstrongsam25",
-  "registry_ref": "armstrongsam25/reply-router@sha-31c0fd71d95a",
+  "registry_ref": "armstrongsam25/reply-router@sha-0625cc484acf",
   "public_url": "https://runx.ai/x/armstrongsam25/reply-router",
   "source_url": "https://github.com/armstrongsam25/runx-reply-router-skill/tree/31c0fd71d95ab3560c4b4889a1aa20aa0f2ff2c4/skills/reply-router",
   "pr_url": "https://github.com/runxhq/runx/pull/210",
   "source_revision": "31c0fd71d95ab3560c4b4889a1aa20aa0f2ff2c4",
-  "published_version": "sha-31c0fd71d95a",
+  "published_version": "sha-0625cc484acf",
   "publish_method": "runx add https://github.com/armstrongsam25/runx-reply-router-skill --ref master --json (URL-as-publish equivalent to a purpose-scoped publish credential; no secrets in artifacts)",
   "runx_cli_version": "runx-cli 0.6.15",
-  "install_command": "runx add armstrongsam25/reply-router@sha-31c0fd71d95a --registry https://api.runx.ai",
-  "registry_read_command": "runx registry read armstrongsam25/reply-router@sha-31c0fd71d95a --registry https://api.runx.ai --json",
+  "install_command": "runx add armstrongsam25/reply-router@sha-0625cc484acf --registry https://api.runx.ai",
+  "registry_read_command": "runx registry read armstrongsam25/reply-router@sha-0625cc484acf --registry https://api.runx.ai --json",
   "harness_command": "runx harness ./skills/reply-router --json",
-  "dogfood_command": "runx skill armstrongsam25/reply-router@sha-31c0fd71d95a dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
-  "verify_command": "runx verify --receipt receipts/sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6.json --json",
+  "dogfood_command": "runx skill armstrongsam25/reply-router@sha-0625cc484acf dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+  "verify_command": "runx verify --receipt receipts/sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0.json --json",
   "raw_files": {
     "x_yaml": "https://raw.githubusercontent.com/armstrongsam25/runx-reply-router-skill/31c0fd71d95ab3560c4b4889a1aa20aa0f2ff2c4/skills/reply-router/X.yaml",
     "skill_md": "https://raw.githubusercontent.com/armstrongsam25/runx-reply-router-skill/31c0fd71d95ab3560c4b4889a1aa20aa0f2ff2c4/skills/reply-router/SKILL.md"
@@ -72,7 +72,7 @@
     {
       "id": "dogfood_receipt",
       "status": "success",
-      "summary": "Post-publish dogfood run of armstrongsam25/reply-router@sha-31c0fd71d95a sealed receipt runx:receipt:sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6; exit_code=0, disposition=closed, decision=suppress."
+      "summary": "Post-publish dogfood run of armstrongsam25/reply-router@sha-0625cc484acf sealed receipt runx:receipt:sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0; exit_code=0, disposition=closed, decision=suppress."
     },
     {
       "id": "verify_verdict",
@@ -108,7 +108,7 @@
     }
   ],
   "dogfood": {
-    "package": "armstrongsam25/reply-router@sha-31c0fd71d95a",
+    "package": "armstrongsam25/reply-router@sha-0625cc484acf",
     "input": {
       "fixture": "skills/reply-router/fixtures/sealed_unsubscribe_suppression.json",
       "inbound_reply": "sealed unsubscribe request from recipient:ana@example.test",
@@ -118,9 +118,9 @@
         "do not contact"
       ]
     },
-    "command": "runx skill armstrongsam25/reply-router@sha-31c0fd71d95a dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
-    "receipt_ref": "runx:receipt:sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
-    "receipt_id": "sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
+    "command": "runx skill armstrongsam25/reply-router@sha-0625cc484acf dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+    "receipt_ref": "runx:receipt:sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0",
+    "receipt_id": "sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0",
     "verify_verdict": {
       "valid": true,
       "digest": "valid",
@@ -165,8 +165,8 @@
     }
   },
   "verification": {
-    "receipt_ref": "runx:receipt:sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
-    "receipt_id": "sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
+    "receipt_ref": "runx:receipt:sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0",
+    "receipt_id": "sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0",
     "valid": true,
     "findings": [],
     "signature": {
@@ -180,10 +180,10 @@
     }
   },
   "how_to_verify": [
-    "runx add armstrongsam25/reply-router@sha-31c0fd71d95a --registry https://api.runx.ai",
-    "runx registry read armstrongsam25/reply-router@sha-31c0fd71d95a --registry https://api.runx.ai --json",
+    "runx add armstrongsam25/reply-router@sha-0625cc484acf --registry https://api.runx.ai",
+    "runx registry read armstrongsam25/reply-router@sha-0625cc484acf --registry https://api.runx.ai --json",
     "runx harness ./skills/reply-router --json",
-    "runx skill armstrongsam25/reply-router@sha-31c0fd71d95a dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
-    "runx verify --receipt receipts/sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6.json --json"
+    "runx skill armstrongsam25/reply-router@sha-0625cc484acf dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+    "runx verify --receipt receipts/sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0.json --json"
   ]
 }

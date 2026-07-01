@@ -4,17 +4,17 @@
 
 - Package: `reply-router`
 - Version: `0.1.0`
-- Registry ref: `armstrongsam25/reply-router@sha-31c0fd71d95a`
+- Registry ref: `armstrongsam25/reply-router@sha-0625cc484acf`
 - Published URL: https://runx.ai/x/armstrongsam25/reply-router
-- Source revision: `31c0fd71d95ab3560c4b4889a1aa20aa0f2ff2c4`
+- Source revision: `0625cc484acf2f31ad760b1e6f13be633e9052a1`
 - PR: https://github.com/runxhq/runx/pull/210
 - Runtime: `runx-cli 0.6.15`
 
 ## Verification Summary
 
-- Public registry read resolves `armstrongsam25/reply-router@sha-31c0fd71d95a` and records source provenance for `armstrongsam25/runx-reply-router-skill@31c0fd71d95ab3560c4b4889a1aa20aa0f2ff2c4`.
+- Public registry read resolves `armstrongsam25/reply-router@sha-0625cc484acf` and records source provenance for `armstrongsam25/runx-reply-router-skill@0625cc484acf2f31ad760b1e6f13be633e9052a1`.
 - Local harness passed 2 cases with 0 assertion errors.
-- Post-publish dogfood run produced receipt `runx:receipt:sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6`.
+- Post-publish dogfood run produced receipt `runx:receipt:sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0`.
 - `runx verify` returned `valid=true`, digest `valid`, content address `valid`, signature `valid` with kid `runx-demo-key`.
 - Dogfood output decision is `suppress` with classification `unsubscribe` at confidence 0.99.
 
@@ -34,11 +34,11 @@
 ## Commands
 
 ```bash
-runx add armstrongsam25/reply-router@sha-31c0fd71d95a --registry https://api.runx.ai
-runx registry read armstrongsam25/reply-router@sha-31c0fd71d95a --registry https://api.runx.ai --json
+runx add armstrongsam25/reply-router@sha-0625cc484acf --registry https://api.runx.ai
+runx registry read armstrongsam25/reply-router@sha-0625cc484acf --registry https://api.runx.ai --json
 runx harness ./skills/reply-router --json
-runx skill armstrongsam25/reply-router@sha-31c0fd71d95a dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json
-runx verify --receipt receipts/sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6.json --json
+runx skill armstrongsam25/reply-router@sha-0625cc484acf dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json
+runx verify --receipt receipts/sha256:ee9832472e7f25e1804f497efdb96bc716520607cdb80ef4774854d8f2ec65f0.json --json
 ```
 
 ## Safety Review
@@ -52,7 +52,7 @@ runx verify --receipt receipts/sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb
 
 ## How a New User Installs, Runs, and Verifies
 
-- Install: `runx add armstrongsam25/reply-router@sha-31c0fd71d95a --registry https://api.runx.ai`
-- Run: `runx skill armstrongsam25/reply-router@sha-31c0fd71d95a dogfood --registry https://api.runx.ai --input-json inbound_reply=... --json`
+- Install: `runx add armstrongsam25/reply-router@sha-0625cc484acf --registry https://api.runx.ai`
+- Run: `runx skill armstrongsam25/reply-router@sha-0625cc484acf dogfood --registry https://api.runx.ai --input-json inbound_reply=... --json`
 - Verify: `runx verify --receipt <receipt.json> --json` returns `valid=true`
 - The skill is self-contained with no external dependencies beyond Node.js.
