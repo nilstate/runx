@@ -350,5 +350,6 @@
       },
       "findings": []
     }
-  }
+  },
+  "summary": "Published runx escalation-judge skill fengyangxxx/escalation-judge@sha-5b6e5530679f with green hosted publish, clean install, post-publish dogfood run, production-mode verified receipt, and immutable PR evidence for the escalation policy judgment workflow."
 }

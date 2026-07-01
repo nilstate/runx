@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.runx.dev/runx/support/escalation-judge/v1.json",
+  "$id": "https://schemas.runx.ai/runx/support/escalation-judge/v1.json",
   "x-runx-packet-id": "runx.support.escalation_judge.v1",
   "type": "object",
   "properties": {
