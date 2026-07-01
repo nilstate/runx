@@ -109,36 +109,8 @@ harness:
           flake_threshold_pct: 70
           min_sample_size: 20
           max_quarantine_days: 7
-      caller:
-        answers:
-          agent_task.flaky-test-judge.output:
-            schema: runx.flaky.test_triage.v1
-            disposition:
-              decision: stop
-              confidence: 1
-              reason: "missing-evidence: no run history was supplied, so no pass rate or failure mode can be computed."
-            escalation:
-              required: true
-              lane: human_review
-              reason: Supply at least 20 test runs before judging quarantine.
-            dispatch_target: ""
-            metrics:
-              pass_rate_pct: null
-              run_count: 0
-              passing_runs: 0
-              failing_runs: 0
-              window_start: "2026-06-30T00:00:00Z"
-              window_end: "2026-06-30T00:00:00Z"
-              failure_modes: {}
-            evidence_refs:
-              - test_run_history.runs is empty
-              - release_policy.min_sample_size: 20
-            stop_conditions:
-              - missing_run_history
       expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
+        status: needs_agent
 
 runners:
   judge:
