@@ -1,0 +1,23 @@
+case: quarantine_justified
+summary: A 65% pass rate over 20 runs with six explicit timeouts justifies a bounded quarantine.
+inputs:
+  test_run_history:
+    sample_size: 20
+    window_start: "2026-06-23T00:00:00Z"
+    window_end: "2026-06-30T00:00:00Z"
+    passing_runs: 13
+    failures:
+      timeout: 6
+      assertion: 1
+  test_metadata:
+    test_path: tests/integration/test_checkout.py::test_retries_expired_session
+    suite: integration
+  release_policy:
+    flake_threshold_pct: 70
+    min_sample_size: 20
+    max_quarantine_days: 7
+expected:
+  disposition: quarantine
+  duration_days: 7
+  dispatch_target: issue-to-pr
+  repository_mutation: false

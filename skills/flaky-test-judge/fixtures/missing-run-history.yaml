@@ -1,0 +1,20 @@
+case: missing_run_history
+summary: Empty history must stop without a quarantine packet.
+inputs:
+  test_run_history:
+    sample_size: 0
+    window_start: "2026-06-30T00:00:00Z"
+    window_end: "2026-06-30T00:00:00Z"
+    runs: []
+  test_metadata:
+    test_path: tests/integration/test_checkout.py::test_retries_expired_session
+    suite: integration
+  release_policy:
+    flake_threshold_pct: 70
+    min_sample_size: 20
+    max_quarantine_days: 7
+expected:
+  disposition: stop
+  reason_prefix: missing-evidence
+  quarantine_packet: false
+  dispatch_target: ""

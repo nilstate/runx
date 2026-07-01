@@ -1,0 +1,202 @@
+skill: flaky-test-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: quarantine_justified
+      inputs:
+        test_run_history:
+          sample_size: 20
+          window_start: "2026-06-23T00:00:00Z"
+          window_end: "2026-06-30T00:00:00Z"
+          runs:
+            - { status: passed, duration: 1.1, logs: "passed" }
+            - { status: passed, duration: 1.0, logs: "passed" }
+            - { status: failed, duration: 30.0, logs: "TimeoutError: checkout response exceeded 30s" }
+            - { status: passed, duration: 1.2, logs: "passed" }
+            - { status: passed, duration: 1.1, logs: "passed" }
+            - { status: failed, duration: 30.0, logs: "TimeoutError: checkout response exceeded 30s" }
+            - { status: passed, duration: 1.0, logs: "passed" }
+            - { status: passed, duration: 1.3, logs: "passed" }
+            - { status: failed, duration: 30.0, logs: "TimeoutError: checkout response exceeded 30s" }
+            - { status: passed, duration: 1.1, logs: "passed" }
+            - { status: passed, duration: 1.0, logs: "passed" }
+            - { status: failed, duration: 30.0, logs: "TimeoutError: checkout response exceeded 30s" }
+            - { status: passed, duration: 1.2, logs: "passed" }
+            - { status: passed, duration: 1.1, logs: "passed" }
+            - { status: failed, duration: 30.0, logs: "TimeoutError: checkout response exceeded 30s" }
+            - { status: passed, duration: 1.0, logs: "passed" }
+            - { status: passed, duration: 1.3, logs: "passed" }
+            - { status: failed, duration: 30.0, logs: "TimeoutError: checkout response exceeded 30s" }
+            - { status: passed, duration: 1.1, logs: "passed" }
+            - { status: failed, duration: 2.4, logs: "AssertionError: retry count was 2, expected 3" }
+        test_metadata:
+          test_path: tests/integration/test_checkout.py::test_retries_expired_session
+          suite: integration
+          tags:
+            - release-blocking
+            - network
+          target_repo: example/project
+          base: main
+        release_policy:
+          flake_threshold_pct: 70
+          min_sample_size: 20
+          max_quarantine_days: 7
+      caller:
+        answers:
+          agent_task.flaky-test-judge.output:
+            schema: runx.flaky.test_triage.v1
+            disposition:
+              decision: quarantine
+              confidence: 0.96
+              reason: 65% pass rate over 20 supplied runs is below the 70% threshold; 6 of 7 failures contain an explicit timeout.
+            quarantine:
+              test_path: tests/integration/test_checkout.py::test_retries_expired_session
+              duration_days: 7
+              exclusion_marker: '@pytest.mark.skip(reason="quarantined: tracked flaky timeout")'
+              fix_template:
+                thread_title: Fix flaky checkout retry timeout
+                thread_body: Temporarily exclude the named test using the supplied marker, preserve the cited timeout evidence, fix the intermittent checkout timeout, and remove the exclusion before closing the issue.
+                target_repo: example/project
+                base: main
+            escalation:
+              required: false
+              lane: human_review
+              reason: ""
+            dispatch_target: issue-to-pr
+            metrics:
+              pass_rate_pct: 65
+              run_count: 20
+              passing_runs: 13
+              failing_runs: 7
+              window_start: "2026-06-23T00:00:00Z"
+              window_end: "2026-06-30T00:00:00Z"
+              failure_modes:
+                timeout: 6
+                assertion: 1
+            evidence_refs:
+              - runs[2,5,8,11,14,17].logs: TimeoutError
+              - runs[19].logs: AssertionError
+              - release_policy.flake_threshold_pct: 70
+              - release_policy.max_quarantine_days: 7
+            stop_conditions: []
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: missing_run_history
+      inputs:
+        test_run_history:
+          sample_size: 0
+          window_start: "2026-06-30T00:00:00Z"
+          window_end: "2026-06-30T00:00:00Z"
+          runs: []
+        test_metadata:
+          test_path: tests/integration/test_checkout.py::test_retries_expired_session
+          suite: integration
+          tags:
+            - release-blocking
+          target_repo: example/project
+          base: main
+        release_policy:
+          flake_threshold_pct: 70
+          min_sample_size: 20
+          max_quarantine_days: 7
+      caller:
+        answers:
+          agent_task.flaky-test-judge.output:
+            schema: runx.flaky.test_triage.v1
+            disposition:
+              decision: stop
+              confidence: 1
+              reason: "missing-evidence: no run history was supplied, so no pass rate or failure mode can be computed."
+            escalation:
+              required: true
+              lane: human_review
+              reason: Supply at least 20 test runs before judging quarantine.
+            dispatch_target: ""
+            metrics:
+              pass_rate_pct: null
+              run_count: 0
+              passing_runs: 0
+              failing_runs: 0
+              window_start: "2026-06-30T00:00:00Z"
+              window_end: "2026-06-30T00:00:00Z"
+              failure_modes: {}
+            evidence_refs:
+              - test_run_history.runs is empty
+              - release_policy.min_sample_size: 20
+            stop_conditions:
+              - missing_run_history
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  judge:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: flaky-test-judge
+    runx:
+      category: ops
+      post_run:
+        reflect: never
+    outputs:
+      schema: string
+      disposition: object
+      quarantine: object
+      escalation: object
+      dispatch_target: string
+      metrics: object
+      evidence_refs: array
+      stop_conditions: array
+    artifacts:
+      wrap_as: flaky_test_triage
+      packet: runx.flaky.test_triage.v1
+    instructions: >
+      Judge one test only from the supplied test_run_history, test_metadata,
+      and release_policy. Verify sample_size equals the number of runs. Compute
+      pass_rate_pct from supplied statuses and count failure modes only when
+      their evidence is visible in supplied logs. Cite run indexes or exact log
+      fragments. If no history is supplied, the sample-size declaration is
+      inconsistent, or the run count is below min_sample_size, emit a sealed
+      disposition with decision=stop, a reason beginning missing-evidence, no
+      quarantine object, escalation.required=true in lane human_review, no
+      dispatch target, and a matching stop condition. Refuse quarantine when
+      pass rate is at or above flake_threshold_pct. Escalate near-threshold or
+      conflicting evidence. Use decision=fix-now only for a reproducible defect
+      visible in the supplied evidence, and decision=ignore-environmental only
+      for explicitly external noise. Quarantine only when the sufficient sample
+      is below threshold and intermittent failure evidence is explicit. A
+      quarantine packet must name the exact test_path, a positive duration_days
+      no greater than max_quarantine_days, an exclusion_marker, and a
+      fix_template containing thread_title, thread_body, target_repo, and base.
+      Set dispatch_target=issue-to-pr only as a handoff name. This skill never
+      edits a repository, disables a test, opens an issue, starts a PR, or
+      consumes its packet as an effect. The downstream issue-to-pr run is
+      separate and a human merge gate is the only path to a live disable. Emit
+      schema=runx.flaky.test_triage.v1. Do not invent failures, hidden retries,
+      causes, authority, a mint, AttenuationRequest, data-store operation, or
+      operational_proposal.v1.
+    inputs:
+      test_run_history:
+        type: json
+        required: true
+        description: Ordered test runs with status, duration, logs, declared sample size, and sample window.
+      test_metadata:
+        type: json
+        required: true
+        description: Test path, suite, tags, target repository, and base branch.
+      release_policy:
+        type: json
+        required: true
+        description: Pass-rate threshold, minimum sample size, and maximum quarantine duration.
