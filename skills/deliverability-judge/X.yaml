@@ -1,0 +1,93 @@
+skill: deliverability-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_healthy_signals_continue
+      runner: default
+      inputs:
+        evidence:
+          postmaster_report:
+            source: google-postmaster
+            timestamp: "2026-07-01T12:00:00Z"
+            reputation_score: 0.94
+          bounce_metrics:
+            source: esp-bounce-export
+            timestamp: "2026-07-01T12:00:00Z"
+            bounce_pct: 0.7
+          complaint_metrics:
+            source: feedback-loop
+            timestamp: "2026-07-01T12:00:00Z"
+            complaint_pct: 0.02
+          placement_probe:
+            source: seed-inbox-probe
+            timestamp: "2026-07-01T12:00:00Z"
+            passed: true
+        policy:
+          min_reputation_score: 0.8
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: contradictory_signals_escalate
+      runner: default
+      inputs:
+        evidence:
+          postmaster_report:
+            source: google-postmaster
+            timestamp: "2026-07-01T13:00:00Z"
+            reputation_score: 0.96
+          bounce_metrics:
+            source: esp-bounce-export
+            timestamp: "2026-07-01T13:00:00Z"
+            bounce_pct: 9.4
+          complaint_metrics:
+            source: feedback-loop
+            timestamp: "2026-07-01T13:00:00Z"
+            complaint_pct: 0.03
+          placement_probe:
+            source: seed-inbox-probe
+            timestamp: "2026-07-01T13:00:00Z"
+            passed: true
+        policy:
+          min_reputation_score: 0.8
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    sandbox:
+      profile: readonly
+      cwd_policy: skill-directory
+    inputs:
+      evidence:
+        type: object
+        required: true
+        description: Sealed deliverability evidence.
+      policy:
+        type: object
+        required: true
+        description: Deliverability policy thresholds.
