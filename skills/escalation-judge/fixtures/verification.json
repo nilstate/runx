@@ -2,7 +2,7 @@
   "schema": "runx.frantic.verification.v1",
   "package": "escalation-judge",
   "version": "0.1.0",
-  "status": "blocked_external_publish",
+  "status": "passed",
   "checks": [
     {
       "name": "runx_cli_version",
@@ -33,9 +33,30 @@
       "target_rail": "slack://support-priority"
     },
     {
-      "name": "receipt_verify_by_file",
+      "name": "registry_read",
       "status": "passed",
-      "command": "runx verify --receipt <sha256:ae20...json> --json",
+      "command": "runx registry read reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai --json",
+      "registry_ref": "reluctantskeptic/escalation-judge@sha-a33725c68a9e",
+      "digest": "33937553828a7e244595013d38d800d4444edd1a553cd262d167c0a2e1570b29",
+      "profile_digest": "d257f28b34be9874c0ad9f3da85260fa1b8ae3e04136ed0cb33d0b6e04a3876f"
+    },
+    {
+      "name": "clean_install",
+      "status": "passed",
+      "command": "runx add reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai --to skills --json"
+    },
+    {
+      "name": "post_publish_dogfood",
+      "status": "passed",
+      "command": "runx skill reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai --json",
+      "receipt_ref": "runx:receipt:sha256:28e87c37c691f0ed28e6d4620adb626bed085210b1b2eaa8810a257839c23603",
+      "case_id": "case_6a99c90cde49",
+      "target_rail": "slack://support-priority"
+    },
+    {
+      "name": "post_publish_receipt_verify_by_file",
+      "status": "passed",
+      "command": "runx verify --receipt <sha256:28e87...json> --json",
       "valid": true,
       "signature_status": "valid",
       "kid": "runx-demo-key"
@@ -52,8 +73,11 @@
     },
     {
       "name": "hosted_registry_publish",
-      "status": "blocked",
-      "reason": "Runx GitHub login OAuth returned a blank popup/HTTP 502; hosted URL index returned [rate_limited] while resolving the GitHub repository."
+      "status": "passed",
+      "method": "public URL index",
+      "public_url": "https://runx.ai/x/reluctantskeptic/escalation-judge@sha-a33725c68a9e",
+      "source_sha": "a33725c68a9e579cc22ca3ac98894914dac761ac",
+      "warnings": []
     }
   ]
 }

@@ -5,19 +5,21 @@
   "runx_cli_version": "runx-cli 0.6.15",
   "publisher_owner": "ReluctantSkeptic",
   "registry": {
-    "status": "blocked_external",
-    "registry_ref": null,
-    "public_url": null,
+    "status": "published",
+    "registry_ref": "reluctantskeptic/escalation-judge@sha-a33725c68a9e",
+    "public_url": "https://runx.ai/x/reluctantskeptic/escalation-judge@sha-a33725c68a9e",
+    "permalink": "https://runx.ai/x/reluctantskeptic/escalation-judge",
+    "version": "sha-a33725c68a9e",
+    "digest": "33937553828a7e244595013d38d800d4444edd1a553cd262d167c0a2e1570b29",
+    "profile_digest": "d257f28b34be9874c0ad9f3da85260fa1b8ae3e04136ed0cb33d0b6e04a3876f",
+    "trust_tier": "community",
+    "hosted_registry_status": "indexed successfully with warnings []",
     "read_command": "runx registry read <owner>/escalation-judge@<version> --registry https://api.runx.ai --json",
-    "publish_method_attempted": [
-      "runx login --provider github --for publish",
-      "runx registry publish ./skills/escalation-judge/SKILL.md --registry https://api.runx.ai",
+    "publish_method": [
       "runx add https://github.com/ReluctantSkeptic/runx --ref escalation-judge-public --api-base-url https://api.runx.ai --json"
     ],
-    "blockers": [
-      "Runx Connect opened an about:blank OAuth popup and the Nango OAuth endpoint returned HTTP 502 during GitHub login.",
-      "Hosted URL index returned [rate_limited]: GitHub API rate limit hit while resolving the repository."
-    ]
+    "registry_read_status": "success",
+    "clean_install_status": "success"
   },
   "source": {
     "pr_url": "https://github.com/runxhq/runx/pull/208",
@@ -43,11 +45,23 @@
     ]
   },
   "dogfood": {
-    "status": "source_graph_sealed",
-    "package": "escalation-judge@0.1.0",
-    "command": "runx skill skills/escalation-judge case_flow --input-json triage_packet=<critical support packet> -i thread_body=<customer churn thread> --input-json policy_rules=<priority policy> -i aggregate_id=thread-4821 --input-json expected_version=0 -i idempotency_key=thread-4821:graph:v1 -i data_source_ref=local://runx-escalation-judge/default -i store_id=escalation-judge-final-v1 -i resource=escalation_cases --receipt-dir work/runx-final-receipts/graph --json",
-    "receipt_ref": "runx:receipt:sha256:ae20da9194fe1067c1cfa6bb90f01b0fd2240b51fafb93af8dc9fed795ae10e3",
-    "verify_command": "runx verify --receipt <sha256:ae20...json> --json",
+    "status": "post_publish_sealed",
+    "package": "reluctantskeptic/escalation-judge@sha-a33725c68a9e",
+    "input": {
+      "triage_packet": {
+        "classification": "support-triage-reply",
+        "severity": "critical",
+        "confidence": 0.94
+      },
+      "thread_body": "The customer says they will churn today unless executive support restores access before renewal.",
+      "policy_rules": "severity_thresholds.high -> priority_support, explicit_churn patterns will churn/before renewal, target rail slack://support-priority",
+      "aggregate_id": "thread-4821",
+      "expected_version": 0,
+      "idempotency_key": "thread-4821:published:v1"
+    },
+    "command": "runx skill reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai --input-json triage_packet=<critical support packet> -i thread_body=<customer churn thread> --input-json policy_rules=<priority policy> -i aggregate_id=thread-4821 --input-json expected_version=0 -i idempotency_key=thread-4821:published:v1 -i data_source_ref=local://runx-escalation-judge/default -i store_id=escalation-judge-published-v1 -i resource=escalation_cases --receipt-dir work/runx-clean-install/receipts --json",
+    "receipt_ref": "runx:receipt:sha256:28e87c37c691f0ed28e6d4620adb626bed085210b1b2eaa8810a257839c23603",
+    "verify_command": "runx verify --receipt <sha256:28e87...json> --json",
     "verify_verdict": {
       "valid": true,
       "signature_status": "valid",
@@ -77,27 +91,30 @@
       }
     ],
     "prior_case_projection": "read_projection returned version 0 and no prior case events for aggregate_id thread-4821",
-    "case_id": "case_41022d2bf207",
-    "append_event_ref": "escalation_cases:thread-4821:1",
-    "append_event_digest": "sha256:e583d2b57b0b169b7cd76c677dda3f5c25a8900cf4f59b82ba06a0fea8749872",
-    "store_id": "escalation-judge-final-v1",
+    "case_id": "case_6a99c90cde49",
+    "append_operation": "data_store_operation.append_event for aggregate_id thread-4821 with expected_version 0 and idempotency_key thread-4821:published:v1",
+    "store_id": "escalation-judge-published-v1",
     "target_rail": "slack://support-priority",
     "stop_case": "escalation-judge-no-change-low-risk sealed with decision.escalate false, no packet, no case opened, and reason no_threshold_matched"
   },
   "observations": [
     "runx --version output was runx-cli 0.6.15; all recorded local harness, graph dogfood, and verify commands used that binary.",
+    "Published registry package is reluctantskeptic/escalation-judge@sha-a33725c68a9e with public URL https://runx.ai/x/reluctantskeptic/escalation-judge@sha-a33725c68a9e.",
+    "runx registry read reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai --json resolved the metadata, digest 33937553828a7e244595013d38d800d4444edd1a553cd262d167c0a2e1570b29, and profile digest d257f28b34be9874c0ad9f3da85260fa1b8ae3e04136ed0cb33d0b6e04a3876f.",
+    "Clean install succeeded with runx add reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai --to skills --json.",
     "The high-severity critical churn input matched policy threshold severity_thresholds.high and declared churn signal explicit_churn.",
     "The skill read the prior-case projection before deciding; projection version was 0 with no prior events.",
-    "The skill appended case_id case_41022d2bf207 to registry:runx/data-store@0.1.2 shape through append_event with idempotency key thread-4821:graph:v1.",
+    "The published dogfood run appended case_id case_6a99c90cde49 through registry:runx/data-store@0.1.2 shape read_projection -> decide -> append_event with idempotency key thread-4821:published:v1.",
     "The emitted escalation packet names lane priority_support and target rail slack://support-priority; the skill performs no Slack post or email send.",
     "The low-risk stop case sealed with no_threshold_matched, no packet, and no case opened.",
     "Local harness passed cases escalation-judge-escalates-critical-churn and escalation-judge-no-change-low-risk with receipts sha256:d18d595e713abc8460c1d9a8013d572dbc43f8f91c3de63a0ff457b7fb2cd468 and sha256:8e7ba3905296eb7c90c40e75596f02c0087044b313ee1b56a93ba8db92f9ffb7.",
-    "Source graph dogfood receipt sha256:ae20da9194fe1067c1cfa6bb90f01b0fd2240b51fafb93af8dc9fed795ae10e3 passed runx verify --receipt with valid digest, content address, and Ed25519 signature.",
+    "Post-publish dogfood receipt sha256:28e87c37c691f0ed28e6d4620adb626bed085210b1b2eaa8810a257839c23603 passed runx verify --receipt with valid digest, content address, and Ed25519 signature.",
     "Public PR is https://github.com/runxhq/runx/pull/208 and the focused public source branch is ReluctantSkeptic/runx:escalation-judge-public.",
-    "Hosted registry publish is not complete yet because Runx GitHub login returned a blank OAuth popup/HTTP 502 and the unauthenticated URL index returned GitHub API rate_limited."
+    "Hosted URL index accepted the focused public branch at source SHA a33725c68a9e579cc22ca3ac98894914dac761ac with warnings []."
   ],
   "install": {
-    "pending_registry_command": "runx add <owner>/escalation-judge@<version>",
-    "source_command": "runx skill skills/escalation-judge case_flow --json"
+    "install_command": "runx add reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai",
+    "run_command": "runx skill reluctantskeptic/escalation-judge@sha-a33725c68a9e --registry https://api.runx.ai --json",
+    "verify_command": "runx verify --receipt <receipt.json> --json"
   }
 }
