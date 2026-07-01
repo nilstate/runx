@@ -6,6 +6,6 @@
 - The reviewed disposition is `quarantine` with confidence `0.96`, a seven-day ceiling, an explicit pytest exclusion marker, and downstream handoff target `issue-to-pr`.
 - The empty-history boundary refuses to invent evidence. The harness leaves it at `needs_agent`, and the independent fixture requires a `missing-evidence` stop, no quarantine object, and no dispatch target.
 - The skill is evidence-only. It does not edit repositories, change CI, disable a test, open an issue, create a pull request, or merge code.
-- The dogfood run emitted receipt `sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550`.
+- The dogfood run emitted receipt `runx:receipt:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550`.
 - Independent verification of that receipt returned `valid: true` in production mode with no findings.
 - Raw machine-readable evidence is in [`evidence.json`](./evidence.json), and the verification matrix is in [`verification.json`](./verification.json).

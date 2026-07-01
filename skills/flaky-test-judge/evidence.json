@@ -19,7 +19,7 @@
     },
     {
       "name": "public_url",
-      "value": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge"
+      "value": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e"
     },
     {
       "name": "pull_request",
@@ -76,7 +76,7 @@
         "package": "bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e",
         "input": "20 supplied runs: 13 passed, 6 explicit timeouts, and 1 assertion failure",
         "command": "runx skill bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e --inputs-json <fixture> --answers-json <reviewed-answer> --receipt-dir <isolated-dir> --json",
-        "receipt_ref": "sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550",
+        "receipt_ref": "runx:receipt:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550",
         "verify_verdict": "valid",
         "harness_cases": [
           "quarantine_justified",
@@ -92,7 +92,7 @@
   "evidence_items": [
     {
       "kind": "registry",
-      "url": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge"
+      "url": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e"
     },
     {
       "kind": "source",
@@ -112,7 +112,25 @@
     },
     {
       "kind": "receipt",
-      "ref": "sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550"
+      "ref": "runx:receipt:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550"
     }
-  ]
+  ],
+  "dogfood": {
+    "package": "bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e",
+    "input": {
+      "run_count": 20,
+      "passing_runs": 13,
+      "failure_modes": {
+        "timeout": 6,
+        "assertion": 1
+      }
+    },
+    "command": "runx skill bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e --inputs-json <fixture> --answers-json <reviewed-answer> --receipt-dir <isolated-dir> --json",
+    "receipt_ref": "runx:receipt:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      "quarantine_justified",
+      "missing_run_history"
+    ]
+  }
 }

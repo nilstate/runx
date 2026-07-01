@@ -31,7 +31,7 @@
     {
       "name": "receipt_signature",
       "valid": true,
-      "detail": "runx verify reported valid=true for sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550."
+      "detail": "runx verify reported valid=true for runx:receipt:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550."
     },
     {
       "name": "repository_side_effects",
@@ -40,14 +40,14 @@
     }
   ],
   "receipt": {
-    "ref": "sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550",
+    "ref": "runx:receipt:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550",
     "verify_command": "runx verify sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550 --receipt-dir <isolated-dir> --json",
     "valid": true,
     "mode": "production",
     "findings": []
   },
   "artifacts": {
-    "public_url": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge",
+    "public_url": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e",
     "source_url": "https://github.com/bbbbzzzzcc-afk/runx/tree/feat/flaky-test-judge/skills/flaky-test-judge",
     "pr_url": "https://github.com/runxhq/runx/pull/197",
     "x_yaml": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/flaky-test-judge/skills/flaky-test-judge/X.yaml",
