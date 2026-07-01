@@ -1,0 +1,2 @@
+receipts/index.json
+receipts/sha256-bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6.json
