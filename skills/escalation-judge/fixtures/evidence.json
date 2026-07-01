@@ -2,6 +2,7 @@
   "schema": "runx.frantic.evidence.v1",
   "package": "escalation-judge",
   "version": "0.1.0",
+  "summary": "Published reluctantskeptic/escalation-judge@sha-a33725c68a9e, verified clean install, local harness, post-publish dogfood receipt, and runx verify verdict for the escalation-judge support escalation skill.",
   "runx_cli_version": "runx-cli 0.6.15",
   "publisher_owner": "ReluctantSkeptic",
   "registry": {
