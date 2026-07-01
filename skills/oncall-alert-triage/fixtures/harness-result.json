@@ -2,7 +2,7 @@
   "schema": "runx.oncall_alert_triage.harness_result.v1",
   "runx_cli": "runx-cli 0.6.14",
   "command": "runx harness ./skills/oncall-alert-triage --receipt-dir <tmp> --json",
-  "source_revision_before_commit": "2b24aba116706494c88228debddbabc592e296a6",
+  "source_revision_before_commit": "2becf1a5eb176be10c4dedfde3ac06e671f05f0f",
   "status": "passed",
   "case_count": 2,
   "assertion_error_count": 0,
@@ -11,7 +11,7 @@
     "oncall-alert-triage-missing-runbook-needs-agent"
   ],
   "receipt_ids": [
-    "sha256:51b81ddf078c60570a3e527a137b6235ac9f6d8fab45d777a2b657a5e83eeffa"
+    "sha256:24b1284d962d853de43a60356fe0aad4a2f76c900359f8c63776fc4001005aa6"
   ],
   "graph_case_count": 2,
   "notes": [

@@ -96,6 +96,38 @@ runners:
   agent:
     type: agent
 
+  dogfood:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      triage_packet: object
+      refusal: object
+    artifacts:
+      wrap_as: triage_packet
+      packet: runx.oncall.triage.v1
+    runx:
+      category: ops
+    inputs:
+      alert:
+        type: json
+        required: true
+        description: Alert record with id, service, severity, and signal.
+      runbook_ref:
+        type: json
+        required: true
+        description: Sealed runbook reference and digest plus target bindings.
+      oncall_policy:
+        type: json
+        required: true
+        description: Declared services and escalation rules.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for deterministic post-publish dogfood.
+
   triage:
     default: true
     type: graph
@@ -139,35 +171,3 @@ runners:
               triage_packet: triage_packet
             packets:
               triage_packet: runx.oncall.triage.v1
-
-  dogfood:
-    type: cli-tool
-    command: node
-    args:
-      - run.mjs
-    outputs:
-      decision: object
-      triage_packet: object
-      refusal: object
-    artifacts:
-      wrap_as: triage_packet
-      packet: runx.oncall.triage.v1
-    runx:
-      category: ops
-    inputs:
-      alert:
-        type: json
-        required: true
-        description: Alert record with id, service, severity, and signal.
-      runbook_ref:
-        type: json
-        required: true
-        description: Sealed runbook reference and digest plus target bindings.
-      oncall_policy:
-        type: json
-        required: true
-        description: Declared services and escalation rules.
-      operator_context:
-        type: string
-        required: false
-        description: Operator constraints for deterministic post-publish dogfood.
