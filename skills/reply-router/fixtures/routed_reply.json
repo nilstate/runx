@@ -1,0 +1,33 @@
+{
+  "inbound_reply": {
+    "content": "Sounds good, I am interested. Let's set up a call.",
+    "received_from": "recipient:carla@example.test",
+    "received_at": "2026-06-29T06:02:00Z"
+  },
+  "original_send_receipt": {
+    "sealed": true,
+    "receipt_id": "runx:receipt:send_002",
+    "checksum": "sha256:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+    "principal": {
+      "type": "account",
+      "ref": "account:growth-bot"
+    },
+    "send_plan": {
+      "channel": "email",
+      "send_class": "outreach",
+      "audience": {
+        "type": "recipient",
+        "ref": "recipient:carla@example.test"
+      }
+    }
+  },
+  "suppression_policy": {
+    "unsubscribe_signals": ["unsubscribe", "stop sending", "do not contact"],
+    "confidence_threshold": 0.9
+  },
+  "store_projection": {
+    "store_id": "runx.reply-router.suppression.v1",
+    "aggregate_id": "recipient:carla@example.test",
+    "version": 3
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "case_count": 2,
+  "assertion_error_count": 2,
+  "assertion_errors": [
+    "sealed_unsubscribe_suppression: skill run failed: production receipt signer issuer type is unsupported",
+    "stop_ambiguous_or_unsealed: skill run failed: production receipt signer issuer type is unsupported"
+  ],
+  "case_names": [
+    "sealed_unsubscribe_suppression",
+    "stop_ambiguous_or_unsealed"
+  ],
+  "receipt_ids": [],
+  "graph_case_count": 2
+}

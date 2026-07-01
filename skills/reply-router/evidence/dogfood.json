@@ -1,0 +1,245 @@
+{
+  "closure": {
+    "closed_at": "2026-07-01T22:35:54.751Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool dogfood completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "classification": {
+        "confidence": 0.99,
+        "evidence": [
+          "matched signal: unsubscribe",
+          "matched signal: stop sending"
+        ],
+        "type": "unsubscribe"
+      },
+      "data_store_call": {
+        "aggregate_id": "recipient:ana@example.test",
+        "expected_version": 7,
+        "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b",
+        "operation": "append_event",
+        "registry_ref": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.reply-router.suppression.v1"
+      },
+      "decision": "suppress",
+      "emits_routing": false,
+      "suppression_result": {
+        "after_version": 8,
+        "aggregate_id": "recipient:ana@example.test",
+        "before_version": 7,
+        "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b"
+      },
+      "writes_suppression": true
+    },
+    "stderr": "",
+    "stdout": "{\"decision\":\"suppress\",\"classification\":{\"type\":\"unsubscribe\",\"confidence\":0.99,\"evidence\":[\"matched signal: unsubscribe\",\"matched signal: stop sending\"]},\"suppression_result\":{\"aggregate_id\":\"recipient:ana@example.test\",\"idempotency_key\":\"reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b\",\"before_version\":7,\"after_version\":8},\"data_store_call\":{\"registry_ref\":\"registry:runx/data-store@0.1.2\",\"operation\":\"append_event\",\"store_id\":\"runx.reply-router.suppression.v1\",\"aggregate_id\":\"recipient:ana@example.test\",\"expected_version\":7,\"idempotency_key\":\"reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b\"},\"writes_suppression\":true,\"emits_routing\":false}",
+    "structured_output": {
+      "classification": {
+        "confidence": 0.99,
+        "evidence": [
+          "matched signal: unsubscribe",
+          "matched signal: stop sending"
+        ],
+        "type": "unsubscribe"
+      },
+      "data_store_call": {
+        "aggregate_id": "recipient:ana@example.test",
+        "expected_version": 7,
+        "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b",
+        "operation": "append_event",
+        "registry_ref": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.reply-router.suppression.v1"
+      },
+      "decision": "suppress",
+      "emits_routing": false,
+      "suppression_result": {
+        "after_version": 8,
+        "aggregate_id": "recipient:ana@example.test",
+        "before_version": 7,
+        "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b"
+      },
+      "writes_suppression": true
+    }
+  },
+  "payload": {
+    "classification": {
+      "confidence": 0.99,
+      "evidence": [
+        "matched signal: unsubscribe",
+        "matched signal: stop sending"
+      ],
+      "type": "unsubscribe"
+    },
+    "data_store_call": {
+      "aggregate_id": "recipient:ana@example.test",
+      "expected_version": 7,
+      "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b",
+      "operation": "append_event",
+      "registry_ref": "registry:runx/data-store@0.1.2",
+      "store_id": "runx.reply-router.suppression.v1"
+    },
+    "decision": "suppress",
+    "emits_routing": false,
+    "suppression_result": {
+      "after_version": 8,
+      "aggregate_id": "recipient:ana@example.test",
+      "before_version": 7,
+      "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b"
+    },
+    "writes_suppression": true
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-07-01T22:35:54.751Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_dogfood",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step dogfood",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step dogfood",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-07-01T22:35:54.751Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_dogfood",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node dogfood",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_dogfood",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:471b19ca4353f49740a57a675701106c8d7295a1228e7c6482ca38a9fa3837e9",
+    "id": "sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
+    "idempotency": {
+      "content_hash": "sha256:run_dogfood_92b8103f34d9-dogfood-content",
+      "intent_key": "sha256:run_dogfood_92b8103f34d9-dogfood-intent",
+      "trigger_fingerprint": "sha256:run_dogfood_92b8103f34d9-dogfood-trigger"
+    },
+    "issuer": {
+      "kid": "runx-demo-key",
+      "public_key_sha256": "sha256:7d5529d894e52cf01d0b10331898fe161f2e80c3cd897c465a02bdf01e4324a1",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-07-01T22:35:54.751Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-07-01T22:35:54.751Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool dogfood completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:YKbLrgpLQKR9Nobz-WWnc3MtpcrCAa8ao72vSGapZ7L4fCm8KwDIcqvGNqLE0Bn-kFP4G46rQ8MXvMsVjvV3DQ"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_dogfood_92b8103f34d9_dogfood"
+      }
+    }
+  },
+  "receipt_id": "sha256:bb2bd9045ffbd832bae48c370e530044d172df1ebb20dea2379e9185f8c16da6",
+  "registry_provenance": {
+    "digest": "sha256:05ad76437d615972406f07f0e47c023b81af8af674137a33e66fae8f7bbb382c",
+    "profile_digest": "sha256:a835d0fa2783e6e88e0bb2b2037241c9059a242f1f1e0af0b94828a2951cd469",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "armstrongsam25/reply-router",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-31c0fd71d95a"
+  },
+  "run_id": "run_dogfood_92b8103f34d9",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "reply-router",
+  "status": "sealed"
+}
