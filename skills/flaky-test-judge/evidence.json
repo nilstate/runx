@@ -1,0 +1,118 @@
+{
+  "summary": "Published and independently exercised a bounded flaky-test judge that classifies one supplied test history, refuses unsupported quarantine, emits a seven-day quarantine packet only from explicit evidence, and never mutates a repository.",
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.6.14"
+    },
+    {
+      "name": "publisher",
+      "value": "bbbbzzzzcc-afk"
+    },
+    {
+      "name": "registry_package",
+      "value": "bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e"
+    },
+    {
+      "name": "registry_digest",
+      "value": "031c93b29c87503839713d6c613507d7d712bb26db8501b51a5992c268bf4abd"
+    },
+    {
+      "name": "public_url",
+      "value": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge"
+    },
+    {
+      "name": "pull_request",
+      "value": "https://github.com/runxhq/runx/pull/197"
+    },
+    {
+      "name": "publish_method",
+      "value": "runx registry publish ./skills/flaky-test-judge --json"
+    },
+    {
+      "name": "clean_install",
+      "value": "runx add bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e --registry https://api.runx.ai"
+    },
+    {
+      "name": "harness_cases",
+      "value": [
+        "quarantine_justified",
+        "missing_run_history"
+      ]
+    },
+    {
+      "name": "quarantine_case",
+      "value": {
+        "disposition": "quarantine",
+        "confidence": 0.96,
+        "pass_rate_pct": 65,
+        "run_count": 20,
+        "sample_window": {
+          "start": "2026-06-23T00:00:00Z",
+          "end": "2026-06-30T00:00:00Z"
+        },
+        "failure_modes": {
+          "timeout": 6,
+          "assertion": 1
+        },
+        "quarantine_duration_days": 7,
+        "exclusion_marker": "@pytest.mark.skip(reason=\"quarantined: tracked flaky timeout\")",
+        "dispatch_target": "issue-to-pr"
+      }
+    },
+    {
+      "name": "missing_history_boundary",
+      "value": {
+        "harness_status": "needs_agent",
+        "semantic_disposition": "stop",
+        "reason_prefix": "missing-evidence",
+        "quarantine_packet": false,
+        "dispatch_target": ""
+      }
+    },
+    {
+      "name": "dogfood",
+      "value": {
+        "package": "bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e",
+        "input": "20 supplied runs: 13 passed, 6 explicit timeouts, and 1 assertion failure",
+        "command": "runx skill bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e --inputs-json <fixture> --answers-json <reviewed-answer> --receipt-dir <isolated-dir> --json",
+        "receipt_ref": "sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550",
+        "verify_verdict": "valid",
+        "harness_cases": [
+          "quarantine_justified",
+          "missing_run_history"
+        ]
+      }
+    },
+    {
+      "name": "safety_boundary",
+      "value": "The skill only emits a handoff packet. Repository edits, issue creation, pull-request creation, test disabling, and merge are outside its authority."
+    }
+  ],
+  "evidence_items": [
+    {
+      "kind": "registry",
+      "url": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge"
+    },
+    {
+      "kind": "source",
+      "url": "https://github.com/bbbbzzzzcc-afk/runx/tree/feat/flaky-test-judge/skills/flaky-test-judge"
+    },
+    {
+      "kind": "pull_request",
+      "url": "https://github.com/runxhq/runx/pull/197"
+    },
+    {
+      "kind": "x_yaml",
+      "url": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/flaky-test-judge/skills/flaky-test-judge/X.yaml"
+    },
+    {
+      "kind": "skill_md",
+      "url": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/flaky-test-judge/skills/flaky-test-judge/SKILL.md"
+    },
+    {
+      "kind": "receipt",
+      "ref": "sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "summary": "Verification passed for the published flaky-test-judge package, its two-case harness contract, clean registry installation, and independently signed dogfood receipt.",
+  "runx_version": "runx-cli 0.6.14",
+  "package": "bbbbzzzzcc-afk/flaky-test-judge@sha-cd2fdb45ec9e",
+  "checks": [
+    {
+      "name": "registry_read",
+      "valid": true,
+      "detail": "The registry returned skill_id bbbbzzzzcc-afk/flaky-test-judge and version sha-cd2fdb45ec9e."
+    },
+    {
+      "name": "clean_install",
+      "valid": true,
+      "detail": "The exact immutable registry version installed into an empty directory."
+    },
+    {
+      "name": "harness_case_count",
+      "valid": true,
+      "detail": "Exactly two cases are declared: quarantine_justified and missing_run_history."
+    },
+    {
+      "name": "quarantine_boundary",
+      "valid": true,
+      "detail": "The sufficient 20-run fixture seals a bounded seven-day quarantine packet backed by six timeout logs and one assertion log."
+    },
+    {
+      "name": "missing_evidence_boundary",
+      "valid": true,
+      "detail": "The empty-history case does not seal an invented decision; it requests an agent judgment, while the independent fixture requires a missing-evidence stop with no quarantine packet."
+    },
+    {
+      "name": "receipt_signature",
+      "valid": true,
+      "detail": "runx verify reported valid=true for sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550."
+    },
+    {
+      "name": "repository_side_effects",
+      "valid": true,
+      "detail": "The runner emits data only and grants no authority to edit a repository, disable a test, open an issue, start a PR, or merge."
+    }
+  ],
+  "receipt": {
+    "ref": "sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550",
+    "verify_command": "runx verify sha256:c4bb972e74c43278b503eba0cc076b00264582addfce9a72eeadac8674f92550 --receipt-dir <isolated-dir> --json",
+    "valid": true,
+    "mode": "production",
+    "findings": []
+  },
+  "artifacts": {
+    "public_url": "https://runx.ai/x/bbbbzzzzcc-afk/flaky-test-judge",
+    "source_url": "https://github.com/bbbbzzzzcc-afk/runx/tree/feat/flaky-test-judge/skills/flaky-test-judge",
+    "pr_url": "https://github.com/runxhq/runx/pull/197",
+    "x_yaml": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/flaky-test-judge/skills/flaky-test-judge/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/flaky-test-judge/skills/flaky-test-judge/SKILL.md"
+  }
+}
