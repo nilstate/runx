@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-01-marketing-mandate",
+  "data_source_ref": "tenant://agency/int-cases",
+  "store_id": "roster-tuner-fresh",
+  "resource": "agency_cases",
+  "aggregate_id": "case-2026-07-01-marketing-mandate",
+  "expected_version": 4,
+  "idempotency_key": "roster-tuner-judgment-case-2026-07-01-marketing-mandate-v1",
+  "roster": [
+    { "member": "alex", "skill": "writer", "turn_count": 12 },
+    { "member": "blair", "skill": "editor", "turn_count": 8 },
+    { "member": "casey", "skill": "analyst", "turn_count": 9 },
+    { "member": "devon", "skill": "editor", "turn_count": 6 }
+  ],
+  "performance_norms": {
+    "refusal_threshold": 0.6,
+    "completion_time_threshold": 2.5,
+    "min_roster_size": 4
+  },
+  "agency_event_schema_version": "agency.case.event.v1",
+  "folded_signals": {
+    "refusal_rates": {
+      "alex": 0.08,
+      "blair": 0.75,
+      "casey": 0.11,
+      "devon": 0.10
+    },
+    "completion_times_x_case_mean": {
+      "alex": 0.9,
+      "blair": 3.0,
+      "casey": 1.1,
+      "devon": 0.7
+    }
+  },
+  "operator_context": "Keep case re-open and any roster swap in downstream governed lanes. This skill only emits the roster-tuning decision and the case-keyed append."
+}

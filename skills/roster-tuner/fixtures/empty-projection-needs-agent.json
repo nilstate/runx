@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-empty-projection",
+  "data_source_ref": "tenant://agency/int-cases",
+  "store_id": "roster-tuner-fresh",
+  "resource": "agency_cases",
+  "aggregate_id": "case-2026-07-01-empty-projection",
+  "expected_version": 0,
+  "idempotency_key": "roster-tuner-judgment-case-2026-07-01-empty-projection-v1",
+  "roster": [
+    { "member": "alex", "skill": "writer", "turn_count": 0 }
+  ],
+  "performance_norms": {
+    "refusal_threshold": 0.6,
+    "completion_time_threshold": 2.5,
+    "min_roster_size": 1
+  },
+  "agency_event_schema_version": "agency.case.event.v1",
+  "folded_signals": {
+    "refusal_rates": { "alex": 0.0 },
+    "completion_times_x_case_mean": { "alex": 1.0 }
+  },
+  "operator_context": "caller.answers omitted — grading agent-task sub-step blocks"
+}

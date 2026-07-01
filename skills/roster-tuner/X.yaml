@@ -1,0 +1,261 @@
+skill: roster-tuner
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+emits:
+  - name: roster_tuning_decision
+    packet: runx.roster.tune.v1
+  - name: roster_tuning_append
+    packet: runx.case.append.v1
+
+harness:
+  cases:
+    - name: roster-tuner-escalate-sealed
+      runner: tune
+      inputs:
+        case_id: case-2026-07-01-marketing-mandate
+        data_source_ref: tenant://agency/int-cases
+        store_id: roster-tuner-fresh
+        resource: agency_cases
+        aggregate_id: case-2026-07-01-marketing-mandate
+        expected_version: 4
+        idempotency_key: roster-tuner-judgment-case-2026-07-01-marketing-mandate-v1
+        roster:
+          - member: alex
+            skill: writer
+            turn_count: 12
+          - member: blair
+            skill: editor
+            turn_count: 8
+          - member: casey
+            skill: analyst
+            turn_count: 9
+          - member: devon
+            skill: editor
+            turn_count: 6
+        performance_norms:
+          refusal_threshold: 0.6
+          completion_time_threshold: 2.5
+          min_roster_size: 4
+        agency_event_schema_version: agency.case.event.v1
+        folded_signals:
+          refusal_rates:
+            alex: 0.08
+            blair: 0.75
+            casey: 0.11
+            devon: 0.10
+          completion_times_x_case_mean:
+            alex: 0.9
+            blair: 3.0
+            casey: 1.1
+            devon: 0.7
+        operator_context: Keep case re-open and any roster swap in downstream governed lanes. This skill only emits the roster-tuning decision and the case-keyed append.
+      caller:
+        answers:
+          agent_task.roster-tuner.output:
+            decision:
+              schema: runx.roster.tune.v1
+              underperformer: true
+              member_to_remove: blair
+              replacement_candidate: devon
+              reason: Member blair crossed the refusal rate 0.75 (above 0.6) and completion time 3.00x (above 2.5x the case mean); the replacement devon shares the editor skill with 0.10 refusal rate, so the bounded swap preserves the required skill set.
+              evidence:
+                case_id: case-2026-07-01-marketing-mandate
+                aggregate_id: case-2026-07-01-marketing-mandate
+                expected_version: 4
+                schema_version: agency.case.event.v1
+                folded_refusal_rates:
+                  alex: 0.08
+                  blair: 0.75
+                  casey: 0.11
+                  devon: 0.10
+                folded_completion_times_x_case_mean:
+                  alex: 0.9
+                  blair: 3.0
+                  casey: 1.1
+                  devon: 0.7
+                norms_applied:
+                  refusal_threshold: 0.6
+                  completion_time_threshold: 2.5
+                  min_roster_size: 4
+            append_event:
+              schema: runx.case.append.v1
+              resource: agency_cases
+              aggregate_id: case-2026-07-01-marketing-mandate
+              expected_version: 4
+              idempotency_key: roster-tuner-judgment-case-2026-07-01-marketing-mandate-v1
+              side_effects: none
+            refusal:
+              reason: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: roster-tuner-stop-needs-agent
+      runner: tune
+      inputs:
+        case_id: case-2026-07-01-empty-projection
+        data_source_ref: tenant://agency/int-cases
+        store_id: roster-tuner-fresh
+        resource: agency_cases
+        aggregate_id: case-2026-07-01-empty-projection
+        expected_version: 0
+        idempotency_key: roster-tuner-judgment-case-2026-07-01-empty-projection-v1
+        roster:
+          - member: alex
+            skill: writer
+            turn_count: 0
+        performance_norms:
+          refusal_threshold: 0.6
+          completion_time_threshold: 2.5
+          min_roster_size: 1
+        agency_event_schema_version: agency.case.event.v1
+        operator_context: When caller.answers for the agent-task grading step is omitted the run must block before any decision or append is emitted, so a human operator can supply the grading answer.
+      expect:
+        status: needs_agent
+
+runners:
+  dogfood:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      append_event: object
+      refusal: object
+    artifacts:
+      wrap_as: roster_tuning_decision
+      packet: runx.roster.tune.v1
+    runx:
+      category: ops
+    inputs:
+      case_id:
+        type: string
+        required: true
+        description: Case identifier the tuner grades.
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data source holding the case event stream.
+      store_id:
+        type: string
+        required: false
+        description: Deterministic data.local fixture store id; omit for a durable host binding.
+      resource:
+        type: string
+        required: true
+        description: Declared event resource for the case stream.
+      aggregate_id:
+        type: string
+        required: true
+        description: The case aggregate id (must equal case_id).
+      expected_version:
+        type: number
+        required: true
+        description: Stream version the append must match for CAS.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for the recorded judgment event.
+      roster:
+        type: json
+        required: true
+        description: Standing team snapshot for this case.
+      performance_norms:
+        type: json
+        required: true
+        description: Operator-supplied norms the tuner ranks members against.
+      agency_event_schema_version:
+        type: string
+        required: true
+        description: Schema version the case events must declare.
+      folded_signals:
+        type: json
+        required: true
+        description: Refusal rate and completion-time folds the case projection produced; supplied by the data-store read_projection step before deciding.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for downstream re-open approvals.
+
+  tune:
+    default: true
+    type: graph
+    act:
+      form: review
+      purpose: Grade one agency case against sealed case evidence and operator-supplied performance norms.
+    inputs:
+      case_id:
+        type: string
+        required: true
+        description: Case identifier the tuner grades.
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data source holding the case event stream.
+      store_id:
+        type: string
+        required: false
+        description: Deterministic data.local fixture store id; omit for durable host binding.
+      resource:
+        type: string
+        required: true
+        description: Declared event resource for the case stream.
+      aggregate_id:
+        type: string
+        required: true
+        description: The case aggregate id (must equal case_id).
+      expected_version:
+        type: number
+        required: true
+        description: Stream version the append must match for CAS.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for the recorded judgment event.
+      roster:
+        type: json
+        required: true
+        description: Standing team snapshot for this case.
+      performance_norms:
+        type: json
+        required: true
+        description: Operator-supplied norms the tuner ranks members against.
+      agency_event_schema_version:
+        type: string
+        required: true
+        description: Schema version the case events must declare.
+      folded_signals:
+        type: json
+        required: true
+        description: Refusal rate and completion-time folds the case projection produced; supplied by the data-store read_projection step before deciding.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for downstream re-open approvals.
+    graph:
+      name: roster-tuner
+      steps:
+        - id: read_projection
+          label: read sealed case projection
+          skill: ../data-store
+          runner: read_events
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+        - id: decide
+          label: fold refusal and completion signals
+          run:
+            type: agent-task
+            agent: reviewer
+            task: roster-tuner
