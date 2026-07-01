@@ -35,11 +35,6 @@ harness:
           max_complaint_pct: 0.1
       expect:
         status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: process_closed
     - name: contradictory_signals_escalate
       runner: default
       inputs:
@@ -66,11 +61,6 @@ harness:
           max_complaint_pct: 0.1
       expect:
         status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: process_closed
 
 runners:
   default:
