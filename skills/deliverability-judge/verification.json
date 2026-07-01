@@ -35,12 +35,17 @@
     {
       "name": "registry_publish",
       "status": "blocked",
-      "evidence": "Local Windows publish failed in runx receipt/sandbox runtime before final hosted harness. Needs runx GitHub publish login and Linux/hosted publish completion."
+      "evidence": "Local Windows publish failed in runx receipt/sandbox runtime before final hosted harness. GitHub publish login then generated connect.runx.ai sessions, but the browser callback returned 404 Not Found after GitHub sign-in. Needs runx publish auth recovery or Linux/hosted publish completion."
     },
     {
       "name": "dogfood_receipt",
       "status": "blocked",
       "evidence": "Requires successful registry publish and dogfood run through runx skill pay4love1/deliverability-judge@0.1.0 --json."
+    },
+    {
+      "name": "runx_connect_callback",
+      "status": "blocked",
+      "evidence": "The operator manually retried runx connect/login with GitHub. The flow reached GitHub sign-in but returned 404 Not Found after password sign-in."
     }
   ],
   "expected_final_commands": [

@@ -35,11 +35,17 @@
       "name": "windows_runx_harness_blocker",
       "value": "runx harness and registry publish were attempted locally on Windows, but the CLI failed in receipt/sandbox runtime paths before skill logic execution. Linux hosted harness/publish is still required for final delivery.",
       "meets_requirement": false
+    },
+    {
+      "name": "runx_connect_auth_blocker",
+      "value": "runx login --provider github --for publish generated connect.runx.ai sessions, but the browser flow returned 404 Not Found after GitHub sign-in. The same result was reproduced by the operator manually, so registry publish could not be completed from this environment.",
+      "meets_requirement": false
     }
   ],
   "commands": [
     "runx --version",
     "node run.mjs",
+    "runx login --provider github --for publish",
     "runx registry publish ./skills/deliverability-judge/SKILL.md --registry https://api.runx.ai"
   ],
   "artifacts": {

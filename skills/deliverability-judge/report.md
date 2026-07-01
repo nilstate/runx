@@ -9,4 +9,5 @@
 - Contradictory sealed evidence returns `verdict.state=escalate` and refuses to emit a recommendation.
 - The implementation is read-only: no send, throttle, payment, state write, Effect, or operational handoff is performed.
 - Local direct runner evidence is included in `harness-evidence/local-output.md`.
-- Remaining finalization: complete runx registry publish, hosted harness, clean install, dogfood run, and receipt verification after publish login succeeds.
+- Current blocker: `runx login --provider github --for publish` and manual `runx connect github` both reached the browser/GitHub sign-in flow, then returned 404 Not Found after sign-in.
+- Remaining finalization: recover runx publish auth, complete registry publish, hosted harness, clean install, dogfood run, and receipt verification.
