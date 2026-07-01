@@ -36,7 +36,7 @@
     }
   },
   "data_source_ref": "local://runx-escalation-judge/dogfood",
-  "store_id": "escalation-judge-dogfood-v1",
+  "store_id": "escalation-judge-dogfood-v2",
   "aggregate_id": "thread:acct-9001:case-dogfood-001",
   "expected_version": 0,
   "idempotency_key": "thread:acct-9001:case-dogfood-001:escalation:v1"

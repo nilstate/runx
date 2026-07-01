@@ -1,0 +1,185 @@
+{
+  "schema": "frantic.runx_skill_verification.v1",
+  "generated_at": "2026-07-01T22:41:06.580Z",
+  "package": {
+    "owner": "fengyangxxx",
+    "name": "escalation-judge",
+    "version": "sha-5b6e5530679f",
+    "registry_ref": "fengyangxxx/escalation-judge@sha-5b6e5530679f",
+    "public_url": "https://runx.ai/x/fengyangxxx/escalation-judge@sha-5b6e5530679f",
+    "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+    "profile_digest": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+    "install_command": "runx add fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+    "run_command": "runx skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai"
+  },
+  "receipt_ref": "runx:receipt:sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+  "status": "PASS",
+  "checks": [
+    {
+      "id": "runx_cli_version",
+      "decision": "PASS",
+      "observed": "runx-cli 0.6.14",
+      "evidence": "skills/escalation-judge/artifacts/runx-version-0.6.14.txt"
+    },
+    {
+      "id": "doctor",
+      "decision": "PASS",
+      "observed": {
+        "errors": 0,
+        "warnings": 13,
+        "infos": 0
+      },
+      "evidence": "skills/escalation-judge/artifacts/doctor-final-prepublish.json"
+    },
+    {
+      "id": "local_harness",
+      "decision": "PASS",
+      "observed": {
+        "status": "passed",
+        "cases": [
+          "high-severity-churn-opens-priority-case",
+          "low-confidence-howto-stops-no-change",
+          "missing-policy-needs-input",
+          "undeclared-lane-needs-human"
+        ]
+      },
+      "evidence": "skills/escalation-judge/artifacts/local-harness-runx-0.6.14-linux.json"
+    },
+    {
+      "id": "hosted_publish_harness",
+      "decision": "PASS",
+      "observed": {
+        "target": "hosted",
+        "status": "published",
+        "skill_id": "fengyangxxx/escalation-judge",
+        "owner": "fengyangxxx",
+        "name": "escalation-judge",
+        "version": "sha-5b6e5530679f",
+        "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+        "profile_digest": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+        "trust_tier": "community",
+        "install_command": "runx add fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+        "run_command": "runx skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+        "public_url": "https://runx.ai/x/fengyangxxx/escalation-judge"
+      },
+      "evidence": "skills/escalation-judge/artifacts/registry-publish-runx-0.6.14.json"
+    },
+    {
+      "id": "registry_read",
+      "decision": "PASS",
+      "observed": {
+        "ref": "fengyangxxx/escalation-judge@sha-5b6e5530679f",
+        "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa"
+      },
+      "evidence": "skills/escalation-judge/artifacts/registry-read-runx-0.6.14.json"
+    },
+    {
+      "id": "clean_install",
+      "decision": "PASS",
+      "observed": {
+        "status": "installed",
+        "destination": "/tmp/escalation-judge-install/fengyangxxx/escalation-judge/sha-5b6e5530679f/SKILL.md",
+        "skill_name": "escalation-judge",
+        "source": "runx-registry",
+        "source_label": "runx registry",
+        "skill_id": "fengyangxxx/escalation-judge",
+        "version": "sha-5b6e5530679f",
+        "digest": "sha256:9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+        "profile_digest": "sha256:2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+        "profile_state_path": "/tmp/escalation-judge-install/fengyangxxx/escalation-judge/sha-5b6e5530679f/.runx/profile.json",
+        "runner_names": [
+          "decide",
+          "judge"
+        ],
+        "trust_tier": "community"
+      },
+      "evidence": "skills/escalation-judge/artifacts/clean-install-runx-add-0.6.14.json"
+    },
+    {
+      "id": "postpublish_dogfood",
+      "decision": "PASS",
+      "observed": {
+        "closure": {
+          "closed_at": "2026-07-01T22:34:15.237Z",
+          "disposition": "closed",
+          "reason_code": "graph_closed",
+          "summary": "graph escalation-judge completed"
+        },
+        "decision": {
+          "escalate": true,
+          "lane": "priority_support",
+          "reason": "churn_risk_signal matched renewal_blocked; route to priority_support via downstream.slack-notify.priority-support."
+        },
+        "case_id": "case_efd0ad8f11b130a3"
+      },
+      "evidence": "skills/escalation-judge/artifacts/postpublish-dogfood-runx-0.6.14-linux.json"
+    },
+    {
+      "id": "receipt_verify_tree",
+      "decision": "PASS",
+      "observed": {
+        "receipt_dir": "/repo/.runx-test-receipts-escalation-judge-dogfood-final",
+        "signature_mode": "production",
+        "trees": [
+          {
+            "root_receipt_id": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+            "receipt_count": 5,
+            "parent_missing": null,
+            "valid": true,
+            "findings": []
+          }
+        ],
+        "unreadable_files": [],
+        "valid": true
+      },
+      "evidence": "skills/escalation-judge/artifacts/postpublish-dogfood-verify-runx-0.6.14-linux.json"
+    },
+    {
+      "id": "receipt_verify_root",
+      "decision": "PASS",
+      "observed": {
+        "schema": "runx.verify_verdict.v1",
+        "receipt_id": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+        "valid": true,
+        "digest": {
+          "status": "valid",
+          "expected": "sha256:6a1edde55acb51ee43211ce1cc12df006948d552baedf6ced75b7a86f48a4020",
+          "actual": "sha256:6a1edde55acb51ee43211ce1cc12df006948d552baedf6ced75b7a86f48a4020"
+        },
+        "content_address": {
+          "status": "valid",
+          "expected": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+          "actual": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2"
+        },
+        "signature": {
+          "mode": "production",
+          "status": "valid",
+          "kid": "frantic-69-postpublish-key"
+        },
+        "lineage": {
+          "status": "unverified",
+          "message": "single receipt verification cannot prove receipt-tree lineage"
+        },
+        "findings": []
+      },
+      "evidence": "skills/escalation-judge/artifacts/postpublish-dogfood-root-verify-runx-0.6.14-linux.json"
+    },
+    {
+      "id": "source_files",
+      "decision": "PASS",
+      "observed": {
+        "pr_url": "https://github.com/runxhq/runx/pull/209",
+        "source_path": "skills/escalation-judge",
+        "x_yaml_path": "skills/escalation-judge/X.yaml",
+        "skill_md_path": "skills/escalation-judge/SKILL.md",
+        "x_yaml_sha256": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+        "skill_md_sha256": "cccc9758c94f0599648aa2ab8a8b807cae590952f768e937b5c1878360346908",
+        "immutable_urls": "submitted as commit-SHA artifact_refs in the Frantic payload and QA log after final commit"
+      },
+      "evidence": [
+        "skills/escalation-judge/X.yaml",
+        "skills/escalation-judge/SKILL.md"
+      ]
+    }
+  ]
+}

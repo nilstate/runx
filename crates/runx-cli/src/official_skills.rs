@@ -77,8 +77,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/escalation-judge",
-        version: "sha-f90256d7c6b3",
-        digest: "a9ebdaf41f87fa913c0a9465309f93323c3a96f7937f7b875f82092fbada945e",
+        version: "sha-148cbc3e2a05",
+        digest: "cccc9758c94f0599648aa2ab8a8b807cae590952f768e937b5c1878360346908",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/evolve",

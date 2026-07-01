@@ -106,7 +106,7 @@ runx skill escalation-judge --json \
   -i thread_body='Enterprise tenant says production webhooks are down, renewal is blocked, and the sponsor may cancel.' \
   --input-json policy_rules='{"severity_thresholds":[{"name":"severity-high-or-critical","lane":"priority_support","min_severity":"high","classifications":["bug"]}],"churn_risk_signals":[{"name":"renewal_blocked","lane":"priority_support","terms":["renewal is blocked","cancel"]}],"escalation_lanes":{"priority_support":{"target_rail":"downstream.slack-notify.priority-support","consequence":"internal_lane"}}}' \
   -i data_source_ref=local://runx-escalation-judge/example \
-  -i store_id=escalation-judge-example-v1 \
+  -i store_id=escalation-judge-example-v2 \
   -i aggregate_id=thread:acct-4242:case-1001 \
   --input-json expected_version=0 \
   -i idempotency_key=thread:acct-4242:case-1001:escalation:v1

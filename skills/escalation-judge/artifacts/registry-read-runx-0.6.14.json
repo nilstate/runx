@@ -1,0 +1,51 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "fengyangxxx/escalation-judge@sha-5b6e5530679f",
+    "skill": {
+      "skill_id": "fengyangxxx/escalation-judge",
+      "owner": "fengyangxxx",
+      "name": "escalation-judge",
+      "description": "Decide whether a support thread should open an escalation case, append that case to data-store, and name the downstream rail without dispatching it.",
+      "category": "payments",
+      "version": "sha-5b6e5530679f",
+      "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+      "markdown": "---\nname: escalation-judge\ndescription: Decide whether a support thread should open an escalation case, append that case to data-store, and name the downstream rail without dispatching it.\nrunx:\n  category: support\n---\n\n# Escalation Judge\n\nJudge whether a support thread crosses a named escalation policy threshold. The\nskill reads a triage packet, the thread body, escalation policy rules, and prior\ncase state. It appends a durable case record only when escalation is warranted\nand emits a typed escalation packet that names the downstream rail. It never\nposts to Slack, sends customer email, pages an executive lane, or proposes a\nlive operational action.\n\nThe case append is a guarded compare-and-set write through `data-store`\n(`read_projection -> append_event`); the egress consequence is gated elsewhere.\nA downstream operator can consume the named target rail and issue a separate\ngoverned `slack-notify` or `send-as` run.\n\n## Inputs\n\n- `triage_packet`: `classification`, `severity`, and `confidence`, normally from\n  `support-triage-reply` or an equivalent bounded triage source.\n- `thread_body`: support thread text used only to ground severity and churn\n  signal checks.\n- `policy_rules`: `severity_thresholds`, `churn_risk_signals`, and\n  `escalation_lanes`. Missing policy rules produce `needs_input`.\n- `data_source_ref` and `store_id`: the pinned data-store binding.\n- `aggregate_id`: the thread id. It is the data-store aggregate id.\n- `expected_version` and `idempotency_key`: optimistic concurrency and retry\n  safety for the case append.\n\n## Output Contract\n\nThe output packet is `runx.support.escalation_judge.v1` data:\n\n- `decision{escalate,lane,reason}` always appears.\n- `case_id`, `case_event`, and `escalation_packet` appear only when escalation is\n  warranted.\n- `escalation_packet` names `target_rail` and keeps `rail_effect: none`.\n- `stop_state` appears when the thread does not escalate, when required input is\n  missing, when policy is ambiguous, or when a policy threshold names an\n  undeclared lane.\n- `observations` cite the matched threshold, severity, churn signals, prior-case\n  projection, case id, stop reason, target rail, harness cases, and data-store\n  append controls.\n\nThe packet must not contain an `operational_proposal`. It is a judgment and\nstate append, not a live notification or send.\n\n## State Model\n\nThe default graph follows the github-sync-style shape:\n\n1. `read_projection` loads the prior escalation-case projection for the thread.\n2. `decide` evaluates severity thresholds and churn signals against declared\n   policy lanes.\n3. `append_event` records `support_case.escalation_opened` with\n   `expected_version` and `idempotency_key` only when\n   `decision.escalate == true`.\n4. `read_projection` reads back the durable case state for receipt evidence.\n\nIf a prior case projection already exists, the skill stops with no new case so\nthe same thread is not re-escalated.\n\n## Escalation Boundary\n\nThe policy must declare every lane under `policy_rules.escalation_lanes`.\nSeverity thresholds and churn-risk signals can only route to those lanes. If a\nthreshold names an undeclared lane, the result is `needs_human` and no case is\nopened.\n\nInternal lanes should name a downstream rail such as\n`downstream.slack-notify.priority-support`. Cross-provider lanes can name a\nseparate `send-as` rail. This skill only names the rail; the downstream operator\nor driver performs the governed action in a separate run.\n\n## Local Harness\n\nRun:\n\n```bash\nrunx harness ./skills/escalation-judge --json\n```\n\nHarness cases:\n\n- `high-severity-churn-opens-priority-case`: critical support thread and renewal\n  risk match named policy thresholds, append a case, and emit a priority-support\n  escalation packet.\n- `low-confidence-howto-stops-no-change`: low-severity how-to thread matches no\n  threshold, so the graph stops with `decision.escalate=false`, no case, and no\n  escalation packet.\n- `missing-policy-needs-input`: policy rules are absent, so the skill refuses to\n  escalate and reports `needs_input`.\n- `undeclared-lane-needs-human`: a threshold matches but names an undeclared\n  lane, so the skill refuses to route and reports `needs_human`.\n\n## Example Invocation\n\n```bash\nrunx skill escalation-judge --json \\\n  --input-json triage_packet='{\"classification\":\"bug\",\"severity\":\"critical\",\"confidence\":0.93}' \\\n  -i thread_body='Enterprise tenant says production webhooks are down, renewal is blocked, and the sponsor may cancel.' \\\n  --input-json policy_rules='{\"severity_thresholds\":[{\"name\":\"severity-high-or-critical\",\"lane\":\"priority_support\",\"min_severity\":\"high\",\"classifications\":[\"bug\"]}],\"churn_risk_signals\":[{\"name\":\"renewal_blocked\",\"lane\":\"priority_support\",\"terms\":[\"renewal is blocked\",\"cancel\"]}],\"escalation_lanes\":{\"priority_support\":{\"target_rail\":\"downstream.slack-notify.priority-support\",\"consequence\":\"internal_lane\"}}}' \\\n  -i data_source_ref=local://runx-escalation-judge/example \\\n  -i store_id=escalation-judge-example-v2 \\\n  -i aggregate_id=thread:acct-4242:case-1001 \\\n  --input-json expected_version=0 \\\n  -i idempotency_key=thread:acct-4242:case-1001:escalation:v1\n```",
+      "profile_digest": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+      "runner_names": [
+        "decide",
+        "judge"
+      ],
+      "source_type": "agent",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_69446dfb22822d5fdc22562d",
+        "handle": "fengyangxxx",
+        "display_name": "fy"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_69446dfb22822d5fdc22562d",
+          "status": "declared",
+          "summary": "fy",
+          "issued_at": "2026-07-01T22:33:08.471Z",
+          "metadata": {
+            "publisher_display_name": "fy",
+            "publisher_handle": "fengyangxxx",
+            "publisher_id": "user_69446dfb22822d5fdc22562d",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+      "run_command": "runx skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai"
+    }
+  }
+}

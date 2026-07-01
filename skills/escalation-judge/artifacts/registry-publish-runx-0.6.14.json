@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "fengyangxxx/escalation-judge",
+      "owner": "fengyangxxx",
+      "name": "escalation-judge",
+      "version": "sha-5b6e5530679f",
+      "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+      "profile_digest": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+      "trust_tier": "community",
+      "install_command": "runx add fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+      "run_command": "runx skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/fengyangxxx/escalation-judge"
+    }
+  }
+}

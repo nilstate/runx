@@ -1,0 +1,354 @@
+{
+  "schema": "frantic.runx_skill_evidence.v1",
+  "generated_at": "2026-07-01T22:41:06.580Z",
+  "package": {
+    "owner": "fengyangxxx",
+    "name": "escalation-judge",
+    "version": "sha-5b6e5530679f",
+    "registry_ref": "fengyangxxx/escalation-judge@sha-5b6e5530679f",
+    "public_url": "https://runx.ai/x/fengyangxxx/escalation-judge@sha-5b6e5530679f",
+    "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+    "profile_digest": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+    "install_command": "runx add fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+    "run_command": "runx skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai"
+  },
+  "source_binding": {
+    "pr_url": "https://github.com/runxhq/runx/pull/209",
+    "source_path": "skills/escalation-judge",
+    "x_yaml_path": "skills/escalation-judge/X.yaml",
+    "skill_md_path": "skills/escalation-judge/SKILL.md",
+    "x_yaml_sha256": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+    "skill_md_sha256": "cccc9758c94f0599648aa2ab8a8b807cae590952f768e937b5c1878360346908",
+    "immutable_urls": "submitted as commit-SHA artifact_refs in the Frantic payload and QA log after final commit"
+  },
+  "observations": [
+    {
+      "id": "runx_version",
+      "value": "runx-cli 0.6.14"
+    },
+    {
+      "id": "publisher_owner",
+      "value": "fengyangxxx"
+    },
+    {
+      "id": "package_name",
+      "value": "escalation-judge"
+    },
+    {
+      "id": "package_version",
+      "value": "sha-5b6e5530679f"
+    },
+    {
+      "id": "registry_ref",
+      "value": "fengyangxxx/escalation-judge@sha-5b6e5530679f"
+    },
+    {
+      "id": "public_url",
+      "value": "https://runx.ai/x/fengyangxxx/escalation-judge@sha-5b6e5530679f"
+    },
+    {
+      "id": "pr_url",
+      "value": "https://github.com/runxhq/runx/pull/209"
+    },
+    {
+      "id": "source_url",
+      "value": "final immutable commit-SHA source_url submitted in payload for skills/escalation-judge"
+    },
+    {
+      "id": "raw_x_yaml",
+      "value": "final immutable commit-SHA raw X.yaml submitted in payload",
+      "sha256": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6"
+    },
+    {
+      "id": "raw_skill_md",
+      "value": "final immutable commit-SHA raw SKILL.md submitted in payload",
+      "sha256": "cccc9758c94f0599648aa2ab8a8b807cae590952f768e937b5c1878360346908"
+    },
+    {
+      "id": "verification_json",
+      "value": "final immutable commit-SHA verification_json submitted in payload"
+    },
+    {
+      "id": "publish_method",
+      "value": "runx registry publish ./skills/escalation-judge/SKILL.md --registry https://api.runx.ai --profile ./skills/escalation-judge/X.yaml --json with runx-cli 0.6.14 and purpose-scoped publish credential"
+    },
+    {
+      "id": "install_command",
+      "value": "runx add fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai"
+    },
+    {
+      "id": "local_harness_status",
+      "value": "passed",
+      "cases": [
+        {
+          "name": "high-severity-churn-opens-priority-case",
+          "status": "sealed"
+        },
+        {
+          "name": "low-confidence-howto-stops-no-change",
+          "status": "sealed"
+        },
+        {
+          "name": "missing-policy-needs-input",
+          "status": "refused"
+        },
+        {
+          "name": "undeclared-lane-needs-human",
+          "status": "refused"
+        }
+      ]
+    },
+    {
+      "id": "hosted_harness_status",
+      "value": "passed during registry publish"
+    },
+    {
+      "id": "dogfood_command",
+      "value": "npx -y @runxhq/cli@0.6.14 skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai --json -R .runx-test-receipts-escalation-judge-dogfood-final --input-json triage_packet={\"classification\":\"bug\",\"severity\":\"critical\",\"confidence\":0.94} --input-json policy_rules={\"severity_thresholds\":[{\"name\":\"severity-high-or-critical\",\"lane\":\"priority_support\",\"min_severity\":\"high\",\"classifications\":[\"bug\",\"account_access\"]}],\"churn_risk_signals\":[{\"name\":\"renewal_blocked\",\"lane\":\"priority_support\",\"terms\":[\"renewal is blocked\",\"cancel\",\"executive sponsor\"]}],\"escalation_lanes\":{\"priority_support\":{\"target_rail\":\"downstream.slack-notify.priority-support\",\"consequence\":\"internal_lane\"}}} -i thread_body=Enterprise customer reports production webhook delivery is down. Their renewal is blocked and the executive sponsor says they will cancel unless priority support owns the incident today. -i data_source_ref=local://runx-escalation-judge/dogfood -i store_id=escalation-judge-dogfood-v2 -i aggregate_id=thread:acct-9001:case-dogfood-001 -i idempotency_key=thread:acct-9001:case-dogfood-001:escalation:v1 --input-json expected_version=0"
+    },
+    {
+      "id": "receipt_ref",
+      "value": "runx:receipt:sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2"
+    },
+    {
+      "id": "runx_verify_verdict",
+      "value": "valid",
+      "signature_mode": "production"
+    },
+    {
+      "id": "escalation_decision",
+      "value": true,
+      "lane": "priority_support",
+      "reason": "churn_risk_signal matched renewal_blocked; route to priority_support via downstream.slack-notify.priority-support."
+    },
+    {
+      "id": "named_policy_threshold_matched",
+      "value": "renewal_blocked"
+    },
+    {
+      "id": "severity_and_churn_signals",
+      "severity": "critical",
+      "severity_thresholds": [
+        {
+          "evidence": {
+            "classification": "bug",
+            "min_severity": "high",
+            "observed_severity": "critical"
+          },
+          "lane": "priority_support",
+          "lane_declared": true,
+          "name": "severity-high-or-critical"
+        }
+      ],
+      "churn_signals": [
+        {
+          "lane": "priority_support",
+          "lane_declared": true,
+          "name": "renewal_blocked",
+          "terms": [
+            "renewal is blocked",
+            "cancel",
+            "executive sponsor"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "prior_case_projection_read",
+      "value": true,
+      "projection": {
+        "event_count": 0,
+        "last_event_ref": null,
+        "last_event_type": null,
+        "seen": true,
+        "version": 0
+      }
+    },
+    {
+      "id": "case_id_appended_to_data_store",
+      "value": "case_efd0ad8f11b130a3",
+      "append_status": "committed",
+      "event_ref": "escalation_cases:thread:acct-9001:case-dogfood-001:1",
+      "store_id": "escalation-judge-dogfood-v2"
+    },
+    {
+      "id": "readback_projection",
+      "value": {
+        "aggregate_id": "thread:acct-9001:case-dogfood-001",
+        "event_count": 1,
+        "event_digests": [
+          "sha256:657125ae82b16e350eb13b96918d41b8fa4fe0bd8773037cc565dec2e9e71cf7"
+        ],
+        "last_event_ref": "escalation_cases:thread:acct-9001:case-dogfood-001:1",
+        "last_event_type": "support_case.escalation_opened",
+        "resource": "escalation_cases",
+        "version": 1
+      }
+    },
+    {
+      "id": "refused_or_stop_reason",
+      "value": "harness includes low-confidence no_change, missing policy needs_input, and undeclared lane needs_human cases"
+    },
+    {
+      "id": "named_target_rail",
+      "value": "downstream.slack-notify.priority-support",
+      "rail_effect": "none"
+    },
+    {
+      "id": "harness_case_names",
+      "value": [
+        "high-severity-churn-opens-priority-case",
+        "low-confidence-howto-stops-no-change",
+        "missing-policy-needs-input",
+        "undeclared-lane-needs-human"
+      ]
+    },
+    {
+      "id": "receipt_id",
+      "value": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2"
+    }
+  ],
+  "dogfood": {
+    "package": "fengyangxxx/escalation-judge@sha-5b6e5530679f",
+    "input": "skills/escalation-judge/fixtures/dogfood-critical-input.json",
+    "command": "npx -y @runxhq/cli@0.6.14 skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai --json -R .runx-test-receipts-escalation-judge-dogfood-final --input-json triage_packet={\"classification\":\"bug\",\"severity\":\"critical\",\"confidence\":0.94} --input-json policy_rules={\"severity_thresholds\":[{\"name\":\"severity-high-or-critical\",\"lane\":\"priority_support\",\"min_severity\":\"high\",\"classifications\":[\"bug\",\"account_access\"]}],\"churn_risk_signals\":[{\"name\":\"renewal_blocked\",\"lane\":\"priority_support\",\"terms\":[\"renewal is blocked\",\"cancel\",\"executive sponsor\"]}],\"escalation_lanes\":{\"priority_support\":{\"target_rail\":\"downstream.slack-notify.priority-support\",\"consequence\":\"internal_lane\"}}} -i thread_body=Enterprise customer reports production webhook delivery is down. Their renewal is blocked and the executive sponsor says they will cancel unless priority support owns the incident today. -i data_source_ref=local://runx-escalation-judge/dogfood -i store_id=escalation-judge-dogfood-v2 -i aggregate_id=thread:acct-9001:case-dogfood-001 -i idempotency_key=thread:acct-9001:case-dogfood-001:escalation:v1 --input-json expected_version=0",
+    "receipt_ref": "runx:receipt:sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+    "verify_verdict": {
+      "valid": true,
+      "signature": {
+        "mode": "production",
+        "status": "valid",
+        "kid": "frantic-69-postpublish-key"
+      },
+      "content_address": {
+        "status": "valid",
+        "expected": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+        "actual": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2"
+      }
+    },
+    "harness_cases": [
+      {
+        "name": "high-severity-churn-opens-priority-case",
+        "status": "sealed"
+      },
+      {
+        "name": "low-confidence-howto-stops-no-change",
+        "status": "sealed"
+      },
+      {
+        "name": "missing-policy-needs-input",
+        "status": "refused"
+      },
+      {
+        "name": "undeclared-lane-needs-human",
+        "status": "refused"
+      }
+    ]
+  },
+  "machine_outputs": {
+    "doctor": {
+      "status": "success",
+      "summary": {
+        "errors": 0,
+        "warnings": 13,
+        "infos": 0
+      }
+    },
+    "local_harness": {
+      "status": "passed",
+      "case_count": 4,
+      "assertion_error_count": 0
+    },
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "fengyangxxx/escalation-judge",
+      "owner": "fengyangxxx",
+      "name": "escalation-judge",
+      "version": "sha-5b6e5530679f",
+      "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+      "profile_digest": "2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+      "trust_tier": "community",
+      "install_command": "runx add fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+      "run_command": "runx skill fengyangxxx/escalation-judge@sha-5b6e5530679f --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/fengyangxxx/escalation-judge"
+    },
+    "registry_read": {
+      "status": "success",
+      "ref": "fengyangxxx/escalation-judge@sha-5b6e5530679f",
+      "version": "sha-5b6e5530679f",
+      "digest": "9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+      "runner_names": [
+        "decide",
+        "judge"
+      ]
+    },
+    "clean_install": {
+      "status": "installed",
+      "destination": "/tmp/escalation-judge-install/fengyangxxx/escalation-judge/sha-5b6e5530679f/SKILL.md",
+      "skill_name": "escalation-judge",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "fengyangxxx/escalation-judge",
+      "version": "sha-5b6e5530679f",
+      "digest": "sha256:9561d10f0bb728cbb1ff3f316476c1bec46b48688a935b3f37d1b2b3f9e281aa",
+      "profile_digest": "sha256:2ec50b7b22d5f5fd8217b710f52466f3564fc386ea8fbaa7be5d365bdd007da6",
+      "profile_state_path": "/tmp/escalation-judge-install/fengyangxxx/escalation-judge/sha-5b6e5530679f/.runx/profile.json",
+      "runner_names": [
+        "decide",
+        "judge"
+      ],
+      "trust_tier": "community"
+    },
+    "dogfood": {
+      "closure": {
+        "closed_at": "2026-07-01T22:34:15.237Z",
+        "disposition": "closed",
+        "reason_code": "graph_closed",
+        "summary": "graph escalation-judge completed"
+      },
+      "exit_code": 0,
+      "graph_status": "Succeeded"
+    },
+    "verify_tree": {
+      "receipt_dir": "/repo/.runx-test-receipts-escalation-judge-dogfood-final",
+      "signature_mode": "production",
+      "trees": [
+        {
+          "root_receipt_id": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+          "receipt_count": 5,
+          "parent_missing": null,
+          "valid": true,
+          "findings": []
+        }
+      ],
+      "unreadable_files": [],
+      "valid": true
+    },
+    "verify_root": {
+      "schema": "runx.verify_verdict.v1",
+      "receipt_id": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+      "valid": true,
+      "digest": {
+        "status": "valid",
+        "expected": "sha256:6a1edde55acb51ee43211ce1cc12df006948d552baedf6ced75b7a86f48a4020",
+        "actual": "sha256:6a1edde55acb51ee43211ce1cc12df006948d552baedf6ced75b7a86f48a4020"
+      },
+      "content_address": {
+        "status": "valid",
+        "expected": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+        "actual": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2"
+      },
+      "signature": {
+        "mode": "production",
+        "status": "valid",
+        "kid": "frantic-69-postpublish-key"
+      },
+      "lineage": {
+        "status": "unverified",
+        "message": "single receipt verification cannot prove receipt-tree lineage"
+      },
+      "findings": []
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:6a1edde55acb51ee43211ce1cc12df006948d552baedf6ced75b7a86f48a4020",
+    "actual": "sha256:6a1edde55acb51ee43211ce1cc12df006948d552baedf6ced75b7a86f48a4020"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2",
+    "actual": "sha256:ae9cc8cf24ded9e5e12ceac7b2765440ae2e228f476b7306543371224f9420b2"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "frantic-69-postpublish-key"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
+}
