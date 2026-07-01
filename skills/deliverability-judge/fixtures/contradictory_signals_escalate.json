@@ -1,0 +1,29 @@
+{
+  "evidence": {
+    "postmaster_report": {
+      "source": "google-postmaster",
+      "timestamp": "2026-07-01T13:00:00Z",
+      "reputation_score": 0.96
+    },
+    "bounce_metrics": {
+      "source": "esp-bounce-export",
+      "timestamp": "2026-07-01T13:00:00Z",
+      "bounce_pct": 9.4
+    },
+    "complaint_metrics": {
+      "source": "feedback-loop",
+      "timestamp": "2026-07-01T13:00:00Z",
+      "complaint_pct": 0.03
+    },
+    "placement_probe": {
+      "source": "seed-inbox-probe",
+      "timestamp": "2026-07-01T13:00:00Z",
+      "passed": true
+    }
+  },
+  "policy": {
+    "min_reputation_score": 0.8,
+    "max_bounce_pct": 2,
+    "max_complaint_pct": 0.1
+  }
+}
