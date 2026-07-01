@@ -2,6 +2,58 @@
   "schema": "runx.frantic.verification.v1",
   "package": "escalation-judge",
   "version": "0.1.0",
-  "status": "pending",
-  "checks": []
+  "status": "blocked_external_publish",
+  "checks": [
+    {
+      "name": "runx_cli_version",
+      "status": "passed",
+      "command": "runx --version",
+      "observed": "runx-cli 0.6.15"
+    },
+    {
+      "name": "local_harness",
+      "status": "passed",
+      "command": "runx harness ./skills/escalation-judge --json --receipt-dir work/runx-final-receipts/harness",
+      "case_names": [
+        "escalation-judge-escalates-critical-churn",
+        "escalation-judge-no-change-low-risk"
+      ],
+      "receipt_ids": [
+        "sha256:d18d595e713abc8460c1d9a8013d572dbc43f8f91c3de63a0ff457b7fb2cd468",
+        "sha256:8e7ba3905296eb7c90c40e75596f02c0087044b313ee1b56a93ba8db92f9ffb7"
+      ]
+    },
+    {
+      "name": "source_graph_dogfood",
+      "status": "passed",
+      "command": "runx skill skills/escalation-judge case_flow --json",
+      "receipt_ref": "runx:receipt:sha256:ae20da9194fe1067c1cfa6bb90f01b0fd2240b51fafb93af8dc9fed795ae10e3",
+      "graph_status": "Succeeded",
+      "case_id": "case_41022d2bf207",
+      "target_rail": "slack://support-priority"
+    },
+    {
+      "name": "receipt_verify_by_file",
+      "status": "passed",
+      "command": "runx verify --receipt <sha256:ae20...json> --json",
+      "valid": true,
+      "signature_status": "valid",
+      "kid": "runx-demo-key"
+    },
+    {
+      "name": "github_star_runxhq_runx",
+      "status": "passed",
+      "observed": "GitHub UI shows Starred on https://github.com/runxhq/runx"
+    },
+    {
+      "name": "public_pr",
+      "status": "passed",
+      "url": "https://github.com/runxhq/runx/pull/208"
+    },
+    {
+      "name": "hosted_registry_publish",
+      "status": "blocked",
+      "reason": "Runx GitHub login OAuth returned a blank popup/HTTP 502; hosted URL index returned [rate_limited] while resolving the GitHub repository."
+    }
+  ]
 }
