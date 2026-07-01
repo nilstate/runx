@@ -1,0 +1,302 @@
+skill: escalation-judge
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+  runtime_path: data-adapter
+
+emits:
+  - name: escalation_judgment
+    packet: runx.support.escalation_judge.v1
+
+harness:
+  cases:
+    - name: high-severity-churn-opens-priority-case
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: bug
+          severity: critical
+          confidence: 0.93
+        thread_body: "Enterprise tenant says production webhooks are down, their renewal is blocked, and the VP sponsor will cancel if there is no priority support response today."
+        policy_rules:
+          severity_thresholds:
+            - name: severity-high-or-critical
+              lane: priority_support
+              min_severity: high
+              classifications:
+                - bug
+                - account_access
+            - name: legal-or-exec-critical
+              lane: legal_review
+              min_severity: critical
+              classifications:
+                - legal
+                - abuse
+          churn_risk_signals:
+            - name: renewal_blocked
+              lane: priority_support
+              terms:
+                - renewal is blocked
+                - cancel
+                - sponsor
+          escalation_lanes:
+            priority_support:
+              target_rail: downstream.slack-notify.priority-support
+              consequence: internal_lane
+            legal_review:
+              target_rail: downstream.slack-notify.legal-review
+              consequence: internal_lane
+        data_source_ref: local://runx-escalation-judge/harness
+        store_id: escalation-judge-harness-v1
+        aggregate_id: thread:acct-4242:case-1001
+        expected_version: 0
+        idempotency_key: thread:acct-4242:case-1001:escalation:v1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: low-confidence-howto-stops-no-change
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: how_to
+          severity: low
+          confidence: 0.82
+        thread_body: "Customer asks where to find the webhook setup docs. No outage, renewal, legal, executive, or churn language is present."
+        policy_rules:
+          severity_thresholds:
+            - name: severity-high-or-critical
+              lane: priority_support
+              min_severity: high
+              classifications:
+                - bug
+                - account_access
+          churn_risk_signals:
+            - name: renewal_blocked
+              lane: priority_support
+              terms:
+                - renewal is blocked
+                - cancel
+          escalation_lanes:
+            priority_support:
+              target_rail: downstream.slack-notify.priority-support
+              consequence: internal_lane
+        data_source_ref: local://runx-escalation-judge/harness
+        store_id: escalation-judge-harness-v1
+        aggregate_id: thread:acct-4242:case-1002
+        expected_version: 0
+        idempotency_key: thread:acct-4242:case-1002:escalation:v1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+          reason_code: graph_blocked
+    - name: missing-policy-needs-input
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: bug
+          severity: high
+          confidence: 0.88
+        thread_body: "Production issue is urgent, but the caller did not provide policy_rules."
+        data_source_ref: local://runx-escalation-judge/harness
+        store_id: escalation-judge-harness-v1
+        aggregate_id: thread:acct-4242:case-1003
+        expected_version: 0
+        idempotency_key: thread:acct-4242:case-1003:escalation:v1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+          reason_code: graph_blocked
+    - name: undeclared-lane-needs-human
+      runner: judge
+      inputs:
+        triage_packet:
+          classification: bug
+          severity: critical
+          confidence: 0.91
+        thread_body: "Critical outage with executive visibility, but the matching policy threshold names an undeclared lane."
+        policy_rules:
+          severity_thresholds:
+            - name: exec-critical
+              lane: exec_visibility
+              min_severity: critical
+              classifications:
+                - bug
+          churn_risk_signals: []
+          escalation_lanes:
+            priority_support:
+              target_rail: downstream.slack-notify.priority-support
+              consequence: internal_lane
+        data_source_ref: local://runx-escalation-judge/harness
+        store_id: escalation-judge-harness-v1
+        aggregate_id: thread:acct-4242:case-1004
+        expected_version: 0
+        idempotency_key: thread:acct-4242:case-1004:escalation:v1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+          reason_code: graph_blocked
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - direct_slack_post
+    - direct_customer_send
+    - unlisted_escalation_lane
+    - invented_severity
+    - invented_churn_signal
+    - operational_proposal
+
+runners:
+  judge:
+    default: true
+    type: graph
+    inputs:
+      triage_packet:
+        type: json
+        required: true
+        description: triage_packet{classification,severity,confidence} from support-triage-reply or an equivalent bounded triage source.
+      thread_body:
+        type: string
+        required: true
+        description: Support thread body used only for grounded severity and churn signal matching.
+      policy_rules:
+        type: json
+        required: false
+        description: policy_rules{severity_thresholds,churn_risk_signals,escalation_lanes}; missing rules produce a needs_input stop.
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data-store binding for the escalation case event stream.
+      store_id:
+        type: string
+        required: true
+        description: Pinned data-store id for deterministic harness and dogfood receipts.
+      aggregate_id:
+        type: string
+        required: true
+        description: Thread id used as the data-store aggregate id.
+      expected_version:
+        type: number
+        required: true
+        description: Current stream version required by the CAS append_event that records the case.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable case append key so retries do not open duplicate escalation cases.
+    graph:
+      name: escalation-judge
+      steps:
+        - id: read-prior-case
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: escalation_cases
+            aggregate_id: "$input.aggregate_id"
+        - id: decide
+          label: judge escalation policy without dispatching the target rail
+          skill: .
+          runner: decide
+          inputs:
+            triage_packet: "$input.triage_packet"
+            thread_body: "$input.thread_body"
+            policy_rules: "$input.policy_rules"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            prior_case: read-prior-case.data_operation_result.data.projection
+        - id: append-case
+          skill: ../data-store
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: escalation_cases
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.escalation_judgment.data.case_event
+        - id: readback
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: escalation_cases
+            aggregate_id: "$input.aggregate_id"
+      policy:
+        guards:
+          - step: append-case
+            field: decide.escalation_judgment.data.decision.escalate
+            equals: true
+          - step: readback
+            field: decide.escalation_judgment.data.decision.escalate
+            equals: true
+
+  decide:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: object
+      case_id: string
+      escalation_packet: object
+      case_event: object
+      stop_state: object
+      observations: object
+    artifacts:
+      wrap_as: escalation_judgment
+      packet: runx.support.escalation_judge.v1
+    inputs:
+      triage_packet:
+        type: json
+        required: true
+        description: triage_packet{classification,severity,confidence}; severity must be one of low, medium, high, critical.
+      thread_body:
+        type: string
+        required: true
+        description: Support thread body used for grounded churn and severity evidence.
+      policy_rules:
+        type: json
+        required: false
+        description: policy_rules{severity_thresholds,churn_risk_signals,escalation_lanes}; missing rules produce needs_input.
+      aggregate_id:
+        type: string
+        required: true
+        description: Thread id used as the escalation case aggregate.
+      expected_version:
+        type: number
+        required: true
+        description: Current stream version required by the CAS append_event that records the case.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable case append key.
+      prior_case:
+        type: json
+        required: false
+        description: Prior case projection read from data-store before judging escalation.

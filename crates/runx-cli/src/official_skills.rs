@@ -76,6 +76,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "4ef19f394dd9c905518e5e1be1afe98cf361c0adc27d6255153d194020b5e890",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/escalation-judge",
+        version: "sha-f90256d7c6b3",
+        digest: "a9ebdaf41f87fa913c0a9465309f93323c3a96f7937f7b875f82092fbada945e",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/evolve",
         version: "sha-e0e2b933e8a7",
         digest: "aa446e7d3ab8a3168facd2372b8bd8fe63736a3e061438d38cc83ea8f294b971",

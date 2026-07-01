@@ -1,0 +1,43 @@
+{
+  "triage_packet": {
+    "classification": "bug",
+    "severity": "critical",
+    "confidence": 0.94
+  },
+  "thread_body": "Enterprise customer reports production webhook delivery is down. Their renewal is blocked and the executive sponsor says they will cancel unless priority support owns the incident today.",
+  "policy_rules": {
+    "severity_thresholds": [
+      {
+        "name": "severity-high-or-critical",
+        "lane": "priority_support",
+        "min_severity": "high",
+        "classifications": [
+          "bug",
+          "account_access"
+        ]
+      }
+    ],
+    "churn_risk_signals": [
+      {
+        "name": "renewal_blocked",
+        "lane": "priority_support",
+        "terms": [
+          "renewal is blocked",
+          "cancel",
+          "executive sponsor"
+        ]
+      }
+    ],
+    "escalation_lanes": {
+      "priority_support": {
+        "target_rail": "downstream.slack-notify.priority-support",
+        "consequence": "internal_lane"
+      }
+    }
+  },
+  "data_source_ref": "local://runx-escalation-judge/dogfood",
+  "store_id": "escalation-judge-dogfood-v1",
+  "aggregate_id": "thread:acct-9001:case-dogfood-001",
+  "expected_version": 0,
+  "idempotency_key": "thread:acct-9001:case-dogfood-001:escalation:v1"
+}

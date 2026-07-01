@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/repo/.runx-test-receipts-escalation-judge-dogfood-final",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:7c01b7c6e4c1f39394931500de8ca34b4c6410e16e899920dbb0c6950ee716fb",
+      "receipt_count": 5,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

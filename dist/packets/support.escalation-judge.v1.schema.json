@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.dev/runx/support/escalation-judge/v1.json",
+  "x-runx-packet-id": "runx.support.escalation_judge.v1",
+  "type": "object",
+  "properties": {
+    "decision": {
+      "type": "object",
+      "properties": {
+        "escalate": { "type": "boolean" },
+        "lane": { "type": ["string", "null"] },
+        "reason": { "type": "string" }
+      },
+      "required": ["escalate", "lane", "reason"],
+      "additionalProperties": true
+    },
+    "case_id": {
+      "type": "string"
+    },
+    "escalation_packet": {
+      "type": "object",
+      "properties": {
+        "case_id": { "type": "string" },
+        "aggregate_id": { "type": "string" },
+        "lane": { "type": "string" },
+        "target_rail": { "type": "string" },
+        "dispatch_by_name_only": { "type": "boolean" },
+        "rail_effect": { "const": "none" }
+      },
+      "additionalProperties": true
+    },
+    "case_event": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "support_case.escalation_opened" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": ["type", "payload"],
+      "additionalProperties": true
+    },
+    "stop_state": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "reason": { "type": "string" },
+        "no_case_opened": { "type": "boolean" },
+        "no_escalation_packet_emitted": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": ["decision", "observations"],
+  "additionalProperties": true
+}

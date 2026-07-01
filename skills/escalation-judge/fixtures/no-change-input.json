@@ -1,0 +1,42 @@
+{
+  "triage_packet": {
+    "classification": "how_to",
+    "severity": "low",
+    "confidence": 0.81
+  },
+  "thread_body": "Customer asks how to configure the webhook endpoint and does not mention outage, renewal, cancellation, legal, or executive visibility.",
+  "policy_rules": {
+    "severity_thresholds": [
+      {
+        "name": "severity-high-or-critical",
+        "lane": "priority_support",
+        "min_severity": "high",
+        "classifications": [
+          "bug",
+          "account_access"
+        ]
+      }
+    ],
+    "churn_risk_signals": [
+      {
+        "name": "renewal_blocked",
+        "lane": "priority_support",
+        "terms": [
+          "renewal is blocked",
+          "cancel"
+        ]
+      }
+    ],
+    "escalation_lanes": {
+      "priority_support": {
+        "target_rail": "downstream.slack-notify.priority-support",
+        "consequence": "internal_lane"
+      }
+    }
+  },
+  "data_source_ref": "local://runx-escalation-judge/dogfood",
+  "store_id": "escalation-judge-dogfood-v1",
+  "aggregate_id": "thread:acct-9001:case-dogfood-002",
+  "expected_version": 0,
+  "idempotency_key": "thread:acct-9001:case-dogfood-002:escalation:v1"
+}

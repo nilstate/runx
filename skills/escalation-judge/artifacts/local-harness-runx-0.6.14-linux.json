@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "case_count": 4,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "high-severity-churn-opens-priority-case",
+    "low-confidence-howto-stops-no-change",
+    "missing-policy-needs-input",
+    "undeclared-lane-needs-human"
+  ],
+  "receipt_ids": [
+    "sha256:7da15ffb05a9296859c087d451f5388a5c5406e2c27ccfac25e83babe79b2cec",
+    "sha256:4cd33472e1c7101ce829d56defa95a33ce13061fbbd38ef5446e819eae5a5747",
+    "sha256:cf30b2b3afb468bb95aa03c3b9c51bb9501542e4d4550ca53c7612f2e3869bec",
+    "sha256:1f0343d09bf13a563d261309c7be4a6ea9c5b3564ee34059d9eea565f7ad4551"
+  ],
+  "graph_case_count": 4
+}
