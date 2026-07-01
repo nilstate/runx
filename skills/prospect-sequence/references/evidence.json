@@ -41,6 +41,10 @@
     {
       "id": "source_guard",
       "evidence": "The runner refuses loopback, RFC1918, .local, non-HTTP, missing-text, and off-allowlist sources before using account facts."
+    },
+    {
+      "id": "pr_url",
+      "evidence": "PR https://github.com/runxhq/runx/pull/179 contains skills/prospect-sequence/X.yaml, SKILL.md, fixtures, and harness evidence."
     }
   ],
   "local_verification": {
