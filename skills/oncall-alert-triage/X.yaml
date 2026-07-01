@@ -1,5 +1,5 @@
 skill: oncall-alert-triage
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: skill
@@ -36,32 +36,12 @@ harness:
                 - acknowledge
                 - escalate
         operator_context: Keep live paging and incident PR creation in downstream governed lanes. This skill only emits the triage packet.
-      caller:
-        answers:
-          agent_task.oncall-alert-triage.output:
-            decision:
-              action: escalate
-              reason: The alert is page-severity, the service is declared in policy, and the sealed runbook binds page and incident PR targets.
-            triage_packet:
-              schema: runx.oncall.triage.v1
-              page_target: pagerduty:checkout-primary
-              incident_pr_target: github:runxhq/runx:incidents/checkout-api-latency
-              pr_review_note_body: "Escalate checkout-api latency: attach graph, rollback candidate, and current saturation metrics."
-              fix_bundle: null
-              escalation: human_oncall_required
-              evidence:
-                alert_id: alert-2026-07-01-checkout-latency
-                service: checkout-api
-                runbook_digest: sha256:7bbd657f2d41e65d9e6d38e37f722ba6efbc0f835ac815fb7649b25b182a18d4
-                policy_clause: checkout-api.escalation_rules
-            refusal:
-              reason: null
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
           state: sealed
-    - name: oncall-alert-triage-missing-runbook-needs-agent
+    - name: oncall-alert-triage-missing-runbook-refusal
       runner: triage
       inputs:
         alert:
@@ -84,14 +64,18 @@ harness:
                 - escalate
         operator_context: Missing or unsealed runbooks must block packet emission and route to human approval.
       expect:
-        status: needs_agent
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
 
 runners:
   triage:
     default: true
-    type: agent-task
-    agent: operator
-    task: oncall-alert-triage
+    type: cli-tool
+    command: python3
+    args:
+      - run.py
     outputs:
       decision: object
       triage_packet: object
@@ -101,28 +85,17 @@ runners:
       packet: runx.oncall.triage.v1
     runx:
       category: ops
-    instructions: >
-      Produce one bounded on-call alert triage decision. Read the alert,
-      runbook_ref, and oncall_policy as evidence. Refuse to emit a packet when
-      the service is not declared in oncall_policy, when the runbook is missing
-      or unsealed, or when no page_target or incident_pr_target can be bound.
-      For an escalate or auto_remediate decision, emit exactly one
-      runx.oncall.triage.v1 packet with page_target, incident_pr_target,
-      pr_review_note_body, optional fix_bundle, and escalation. Do not page,
-      open an incident PR, comment on a PR, mint authority, request attenuation,
-      or execute remediation. Downstream governed lanes consume the packet by
-      name after human/operator approval.
     inputs:
       alert:
-        type: object
+        type: json
         required: true
         description: Alert record with id, service, severity, and signal.
       runbook_ref:
-        type: object
+        type: json
         required: true
         description: Sealed runbook reference and digest plus target bindings.
       oncall_policy:
-        type: object
+        type: json
         required: true
         description: Declared services and escalation rules.
       operator_context:

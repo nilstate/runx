@@ -1,20 +1,21 @@
 {
-  "recorded_at": "2026-07-01T06:20:32Z",
-  "runx_version": "runx-cli 0.6.14",
-  "command": "runx harness ./skills/oncall-alert-triage --json",
+  "schema": "runx.oncall_alert_triage.harness_result.v1",
+  "runx_cli": "runx-cli 0.6.14",
+  "command": "runx harness ./skills/oncall-alert-triage --receipt-dir <tmp> --json",
+  "source_revision_before_commit": "768e895f5f2c21850147d3cfa016783fe283186e",
   "status": "passed",
   "case_count": 2,
   "assertion_error_count": 0,
   "case_names": [
     "oncall-alert-triage-escalate-sealed",
-    "oncall-alert-triage-missing-runbook-needs-agent"
+    "oncall-alert-triage-missing-runbook-refusal"
   ],
   "receipt_ids": [
-    "sha256:bdeed79ed4d4dc4b606ca332fc58696dd3ed0fb36bd19adda682e34d834b35ac"
+    "sha256:163b21af512357bc0707bf351b56f12fc20ff8dc632c2c3fafe4aa7fd3319c34",
+    "sha256:f6c31798e592f4b53e69059836f11b0a9649abbef5912b45e2d0d992fa7e459f"
   ],
-  "signing_profile": {
-    "kid": "runx-demo-key",
-    "issuer_type": "hosted",
-    "seed_source": "public demo seed documented by runx"
-  }
+  "notes": [
+    "Runner is deterministic cli-tool via python3; it emits no external side effects.",
+    "Missing or unsafe evidence returns a sealed refusal instead of inventing targets."
+  ]
 }

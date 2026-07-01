@@ -30,7 +30,7 @@ runbook or policy binds the targets needed for any packet. When the alert is
 eligible for escalation or auto-remediation, it emits one packet that names the
 page target, incident PR target, PR review note body, optional fix bundle, and
 escalation route. When the evidence is missing or unsafe, it stops with
-`needs_agent` or returns a refusal instead of inventing a target.
+returns a sealed refusal instead of inventing a target.
 
 ## When To Use It
 
