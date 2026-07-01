@@ -1,0 +1,216 @@
+skill: meeting-prep
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: meeting-prep-bounded-brief
+      runner: prep
+      inputs:
+        event:
+          id: evt-2026-07-02-quarterly-checkin
+          title: Quarterly Customer Check-in
+          start_at: 2026-07-02T15:00:00Z
+          duration_minutes: 30
+          attendees:
+            - attendee_id: alex-customer
+              display_name: Alex (Customer Success)
+              role: customer
+            - attendee_id: sam-internal
+              display_name: Sam (Product)
+              role: internal
+        attendee_notes:
+          alex-customer: "Renewal window opens 2026-08-01. Asked about usage metrics."
+          sam-internal: "Promised to share Q2 roadmap slides ahead of call."
+        thread_snippets:
+          - thread_id: t-2026-06-15-followup
+            author: alex-customer
+            sent_at: 2026-06-15T09:14:00Z
+            body: "Could we get per-tenant latency numbers for the June incident?"
+          - thread_id: t-2026-06-22-renewal
+            author: sam-internal
+            sent_at: 2026-06-22T17:02:00Z
+            body: "Drafted renewal terms; will share once legal signs off."
+        public_links:
+          - url: https://example.com/post/q2-roadmap
+            fetched_at: 2026-07-01T08:00:00Z
+            digest: sha256:q2-roadmap-published-excerpt-7f3a
+            excerpt: "Q2 roadmap highlights latency visibility and per-tenant dashboards."
+        operator_context: Compose brief only from the cited inputs above; mark any unprovided attendee history as missing.
+      caller:
+        answers:
+          agent_task.meeting-prep.output:
+            brief:
+              agenda:
+                - item: Review Q2 roadmap slides and latency visibility rollout
+                  source:
+                    kind: link
+                    ref: sha256:q2-roadmap-published-excerpt-7f3a
+                - item: Walk through renewal terms once legal signs off
+                  source:
+                    kind: snippet
+                    ref: t-2026-06-22-renewal
+              decisions:
+                - item: Share per-tenant latency numbers from June incident
+                  source:
+                    kind: snippet
+                    ref: t-2026-06-15-followup
+              risks:
+                - item: Renewal window 2026-08-01 may close before legal review completes
+                  source:
+                    kind: snippet
+                    ref: t-2026-06-22-renewal
+              questions:
+                - item: Is legal review on track to finish before 2026-08-01?
+                  source:
+                    kind: snippet
+                    ref: t-2026-06-22-renewal
+              follow_ups:
+                - item: Send per-tenant latency report by 2026-07-05
+                  source:
+                    kind: snippet
+                    ref: t-2026-06-15-followup
+                - item: Re-confirm renewal terms with customer once legal signs off
+                  source:
+                    kind: attendee
+                    ref: sam-internal
+              citations:
+                - kind: snippet
+                  ref: t-2026-06-15-followup
+                  digest: sha256:t-2026-06-15-followup
+                - kind: snippet
+                  ref: t-2026-06-22-renewal
+                  digest: sha256:t-2026-06-22-renewal
+                - kind: attendee
+                  ref: alex-customer
+                  digest: sha256:attendee-note-alex
+                - kind: attendee
+                  ref: sam-internal
+                  digest: sha256:attendee-note-sam
+                - kind: link
+                  ref: sha256:q2-roadmap-published-excerpt-7f3a
+                  digest: sha256:q2-roadmap-published-excerpt-7f3a
+            missing_context:
+              - dimension: attendee_history
+                note: "No prior attendee history provided; brief composed only from supplied notes, snippets, and public link."
+            refusal:
+              reason: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+    - name: meeting-prep-insufficient-context-needs-agent
+      runner: prep
+      inputs:
+        event:
+          id: evt-2026-07-02-vendor-intro
+          title: Vendor Intro
+          start_at: 2026-07-02T17:00:00Z
+          duration_minutes: 20
+          attendees:
+            - attendee_id: vendor-rep
+              display_name: Vendor Rep
+              role: external
+        attendee_notes: {}
+        thread_snippets: []
+        public_links: []
+        operator_context: No prior context provided; refuse to invent attendee history and stop at needs_agent.
+      expect:
+        status: needs_agent
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+runners:
+  agent:
+    type: agent
+
+  dogfood:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      brief: object
+      missing_context: object
+      refusal: object
+    artifacts:
+      wrap_as: brief_packet
+      packet: runx.meeting.brief.v1
+    runx:
+      category: ops
+    inputs:
+      event:
+        type: json
+        required: true
+        description: Calendar event with id, title, start_at, duration_minutes, and attendees[].
+      attendee_notes:
+        type: json
+        required: false
+        description: Map of attendee_id to operator-supplied notes for that attendee.
+      thread_snippets:
+        type: json
+        required: false
+        description: Prior conversation rows the operator explicitly chose to share.
+      public_links:
+        type: json
+        required: false
+        description: Public links the operator explicitly fetched and shared with the skill.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for deterministic post-publish dogfood.
+
+  prep:
+    default: true
+    type: graph
+    act:
+      form: review
+      purpose: Compose a bounded meeting-prep brief from cited inputs only.
+    inputs:
+      event:
+        type: json
+        required: true
+        description: Calendar event with id, title, start_at, duration_minutes, and attendees[].
+      attendee_notes:
+        type: json
+        required: false
+        description: Map of attendee_id to operator-supplied notes.
+      thread_snippets:
+        type: json
+        required: false
+        description: Prior conversation rows the operator explicitly chose to share.
+      public_links:
+        type: json
+        required: false
+        description: Public links the operator explicitly fetched and shared.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for downstream dispatch.
+    graph:
+      name: meeting-prep
+      steps:
+        - id: packet
+          label: compose bounded brief
+          run:
+            type: agent-task
+            agent: reviewer
+            task: meeting-prep
+            outputs:
+              brief: object
+              missing_context: object
+              refusal: object
+          instructions: |
+            Compose exactly one bounded meeting-prep brief from the cited inputs above. Anchor every brief section item to a snippet id, an attendee id, or a public link digest that was actually supplied. Refuse to invent attendee titles, prior conversation history, or organization context. Refuse to emit any brief when no input dimension is cited or when an attendee_history, mail, or calendar field is present in the inputs that the skill was not given. When at least one input dimension is cited, return brief with agenda, decisions, risks, questions, follow_ups, and citations, plus missing_context naming unprovided dimensions, and emit one runx.meeting.brief.v1 packet bound to those citations. This step only composes and packages the brief; it performs no external effect.
+          artifacts:
+            named_emits:
+              brief_packet: brief
+            packets:
+              brief_packet: runx.meeting.brief.v1

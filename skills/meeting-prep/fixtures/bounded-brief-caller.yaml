@@ -1,0 +1,60 @@
+---
+# caller.answers fixture for meeting-prep-bounded-brief
+# This is what the agent_task.meeting-prep.output should return when run with the bounded-brief inputs.
+answers:
+  agent_task.meeting-prep.output:
+    brief:
+      agenda:
+        - item: Review Q2 roadmap slides and latency visibility rollout
+          source:
+            kind: link
+            ref: sha256:q2-roadmap-published-excerpt-7f3a
+        - item: Walk through renewal terms once legal signs off
+          source:
+            kind: snippet
+            ref: t-2026-06-22-renewal
+      decisions:
+        - item: Share per-tenant latency numbers from June incident
+          source:
+            kind: snippet
+            ref: t-2026-06-15-followup
+      risks:
+        - item: Renewal window 2026-08-01 may close before legal review completes
+          source:
+            kind: snippet
+            ref: t-2026-06-22-renewal
+      questions:
+        - item: Is legal review on track to finish before 2026-08-01?
+          source:
+            kind: snippet
+            ref: t-2026-06-22-renewal
+      follow_ups:
+        - item: Send per-tenant latency report by 2026-07-05
+          source:
+            kind: snippet
+            ref: t-2026-06-15-followup
+        - item: Re-confirm renewal terms with customer once legal signs off
+          source:
+            kind: attendee
+            ref: sam-internal
+      citations:
+        - kind: snippet
+          ref: t-2026-06-15-followup
+          digest: sha256:t-2026-06-15-followup
+        - kind: snippet
+          ref: t-2026-06-22-renewal
+          digest: sha256:t-2026-06-22-renewal
+        - kind: attendee
+          ref: alex-customer
+          digest: sha256:attendee-note-alex
+        - kind: attendee
+          ref: sam-internal
+          digest: sha256:attendee-note-sam
+        - kind: link
+          ref: sha256:q2-roadmap-published-excerpt-7f3a
+          digest: sha256:q2-roadmap-published-excerpt-7f3a
+    missing_context:
+      - dimension: attendee_history
+        note: "No prior attendee history provided; brief composed only from supplied notes, snippets, and public link."
+    refusal:
+      reason: null

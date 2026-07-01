@@ -1,0 +1,22 @@
+{
+  "schema": "runx.meeting_prep.harness_result.v1",
+  "runx_cli": "runx-cli 0.6.14",
+  "command": "runx harness ./skills/meeting-prep --receipt-dir <tmp> --json",
+  "source_revision_before_commit": "f149008c81f87dc8937ed965c98b106833e81d98",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "case_names": [
+    "meeting-prep-bounded-brief",
+    "meeting-prep-insufficient-context-needs-agent"
+  ],
+  "receipt_ids": [
+    "sha256:82c6c425e68c7a1e23f4260a609a756447c5b5aed9af40c5c18a23a639fc0916"
+  ],
+  "graph_case_count": 2,
+  "notes": [
+    "Default runner is a graph with a thin review act; the deterministic Node.js dogfood runner emits no external side effects.",
+    "Meeting prep cites only provided snippets or public links it actually read; missing or private context is marked in missing_context instead of inventing attendee history.",
+    "Harness has one sealed bounded-brief case and one needs_agent stop case for insufficient context."
+  ]
+}
