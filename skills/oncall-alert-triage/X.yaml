@@ -73,9 +73,9 @@ runners:
   triage:
     default: true
     type: cli-tool
-    command: python3
+    command: node
     args:
-      - run.py
+      - run.mjs
     outputs:
       decision: object
       triage_packet: object
