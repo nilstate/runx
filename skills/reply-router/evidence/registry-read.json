@@ -1,0 +1,65 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "jaasieldelgado131/reply-router@sha-016598c4eb75",
+    "skill": {
+      "skill_id": "jaasieldelgado131/reply-router",
+      "owner": "jaasieldelgado131",
+      "name": "reply-router",
+      "description": "Classify inbound replies against a sealed send receipt and either append a suppression event or emit a governed routing decision without sending.",
+      "category": "code",
+      "version": "sha-016598c4eb75",
+      "digest": "11f0ce481b4d7c56016ae16c4aed162719811bae212fd9eacde88d77f1c0f6ab",
+      "markdown": "---\nname: reply-router\ndescription: Classify inbound replies against a sealed send receipt and either append a suppression event or emit a governed routing decision without sending.\nrunx:\n  category: compliance\n---\n\n# Reply Router\n\n`reply-router` turns an inbound reply plus the original send receipt into one\nauditable decision. It can record an unsubscribe suppression, route a normal\nreply to a later send-as lane, or stop for an agent when the evidence is\nambiguous or the original send receipt is not sealed.\n\nThe skill never sends a message. It emits the next governed action only after\nthe reply is classified and the original send evidence is checked.\n\n## Inputs\n\n- `inbound_reply`: object with `content`, `received_from`, and `received_at`.\n- `original_send_receipt`: sealed send receipt evidence with `receipt_id`,\n  `checksum`, `sealed`, `principal`, and `send_plan`.\n- `suppression_policy`: object with `unsubscribe_signals` and\n  `confidence_threshold`.\n- `store_projection`: optional current data-store projection with `store_id`,\n  `aggregate_id`, and `version`.\n\n## Outputs\n\nWhen the reply is a clear unsubscribe and the original send receipt is sealed,\nthe graph appends a `recipient_suppression_event` packet:\n\n- `classification{type,confidence,evidence}`\n- `suppression_result{aggregate_id,idempotency_key,before_version,after_version}`\n- `data_store_call{registry_ref,operation,store_id,expected_version}`\n\nWhen the reply is a normal routed response, the graph emits\n`runx.reply.routing.v1` with `classification`, `send_target`, and `principal`.\nThe output names a separate governed send-as run and does not send.\n\nWhen the reply is ambiguous or the original receipt is unsealed, the graph stops\nat a human lane and returns `needs_agent`. It does not write a suppression event\nor emit a routing decision.\n\n## Safety Rules\n\n- Refuse to suppress unless the reply text contains unsubscribe intent and the\n  policy includes a matching signal.\n- Refuse to route a send when the reply asks to unsubscribe.\n- Refuse unsealed or checksum-less original receipts.\n- Never invent a classification unsupported by reply text.\n- Treat every outbound action as a separate governed run.\n\n## Data-Store Contract\n\nSuppression uses a pinned registry reference:\n`registry:runx/data-store@0.1.2`.\n\nThe append event call is modeled as an ungated CAS append:\n\n- `operation`: `append_event`\n- `store_id`: `runx.reply-router.suppression.v1`\n- `aggregate_id`: recipient address\n- `expected_version`: current projection version\n- `idempotency_key`: SHA-256 over receipt id, recipient, and reply content\n\nThe resulting suppression record is the compliance block consumed by the next\nsend-as preflight.\n",
+      "profile_digest": "2f81f6e5fcf4fc5b4cdbb9b4b9b4ce0cd4c7d5bc379a8c202cc5c4821ad95cdc",
+      "runner_names": [
+        "dogfood",
+        "route"
+      ],
+      "source_type": "agent",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "publisher",
+        "id": "jaasieldelgado131",
+        "handle": "jaasieldelgado131"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:jaasieldelgado131",
+          "status": "declared",
+          "summary": "jaasieldelgado131",
+          "issued_at": "2026-07-01T05:17:43.796Z",
+          "metadata": {
+            "publisher_handle": "jaasieldelgado131",
+            "publisher_id": "jaasieldelgado131",
+            "publisher_kind": "publisher",
+            "trust_tier": "community"
+          }
+        },
+        {
+          "kind": "source",
+          "id": "github_source",
+          "status": "verified",
+          "summary": "github:jaasieldelgado131/runx-reply-router-skill@016598c4eb7599c2ce0ba705fb835fd0dab4ed01",
+          "source": "https://github.com/jaasieldelgado131/runx-reply-router-skill",
+          "issued_at": "2026-07-01T05:17:43.796Z",
+          "metadata": {
+            "event": "push",
+            "profile_path": "skills/reply-router/X.yaml",
+            "ref": "master",
+            "repo": "jaasieldelgado131/runx-reply-router-skill",
+            "sha": "016598c4eb7599c2ce0ba705fb835fd0dab4ed01",
+            "skill_path": "skills/reply-router/SKILL.md"
+          }
+        }
+      ],
+      "install_command": "runx add jaasieldelgado131/reply-router@sha-016598c4eb75 --registry https://api.runx.ai",
+      "run_command": "runx skill jaasieldelgado131/reply-router@sha-016598c4eb75 --registry https://api.runx.ai"
+    }
+  }
+}

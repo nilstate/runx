@@ -1,99 +1,180 @@
 {
-  "schema": "runx.reply_router.evidence.v1",
+  "schema": "runx.reply_router.evidence.v2",
   "package": "reply-router",
   "version": "0.1.0",
+  "publisher_owner": "jaasieldelgado131",
+  "registry_ref": "jaasieldelgado131/reply-router@sha-016598c4eb75",
+  "public_url": "https://runx.ai/x/jaasieldelgado131/reply-router@sha-016598c4eb75",
+  "source_url": "https://github.com/jaasieldelgado131/runx-reply-router-skill/tree/016598c4eb7599c2ce0ba705fb835fd0dab4ed01/skills/reply-router",
+  "pr_url": "https://github.com/runxhq/runx/pull/173",
+  "source_revision": "016598c4eb7599c2ce0ba705fb835fd0dab4ed01",
+  "published_version": "sha-016598c4eb75",
+  "publish_method": "runx add https://github.com/jaasieldelgado131/runx-reply-router-skill --ref master --json (URL-as-publish equivalent to a purpose-scoped publish credential; no secrets in artifacts)",
   "runx_cli_version": "runx-cli 0.6.14",
-  "summary": "reply-router is a runx graph skill for inbound reply handling. It validates sealed original send receipts, grounds unsubscribe suppression in reply text and policy, emits a CAS append_event packet for recipient suppression, routes ordinary replies to a separate governed send-as lane, and blocks unsealed or ambiguous cases for human review without sending.",
-  "artifact_summary": "reply-router is a runx graph skill that validates a sealed original_send_receipt, classifies inbound reply intent, appends a recipient-keyed suppression event for clear unsubscribe replies, emits a governed routing decision for normal replies, and blocks ambiguous or unsealed cases to a human lane without sending.",
+  "install_command": "runx add jaasieldelgado131/reply-router@sha-016598c4eb75 --registry https://api.runx.ai",
+  "registry_read_command": "runx registry read jaasieldelgado131/reply-router@sha-016598c4eb75 --registry https://api.runx.ai --json",
+  "harness_command": "runx harness ./skills/reply-router --json",
+  "dogfood_command": "runx skill jaasieldelgado131/reply-router@sha-016598c4eb75 dogfood --registry https://api.runx.ai --input-json inbound_reply=<sealed_unsubscribe_fixture.inbound_reply> --input-json original_send_receipt=<sealed_unsubscribe_fixture.original_send_receipt> --input-json suppression_policy=<sealed_unsubscribe_fixture.suppression_policy> --input-json store_projection=<sealed_unsubscribe_fixture.store_projection> --receipt-dir receipts --json",
+  "verify_command": "runx verify --receipt receipts/sha256:7a6023af6a9c117f5dbb53cf7af89fe594f2083c002d79484c6fa4ecfd760ccf.json --json",
+  "raw_files": {
+    "x_yaml": "https://raw.githubusercontent.com/jaasieldelgado131/runx-reply-router-skill/016598c4eb7599c2ce0ba705fb835fd0dab4ed01/skills/reply-router/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/jaasieldelgado131/runx-reply-router-skill/016598c4eb7599c2ce0ba705fb835fd0dab4ed01/skills/reply-router/SKILL.md"
+  },
+  "artifacts": {
+    "harness_json": "skills/reply-router/evidence/harness.json",
+    "dogfood_json": "skills/reply-router/evidence/dogfood.json",
+    "verification_json": "skills/reply-router/evidence/verification.json",
+    "registry_read_json": "skills/reply-router/evidence/registry-read.json",
+    "receipt_files": "skills/reply-router/evidence/receipt-files.txt",
+    "report": "skills/reply-router/evidence/review-report.md"
+  },
   "public_star": {
     "repo": "runxhq/runx",
     "verified_by": "GitHub API user/starred/runxhq/runx",
     "result": "204 No Content"
   },
-  "items": [
-    {
-      "id": "package_files",
-      "status": "present",
-      "summary": "SKILL.md, X.yaml, classify.mjs, append_event.mjs, emit_route.mjs, dogfood.mjs, and two JSON fixtures are included under skills/reply-router."
-    },
-    {
-      "id": "sealed_unsubscribe_suppression",
-      "status": "manual_cli_passed",
-      "summary": "classify.mjs returns route=suppress, classification.type=unsubscribe, confidence=0.99, and matched unsubscribe/stop-sending evidence for the sealed fixture."
-    },
-    {
-      "id": "append_event_cas",
-      "status": "manual_cli_passed",
-      "summary": "append_event.mjs emits registry:runx/data-store@0.1.2 append_event with store_id runx.reply-router.suppression.v1, aggregate_id recipient:ana@example.test, expected_version 7, before_version 7, after_version 8, and a deterministic idempotency key."
-    },
-    {
-      "id": "stop_ambiguous_or_unsealed",
-      "status": "manual_cli_passed",
-      "summary": "classify.mjs returns route=needs_agent and no suppression/routing output when original_send_receipt is unsealed."
-    },
-    {
-      "id": "local_windows_harness",
-      "status": "blocked_by_host",
-      "summary": "runx 0.6.14 on this Windows host fails signed receipt-store writes with os error 87 for both this package and the official examples/hello-world harness. This is a local host limitation; the graph profile is kept for hosted/Linux harness replay."
-    }
-  ],
+  "summary": "reply-router classifies inbound replies against a sealed original_send_receipt and suppression_policy. Clear unsubscribe replies append a recipient-keyed suppression event; normal replies emit a bounded runx.reply.routing.v1 decision naming a separate governed send-as run; ambiguous or unsealed receipts stop at a human lane. The skill never sends a message.",
   "observations": [
     {
       "id": "runx_version",
-      "kind": "command",
       "status": "success",
-      "summary": "npx --yes @runxhq/cli@latest --version returned runx-cli 0.6.14."
+      "summary": "runx-cli 0.6.14 was used for publish/read/harness/dogfood/verify evidence."
     },
     {
-      "id": "x_yaml_declares_graph",
-      "kind": "source_review",
+      "id": "registry_publication",
       "status": "success",
-      "summary": "X.yaml declares reply-router version 0.1.0 with default graph runner route and required harness cases."
+      "summary": "Registry read resolved jaasieldelgado131/reply-router@sha-016598c4eb75 with trust_state=trusted and digest sha256:11f0ce481b4d7c56016ae16c4aed162719811bae212fd9eacde88d77f1c0f6ab."
     },
     {
-      "id": "sealed_unsubscribe_classification",
-      "kind": "fixture_run",
+      "id": "hosted_harness",
+      "status": "passed",
+      "summary": "Hosted/Linux harness passed 2 cases with 0 assertion errors and receipt sha256:514ed0b1a6b5ad2ee609830d7098d04090ad2c223e3c362ba486c2360456c47c."
+    },
+    {
+      "id": "sealed_unsubscribe_suppression",
       "status": "success",
-      "summary": "The sealed unsubscribe fixture classifies as unsubscribe with route=suppress and matched text evidence."
+      "summary": "Case sealed_unsubscribe_suppression seals a receipt for an unsubscribe reply, emits classification.type=unsubscribe with confidence=0.99, matched unsubscribe and stop-sending signals, and writes suppression only."
     },
     {
       "id": "append_event_contract",
-      "kind": "fixture_run",
       "status": "success",
-      "summary": "The suppression branch emits registry:runx/data-store@0.1.2 append_event with expected_version and deterministic idempotency key."
+      "summary": "Suppression writes registry:runx/data-store@0.1.2 append_event to store_id runx.reply-router.suppression.v1, aggregate_id recipient:ana@example.test, expected_version 7, before_version 7, after_version 8, idempotency_key reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b."
     },
     {
-      "id": "unsealed_stop",
-      "kind": "fixture_run",
+      "id": "stop_ambiguous_or_unsealed",
       "status": "success",
-      "summary": "The unsealed fixture classifies as needs_agent and does not emit suppression or routing output."
+      "summary": "Case stop_ambiguous_or_unsealed expects needs_agent; it blocks ambiguous or unsealed input without suppression write and without routing decision."
     },
     {
-      "id": "no_send_action",
-      "kind": "source_review",
-      "status": "success",
-      "summary": "No runner sends a message; route output names a later governed send-as lane only."
+      "id": "routing_branch",
+      "status": "source_reviewed",
+      "summary": "For sealed non-unsubscribe replies, emit_route.mjs emits runx.reply.routing.v1 with classification.type=reply, confidence=0.92, send_target.governed_skill=send-as, lane=reply-follow-up, principal from the original send receipt, and sends_now=false."
     },
     {
-      "id": "windows_receipt_store_limitation",
-      "kind": "host_limitation",
-      "status": "blocked",
-      "summary": "Signed receipt writing on this Windows host fails with os error 87 for this package and the official hello-world harness."
+      "id": "dogfood_receipt",
+      "status": "success",
+      "summary": "Post-publish dogfood run of jaasieldelgado131/reply-router@sha-016598c4eb75 sealed receipt runx:receipt:sha256:7a6023af6a9c117f5dbb53cf7af89fe594f2083c002d79484c6fa4ecfd760ccf; exit_code=0, disposition=closed, decision=suppress."
+    },
+    {
+      "id": "verify_verdict",
+      "status": "success",
+      "summary": "runx verify returned valid=true, digest=valid, content_address=valid, signature=valid, kid=runx-demo-key."
+    },
+    {
+      "id": "safety",
+      "status": "success",
+      "summary": "No runner sends a message, no secrets are required, unsubscribe replies are never routed, and unsealed receipts are refused before suppression or routing."
     }
   ],
   "harness_cases": [
-    "sealed_unsubscribe_suppression",
-    "stop_ambiguous_or_unsealed"
+    {
+      "name": "sealed_unsubscribe_suppression",
+      "status": "sealed",
+      "result": "unsubscribe suppression path closes with a sealed receipt and no routing decision"
+    },
+    {
+      "name": "stop_ambiguous_or_unsealed",
+      "status": "refused",
+      "result": "needs_agent; no suppression write and no routing decision"
+    }
   ],
   "dogfood": {
-    "runner": "dogfood",
-    "purpose": "Auxiliary cli-tool runner for deterministic local evidence when graph receipt sealing is unavailable on Windows.",
-    "receipt_ref": "not_recorded_local_windows_receipt_store_error_87"
+    "package": "jaasieldelgado131/reply-router@sha-016598c4eb75",
+    "input": {
+      "fixture": "skills/reply-router/fixtures/sealed_unsubscribe_suppression.json",
+      "inbound_reply": "sealed unsubscribe request from recipient:ana@example.test",
+      "suppression_policy_signals": [
+        "unsubscribe",
+        "stop sending",
+        "do not contact"
+      ]
+    },
+    "command": "runx skill jaasieldelgado131/reply-router@sha-016598c4eb75 dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+    "receipt_ref": "runx:receipt:sha256:7a6023af6a9c117f5dbb53cf7af89fe594f2083c002d79484c6fa4ecfd760ccf",
+    "receipt_id": "sha256:7a6023af6a9c117f5dbb53cf7af89fe594f2083c002d79484c6fa4ecfd760ccf",
+    "verify_verdict": {
+      "valid": true,
+      "digest": "valid",
+      "content_address": "valid",
+      "signature": "valid",
+      "lineage": "unverified"
+    },
+    "harness_cases": [
+      {
+        "name": "sealed_unsubscribe_suppression",
+        "status": "sealed"
+      },
+      {
+        "name": "stop_ambiguous_or_unsealed",
+        "status": "refused"
+      }
+    ],
+    "output_summary": {
+      "classification": {
+        "confidence": 0.99,
+        "evidence": [
+          "matched signal: unsubscribe",
+          "matched signal: stop sending"
+        ],
+        "type": "unsubscribe"
+      },
+      "data_store_call": {
+        "aggregate_id": "recipient:ana@example.test",
+        "expected_version": 7,
+        "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b",
+        "operation": "append_event",
+        "registry_ref": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.reply-router.suppression.v1"
+      },
+      "decision": "suppress",
+      "suppression_result": {
+        "after_version": 8,
+        "aggregate_id": "recipient:ana@example.test",
+        "before_version": 7,
+        "idempotency_key": "reply-router:101281026350893ff804b1f687257cba024e5961614d41442807f65f77d18d8b"
+      }
+    }
   },
   "verification": {
-    "default_runner": "route",
-    "default_runner_type": "graph",
-    "hosted_expected": "Run runx harness ./skills/reply-router --json on a Linux host with receipt signing variables.",
-    "local_limitation": "Windows receipt store fails before a receipt id is written."
-  }
+    "receipt_ref": "runx:receipt:sha256:7a6023af6a9c117f5dbb53cf7af89fe594f2083c002d79484c6fa4ecfd760ccf",
+    "receipt_id": "sha256:7a6023af6a9c117f5dbb53cf7af89fe594f2083c002d79484c6fa4ecfd760ccf",
+    "valid": true,
+    "findings": [],
+    "signature": {
+      "mode": "production",
+      "status": "valid",
+      "kid": "runx-demo-key"
+    },
+    "lineage": {
+      "status": "unverified",
+      "message": "single receipt verification cannot prove receipt-tree lineage"
+    }
+  },
+  "how_to_verify": [
+    "runx add jaasieldelgado131/reply-router@sha-016598c4eb75 --registry https://api.runx.ai",
+    "runx registry read jaasieldelgado131/reply-router@sha-016598c4eb75 --registry https://api.runx.ai --json",
+    "runx harness ./skills/reply-router --json",
+    "runx skill jaasieldelgado131/reply-router@sha-016598c4eb75 dogfood --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+    "runx verify --receipt receipts/sha256:7a6023af6a9c117f5dbb53cf7af89fe594f2083c002d79484c6fa4ecfd760ccf.json --json"
+  ]
 }

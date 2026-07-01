@@ -79,6 +79,31 @@ harness:
         status: needs_agent
 
 runners:
+  dogfood:
+    default: false
+    type: cli-tool
+    command: node
+    args:
+      - ./dogfood.mjs
+    timeout_seconds: 10
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: "Inbound reply object with content, received_from, and received_at."
+      original_send_receipt:
+        type: json
+        required: true
+        description: "Sealed original send receipt evidence."
+      suppression_policy:
+        type: json
+        required: true
+        description: "Unsubscribe signal list and confidence threshold."
+      store_projection:
+        type: json
+        required: false
+        description: "Current data-store projection used for CAS expected_version."
+
   route:
     default: true
     type: graph
@@ -182,30 +207,3 @@ runners:
             Review only the supplied classification and reason. Do not suppress
             or route unless the missing evidence is supplied by the caller.
 
-  dogfood:
-    default: false
-    type: cli-tool
-    command: node
-    args:
-      - ./dogfood.mjs
-    timeout_seconds: 10
-    sandbox:
-      profile: readonly
-      cwd_policy: skill-directory
-    inputs:
-      inbound_reply:
-        type: json
-        required: true
-        description: "Inbound reply object with content, received_from, and received_at."
-      original_send_receipt:
-        type: json
-        required: true
-        description: "Sealed original send receipt evidence."
-      suppression_policy:
-        type: json
-        required: true
-        description: "Unsubscribe signal list and confidence threshold."
-      store_projection:
-        type: json
-        required: false
-        description: "Current data-store projection used for CAS expected_version."
