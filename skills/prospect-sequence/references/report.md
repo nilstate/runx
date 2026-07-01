@@ -4,6 +4,7 @@
 
 - Registry ref: `zdfgu113/prospect-sequence@sha-b4a3b8668802`
 - Public URL: `https://runx.ai/x/zdfgu113/prospect-sequence`
+- Pull request: `https://github.com/runxhq/runx/pull/179`
 - Install: `runx add zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai`
 - Run: `runx skill zdfgu113/prospect-sequence@sha-b4a3b8668802 --registry https://api.runx.ai`
 - CLI: `runx-cli 0.6.13`
