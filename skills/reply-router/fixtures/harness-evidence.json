@@ -3,6 +3,7 @@
   "generated_at": "2026-07-02T12:08:03.954Z",
   "package": "reply-router",
   "version": "0.1.0",
+  "summary": "reply-router was built, harnessed, dogfooded, locally published, and receipt-verified as a runx skill that routes replies without directly sending mail.",
   "runx_cli_version": "runx-cli 0.6.14",
   "harness": {
     "command": "runx harness skills/reply-router --json",
@@ -63,7 +64,8 @@
     "sealed_unsubscribe_suppression emitted a recipient-keyed suppression append_event shape and no routing decision.",
     "stop_ambiguous_or_unsealed emitted needs_agent escalation with no suppression write and no routing decision.",
     "Dogfood run produced a sealed post-publish-shape unsubscribe decision for chico10117/reply-router@0.1.0 inputs.",
-    "Dogfood receipt verified valid with RUNX_RECEIPT_VERIFY_KID=runx-demo-key and the demo public Ed25519 verification key."
+    "Dogfood receipt verified valid with RUNX_RECEIPT_VERIFY_KID=runx-demo-key and the demo public Ed25519 verification key.",
+    "The public registry listing resolves chico10117/reply-router@sha-1b267f5051de from runx.ai/x with source attestation."
   ],
   "install": {
     "expected_registry_ref": "chico10117/reply-router@0.1.0",
