@@ -1,0 +1,46 @@
+{
+  "schema": "runx.reply_router.verification.v1",
+  "generated_at": "2026-07-02T12:10:00Z",
+  "package": "reply-router",
+  "version": "0.1.0",
+  "checks": [
+    {
+      "name": "runx_cli_version",
+      "status": "passed",
+      "value": "runx-cli 0.6.14"
+    },
+    {
+      "name": "inline_harness",
+      "status": "passed",
+      "case_count": 2,
+      "assertion_error_count": 0,
+      "case_names": [
+        "sealed_unsubscribe_suppression",
+        "stop_ambiguous_or_unsealed"
+      ]
+    },
+    {
+      "name": "dogfood_receipt_verify",
+      "status": "passed",
+      "receipt_ref": "sha256:b6c3efcfe7b8a4ca9f90a44971968626174683332997ce37847489afa4a8565d",
+      "verdict": {
+        "schema": "runx.verify_verdict.v1",
+        "valid": true,
+        "digest_status": "valid",
+        "content_address_status": "valid",
+        "signature_status": "valid",
+        "signature_kid": "runx-demo-key"
+      }
+    },
+    {
+      "name": "local_registry_publish",
+      "status": "passed",
+      "skill_id": "chico10117/reply-router",
+      "version": "0.1.0",
+      "digest": "b05666eb13332e5fe2b5643ccbf1f3a89839f4b4f1f023e4aaacd27c056efe90",
+      "profile_digest": "2cab7927881e22d693f51969f7a6eddc8bf2a0fae3fae2c5aadd1abd1dc961b3",
+      "install_command": "runx add chico10117/reply-router@0.1.0"
+    }
+  ],
+  "receipt_ref": "runx:receipt:sha256:b6c3efcfe7b8a4ca9f90a44971968626174683332997ce37847489afa4a8565d"
+}
