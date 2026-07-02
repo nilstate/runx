@@ -1,0 +1,29 @@
+{
+  "package": "<owner>/reply-router@<version>",
+  "command": "runx skill <owner>/reply-router@<version> --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+  "fixture": "fixtures/sealed_unsubscribe_suppression.json",
+  "receipt_ref": "runx:receipt:<sha256-receipt-id>",
+  "verify_verdict": {
+    "valid": true,
+    "digest": "valid",
+    "content_address": "valid",
+    "signature": "valid"
+  },
+  "output": {
+    "classification_type": "unsubscribe",
+    "classification": {
+      "type": "unsubscribe",
+      "confidence": 0.99,
+      "evidence": ["matched signal: unsubscribe", "matched signal: stop sending"]
+    },
+    "suppression_result": {
+      "aggregate_id": "recipient:ana@example.test",
+      "idempotency_key": "<sha256-idempotency-key>",
+      "before_version": 7,
+      "after_version": 8
+    },
+    "routing_decision": null,
+    "escalation_lane": null,
+    "route": "suppress"
+  }
+}

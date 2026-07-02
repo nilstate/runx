@@ -1,0 +1,199 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      runner: default
+      inputs:
+        inbound_reply:
+          content: "Please unsubscribe me and stop sending these updates."
+          received_from: "recipient:ana@example.test"
+          received_at: "2026-07-02T10:00:00Z"
+        original_send_receipt:
+          sealed: true
+          receipt_id: "runx:receipt:send_001"
+          checksum: "sha256:9c6c5cb5d9f3b932e7b70cdd3d93f5a87a3f6381a8ad69f512a3ad9817dd3a9f"
+          principal:
+            type: "account"
+            ref: "account:growth-bot"
+          send_plan:
+            channel: "email"
+            send_class: "outreach"
+            audience:
+              type: "recipient"
+              ref: "recipient:ana@example.test"
+        suppression_policy:
+          unsubscribe_signals:
+            - "unsubscribe"
+            - "stop sending"
+            - "do not contact"
+          confidence_threshold: 0.9
+        store_projection:
+          store_id: "runx.reply-router.suppression.v1"
+          aggregate_id: "recipient:ana@example.test"
+          version: 7
+      caller:
+        answers:
+          agent_task.reply-router-classify.output:
+            classification:
+              type: "unsubscribe"
+              confidence: 0.99
+              evidence:
+                - "matched signal: unsubscribe"
+                - "matched signal: stop sending"
+            route: "suppress"
+            suppression_result:
+              aggregate_id: "recipient:ana@example.test"
+              idempotency_key: "reply-router:ana:v7"
+              before_version: 7
+              after_version: 8
+            routing_decision: null
+            escalation_lane: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: graph_closed
+
+    - name: stop_ambiguous_or_unsealed
+      runner: default
+      inputs:
+        inbound_reply:
+          content: "Maybe later. I am not sure what this is about."
+          received_from: "recipient:ben@example.test"
+          received_at: "2026-07-02T10:05:00Z"
+        original_send_receipt:
+          sealed: false
+          receipt_id: "runx:receipt:send_unsealed"
+          checksum: ""
+          principal:
+            type: "account"
+            ref: "account:growth-bot"
+          send_plan:
+            channel: "email"
+            send_class: "outreach"
+            audience:
+              type: "recipient"
+              ref: "recipient:ben@example.test"
+        suppression_policy:
+          unsubscribe_signals:
+            - "unsubscribe"
+            - "stop"
+            - "remove me"
+          confidence_threshold: 0.9
+      expect:
+        status: needs_agent
+
+runners:
+  default:
+    default: true
+    type: graph
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: "Inbound reply with content, received_from, and received_at."
+      original_send_receipt:
+        type: json
+        required: true
+        description: "Sealed original send receipt with send_plan, principal, receipt_id, and checksum."
+      suppression_policy:
+        type: json
+        required: true
+        description: "Unsubscribe signal list and confidence threshold."
+      store_projection:
+        type: json
+        required: false
+        description: "Current data-store projection for CAS expected_version."
+    graph:
+      name: reply-router
+      steps:
+        - id: classify
+          label: classify inbound reply against suppression policy
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            original_send_receipt: "$input.original_send_receipt"
+            suppression_policy: "$input.suppression_policy"
+          run:
+            type: agent-task
+            agent: classifier
+            task: reply-router-classify
+            outputs:
+              classification:
+                type: object
+                description: "Classification result with type, confidence, and evidence."
+              route:
+                type: string
+                description: "One of: suppress, route, needs_agent"
+              suppression_result:
+                type: object
+                required: false
+              routing_decision:
+                type: object
+                required: false
+              escalation_lane:
+                type: object
+                required: false
+          instructions: >
+            Classify the inbound reply against the suppression policy and
+            original send receipt. Return classification (type, confidence,
+            evidence), route (suppress/route/needs_agent), and optionally
+            suppression_result, routing_decision, or escalation_lane.
+
+        - id: append_suppression
+          label: append recipient suppression event to data-store
+          when:
+            field: classify.route
+            equals: suppress
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            store_projection: "$input.store_projection"
+          context:
+            classification: classify.classification
+            suppression: classify.suppression_result
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - -e
+              - |
+                const raw = process.env.RUNX_INPUTS_PATH
+                  ? require("node:fs").readFileSync(process.env.RUNX_INPUTS_PATH, "utf8")
+                  : process.env.RUNX_INPUTS_JSON || "{}";
+                const inputs = JSON.parse(raw);
+                const agg = inputs.inbound_reply?.received_from || "unknown";
+                const ver = inputs.store_projection?.version ?? 0;
+                const crypto = require("node:crypto");
+                const key = crypto.createHash("sha256").update("reply:" + agg + ":" + ver).digest("hex");
+                console.log(JSON.stringify({ suppression: { aggregate_id: agg, idempotency_key: key, before_version: ver, after_version: ver + 1, store_id: inputs.store_projection?.store_id || "runx.reply-router.suppression.v1", registry: "registry:runx/data-store@0.1.2", operation: "append_event" } }));
+
+        - id: emit_routing
+          label: emit governed reply routing decision
+          when:
+            field: classify.route
+            equals: route
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            original_send_receipt: "$input.original_send_receipt"
+          context:
+            classification: classify.classification
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - -e
+              - |
+                const raw = process.env.RUNX_INPUTS_PATH
+                  ? require("node:fs").readFileSync(process.env.RUNX_INPUTS_PATH, "utf8")
+                  : process.env.RUNX_INPUTS_JSON || "{}";
+                const inputs = JSON.parse(raw);
+                console.log(JSON.stringify({ routing: { schema: "runx.reply.routing.v1", send_target: { run: "send-as", dispatch_ref: "send-as:reply-router:follow-up", audience: { type: "recipient", ref: inputs.inbound_reply?.received_from || "unknown" }, human_approval_required: true }, principal: inputs.original_send_receipt?.principal || { type: "account", ref: "unknown" }, sends_now: false } }));

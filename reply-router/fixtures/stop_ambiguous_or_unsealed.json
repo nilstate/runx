@@ -1,0 +1,33 @@
+{
+  "inbound_reply": {
+    "content": "Maybe later. I am not sure what this is about.",
+    "received_from": "recipient:ben@example.test",
+    "received_at": "2026-07-02T10:05:00Z"
+  },
+  "original_send_receipt": {
+    "sealed": false,
+    "receipt_id": "runx:receipt:send_unsealed",
+    "checksum": "",
+    "principal": {
+      "type": "account",
+      "ref": "account:growth-bot"
+    },
+    "send_plan": {
+      "channel": "email",
+      "send_class": "outreach",
+      "audience": {
+        "type": "recipient",
+        "ref": "recipient:ben@example.test"
+      }
+    }
+  },
+  "suppression_policy": {
+    "unsubscribe_signals": ["unsubscribe", "stop", "remove me"],
+    "confidence_threshold": 0.9
+  },
+  "store_projection": {
+    "store_id": "runx.reply-router.suppression.v1",
+    "aggregate_id": "recipient:ben@example.test",
+    "version": 2
+  }
+}

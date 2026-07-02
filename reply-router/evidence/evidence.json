@@ -1,0 +1,167 @@
+{
+  "schema": "runx.reply_router.evidence.v2",
+  "package": "reply-router",
+  "version": "0.1.0",
+  "publisher_owner": "<your-github-username>",
+  "registry_ref": "<your-github-username>/reply-router@<version>",
+  "public_url": "https://runx.ai/x/<your-github-username>/reply-router@<version>",
+  "source_url": "https://github.com/<your-github-username>/<repo>/tree/<commit>/skills/reply-router",
+  "pr_url": "https://github.com/runxhq/runx/pull/<number>",
+  "source_revision": "<commit-sha>",
+  "published_version": "<version>",
+  "publish_method": "runx login --provider github --for publish && runx registry publish ./skills/reply-router/SKILL.md --registry https://api.runx.ai",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "install_command": "runx add <your-github-username>/reply-router@<version> --registry https://api.runx.ai",
+  "registry_read_command": "runx registry read <your-github-username>/reply-router@<version> --registry https://api.runx.ai --json",
+  "harness_command": "runx harness ./skills/reply-router --json",
+  "dogfood_command": "runx skill <your-github-username>/reply-router@<version> --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+  "verify_command": "runx verify --receipt <receipt-file> --json",
+  "raw_files": {
+    "x_yaml": "https://raw.githubusercontent.com/<your-github-username>/<repo>/<commit>/skills/reply-router/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/<your-github-username>/<repo>/<commit>/skills/reply-router/SKILL.md"
+  },
+  "artifacts": {
+    "harness_json": "skills/reply-router/evidence/harness.json",
+    "dogfood_json": "skills/reply-router/evidence/dogfood.json",
+    "verification_json": "skills/reply-router/evidence/verification.json",
+    "registry_read_json": "skills/reply-router/evidence/registry-read.json",
+    "report": "skills/reply-router/evidence/report.md"
+  },
+  "public_star": {
+    "repo": "runxhq/runx",
+    "verified_by": "GitHub API user/starred/runxhq/runx",
+    "result": "204 No Content"
+  },
+  "summary": "reply-router classifies inbound replies against a sealed original_send_receipt and suppression_policy. Clear unsubscribe replies append a recipient-keyed suppression event; normal replies emit a bounded runx.reply.routing.v1 decision naming a separate governed send-as run; ambiguous or unsealed receipts stop at a human lane. The skill never sends a message.",
+  "observations": [
+    {
+      "id": "runx_version",
+      "status": "success",
+      "summary": "runx-cli 0.6.14 was used for publish/read/harness/dogfood/verify evidence."
+    },
+    {
+      "id": "registry_publication",
+      "status": "success",
+      "summary": "Registry read resolved <owner>/reply-router@<version> with trust_state=trusted."
+    },
+    {
+      "id": "hosted_harness",
+      "status": "passed",
+      "summary": "Hosted/Linux harness passed 2 cases with 0 assertion errors."
+    },
+    {
+      "id": "sealed_unsubscribe_suppression",
+      "status": "success",
+      "summary": "Case sealed_unsubscribe_suppression seals a receipt for an unsubscribe reply, emits classification.type=unsubscribe with confidence=0.99, matched unsubscribe signals, and writes suppression only."
+    },
+    {
+      "id": "append_event_contract",
+      "status": "success",
+      "summary": "Suppression writes registry:runx/data-store@0.1.2 append_event to store_id runx.reply-router.suppression.v1 with CAS expected_version and idempotency_key."
+    },
+    {
+      "id": "stop_ambiguous_or_unsealed",
+      "status": "success",
+      "summary": "Case stop_ambiguous_or_unsealed expects needs_agent; blocks ambiguous or unsealed input without suppression write and without routing decision."
+    },
+    {
+      "id": "dogfood_receipt",
+      "status": "success",
+      "summary": "Post-publish dogfood run sealed receipt with valid signature."
+    },
+    {
+      "id": "verify_verdict",
+      "status": "success",
+      "summary": "runx verify returned valid=true, digest=valid, content_address=valid, signature=valid."
+    },
+    {
+      "id": "safety",
+      "status": "success",
+      "summary": "No runner sends a message, no secrets are required, unsubscribe replies are never routed, and unsealed receipts are refused before suppression or routing."
+    }
+  ],
+  "harness_cases": [
+    {
+      "name": "sealed_unsubscribe_suppression",
+      "status": "sealed",
+      "result": "unsubscribe suppression path closes with a sealed receipt and no routing decision"
+    },
+    {
+      "name": "stop_ambiguous_or_unsealed",
+      "status": "refused",
+      "result": "needs_agent; no suppression write and no routing decision"
+    }
+  ],
+  "dogfood": {
+    "package": "<your-github-username>/reply-router@<version>",
+    "input": {
+      "fixture": "skills/reply-router/fixtures/sealed_unsubscribe_suppression.json",
+      "inbound_reply": "sealed unsubscribe request from recipient:ana@example.test",
+      "suppression_policy_signals": ["unsubscribe", "stop sending", "do not contact"]
+    },
+    "command": "runx skill <your-github-username>/reply-router@<version> --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+    "receipt_ref": "runx:receipt:<sha256-receipt-id>",
+    "receipt_id": "<sha256-receipt-id>",
+    "verify_verdict": {
+      "valid": true,
+      "digest": "valid",
+      "content_address": "valid",
+      "signature": "valid",
+      "lineage": "unverified"
+    },
+    "harness_cases": [
+      {
+        "name": "sealed_unsubscribe_suppression",
+        "status": "sealed"
+      },
+      {
+        "name": "stop_ambiguous_or_unsealed",
+        "status": "refused"
+      }
+    ],
+    "output_summary": {
+      "classification": {
+        "type": "unsubscribe",
+        "confidence": 0.99,
+        "evidence": ["matched signal: unsubscribe", "matched signal: stop sending"]
+      },
+      "data_store_call": {
+        "aggregate_id": "recipient:ana@example.test",
+        "expected_version": 7,
+        "idempotency_key": "<sha256-idempotency-key>",
+        "operation": "append_event",
+        "registry_ref": "registry:runx/data-store@0.1.2",
+        "store_id": "runx.reply-router.suppression.v1"
+      },
+      "decision": "suppress",
+      "suppression_result": {
+        "after_version": 8,
+        "aggregate_id": "recipient:ana@example.test",
+        "before_version": 7,
+        "idempotency_key": "<sha256-idempotency-key>"
+      }
+    }
+  },
+  "verification": {
+    "receipt_ref": "runx:receipt:<sha256-receipt-id>",
+    "receipt_id": "<sha256-receipt-id>",
+    "valid": true,
+    "findings": [],
+    "signature": {
+      "mode": "production",
+      "status": "valid",
+      "kid": "runx-demo-key"
+    },
+    "lineage": {
+      "status": "unverified",
+      "message": "single receipt verification cannot prove receipt-tree lineage"
+    }
+  },
+  "how_to_verify": [
+    "runx add <your-github-username>/reply-router@<version> --registry https://api.runx.ai",
+    "runx registry read <your-github-username>/reply-router@<version> --registry https://api.runx.ai --json",
+    "runx harness ./skills/reply-router --json",
+    "runx skill <your-github-username>/reply-router@<version> --registry https://api.runx.ai --input-json ... --receipt-dir receipts --json",
+    "runx verify --receipt receipts/<sha256-receipt>.json --json"
+  ]
+}

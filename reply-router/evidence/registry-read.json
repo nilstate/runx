@@ -1,0 +1,10 @@
+{
+  "schema": "runx.registry_read.v1",
+  "package": "<owner>/reply-router@<version>",
+  "registry": "https://api.runx.ai",
+  "trust_state": "trusted",
+  "digest": "<sha256-digest>",
+  "profile_digest": "<sha256-profile-digest>",
+  "source_url": "https://github.com/<owner>/<repo>/tree/<commit>/skills/reply-router",
+  "published_at": "<iso-timestamp>"
+}

@@ -1,0 +1,33 @@
+{
+  "inbound_reply": {
+    "content": "Please unsubscribe me and stop sending these updates.",
+    "received_from": "recipient:ana@example.test",
+    "received_at": "2026-07-02T10:00:00Z"
+  },
+  "original_send_receipt": {
+    "sealed": true,
+    "receipt_id": "runx:receipt:send_001",
+    "checksum": "sha256:9c6c5cb5d9f3b932e7b70cdd3d93f5a87a3f6381a8ad69f512a3ad9817dd3a9f",
+    "principal": {
+      "type": "account",
+      "ref": "account:growth-bot"
+    },
+    "send_plan": {
+      "channel": "email",
+      "send_class": "outreach",
+      "audience": {
+        "type": "recipient",
+        "ref": "recipient:ana@example.test"
+      }
+    }
+  },
+  "suppression_policy": {
+    "unsubscribe_signals": ["unsubscribe", "stop sending", "do not contact"],
+    "confidence_threshold": 0.9
+  },
+  "store_projection": {
+    "store_id": "runx.reply-router.suppression.v1",
+    "aggregate_id": "recipient:ana@example.test",
+    "version": 7
+  }
+}

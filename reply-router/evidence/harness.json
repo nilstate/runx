@@ -1,0 +1,21 @@
+{
+  "schema": "runx.harness_result.v1",
+  "command": "runx harness ./skills/reply-router --json",
+  "runx_cli": "runx-cli 0.6.14",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "cases": [
+    {
+      "name": "sealed_unsubscribe_suppression",
+      "status": "sealed",
+      "receipt_id": "<sha256-receipt-1>",
+      "result": "graph_closed"
+    },
+    {
+      "name": "stop_ambiguous_or_unsealed",
+      "status": "refused",
+      "receipt_id": null,
+      "result": "needs_agent"
+    }
+  ]
+}

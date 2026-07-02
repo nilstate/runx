@@ -1,0 +1,25 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "<sha256-receipt-id>",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "<sha256-digest>",
+    "actual": "<sha256-digest>"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "<sha256-receipt-id>",
+    "actual": "<sha256-receipt-id>"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "runx-demo-key"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
+}
