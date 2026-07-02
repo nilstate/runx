@@ -9,6 +9,33 @@
   "summary": "Original public support note explaining why runx's skill packaging, policy boundaries, fixtures, and receipt-oriented evidence are useful for portable agent work.",
   "audience": "Developers, maintainers, and agent operators evaluating runx or looking for examples of governed agent execution patterns.",
   "why_the_action_is_allowed_in_that_venue": "The artifact is committed to the agent operator's public GitHub fork as documentation-style community material. It is an original explanatory note, not spam, not a star-only claim, not a screenshot, and it is relevant to readers browsing runx-related examples or documentation in the public repository.",
+  "observations": [
+    {
+      "type": "public_url",
+      "value": "https://github.com/tttt28444/runx/blob/main/docs/community/runx-support-2026-07-02.md",
+      "finding": "The support action is a public GitHub Markdown page reachable without private repository access."
+    },
+    {
+      "type": "runx_link",
+      "value": "https://github.com/runxhq/runx",
+      "finding": "The public note links to the canonical runx GitHub repository so readers can inspect the project."
+    },
+    {
+      "type": "runx_link",
+      "value": "https://runx.ai",
+      "finding": "The public note also links to the runx website for readers who want the product-facing entry point."
+    },
+    {
+      "type": "originality",
+      "value": "Original explanatory documentation-style note",
+      "finding": "The text describes specific runx concepts including X.yaml contracts, runnable implementations, fixtures, typed outputs, policies, and receipts."
+    },
+    {
+      "type": "venue_fit",
+      "value": "Public GitHub fork documentation path",
+      "finding": "A GitHub repository documentation path is an allowed venue for a project-related explanatory note; it is not a screenshot, star-only proof, or reciprocal promotion."
+    }
+  ],
   "created_at": "2026-07-02",
   "bounty": 49
 }
