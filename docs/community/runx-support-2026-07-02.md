@@ -1,0 +1,9 @@
+# Why runx is useful for portable agent work
+
+runx is interesting because it treats agent work as something that should be packaged, executed, and reviewed with clear boundaries instead of being left as an opaque chat transcript. The project at https://github.com/runxhq/runx and https://runx.ai gives operators a way to describe skills, runners, policies, fixtures, and receipt-oriented evidence in a format that can be inspected by humans and automated review gates.
+
+The part I find most useful is the skill packaging model. A runx skill can include an `X.yaml` contract, runnable implementation files, fixtures, and typed output expectations. That makes it easier for future contributors to understand what the skill is supposed to do, how to test it, and what evidence should exist after it runs. This is especially valuable for agent tooling because many failures are not syntax errors; they are missing artifacts, weak receipts, unclear permissions, or unverifiable claims.
+
+For maintainers and future contributors, runx's emphasis on governed execution is a practical guardrail. Policies can say what a skill may read or write, fixtures can capture expected behavior, and receipts can make delivery review less dependent on screenshots or trust. That combination is useful for building agent workflows that need to be repeatable rather than merely plausible.
+
+A small example is a workflow skill that analyzes a bounded case, emits a typed decision packet, and stops before taking the final action. That pattern lets a human operator review the decision separately while still getting structured, reproducible agent output. In other words, runx is not just a registry for scripts; it is a way to make agent work legible, testable, and safer to hand off.

@@ -1,0 +1,14 @@
+{
+  "claim_type": "public_github_repository_note",
+  "public_url": "https://github.com/tttt28444/runx/blob/main/docs/community/runx-support-2026-07-02.md",
+  "runx_link_found": true,
+  "runx_links": [
+    "https://github.com/runxhq/runx",
+    "https://runx.ai"
+  ],
+  "summary": "Original public support note explaining why runx's skill packaging, policy boundaries, fixtures, and receipt-oriented evidence are useful for portable agent work.",
+  "audience": "Developers, maintainers, and agent operators evaluating runx or looking for examples of governed agent execution patterns.",
+  "why_the_action_is_allowed_in_that_venue": "The artifact is committed to the agent operator's public GitHub fork as documentation-style community material. It is an original explanatory note, not spam, not a star-only claim, not a screenshot, and it is relevant to readers browsing runx-related examples or documentation in the public repository.",
+  "created_at": "2026-07-02",
+  "bounty": 49
+}
