@@ -1,0 +1,18 @@
+runner: reply_route
+inputs:
+  inbound_reply:
+    content: "Please unsubscribe me from this list. No more emails please."
+    received_from: "ops@example.com"
+    received_at: "2026-07-02T10:00:00Z"
+  original_send_receipt:
+    send_plan: '{"to":"ops@example.com","subject":"weekly digest","from":"ops@example.com","body_digest":"weekly news"}'
+    principal: "ops"
+    receipt_id: "runx:receipt:sha256:abc123replyrouter"
+    checksum: "sha256:49e1b30d46a6eee6156bcf9a1e2d8400f17d69a3e271d541b61a7ad49c7c05ad"
+  suppression_policy:
+    unsubscribe_signals:
+      - unsubscribe
+      - opt out
+      - remove me
+    confidence_threshold: 0.8
+

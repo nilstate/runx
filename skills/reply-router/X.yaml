@@ -1,0 +1,164 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      runner: reply_route
+      inputs:
+        inbound_reply:
+          content: "Please unsubscribe me from this list. No more emails please."
+          received_from: "ops@example.com"
+          received_at: "2026-07-02T10:00:00Z"
+        original_send_receipt:
+          send_plan: '{"to":"ops@example.com","subject":"weekly digest","from":"ops@example.com","body_digest":"weekly news"}'
+          principal: "ops"
+          receipt_id: "runx:receipt:sha256:abc123replyrouter"
+          checksum: "sha256:49e1b30d46a6eee6156bcf9a1e2d8400f17d69a3e271d541b61a7ad49c7c05ad"
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - opt out
+            - remove me
+          confidence_threshold: 0.8
+        operator_context: Append a recipient-keyed suppression event to the data-store via ungated CAS. No routing decision is emitted on this path; the next send-as preflight must read the durable record as a fail-closed block.
+      caller:
+        answers:
+          agent_task.reply-classify.output:
+            classification:
+              type: unsubscribe
+              confidence: 1.0
+              evidence: matched policy signal "unsubscribe" at offset 7
+            suppression_result:
+              aggregate_id: ops@example.com
+              idempotency_key: bbdc596dd2d71413bc2bce898a98a2a52d32ed5d86abd73c185a2ab3a3eed733
+              before_version: 0
+              after_version: 1
+            suppression_event:
+              aggregate_id: ops@example.com
+              idempotency_key: bbdc596dd2d71413bc2bce898a98a2a52d32ed5d86abd73c185a2ab3a3eed733
+              event:
+                type: reply.unsubscribe_recorded
+                payload:
+                  matched_signal: unsubscribe
+                  match_offset: 7
+                  original_receipt_id: runx:receipt:sha256:abc123replyrouter
+                  received_at: "2026-07-02T10:00:00Z"
+                  data_store_ref: registry:runx/data-store@0.1.2
+            routing_decision: null
+            escalation_reason: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+    - name: stop_ambiguous_or_unsealed
+      runner: reply_route
+      inputs:
+        inbound_reply:
+          content: "ok thanks"
+          received_from: "ops@example.com"
+          received_at: "2026-07-02T10:00:00Z"
+        original_send_receipt:
+          send_plan: '{"to":"ops@example.com","subject":"weekly digest","from":"ops@example.com","body_digest":"weekly news"}'
+          principal: "ops"
+          receipt_id: "runx:receipt:sha256:abc123replyrouter"
+          checksum: "sha256:49e1b30d46a6eee6156bcf9a1e2d8400f17d69a3e271d541b61a7ad49c7c05ad"
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - opt out
+            - remove me
+          confidence_threshold: 0.8
+        operator_context: Ambiguous reply with no policy match and no grounded typed classification; the classify sub-step must block to needs_human with no suppression write and no routing decision.
+      expect:
+        status: needs_agent
+
+runners:
+  reply_route:
+    default: true
+    type: graph
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: Inbound reply content, recipient, and timestamp.
+      original_send_receipt:
+        type: json
+        required: true
+        description: Sealed original send receipt with send_plan, principal, receipt_id, and checksum.
+      suppression_policy:
+        type: json
+        required: true
+        description: Unsubscribe signal list and confidence threshold.
+    graph:
+      name: reply-router-read-classify-and-persist
+      steps:
+        - id: read_suppression
+          label: read projection using the registry:runx/data-store@0.1.2 data-source contract
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_projection
+            data_source_ref: local://reply-router/suppressions
+            store_id: reply-router-suppressions-v1
+            resource: suppression_events
+            aggregate_id: "$input.inbound_reply.received_from"
+        - id: classify
+          run:
+            type: agent-task
+            agent: analyst
+            task: reply-classify
+            outputs:
+              classification: object
+              suppression_result: object
+              suppression_event: object
+              routing_decision: object
+              escalation_reason: string
+          inputs:
+            inbound_reply: "$input.inbound_reply"
+            original_send_receipt: "$input.original_send_receipt"
+            suppression_policy: "$input.suppression_policy"
+          context:
+            current_projection: read_suppression.data_operation_result.data.projection
+          instructions: Classify only from the supplied reply, sealed receipt, policy, and current projection. Never invent intent. An unsubscribe result must emit a suppression event and no routing decision; ambiguous or unsealed input must require human review.
+        - id: append_suppression
+          when:
+            field: classify.classification.type
+            equals: unsubscribe
+          label: append through the registry:runx/data-store@0.1.2 data-source contract
+          tool: data.source
+          scopes:
+            - runx:data:append
+          inputs:
+            operation: append_event
+            data_source_ref: local://reply-router/suppressions
+            store_id: reply-router-suppressions-v1
+            resource: suppression_events
+          context:
+            aggregate_id: classify.suppression_event.aggregate_id
+            expected_version: read_suppression.data_operation_result.data.projection.version
+            idempotency_key: classify.suppression_event.idempotency_key
+            event: classify.suppression_event.event
+        - id: readback_suppression
+          when:
+            field: classify.classification.type
+            equals: unsubscribe
+          label: verify through the registry:runx/data-store@0.1.2 data-source contract
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_projection
+            data_source_ref: local://reply-router/suppressions
+            store_id: reply-router-suppressions-v1
+            resource: suppression_events
+          context:
+            aggregate_id: classify.suppression_event.aggregate_id

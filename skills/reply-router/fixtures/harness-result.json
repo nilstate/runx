@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "sealed_unsubscribe_suppression",
+    "stop_ambiguous_or_unsealed"
+  ],
+  "receipt_ids": [
+    "sha256:a21bde8ef82146536fea77aeedba6f0e62e29a727d5315e409abc8bfc0e74425"
+  ],
+  "graph_case_count": 2
+}
