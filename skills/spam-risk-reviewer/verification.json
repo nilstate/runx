@@ -1,0 +1,57 @@
+{
+  "summary": "Verification passed for the exact published spam-risk-reviewer version, clean registry installation, two-case hosted harness contract, and post-publish dogfood receipt.",
+  "runx_version": "runx-cli 0.6.14",
+  "package": "bbbbzzzzcc-afk/spam-risk-reviewer@sha-cf7c9972e03d",
+  "checks": [
+    {
+      "name": "registry_read",
+      "valid": true,
+      "detail": "Registry read returned owner bbbbzzzzcc-afk, exact name spam-risk-reviewer, version sha-cf7c9972e03d, and digest 9b4a14b2fcc82ed83ee5663d1cb9bfddb3ec237bd23f9de453750487cc08dd68."
+    },
+    {
+      "name": "clean_install",
+      "valid": true,
+      "detail": "The immutable registry version installed into an empty destination."
+    },
+    {
+      "name": "hosted_harness",
+      "valid": true,
+      "detail": "Publish harness passed with exactly low-risk-verified-sender and high-risk-incomplete-auth-poor-list."
+    },
+    {
+      "name": "clear_boundary",
+      "valid": true,
+      "detail": "Only full SPF, DKIM, and DMARC authentication with list metrics inside all fixed thresholds produced preflight_clear=true."
+    },
+    {
+      "name": "hold_boundary",
+      "valid": true,
+      "detail": "Failed DKIM and bounce_rate 0.06 produced risk_level=hold, preflight_clear=false, two blockers, and needs_human escalation."
+    },
+    {
+      "name": "effect_boundary",
+      "valid": true,
+      "detail": "The skill only names send-as as a downstream target and owns no public_send effect, authority mint, operational proposal, or domain-state read."
+    },
+    {
+      "name": "receipt_signature",
+      "valid": true,
+      "detail": "runx verify reported valid=true in production signature mode for sha256:694e8fe8aac9d8baf67b640f63f6ebb27be0e294f018e559085c80cb74a4668f."
+    }
+  ],
+  "receipt": {
+    "ref": "runx:receipt:sha256:694e8fe8aac9d8baf67b640f63f6ebb27be0e294f018e559085c80cb74a4668f",
+    "public_url": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/spam-risk-reviewer/skills/spam-risk-reviewer/dogfood-receipt.json",
+    "verify_command": "runx verify sha256:694e8fe8aac9d8baf67b640f63f6ebb27be0e294f018e559085c80cb74a4668f --receipt-dir <receipt-dir> --json",
+    "valid": true,
+    "mode": "production",
+    "findings": []
+  },
+  "artifacts": {
+    "public_url": "https://runx.ai/x/bbbbzzzzcc-afk/spam-risk-reviewer@sha-cf7c9972e03d",
+    "source_url": "https://github.com/bbbbzzzzcc-afk/runx/tree/feat/spam-risk-reviewer/skills/spam-risk-reviewer",
+    "pr_url": "https://github.com/runxhq/runx/pull/214",
+    "x_yaml": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/spam-risk-reviewer/skills/spam-risk-reviewer/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/bbbbzzzzcc-afk/runx/feat/spam-risk-reviewer/skills/spam-risk-reviewer/SKILL.md"
+  }
+}
