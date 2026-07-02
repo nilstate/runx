@@ -1,0 +1,19 @@
+{
+  "command": "runx harness ./skills/spam-risk-reviewer --json",
+  "runx_version": "runx-cli 0.6.14",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "case_statuses": {
+    "low-risk-verified-sender": "sealed",
+    "high-risk-incomplete-auth-poor-list": "needs_agent"
+  },
+  "case_names": [
+    "low-risk-verified-sender",
+    "high-risk-incomplete-auth-poor-list"
+  ],
+  "receipt_ids": [
+    "sha256:94caf8600633ddb490128e15c9f9b27e1861c1f8ba23a403ebfcec6eced082ba",
+    "sha256:53e961f5648f33fd2608e2c95e54577dd729ddd19d32f6e48294f0e0762ecc82"
+  ]
+}

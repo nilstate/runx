@@ -1,0 +1,162 @@
+skill: spam-risk-reviewer
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: low-risk-verified-sender
+      inputs:
+        campaign_draft:
+          from: updates@example.org
+          subject: July product update
+          content_digest: sha256:7db4ef3f2b50e5117c228ada13e9d98b
+        list_metadata:
+          size: 1200
+          bounce_rate: 0.004
+          complaint_rate: 0.0002
+          freshness: 14
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: true
+          dmarc_pass: true
+          warm_up_days: 30
+      caller:
+        answers:
+          agent_task.spam-risk-reviewer.output:
+            schema: runx.send_risk.review.v1
+            send_risk_verdict:
+              risk_level: pass
+              preflight_clear: true
+              blockers: []
+              evidence_summary:
+                campaign:
+                  from: updates@example.org
+                  subject: July product update
+                  content_digest: sha256:7db4ef3f2b50e5117c228ada13e9d98b
+                sender_auth:
+                  spf_pass: true
+                  dkim_pass: true
+                  dmarc_pass: true
+                  warm_up_days: 30
+                list_hygiene:
+                  size: 1200
+                  bounce_rate: { observed: 0.004, maximum: 0.02 }
+                  complaint_rate: { observed: 0.0002, maximum: 0.001 }
+                  freshness: { observed_days: 14, maximum_days: 180 }
+                content_risk_flags: []
+            escalation:
+              status: none
+              lane: human_approval
+              reason: ""
+            dispatch_target: send-as
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: high-risk-incomplete-auth-poor-list
+      inputs:
+        campaign_draft:
+          from: launch@example.org
+          subject: Account launch notice
+          content_digest: sha256:b0cdf07542b71e196ae7fb5db907f0b2
+        list_metadata:
+          size: 5000
+          bounce_rate: 0.06
+          complaint_rate: 0.0005
+          freshness: 21
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: false
+          dmarc_pass: true
+          warm_up_days: 28
+      caller:
+        answers:
+          agent_task.spam-risk-reviewer.output:
+            schema: runx.send_risk.review.v1
+            closure:
+              disposition: deferred
+            send_risk_verdict:
+              risk_level: hold
+              preflight_clear: false
+              blockers:
+                - DKIM does not pass.
+                - Bounce rate 0.06 exceeds the 0.02 policy maximum.
+              evidence_summary:
+                campaign:
+                  from: launch@example.org
+                  subject: Account launch notice
+                  content_digest: sha256:b0cdf07542b71e196ae7fb5db907f0b2
+                sender_auth:
+                  spf_pass: true
+                  dkim_pass: false
+                  dmarc_pass: true
+                  warm_up_days: 28
+                list_hygiene:
+                  size: 5000
+                  bounce_rate: { observed: 0.06, maximum: 0.02 }
+                  complaint_rate: { observed: 0.0005, maximum: 0.001 }
+                  freshness: { observed_days: 21, maximum_days: 180 }
+                content_risk_flags: []
+            escalation:
+              status: needs_human
+              lane: human_approval
+              reason: Authentication and list hygiene do not satisfy send-as preflight.
+            dispatch_target: send-as
+      expect:
+        status: needs_agent
+
+runners:
+  review:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: spam-risk-reviewer
+    runx:
+      category: ops
+      post_run:
+        reflect: never
+    outputs:
+      schema: string
+      send_risk_verdict: object
+      escalation: object
+      dispatch_target: string
+    artifacts:
+      wrap_as: spam_risk_review
+      packet: runx.send_risk.review.v1
+    instructions: >
+      Review only the supplied campaign_draft, list_metadata, and
+      sender_auth_posture. Use bounded thresholds bounce_rate <= 0.02,
+      complaint_rate <= 0.001, freshness <= 180 days, and warm_up_days >= 14.
+      SPF, DKIM, and DMARC must all pass. Emit schema
+      runx.send_risk.review.v1 and send_risk_verdict with risk_level,
+      preflight_clear, blockers, and evidence_summary. Set preflight_clear true
+      only when every authentication check and list threshold passes and
+      warm-up is sufficient. Otherwise emit risk_level hold, set
+      preflight_clear false, list each grounded blocker, and emit escalation
+      status needs_human in lane human_approval. Record the supplied auth
+      values and compare each list metric with its threshold. A content digest
+      does not reveal message content, so do not invent content risk flags.
+      Set dispatch_target to send-as only as a handoff name. A separate
+      governed send-as run reads this verdict into its preflight; a non-clear
+      verdict blocks that run and routes to human approval. This skill never
+      sends, executes send-as, owns public_send, reads domain state, mints
+      authority, or emits runx.operational_proposal.v1.
+    inputs:
+      campaign_draft:
+        type: json
+        required: true
+        description: Sender, subject, and immutable digest for the reviewed campaign draft.
+      list_metadata:
+        type: json
+        required: true
+        description: List size, bounce rate, complaint rate, and freshness in days.
+      sender_auth_posture:
+        type: json
+        required: true
+        description: Supplied SPF, DKIM, DMARC, and sender warm-up evidence.
