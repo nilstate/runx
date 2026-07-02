@@ -1,0 +1,171 @@
+skill: spam-risk-reviewer
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: spam-risk-reviewer-low-risk-verified-sender
+      runner: spam_risk
+      inputs:
+        campaign_draft:
+          from: ops@newsletter.example.com
+          subject: Weekly product digest - week 27
+          content_digest: Welcome back. Here is the weekly digest of product changes. No offers or urgency language.
+        list_metadata:
+          size: 18420
+          bounce_rate: 0.014
+          complaint_rate: 0.0003
+          freshness_days: 4
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: true
+          dmarc_pass: true
+          warm_up_days: 220
+        operator_context: Use this verdict to gate the send-as preflight. The skill only judges; it does not dispatch the send.
+      caller:
+        answers:
+          agent_task.spam-risk-reviewer.output:
+            send_risk_verdict:
+              risk_level: pass
+              preflight_clear: true
+              blockers: []
+              evidence_summary:
+                auth_signals_verified:
+                  spf_pass: true
+                  dkim_pass: true
+                  dmarc_pass: true
+                  warm_up_days: 220
+                list_hygiene_metrics:
+                  size: 18420
+                  bounce_rate: 0.014
+                  complaint_rate: 0.0003
+                  freshness_days: 4
+                content_risk_flags: []
+                policy_thresholds_applied:
+                  bounce_rate_max: 0.05
+                  complaint_rate_max: 0.001
+                  freshness_days_max: 30
+              decision_refusal:
+                reason: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+    - name: spam-risk-reviewer-high-risk-incomplete-auth-poor-list
+      runner: spam_risk
+      inputs:
+        campaign_draft:
+          from: blast@promo.example.com
+          subject: CLICK HERE NOW for a once-in-a-lifetime free money offer
+          content_digest: Free money, click here now, urgent offer for the next 24 hours only.
+        list_metadata:
+          size: 6200
+          bounce_rate: 0.092
+          complaint_rate: 0.0024
+          freshness_days: 140
+        sender_auth_posture:
+          spf_pass: true
+          dkim_pass: false
+          dmarc_pass: true
+          warm_up_days: 7
+        operator_context: Block the send; route to human approval.
+      caller:
+        answers:
+          agent_task.spam-risk-reviewer.output:
+            send_risk_verdict:
+              risk_level: hold
+              preflight_clear: false
+              blockers:
+                - dkim_pass is false so the SPF+DKIM+DMARC must-pass policy fails.
+                - bounce_rate 0.092 exceeds policy threshold of 0.05.
+                - complaint_rate 0.0024 exceeds policy threshold of 0.001.
+                - freshness_days 140 exceeds policy threshold of 30.
+                - warm_up_days 7 is below the recommended 30-day warm-up floor.
+                - content risk flag present for free money pattern, click here now pattern, and urgency window.
+              evidence_summary:
+                auth_signals_verified:
+                  spf_pass: true
+                  dkim_pass: false
+                  dmarc_pass: true
+                  warm_up_days: 7
+                list_hygiene_metrics:
+                  size: 6200
+                  bounce_rate: 0.092
+                  complaint_rate: 0.0024
+                  freshness_days: 140
+                content_risk_flags:
+                  - free money
+                  - click here now
+                  - urgency-window
+                policy_thresholds_applied:
+                  bounce_rate_max: 0.05
+                  complaint_rate_max: 0.001
+                  freshness_days_max: 30
+              decision_refusal:
+                reason: needs_human
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: needs_human
+    - name: spam-risk-reviewer-missing-sender-auth-fails-closed
+      runner: spam_risk
+      inputs:
+        campaign_draft:
+          from: ops@newsletter.example.com
+          subject: Weekly product digest - missing auth posture
+          content_digest: Welcome back. Here is a normal digest, but auth evidence is intentionally absent.
+        list_metadata:
+          size: 18420
+          bounce_rate: 0.014
+          complaint_rate: 0.0003
+          freshness_days: 4
+        operator_context: Missing sender_auth_posture must fail closed; do not invent SPF, DKIM, or DMARC evidence.
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+runners:
+  spam_risk:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    inputs:
+      campaign_draft:
+        type: json
+        required: true
+        description: Draft sender, subject, and content digest.
+      list_metadata:
+        type: json
+        required: true
+        description: List size, bounce rate, complaint rate, and freshness.
+      sender_auth_posture:
+        type: json
+        required: true
+        description: SPF, DKIM, DMARC, and warm-up posture.
+      operator_context:
+        type: string
+        required: false
+        description: Operator constraints for the preflight decision.
+    outputs:
+      send_risk_verdict: object
+    artifacts:
+      wrap_as: send_risk_verdict
+      packet: runx.send_risk.verdict.v1
+    execution:
+      disposition: completed
+      outcome_state: complete

@@ -1,0 +1,24 @@
+caller_answers:
+  agent_task.spam-risk-reviewer.output:
+    send_risk_verdict:
+      risk_level: pass
+      preflight_clear: true
+      blockers: []
+      evidence_summary:
+        auth_signals_verified:
+          spf_pass: true
+          dkim_pass: true
+          dmarc_pass: true
+          warm_up_days: 220
+        list_hygiene_metrics:
+          size: 18420
+          bounce_rate: 0.014
+          complaint_rate: 0.0003
+          freshness_days: 4
+        content_risk_flags: []
+        policy_thresholds_applied:
+          bounce_rate_max: 0.05
+          complaint_rate_max: 0.001
+          freshness_days_max: 30
+      decision_refusal:
+        reason: null

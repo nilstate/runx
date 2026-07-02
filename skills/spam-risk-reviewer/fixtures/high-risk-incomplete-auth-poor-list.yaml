@@ -1,0 +1,33 @@
+caller_answers:
+  agent_task.spam-risk-reviewer.output:
+    send_risk_verdict:
+      risk_level: hold
+      preflight_clear: false
+      blockers:
+        - dkim_pass is false so the SPF+DKIM+DMARC must-pass policy fails.
+        - bounce_rate 0.092 exceeds policy threshold of 0.05.
+        - complaint_rate 0.0024 exceeds policy threshold of 0.001.
+        - freshness_days 140 exceeds policy threshold of 30.
+        - warm_up_days 7 is below the recommended 30-day warm-up floor.
+        - content risk flag present for free money pattern, click here now pattern, and urgency window.
+      evidence_summary:
+        auth_signals_verified:
+          spf_pass: true
+          dkim_pass: false
+          dmarc_pass: true
+          warm_up_days: 7
+        list_hygiene_metrics:
+          size: 6200
+          bounce_rate: 0.092
+          complaint_rate: 0.0024
+          freshness_days: 140
+        content_risk_flags:
+          - free money
+          - click here now
+          - urgency-window
+        policy_thresholds_applied:
+          bounce_rate_max: 0.05
+          complaint_rate_max: 0.001
+          freshness_days_max: 30
+      decision_refusal:
+        reason: needs_human

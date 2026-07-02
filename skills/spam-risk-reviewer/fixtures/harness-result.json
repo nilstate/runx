@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "spam-risk-reviewer-low-risk-verified-sender",
+    "spam-risk-reviewer-high-risk-incomplete-auth-poor-list",
+    "spam-risk-reviewer-missing-sender-auth-fails-closed"
+  ],
+  "receipt_ids": [
+    "sha256:e5674f9e700662be6487b394b16b93583b5c8a884b873f140a07ab2eb799abe7",
+    "sha256:f99ae28abcc1ce69c01b876fef6a2c55a2fbd16c50e9ea8a2e90edd6a631f1ac",
+    "sha256:42985c54816619fcce6c2e526e2ace6e3462bf1aeadcd3f78bc46a317ca63173"
+  ],
+  "graph_case_count": 0
+}
