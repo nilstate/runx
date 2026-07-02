@@ -1,0 +1,101 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      runner: default
+      inputs:
+        inbound_reply:
+          content: "Please unsubscribe me from this sequence. Thanks."
+          received_from: "prospect@example.com"
+          received_at: "2026-07-02T12:05:00Z"
+        original_send_receipt:
+          state: sealed
+          receipt_id: "runx:receipt:send_01"
+          checksum: "sha256:send01"
+          principal: "principal:growth"
+          send_plan:
+            recipient: "prospect@example.com"
+            campaign: "alpha-intro"
+            send_target: "send-as.email.followup"
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - stop
+            - opt out
+          confidence_threshold: 0.8
+          data_source_ref: "local://runx-data-store/reply-router-harness"
+          resource: "suppression_events"
+          store_id: "reply-router-harness-store"
+          prior_projection:
+            version: 3
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: stop_ambiguous_or_unsealed
+      runner: default
+      inputs:
+        inbound_reply:
+          content: "Maybe later."
+          received_from: "prospect@example.com"
+          received_at: "2026-07-02T12:06:00Z"
+        original_send_receipt:
+          state: draft
+          receipt_id: "runx:receipt:send_02"
+          checksum: "sha256:send02"
+          principal: "principal:growth"
+          send_plan:
+            recipient: "prospect@example.com"
+            campaign: "alpha-intro"
+            send_target: "send-as.email.followup"
+        suppression_policy:
+          unsubscribe_signals:
+            - unsubscribe
+            - stop
+            - opt out
+          confidence_threshold: 0.8
+          data_source_ref: "local://runx-data-store/reply-router-harness"
+          resource: "suppression_events"
+          store_id: "reply-router-harness-store"
+          prior_projection:
+            version: 3
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      reply_router_packet: object
+    artifacts:
+      wrap_as: reply_router_packet
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: Inbound reply with content, received_from, and received_at.
+      original_send_receipt:
+        type: json
+        required: true
+        description: Sealed original send receipt with send_plan, principal, receipt_id, and checksum.
+      suppression_policy:
+        type: json
+        required: true
+        description: Suppression policy with unsubscribe_signals and confidence_threshold.

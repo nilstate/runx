@@ -1,0 +1,37 @@
+name: stop-ambiguous-or-unsealed
+kind: skill
+target: ..
+runner: default
+inputs:
+  inbound_reply:
+    content: "Maybe later."
+    received_from: "prospect@example.com"
+    received_at: "2026-07-02T12:06:00Z"
+  original_send_receipt:
+    state: draft
+    receipt_id: "runx:receipt:send_02"
+    checksum: "sha256:send02"
+    principal: "principal:growth"
+    send_plan:
+      recipient: "prospect@example.com"
+      campaign: "alpha-intro"
+      send_target: "send-as.email.followup"
+  suppression_policy:
+    unsubscribe_signals:
+      - unsubscribe
+      - stop
+      - opt out
+    confidence_threshold: 0.8
+    data_source_ref: "local://runx-data-store/reply-router-harness"
+    resource: "suppression_events"
+    store_id: "reply-router-harness-store"
+    prior_projection:
+      version: 3
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: reply-router
+  source_case: stop_ambiguous_or_unsealed
+  source: skills-fixture

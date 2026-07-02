@@ -1,0 +1,72 @@
+{
+  "schema": "runx.reply_router.harness_evidence.v1",
+  "generated_at": "2026-07-02T12:08:03.954Z",
+  "package": "reply-router",
+  "version": "0.1.0",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "harness": {
+    "command": "runx harness skills/reply-router --json",
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "case_names": [
+      "sealed_unsubscribe_suppression",
+      "stop_ambiguous_or_unsealed"
+    ],
+    "receipt_ids": [
+      "sha256:68e3225f26c65855364cc8e2ab6f71321786dfdb0ec907503ebaa7d8b3155b5b",
+      "sha256:fd4badcb2cb79bfbf8edf7bb79ed19a7c1ffcf8af7210e13ecdb49e4ecb7b2cb"
+    ]
+  },
+  "dogfood": {
+    "command": "runx skill skills/reply-router --json --input-json inbound_reply=... --input-json original_send_receipt=... --input-json suppression_policy=...",
+    "package": "reply-router",
+    "input": {
+      "inbound_reply": {
+        "content": "Please unsubscribe me from this sequence. Thanks.",
+        "received_from": "prospect@example.com",
+        "received_at": "2026-07-02T12:08:00Z"
+      },
+      "original_send_receipt": {
+        "state": "sealed",
+        "receipt_id": "runx:receipt:send_dogfood_01",
+        "checksum": "sha256:dogfood01",
+        "principal": "principal:growth"
+      },
+      "suppression_policy": {
+        "unsubscribe_signals": [
+          "unsubscribe",
+          "stop",
+          "opt out"
+        ],
+        "confidence_threshold": 0.8
+      }
+    },
+    "status": "sealed",
+    "receipt_ref": "sha256:b6c3efcfe7b8a4ca9f90a44971968626174683332997ce37847489afa4a8565d",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "sealed_unsubscribe_suppression",
+        "status": "sealed",
+        "receipt_ref": "sha256:68e3225f26c65855364cc8e2ab6f71321786dfdb0ec907503ebaa7d8b3155b5b"
+      },
+      {
+        "name": "stop_ambiguous_or_unsealed",
+        "status": "sealed",
+        "receipt_ref": "sha256:fd4badcb2cb79bfbf8edf7bb79ed19a7c1ffcf8af7210e13ecdb49e4ecb7b2cb"
+      }
+    ]
+  },
+  "observations": [
+    "runx CLI 0.6.14 executed the inline harness with two cases.",
+    "sealed_unsubscribe_suppression emitted a recipient-keyed suppression append_event shape and no routing decision.",
+    "stop_ambiguous_or_unsealed emitted needs_agent escalation with no suppression write and no routing decision.",
+    "Dogfood run produced a sealed post-publish-shape unsubscribe decision for chico10117/reply-router@0.1.0 inputs.",
+    "Dogfood receipt verified valid with RUNX_RECEIPT_VERIFY_KID=runx-demo-key and the demo public Ed25519 verification key."
+  ],
+  "install": {
+    "expected_registry_ref": "chico10117/reply-router@0.1.0",
+    "command": "runx add chico10117/reply-router@0.1.0"
+  }
+}
