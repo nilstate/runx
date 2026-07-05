@@ -1,0 +1,90 @@
+skill: crm-cleanup
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_cleanup_report
+      runner: default
+      inputs:
+        contacts:
+          - id: "c1"
+            name: "Alice Smith"
+            email: "alice@example.com"
+            phone: "+1-555-0100"
+            company: "Acme"
+            last_contacted_at: "2026-06-01T10:00:00Z"
+          - id: "c2"
+            name: "Bob Jones"
+            company: "Globex"
+            last_contacted_at: "2026-05-01T10:00:00Z"
+          - id: "c3"
+            name: "Alice S."
+            email: "alice@example.com"
+            phone: "555-0100"
+            company: "Acme Inc"
+            last_contacted_at: "2026-06-02T10:00:00Z"
+          - id: "c4"
+            name: "Carol Lee"
+            email: "carol@example.com"
+            company: "Initech"
+            last_contacted_at: "2024-01-15T00:00:00Z"
+        cleanup_policy:
+          staleness_days: 365
+          required_fields:
+            - "name"
+            - "email"
+            - "company"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: stop_empty_contacts
+      runner: default
+      inputs:
+        contacts: []
+        cleanup_policy:
+          staleness_days: 365
+          required_fields:
+            - "name"
+            - "email"
+            - "company"
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      summary: object
+      duplicates: array
+      missing_fields: array
+      stale_entries: array
+      actions: array
+    inputs:
+      contacts:
+        type: json
+        required: true
+        description: Array of CRM contact objects, each requiring at least an id.
+      cleanup_policy:
+        type: json
+        required: false
+        description: Policy with staleness_days and required_fields.
