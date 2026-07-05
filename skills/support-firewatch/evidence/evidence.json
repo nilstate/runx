@@ -1,0 +1,16 @@
+{
+  "summary": "Support firewatch skill monitors support queues for escalating issue clusters using Jaccard similarity and union-find clustering, flagging volume, severity trend, and stale signals for human escalation review without sending anything.",
+  "observations": [
+    "Skill uses Jaccard similarity with 0.34 threshold and union-find to cluster related tickets by keyword overlap",
+    "Three escalation signals detected: volume_signal (>=3 tickets), severity_trend_signal (delta>=2 with upward trend), stale_signal (>48h unresolved)",
+    "Each flagged cluster emits a runx.support.firewatch.v1 record with ticket IDs, max severity, oldest age, and recommended priority",
+    "Valid queue with no escalations seals successfully with escalation_count: 0 (all-clear)",
+    "Empty/invalid queues and regulated-action-only queues stop with exit 64",
+    "Harness passes 2/2: sealed_cluster_escalation_flagged (4 tickets clustered, all 3 signals, P1) and stop_empty_queue (failure)"
+  ],
+  "dogfood": {
+    "input": "Support queue snapshot with 4 tickets about login page 500 errors on api-gateway",
+    "output": "Cluster detected with 4 tickets, all 3 escalation signals, max_severity: urgent, P1 priority, escalation_target: on-call-engineer",
+    "receipt_id": "local-harness-run"
+  }
+}

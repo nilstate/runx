@@ -1,0 +1,95 @@
+skill: support-firewatch
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_cluster_escalation_flagged
+      runner: default
+      inputs:
+        queue:
+          snapshot_at: "2026-07-05T10:00:00Z"
+          tickets:
+            - ticket_id: "TKT-101"
+              subject: "Login returns 500 error"
+              severity: "low"
+              status: "open"
+              created_at: "2026-07-02T10:00:00Z"
+            - ticket_id: "TKT-104"
+              subject: "500 error on login gateway"
+              severity: "medium"
+              status: "open"
+              created_at: "2026-07-03T12:00:00Z"
+            - ticket_id: "TKT-107"
+              subject: "Cannot login, 500 from gateway"
+              severity: "high"
+              status: "open"
+              created_at: "2026-07-04T09:00:00Z"
+            - ticket_id: "TKT-110"
+              subject: "Login gateway 500 urgent"
+              severity: "urgent"
+              status: "open"
+              created_at: "2026-07-05T08:00:00Z"
+        context:
+          product: "api-gateway"
+          team: "platform"
+        escalation_policy:
+          cluster_min_tickets: 3
+          severity_trend_min_delta: 2
+          stale_after_hours: 48
+          confidence_threshold: 0.6
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: stop_empty_queue
+      runner: default
+      inputs:
+        queue:
+          snapshot_at: "2026-07-05T10:00:00Z"
+          tickets: []
+        escalation_policy:
+          cluster_min_tickets: 3
+          severity_trend_min_delta: 2
+          stale_after_hours: 48
+          confidence_threshold: 0.6
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      queue_summary: object
+      escalations: array
+    inputs:
+      queue:
+        type: json
+        required: true
+        description: Support queue snapshot with snapshot_at and a tickets array.
+      context:
+        type: json
+        required: false
+        description: Optional context (product, team) to label the escalation recommendation.
+      escalation_policy:
+        type: json
+        required: false
+        description: Policy tuning cluster size, severity trend, staleness, and confidence thresholds.

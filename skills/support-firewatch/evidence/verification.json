@@ -1,0 +1,12 @@
+{
+  "harness": {
+    "status": "passed",
+    "case_count": 2,
+    "checks_passed": 2,
+    "checks_failed": 0,
+    "case_names": ["sealed_cluster_escalation_flagged", "stop_empty_queue"]
+  },
+  "runx_version": "0.6.16",
+  "source_repo": "https://github.com/armstrongsam25/runx-support-firewatch-skill",
+  "pr_url": "pending"
+}
