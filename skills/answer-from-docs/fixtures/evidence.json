@@ -1,0 +1,97 @@
+{
+  "schema": "runx.answer_from_docs.evidence.v1",
+  "package": "answer-from-docs",
+  "version": "0.1.0",
+  "artifact_summary": "Deterministic read-only runx skill that answers strictly from input corpus items and refuses uncovered questions with kb_gaps.",
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.6.16"
+    },
+    {
+      "name": "package_name",
+      "value": "answer-from-docs"
+    },
+    {
+      "name": "typed_inputs",
+      "value": [
+        "question",
+        "corpus"
+      ]
+    },
+    {
+      "name": "typed_outputs",
+      "value": [
+        "answer",
+        "kb_gaps",
+        "grounded"
+      ]
+    },
+    {
+      "name": "grounded_verdict",
+      "value": "grounded-policy-answer returns grounded true with a citation to acme-password-policy."
+    },
+    {
+      "name": "refusal_verdict",
+      "value": "refused-uncovered-question returns grounded false with non-empty kb_gaps."
+    },
+    {
+      "name": "citation_mapping",
+      "value": [
+        {
+          "answer_sentence": "Acme Cloud passwords must contain at least twelve characters, one number, and one symbol.",
+          "source_id": "acme-password-policy"
+        }
+      ]
+    },
+    {
+      "name": "harness_case_names",
+      "value": [
+        "grounded-policy-answer",
+        "refused-uncovered-question"
+      ]
+    },
+    {
+      "name": "harness_status",
+      "value": "passed"
+    },
+    {
+      "name": "dogfood_command",
+      "value": "runx skill skills/answer-from-docs --receipt-dir $HOME/runx-answer-dogfood -i \"question=What must an Acme Cloud password contain?\" --input-json corpus='[...]' -j"
+    },
+    {
+      "name": "receipt_id",
+      "value": "sha256:bcb85e5dbe78616efff4231821534b56ee640e8c3b44dfa0e2822dcfdd3bf770"
+    },
+    {
+      "name": "verify_verdict",
+      "value": "valid"
+    },
+    {
+      "name": "runtime_boundary",
+      "value": "No live retrieval, external fetch, mutation, or credential access. The runner reads RUNX input JSON only."
+    }
+  ],
+  "dogfood": {
+    "package": "answer-from-docs@0.1.0",
+    "input": {
+      "question": "What must an Acme Cloud password contain?",
+      "corpus_ids": [
+        "acme-password-policy"
+      ]
+    },
+    "command": "runx skill skills/answer-from-docs --receipt-dir $HOME/runx-answer-dogfood -i \"question=What must an Acme Cloud password contain?\" --input-json corpus='[...]' -j",
+    "receipt_ref": "sha256:bcb85e5dbe78616efff4231821534b56ee640e8c3b44dfa0e2822dcfdd3bf770",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "grounded-policy-answer",
+        "status": "sealed"
+      },
+      {
+        "name": "refused-uncovered-question",
+        "status": "sealed"
+      }
+    ]
+  }
+}

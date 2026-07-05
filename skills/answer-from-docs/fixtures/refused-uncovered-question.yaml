@@ -1,0 +1,23 @@
+name: refused-uncovered-question
+kind: skill
+target: ..
+runner: answer
+inputs:
+  question: "What is the company travel reimbursement limit?"
+  corpus:
+    - id: acme-password-policy
+      title: Acme Cloud password policy
+      text: "Acme Cloud passwords must contain at least twelve characters, one number, and one symbol."
+    - id: acme-support-policy
+      title: Acme Cloud support policy
+      text: "Support tickets are triaged during business hours unless the account has a critical incident plan."
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: answer-from-docs
+  source_case: refused-uncovered-question
+  source: frantic-bounty-87

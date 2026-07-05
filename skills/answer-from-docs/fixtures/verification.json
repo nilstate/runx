@@ -1,0 +1,27 @@
+{
+  "schema": "runx.answer_from_docs.verification.v1",
+  "package": "answer-from-docs",
+  "version": "0.1.0",
+  "runx_cli_version": "runx-cli 0.6.16",
+  "local_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "grounded-policy-answer",
+      "refused-uncovered-question"
+    ],
+    "receipt_ids": [
+      "sha256:9e22acdd756e742d7931a04bb2bb8f11d812c68c6ca1c0a409dfac485053acdf",
+      "sha256:349afc2b1ff20c06375b6fc2075fc03daf664cffde2eb99406c1420d0c3717dd"
+    ]
+  },
+  "dogfood": {
+    "status": "sealed",
+    "receipt_id": "sha256:bcb85e5dbe78616efff4231821534b56ee640e8c3b44dfa0e2822dcfdd3bf770",
+    "verify": {
+      "valid": true,
+      "signature_mode": "local-development",
+      "receipt_count": 1
+    }
+  }
+}

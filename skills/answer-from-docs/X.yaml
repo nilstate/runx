@@ -1,0 +1,84 @@
+skill: answer-from-docs
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: local-input
+      method: READ
+      scope: runx:input:read
+  deny:
+    - network
+    - network_mutation
+    - credential_material
+    - private_user_data
+
+emits:
+  - name: answer_from_docs_packet
+    packet: runx.answer_from_docs.v1
+
+harness:
+  cases:
+    - name: grounded-policy-answer
+      runner: answer
+      inputs:
+        question: "What must an Acme Cloud password contain?"
+        corpus:
+          - id: acme-password-policy
+            title: Acme Cloud password policy
+            text: "Acme Cloud passwords must contain at least twelve characters, one number, and one symbol. Administrators must rotate emergency access keys every ninety days."
+          - id: acme-support-policy
+            title: Acme Cloud support policy
+            text: "Support tickets are triaged during business hours unless the account has a critical incident plan."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: refused-uncovered-question
+      runner: answer
+      inputs:
+        question: "What is the company travel reimbursement limit?"
+        corpus:
+          - id: acme-password-policy
+            title: Acme Cloud password policy
+            text: "Acme Cloud passwords must contain at least twelve characters, one number, and one symbol."
+          - id: acme-support-policy
+            title: Acme Cloud support policy
+            text: "Support tickets are triaged during business hours unless the account has a critical incident plan."
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  answer:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      answer: object
+      kb_gaps: array
+      grounded: boolean
+    artifacts:
+      wrap_as: answer_from_docs_packet
+      packet: runx.answer_from_docs.v1
+    inputs:
+      question:
+        type: string
+        required: true
+        description: Question to answer from the provided corpus only.
+      corpus:
+        type: json
+        required: true
+        description: Array of bounded corpus items. Each item may be a string or an object with id, title, text, or content.

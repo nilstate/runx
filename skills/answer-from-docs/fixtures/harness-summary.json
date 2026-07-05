@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "grounded-policy-answer",
+    "refused-uncovered-question"
+  ],
+  "receipt_ids": [
+    "sha256:9e22acdd756e742d7931a04bb2bb8f11d812c68c6ca1c0a409dfac485053acdf",
+    "sha256:349afc2b1ff20c06375b6fc2075fc03daf664cffde2eb99406c1420d0c3717dd"
+  ],
+  "graph_case_count": 0
+}
