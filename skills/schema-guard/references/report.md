@@ -7,7 +7,7 @@
 - Bounty: `https://gofrantic.com/bounties/84`
 - Publisher owner: `Difficult-Burger`
 - Source URL: `https://github.com/Difficult-Burger/runx/tree/bounty/schema-guard-84/skills/schema-guard`
-- PR URL: pending until the GitHub PR is created
+- PR URL: `https://github.com/runxhq/runx/pull/237`
 - Intended registry ref: `Difficult-Burger/schema-guard@0.1.0`
 
 ## Scope

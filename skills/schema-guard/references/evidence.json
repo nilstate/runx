@@ -16,7 +16,7 @@
     "publisher_owner": "Difficult-Burger",
     "registry_ref_intended": "Difficult-Burger/schema-guard@0.1.0",
     "source_url": "https://github.com/Difficult-Burger/runx/tree/bounty/schema-guard-84/skills/schema-guard",
-    "pr_url": "pending: update after GitHub PR is created",
+    "pr_url": "https://github.com/runxhq/runx/pull/237",
     "public_url": "pending: remote registry publish requires runx login or RUNX_PUBLIC_API_TOKEN"
   },
   "raw_files": [
