@@ -1,0 +1,81 @@
+skill: sbom-maker
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sbom-maker-valid-npm-lockfile
+      runner: default
+      inputs:
+        lockfile_type: npm
+        lockfile:
+          name: fixture-app
+          version: 1.0.0
+          lockfileVersion: 3
+          packages:
+            "":
+              name: fixture-app
+              version: 1.0.0
+              dependencies:
+                express: ^4.18.2
+                lodash: ^4.17.21
+                debug: ^4.3.4
+            node_modules/express:
+              version: 4.18.2
+              resolved: "https://registry.npmjs.org/express/-/express-4.18.2.tgz"
+              integrity: "sha512-1"
+              license: MIT
+            node_modules/lodash:
+              version: 4.17.21
+              resolved: "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz"
+              integrity: "sha512-2"
+              license: MIT
+            node_modules/debug:
+              version: 4.3.4
+              resolved: "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz"
+              integrity: "sha512-3"
+              license: MIT
+            node_modules/ms:
+              version: 2.1.2
+              resolved: "https://registry.npmjs.org/ms/-/ms-2.1.2.tgz"
+              integrity: "sha512-4"
+              license: MIT
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: sbom-maker-malformed-lockfile
+      runner: default
+      inputs:
+        lockfile_type: npm
+        lockfile: "this is not valid json {{{"
+      expect:
+        status: failure
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      lockfile:
+        type: json
+        required: true
+        description: "Parsed lockfile contents (package-lock.json object, requirements.txt text, or Cargo.lock object)."
+      lockfile_type:
+        type: string
+        required: true
+        description: "Lockfile format: npm, pip, or cargo."
+    outputs:
+      sbom: object
+      components: array
+      license_summary: object
+      license_risks: array
