@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "passing-release-candidate-yields-go-proposal",
+    "failing-required-check-yields-no-go",
+    "missing-release-candidate-fails-closed"
+  ],
+  "receipt_ids": [
+    "sha256:708586ef5fc98e366f8ae3854eb7917fc0437d8bc5384f4cf66afa165bd1c167",
+    "sha256:dd58c1831bd3c5cdfd7f95de6025202078b0b1bbf3aa14bd41212bad49fe9839",
+    "sha256:b1b0507740cc4d89d7f62d9806d8095cd08f45dec0d3a384b02e4f3cf1994aa3"
+  ],
+  "graph_case_count": 0
+}

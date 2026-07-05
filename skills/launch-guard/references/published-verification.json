@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "zdfgu113/launch-guard@0.1.0",
+    "skill": {
+      "skill_id": "zdfgu113/launch-guard",
+      "owner": "zdfgu113",
+      "name": "launch-guard",
+      "description": "Gate a release candidate with policy-grounded checks and emit either a release proposal or a no-go decision with blockers.",
+      "category": "code",
+      "version": "0.1.0",
+      "digest": "3f888a37357e85a8add54ea6c7ccd0e30e68ee408368efaa292544c86a180f8f",
+      "markdown": "---\nname: launch-guard\nversion: 0.1.0\ndescription: Gate a release candidate with policy-grounded checks and emit either a release proposal or a no-go decision with blockers.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\nlinks:\n  source: https://github.com/zdfgu113/runx/tree/codex/launch-guard-81/skills/launch-guard\nrunx:\n  category: code\n  input_resolution:\n    required:\n      - release_candidate\n      - launch_policy\n---\n\n# Launch Guard\n\nLaunch Guard gives release owners a sealed go/no-go decision before anything\nships. It reads a release candidate, launch policy, test results, rollback\nplan, observability plan, and changelog, then emits a readiness report and\neither a gated `release_proposal` for the `release` skill or a `no_go` decision\nwith blockers.\n\nIt never deploys, tags, publishes, or announces a release.\n\n## Procedure\n\n1. Require `release_candidate` and `launch_policy`.\n2. Check every `launch_policy.required_checks[]` against\n   `release_candidate.test_results[]`.\n3. Count open risks from `release_candidate.risks[]` and compare them with\n   `launch_policy.max_open_risk`.\n4. When `launch_policy.rollback_required` is true, require a tested rollback\n   plan with at least one step.\n5. Require observability dashboards and alerts.\n6. Require at least one changelog entry.\n7. Emit `decision=\"go\"` with a `release_proposal` only when there are no\n   blockers.\n8. Emit `decision=\"no_go\"` with exact blockers and no `release_proposal` when\n   any check fails.\n\n## Inputs\n\n- `release_candidate.version`: proposed version.\n- `release_candidate.diff_ref`: commit range, compare URL, or source revision.\n- `release_candidate.test_results[]`: named checks with `status` and `source`.\n- `release_candidate.rollback_plan`: `{ tested, steps[] }`.\n- `release_candidate.observability_plan`: `{ dashboards[], alerts[] }`.\n- `release_candidate.changelog.entries[]`: user-facing changes.\n- `launch_policy.required_checks[]`: check names that must pass.\n- `launch_policy.max_open_risk`: maximum allowed open risk count.\n- `launch_policy.rollback_required`: whether a tested rollback plan is required.\n\n## Output\n\n- `decision`: `go` or `no_go`.\n- `readiness_report`: grounded checks, risks, and blockers.\n- `release_proposal`: gated proposal for the `release` skill when `decision` is\n  `go`; `null` when blocked.\n\n## Example\n\n```bash\nrunx skill ./skills/launch-guard \\\n  --input-json release_candidate=\"$(cat skills/launch-guard/fixtures/go-release.json)\" \\\n  --input-json launch_policy='{\"required_checks\":[\"unit\",\"integration\",\"security\"],\"max_open_risk\":0,\"rollback_required\":true}' \\\n  --json\n```",
+      "profile_digest": "f061aa9d7a492f40f324b2720ba7d26f1f236099d2aa794c270219cb40b1aba3",
+      "runner_names": [
+        "decide"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_029f74b8258386ff624c5320",
+        "handle": "zdfgu113",
+        "display_name": "zdfgu113"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_029f74b8258386ff624c5320",
+          "status": "declared",
+          "summary": "zdfgu113",
+          "issued_at": "2026-07-05T10:04:06.388Z",
+          "metadata": {
+            "publisher_display_name": "zdfgu113",
+            "publisher_handle": "zdfgu113",
+            "publisher_id": "user_029f74b8258386ff624c5320",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai"
+    }
+  }
+}

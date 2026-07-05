@@ -1,0 +1,24 @@
+{
+  "version": "1.4.0",
+  "diff_ref": "compare/v1.3.9...v1.4.0",
+  "test_results": [
+    { "name": "unit", "status": "pass", "source": "ci/unit#881" },
+    { "name": "integration", "status": "pass", "source": "ci/integration#881" },
+    { "name": "security", "status": "pass", "source": "ci/security#881" }
+  ],
+  "rollback_plan": {
+    "tested": true,
+    "steps": [
+      "Revert to image registry.example/app:1.3.9",
+      "Restore feature flag launch_guard_rollout=false"
+    ]
+  },
+  "observability_plan": {
+    "dashboards": ["https://metrics.example.com/d/app-release"],
+    "alerts": ["release-error-rate"]
+  },
+  "changelog": {
+    "entries": ["Adds launch readiness gating for release owners."]
+  },
+  "risks": []
+}

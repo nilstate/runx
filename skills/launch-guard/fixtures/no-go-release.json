@@ -1,0 +1,22 @@
+{
+  "version": "1.4.1",
+  "diff_ref": "compare/v1.4.0...v1.4.1",
+  "test_results": [
+    { "name": "unit", "status": "pass", "source": "ci/unit#882" },
+    { "name": "integration", "status": "fail", "source": "ci/integration#882" }
+  ],
+  "rollback_plan": {
+    "tested": true,
+    "steps": ["Revert to image registry.example/app:1.4.0"]
+  },
+  "observability_plan": {
+    "dashboards": ["https://metrics.example.com/d/app-release"],
+    "alerts": ["release-error-rate"]
+  },
+  "changelog": {
+    "entries": ["Attempts a release while integration is failing."]
+  },
+  "risks": [
+    { "id": "auth-flow-regression", "status": "open" }
+  ]
+}

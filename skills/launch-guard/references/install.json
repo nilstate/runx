@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "zdfgu113/launch-guard@0.1.0",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/runx-launch-guard-clean-install/skills/zdfgu113/launch-guard/0.1.0/SKILL.md",
+      "skill_name": "launch-guard",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "zdfgu113/launch-guard",
+      "version": "0.1.0",
+      "digest": "sha256:3f888a37357e85a8add54ea6c7ccd0e30e68ee408368efaa292544c86a180f8f",
+      "profile_digest": "sha256:f061aa9d7a492f40f324b2720ba7d26f1f236099d2aa794c270219cb40b1aba3",
+      "profile_state_path": "/tmp/runx-launch-guard-clean-install/skills/zdfgu113/launch-guard/0.1.0/.runx/profile.json",
+      "runner_names": [
+        "decide"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/runx-launch-guard-clean-install/skills/zdfgu113/launch-guard/0.1.0/SKILL.md",
+      "digest": "sha256:3f888a37357e85a8add54ea6c7ccd0e30e68ee408368efaa292544c86a180f8f",
+      "install_count": 1,
+      "package_digest": "c0e750505948abe592eb346b970a1b9840f76fd14e614684e1407efa8d28c18e",
+      "profile_digest": "sha256:f061aa9d7a492f40f324b2720ba7d26f1f236099d2aa794c270219cb40b1aba3",
+      "publisher": {
+        "display_name": "zdfgu113",
+        "handle": "zdfgu113",
+        "id": "user_029f74b8258386ff624c5320",
+        "kind": "user"
+      },
+      "ref": "zdfgu113/launch-guard@0.1.0",
+      "skill_id": "zdfgu113/launch-guard",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "0.1.0"
+    }
+  }
+}
