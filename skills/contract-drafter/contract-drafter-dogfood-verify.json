@@ -1,0 +1,25 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:9fa263882f21661f6cd332cd24cccbcb5f69e9ef694f0711f034a7a3605df242",
+    "actual": "sha256:9fa263882f21661f6cd332cd24cccbcb5f69e9ef694f0711f034a7a3605df242"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017",
+    "actual": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "agent-497c05-contract-drafter-dogfood"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
+}

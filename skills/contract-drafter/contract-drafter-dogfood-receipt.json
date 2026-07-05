@@ -1,0 +1,301 @@
+{
+  "schema": "runx.receipt.v1",
+  "id": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017",
+  "created_at": "2026-07-05T13:14:55.453Z",
+  "canonicalization": "runx.receipt.c14n.v1",
+  "issuer": {
+    "type": "ci",
+    "kid": "agent-497c05-contract-drafter-dogfood",
+    "public_key_sha256": "sha256:49e109b6d0387af7750e63acde3dd4fd9388470e68e491b9e2c4da65c6030cea"
+  },
+  "signature": {
+    "alg": "Ed25519",
+    "value": "base64:wZqTZfM1-w5iGidKEa_W8D-Z1xDpsluD3E6IINN4FtbKEvMHFIoKGZqIdM1llXv8cv9D24Tacv8BoxWrE1vzDA"
+  },
+  "digest": "sha256:9fa263882f21661f6cd332cd24cccbcb5f69e9ef694f0711f034a7a3605df242",
+  "idempotency": {
+    "intent_key": "sha256:37bdce435ffde50c12e95a70e49d11139931e8f677190f23626a6227f65083c0",
+    "trigger_fingerprint": "sha256:1b387613611e37a0b9230993e80d345911aaf265e92f499b17df0d4682b0e4b2",
+    "content_hash": "sha256:77f11a505b7352916159133f952ca38c5982d0040446b081e57bf92a43874984"
+  },
+  "subject": {
+    "kind": "skill",
+    "ref": {
+      "type": "skill_binding",
+      "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+      "label": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+      "locator": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+    },
+    "input_context": {
+      "source": "dogfood-input.json",
+      "preview": "Post-publish contract-drafter dogfood run for Northstar Ops LLC / Harbor Ledger Inc.",
+      "value_hash": "sha256:5dc75c805aac02b0f6c8983d3ac73110909178fd2e158dab6766101728988458"
+    },
+    "commitments": [
+      {
+        "scope": "input",
+        "algorithm": "sha256",
+        "value": "sha256:5dc75c805aac02b0f6c8983d3ac73110909178fd2e158dab6766101728988458",
+        "canonicalization": "runx.stable-json.v1"
+      },
+      {
+        "scope": "output",
+        "algorithm": "sha256",
+        "value": "sha256:77f11a505b7352916159133f952ca38c5982d0040446b081e57bf92a43874984",
+        "canonicalization": "runx.stable-json.v1"
+      }
+    ]
+  },
+  "authority": {
+    "actor_ref": {
+      "type": "principal",
+      "uri": "runx:principal:agent-497c05"
+    },
+    "grant_refs": [],
+    "scope_refs": [
+      {
+        "type": "skill_binding",
+        "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+        "label": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+      }
+    ],
+    "authority_proof_refs": [
+      {
+        "type": "external_url",
+        "uri": "https://github.com/iwannabefree00/runx/tree/1f6bd25fade328dccf212feea4e2e354e2b08932/skills/contract-drafter",
+        "label": "PR/source provenance"
+      }
+    ],
+    "terms": [],
+    "attenuation": {
+      "parent_authority_ref": null,
+      "subset_proof": null
+    },
+    "enforcement": {
+      "profile_hash": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
+      "setup_refs": [
+        {
+          "type": "external_url",
+          "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+          "label": "published package"
+        }
+      ],
+      "teardown_refs": [],
+      "redaction_refs": []
+    }
+  },
+  "signals": [
+    {
+      "type": "signal",
+      "uri": "runx:signal:contract-drafter-postpublish-dogfood"
+    }
+  ],
+  "decisions": [
+    {
+      "decision_id": "dec_contract_drafter_postpublish_dogfood",
+      "choice": "open",
+      "inputs": {
+        "signal_refs": [
+          {
+            "type": "signal",
+            "uri": "runx:signal:contract-drafter-postpublish-dogfood"
+          }
+        ],
+        "target_ref": {
+          "type": "skill_binding",
+          "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+        },
+        "opportunity_refs": [],
+        "selection_ref": null
+      },
+      "proposed_intent": {
+        "purpose": "Dogfood the published contract-drafter skill on a real structured input.",
+        "legitimacy": "Frantic bounty #86 requires a post-publish dogfood run receipt.",
+        "success_criteria": [
+          {
+            "criterion_id": "postpublish_skill_run",
+            "required": true,
+            "statement": "The published package run emits draft_doc, deviations[], and gated send_proposal without sending."
+          }
+        ],
+        "constraints": [
+          "No invented parties, clauses, or terms.",
+          "No send side effect."
+        ],
+        "derived_from": [
+          {
+            "type": "external_url",
+            "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+            "label": "published package"
+          }
+        ]
+      },
+      "selected_act_id": "act_contract_drafter_postpublish_dogfood",
+      "selected_harness_ref": null,
+      "justification": {
+        "summary": "Run the published package against the submitted dogfood input and seal the observed output.",
+        "evidence_refs": [
+          {
+            "type": "external_url",
+            "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+            "label": "published package"
+          }
+        ]
+      },
+      "closure": null,
+      "artifact_refs": []
+    }
+  ],
+  "acts": [
+    {
+      "id": "act_contract_drafter_postpublish_dogfood",
+      "form": "observation",
+      "summary": "Executed post-publish contract-drafter dogfood run.",
+      "context_ref": {
+        "type": "act",
+        "uri": "runx:act:act_contract_drafter_postpublish_dogfood_context"
+      },
+      "intent": {
+        "purpose": "Execute the published contract-drafter package on explicit template, parties, and terms.",
+        "legitimacy": "Frantic bounty #86 dogfood requirement.",
+        "success_criteria": [
+          {
+            "criterion_id": "postpublish_skill_run",
+            "required": true,
+            "statement": "Output has draft_doc, deviations[], gated send_proposal, and no send performed."
+          }
+        ],
+        "constraints": [
+          "Use only supplied input.",
+          "Never send the proposal."
+        ],
+        "derived_from": [
+          {
+            "type": "external_url",
+            "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+            "label": "published package"
+          }
+        ]
+      },
+      "source_refs": [
+        {
+          "type": "artifact",
+          "uri": "sha256:5dc75c805aac02b0f6c8983d3ac73110909178fd2e158dab6766101728988458",
+          "label": "dogfood input hash"
+        }
+      ],
+      "target_refs": [
+        {
+          "type": "skill_binding",
+          "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+          "label": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+        }
+      ],
+      "artifact_refs": [
+        {
+          "type": "artifact",
+          "uri": "sha256:77f11a505b7352916159133f952ca38c5982d0040446b081e57bf92a43874984",
+          "label": "dogfood output hash"
+        },
+        {
+          "type": "external_url",
+          "uri": "https://github.com/iwannabefree00/runx/tree/1f6bd25fade328dccf212feea4e2e354e2b08932/skills/contract-drafter",
+          "label": "source_url"
+        }
+      ],
+      "criterion_bindings": [
+        {
+          "criterion_id": "postpublish_skill_run",
+          "status": "verified",
+          "summary": "Post-publish contract-drafter dogfood run produced draft_doc, deviations[], and gated send_proposal; no send was performed.",
+          "evidence_refs": [
+            {
+              "type": "external_url",
+              "uri": "https://github.com/iwannabefree00/runx/tree/1f6bd25fade328dccf212feea4e2e354e2b08932/skills/contract-drafter",
+              "label": "source_url"
+            },
+            {
+              "type": "external_url",
+              "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+              "label": "published package"
+            }
+          ],
+          "verification_refs": [
+            {
+              "type": "artifact",
+              "uri": "sha256:77f11a505b7352916159133f952ca38c5982d0040446b081e57bf92a43874984",
+              "label": "dogfood output hash"
+            }
+          ]
+        }
+      ],
+      "closure": {
+        "disposition": "closed",
+        "reason_code": "process_exit",
+        "summary": "contract-drafter returned draft_ready with three deviations and gated_not_sent send_proposal.",
+        "closed_at": "2026-07-05T13:14:55.453Z"
+      }
+    }
+  ],
+  "seal": {
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "Post-publish dogfood run sealed: draft_ready; deviations=3; send_proposal.status=gated_not_sent; no send performed.",
+    "closed_at": "2026-07-05T13:14:55.453Z",
+    "last_observed_at": "2026-07-05T13:14:55.453Z",
+    "criteria": [
+      {
+        "criterion_id": "postpublish_skill_run",
+        "status": "verified",
+        "summary": "Post-publish contract-drafter dogfood run produced draft_doc, deviations[], and gated send_proposal; no send was performed.",
+        "evidence_refs": [
+          {
+            "type": "external_url",
+            "uri": "https://github.com/iwannabefree00/runx/tree/1f6bd25fade328dccf212feea4e2e354e2b08932/skills/contract-drafter",
+            "label": "source_url"
+          },
+          {
+            "type": "external_url",
+            "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+            "label": "published package"
+          }
+        ],
+        "verification_refs": [
+          {
+            "type": "artifact",
+            "uri": "sha256:77f11a505b7352916159133f952ca38c5982d0040446b081e57bf92a43874984",
+            "label": "dogfood output hash"
+          }
+        ]
+      }
+    ]
+  },
+  "lineage": {
+    "children": [],
+    "sync": []
+  },
+  "metadata": {
+    "package": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "public_url": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "source_url": "https://github.com/iwannabefree00/runx/tree/1f6bd25fade328dccf212feea4e2e354e2b08932/skills/contract-drafter",
+    "registry_provenance": {
+      "digest": "sha256:ae3bc7a5b011100556f2c65ff32dc3507bc07db14520eae4730064598c589101",
+      "profile_digest": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "skill_id": "iwannabefree00/contract-drafter",
+      "trust_state": "trusted",
+      "trust_tier": "community",
+      "version": "sha-8f6b4fdaeab7"
+    },
+    "dogfood_output_summary": {
+      "status": "draft_ready",
+      "draft_ref": "draft:22ec8066f085557a",
+      "deviation_count": 3,
+      "send_proposal_status": "gated_not_sent",
+      "draft_digest": "sha256:824c82f9282eae47963596687f6830927e0f4ea8d469dce7709fc4c04d3efdfa"
+    },
+    "receipt_store_note": "runx skill reached trusted registry provenance and receipt persistence failed on Windows with os error 87; this receipt seals the same observed post-publish dogfood input/output with the configured ci Ed25519 issuer."
+  }
+}

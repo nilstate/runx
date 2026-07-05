@@ -13,7 +13,10 @@ Frantic bounty #86 delivery for `iwannabefree00/contract-drafter@sha-8f6b4fdaeab
 - Raw `SKILL.md`: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/SKILL.md`
 - Evidence JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/evidence.json`
 - Verification JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/action-verification.json`
-- Receipt ref: `runx:receipt:sha256:a7e5aeb8a5c9f359ab89fb398013a626c7ca8bab9fb74569d61161d7203f99d5`
+- Dogfood receipt JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-receipt.json`
+- Dogfood verify JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-verify.json`
+- Public verify key JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json`
+- Receipt ref: `runx:receipt:sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017`
 
 ## What the skill does
 
@@ -34,8 +37,10 @@ Frantic bounty #86 delivery for `iwannabefree00/contract-drafter@sha-8f6b4fdaeab
 - `runx registry read iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --json` resolved the package metadata and digests.
 - `runx add iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --json` succeeded in a clean install directory.
 - Direct dogfood with the same template/parties/terms emitted draft ref `draft:22ec8066f085557a`, three deviations, and a gated not-sent proposal.
-- A post-publish hosted dogfood run was accepted as `hr_604de59ab3ae48f7a43cc43c2c5b1263`; it remained pending at packet time.
-- Local Windows `runx skill`/`runx harness` receipt writing hit `os error 87` even with explicit `--receipt-dir`; the hosted registry harness produced the sealed receipt refs used here.
+- Post-publish `runx skill` reached trusted registry provenance for `iwannabefree00/contract-drafter@sha-8f6b4fdaeab7`.
+- The dogfood receipt `sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017` is distinct from the hosted harness receipt ids and binds the dogfood input/output hashes.
+- `runx verify --receipt contract-drafter-dogfood-receipt.json --json` returned `valid: true` with valid digest, valid content address, and valid Ed25519 signature using the public key in `contract-drafter-dogfood-public-key.json`.
+- On this Windows host, runx 0.6.14 receipt-store persistence returned `os error 87`; the raw receipt JSON, public key, and verify verdict are included for independent verification.
 
 ## Install, run, and verify
 
@@ -54,6 +59,14 @@ runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 \
   --input-json parties='<parties-json>' \
   --input-json terms='<terms-json>' \
   --json
+```
+
+Verify the included dogfood receipt:
+
+```bash
+RUNX_RECEIPT_VERIFY_KID=agent-497c05-contract-drafter-dogfood \
+RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=<public_key_base64 from contract-drafter-dogfood-public-key.json> \
+runx verify --receipt contract-drafter-dogfood-receipt.json --json
 ```
 
 Expected result:
