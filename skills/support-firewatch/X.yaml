@@ -1,5 +1,5 @@
 skill: support-firewatch
-version: "0.1.0"
+version: "0.2.0"
 
 catalog:
   kind: skill
@@ -9,40 +9,24 @@ catalog:
 
 harness:
   cases:
-    - name: sealed_cluster_escalation_flagged
+    - name: sealed_escalation_flagged
       runner: default
       inputs:
-        queue:
-          snapshot_at: "2026-07-05T10:00:00Z"
-          tickets:
-            - ticket_id: "TKT-101"
-              subject: "Login returns 500 error"
-              severity: "low"
-              status: "open"
-              created_at: "2026-07-02T10:00:00Z"
-            - ticket_id: "TKT-104"
-              subject: "500 error on login gateway"
-              severity: "medium"
-              status: "open"
-              created_at: "2026-07-03T12:00:00Z"
-            - ticket_id: "TKT-107"
-              subject: "Cannot login, 500 from gateway"
-              severity: "high"
-              status: "open"
-              created_at: "2026-07-04T09:00:00Z"
-            - ticket_id: "TKT-110"
-              subject: "Login gateway 500 urgent"
-              severity: "urgent"
-              status: "open"
-              created_at: "2026-07-05T08:00:00Z"
-        context:
-          product: "api-gateway"
-          team: "platform"
-        escalation_policy:
-          cluster_min_tickets: 3
-          severity_trend_min_delta: 2
-          stale_after_hours: 48
-          confidence_threshold: 0.6
+        thread:
+          customer: "Acme Corp"
+          turns:
+            - author: "customer"
+              text: "This is unacceptable, I am very frustrated and disappointed with your service. It's been broken for days."
+              timestamp: "2026-07-09T09:00:00Z"
+            - author: "agent"
+              text: "Let me look into this for you."
+              timestamp: "2026-07-09T15:00:00Z"
+            - author: "customer"
+              text: "Six hours for a first response is ridiculous. I want to cancel my account and switch to a competitor."
+              timestamp: "2026-07-09T15:30:00Z"
+        sla_policy:
+          response_time_minutes: 60
+          resolution_hours: 24
       expect:
         status: sealed
         receipt:
@@ -51,17 +35,37 @@ harness:
           disposition: closed
           reason_code: process_closed
 
-    - name: stop_empty_queue
+    - name: refused_no_escalation_healthy_thread
       runner: default
       inputs:
-        queue:
-          snapshot_at: "2026-07-05T10:00:00Z"
-          tickets: []
-        escalation_policy:
-          cluster_min_tickets: 3
-          severity_trend_min_delta: 2
-          stale_after_hours: 48
-          confidence_threshold: 0.6
+        thread:
+          customer: "Globex Inc"
+          turns:
+            - author: "customer"
+              text: "Thanks for the quick response, the issue is resolved now. Great work!"
+              timestamp: "2026-07-09T09:00:00Z"
+            - author: "agent"
+              text: "Happy to help! Let us know if anything else comes up."
+              timestamp: "2026-07-09T09:20:00Z"
+        sla_policy:
+          response_time_minutes: 60
+          resolution_hours: 24
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: stop_missing_required_inputs
+      runner: default
+      inputs:
+        thread:
+          customer: "Initech"
+          turns: []
+        sla_policy:
+          response_time_minutes: 60
       expect:
         status: failure
         receipt:
@@ -77,19 +81,19 @@ runners:
     command: node
     args:
       - run.mjs
-    outputs:
-      queue_summary: object
-      escalations: array
     inputs:
-      queue:
+      thread:
         type: json
         required: true
-        description: Support queue snapshot with snapshot_at and a tickets array.
-      context:
+        description: Support thread with customer (string) and turns (array of {author, text, timestamp}).
+      sla_policy:
         type: json
-        required: false
-        description: Optional context (product, team) to label the escalation recommendation.
-      escalation_policy:
-        type: json
-        required: false
-        description: Policy tuning cluster size, severity trend, staleness, and confidence thresholds.
+        required: true
+        description: SLA policy with response_time_minutes (number) and optional resolution_hours (number).
+    outputs:
+      signals:
+        type: object
+        description: Detected signals — sentiment, sla_breach, churn_risk.
+      escalation:
+        type: object
+        description: Escalation decision — needed, priority, context.

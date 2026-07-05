@@ -51,17 +51,18 @@ send alerts, trigger webhooks, or create tasks in external systems.
 
 ## Procedure
 
-1. Require `thread` to contain `turns` (array of `{author, text, timestamp}`)
-   and `customer` (string). Require `sla_policy` to contain
-   `first_response_hours` (number) and `resolution_hours` (number). If any
-   required field is missing or invalid, stop.
-2. For each turn, detect sentiment using keyword analysis: negative words
-   (angry, frustrated, disappointed, terrible, unacceptable, broken, useless,
-   cancel, refund, switch, leave, competitor) escalate sentiment; positive
-   words (great, happy, thanks, excellent, resolved, working) improve it.
+1. Require `thread` to contain `customer` (string) and `turns` (array of
+   `{author, text, timestamp}`). Require `sla_policy` to contain
+   `response_time_minutes` (number) and optionally `resolution_hours`
+   (number). If any required field is missing or invalid, stop.
+2. For each customer turn, detect sentiment using keyword analysis: negative
+   words (angry, frustrated, disappointed, terrible, unacceptable, broken,
+   useless, cancel, refund, switch, leave, competitor, ridiculous) escalate
+   sentiment; positive words (great, happy, thanks, excellent, resolved,
+   working) improve it.
 3. Detect SLA breach: compare the time between the first customer turn and the
-   first agent response against `first_response_hours`, and the total thread
-   duration against `resolution_hours`.
+   first agent response against `response_time_minutes`, and (if provided) the
+   total thread duration against `resolution_hours`.
 4. Detect churn risk: cancellation language ("cancel", "close my account",
    "switch to", "leave"), competitor mentions, or repeated unresolved
    complaints elevate churn risk.
@@ -70,7 +71,7 @@ send alerts, trigger webhooks, or create tasks in external systems.
    `high` when multiple signals fire, `medium` for a single strong signal,
    `low` for borderline cases.
 6. Emit the `signals` and `escalation` objects. If no escalation is warranted,
-   emit `escalation.needed: false` with no priority.
+   emit `escalation.needed: false` with `priority: null`.
 
 ## Edge cases and stop conditions
 
@@ -78,9 +79,8 @@ Return a stop (exit non-zero) when:
 
 - `thread.turns` is empty, missing, or not an array.
 - `thread.customer` is missing or not a string.
-- `sla_policy.first_response_hours` or `sla_policy.resolution_hours` is missing
-  or not a number.
-- The thread has no agent responses at all (cannot assess SLA).
+- `sla_policy.response_time_minutes` is missing or not a number.
+- The thread has no customer turns at all (cannot assess sentiment or churn).
 
 The authority scope is signal detection, sentiment analysis, SLA clock
 comparison, and escalation payload preparation only. The proof surface is the
@@ -96,12 +96,12 @@ ticket reassignment, or customer notification requires a separate receipt.
   "signals": {
     "sentiment": "very_negative",
     "sla_breach": true,
-    "churn_risk": "high"
+    "churn_risk": "medium"
   },
   "escalation": {
     "needed": true,
     "priority": "high",
-    "context": "Customer is very negative, SLA breached (first response 6h vs 1h policy), high churn risk (cancellation language detected)."
+    "context": "customer sentiment is very_negative; SLA breached (first response 360m vs 60m policy); medium churn risk (churn language detected)."
   }
 }
 ```
@@ -128,17 +128,17 @@ ticket reassignment, or customer notification requires a separate receipt.
 ```bash
 runx skill "$PWD" \
   --input-json thread='{"customer":"Acme Corp","turns":[{"author":"customer","text":"This is unacceptable, I want to cancel my account.","timestamp":"2026-07-09T09:00:00Z"},{"author":"agent","text":"Let me help you with that.","timestamp":"2026-07-09T15:00:00Z"}]}' \
-  --input-json sla_policy='{"first_response_hours":1,"resolution_hours":24}' \
+  --input-json sla_policy='{"response_time_minutes":60,"resolution_hours":24}' \
   --json
 ```
 
 Expected result: `signals.sentiment = very_negative`, `signals.sla_breach = true`,
-`signals.churn_risk = high`, `escalation.needed = true`,
+`signals.churn_risk = medium`, `escalation.needed = true`,
 `escalation.priority = high`.
 
 ## Inputs
 
 - `thread`: object with `customer` (string), `turns` (array of
   `{author: string, text: string, timestamp: ISO 8601 string}`).
-- `sla_policy`: object with `first_response_hours` (number) and
+- `sla_policy`: object with `response_time_minutes` (number) and optional
   `resolution_hours` (number).
