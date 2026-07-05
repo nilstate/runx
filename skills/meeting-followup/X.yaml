@@ -1,0 +1,65 @@
+skill: meeting-followup
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_action_items_extracted
+      runner: default
+      inputs:
+        meeting:
+          meeting_date: "2026-07-09"
+          notes: |
+            Weekly product sync.
+            Alice will send the updated roadmap draft to the team by Friday. It is urgent.
+            Bob to own scheduling a design review for the onboarding flow.
+            Carol will follow up with legal on the privacy policy by next Monday.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: stop_no_action_items
+      runner: default
+      inputs:
+        meeting:
+          meeting_date: "2026-07-09"
+          notes: |
+            We had a nice chat about the weather and the weekend plans.
+            Everyone agreed the pizza on Friday was good.
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      summary: string
+      action_item_count: number
+      action_items: array
+    inputs:
+      meeting:
+        type: json
+        required: true
+        description: Meeting object with notes (string) and meeting_date (ISO 8601 date).
+      priority_policy:
+        type: json
+        required: false
+        description: Optional policy defining urgent/defer signals and the near-deadline window.
