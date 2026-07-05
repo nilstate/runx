@@ -1,0 +1,84 @@
+skill: support-desk
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_urgent_escalation
+      runner: default
+      inputs:
+        ticket:
+          content: "Production is down! We have a critical outage affecting all users right now. This is a Sev1."
+          submitted_by: "mailto:ops@example.com"
+          submitted_at: "2026-07-01T10:00:00Z"
+        context:
+          product: "api-gateway"
+          tier: "enterprise"
+        triage_policy:
+          urgent_signals:
+            - "production down"
+            - "outage"
+            - "critical"
+            - "sev1"
+            - "sev-1"
+          confidence_threshold: 0.75
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: stop_ambiguous_or_regulated
+      runner: default
+      inputs:
+        ticket:
+          content: "Hmm, I was wondering if maybe someone could look into something when they get a chance, not sure if it matters."
+          submitted_by: "mailto:bob@example.com"
+          submitted_at: "2026-07-01T11:00:00Z"
+        triage_policy:
+          urgent_signals:
+            - "production down"
+            - "outage"
+            - "critical"
+            - "sev1"
+            - "sev-1"
+          confidence_threshold: 0.75
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      classification: object
+      escalation: object
+      routing: object
+    inputs:
+      ticket:
+        type: json
+        required: true
+        description: Inbound support ticket with content, submitter, and timestamp.
+      context:
+        type: json
+        required: false
+        description: Optional context (product, tier, account_id) to refine the handling lane.
+      triage_policy:
+        type: json
+        required: false
+        description: Policy defining urgent signals and confidence threshold.
