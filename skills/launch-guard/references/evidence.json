@@ -88,6 +88,28 @@
     "command": "runx skill zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai -R /tmp/runx-launch-guard-published-dogfood --input-json release_candidate=<json> --input-json launch_policy=<json> --json",
     "receipt_ref": "runx:receipt:sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8",
     "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "passing-release-candidate-yields-go-proposal",
+        "status": "sealed",
+        "decision": "go",
+        "receipt_id": "sha256:708586ef5fc98e366f8ae3854eb7917fc0437d8bc5384f4cf66afa165bd1c167"
+      },
+      {
+        "name": "failing-required-check-yields-no-go",
+        "status": "refused",
+        "decision": "no_go",
+        "receipt_id": "sha256:dd58c1831bd3c5cdfd7f95de6025202078b0b1bbf3aa14bd41212bad49fe9839",
+        "note": "The runner sealed a no_go decision with blockers and no release_proposal."
+      },
+      {
+        "name": "missing-release-candidate-fails-closed",
+        "status": "failure",
+        "decision": null,
+        "receipt_id": "sha256:b1b0507740cc4d89d7f62d9806d8095cd08f45dec0d3a384b02e4f3cf1994aa3",
+        "note": "Registry-required stop/error harness case."
+      }
+    ],
     "input": {
       "release_candidate_fixture": "fixtures/go-release.json",
       "launch_policy": {

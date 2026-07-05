@@ -19,9 +19,9 @@ The skill does not deploy, tag, publish, or announce a release. Proposal flags a
 - Local harness: `runx harness ./skills/launch-guard`
 - Harness result: 3 cases passed, 0 assertion errors
 - Harness cases:
-  - `passing-release-candidate-yields-go-proposal`
-  - `failing-required-check-yields-no-go`
-  - `missing-release-candidate-fails-closed`
+  - `passing-release-candidate-yields-go-proposal`: sealed, `decision="go"`
+  - `failing-required-check-yields-no-go`: refused/no_go, no `release_proposal`
+  - `missing-release-candidate-fails-closed`: failure stop case
 - Registry read: `references/published-verification.json`
 - Clean install: `references/install.json`
 - Published dogfood run: `references/published-dogfood.json`
