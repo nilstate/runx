@@ -1,0 +1,3 @@
+lockfile: "this is not a lockfile"
+lockfile_type: "invalid-format-xyz"
+operator_context: Malformed lockfile with unsupported format must produce a deterministic refusal.

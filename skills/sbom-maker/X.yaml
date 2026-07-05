@@ -1,0 +1,161 @@
+skill: sbom-maker
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  idempotency:
+    key: lockfile_sha256_plus_type
+  scopes:
+    - dependencies.read
+    - sbom.compose
+  policy:
+    data_classification: public_dependency_metadata
+    network:
+      allowed: []
+      forbidden:
+        - any registry lookup
+        - package installation
+        - source code execution
+    verifier_notes:
+      - Every component is grounded in the supplied lockfile and includes name, version, and evidence location where available.
+      - The skill performs no network registry lookup and no mutation.
+      - When the lockfile is unsupported or malformed, the skill refuses without emitting an SBOM.
+
+harness:
+  cases:
+    - name: sbom-maker-package-lock-json-sealed
+      runner: dogfood
+      inputs:
+        lockfile: |
+          {
+            "name": "demo-app",
+            "version": "1.0.0",
+            "lockfileVersion": 3,
+            "requires": true,
+            "packages": {
+              "": {
+                "name": "demo-app",
+                "version": "1.0.0",
+                "license": "MIT",
+                "dependencies": {
+                  "lodash": "4.17.21",
+                  "left-pad": "1.3.0",
+                  "request": "2.88.2"
+                }
+              },
+              "node_modules/lodash": {
+                "version": "4.17.21",
+                "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",
+                "integrity": "sha512-..."
+              },
+              "node_modules/left-pad": {
+                "version": "1.3.0",
+                "resolved": "https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz",
+                "integrity": "sha512-..."
+              },
+              "node_modules/request": {
+                "version": "2.88.2",
+                "resolved": "https://registry.npmjs.org/request/-/request-2.88.2.tgz",
+                "integrity": "sha512-..."
+              }
+            }
+          }
+        lockfile_type: package-lock.json
+        operator_context: Sealed dogfood run for sbom-maker; lockfile is supplied inline and no network call is performed.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: sbom-maker-unsupported-format-refused
+      runner: dogfood
+      inputs:
+        lockfile: "this is not a lockfile"
+        lockfile_type: "invalid-format-xyz"
+        operator_context: Malformed lockfile with unsupported format must produce a deterministic refusal.
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - dependencies.read
+      - sbom.compose
+    policy:
+      reads:
+        - supported lockfile formats supplied inline as text
+    outputs:
+      sbom: object
+      components: array
+      license_summary: object
+      license_risks: array
+      refusal: object
+    artifacts:
+      emits:
+        - sbom
+        - components
+        - license_summary
+        - license_risks
+      wrap_as: sbom_packet
+    inputs:
+      lockfile:
+        type: string
+        required: true
+        description: Lockfile text supplied inline (no path lookup, no network fetch).
+      lockfile_type:
+        type: string
+        required: true
+        description: Lockfile format identifier (one of package-lock.json, Cargo.lock, requirements.txt, go.sum, Gemfile.lock, pnpm-lock.yaml, yarn.lock, composer.lock).
+
+  dogfood:
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - dependencies.read
+      - sbom.compose
+    policy:
+      reads:
+        - supported lockfile formats supplied inline as text
+    outputs:
+      sbom: object
+      components: array
+      license_summary: object
+      license_risks: array
+      refusal: object
+    artifacts:
+      emits:
+        - sbom
+        - components
+        - license_summary
+        - license_risks
+      wrap_as: sbom_packet
+    inputs:
+      lockfile:
+        type: string
+        required: true
+        description: Lockfile text supplied inline (no path lookup, no network fetch).
+      lockfile_type:
+        type: string
+        required: true
+        description: Lockfile format identifier (one of package-lock.json, Cargo.lock, requirements.txt, go.sum, Gemfile.lock, pnpm-lock.yaml, yarn.lock, composer.lock).
