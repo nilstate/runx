@@ -1,0 +1,40 @@
+name: breaking-change-refused-without-proposal
+inputs:
+  current_schema:
+    schema_id: customer-profile
+    version: "1.1.0"
+    fields:
+      id:
+        type: string
+        required: true
+      email:
+        type: string
+        required: true
+      role:
+        type: string
+        required: false
+  proposed_schema:
+    schema_id: customer-profile
+    version: "1.2.0"
+    fields:
+      id:
+        type: string
+        required: true
+      role:
+        type: number
+        required: true
+  sample_payloads:
+    - id: legacy-customer
+      payload:
+        id: cus_789
+        email: legacy@example.com
+        role: admin
+  compatibility_policy:
+    breaking_allowed: false
+    required_fields:
+      - id
+      - email
+    versioning_rule: breaking changes require a major version and explicit approval
+expect:
+  decision: refused
+  publish_schema_proposal: absent

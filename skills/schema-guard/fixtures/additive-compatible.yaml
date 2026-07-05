@@ -1,0 +1,52 @@
+name: additive-compatible-proposes-publication
+inputs:
+  current_schema:
+    schema_id: customer-profile
+    version: "1.0.0"
+    fields:
+      id:
+        type: string
+        required: true
+      email:
+        type: string
+        required: true
+      display_name:
+        type: string
+        required: false
+  proposed_schema:
+    schema_id: customer-profile
+    version: "1.1.0"
+    fields:
+      id:
+        type: string
+        required: true
+      email:
+        type: string
+        required: true
+      display_name:
+        type: string
+        required: false
+      timezone:
+        type: string
+        required: false
+  sample_payloads:
+    - id: active-customer
+      payload:
+        id: cus_123
+        email: user@example.com
+        display_name: Ada
+        timezone: UTC
+    - id: existing-customer
+      payload:
+        id: cus_456
+        email: second@example.com
+        display_name: Lin
+  compatibility_policy:
+    breaking_allowed: false
+    required_fields:
+      - id
+      - email
+    versioning_rule: additive changes must use a minor version bump
+expect:
+  decision: proposal_ready
+  publish_schema_proposal: present

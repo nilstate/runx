@@ -1,0 +1,172 @@
+skill: schema-guard
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  idempotency:
+    key: schema_guard_inputs_sha256
+  scopes:
+    - schema.read
+    - schema.review
+  policy:
+    reads:
+      - bounded schema contracts supplied by the caller
+      - bounded sample payloads supplied by the caller
+    writes:
+      - none
+    disallows:
+      - live schema publication
+      - remote schema mutation
+      - invented sample coverage
+  artifacts:
+    emits:
+      - compatibility
+      - validation_results
+      - migration_notes
+      - publish_schema_proposal
+    wrap_as: schema_guard_packet
+    packet: runx.schema.guard.v1
+
+harness:
+  cases:
+    - name: additive-compatible-proposes-publication
+      runner: guard
+      inputs:
+        current_schema:
+          schema_id: customer-profile
+          version: "1.0.0"
+          fields:
+            id:
+              type: string
+              required: true
+            email:
+              type: string
+              required: true
+            display_name:
+              type: string
+              required: false
+        proposed_schema:
+          schema_id: customer-profile
+          version: "1.1.0"
+          fields:
+            id:
+              type: string
+              required: true
+            email:
+              type: string
+              required: true
+            display_name:
+              type: string
+              required: false
+            timezone:
+              type: string
+              required: false
+        sample_payloads:
+          - id: active-customer
+            payload:
+              id: cus_123
+              email: user@example.com
+              display_name: Ada
+              timezone: UTC
+          - id: existing-customer
+            payload:
+              id: cus_456
+              email: second@example.com
+              display_name: Lin
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - id
+            - email
+          versioning_rule: additive changes must use a minor version bump
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: breaking-change-refused-without-proposal
+      runner: guard
+      inputs:
+        current_schema:
+          schema_id: customer-profile
+          version: "1.1.0"
+          fields:
+            id:
+              type: string
+              required: true
+            email:
+              type: string
+              required: true
+            role:
+              type: string
+              required: false
+        proposed_schema:
+          schema_id: customer-profile
+          version: "1.2.0"
+          fields:
+            id:
+              type: string
+              required: true
+            role:
+              type: number
+              required: true
+        sample_payloads:
+          - id: legacy-customer
+            payload:
+              id: cus_789
+              email: legacy@example.com
+              role: admin
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - id
+            - email
+          versioning_rule: breaking changes require a major version and explicit approval
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+runners:
+  guard:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      compatibility: object
+      validation_results: array
+      migration_notes: array
+      publish_schema_proposal: object
+    artifacts:
+      wrap_as: schema_guard_packet
+      packet: runx.schema.guard.v1
+    inputs:
+      current_schema:
+        type: json
+        required: true
+        description: Current schema contract, either fields-map form or minimal JSON Schema object form.
+      proposed_schema:
+        type: json
+        required: true
+        description: Proposed schema contract, either fields-map form or minimal JSON Schema object form.
+      sample_payloads:
+        type: json
+        required: true
+        description: Bounded sample payloads used to validate the proposed schema.
+      compatibility_policy:
+        type: json
+        required: true
+        description: Compatibility policy with breaking_allowed, required_fields, and versioning_rule.

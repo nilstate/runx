@@ -1,0 +1,128 @@
+{
+  "schema": "runx.schema_guard.evidence.v1",
+  "bounty": {
+    "id": 84,
+    "url": "https://gofrantic.com/bounties/84",
+    "title": "runx skill: schema guard",
+    "reward": {
+      "amount_usd": 9,
+      "rail": "x402",
+      "claim_status": "requires_identity_before_claim"
+    }
+  },
+  "package": {
+    "name": "schema-guard",
+    "version": "0.1.0",
+    "publisher_owner": "Difficult-Burger",
+    "registry_ref_intended": "Difficult-Burger/schema-guard@0.1.0",
+    "source_url": "https://github.com/Difficult-Burger/runx/tree/bounty/schema-guard-84/skills/schema-guard",
+    "pr_url": "pending: update after GitHub PR is created",
+    "public_url": "pending: remote registry publish requires runx login or RUNX_PUBLIC_API_TOKEN"
+  },
+  "raw_files": [
+    {
+      "path": "skills/schema-guard/SKILL.md",
+      "sha256": "59f2dafb0e4f8b8d39639fdc42284d54401a5d5f9a468a1da4a7fbc195297f2a",
+      "included_in_pr": true
+    },
+    {
+      "path": "skills/schema-guard/X.yaml",
+      "sha256": "8102beecaa274ed3b32a56bdf4df7127fcbb1dfbff3609e1ee88fc8688b7204b",
+      "included_in_pr": true
+    },
+    {
+      "path": "skills/schema-guard/run.mjs",
+      "sha256": "47936020de1d2f2bce8c1c4904826db438bd2b8221feef66fde08594e898499a",
+      "included_in_pr": true
+    }
+  ],
+  "local_environment": {
+    "conda_env": "bounty-frantic-schema-guard-84",
+    "node": "/Users/a30706/miniconda3/envs/bounty-frantic-schema-guard-84/bin/node",
+    "node_version": "v22.23.1",
+    "runx_cli_source": "/Users/a30706/Desktop/research/dollar-hunt/env-tools/bounty-frantic-schema-guard-84/node_modules/.bin/runx",
+    "runx_cli_version": "runx-cli 0.6.16"
+  },
+  "harness": {
+    "command": "runx harness /Users/a30706/Desktop/research/dollar-hunt/repos/runx-schema-guard-84/skills/schema-guard --json",
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "additive-compatible-proposes-publication",
+      "breaking-change-refused-without-proposal"
+    ],
+    "receipt_refs": [
+      "sha256:6277b652f75966c314973d4b57628d37b0fcb821c2d89e006525f06b4abb74ad",
+      "sha256:30f394154915f2338bfbd736d456bd12c167dc650166c42e207877e6a12c63b1"
+    ],
+    "assertion_error_count": 0
+  },
+  "verification": {
+    "mode": "local-development-signatures",
+    "commands": [
+      "runx verify sha256:6277b652f75966c314973d4b57628d37b0fcb821c2d89e006525f06b4abb74ad --allow-local-development-signatures --json",
+      "runx verify sha256:30f394154915f2338bfbd736d456bd12c167dc650166c42e207877e6a12c63b1 --allow-local-development-signatures --json",
+      "runx verify sha256:d542e647c611a7f9f8eb7038f93222d121ea570c433e2b2a8e6ce928e36f31e4 --allow-local-development-signatures --json"
+    ],
+    "verdict": "valid",
+    "findings": []
+  },
+  "dogfood": {
+    "command": "runx skill ./skills/schema-guard guard --input-json current_schema=... --input-json proposed_schema=... --input-json sample_payloads=... --input-json compatibility_policy=... --json",
+    "status": "sealed",
+    "receipt_ref": "sha256:d542e647c611a7f9f8eb7038f93222d121ea570c433e2b2a8e6ce928e36f31e4",
+    "decision": "proposal_ready",
+    "publish_schema_proposal_present": true
+  },
+  "fixture_output_checks": {
+    "additive-compatible": {
+      "decision": "proposal_ready",
+      "compatible": true,
+      "publish_schema_proposal_present": true,
+      "sample_results": [
+        {
+          "sample_id": "active-customer",
+          "valid": true
+        },
+        {
+          "sample_id": "existing-customer",
+          "valid": true
+        }
+      ]
+    },
+    "breaking-refused": {
+      "decision": "refused",
+      "compatible": false,
+      "publish_schema_proposal_present": false,
+      "breaking_codes": [
+        "field_removed",
+        "type_changed",
+        "field_became_required",
+        "policy_required_field_missing"
+      ],
+      "sample_results": [
+        {
+          "sample_id": "legacy-customer",
+          "valid": false,
+          "errors": [
+            "type_mismatch"
+          ]
+        }
+      ]
+    }
+  },
+  "publish": {
+    "method_required_by_bounty": "runx login --provider github --for publish; runx registry publish ./skills/schema-guard/SKILL.md --registry https://api.runx.ai",
+    "local_publish_command": "runx registry publish ./skills/schema-guard/SKILL.md --registry https://api.runx.ai --json",
+    "status": "blocked_before_remote_upload",
+    "blocked_reason": "remote registry publish requires `runx login` or RUNX_PUBLIC_API_TOKEN",
+    "login_attempt": "runx login --provider github --for publish --json was attempted and produced no URL/device code within 60 seconds, then was interrupted",
+    "hosted_harness_status": "not_run_without_publish_token",
+    "install_command_after_publish": "runx registry install Difficult-Burger/schema-guard@0.1.0 --registry https://api.runx.ai --json"
+  },
+  "how_to_verify": [
+    "runx skill inspect ./skills/schema-guard --json",
+    "runx harness ./skills/schema-guard --json",
+    "runx skill ./skills/schema-guard guard --input-json current_schema='...' --input-json proposed_schema='...' --input-json sample_payloads='...' --input-json compatibility_policy='...' --json"
+  ]
+}
