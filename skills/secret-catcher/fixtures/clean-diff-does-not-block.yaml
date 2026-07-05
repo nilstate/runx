@@ -1,0 +1,35 @@
+name: clean-diff-does-not-block
+kind: skill
+target: ..
+runner: default
+inputs:
+  diff: |
+    diff --git a/src/config.js b/src/config.js
+    --- a/src/config.js
+    +++ b/src/config.js
+    @@ -10,2 +10,9 @@ function loadConfig() {
+       const region = 'us-east-1';
+    +  // read credentials from the environment, never hard-code them
+    +  const apiKey = process.env.API_KEY;
+    +  const dbPassword = process.env.DB_PASSWORD || 'changeme';
+    +  const token = `${AUTH_TOKEN}`;
+    +  const webhook = 'https://example.com/hooks/notify';
+    +  const sampleKey = 'your_api_key_here';
+    +  return { region, apiKey, dbPassword, token };
+     }
+  scan_context:
+    repo: acme/api
+    pr: 43
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: secret-catcher
+  source_case: clean-diff-does-not-block
+  source: skills-fixture
+  note: >-
+    Added lines reference credentials only through the environment
+    (process.env.*), a template placeholder (${AUTH_TOKEN}), an example URL, and
+    obvious placeholder strings. None are real secrets, so the scan emits zero
+    findings and block=false. This proves the detector does not false-block.

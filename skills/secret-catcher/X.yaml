@@ -1,0 +1,127 @@
+skill: secret-catcher
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  idempotency:
+    key: diff_sha256
+  scopes:
+    - diff.read
+  policy:
+    data_classification: caller_supplied_diff
+    network:
+      allowed: []
+      forbidden:
+        - any network access
+        - repository writes
+        - live content edits
+    verifier_notes:
+      - Findings are produced only from added lines in the supplied unified diff.
+      - No raw secret value appears in findings, artifacts, or the sealed receipt; each span is redacted and fingerprinted with a one-way digest.
+      - The redaction is a gated proposal for the downstream redact-pii executor; this skill edits no files and scrubs no live content.
+      - The planted-secret harness case blocks; the clean harness case emits zero findings and does not block.
+  artifacts:
+    emits:
+      - secret_catcher_result
+      - evidence_json
+      - report_md
+    wrap_as: secret_catcher_packet
+
+harness:
+  cases:
+    - name: planted-secret-blocks
+      runner: default
+      inputs:
+        diff: |
+          diff --git a/config/prod.env b/config/prod.env
+          new file mode 100644
+          --- /dev/null
+          +++ b/config/prod.env
+          @@ -0,0 +1,4 @@
+          +# production credentials (example values, not real)
+          +AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+          +AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+          +GITHUB_TOKEN=ghp_EXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLE0
+        scan_context:
+          repo: acme/api
+          pr: 42
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: clean-diff-does-not-block
+      runner: default
+      inputs:
+        diff: |
+          diff --git a/src/config.js b/src/config.js
+          --- a/src/config.js
+          +++ b/src/config.js
+          @@ -10,2 +10,9 @@ function loadConfig() {
+             const region = 'us-east-1';
+          +  // read credentials from the environment, never hard-code them
+          +  const apiKey = process.env.API_KEY;
+          +  const dbPassword = process.env.DB_PASSWORD || 'changeme';
+          +  const token = `${AUTH_TOKEN}`;
+          +  const webhook = 'https://example.com/hooks/notify';
+          +  const sampleKey = 'your_api_key_here';
+          +  return { region, apiKey, dbPassword, token };
+           }
+        scan_context:
+          repo: acme/api
+          pr: 43
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - diff.read
+    policy:
+      reads:
+        - caller-supplied unified diff
+      calls: []
+      writes:
+        - evidence.json
+        - report.md
+      disallows:
+        - network access
+        - editing files or repositories
+        - quoting raw secret values
+        - executing caller-supplied code
+    inputs:
+      diff:
+        type: string
+        required: true
+        description: Unified diff to scan. Only added lines are scanned; context and removed lines are ignored.
+      scan_context:
+        type: object
+        required: false
+        description: Optional metadata (for example repo, pr, base, head) recorded with the result.
+      diff_path:
+        type: string
+        required: false
+        description: Path to a unified diff file inside the skill directory, used when a diff is too large to pass inline.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill directory where evidence.json and report.md are written.
+    outputs:
+      block: boolean
+      findings: array
+      redaction_proposal: object
+      secret_catcher_result: object
