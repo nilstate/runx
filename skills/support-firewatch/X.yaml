@@ -1,0 +1,91 @@
+skill: support-firewatch
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: enterprise-overdue-escalates
+      runner: firewatch
+      inputs:
+        thread:
+          source: fixture:enterprise-overdue
+          customer_tier: enterprise
+          current_time: "2026-07-05T20:00:00Z"
+          subject: Production export is still blocked
+          messages:
+            - role: customer
+              author: Mira
+              created_at: "2026-07-04T12:30:00Z"
+              body: We have had no response for a day. The export is still broken and this is blocking renewal.
+            - role: customer
+              author: Mira
+              created_at: "2026-07-05T07:10:00Z"
+              body: This is unacceptable. If we cannot get an answer today we need to cancel and request a refund.
+        sla_policy:
+          policy_name: standard-support-sla
+          response_hours: 24
+          vip_response_hours: 12
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: healthy-thread-no-escalation
+      runner: firewatch
+      inputs:
+        thread:
+          source: fixture:healthy-thread
+          customer_tier: starter
+          current_time: "2026-07-05T20:00:00Z"
+          subject: Question about CSV import
+          messages:
+            - role: customer
+              author: Theo
+              created_at: "2026-07-05T18:45:00Z"
+              body: Thanks for the quick help earlier. I have one follow-up question about mapping CSV columns.
+            - role: agent
+              author: Support
+              created_at: "2026-07-05T19:05:00Z"
+              body: Happy to help. The column mapper is under Settings, and we can review a sample file if needed.
+        sla_policy:
+          policy_name: standard-support-sla
+          response_hours: 24
+          vip_response_hours: 12
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+runners:
+  firewatch:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      signals: object
+      escalation: object
+      evidence: object
+    artifacts:
+      wrap_as: support_firewatch_packet
+      packet: runx.support.firewatch.v1
+    inputs:
+      thread:
+        type: json
+        required: true
+        description: Bounded support thread with messages, timestamps, and optional customer context.
+      sla_policy:
+        type: json
+        required: true
+        description: SLA thresholds and escalation policy for the support queue.

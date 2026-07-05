@@ -1,0 +1,25 @@
+{
+  "runx_version": "runx-cli 0.6.16",
+  "command": "runx harness skills/support-firewatch --json",
+  "signing_profile": "local demo receipt signer",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "graph_case_count": 0,
+  "cases": [
+    {
+      "fixture": "enterprise-overdue-escalates",
+      "status": "sealed",
+      "disposition": "closed",
+      "reason_code": "process_closed",
+      "receipt_id": "sha256:8b2dbd7c3dfe4a68d2ba0d52e294e61072e13cb52c0cc1793b26d8f3e1b64d9c"
+    },
+    {
+      "fixture": "healthy-thread-no-escalation",
+      "status": "sealed",
+      "disposition": "closed",
+      "reason_code": "process_closed",
+      "receipt_id": "sha256:a8f95ffef81896106ffd2c658429fd8e2a4094086ec0bc69ba8a35b2650cd598"
+    }
+  ]
+}
