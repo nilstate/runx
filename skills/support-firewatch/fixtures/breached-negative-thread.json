@@ -1,0 +1,30 @@
+{
+  "thread": [
+    {
+      "id": "turn-1",
+      "role": "customer",
+      "author": "Maya",
+      "timestamp": "2026-07-05T09:00:00Z",
+      "body": "This outage is still broken and nobody has replied. We are going to cancel if this is ignored."
+    },
+    {
+      "id": "turn-2",
+      "role": "agent",
+      "author": "Support",
+      "timestamp": "2026-07-05T09:10:00Z",
+      "body": "We are looking into it."
+    },
+    {
+      "id": "turn-3",
+      "role": "customer",
+      "author": "Maya",
+      "timestamp": "2026-07-05T10:00:00Z",
+      "body": "This is unacceptable. I need an update now or I will ask for a refund."
+    }
+  ],
+  "sla_policy": {
+    "now": "2026-07-05T11:10:00Z",
+    "first_response_minutes": 30,
+    "next_response_minutes": 45
+  }
+}

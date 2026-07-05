@@ -1,0 +1,16 @@
+{
+  "runx_version": "runx-cli 0.6.16",
+  "command": "npx -y @runxhq/cli harness -R /tmp/runx-support-firewatch-receipts-linux ./skills/support-firewatch -j",
+  "environment_note": "Run from WSL with a temporary Linux Node 20.11.1 runtime to avoid the Windows receipt-store access issue.",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "case_names": [
+    "breached-negative-thread-escalates",
+    "healthy-thread-no-escalation"
+  ],
+  "receipt_ids": [
+    "sha256:ac483df858f8c1cf45ba36bf72908eb19d2c4fbe476eb3f104be6854491ded4b",
+    "sha256:1313d7665c09784300938e8fdef703b425cf5eb99a12fadaa0fdb3635b8bfaf0"
+  ]
+}

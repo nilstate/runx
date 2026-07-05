@@ -1,0 +1,23 @@
+{
+  "thread": [
+    {
+      "id": "turn-1",
+      "role": "customer",
+      "author": "Owen",
+      "timestamp": "2026-07-05T10:00:00Z",
+      "body": "Thanks for the setup guide. The domain verification looks good now."
+    },
+    {
+      "id": "turn-2",
+      "role": "agent",
+      "author": "Support",
+      "timestamp": "2026-07-05T10:08:00Z",
+      "body": "Great, glad it worked. Let us know if anything else comes up."
+    }
+  ],
+  "sla_policy": {
+    "now": "2026-07-05T10:15:00Z",
+    "first_response_minutes": 30,
+    "next_response_minutes": 45
+  }
+}
