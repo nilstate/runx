@@ -1,0 +1,82 @@
+{
+  "summary": "Verification packet for Frantic #86 contract-drafter runx skill.",
+  "status": "pass_with_local_windows_receipt_store_note",
+  "claim_id": "149ee9a2-4722-4482-a713-cdb1d0075a77",
+  "bounty": 86,
+  "package": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+  "checks": [
+    {
+      "name": "runx_cli_version",
+      "status": "pass",
+      "evidence": "runx-cli 0.6.14"
+    },
+    {
+      "name": "registry_publish",
+      "status": "pass",
+      "evidence": "Published to https://api.runx.ai as iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+    },
+    {
+      "name": "hosted_harness",
+      "status": "pass",
+      "evidence": "Hosted harness passed 2/2 cases with zero assertion errors."
+    },
+    {
+      "name": "registry_read",
+      "status": "pass",
+      "evidence": "runx registry read iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --json resolved metadata, digests, publisher, and runner."
+    },
+    {
+      "name": "clean_install",
+      "status": "pass",
+      "evidence": "runx add iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --json installed into a clean directory."
+    },
+    {
+      "name": "direct_dogfood",
+      "status": "pass",
+      "evidence": "Direct runner dogfood emitted draft_doc, three deviations, and gated send_proposal without sending."
+    },
+    {
+      "name": "post_publish_hosted_dogfood",
+      "status": "pending",
+      "evidence": "Hosted run hr_604de59ab3ae48f7a43cc43c2c5b1263 accepted by /v1/skills/iwannabefree00/contract-drafter/run and remained pending at packet time."
+    },
+    {
+      "name": "local_receipt_store",
+      "status": "blocked_by_host_os",
+      "evidence": "Local runx skill and harness reached trusted registry provenance but Windows receipt store writes returned os error 87 even with explicit --receipt-dir."
+    },
+    {
+      "name": "safety_no_send",
+      "status": "pass",
+      "evidence": "send_proposal.status is gated_not_sent and downstream_skill is send-as."
+    },
+    {
+      "name": "no_invention",
+      "status": "pass",
+      "evidence": "The runner refuses missing parties or required terms and uses only supplied template clauses and supplied deal terms."
+    }
+  ],
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "sealed-draft-with-visible-deviations",
+      "refused-missing-required-payment-term"
+    ],
+    "receipt_ids": [
+      "sha256:a7e5aeb8a5c9f359ab89fb398013a626c7ca8bab9fb74569d61161d7203f99d5",
+      "sha256:42c350d43b24475bafedb5a8b0fa4cfedd1f1e3366f9c8716c3eed98ded69d4a"
+    ]
+  },
+  "artifact_refs": {
+    "public_url": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "source_url": "https://github.com/iwannabefree00/runx/tree/frantic-86-contract-drafter/skills/contract-drafter",
+    "pr_url": "https://github.com/runxhq/runx/pull/229",
+    "x_yaml": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/SKILL.md",
+    "evidence_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/evidence.json",
+    "verification_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/action-verification.json",
+    "receipt_ref": "runx:receipt:sha256:a7e5aeb8a5c9f359ab89fb398013a626c7ca8bab9fb74569d61161d7203f99d5",
+    "report": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/report.md"
+  }
+}
