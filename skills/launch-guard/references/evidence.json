@@ -1,12 +1,14 @@
 {
-  "task": "Frantic #81 runx skill: launch guard",
+  "summary": "launch-guard is published as zdfgu113/launch-guard@0.1.0, has a passing three-case harness with an explicit failure stop case, a clean remote install, a sealed published dogfood receipt, valid receipt verification, and a gated release_proposal that performs no deploy, tag, publish, or announce action.",
   "package": {
     "owner": "zdfgu113",
     "name": "launch-guard",
     "version": "0.1.0",
+    "registry": "https://api.runx.ai",
     "public_url": "https://runx.ai/x/zdfgu113/launch-guard@0.1.0",
     "registry_ref": "zdfgu113/launch-guard@0.1.0",
-    "registry": "https://api.runx.ai",
+    "install_command": "runx add zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai",
+    "run_command": "runx skill zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai",
     "digest": "sha256:3f888a37357e85a8add54ea6c7ccd0e30e68ee408368efaa292544c86a180f8f",
     "profile_digest": "sha256:f061aa9d7a492f40f324b2720ba7d26f1f236099d2aa794c270219cb40b1aba3"
   },
@@ -16,51 +18,97 @@
     "skill_path": "skills/launch-guard",
     "pr_url": "https://github.com/runxhq/runx/pull/227"
   },
-  "verification": {
+  "observations": [
+    {
+      "id": "runx_cli_version",
+      "evidence": "Captured exact CLI version output: runx-cli 0.6.14."
+    },
+    {
+      "id": "published_package",
+      "evidence": "Published zdfgu113/launch-guard@0.1.0 to https://api.runx.ai with public URL https://runx.ai/x/zdfgu113/launch-guard@0.1.0."
+    },
+    {
+      "id": "local_harness",
+      "evidence": "Local harness passed 3 cases with zero assertion errors: passing go proposal, failing no-go blockers, and missing-release-candidate failure stop case."
+    },
+    {
+      "id": "clean_install",
+      "evidence": "Clean install succeeded from the hosted registry into /tmp/runx-launch-guard-clean-install with digest sha256:3f888a37357e85a8add54ea6c7ccd0e30e68ee408368efaa292544c86a180f8f."
+    },
+    {
+      "id": "published_dogfood",
+      "evidence": "Published package dogfood returned status sealed and receipt sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8."
+    },
+    {
+      "id": "receipt_verification",
+      "evidence": "runx verify on the published dogfood receipt returned valid=true with digest and content-address checks valid."
+    },
+    {
+      "id": "release_mutation_guard",
+      "evidence": "The release_proposal is gated for the release consumer and explicitly sets deploys, tags, publishes, and announces to false."
+    },
+    {
+      "id": "github_pr",
+      "evidence": "PR https://github.com/runxhq/runx/pull/227 contains skills/launch-guard/X.yaml, SKILL.md, fixtures, runner, and reference evidence files."
+    },
+    {
+      "id": "github_star_check",
+      "evidence": "gh api user/starred/runxhq/runx returned HTTP 204 No Content, confirming the authenticated GitHub account already stars runxhq/runx."
+    }
+  ],
+  "local_verification": {
     "runx_version": "runx-cli 0.6.14",
-    "github_star_check": "gh api user/starred/runxhq/runx returned HTTP 204 No Content",
-    "local_harness": {
-      "command": "runx harness ./skills/launch-guard -R /tmp/runx-launch-guard-receipts-node --json",
-      "status": "passed",
-      "case_count": 3,
-      "assertion_error_count": 0,
-      "case_names": [
-        "passing-release-candidate-yields-go-proposal",
-        "failing-required-check-yields-no-go",
-        "missing-release-candidate-fails-closed"
-      ],
-      "receipt_ids": [
-        "sha256:708586ef5fc98e366f8ae3854eb7917fc0437d8bc5384f4cf66afa165bd1c167",
-        "sha256:dd58c1831bd3c5cdfd7f95de6025202078b0b1bbf3aa14bd41212bad49fe9839",
-        "sha256:b1b0507740cc4d89d7f62d9806d8095cd08f45dec0d3a384b02e4f3cf1994aa3"
-      ]
+    "harness_command": "runx harness ./skills/launch-guard -R /tmp/runx-launch-guard-receipts-node --json",
+    "harness_status": "passed",
+    "harness_case_count": 3,
+    "assertion_error_count": 0,
+    "harness_cases": [
+      "passing-release-candidate-yields-go-proposal",
+      "failing-required-check-yields-no-go",
+      "missing-release-candidate-fails-closed"
+    ],
+    "harness_receipt_ids": [
+      "sha256:708586ef5fc98e366f8ae3854eb7917fc0437d8bc5384f4cf66afa165bd1c167",
+      "sha256:dd58c1831bd3c5cdfd7f95de6025202078b0b1bbf3aa14bd41212bad49fe9839",
+      "sha256:b1b0507740cc4d89d7f62d9806d8095cd08f45dec0d3a384b02e4f3cf1994aa3"
+    ],
+    "local_dogfood_status": "sealed",
+    "local_dogfood_receipt_id": "sha256:06cd729a65337d15e80a92e6c86eca2fce0f5110333b1d0748a9c3060d63c989",
+    "local_receipt_verify_valid": true
+  },
+  "published_verification": {
+    "registry_read_status": "success",
+    "install_status": "installed",
+    "published_dogfood_status": "sealed",
+    "published_dogfood_receipt_id": "sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8",
+    "published_receipt_verify_valid": true
+  },
+  "dogfood": {
+    "package": "zdfgu113/launch-guard@0.1.0",
+    "command": "runx skill zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai -R /tmp/runx-launch-guard-published-dogfood --input-json release_candidate=<json> --input-json launch_policy=<json> --json",
+    "receipt_ref": "runx:receipt:sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8",
+    "verify_verdict": "valid",
+    "input": {
+      "release_candidate_fixture": "fixtures/go-release.json",
+      "launch_policy": {
+        "required_checks": [
+          "unit",
+          "integration",
+          "security"
+        ],
+        "max_open_risk": 0,
+        "rollback_required": true
+      }
     },
-    "publish": {
-      "status": "published",
-      "install_command": "runx add zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai",
-      "run_command": "runx skill zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai"
-    },
-    "clean_install": {
-      "status": "installed",
-      "source": "remote",
-      "file": "references/install.json"
-    },
-    "published_dogfood": {
-      "status": "sealed",
-      "receipt_id": "sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8",
-      "decision": "go",
-      "proposal_flags": {
-        "deploys": false,
-        "tags": false,
-        "publishes": false,
-        "announces": false
-      },
-      "file": "references/published-dogfood.json"
-    },
-    "receipt_verify": {
-      "valid": true,
-      "receipt_id": "sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8",
-      "file": "references/published-receipt-verify.json"
+    "output_summary": "Returned decision go with all required checks passing, zero open risks, tested rollback steps, observability dashboards and alerts, and changelog entries present.",
+    "decision": "go",
+    "release_proposal": {
+      "gated": true,
+      "consumer": "release",
+      "deploys": false,
+      "tags": false,
+      "publishes": false,
+      "announces": false
     }
   },
   "artifacts": {
@@ -71,14 +119,15 @@
       "skills/launch-guard/fixtures/go-release.json",
       "skills/launch-guard/fixtures/no-go-release.json"
     ],
-    "evidence_files": [
-      "skills/launch-guard/references/harness.json",
-      "skills/launch-guard/references/published-verification.json",
-      "skills/launch-guard/references/install.json",
-      "skills/launch-guard/references/published-dogfood.json",
-      "skills/launch-guard/references/published-dogfood-receipt.json",
-      "skills/launch-guard/references/published-receipt-verify.json",
-      "skills/launch-guard/references/report.md"
-    ]
+    "harness": "references/harness.json",
+    "local_dogfood": "references/dogfood.json",
+    "local_dogfood_receipt": "references/dogfood-receipt.json",
+    "local_receipt_verify": "references/verification.json",
+    "published_verification": "references/published-verification.json",
+    "install": "references/install.json",
+    "published_dogfood": "references/published-dogfood.json",
+    "published_dogfood_receipt": "references/published-dogfood-receipt.json",
+    "published_receipt_verify": "references/published-receipt-verify.json",
+    "report": "references/report.md"
   }
 }
