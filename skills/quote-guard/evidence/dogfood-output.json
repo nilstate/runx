@@ -1,0 +1,566 @@
+{
+  "closure": {
+    "closed_at": "2026-07-05T10:02:37.691Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool judge completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "compatibility": null,
+      "decision": {
+        "authorized": true,
+        "policy_band": "standard-ae",
+        "reason": "in_policy",
+        "requires_approval": false
+      },
+      "escalation": {
+        "reason_code": null,
+        "required": false
+      },
+      "observations": [
+        {
+          "account_id": "acct_acme_001",
+          "counterparty_name": "Acme Operations LLC",
+          "product": "runx-ops-seat",
+          "requested": {
+            "currency": "USD",
+            "list_price_usd": 30000,
+            "quantity": 25,
+            "requested_discount_percent": 14,
+            "requested_margin_percent": 68,
+            "requested_net_usd": 25800,
+            "term_months": 12
+          },
+          "type": "deal_ask"
+        },
+        {
+          "count": 1,
+          "records": [
+            {
+              "created_at": "2026-04-10T12:00:00Z",
+              "discount_percent": 10,
+              "quote_id": "q_2026_041",
+              "status": "accepted",
+              "total_contract_value_usd": 24000
+            }
+          ],
+          "type": "prior_quote_evidence"
+        },
+        {
+          "authorized": true,
+          "policy_band": "standard-ae",
+          "reason": "in_policy",
+          "type": "decision"
+        },
+        {
+          "max_discount_percent": 15,
+          "max_total_contract_value_usd": 50000,
+          "name": "standard-ae",
+          "requires_approval": false,
+          "type": "policy_band"
+        },
+        {
+          "amount_usd": 25800,
+          "cap_basis": {
+            "max_total_contract_value_usd": 50000,
+            "policy_band": "standard-ae",
+            "requested_net_usd": 25800
+          },
+          "currency": "USD",
+          "type": "settlement_ceiling"
+        },
+        {
+          "digest": "sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e",
+          "type": "quote_digest"
+        },
+        {
+          "send_proposal": "proposed_gated",
+          "this_skill_sends": false,
+          "this_skill_settles_money": false,
+          "type": "proposal_status"
+        }
+      ],
+      "quote_draft": {
+        "account_id": "acct_acme_001",
+        "approval_required": false,
+        "counterparty": {
+          "contact": "buyer@example.invalid",
+          "name": "Acme Operations LLC"
+        },
+        "currency": "USD",
+        "discount_percent": 14,
+        "evidence_refs": [
+          "q_2026_041"
+        ],
+        "line_items": [
+          {
+            "list_price_usd": 30000,
+            "net_price_usd": 25800,
+            "product": "runx-ops-seat",
+            "quantity": 25,
+            "term_months": 12
+          }
+        ],
+        "list_price_usd": 30000,
+        "net_price_usd": 25800,
+        "policy_band": "standard-ae",
+        "product": "runx-ops-seat",
+        "quantity": 25,
+        "schema": "runx.quote_guard.quote_draft.v1",
+        "term_months": 12,
+        "valid_days": 14
+      },
+      "schema": "runx.quote_guard.result.v1",
+      "send_proposal": {
+        "audience": "buyer@example.invalid",
+        "channel": "email",
+        "downstream_runner": "send-as",
+        "gated": true,
+        "quote_digest": "sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e",
+        "requires_human_approval": false,
+        "schema": "runx.quote_guard.send_proposal.v1",
+        "status": "proposed",
+        "subject": "Quote for runx-ops-seat",
+        "this_skill_sends": false
+      },
+      "settlement_ceiling": {
+        "amount_usd": 25800,
+        "cap_basis": {
+          "max_total_contract_value_usd": 50000,
+          "policy_band": "standard-ae",
+          "requested_net_usd": 25800
+        },
+        "currency": "USD",
+        "downstream_runner": "spend-refund",
+        "gated": true,
+        "schema": "runx.quote_guard.settlement_ceiling.v1",
+        "status": "proposed",
+        "this_skill_settles_money": false
+      },
+      "status": "sealed"
+    },
+    "stderr": "",
+    "stdout": "{\n  \"schema\": \"runx.quote_guard.result.v1\",\n  \"status\": \"sealed\",\n  \"decision\": {\n    \"authorized\": true,\n    \"reason\": \"in_policy\",\n    \"policy_band\": \"standard-ae\",\n    \"requires_approval\": false\n  },\n  \"compatibility\": null,\n  \"quote_draft\": {\n    \"schema\": \"runx.quote_guard.quote_draft.v1\",\n    \"account_id\": \"acct_acme_001\",\n    \"counterparty\": {\n      \"name\": \"Acme Operations LLC\",\n      \"contact\": \"buyer@example.invalid\"\n    },\n    \"product\": \"runx-ops-seat\",\n    \"quantity\": 25,\n    \"term_months\": 12,\n    \"currency\": \"USD\",\n    \"list_price_usd\": 30000,\n    \"net_price_usd\": 25800,\n    \"discount_percent\": 14,\n    \"valid_days\": 14,\n    \"policy_band\": \"standard-ae\",\n    \"approval_required\": false,\n    \"line_items\": [\n      {\n        \"product\": \"runx-ops-seat\",\n        \"quantity\": 25,\n        \"term_months\": 12,\n        \"list_price_usd\": 30000,\n        \"net_price_usd\": 25800\n      }\n    ],\n    \"evidence_refs\": [\n      \"q_2026_041\"\n    ]\n  },\n  \"send_proposal\": {\n    \"schema\": \"runx.quote_guard.send_proposal.v1\",\n    \"status\": \"proposed\",\n    \"gated\": true,\n    \"downstream_runner\": \"send-as\",\n    \"this_skill_sends\": false,\n    \"channel\": \"email\",\n    \"audience\": \"buyer@example.invalid\",\n    \"subject\": \"Quote for runx-ops-seat\",\n    \"quote_digest\": \"sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e\",\n    \"requires_human_approval\": false\n  },\n  \"settlement_ceiling\": {\n    \"schema\": \"runx.quote_guard.settlement_ceiling.v1\",\n    \"status\": \"proposed\",\n    \"gated\": true,\n    \"downstream_runner\": \"spend-refund\",\n    \"this_skill_settles_money\": false,\n    \"currency\": \"USD\",\n    \"amount_usd\": 25800,\n    \"cap_basis\": {\n      \"policy_band\": \"standard-ae\",\n      \"max_total_contract_value_usd\": 50000,\n      \"requested_net_usd\": 25800\n    }\n  },\n  \"escalation\": {\n    \"required\": false,\n    \"reason_code\": null\n  },\n  \"observations\": [\n    {\n      \"type\": \"deal_ask\",\n      \"account_id\": \"acct_acme_001\",\n      \"product\": \"runx-ops-seat\",\n      \"counterparty_name\": \"Acme Operations LLC\",\n      \"requested\": {\n        \"currency\": \"USD\",\n        \"list_price_usd\": 30000,\n        \"requested_net_usd\": 25800,\n        \"requested_discount_percent\": 14,\n        \"term_months\": 12,\n        \"quantity\": 25,\n        \"requested_margin_percent\": 68\n      }\n    },\n    {\n      \"type\": \"prior_quote_evidence\",\n      \"records\": [\n        {\n          \"quote_id\": \"q_2026_041\",\n          \"status\": \"accepted\",\n          \"total_contract_value_usd\": 24000,\n          \"discount_percent\": 10,\n          \"created_at\": \"2026-04-10T12:00:00Z\"\n        }\n      ],\n      \"count\": 1\n    },\n    {\n      \"type\": \"decision\",\n      \"authorized\": true,\n      \"reason\": \"in_policy\",\n      \"policy_band\": \"standard-ae\"\n    },\n    {\n      \"type\": \"policy_band\",\n      \"name\": \"standard-ae\",\n      \"max_discount_percent\": 15,\n      \"max_total_contract_value_usd\": 50000,\n      \"requires_approval\": false\n    },\n    {\n      \"type\": \"settlement_ceiling\",\n      \"amount_usd\": 25800,\n      \"currency\": \"USD\",\n      \"cap_basis\": {\n        \"policy_band\": \"standard-ae\",\n        \"max_total_contract_value_usd\": 50000,\n        \"requested_net_usd\": 25800\n      }\n    },\n    {\n      \"type\": \"quote_digest\",\n      \"digest\": \"sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e\"\n    },\n    {\n      \"type\": \"proposal_status\",\n      \"send_proposal\": \"proposed_gated\",\n      \"this_skill_sends\": false,\n      \"this_skill_settles_money\": false\n    }\n  ]\n}\n",
+    "structured_output": {
+      "compatibility": null,
+      "decision": {
+        "authorized": true,
+        "policy_band": "standard-ae",
+        "reason": "in_policy",
+        "requires_approval": false
+      },
+      "escalation": {
+        "reason_code": null,
+        "required": false
+      },
+      "observations": [
+        {
+          "account_id": "acct_acme_001",
+          "counterparty_name": "Acme Operations LLC",
+          "product": "runx-ops-seat",
+          "requested": {
+            "currency": "USD",
+            "list_price_usd": 30000,
+            "quantity": 25,
+            "requested_discount_percent": 14,
+            "requested_margin_percent": 68,
+            "requested_net_usd": 25800,
+            "term_months": 12
+          },
+          "type": "deal_ask"
+        },
+        {
+          "count": 1,
+          "records": [
+            {
+              "created_at": "2026-04-10T12:00:00Z",
+              "discount_percent": 10,
+              "quote_id": "q_2026_041",
+              "status": "accepted",
+              "total_contract_value_usd": 24000
+            }
+          ],
+          "type": "prior_quote_evidence"
+        },
+        {
+          "authorized": true,
+          "policy_band": "standard-ae",
+          "reason": "in_policy",
+          "type": "decision"
+        },
+        {
+          "max_discount_percent": 15,
+          "max_total_contract_value_usd": 50000,
+          "name": "standard-ae",
+          "requires_approval": false,
+          "type": "policy_band"
+        },
+        {
+          "amount_usd": 25800,
+          "cap_basis": {
+            "max_total_contract_value_usd": 50000,
+            "policy_band": "standard-ae",
+            "requested_net_usd": 25800
+          },
+          "currency": "USD",
+          "type": "settlement_ceiling"
+        },
+        {
+          "digest": "sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e",
+          "type": "quote_digest"
+        },
+        {
+          "send_proposal": "proposed_gated",
+          "this_skill_sends": false,
+          "this_skill_settles_money": false,
+          "type": "proposal_status"
+        }
+      ],
+      "quote_draft": {
+        "account_id": "acct_acme_001",
+        "approval_required": false,
+        "counterparty": {
+          "contact": "buyer@example.invalid",
+          "name": "Acme Operations LLC"
+        },
+        "currency": "USD",
+        "discount_percent": 14,
+        "evidence_refs": [
+          "q_2026_041"
+        ],
+        "line_items": [
+          {
+            "list_price_usd": 30000,
+            "net_price_usd": 25800,
+            "product": "runx-ops-seat",
+            "quantity": 25,
+            "term_months": 12
+          }
+        ],
+        "list_price_usd": 30000,
+        "net_price_usd": 25800,
+        "policy_band": "standard-ae",
+        "product": "runx-ops-seat",
+        "quantity": 25,
+        "schema": "runx.quote_guard.quote_draft.v1",
+        "term_months": 12,
+        "valid_days": 14
+      },
+      "schema": "runx.quote_guard.result.v1",
+      "send_proposal": {
+        "audience": "buyer@example.invalid",
+        "channel": "email",
+        "downstream_runner": "send-as",
+        "gated": true,
+        "quote_digest": "sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e",
+        "requires_human_approval": false,
+        "schema": "runx.quote_guard.send_proposal.v1",
+        "status": "proposed",
+        "subject": "Quote for runx-ops-seat",
+        "this_skill_sends": false
+      },
+      "settlement_ceiling": {
+        "amount_usd": 25800,
+        "cap_basis": {
+          "max_total_contract_value_usd": 50000,
+          "policy_band": "standard-ae",
+          "requested_net_usd": 25800
+        },
+        "currency": "USD",
+        "downstream_runner": "spend-refund",
+        "gated": true,
+        "schema": "runx.quote_guard.settlement_ceiling.v1",
+        "status": "proposed",
+        "this_skill_settles_money": false
+      },
+      "status": "sealed"
+    }
+  },
+  "payload": {
+    "compatibility": null,
+    "decision": {
+      "authorized": true,
+      "policy_band": "standard-ae",
+      "reason": "in_policy",
+      "requires_approval": false
+    },
+    "escalation": {
+      "reason_code": null,
+      "required": false
+    },
+    "observations": [
+      {
+        "account_id": "acct_acme_001",
+        "counterparty_name": "Acme Operations LLC",
+        "product": "runx-ops-seat",
+        "requested": {
+          "currency": "USD",
+          "list_price_usd": 30000,
+          "quantity": 25,
+          "requested_discount_percent": 14,
+          "requested_margin_percent": 68,
+          "requested_net_usd": 25800,
+          "term_months": 12
+        },
+        "type": "deal_ask"
+      },
+      {
+        "count": 1,
+        "records": [
+          {
+            "created_at": "2026-04-10T12:00:00Z",
+            "discount_percent": 10,
+            "quote_id": "q_2026_041",
+            "status": "accepted",
+            "total_contract_value_usd": 24000
+          }
+        ],
+        "type": "prior_quote_evidence"
+      },
+      {
+        "authorized": true,
+        "policy_band": "standard-ae",
+        "reason": "in_policy",
+        "type": "decision"
+      },
+      {
+        "max_discount_percent": 15,
+        "max_total_contract_value_usd": 50000,
+        "name": "standard-ae",
+        "requires_approval": false,
+        "type": "policy_band"
+      },
+      {
+        "amount_usd": 25800,
+        "cap_basis": {
+          "max_total_contract_value_usd": 50000,
+          "policy_band": "standard-ae",
+          "requested_net_usd": 25800
+        },
+        "currency": "USD",
+        "type": "settlement_ceiling"
+      },
+      {
+        "digest": "sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e",
+        "type": "quote_digest"
+      },
+      {
+        "send_proposal": "proposed_gated",
+        "this_skill_sends": false,
+        "this_skill_settles_money": false,
+        "type": "proposal_status"
+      }
+    ],
+    "quote_draft": {
+      "account_id": "acct_acme_001",
+      "approval_required": false,
+      "counterparty": {
+        "contact": "buyer@example.invalid",
+        "name": "Acme Operations LLC"
+      },
+      "currency": "USD",
+      "discount_percent": 14,
+      "evidence_refs": [
+        "q_2026_041"
+      ],
+      "line_items": [
+        {
+          "list_price_usd": 30000,
+          "net_price_usd": 25800,
+          "product": "runx-ops-seat",
+          "quantity": 25,
+          "term_months": 12
+        }
+      ],
+      "list_price_usd": 30000,
+      "net_price_usd": 25800,
+      "policy_band": "standard-ae",
+      "product": "runx-ops-seat",
+      "quantity": 25,
+      "schema": "runx.quote_guard.quote_draft.v1",
+      "term_months": 12,
+      "valid_days": 14
+    },
+    "schema": "runx.quote_guard.result.v1",
+    "send_proposal": {
+      "audience": "buyer@example.invalid",
+      "channel": "email",
+      "downstream_runner": "send-as",
+      "gated": true,
+      "quote_digest": "sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e",
+      "requires_human_approval": false,
+      "schema": "runx.quote_guard.send_proposal.v1",
+      "status": "proposed",
+      "subject": "Quote for runx-ops-seat",
+      "this_skill_sends": false
+    },
+    "settlement_ceiling": {
+      "amount_usd": 25800,
+      "cap_basis": {
+        "max_total_contract_value_usd": 50000,
+        "policy_band": "standard-ae",
+        "requested_net_usd": 25800
+      },
+      "currency": "USD",
+      "downstream_runner": "spend-refund",
+      "gated": true,
+      "schema": "runx.quote_guard.settlement_ceiling.v1",
+      "status": "proposed",
+      "this_skill_settles_money": false
+    },
+    "status": "sealed"
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-07-05T10:02:37.691Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_judge",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step judge",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step judge",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-07-05T10:02:37.691Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_judge",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node judge",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_judge",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:50729a5048e0bd293aece8cbabf59be546c2730c69c42e1a47317eebd3054154",
+    "id": "sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
+    "idempotency": {
+      "content_hash": "sha256:run_judge_c7c24a250798-judge-content",
+      "intent_key": "sha256:run_judge_c7c24a250798-judge-intent",
+      "trigger_fingerprint": "sha256:run_judge_c7c24a250798-judge-trigger"
+    },
+    "issuer": {
+      "kid": "runx-runtime-prod-fixture-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-07-05T10:02:37.691Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-07-05T10:02:37.691Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool judge completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:y7b0NnXhOfucyRtNbnNFvI7Ax3_wvAzrscvZAfUoyGa7dBQbMPb3gyGOwC3N52o8gnSrvn0_ENgBiwwxIxR8Bg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_judge_c7c24a250798_judge"
+      }
+    }
+  },
+  "receipt_id": "sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
+  "registry_provenance": {
+    "digest": "sha256:b2630996cb1d683f14c69e02fcc1ab9ed589359ca38e47d49eb7c216b633e3fa",
+    "profile_digest": "sha256:7d1ed1fe5e70dfd224048ff3a930b4e361cdb7c861f2a7a289a292dd93493505",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "vidshidden/quote-guard",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-74fbe6322db5"
+  },
+  "run_id": "run_judge_c7c24a250798",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "quote-guard",
+  "status": "sealed"
+}

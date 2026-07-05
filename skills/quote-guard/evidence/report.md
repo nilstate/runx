@@ -19,8 +19,8 @@
 - Hosted harness status: passed, cases in_policy_deal_yields_quote, out_of_band_ask_escalates.
 - Clean install command: `runx add vidshidden/quote-guard@sha-74fbe6322db5 --registry https://api.runx.ai`.
 - Dogfood command: `runx skill vidshidden/quote-guard@sha-74fbe6322db5 --registry https://api.runx.ai --json -R skills/quote-guard/evidence/dogfood-receipts`.
-- Dogfood receipt: pending-ubuntu-dogfood.
-- runx verify verdict: pending or not valid yet; signature mode pending.
+- Dogfood receipt: runx:receipt:sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8.
+- runx verify verdict: valid; signature mode production.
 - Windows local harness status: failed; Ubuntu workflow records the durable dogfood evidence.
 
 ## Behavior

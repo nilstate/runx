@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "/home/runner/work/runx/runx/skills/quote-guard/evidence/dogfood-receipts",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

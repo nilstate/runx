@@ -50,15 +50,14 @@
       "policy_band": "standard-ae"
     },
     "command": "runx skill vidshidden/quote-guard@sha-74fbe6322db5 --registry https://api.runx.ai --json -R skills/quote-guard/evidence/dogfood-receipts",
-    "status": "pending_ubuntu",
-    "receipt_ref": "pending-ubuntu-dogfood",
+    "status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
+    "run_id": "run_judge_c7c24a250798",
     "verify_verdict": {
-      "valid": false,
-      "signature_mode": null,
-      "root_receipt_id": null,
-      "findings": [
-        "Ubuntu dogfood verify has not been recorded yet."
-      ]
+      "valid": true,
+      "signature_mode": "production",
+      "root_receipt_id": "sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
+      "findings": []
     },
     "harness_cases": [
       {
@@ -69,7 +68,18 @@
         "name": "out_of_band_ask_escalates",
         "status": "refused"
       }
-    ]
+    ],
+    "registry_provenance": {
+      "digest": "sha256:b2630996cb1d683f14c69e02fcc1ab9ed589359ca38e47d49eb7c216b633e3fa",
+      "profile_digest": "sha256:7d1ed1fe5e70dfd224048ff3a930b4e361cdb7c861f2a7a289a292dd93493505",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "skill_id": "vidshidden/quote-guard",
+      "trust_state": "trusted",
+      "trust_tier": "community",
+      "version": "sha-74fbe6322db5"
+    }
   },
   "observations": [
     {
@@ -176,15 +186,14 @@
     },
     {
       "type": "dogfood_verify",
-      "receipt_ref": "pending-ubuntu-dogfood",
+      "receipt_ref": "runx:receipt:sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
       "verify_verdict": {
-        "valid": false,
-        "signature_mode": null,
-        "root_receipt_id": null,
-        "findings": [
-          "Ubuntu dogfood verify has not been recorded yet."
-        ]
-      }
+        "valid": true,
+        "signature_mode": "production",
+        "root_receipt_id": "sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
+        "findings": []
+      },
+      "run_id": "run_judge_c7c24a250798"
     },
     {
       "type": "artifact_urls",

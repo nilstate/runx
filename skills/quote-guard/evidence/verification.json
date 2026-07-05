@@ -28,9 +28,9 @@
     "out_of_band_ask_escalates": "passed"
   },
   "dogfood": {
-    "status": "pending_ubuntu",
-    "receipt_ref": "pending-ubuntu-dogfood",
-    "verify_valid": false,
+    "status": "sealed",
+    "receipt_ref": "runx:receipt:sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8",
+    "verify_valid": true,
     "ubuntu_actions_workflow": ".github/workflows/quote-guard-dogfood.yml",
     "expected_outputs": [
       "skills/quote-guard/evidence/clean-install.json",
@@ -39,5 +39,5 @@
       "skills/quote-guard/evidence/dogfood-receipt.json"
     ]
   },
-  "receipt_ref": "pending-ubuntu-dogfood"
+  "receipt_ref": "runx:receipt:sha256:40d3e3eb579b09aba7357db66ee8d8b867a68922d2ecca9ae6b2ab111c299bc8"
 }
