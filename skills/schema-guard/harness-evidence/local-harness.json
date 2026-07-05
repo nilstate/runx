@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "sealed-additive-change-emits-proposal",
+    "refuses-breaking-change-no-proposal"
+  ],
+  "receipt_ids": [
+    "sha256:c6a3ce5183ad30d4ebee4673f3d988f228fbc5610326f2ca224df63de68b6f16",
+    "sha256:64a3b026eb18ca7d45b3a49019d3f0ce9df1b4ddbecfcb5eefb0c31a67ec5e43"
+  ],
+  "graph_case_count": 0
+}

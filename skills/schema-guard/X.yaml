@@ -1,0 +1,141 @@
+skill: schema-guard
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed-additive-change-emits-proposal
+      inputs:
+        current_schema:
+          type: object
+          required:
+            - id
+            - email
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+              format: email
+            plan:
+              type: string
+              enum:
+                - free
+                - pro
+        proposed_schema:
+          type: object
+          required:
+            - id
+            - email
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+              format: email
+            plan:
+              type: string
+              enum:
+                - free
+                - pro
+                - enterprise
+            display_name:
+              type: string
+        sample_payloads:
+          - id: usr_1
+            email: a@example.com
+            plan: free
+          - id: usr_2
+            email: b@example.com
+            plan: pro
+            display_name: Bee
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - id
+            - email
+          versioning_rule: semver
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuses-breaking-change-no-proposal
+      inputs:
+        current_schema:
+          type: object
+          required:
+            - id
+            - email
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            legacy_code:
+              type: string
+            amount:
+              type: number
+        proposed_schema:
+          type: object
+          required:
+            - id
+            - email
+            - region
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            amount:
+              type: string
+            region:
+              type: string
+        sample_payloads:
+          - id: usr_1
+            email: a@example.com
+            legacy_code: LC-9
+            amount: 12.5
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - id
+            - email
+          versioning_rule: semver
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: failed
+
+runners:
+  guard:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      current_schema:
+        type: json
+        required: true
+        description: "The live contract as a JSON Schema object (type, properties, required, items, enum, format, additionalProperties)."
+      proposed_schema:
+        type: json
+        required: true
+        description: "The proposed replacement schema, same JSON Schema subset as current_schema."
+      sample_payloads:
+        type: json
+        required: true
+        description: "Array of real payloads to validate against both schemas. Pass [] to state that no samples exist; coverage is reported, never invented."
+      compatibility_policy:
+        type: json
+        required: true
+        description: "Policy object: breaking_allowed (boolean, required), required_fields (array of policy-protected field paths), versioning_rule (semver | major-on-breaking | minor-on-additive)."

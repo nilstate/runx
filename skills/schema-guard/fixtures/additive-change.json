@@ -1,0 +1,30 @@
+{
+  "current_schema": {
+    "type": "object",
+    "required": ["id", "email"],
+    "properties": {
+      "id": { "type": "string" },
+      "email": { "type": "string", "format": "email" },
+      "plan": { "type": "string", "enum": ["free", "pro"] }
+    }
+  },
+  "proposed_schema": {
+    "type": "object",
+    "required": ["id", "email"],
+    "properties": {
+      "id": { "type": "string" },
+      "email": { "type": "string", "format": "email" },
+      "plan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
+      "display_name": { "type": "string" }
+    }
+  },
+  "sample_payloads": [
+    { "id": "usr_1", "email": "a@example.com", "plan": "free" },
+    { "id": "usr_2", "email": "b@example.com", "plan": "pro", "display_name": "Bee" }
+  ],
+  "compatibility_policy": {
+    "breaking_allowed": false,
+    "required_fields": ["id", "email"],
+    "versioning_rule": "semver"
+  }
+}

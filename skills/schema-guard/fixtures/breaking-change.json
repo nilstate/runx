@@ -1,0 +1,30 @@
+{
+  "current_schema": {
+    "type": "object",
+    "required": ["id", "email"],
+    "properties": {
+      "id": { "type": "string" },
+      "email": { "type": "string" },
+      "legacy_code": { "type": "string" },
+      "amount": { "type": "number" }
+    }
+  },
+  "proposed_schema": {
+    "type": "object",
+    "required": ["id", "email", "region"],
+    "properties": {
+      "id": { "type": "string" },
+      "email": { "type": "string" },
+      "amount": { "type": "string" },
+      "region": { "type": "string" }
+    }
+  },
+  "sample_payloads": [
+    { "id": "usr_1", "email": "a@example.com", "legacy_code": "LC-9", "amount": 12.5 }
+  ],
+  "compatibility_policy": {
+    "breaking_allowed": false,
+    "required_fields": ["id", "email"],
+    "versioning_rule": "semver"
+  }
+}
