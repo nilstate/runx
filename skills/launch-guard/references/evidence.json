@@ -1,0 +1,84 @@
+{
+  "task": "Frantic #81 runx skill: launch guard",
+  "package": {
+    "owner": "zdfgu113",
+    "name": "launch-guard",
+    "version": "0.1.0",
+    "public_url": "https://runx.ai/x/zdfgu113/launch-guard",
+    "registry_ref": "zdfgu113/launch-guard@0.1.0",
+    "registry": "https://api.runx.ai",
+    "digest": "sha256:3f888a37357e85a8add54ea6c7ccd0e30e68ee408368efaa292544c86a180f8f",
+    "profile_digest": "sha256:f061aa9d7a492f40f324b2720ba7d26f1f236099d2aa794c270219cb40b1aba3"
+  },
+  "source": {
+    "repository": "https://github.com/zdfgu113/runx",
+    "branch": "codex/launch-guard-81",
+    "skill_path": "skills/launch-guard",
+    "pr_url": "https://github.com/runxhq/runx/pull/227"
+  },
+  "verification": {
+    "runx_version": "runx-cli 0.6.14",
+    "github_star_check": "gh api user/starred/runxhq/runx returned HTTP 204 No Content",
+    "local_harness": {
+      "command": "runx harness ./skills/launch-guard -R /tmp/runx-launch-guard-receipts-node --json",
+      "status": "passed",
+      "case_count": 3,
+      "assertion_error_count": 0,
+      "case_names": [
+        "passing-release-candidate-yields-go-proposal",
+        "failing-required-check-yields-no-go",
+        "missing-release-candidate-fails-closed"
+      ],
+      "receipt_ids": [
+        "sha256:708586ef5fc98e366f8ae3854eb7917fc0437d8bc5384f4cf66afa165bd1c167",
+        "sha256:dd58c1831bd3c5cdfd7f95de6025202078b0b1bbf3aa14bd41212bad49fe9839",
+        "sha256:b1b0507740cc4d89d7f62d9806d8095cd08f45dec0d3a384b02e4f3cf1994aa3"
+      ]
+    },
+    "publish": {
+      "status": "published",
+      "install_command": "runx add zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/launch-guard@0.1.0 --registry https://api.runx.ai"
+    },
+    "clean_install": {
+      "status": "installed",
+      "source": "remote",
+      "file": "references/install.json"
+    },
+    "published_dogfood": {
+      "status": "sealed",
+      "receipt_id": "sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8",
+      "decision": "go",
+      "proposal_flags": {
+        "deploys": false,
+        "tags": false,
+        "publishes": false,
+        "announces": false
+      },
+      "file": "references/published-dogfood.json"
+    },
+    "receipt_verify": {
+      "valid": true,
+      "receipt_id": "sha256:18fada9efefcd431350f377388c397518ef809e03b605fe3aa87a47290647fb8",
+      "file": "references/published-receipt-verify.json"
+    }
+  },
+  "artifacts": {
+    "x_yaml": "skills/launch-guard/X.yaml",
+    "skill_md": "skills/launch-guard/SKILL.md",
+    "runner": "skills/launch-guard/run.mjs",
+    "fixtures": [
+      "skills/launch-guard/fixtures/go-release.json",
+      "skills/launch-guard/fixtures/no-go-release.json"
+    ],
+    "evidence_files": [
+      "skills/launch-guard/references/harness.json",
+      "skills/launch-guard/references/published-verification.json",
+      "skills/launch-guard/references/install.json",
+      "skills/launch-guard/references/published-dogfood.json",
+      "skills/launch-guard/references/published-dogfood-receipt.json",
+      "skills/launch-guard/references/published-receipt-verify.json",
+      "skills/launch-guard/references/report.md"
+    ]
+  }
+}
