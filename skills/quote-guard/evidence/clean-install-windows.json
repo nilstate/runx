@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "vidshidden/quote-guard@sha-74fbe6322db5",
+    "install": {
+      "status": "installed",
+      "destination": "D:\\codex\\money\\runx-82\\skills/quote-guard/evidence/clean-install-windows\\vidshidden\\quote-guard\\sha-74fbe6322db5\\SKILL.md",
+      "skill_name": "quote-guard",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "vidshidden/quote-guard",
+      "version": "sha-74fbe6322db5",
+      "digest": "sha256:b2630996cb1d683f14c69e02fcc1ab9ed589359ca38e47d49eb7c216b633e3fa",
+      "profile_digest": "sha256:7d1ed1fe5e70dfd224048ff3a930b4e361cdb7c861f2a7a289a292dd93493505",
+      "profile_state_path": "D:\\codex\\money\\runx-82\\skills/quote-guard/evidence/clean-install-windows\\vidshidden\\quote-guard\\sha-74fbe6322db5\\.runx\\profile.json",
+      "runner_names": [
+        "judge"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "D:\\codex\\money\\runx-82\\skills/quote-guard/evidence/clean-install-windows\\vidshidden\\quote-guard\\sha-74fbe6322db5\\SKILL.md",
+      "digest": "sha256:b2630996cb1d683f14c69e02fcc1ab9ed589359ca38e47d49eb7c216b633e3fa",
+      "install_count": 1,
+      "package_digest": "66a6c09b5d902434f2b151ba62927f789e4f72c1bc0791bb8eb69b59850407db",
+      "profile_digest": "sha256:7d1ed1fe5e70dfd224048ff3a930b4e361cdb7c861f2a7a289a292dd93493505",
+      "publisher": {
+        "display_name": "薪宇",
+        "handle": "vidshidden",
+        "id": "user_9c5d6c8f9504a7bf31aacfd5",
+        "kind": "user"
+      },
+      "ref": "vidshidden/quote-guard@sha-74fbe6322db5",
+      "skill_id": "vidshidden/quote-guard",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-74fbe6322db5"
+    }
+  }
+}

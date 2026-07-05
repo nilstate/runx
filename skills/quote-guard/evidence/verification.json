@@ -1,0 +1,43 @@
+{
+  "schema": "frantic.verification.v1",
+  "bounty": "#82",
+  "package": "vidshidden/quote-guard@sha-74fbe6322db5",
+  "runx_cli": "0.6.14",
+  "public_url": "https://runx.ai/x/vidshidden/quote-guard@sha-74fbe6322db5",
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "in_policy_deal_yields_quote",
+      "out_of_band_ask_escalates"
+    ],
+    "receipt_refs": [
+      "runx:receipt:sha256:9b48311dc53e5737bd9e813f261f2dbb23b2fd3a85f80fffc7adff09b553d674",
+      "runx:receipt:sha256:d9c37a8607806e179a25b86e496a7ec6558715310829660378911055f543e99c"
+    ],
+    "evidence_id": "runx-harness:vidshidden/quote-guard:sha-74fbe6322db5",
+    "evidence_url": "https://runx.ai/x/vidshidden/quote-guard#harness"
+  },
+  "clean_install": {
+    "command": "runx add vidshidden/quote-guard@sha-74fbe6322db5 --registry https://api.runx.ai",
+    "status": "success",
+    "digest": "sha256:b2630996cb1d683f14c69e02fcc1ab9ed589359ca38e47d49eb7c216b633e3fa"
+  },
+  "local_runner": {
+    "in_policy_deal_yields_quote": "passed",
+    "out_of_band_ask_escalates": "passed"
+  },
+  "dogfood": {
+    "status": "pending_ubuntu",
+    "receipt_ref": "pending-ubuntu-dogfood",
+    "verify_valid": false,
+    "ubuntu_actions_workflow": ".github/workflows/quote-guard-dogfood.yml",
+    "expected_outputs": [
+      "skills/quote-guard/evidence/clean-install.json",
+      "skills/quote-guard/evidence/dogfood-output.json",
+      "skills/quote-guard/evidence/dogfood-verify.json",
+      "skills/quote-guard/evidence/dogfood-receipt.json"
+    ]
+  },
+  "receipt_ref": "pending-ubuntu-dogfood"
+}

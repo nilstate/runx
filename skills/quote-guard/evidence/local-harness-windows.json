@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "case_count": 2,
+  "assertion_error_count": 2,
+  "assertion_errors": [
+    "in_policy_deal_yields_quote: receipt store is unreadable: 参数错误。 (os error 87)",
+    "out_of_band_ask_escalates: receipt store is unreadable: 参数错误。 (os error 87)"
+  ],
+  "case_names": [
+    "in_policy_deal_yields_quote",
+    "out_of_band_ask_escalates"
+  ],
+  "receipt_ids": [],
+  "graph_case_count": 0
+}

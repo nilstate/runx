@@ -1,0 +1,49 @@
+{
+  "deal_ask": {
+    "account_id": "acct_acme_001",
+    "counterparty": {
+      "name": "Acme Operations LLC",
+      "contact": "buyer@example.invalid"
+    },
+    "product": "runx-ops-seat",
+    "quantity": 25,
+    "term_months": 12,
+    "currency": "USD",
+    "list_price_usd": 30000,
+    "requested_net_usd": 25800,
+    "requested_discount_percent": 14,
+    "requested_margin_percent": 68,
+    "quote_valid_days": 14
+  },
+  "account_policy": {
+    "currency": "USD",
+    "authorized_products": ["runx-ops-seat"],
+    "minimum_margin_percent": 55,
+    "default_quote_valid_days": 14,
+    "approval_bands": [
+      {
+        "name": "standard-ae",
+        "max_discount_percent": 15,
+        "max_total_contract_value_usd": 50000,
+        "requires_approval": false
+      },
+      {
+        "name": "finance-approval",
+        "max_discount_percent": 25,
+        "max_total_contract_value_usd": 150000,
+        "requires_approval": true
+      }
+    ]
+  },
+  "quote_history": [
+    {
+      "quote_id": "q_2026_041",
+      "account_id": "acct_acme_001",
+      "product": "runx-ops-seat",
+      "total_contract_value_usd": 24000,
+      "discount_percent": 10,
+      "status": "accepted",
+      "created_at": "2026-04-10T12:00:00Z"
+    }
+  ]
+}

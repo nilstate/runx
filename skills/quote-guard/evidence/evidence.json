@@ -1,0 +1,201 @@
+{
+  "schema": "frantic.evidence.v1",
+  "bounty": "#82",
+  "package_name": "quote-guard",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "summary": "Published quote-guard runx skill. The skill reads a bounded deal ask, account pricing policy, and supplied quote history; authorizes only in-policy asks; emits a quote draft plus gated send_proposal and settlement_ceiling; and refuses out-of-band asks without sending or settling anything.",
+  "published": {
+    "skill_id": "vidshidden/quote-guard",
+    "owner": "vidshidden",
+    "version": "sha-74fbe6322db5",
+    "registry_ref": "vidshidden/quote-guard@sha-74fbe6322db5",
+    "public_url": "https://runx.ai/x/vidshidden/quote-guard@sha-74fbe6322db5",
+    "install_command": "runx add vidshidden/quote-guard@sha-74fbe6322db5 --registry https://api.runx.ai",
+    "run_command": "runx skill vidshidden/quote-guard@sha-74fbe6322db5 --registry https://api.runx.ai",
+    "digest": "sha256:b2630996cb1d683f14c69e02fcc1ab9ed589359ca38e47d49eb7c216b633e3fa",
+    "profile_digest": "sha256:7d1ed1fe5e70dfd224048ff3a930b4e361cdb7c861f2a7a289a292dd93493505",
+    "trust_tier": "community",
+    "maturity": "beta"
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "assertion_errors": [],
+    "case_names": [
+      "in_policy_deal_yields_quote",
+      "out_of_band_ask_escalates"
+    ],
+    "receipt_ids": [
+      "sha256:9b48311dc53e5737bd9e813f261f2dbb23b2fd3a85f80fffc7adff09b553d674",
+      "sha256:d9c37a8607806e179a25b86e496a7ec6558715310829660378911055f543e99c"
+    ],
+    "graph_case_count": 0,
+    "evidence_id": "runx-harness:vidshidden/quote-guard:sha-74fbe6322db5",
+    "evidence_url": "https://runx.ai/x/vidshidden/quote-guard#harness"
+  },
+  "clean_install": {
+    "status": "success",
+    "digest": "sha256:b2630996cb1d683f14c69e02fcc1ab9ed589359ca38e47d49eb7c216b633e3fa",
+    "profile_digest": "sha256:7d1ed1fe5e70dfd224048ff3a930b4e361cdb7c861f2a7a289a292dd93493505"
+  },
+  "dogfood": {
+    "package": "vidshidden/quote-guard@sha-74fbe6322db5",
+    "input": {
+      "fixture": "skills/quote-guard/fixtures/in-policy-deal.json",
+      "account_id": "acct_acme_001",
+      "product": "runx-ops-seat",
+      "requested_net_usd": 25800,
+      "requested_discount_percent": 14,
+      "policy_band": "standard-ae"
+    },
+    "command": "runx skill vidshidden/quote-guard@sha-74fbe6322db5 --registry https://api.runx.ai --json -R skills/quote-guard/evidence/dogfood-receipts",
+    "status": "pending_ubuntu",
+    "receipt_ref": "pending-ubuntu-dogfood",
+    "verify_verdict": {
+      "valid": false,
+      "signature_mode": null,
+      "root_receipt_id": null,
+      "findings": [
+        "Ubuntu dogfood verify has not been recorded yet."
+      ]
+    },
+    "harness_cases": [
+      {
+        "name": "in_policy_deal_yields_quote",
+        "status": "sealed"
+      },
+      {
+        "name": "out_of_band_ask_escalates",
+        "status": "refused"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "type": "runx_cli_version",
+      "value": "runx-cli 0.6.14"
+    },
+    {
+      "type": "hosted_harness",
+      "status": "passed",
+      "case_names": [
+        "in_policy_deal_yields_quote",
+        "out_of_band_ask_escalates"
+      ],
+      "receipt_refs": [
+        "runx:receipt:sha256:9b48311dc53e5737bd9e813f261f2dbb23b2fd3a85f80fffc7adff09b553d674",
+        "runx:receipt:sha256:d9c37a8607806e179a25b86e496a7ec6558715310829660378911055f543e99c"
+      ]
+    },
+    {
+      "type": "local_harness_windows",
+      "status": "failed",
+      "assertion_errors": [
+        "in_policy_deal_yields_quote: receipt store is unreadable: 参数错误。 (os error 87)",
+        "out_of_band_ask_escalates: receipt store is unreadable: 参数错误。 (os error 87)"
+      ],
+      "note": "Windows local harness hit the known receipt-store os error 87; Ubuntu workflow records clean install, dogfood, and verify artifacts."
+    },
+    {
+      "type": "decision",
+      "authorized": true,
+      "reason": "in_policy",
+      "policy_band": "standard-ae",
+      "requires_approval": false
+    },
+    {
+      "type": "policy_band",
+      "name": "standard-ae",
+      "max_discount_percent": 15,
+      "max_total_contract_value_usd": 50000,
+      "requires_approval": false
+    },
+    {
+      "type": "prior_quote_evidence",
+      "records": [
+        {
+          "quote_id": "q_2026_041",
+          "status": "accepted",
+          "total_contract_value_usd": 24000,
+          "discount_percent": 10,
+          "created_at": "2026-04-10T12:00:00Z"
+        }
+      ]
+    },
+    {
+      "type": "settlement_ceiling",
+      "settlement_ceiling": {
+        "schema": "runx.quote_guard.settlement_ceiling.v1",
+        "status": "proposed",
+        "gated": true,
+        "downstream_runner": "spend-refund",
+        "this_skill_settles_money": false,
+        "currency": "USD",
+        "amount_usd": 25800,
+        "cap_basis": {
+          "policy_band": "standard-ae",
+          "max_total_contract_value_usd": 50000,
+          "requested_net_usd": 25800
+        }
+      }
+    },
+    {
+      "type": "quote_digest",
+      "digest": "sha256:caedb6bbe5177b165e8a0a02b5bdf75c1d18bb231a5697860dfec9d473ff921e"
+    },
+    {
+      "type": "proposal_status",
+      "send_proposal": "proposed",
+      "gated": true,
+      "this_skill_sends": false,
+      "this_skill_settles_money": false
+    },
+    {
+      "type": "out_of_band_refusal",
+      "status": "refused",
+      "decision": {
+        "authorized": false,
+        "reason": "outside_policy_band",
+        "policy_band": null
+      },
+      "escalation": {
+        "required": true,
+        "lane": "human_pricing_approval",
+        "reason_code": "outside_policy_band",
+        "message": "requested discount or total contract value exceeds supplied approval bands",
+        "details": {
+          "requested_discount_percent": 40,
+          "requested_net_usd": 64800,
+          "max_discount_percent": 25,
+          "max_total_contract_value_usd": 150000
+        }
+      },
+      "has_send_proposal": false,
+      "has_settlement_ceiling": false
+    },
+    {
+      "type": "dogfood_verify",
+      "receipt_ref": "pending-ubuntu-dogfood",
+      "verify_verdict": {
+        "valid": false,
+        "signature_mode": null,
+        "root_receipt_id": null,
+        "findings": [
+          "Ubuntu dogfood verify has not been recorded yet."
+        ]
+      }
+    },
+    {
+      "type": "artifact_urls",
+      "public_url": "https://runx.ai/x/vidshidden/quote-guard@sha-74fbe6322db5",
+      "pr_url": "https://github.com/runxhq/runx/pull/226",
+      "source_url": "https://github.com/VidsHidden/runx/tree/quote-guard/skills/quote-guard",
+      "x_yaml": "https://raw.githubusercontent.com/VidsHidden/runx/quote-guard/skills/quote-guard/X.yaml",
+      "skill_md": "https://raw.githubusercontent.com/VidsHidden/runx/quote-guard/skills/quote-guard/SKILL.md",
+      "evidence_json": "https://raw.githubusercontent.com/VidsHidden/runx/quote-guard/skills/quote-guard/evidence/evidence.json",
+      "verification_json": "https://raw.githubusercontent.com/VidsHidden/runx/quote-guard/skills/quote-guard/evidence/verification.json",
+      "report": "https://raw.githubusercontent.com/VidsHidden/runx/quote-guard/skills/quote-guard/evidence/report.md"
+    }
+  ]
+}

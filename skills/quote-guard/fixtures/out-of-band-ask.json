@@ -1,0 +1,49 @@
+{
+  "deal_ask": {
+    "account_id": "acct_beta_002",
+    "counterparty": {
+      "name": "Beta Finance Inc",
+      "contact": "finance@example.invalid"
+    },
+    "product": "runx-ops-seat",
+    "quantity": 90,
+    "term_months": 12,
+    "currency": "USD",
+    "list_price_usd": 108000,
+    "requested_net_usd": 64800,
+    "requested_discount_percent": 40,
+    "requested_margin_percent": 60,
+    "quote_valid_days": 30
+  },
+  "account_policy": {
+    "currency": "USD",
+    "authorized_products": ["runx-ops-seat"],
+    "minimum_margin_percent": 55,
+    "default_quote_valid_days": 14,
+    "approval_bands": [
+      {
+        "name": "standard-ae",
+        "max_discount_percent": 15,
+        "max_total_contract_value_usd": 50000,
+        "requires_approval": false
+      },
+      {
+        "name": "finance-approval",
+        "max_discount_percent": 25,
+        "max_total_contract_value_usd": 150000,
+        "requires_approval": true
+      }
+    ]
+  },
+  "quote_history": [
+    {
+      "quote_id": "q_2026_099",
+      "account_id": "acct_beta_002",
+      "product": "runx-ops-seat",
+      "total_contract_value_usd": 85000,
+      "discount_percent": 18,
+      "status": "expired",
+      "created_at": "2026-05-20T09:00:00Z"
+    }
+  ]
+}
