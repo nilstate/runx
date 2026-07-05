@@ -1,0 +1,91 @@
+skill: reply-router
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_unsubscribe_suppression
+      runner: default
+      inputs:
+        inbound_reply:
+          content: "Please unsubscribe me from this mailing list. I don't want these emails anymore."
+          received_from: "mailto:alice@example.com"
+          received_at: "2026-07-01T10:00:00Z"
+        original_send_receipt:
+          send_plan: "newsletter-weekly-2026-w26"
+          principal: "principal:marketing"
+          receipt_id: "rcpt_01JXNEWSLETTER001"
+          checksum: "sha256:abc123def456"
+        suppression_policy:
+          unsubscribe_signals:
+            - "unsubscribe"
+            - "stop sending"
+            - "remove me"
+            - "opt out"
+            - "don't want"
+          confidence_threshold: 0.75
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: stop_ambiguous_or_unsealed
+      runner: default
+      inputs:
+        inbound_reply:
+          content: "Hmm, let me think about it and circle back."
+          received_from: "mailto:bob@example.com"
+          received_at: "2026-07-01T11:00:00Z"
+        original_send_receipt:
+          send_plan: "newsletter-weekly-2026-w26"
+          principal: "principal:marketing"
+          receipt_id: "rcpt_01JXNEWSLETTER002"
+          checksum: "sha256:def789ghi012"
+        suppression_policy:
+          unsubscribe_signals:
+            - "unsubscribe"
+            - "stop sending"
+            - "remove me"
+            - "opt out"
+            - "don't want"
+          confidence_threshold: 0.75
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      classification: object
+      suppression_result: object
+      routing: object
+    inputs:
+      inbound_reply:
+        type: json
+        required: true
+        description: Inbound reply message with content, sender, and timestamp.
+      original_send_receipt:
+        type: json
+        required: true
+        description: Receipt for the original outbound send that prompted this reply.
+      suppression_policy:
+        type: json
+        required: false
+        description: Policy defining unsubscribe signals and confidence threshold.
