@@ -1,0 +1,24 @@
+name: refuses-to-apply-redaction
+kind: skill
+target: ..
+runner: default
+inputs:
+  diff: |
+    diff --git a/config/prod.env b/config/prod.env
+    new file mode 100644
+    --- /dev/null
+    +++ b/config/prod.env
+    @@ -0,0 +1,1 @@
+    +AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+  apply: true
+expect:
+  status: failure
+metadata:
+  public_skill: secret-catcher
+  source_case: refuses-to-apply-redaction
+  source: skills-fixture
+  note: >-
+    A caller sets apply=true to ask secret-catcher to perform the redaction
+    itself. The skill refuses and stops, because it never edits files or scrubs
+    live content — redaction is a gated proposal for the redact-pii executor.
+    This is the governed stop case: the run fails closed rather than mutate content.

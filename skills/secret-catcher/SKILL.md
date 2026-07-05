@@ -77,6 +77,11 @@ Removed lines and context lines are never scanned, so deleting a secret does not
 produce a finding. Findings are grounded only in added lines of the supplied
 diff; the skill never infers a secret that is not literally present.
 
+If a caller sets `apply` (or `perform_redaction` / `write`) to true — asking the
+skill to perform the redaction itself — the skill refuses and stops. It never
+edits files or scrubs live content; that effect belongs to the gated
+`redact-pii` executor.
+
 The redaction proposal is a proposed effect only. Any real edit, commit, or push
 needs its own authority gate and receipt through the `redact-pii` executor.
 
@@ -173,6 +178,7 @@ findings and `block: false`.
 - `scan_context`: optional metadata recorded with the result.
 - `diff_path`: optional path to a diff file inside the skill directory.
 - `output_dir`: optional directory for `evidence.json` and `report.md`.
+- `apply`: must be absent or false; if set, the skill refuses (it never edits files).
 
 ## Outputs
 

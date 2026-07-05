@@ -20,6 +20,15 @@ function main() {
   const inputs = readInputs();
   const skillRoot = process.cwd();
 
+  // Governed refusal: secret-catcher only PROPOSES redactions. If a caller asks
+  // it to apply, edit, or write the redaction itself, it stops rather than touch
+  // content — that effect belongs to the gated redact-pii executor.
+  if (isTruthy(inputs.apply) || isTruthy(inputs.perform_redaction) || isTruthy(inputs.write)) {
+    throw new Error(
+      "refused: secret-catcher never edits files or scrubs live content. It only emits a redaction_proposal for the gated redact-pii executor. Remove 'apply' and route the proposal to redact-pii.",
+    );
+  }
+
   const diffText = resolveDiff(inputs, skillRoot);
   const scanContext = normalizeScanContext(inputs.scan_context);
 
@@ -63,6 +72,10 @@ function resolveDiff(rawInputs, root) {
     throw new Error(`diff exceeds ${MAX_DIFF_BYTES} bytes`);
   }
   return text;
+}
+
+function isTruthy(v) {
+  return v === true || v === "true" || v === 1 || v === "1" || v === "yes";
 }
 
 function normalizeScanContext(value) {

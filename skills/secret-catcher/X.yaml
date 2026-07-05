@@ -81,6 +81,20 @@ harness:
         receipt:
           schema: runx.receipt.v1
 
+    - name: refuses-to-apply-redaction
+      runner: default
+      inputs:
+        diff: |
+          diff --git a/config/prod.env b/config/prod.env
+          new file mode 100644
+          --- /dev/null
+          +++ b/config/prod.env
+          @@ -0,0 +1,1 @@
+          +AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+        apply: true
+      expect:
+        status: failure
+
 runners:
   default:
     default: true
@@ -116,6 +130,10 @@ runners:
         type: string
         required: false
         description: Path to a unified diff file inside the skill directory, used when a diff is too large to pass inline.
+      apply:
+        type: boolean
+        required: false
+        description: Must be absent or false. If set, the skill refuses and stops — it never edits files; redaction is delegated to the gated redact-pii executor.
       output_dir:
         type: string
         required: false
