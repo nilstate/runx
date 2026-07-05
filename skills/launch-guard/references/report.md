@@ -8,7 +8,7 @@ The skill does not deploy, tag, publish, or announce a release. Proposal flags a
 
 ## Public Artifacts
 
-- Public package: https://runx.ai/x/zdfgu113/launch-guard
+- Public package: https://runx.ai/x/zdfgu113/launch-guard@0.1.0
 - Registry ref: `zdfgu113/launch-guard@0.1.0`
 - Source PR: https://github.com/runxhq/runx/pull/227
 - Source branch: https://github.com/zdfgu113/runx/tree/codex/launch-guard-81/skills/launch-guard
