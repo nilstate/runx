@@ -1,0 +1,12 @@
+{
+  "runx_version": "runx-cli 0.6.16",
+  "skill_id": "armstrongsam25/reply-router",
+  "version": "sha-ad0fc216e139",
+  "harness_hosted_status": "passed",
+  "harness_checks_passed": 2,
+  "harness_checks_failed": 0,
+  "dogfood_receipt_id": "sha256:3205745863e359e3b60a9dcfdca2fb437d37d19f0d03de1876db09a109351c5c",
+  "dogfood_verify_valid": true,
+  "pr_url": "https://github.com/runxhq/runx/pull/245",
+  "public_url": "https://runx.ai/x/armstrongsam25/reply-router"
+}

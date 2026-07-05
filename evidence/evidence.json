@@ -1,0 +1,42 @@
+{
+  "observations": {
+    "runx_version": "runx-cli 0.6.16",
+    "publish_command": "runx registry publish ./skills/reply-router --registry https://api.runx.ai",
+    "install_command": "runx add armstrongsam25/reply-router@sha-ad0fc216e139 --registry https://api.runx.ai",
+    "dogfood_command": "runx skill armstrongsam25/reply-router@sha-ad0fc216e139 --registry https://api.runx.ai --json",
+    "verify_command": "runx verify --receipt <receipt.json> --json"
+  },
+  "dogfood": {
+    "package": "armstrongsam25/reply-router@sha-ad0fc216e139",
+    "input": {
+      "inbound_reply": {
+        "content": "Please unsubscribe me from this mailing list.",
+        "received_from": "mailto:test@example.com",
+        "received_at": "2026-07-05T20:00:00Z"
+      },
+      "original_send_receipt": {
+        "send_plan": "test",
+        "principal": "principal:marketing",
+        "receipt_id": "rcpt_test_001",
+        "checksum": "sha256:test123"
+      }
+    },
+    "command": "runx skill armstrongsam25/reply-router@sha-ad0fc216e139 --registry https://api.runx.ai --json",
+    "receipt_ref": "sha256:3205745863e359e3b60a9dcfdca2fb437d37d19f0d03de1876db09a109351c5c",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {"name": "sealed_unsubscribe_suppression", "status": "sealed"},
+      {"name": "stop_ambiguous_or_unsealed", "status": "failure"}
+    ]
+  },
+  "harness": {
+    "local": {"status": "passed", "case_count": 2, "assertion_errors": 0},
+    "hosted": {"status": "passed", "checks_passed": 2, "checks_failed": 0}
+  },
+  "registry": {
+    "skill_id": "armstrongsam25/reply-router",
+    "version": "sha-ad0fc216e139",
+    "public_url": "https://runx.ai/x/armstrongsam25/reply-router",
+    "trust_tier": "community"
+  }
+}
