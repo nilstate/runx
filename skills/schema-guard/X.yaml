@@ -1,0 +1,181 @@
+skill: schema-guard
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: local-schema
+      method: READ
+      scope: runx:schema:read
+  deny:
+    - network_mutation
+    - credential_material
+    - live_schema_write
+
+emits:
+  - name: compatibility
+    packet: runx.schema_guard.compatibility.v1
+  - name: validation_results
+    packet: runx.schema_guard.validation_results.v1
+  - name: migration_notes
+    packet: runx.schema_guard.migration_notes.v1
+  - name: publish_schema_proposal
+    packet: runx.schema_guard.publish_schema_proposal.v1
+
+harness:
+  cases:
+    - name: schema-guard-additive-compatible
+      runner: default
+      inputs:
+        current_schema:
+          type: object
+          title: OrderEvent
+          version: "1.2.0"
+          required:
+            - order_id
+            - status
+          properties:
+            order_id:
+              type: string
+            status:
+              type: string
+              enum:
+                - pending
+                - paid
+            total_cents:
+              type: integer
+        proposed_schema:
+          type: object
+          title: OrderEvent
+          version: "1.3.0"
+          required:
+            - order_id
+            - status
+          properties:
+            order_id:
+              type: string
+            status:
+              type: string
+              enum:
+                - pending
+                - paid
+                - refunded
+            total_cents:
+              type: integer
+            coupon_code:
+              type: string
+        sample_payloads:
+          - order_id: ord_1001
+            status: paid
+            total_cents: 2599
+          - order_id: ord_1002
+            status: refunded
+            total_cents: 1200
+            coupon_code: WELCOME10
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - order_id
+            - status
+          versioning_rule: minor_allows_additive_only
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: schema-guard-breaking-refused
+      runner: default
+      inputs:
+        current_schema:
+          type: object
+          title: OrderEvent
+          version: "1.2.0"
+          required:
+            - order_id
+            - status
+          properties:
+            order_id:
+              type: string
+            status:
+              type: string
+              enum:
+                - pending
+                - paid
+            total_cents:
+              type: integer
+        proposed_schema:
+          type: object
+          title: OrderEvent
+          version: "2.0.0"
+          required:
+            - order_id
+            - status
+            - currency
+          properties:
+            order_id:
+              type: integer
+            status:
+              type: string
+              enum:
+                - paid
+            currency:
+              type: string
+        sample_payloads:
+          - order_id: ord_2001
+            status: pending
+            total_cents: 500
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - order_id
+            - status
+          versioning_rule: major_required_for_breaking
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 15
+    sandbox:
+      profile: readonly
+      cwd_policy: skill-directory
+      require_enforcement: false
+    artifacts:
+      named_emits:
+        compatibility: runx.schema_guard.compatibility.v1
+        validation_results: runx.schema_guard.validation_results.v1
+        migration_notes: runx.schema_guard.migration_notes.v1
+        publish_schema_proposal: runx.schema_guard.publish_schema_proposal.v1
+    inputs:
+      current_schema:
+        type: json
+        required: true
+        description: Current JSON-schema-like object contract.
+      proposed_schema:
+        type: json
+        required: true
+        description: Proposed JSON-schema-like object contract.
+      sample_payloads:
+        type: json
+        required: true
+        description: Array of real sample payloads to validate against the proposed schema.
+      compatibility_policy:
+        type: json
+        required: true
+        description: Policy object with breaking_allowed, required_fields, and versioning_rule.

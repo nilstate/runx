@@ -1,0 +1,7 @@
+{
+  "case": "schema-guard-breaking-refused",
+  "expected": {
+    "compatibility.status": "refused",
+    "publish_schema_proposal": "absent"
+  }
+}

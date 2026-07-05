@@ -1,0 +1,7 @@
+{
+  "case": "schema-guard-additive-compatible",
+  "expected": {
+    "compatibility.status": "compatible",
+    "publish_schema_proposal": "present"
+  }
+}
