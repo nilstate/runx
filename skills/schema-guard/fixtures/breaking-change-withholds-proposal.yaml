@@ -1,0 +1,40 @@
+name: breaking-change-withholds-proposal
+kind: skill
+target: ..
+runner: default
+inputs:
+  current_schema:
+    type: object
+    properties:
+      id: { type: integer }
+      name: { type: string }
+    required: [id, name]
+  proposed_schema:
+    type: object
+    properties:
+      id: { type: string }
+    required: [id]
+  sample_payloads:
+    - { id: 1, name: "ada" }
+  compatibility_policy:
+    breaking_allowed: false
+    required_fields: [id]
+    versioning_rule: additive-only
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  output:
+    block: true
+    compatibility:
+      compatible: false
+    publish_schema_proposal: null
+metadata:
+  public_skill: schema-guard
+  source_case: breaking-change-withholds-proposal
+  source: skills-fixture
+  note: >-
+    The required 'name' field is removed and 'id' changes type integer->string; a
+    sample fails against the proposed schema. The change is breaking under the
+    policy, so compatibility.compatible=false, block=true, and NO proposal is
+    emitted. The run still seals — a provable, gated refusal to propose.

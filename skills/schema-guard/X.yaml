@@ -1,0 +1,170 @@
+skill: schema-guard
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  idempotency:
+    key: proposed_schema_sha256
+  scopes:
+    - schema.read
+  policy:
+    data_classification: caller_supplied_schema
+    network:
+      allowed: []
+      forbidden:
+        - any network access
+        - live schema writes
+        - registry or database mutation
+    verifier_notes:
+      - Breaking changes are grounded only in the current vs proposed schema diff, identified by field path with old and new contract and the policy rule.
+      - A publish_schema_proposal is emitted only when the change is compatible under the policy; a breaking or policy-violating change withholds the proposal.
+      - The proposal is gated for the schema-publisher executor; this skill performs no live schema write.
+      - The compatible harness case seals with a proposal; the breaking case seals with no proposal; the apply case is the governed stop case.
+  artifacts:
+    emits:
+      - schema_guard_result
+      - evidence_json
+      - report_md
+    wrap_as: schema_guard_packet
+
+harness:
+  cases:
+    - name: additive-change-compatible-yields-proposal
+      runner: default
+      inputs:
+        current_schema:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+          required: [id]
+        proposed_schema:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            email: { type: string }
+          required: [id]
+        sample_payloads:
+          - { id: 1, name: "ada" }
+          - { id: 2, name: "grace", email: "grace@example.com" }
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields: [id]
+          versioning_rule: additive-only
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        output:
+          block: false
+          compatibility:
+            compatible: true
+          publish_schema_proposal:
+            performed_by: schema-publisher
+
+    - name: breaking-change-withholds-proposal
+      runner: default
+      inputs:
+        current_schema:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+          required: [id, name]
+        proposed_schema:
+          type: object
+          properties:
+            id: { type: string }
+          required: [id]
+        sample_payloads:
+          - { id: 1, name: "ada" }
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields: [id]
+          versioning_rule: additive-only
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        output:
+          block: true
+          compatibility:
+            compatible: false
+          publish_schema_proposal: null
+
+    - name: refuses-to-apply-schema
+      runner: default
+      inputs:
+        current_schema:
+          type: object
+          properties:
+            id: { type: integer }
+        proposed_schema:
+          type: object
+          properties:
+            id: { type: integer }
+            email: { type: string }
+        apply: true
+      expect:
+        status: failure
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - schema.read
+    policy:
+      reads:
+        - caller-supplied current and proposed schemas and sample payloads
+      calls: []
+      writes:
+        - evidence.json
+        - report.md
+      disallows:
+        - network access
+        - writing or publishing a live schema
+        - executing caller-supplied code
+    inputs:
+      current_schema:
+        type: object
+        required: true
+        description: The current JSON Schema (the contract in force).
+      proposed_schema:
+        type: object
+        required: true
+        description: The proposed JSON Schema to check for compatibility.
+      sample_payloads:
+        type: array
+        required: false
+        description: Representative payloads validated against the proposed schema.
+      compatibility_policy:
+        type: object
+        required: false
+        description: "{ breaking_allowed, required_fields[], versioning_rule } governing whether breaking changes are permitted."
+      apply:
+        type: boolean
+        required: false
+        description: Must be absent or false. If set, the skill refuses and stops — it never writes a live schema.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill directory where evidence.json and report.md are written.
+    outputs:
+      block: boolean
+      compatibility: object
+      validation_results: array
+      migration_notes: array
+      publish_schema_proposal: object
+      schema_guard_result: object

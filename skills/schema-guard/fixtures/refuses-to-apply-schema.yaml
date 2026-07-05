@@ -1,0 +1,25 @@
+name: refuses-to-apply-schema
+kind: skill
+target: ..
+runner: default
+inputs:
+  current_schema:
+    type: object
+    properties:
+      id: { type: integer }
+  proposed_schema:
+    type: object
+    properties:
+      id: { type: integer }
+      email: { type: string }
+  apply: true
+expect:
+  status: failure
+metadata:
+  public_skill: schema-guard
+  source_case: refuses-to-apply-schema
+  source: skills-fixture
+  note: >-
+    A caller sets apply=true to ask schema-guard to write the schema itself. The
+    skill refuses and stops, because it never writes or publishes a live schema —
+    that is the gated schema-publisher executor's effect. The governed stop case.

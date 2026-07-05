@@ -1,0 +1,43 @@
+name: additive-change-compatible-yields-proposal
+kind: skill
+target: ..
+runner: default
+inputs:
+  current_schema:
+    type: object
+    properties:
+      id: { type: integer }
+      name: { type: string }
+    required: [id]
+  proposed_schema:
+    type: object
+    properties:
+      id: { type: integer }
+      name: { type: string }
+      email: { type: string }
+    required: [id]
+  sample_payloads:
+    - { id: 1, name: "ada" }
+    - { id: 2, name: "grace", email: "grace@example.com" }
+  compatibility_policy:
+    breaking_allowed: false
+    required_fields: [id]
+    versioning_rule: additive-only
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  output:
+    block: false
+    compatibility:
+      compatible: true
+    publish_schema_proposal:
+      performed_by: schema-publisher
+metadata:
+  public_skill: schema-guard
+  source_case: additive-change-compatible-yields-proposal
+  source: skills-fixture
+  note: >-
+    An optional 'email' field is added; all samples still validate. The change is
+    compatible under the additive-only policy, so compatibility.compatible=true,
+    block=false, and a gated publish_schema_proposal is emitted.
