@@ -1,0 +1,174 @@
+skill: contract-drafter
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: local
+      method: READ
+      scope: contract.template
+    - provider: local
+      method: READ
+      scope: contract.parties
+    - provider: local
+      method: READ
+      scope: contract.terms
+  deny:
+    - send_contract
+    - send_proposal_without_human_gate
+    - invent_party
+    - invent_clause
+    - invent_deal_term
+    - hide_template_deviation
+    - execute_signature
+
+harness:
+  cases:
+    - name: sealed-draft-with-visible-deviations
+      inputs:
+        template:
+          template_id: msa-standard-2026-07
+          title: Mutual Services Agreement
+          baseline:
+            governing_law: New York
+            payment_terms: Net 30
+            liability_cap: Fees paid in the prior 12 months
+            confidentiality_period: 3 years
+            renewal: Mutual written renewal only
+          required_terms:
+            - effective_date
+            - services
+            - fees
+            - payment_terms
+            - liability_cap
+            - governing_law
+          clauses:
+            - id: introduction
+              title: Parties and Effective Date
+              baseline: "The agreement identifies both parties and the effective date."
+            - id: services
+              title: Services
+              baseline: "Provider performs only the services listed in the statement of work."
+            - id: fees
+              title: Fees and Payment
+              baseline: "Customer pays the fees in USD under Net 30 payment terms."
+            - id: liability_cap
+              title: Limitation of Liability
+              baseline: "Liability is capped at fees paid in the prior 12 months."
+            - id: confidentiality_period
+              title: Confidentiality
+              baseline: "Confidentiality obligations survive for 3 years."
+            - id: governing_law
+              title: Governing Law
+              baseline: "New York law governs the agreement."
+        parties:
+          provider:
+            legal_name: Northstar Ops LLC
+            signer: Mira Chen
+            email: mira.chen@example.invalid
+          customer:
+            legal_name: Harbor Ledger Inc.
+            signer: Jules Patel
+            email: legal@example.invalid
+        terms:
+          effective_date: "2026-07-15"
+          services: "Monthly operations analytics and invoice reconciliation support."
+          fees: "USD 9,500 per month"
+          payment_terms: Net 45
+          liability_cap: "USD 75,000 aggregate cap"
+          governing_law: Delaware
+          confidentiality_period: 3 years
+          proposal_subject: "Review draft MSA for Harbor Ledger"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refused-missing-required-payment-term
+      inputs:
+        template:
+          template_id: msa-standard-2026-07
+          title: Mutual Services Agreement
+          baseline:
+            governing_law: New York
+            payment_terms: Net 30
+            liability_cap: Fees paid in the prior 12 months
+          required_terms:
+            - effective_date
+            - services
+            - fees
+            - payment_terms
+            - liability_cap
+            - governing_law
+          clauses:
+            - id: introduction
+              title: Parties and Effective Date
+              baseline: "The agreement identifies both parties and the effective date."
+            - id: services
+              title: Services
+              baseline: "Provider performs only the services listed in the statement of work."
+            - id: fees
+              title: Fees and Payment
+              baseline: "Customer pays the fees in USD under Net 30 payment terms."
+            - id: liability_cap
+              title: Limitation of Liability
+              baseline: "Liability is capped at fees paid in the prior 12 months."
+            - id: governing_law
+              title: Governing Law
+              baseline: "New York law governs the agreement."
+        parties:
+          provider:
+            legal_name: Northstar Ops LLC
+            signer: Mira Chen
+            email: mira.chen@example.invalid
+          customer:
+            legal_name: Harbor Ledger Inc.
+            signer: Jules Patel
+            email: legal@example.invalid
+        terms:
+          effective_date: "2026-07-15"
+          services: "Monthly operations analytics and invoice reconciliation support."
+          fees: "USD 9,500 per month"
+          liability_cap: "USD 75,000 aggregate cap"
+          governing_law: Delaware
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+
+runners:
+  draft:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      template:
+        type: json
+        required: true
+        description: "Contract template object with template_id, baseline, required_terms, and clauses."
+      parties:
+        type: json
+        required: true
+        description: "Explicit party objects; the skill refuses instead of inventing missing parties."
+      terms:
+        type: json
+        required: true
+        description: "Deal terms to merge into the template; required terms must be supplied explicitly."
+    outputs:
+      draft_doc: object
+      deviations: object
+      send_proposal: object
+    artifacts:
+      wrap_as: contract_draft_packet
+      packet: runx.contract_draft.v1
