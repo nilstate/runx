@@ -1,0 +1,79 @@
+{
+  "schema": "runx.delivery.verification.v1",
+  "bounty": 79,
+  "submitted_at": "2026-07-06T02:17:30Z",
+  "agent_kid": "agent-c2409e",
+  "operator_handle": "armstrongsam25",
+  "runx_cli_version": "runx-cli 0.6.16",
+  "harness": {
+    "status": "passed",
+    "registry_source": "https://api.runx.ai",
+    "skill_id": "armstrongsam25/crm-cleanup",
+    "version": "sha-3ce7ea783bf5",
+    "case_count": 3,
+    "checks_passed": 3,
+    "checks_failed": 0,
+    "cases": [
+      {
+        "name": "sealed_transcript_yields_updates",
+        "runner": "default",
+        "expected_status": "sealed",
+        "receipt_id": "sha256:0b2cd9b1a54a6e9e162f0ae112a9569653cff0695a89bd3f188cd147b1246ecc"
+      },
+      {
+        "name": "sealed_noop_empty_field_updates",
+        "runner": "default",
+        "expected_status": "sealed",
+        "receipt_id": "sha256:5e5a8a16053b9a119859037d9dc18a8988e14b4a934c38f150cfcb35d0d857db"
+      },
+      {
+        "name": "stop_missing_transcript",
+        "runner": "default",
+        "expected_status": "failure",
+        "receipt_id": "sha256:4521b8fb5d8b4ee3d8c45222f48d01c68bd8b1d71c0f011f459ac78b6648b120"
+      }
+    ],
+    "evidence_url": "https://runx.ai/x/armstrongsam25/crm-cleanup@sha-3ce7ea783bf5#harness",
+    "latest_run_id": "runx-harness:armstrongsam25/crm-cleanup:sha-3ce7ea783bf5"
+  },
+  "dogfood_receipt": {
+    "receipt_id": "sha256:f365bdf83c3940321a7ae9292754dccd7431b870532e35104f1dfb91ed33d711",
+    "run_id": "run_default_5ee7f8dfb719",
+    "schema": "runx.skill_run.v1",
+    "status": "sealed",
+    "closed_at": "2026-07-06T02:17:01.971Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "registry_provenance": {
+      "registry_source": "remote https://api.runx.ai",
+      "trust_state": "trusted",
+      "version": "sha-3ce7ea783bf5",
+      "digest": "sha256:6fe4c804c144eff06b2bdcc58954e2d815dfe8c1e0bd2af819f1f97ec70bf3c7",
+      "profile_digest": "sha256:cd8130b7c6cecfb8a55338893b5be5ad917eb4d316ea234ed534a97fd2358d99"
+    },
+    "verification": {
+      "valid": true,
+      "digest_status": "valid",
+      "content_address_status": "valid",
+      "signature_status": "valid",
+      "signature_mode": "production",
+      "signature_kid": "runx-demo-key"
+    }
+  },
+  "pr": {
+    "number": 248,
+    "url": "https://github.com/runxhq/runx/pull/248",
+    "state": "OPEN",
+    "title": "Add crm-cleanup skill",
+    "head": "armstrongsam25:skill/crm-cleanup",
+    "base": "main",
+    "repo": "runxhq/runx",
+    "fork_repo": "armstrongsam25/runx"
+  },
+  "source_repo": {
+    "url": "https://github.com/armstrongsam25/runx-crm-cleanup-skill",
+    "commit_sha": "bad3ec77d931b1a79d2234c7f06413a3c9539a9c",
+    "source_url": "https://github.com/armstrongsam25/runx-crm-cleanup-skill/tree/bad3ec77d931b1a79d2234c7f06413a3c9539a9c",
+    "skill_path": "skills/crm-cleanup"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "runx_cli_version": "runx-cli 0.6.16",
+  "summary": "Published the crm-cleanup runx skill to GitHub and the hosted runx registry, opened PR #248 against runxhq/runx, and ran a dogfood test from the hosted registry that sealed successfully with a verified receipt. The skill reads an interaction transcript and CRM schema, extracts grounded takeaways, maps them to allowed CRM fields, and emits a gated write_proposal with no live CRM write. Harness passes 3/3 on the hosted registry.",
+  "observations": [
+    "runx --version output: runx-cli 0.6.16 (satisfies 0.6.14 floor)",
+    "Publisher owner: armstrongsam25; package name: crm-cleanup; version: sha-3ce7ea783bf5; registry ref: armstrongsam25/crm-cleanup@sha-3ce7ea783bf5",
+    "public_url: https://runx.ai/x/armstrongsam25/crm-cleanup@sha-3ce7ea783bf5 (live, HTTP 200)",
+    "pr_url: https://github.com/runxhq/runx/pull/248 (open, contains skills/crm-cleanup/X.yaml, SKILL.md, run.mjs, evidence)",
+    "source_url: https://github.com/armstrongsam25/runx-crm-cleanup-skill/tree/bad3ec77d931b1a79d2234c7f06413a3c9539a9c",
+    "raw x_yaml: https://raw.githubusercontent.com/armstrongsam25/runx-crm-cleanup-skill/bad3ec77d931b1a79d2234c7f06413a3c9539a9c/skills/crm-cleanup/X.yaml",
+    "raw skill_md: https://raw.githubusercontent.com/armstrongsam25/runx-crm-cleanup-skill/bad3ec77d931b1a79d2234c7f06413a3c9539a9c/skills/crm-cleanup/SKILL.md",
+    "Publish method: runx login --provider github --for publish, then runx registry publish ./skills/crm-cleanup/SKILL.md --registry https://api.runx.ai",
+    "Install command: runx add armstrongsam25/crm-cleanup@sha-3ce7ea783bf5",
+    "Hosted harness status: passed 3/3 cases (sealed_transcript_yields_updates, sealed_noop_empty_field_updates, stop_missing_transcript) with 3 receipts",
+    "Harness case names: sealed_transcript_yields_updates (sealed, process_closed), sealed_noop_empty_field_updates (sealed, process_closed), stop_missing_transcript (failure, process_failed)",
+    "Harness receipt ids: sha256:0b2cd9b1a54a6e9e162f0ae112a9569653cff0695a89bd3f188cd147b1246ecc, sha256:5e5a8a16053b9a119859037d9dc18a8988e14b4a934c38f150cfcb35d0d857db, sha256:4521b8fb5d8b4ee3d8c45222f48d01c68bd8b1d71c0f011f459ac78b6648b120",
+    "Dogfood command: runx skill armstrongsam25/crm-cleanup@sha-3ce7ea783bf5 --registry https://api.runx.ai --input transcript='Call with Sarah Chen from Acme Corp...' --input-json crm_schema='{\"fields\":[...]}' --json",
+    "Dogfood receipt_ref: sha256:f365bdf83c3940321a7ae9292754dccd7431b870532e35104f1dfb91ed33d711",
+    "runx verify verdict: valid=true, digest=valid, content_address=valid, signature=valid (production mode, kid=runx-demo-key)",
+    "Dogfood takeaways: 4 takeaways extracted (tk1: company=Acme Corp, tk2: deal_value=50000, tk3: stage=qualified, tk4: expected_close_date=July), each grounded with source_quote from transcript",
+    "Dogfood field_updates: 4 field_updates mapped to crm_schema fields (company, deal_value, stage, expected_close_date), each traces to a takeaway_id and targets only allowed fields",
+    "Dogfood write_proposal: gate=proposed, performed_write=false, note='Gated proposal — no live CRM write performed. Review before applying.' — skill performs no live connector write",
+    "No-op path: sealed_noop_empty_field_updates case yields empty field_updates when transcript has no actionable CRM information (general support call about business hours)",
+    "New user walkthrough: runx add armstrongsam25/crm-cleanup@sha-3ce7ea783bf5, then runx skill armstrongsam25/crm-cleanup@sha-3ce7ea783bf5 --input transcript='...' --input-json crm_schema='...' --json, verify with runx verify --receipt <receipt.json> --json"
+  ],
+  "dogfood": {
+    "package": "armstrongsam25/crm-cleanup@sha-3ce7ea783bf5",
+    "input": "Call transcript with Sarah Chen from Acme Corp mentioning VP of Engineering role, enterprise plan interest, $50k Q3 budget, and expected signing by end of July. CRM schema with title, company, deal_value, stage, expected_close_date fields.",
+    "command": "runx skill armstrongsam25/crm-cleanup@sha-3ce7ea783bf5 --registry https://api.runx.ai --input transcript='Call with Sarah Chen from Acme Corp on 2026-07-01. Sarah said she is the VP of Engineering at Acme. She asked about the enterprise plan and mentioned a budget of 50000 for Q3. She wants to move forward and expects to sign by end of July.' --input-json crm_schema='{\"fields\":[{\"name\":\"title\",\"type\":\"string\"},{\"name\":\"company\",\"type\":\"string\"},{\"name\":\"deal_value\",\"type\":\"number\"},{\"name\":\"stage\",\"type\":\"enum\",\"options\":[\"lead\",\"qualified\",\"closed\"]},{\"name\":\"expected_close_date\",\"type\":\"date\"}]}' --json",
+    "receipt_ref": "sha256:f365bdf83c3940321a7ae9292754dccd7431b870532e35104f1dfb91ed33d711",
+    "verify_verdict": "valid=true, digest=valid, content_address=valid, signature=valid (production mode, kid=runx-demo-key)",
+    "harness_cases": [
+      {"name": "sealed_transcript_yields_updates", "status": "sealed", "reason_code": "process_closed"},
+      {"name": "sealed_noop_empty_field_updates", "status": "sealed", "reason_code": "process_closed"},
+      {"name": "stop_missing_transcript", "status": "failure", "reason_code": "process_failed"}
+    ]
+  }
+}

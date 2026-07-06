@@ -1,6 +1,7 @@
 ---
 name: crm-cleanup
-description: Analyze a list of CRM contacts/records to identify duplicates, missing fields, stale entries, and suggest merge/cleanup actions. Never modifies any data — only produces a read-only cleanup report.
+version: "0.2.0"
+description: Read an interaction transcript and a CRM schema, extract grounded takeaways, map them to allowed CRM fields, and emit a gated write_proposal. Performs no live CRM write.
 source:
   type: cli-tool
   command: node
@@ -10,141 +11,125 @@ runx:
   category: ops
   input_resolution:
     required:
-      - contacts
+      - transcript
+      - crm_schema
 ---
 
 ## What this skill does
 
-Takes a list of CRM contacts/records and produces a **read-only cleanup report**.
-It identifies four classes of data-quality issues and suggests remediation actions,
-but it never creates, updates, deletes, or merges any records. All suggestions are
-advisory.
+CRM Cleanup keeps pipeline data from rotting after calls. It reads an
+interaction `transcript` and a `crm_schema`, extracts grounded takeaways from
+the transcript, maps those takeaways to the CRM fields allowed by
+`crm_schema`, and emits a gated `write_proposal` that an operator can review
+before any write is performed.
 
-For each batch of contacts the skill detects:
+**This skill performs no live CRM write.** The `write_proposal` is gated: it
+carries a `gate` field set to `"proposed"` and never executes against a real
+connector. It is advisory only.
 
-- **Duplicates** — records that appear to represent the same person or company,
-  matched on normalized email, normalized phone, or a fuzzy name+company key.
-- **Missing fields** — records missing required fields (`name`, `email`, or
-  `company`) or that have empty/whitespace-only values.
-- **Stale entries** — records whose `last_contacted_at` is older than the
-  configured staleness threshold (default 365 days), or that have no
-  `last_contacted_at` at all.
-- **Suggested actions** — for each issue, a non-destructive recommendation such
-  as `merge_suggestion`, `fill_missing_field`, `archive_stale`, or
-  `review_duplicate`. None of these actions are executed.
+For each run the skill produces:
 
-The output is a structured JSON report intended for human or agent review before
-any cleanup is performed.
+- **takeaways** — factual statements grounded in the transcript, each with the
+  source quote it was derived from.
+- **field_updates** — proposed updates to CRM fields, where every update traces
+  to a takeaway and targets only fields declared in `crm_schema`.
+- **write_proposal** — a gated proposal object summarizing the field_updates,
+  with `gate: "proposed"` and `performed_write: false`.
 
 ## When to use this skill
 
-Use this skill when an agent or operator needs a safe, first-pass assessment of
-CRM data quality:
+Use this skill when an agent or operator needs a safe, first-pass mapping from
+a call/meeting transcript into structured CRM field updates:
 
-- Auditing a contact list for duplicates before a dedupe operation.
-- Finding records with missing required fields before an import or export.
-- Identifying stale contacts that may warrant archival.
-- Producing a merge/cleanup worklist for a human to act on.
+- After a sales call, extracting takeaways and proposing CRM field updates.
+- After a support interaction, mapping resolution notes to CRM fields.
+- Auditing whether a transcript yields actionable CRM updates before a human
+  commits them.
+- Producing a reviewable, gated proposal so no unreviewed write hits the CRM.
 
 ## When not to use this skill
 
-Do not use this skill as a data writer, dedupe executor, or migration tool. It
-does not modify, delete, merge, or move any records. Do not use it to:
+Do not use this skill as a CRM writer or connector. It does not perform any
+live write, API call, or data mutation. Do not use it to:
 
-- Actually merge or delete duplicate contacts.
-- Enrich records by calling external data providers.
-- Send re-engagement emails to stale contacts.
-- Fix or auto-fill missing fields in the source system.
+- Actually update, create, or delete CRM records.
+- Call a CRM connector (Salesforce, HubSpot, etc.).
+- Enrich records from external data providers.
+- Merge or deduplicate contacts.
 
-If the caller needs to act on the report, a separate governed skill with write
-authority must perform the changes under its own receipt.
+If the caller needs to act on the proposal, a separate governed skill with
+write authority must perform the changes under its own receipt.
 
 ## Procedure
 
-1. Require `contacts` to be a non-empty array of contact objects. Each contact
-   must have at least an `id` field. If `contacts` is empty or not an array,
-   stop with an error.
-2. Read optional `cleanup_policy` for thresholds:
-   - `staleness_days` (default 365) — contacts older than this are stale.
-   - `required_fields` (default `["name", "email", "company"]`).
-3. For each contact, normalize email (lowercase, trim), phone (digits only), and
-   name (lowercase, collapse whitespace) for matching.
-4. Detect duplicates by grouping on normalized email, normalized phone, and a
-   fuzzy name+company key. Any group with more than one distinct `id` is a
-   duplicate set.
-5. Detect missing fields by checking each required field for absence or
-   empty/whitespace value.
-6. Detect stale entries by comparing `last_contacted_at` (ISO 8601) against the
-   staleness threshold. Records with no `last_contacted_at` are flagged as
-   stale with reason `no_contact_date`.
-7. For each issue, emit a suggested action. Suggestions are advisory only and
-   carry no authority to modify data.
-8. Return a JSON report with `summary` counts and `issues` arrays. The run does
-   not modify any data.
+1. Require `transcript` to be a non-empty string and `crm_schema` to be an
+   object with a `fields` array. If either is missing or malformed, stop with
+   an error.
+2. Parse the `crm_schema.fields` array. Each field has a `name` and a `type`
+   (e.g. `string`, `enum`, `date`). Only fields listed here may be targeted by
+   `field_updates`.
+3. Scan the `transcript` for grounded takeaways — factual statements about the
+   contact/company/deal that can be mapped to a CRM field. Each takeaway must
+   include the source `quote` from the transcript.
+4. For each takeaway that maps to an allowed CRM field, emit a `field_update`
+   keyed to that field name. Every `field_update` traces to a takeaway via
+   `takeaway_id` and targets only fields allowed by `crm_schema`.
+5. If no actionable takeaways map to allowed fields, produce an empty
+   `field_updates` array — this is the no-op path.
+6. Build a `write_proposal` object with `gate: "proposed"`,
+   `performed_write: false`, and the list of proposed `field_updates`. This
+   proposal is gated and never executes.
+7. Return a JSON object with `takeaways`, `field_updates`, and
+   `write_proposal`. The run does not modify any data.
 
 ## Edge cases and stop conditions
 
 Return a stop (exit non-zero) when:
 
-- `contacts` is missing, not an array, or an empty array.
-- A contact is missing its `id` field (cannot be uniquely referenced).
-- `staleness_days` is provided but is not a positive number.
-- `required_fields` is provided but is not an array of strings.
+- `transcript` is missing, not a string, or an empty/whitespace-only string.
+- `crm_schema` is missing, not an object, or lacks a `fields` array.
+- `crm_schema.fields` is empty or contains entries without a `name`.
 
-A contact with no `last_contacted_at` is not an error — it is reported as stale
-with reason `no_contact_date`. A contact with an unparseable `last_contacted_at`
-is reported as stale with reason `unparseable_date` but does not stop the run.
+A transcript that yields no mappable takeaways is not an error — it produces
+an empty `field_updates` array (the no-op path) with `write_proposal.gate`
+still set to `"proposed"` and `performed_write: false`.
 
-The authority scope is read-only analysis and reporting. The proof surface is
-the sealed receipt containing the cleanup report summary and issue list. Any
-actual merge, delete, or update requires a separate governed skill.
+The authority scope is read-only analysis and gated proposal emission. The
+proof surface is the sealed receipt containing takeaways, field_updates, and
+the gated write_proposal. Any actual CRM write requires a separate governed
+skill.
 
 ## Output schema
 
 ```json
 {
-  "summary": {
-    "total_contacts": 5,
-    "duplicate_sets": 1,
-    "duplicates_count": 2,
-    "missing_fields_count": 1,
-    "stale_count": 1,
-    "total_issues": 4
-  },
-  "duplicates": [
+  "takeaways": [
     {
-      "match_key": "email",
-      "match_value": "alice@example.com",
-      "contact_ids": ["c1", "c3"],
-      "suggested_action": "merge_suggestion",
-      "note": "Possible duplicate based on matching email. Review before merging."
+      "id": "tk1",
+      "text": "The contact is the VP of Engineering.",
+      "quote": "I'm the VP of Engineering here at Acme."
     }
   ],
-  "missing_fields": [
+  "field_updates": [
     {
-      "contact_id": "c2",
-      "missing": ["email"],
-      "suggested_action": "fill_missing_field",
-      "note": "Contact is missing required field(s). No data modified."
+      "field": "title",
+      "value": "VP of Engineering",
+      "takeaway_id": "tk1",
+      "source_quote": "I'm the VP of Engineering here at Acme."
     }
   ],
-  "stale_entries": [
-    {
-      "contact_id": "c4",
-      "last_contacted_at": "2024-01-15T00:00:00Z",
-      "days_since_contact": 537,
-      "reason": "exceeds_threshold",
-      "suggested_action": "archive_stale",
-      "note": "Contact is stale. Consider archiving after review."
-    }
-  ],
-  "actions": [
-    {
-      "type": "merge_suggestion",
-      "contact_ids": ["c1", "c3"],
-      "priority": "high"
-    }
-  ]
+  "write_proposal": {
+    "gate": "proposed",
+    "performed_write": false,
+    "field_updates": [
+      {
+        "field": "title",
+        "value": "VP of Engineering",
+        "takeaway_id": "tk1"
+      }
+    ],
+    "note": "Gated proposal — no live CRM write performed. Review before applying."
+  }
 }
 ```
 
@@ -152,24 +137,21 @@ actual merge, delete, or update requires a separate governed skill.
 
 ```bash
 runx skill "$PWD" \
-  --input-json contacts='[
-    {"id":"c1","name":"Alice Smith","email":"alice@example.com","company":"Acme","last_contacted_at":"2026-06-01T10:00:00Z"},
-    {"id":"c2","name":"Bob Jones","company":"Globex","last_contacted_at":"2026-05-01T10:00:00Z"},
-    {"id":"c3","name":"Alice S.","email":"alice@example.com","company":"Acme Inc","last_contacted_at":"2026-06-02T10:00:00Z"}
-  ]' \
-  --input-json cleanup_policy='{"staleness_days":365,"required_fields":["name","email","company"]}' \
+  --input-json transcript='Sarah Chen called in from Acme Corp. She said "I am the VP of Engineering here." She asked about the enterprise plan and mentioned a budget of $50k for Q3.' \
+  --input-json crm_schema='{"fields":[{"name":"title","type":"string"},{"name":"company","type":"string"},{"name":"deal_value","type":"number"},{"name":"stage","type":"enum","options":["lead","qualified","closed"]}]}' \
   --json
 ```
 
-Expected result: `summary.total_contacts = 3`, one duplicate set matching
-`c1` and `c3` on email `alice@example.com`, and one missing-field issue on `c2`
-(missing `email`). The run does not modify any data.
+Expected result: takeaways include the title (VP of Engineering), company
+(Acme Corp), and deal value ($50k). `field_updates` maps `title`, `company`,
+and `deal_value`. `write_proposal.gate` is `"proposed"` and
+`performed_write` is `false`. The run does not modify any data.
 
 ## Inputs
 
-- `contacts`: array of contact objects. Each object must have an `id` (string).
-  Optional fields: `name` (string), `email` (string), `phone` (string),
-  `company` (string), `last_contacted_at` (ISO 8601 string).
-- `cleanup_policy`: optional object with `staleness_days` (positive number,
-  default 365) and `required_fields` (array of strings, default
-  `["name", "email", "company"]`).
+- `transcript`: string. The interaction transcript (call/meeting notes). Must
+  be non-empty.
+- `crm_schema`: object with a `fields` array. Each field has `name` (string)
+  and `type` (`string`, `enum`, `number`, `date`, `boolean`). Optional
+  `options` for enum fields. Only fields in this schema may be targeted by
+  `field_updates`.

@@ -1,5 +1,5 @@
 skill: crm-cleanup
-version: "0.1.0"
+version: "0.2.0"
 
 catalog:
   kind: skill
@@ -9,37 +9,30 @@ catalog:
 
 harness:
   cases:
-    - name: sealed_cleanup_report
+    - name: sealed_transcript_yields_updates
       runner: default
       inputs:
-        contacts:
-          - id: "c1"
-            name: "Alice Smith"
-            email: "alice@example.com"
-            phone: "+1-555-0100"
-            company: "Acme"
-            last_contacted_at: "2026-06-01T10:00:00Z"
-          - id: "c2"
-            name: "Bob Jones"
-            company: "Globex"
-            last_contacted_at: "2026-05-01T10:00:00Z"
-          - id: "c3"
-            name: "Alice S."
-            email: "alice@example.com"
-            phone: "555-0100"
-            company: "Acme Inc"
-            last_contacted_at: "2026-06-02T10:00:00Z"
-          - id: "c4"
-            name: "Carol Lee"
-            email: "carol@example.com"
-            company: "Initech"
-            last_contacted_at: "2024-01-15T00:00:00Z"
-        cleanup_policy:
-          staleness_days: 365
-          required_fields:
-            - "name"
-            - "email"
-            - "company"
+        transcript: |
+          Call with Sarah Chen from Acme Corp on 2026-07-01.
+          Sarah said: "I am the VP of Engineering here at Acme."
+          She asked about the enterprise plan and mentioned a budget of $50k for Q3.
+          She wants to move forward and expects to sign by end of July.
+        crm_schema:
+          fields:
+            - name: "title"
+              type: "string"
+            - name: "company"
+              type: "string"
+            - name: "deal_value"
+              type: "number"
+            - name: "stage"
+              type: "enum"
+              options:
+                - "lead"
+                - "qualified"
+                - "closed"
+            - name: "expected_close_date"
+              type: "date"
       expect:
         status: sealed
         receipt:
@@ -48,16 +41,36 @@ harness:
           disposition: closed
           reason_code: process_closed
 
-    - name: stop_empty_contacts
+    - name: sealed_noop_empty_field_updates
       runner: default
       inputs:
-        contacts: []
-        cleanup_policy:
-          staleness_days: 365
-          required_fields:
-            - "name"
-            - "email"
-            - "company"
+        transcript: |
+          Called the general support line. The caller asked about business hours.
+          No specific contact, company, or deal information was discussed.
+        crm_schema:
+          fields:
+            - name: "title"
+              type: "string"
+            - name: "company"
+              type: "string"
+            - name: "deal_value"
+              type: "number"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: stop_missing_transcript
+      runner: default
+      inputs:
+        transcript: ""
+        crm_schema:
+          fields:
+            - name: "title"
+              type: "string"
       expect:
         status: failure
         receipt:
@@ -74,17 +87,15 @@ runners:
     args:
       - run.mjs
     outputs:
-      summary: object
-      duplicates: array
-      missing_fields: array
-      stale_entries: array
-      actions: array
+      takeaways: array
+      field_updates: array
+      write_proposal: object
     inputs:
-      contacts:
+      transcript:
+        type: string
+        required: true
+        description: The interaction transcript (call/meeting notes).
+      crm_schema:
         type: json
         required: true
-        description: Array of CRM contact objects, each requiring at least an id.
-      cleanup_policy:
-        type: json
-        required: false
-        description: Policy with staleness_days and required_fields.
+        description: CRM schema with a fields array defining allowed CRM fields.
