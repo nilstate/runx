@@ -1,0 +1,92 @@
+{
+  "schema": "runx.answer_from_docs.verification.v1",
+  "status": "passed",
+  "runx_cli_version": "runx-cli 0.6.16",
+  "published_ref": "zhtwangk/answer-from-docs@sha-b151b3445fc7",
+  "public_url": "https://runx.ai/x/zhtwangk/answer-from-docs@sha-b151b3445fc7",
+  "hosted_registry_publish": {
+    "status": "published",
+    "owner": "zhtwangk",
+    "name": "answer-from-docs",
+    "version": "sha-b151b3445fc7",
+    "digest": "9fb725a4664313cc2f51d8176dd3611eed950d6be9696e279b1623a7dc223e52",
+    "profile_digest": "291d1da9e52cf679bde26a4aa5051f27afb4b9fe19dd9ddfc53103c97205ca28",
+    "package_digest": "77d1fa56401f5268e0a38678b180ae3f2971ab12d5310bb0f00a898c94cebce2",
+    "trust_tier": "community",
+    "install_command": "runx add zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai",
+    "run_command": "runx skill zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai"
+  },
+  "local_harness": {
+    "command": "npx runx harness ./skills/answer-from-docs --json",
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "answer-from-docs-grounded-retention",
+      "answer-from-docs-refuses-unsupported-sso",
+      "answer-from-docs-needs-question"
+    ],
+    "receipt_ids": [
+      "sha256:b6a82314a98be90170813a0ea62a5ae5b236d6681035364038124c7e47b496ec",
+      "sha256:84df3afd4df3752d94952e167986e169ec430b139bb510f71eab360ebfd92077",
+      "sha256:53b6628087e1671f152a16016a10a23c5f7b295ecbdfe0df21beeda57fe377b5"
+    ]
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "answer-from-docs-grounded-retention",
+      "answer-from-docs-refuses-unsupported-sso",
+      "answer-from-docs-needs-question"
+    ],
+    "receipt_ids": [
+      "sha256:e892c5768e5bdea82e84f24b6533445014d9713d7be7630362cf678e690f5577",
+      "sha256:67545b9fbcea8dadd9f8328d4d3dc771b26a360146a852782b42460b179651b7",
+      "sha256:7aa7af076b8076e93f25b3f8ac264edb3ca4e5458a3b013d3a48a40ac3f9180f"
+    ],
+    "evidence_url": "https://runx.ai/x/zhtwangk/answer-from-docs@sha-b151b3445fc7#harness"
+  },
+  "public_registry_read": {
+    "method": "GET https://api.runx.ai/v1/skills/zhtwangk/answer-from-docs%40sha-b151b3445fc7",
+    "status": "success",
+    "owner_handle": "@zhtwangk",
+    "maturity": "beta",
+    "source_type": "cli-tool",
+    "catalog_visibility": "public",
+    "page_url": "https://runx.ai/x/zhtwangk/answer-from-docs@sha-b151b3445fc7"
+  },
+  "public_acquire": {
+    "method": "POST https://api.runx.ai/v1/skills/zhtwangk/answer-from-docs/acquire",
+    "status": "success",
+    "installation_id": "codex-answer-docs-dogfood-v2-20260706",
+    "version": "sha-b151b3445fc7",
+    "package_digest": "77d1fa56401f5268e0a38678b180ae3f2971ab12d5310bb0f00a898c94cebce2",
+    "signed_manifest_schema": "runx.registry.signed_manifest.v1",
+    "signed_manifest_signer": "runx-hosted-registry"
+  },
+  "dogfood": {
+    "published_command_attempt": "RUNX_HTTP_ALLOW_PRIVATE_NETWORK=1 npx runx skill zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai --input question=... --input-json corpus=... --receipts .runx/dogfood-public/answer-from-docs --json",
+    "published_command_attempt_status": "blocked_by_codex_proxy_dns_guard",
+    "published_command_attempt_error": "runtime HTTP DNS resolved api.runx.ai to non-public address 198.18.0.19",
+    "fallback_command": "npx runx skill .runx/install-check-public-api/answer-from-docs/zhtwangk/answer-from-docs/sha-b151b3445fc7/SKILL.md --input question=... --input-json corpus=... --receipts .runx/dogfood-public/answer-from-docs --json",
+    "fallback_basis": "package was acquired from the hosted registry after publish via the official acquire API and signed_manifest",
+    "status": "sealed",
+    "receipt_ref": "sha256:b7928e88a87f3b48ebe58fae9b4b24f6c1b9e685d7cbad914c32ff9e5d4d17f6",
+    "receipt_path": ".runx/dogfood-public/answer-from-docs/sha256-b7928e88a87f3b48ebe58fae9b4b24f6c1b9e685d7cbad914c32ff9e5d4d17f6.json",
+    "grounded": true,
+    "citation_count": 3,
+    "kb_gap_count": 0
+  },
+  "runx_verify": {
+    "command": "npx runx verify --receipt .runx/dogfood-public/answer-from-docs/sha256-b7928e88a87f3b48ebe58fae9b4b24f6c1b9e685d7cbad914c32ff9e5d4d17f6.json --allow-local-development-signatures --json",
+    "valid": true,
+    "receipt_id": "sha256:b7928e88a87f3b48ebe58fae9b4b24f6c1b9e685d7cbad914c32ff9e5d4d17f6",
+    "digest_status": "valid",
+    "content_address_status": "valid",
+    "signature_mode": "local-development",
+    "signature_status": "valid",
+    "findings": []
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "schema": "frantic.runx_skill_delivery.evidence.v1",
+  "summary": "Published zhtwangk/answer-from-docs@sha-b151b3445fc7 with runx-cli 0.6.16, green local and hosted harness evidence, public registry metadata, hosted acquire proof, a sealed dogfood receipt, captured grounded-answer JSON output, and a valid runx verify verdict.",
+  "bounty": {
+    "id": 87,
+    "title": "runx skill: answer from docs",
+    "claim_id": "0c792b43-f8cb-4bc8-bfeb-477bac6ac304"
+  },
+  "package": {
+    "owner": "zhtwangk",
+    "name": "answer-from-docs",
+    "version": "sha-b151b3445fc7",
+    "registry_ref": "zhtwangk/answer-from-docs@sha-b151b3445fc7",
+    "public_url": "https://runx.ai/x/zhtwangk/answer-from-docs@sha-b151b3445fc7",
+    "install_command": "runx add zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai",
+    "run_command": "runx skill zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai",
+    "digest": "9fb725a4664313cc2f51d8176dd3611eed950d6be9696e279b1623a7dc223e52",
+    "profile_digest": "291d1da9e52cf679bde26a4aa5051f27afb4b9fe19dd9ddfc53103c97205ca28",
+    "package_digest": "77d1fa56401f5268e0a38678b180ae3f2971ab12d5310bb0f00a898c94cebce2",
+    "trust_tier": "community"
+  },
+  "source": {
+    "pr_url": "https://github.com/runxhq/runx/pull/263",
+    "source_url": "https://github.com/ZHTWangK/runx/tree/codex/answer-from-docs-bounty/skills/answer-from-docs",
+    "x_yaml": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/SKILL.md",
+    "verification_json": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/references/verification.json",
+    "evidence_json": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/references/evidence.json",
+    "report": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/references/report.md"
+  },
+  "publisher": {
+    "runx_cli_version": "runx-cli 0.6.16",
+    "owner": "zhtwangk",
+    "owner_handle": "@zhtwangk",
+    "publish_method": "runx registry publish ./skills/answer-from-docs/SKILL.md --registry https://api.runx.ai; in this Codex network the CLI HTTP DNS guard blocked api.runx.ai via a 198.18.0.19 proxy, so the same hosted publish payload was POSTed directly to https://api.runx.ai/v1/skills with the runx login token",
+    "hosted_harness_status": "passed",
+    "hosted_publish_status": "published"
+  },
+  "harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "answer-from-docs-grounded-retention",
+      "answer-from-docs-refuses-unsupported-sso",
+      "answer-from-docs-needs-question"
+    ],
+    "coverage": [
+      "grounded answer returns answer.text, citations[], kb_gaps=[], and grounded=true from supplied corpus only",
+      "unsupported SSO/SCIM question returns grounded=false, empty citations, and kb_gaps instead of guessing",
+      "missing question fails fast as an input error"
+    ],
+    "local_receipt_ids": [
+      "sha256:b6a82314a98be90170813a0ea62a5ae5b236d6681035364038124c7e47b496ec",
+      "sha256:84df3afd4df3752d94952e167986e169ec430b139bb510f71eab360ebfd92077",
+      "sha256:53b6628087e1671f152a16016a10a23c5f7b295ecbdfe0df21beeda57fe377b5"
+    ],
+    "hosted_receipt_ids": [
+      "sha256:e892c5768e5bdea82e84f24b6533445014d9713d7be7630362cf678e690f5577",
+      "sha256:67545b9fbcea8dadd9f8328d4d3dc771b26a360146a852782b42460b179651b7",
+      "sha256:7aa7af076b8076e93f25b3f8ac264edb3ca4e5458a3b013d3a48a40ac3f9180f"
+    ]
+  },
+  "dogfood": {
+    "package": "zhtwangk/answer-from-docs@sha-b151b3445fc7",
+    "input": {
+      "question": "What is the backup retention period and who can request a restore?",
+      "corpus": [
+        {
+          "id": "backup-policy",
+          "title": "Backup Policy",
+          "text": "Production backups are retained for 35 days. Account owners can request a restore by opening a support ticket. Restore requests must include the workspace id and target timestamp."
+        },
+        {
+          "id": "support-sla",
+          "title": "Support SLA",
+          "text": "Priority support tickets receive a first response within four business hours."
+        }
+      ]
+    },
+    "command": "npx runx skill .runx/install-check-public-api/answer-from-docs/zhtwangk/answer-from-docs/sha-b151b3445fc7/SKILL.md --input question=... --input-json corpus='[...]' --receipts .runx/dogfood-public/answer-from-docs --json",
+    "intended_public_command": "runx skill zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai --input question='What is the backup retention period and who can request a restore?' --input-json corpus='[...]' --receipts ./receipts --json",
+    "receipt_ref": "runx:receipt:sha256:b7928e88a87f3b48ebe58fae9b4b24f6c1b9e685d7cbad914c32ff9e5d4d17f6",
+    "verification_json": "skills/answer-from-docs/references/verification.json",
+    "status": "sealed",
+    "verify_verdict": {
+      "valid": true,
+      "digest_status": "valid",
+      "content_address_status": "valid",
+      "signature_mode": "local-development",
+      "signature_status": "valid",
+      "findings": []
+    },
+    "harness_cases": [
+      {
+        "name": "answer-from-docs-grounded-retention",
+        "status": "sealed",
+        "output_status": "grounded"
+      },
+      {
+        "name": "answer-from-docs-refuses-unsupported-sso",
+        "status": "sealed",
+        "output_status": "refused"
+      },
+      {
+        "name": "answer-from-docs-needs-question",
+        "status": "failure"
+      }
+    ],
+    "captured_output": {
+      "answer": {
+        "text": "Production backups are retained for 35 days. Account owners can request a restore by opening a support ticket. Restore requests must include the workspace id and target timestamp.",
+        "citations": [
+          {
+            "source_id": "backup-policy",
+            "title": "Backup Policy",
+            "sentence_index": 1,
+            "quote": "Production backups are retained for 35 days."
+          },
+          {
+            "source_id": "backup-policy",
+            "title": "Backup Policy",
+            "sentence_index": 2,
+            "quote": "Account owners can request a restore by opening a support ticket."
+          },
+          {
+            "source_id": "backup-policy",
+            "title": "Backup Policy",
+            "sentence_index": 3,
+            "quote": "Restore requests must include the workspace id and target timestamp."
+          }
+        ]
+      },
+      "kb_gaps": [],
+      "grounded": true
+    },
+    "input_summary": "Question about backup retention and restore authority with a two-document bounded corpus.",
+    "output_summary": {
+      "grounded": true,
+      "citation_count": 3,
+      "kb_gap_count": 0,
+      "external_fetch_performed": false,
+      "mutation_performed": false
+    }
+  },
+  "observation_details": {
+    "runx_version": "runx-cli 0.6.16",
+    "publisher_owner": "zhtwangk",
+    "package_name": "answer-from-docs",
+    "version": "sha-b151b3445fc7",
+    "registry_ref": "zhtwangk/answer-from-docs@sha-b151b3445fc7",
+    "public_url": "https://runx.ai/x/zhtwangk/answer-from-docs@sha-b151b3445fc7",
+    "pr_url": "https://github.com/runxhq/runx/pull/263",
+    "source_url": "https://github.com/ZHTWangK/runx/tree/codex/answer-from-docs-bounty/skills/answer-from-docs",
+    "x_yaml": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/SKILL.md",
+    "verification_json": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/answer-from-docs-bounty/skills/answer-from-docs/references/verification.json",
+    "publish_method": "hosted registry publish payload accepted by https://api.runx.ai/v1/skills",
+    "install_command": "runx add zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai",
+    "dogfood_command": "runx skill zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai --input question=... --input-json corpus='[...]' --receipts ./receipts --json",
+    "hosted_harness_status": "passed",
+    "harness_case_names": [
+      "answer-from-docs-grounded-retention",
+      "answer-from-docs-refuses-unsupported-sso",
+      "answer-from-docs-needs-question"
+    ],
+    "grounded_verdict": true,
+    "citation_mapping": [
+      "answer sentence 1 -> backup-policy sentence 1",
+      "answer sentence 2 -> backup-policy sentence 2",
+      "answer sentence 3 -> backup-policy sentence 3"
+    ],
+    "kb_gaps": [],
+    "refused_reason": "The unsupported SSO/SCIM harness case has no matching corpus evidence, so the skill emits grounded=false and kb_gaps instead of answer text.",
+    "receipt_id": "sha256:b7928e88a87f3b48ebe58fae9b4b24f6c1b9e685d7cbad914c32ff9e5d4d17f6",
+    "runx_verify_verdict": "valid"
+  },
+  "observations": [
+    {
+      "name": "runx_version",
+      "value": "runx-cli 0.6.16"
+    },
+    {
+      "name": "published_package",
+      "value": "zhtwangk/answer-from-docs@sha-b151b3445fc7"
+    },
+    {
+      "name": "hosted_publish",
+      "value": "hosted registry publish returned status=published and hosted harness accepted 3/3 cases"
+    },
+    {
+      "name": "harness_cases",
+      "value": "answer-from-docs-grounded-retention, answer-from-docs-refuses-unsupported-sso, answer-from-docs-needs-question"
+    },
+    {
+      "name": "grounded_verdict",
+      "value": "dogfood output grounded=true"
+    },
+    {
+      "name": "citation_mapping",
+      "value": "3 answer sentences cite backup-policy sentences 1, 2, and 3"
+    },
+    {
+      "name": "kb_gaps",
+      "value": "dogfood answer has kb_gaps=[]; refused harness path emits kb_gaps for unsupported SSO/SCIM"
+    },
+    {
+      "name": "dogfood_receipt",
+      "value": "runx:receipt:sha256:b7928e88a87f3b48ebe58fae9b4b24f6c1b9e685d7cbad914c32ff9e5d4d17f6"
+    },
+    {
+      "name": "verify_verdict",
+      "value": "runx verify valid=true with valid digest and content address"
+    },
+    {
+      "name": "captured_output",
+      "value": "answer text includes 35-day retention, account-owner restore request authority, restore request required fields, citations[], grounded=true"
+    },
+    {
+      "name": "no_live_retrieval_or_mutation",
+      "value": "runner reads only question and corpus from RUNX inputs; no network fetch, external retrieval, or write path exists"
+    }
+  ],
+  "new_user_flow": {
+    "install": "runx add zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai",
+    "run": "runx skill zhtwangk/answer-from-docs@sha-b151b3445fc7 --registry https://api.runx.ai --input question='<question>' --input-json corpus='[{\"id\":\"doc-1\",\"title\":\"Doc\",\"text\":\"...\"}]' --receipts ./receipts --json",
+    "verify": "runx verify --receipt ./receipts/<receipt-file>.json --json",
+    "note": "In this Codex network, runx CLI registry acquire is blocked by its public DNS guard because api.runx.ai resolves through a 198.18.0.19 proxy. Direct hosted publish and public acquire API both succeeded, and the dogfood receipt was generated from the package acquired from the hosted registry after publish."
+  }
+}
