@@ -4,6 +4,13 @@
   "version": "sha-1f8664035747",
   "registry_ref": "lxx197818/bookkeeper@sha-1f8664035747",
   "public_url": "https://runx.ai/x/lxx197818/bookkeeper@sha-1f8664035747",
+  "delivery_urls": {
+    "pr_url": "https://github.com/runxhq/runx/pull/256",
+    "source_url": "https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper",
+    "raw_x_yaml_url": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml",
+    "raw_skill_md_url": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md",
+    "verification_json_url": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json"
+  },
   "summary": "Bookkeeper was implemented, locally harnessed, published to the hosted runx registry, and dogfooded after publish. The clean transaction batch produced categorized lines, zero anomalies, and a read-only reconciliation artifact; the ambiguous harness path routes to manual review and performs no ledger mutation.",
   "runx_cli_version": "runx-cli 0.6.14",
   "publish": {
@@ -54,6 +61,11 @@
     "Acceptance URL coverage item source_url is explicitly named: source_url=https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper.",
     "Acceptance URL coverage item raw x_yaml URL is explicitly named: raw x_yaml URL=https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml.",
     "Acceptance URL coverage item raw skill_md URL is explicitly named: raw skill_md URL=https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md.",
-    "Acceptance URL coverage item verification_json URL is explicitly named: verification_json URL=https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json."
+    "Acceptance URL coverage item verification_json URL is explicitly named: verification_json URL=https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json.",
+    "Machine-readable delivery_urls.pr_url is present and names the PR URL.",
+    "Machine-readable delivery_urls.source_url is present and names the source URL.",
+    "Machine-readable delivery_urls.raw_x_yaml_url is present and names the raw x_yaml URL.",
+    "Machine-readable delivery_urls.raw_skill_md_url is present and names the raw skill_md URL.",
+    "Machine-readable delivery_urls.verification_json_url is present and names the verification_json URL."
   ]
 }

@@ -32,6 +32,14 @@ rails, and never invents a GL account.
 - Acceptance URL coverage item `raw skill_md URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md>
 - Acceptance URL coverage item `verification_json URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json>
 
+Machine-readable URL keys are also present in `evidence_json.delivery_urls`:
+
+- `delivery_urls.pr_url`
+- `delivery_urls.source_url`
+- `delivery_urls.raw_x_yaml_url`
+- `delivery_urls.raw_skill_md_url`
+- `delivery_urls.verification_json_url`
+
 ## Dogfood observation
 
 Input batch:
