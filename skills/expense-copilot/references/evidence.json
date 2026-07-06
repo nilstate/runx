@@ -4,6 +4,7 @@
   "version": "sha-66f09fbe6b8a",
   "registry_ref": "lxx197818/expense-copilot@sha-66f09fbe6b8a",
   "public_url": "https://runx.ai/x/lxx197818/expense-copilot",
+  "summary": "Expense Copilot was implemented, locally harnessed, published to the hosted runx registry, and dogfooded after publish. The in-policy receipt produced a gated reimbursement_proposal for the spend skill, while the over-limit harness path routes to manual finance review and emits no reimbursement proposal.",
   "runx_cli_version": "runx-cli 0.6.14",
   "publish": {
     "method": "runx registry publish ./skills/expense-copilot --registry https://api.runx.ai --json",
@@ -57,32 +58,15 @@
       }
     ]
   },
-  "observations": {
-    "extracted": {
-      "merchant": "Rail Cafe",
-      "amount": 42.75,
-      "currency": "USD",
-      "category": "meals",
-      "date": "2026-07-01",
-      "employee_id": "emp_104"
-    },
-    "policy_result": {
-      "pass": true,
-      "violations": [],
-      "category_limit": 75,
-      "allowed_categories": ["meals", "travel", "supplies"]
-    },
-    "proposal": {
-      "packet": "reimbursement_proposal",
-      "downstream": "spend",
-      "requires_governed_spend_run": true
-    },
-    "escalation": null,
-    "effects": {
-      "reimbursement_executed": false,
-      "money_rail": false,
-      "accounting_state_written": false
-    },
-    "receipt_id": "sha256:20893020a70a51c3bebc7ffb0824055cbc546ea0a7918742bf146273cfa3d1d3"
-  }
+  "observations": [
+    "runx --version output was runx-cli 0.6.14, meeting the bounty requirement for CLI 0.6.14 or newer.",
+    "The published package name is exactly expense-copilot and the registry ref is lxx197818/expense-copilot@sha-66f09fbe6b8a.",
+    "Local harness passed with cases in_policy_receipt_proposes_reimbursement and over_limit_receipt_refuses_reimbursement.",
+    "The in-policy dogfood receipt extracted merchant Rail Cafe, amount 42.75 USD, category meals, date 2026-07-01, and employee emp_104 from the provided receipt input.",
+    "The policy check passed because meals is an allowed category and 42.75 is below the meals limit of 75.",
+    "The successful dogfood output emitted reimbursement_proposal with downstream spend and requires_governed_spend_run true.",
+    "The skill explicitly reported reimbursement_executed false, money_rail false, and accounting_state_written false, so it performs no reimbursement itself.",
+    "The over-limit harness path is represented by over_limit_receipt_refuses_reimbursement and routes to manual review instead of proposing reimbursement.",
+    "Post-publish dogfood receipt runx:receipt:sha256:20893020a70a51c3bebc7ffb0824055cbc546ea0a7918742bf146273cfa3d1d3 verified with valid true."
+  ]
 }
