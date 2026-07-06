@@ -1,5 +1,5 @@
 skill: postmortem-maker
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: skill
@@ -47,43 +47,6 @@ harness:
           require_evidence_refs: true
           require_action_items: true
           public_summary_only: true
-      caller:
-        answers:
-          agent_task.postmortem-maker.output:
-            postmortem:
-              summary: Checkout API errors rose after deploy 2026.07.01.4 and recovered after rollback.
-              timeline:
-                - at: "2026-07-01T10:00:00Z"
-                  event: API error rate crossed 12 percent for checkout requests.
-                  evidence_refs: [alert-1]
-                - at: "2026-07-01T10:07:00Z"
-                  event: Deploy 2026.07.01.4 was rolled back.
-                  evidence_refs: [deploy-2]
-                - at: "2026-07-01T10:12:00Z"
-                  event: Error rate returned below 1 percent.
-                  evidence_refs: [alert-2]
-              impact:
-                user_visible: checkout requests saw elevated 5xx responses during the incident window.
-                evidence_refs: [alert-1, alert-2]
-              root_cause:
-                status: hypothesis
-                claim: The payment adapter retry-policy change in deploy 2026.07.01.4 likely contributed to the checkout errors.
-                evidence_refs: [deploy-2, chat-1]
-              status: publishable_with_hypothesis
-            unknowns:
-              - Exact downstream timeout rate is not present in the input packet.
-              - The retry-policy change is a hypothesis, not a confirmed sole root cause.
-            action_items:
-              - owner: checkout-api
-                action: Add pre-deploy retry-policy regression checks.
-                evidence_refs: [deploy-2]
-              - owner: sre
-                action: Add dashboard panel for downstream timeout rate during checkout incidents.
-                evidence_refs: [chat-1]
-            publish_proposal:
-              channel: postmortem_doc
-              gated: true
-              reason: Policy allows publication and every timeline/root-cause claim cites input evidence.
       expect:
         status: sealed
         receipt:
@@ -114,55 +77,23 @@ harness:
           publish_allowed: true
           require_evidence_refs: true
           require_action_items: true
-      caller:
-        answers:
-          agent_task.postmortem-maker.output:
-            postmortem:
-              summary: The input packet is insufficient for a publishable postmortem.
-              timeline:
-                - at: "2026-07-02T10:00:00Z"
-                  event: Users reported intermittent errors.
-                  evidence_refs: [tl-1]
-              impact:
-                user_visible: unknown
-                evidence_refs: []
-              root_cause:
-                status: unknown
-                claim: No root-cause claim can be made from the conflicting evidence.
-                evidence_refs: []
-              status: refused_insufficient_evidence
-            unknowns:
-              - No alert source or measurable impact was provided.
-              - Conflicting deploy hypotheses are present without supporting evidence.
-              - Publication would overstate the known facts.
-            action_items:
-              - owner: incident-commander
-                action: Attach alert data and service metrics before drafting a public postmortem.
-                evidence_refs: [tl-1]
-            publish_proposal: null
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
 
-
     - name: postmortem-maker-needs-required-inputs
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
-  agent:
-    type: agent
-
   evaluate:
     default: true
-    type: agent-task
-    runx:
-      post_run:
-        reflect: never
-    agent: postmortem-maker
-    task: postmortem-maker
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
     outputs:
       postmortem: object
       unknowns: array
