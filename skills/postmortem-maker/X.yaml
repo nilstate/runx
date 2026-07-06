@@ -145,6 +145,12 @@ harness:
         receipt:
           schema: runx.receipt.v1
 
+
+    - name: postmortem-maker-needs-required-inputs
+      inputs: {}
+      expect:
+        status: needs_agent
+
 runners:
   agent:
     type: agent
