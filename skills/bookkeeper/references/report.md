@@ -24,6 +24,14 @@ rails, and never invents a GL account.
   - `runx:receipt:sha256:428fcdc3bf182026d165803f0d20ab32155826e5bd03eebefb2f936f0e513e93`
 - `runx verify` returned `valid: true`
 
+## Required delivery URLs
+
+- `pr_url`: <https://github.com/runxhq/runx/pull/256>
+- `source_url`: <https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper>
+- `raw x_yaml URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml>
+- `raw skill_md URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md>
+- `verification_json URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json>
+
 ## Dogfood observation
 
 Input batch:

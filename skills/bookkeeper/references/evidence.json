@@ -49,6 +49,11 @@
     "The projected cash after matched transactions was 5991.35 from prior ending cash 5000 plus matched total 991.35.",
     "The ambiguous harness path returns needs_agent for manual review instead of inventing a GL account.",
     "The skill reports ledger_mutation false, journal_posted false, money_rail false, and invented_gl_account false.",
-    "Post-publish dogfood receipt runx:receipt:sha256:428fcdc3bf182026d165803f0d20ab32155826e5bd03eebefb2f936f0e513e93 verified with valid true."
+    "Post-publish dogfood receipt runx:receipt:sha256:428fcdc3bf182026d165803f0d20ab32155826e5bd03eebefb2f936f0e513e93 verified with valid true.",
+    "pr_url: https://github.com/runxhq/runx/pull/256",
+    "source_url: https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper",
+    "raw x_yaml URL: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml",
+    "raw skill_md URL: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md",
+    "verification_json URL: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json"
   ]
 }
