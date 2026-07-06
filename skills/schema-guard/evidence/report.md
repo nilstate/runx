@@ -4,7 +4,7 @@
 - Added the schema-guard runx package with typed schema compatibility inputs and guarded proposal output.
 - Runner: guard.
 - Hosted package: rohitmulani63-ops/schema-guard@sha-0b172e79bca1.
-- Public URL: https://runx.ai/x/rohitmulani63-ops/schema-guard.
+- Public URL: https://runx.ai/x/rohitmulani63-ops/schema-guard@sha-0b172e79bca1.
 - PR: https://github.com/runxhq/runx/pull/269.
 
 ## Acceptance coverage
@@ -36,3 +36,4 @@
 - It separates safe additive changes from breaking changes.
 - It explains failures through validation results and migration notes instead of only returning pass/fail.
 - It creates a proposal object only after evidence passes, which keeps the skill safe for review workflows.
+

@@ -4,7 +4,7 @@
     "package":  "schema-guard",
     "operator":  "rohitmulani63-ops",
     "summary":  "Published schema-guard as a runx skill that compares current_schema and proposed_schema against sample_payloads and a compatibility_policy, emits compatibility plus validation_results and migration_notes, and only emits publish_schema_proposal for compatible schema changes.",
-    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
     "package_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
     "source_pr":  "https://github.com/runxhq/runx/pull/269",
     "runx_cli_version":  "runx-cli 0.6.14",
@@ -51,7 +51,7 @@
                 },
     "dogfood":  {
                     "package_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
-                    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard",
+                    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
                     "command":  "runx skill rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai -j guard",
                     "input":  {
                                   "current_schema":  "invoice.v1 with id, amount_cents, status",
@@ -96,3 +96,4 @@
                          "no live schema write is performed by the skill"
                      ]
 }
+
