@@ -1,0 +1,66 @@
+{
+  "release_candidate": {
+    "version": "2.4.1",
+    "diff_ref": "compare/main...release-2.4.1",
+    "test_results": [
+      {
+        "name": "unit",
+        "status": "passed",
+        "evidence": "ci://run/904/unit passed 1850 tests"
+      },
+      {
+        "name": "integration",
+        "status": "failed",
+        "evidence": "ci://run/904/integration failed payment-webhook-retry"
+      },
+      {
+        "name": "e2e",
+        "status": "passed",
+        "evidence": "ci://run/904/e2e passed 39 flows"
+      }
+    ],
+    "rollback_plan": {
+      "present": true,
+      "tested": false,
+      "evidence": "rollback plan written but rehearsal not run"
+    },
+    "observability_plan": {
+      "dashboards": [
+        "release-health"
+      ],
+      "alerts": [],
+      "evidence": "dashboard exists but launch alerts are not configured"
+    },
+    "changelog": {
+      "entries": [
+        "Changes webhook retry behavior."
+      ]
+    },
+    "risks": [
+      {
+        "id": "risk-21",
+        "status": "open",
+        "severity": "high",
+        "summary": "Webhook retry semantics may double-send events."
+      },
+      {
+        "id": "risk-22",
+        "status": "open",
+        "severity": "medium",
+        "summary": "Rollback migration requires manual DB confirmation."
+      }
+    ]
+  },
+  "launch_policy": {
+    "required_checks": [
+      "unit",
+      "integration",
+      "e2e",
+      "rollback_plan",
+      "observability_plan",
+      "changelog"
+    ],
+    "max_open_risk": 1,
+    "rollback_required": true
+  }
+}

@@ -1,0 +1,191 @@
+skill: launch-guard
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+runx:
+  mutating: false
+  scopes:
+    - release_candidate.read
+    - launch_policy.read
+  policy:
+    data_classification: public_release_metadata
+    network:
+      forbidden:
+        - deployment systems
+        - git tags
+        - package registries
+        - announcement channels
+        - downstream release execution
+    verifier_notes:
+      - The runner computes only from supplied release candidate and policy inputs.
+      - It emits a gated release_proposal only when all launch checks pass.
+      - It never deploys, tags, publishes, announces, mutates source, or invokes the release skill.
+
+harness:
+  cases:
+    - name: release_go
+      runner: guard
+      inputs:
+        release_candidate:
+          version: "2.4.0"
+          diff_ref: "compare/main...release-2.4.0"
+          test_results:
+            - name: unit
+              status: passed
+              evidence: "ci://run/871/unit passed 1842 tests"
+            - name: integration
+              status: passed
+              evidence: "ci://run/871/integration passed 212 tests"
+            - name: e2e
+              status: passed
+              evidence: "ci://run/871/e2e passed 38 flows"
+          rollback_plan:
+            present: true
+            tested: true
+            evidence: "rollback rehearsal rr-2026-07-06 restored version 2.3.9 in 7 minutes"
+          observability_plan:
+            dashboards:
+              - "release-health"
+              - "checkout-latency"
+            alerts:
+              - "5xx-rate"
+              - "p95-latency"
+            evidence: "observability checklist obs-442 covers release-health and checkout-latency dashboards"
+          changelog:
+            entries:
+              - "Adds receipt-backed release summaries."
+              - "Fixes registry metadata refresh for hosted skill pages."
+          risks:
+            - id: "risk-17"
+              status: open
+              severity: low
+              summary: "Docs screenshots update can trail launch by one day."
+        launch_policy:
+          required_checks:
+            - unit
+            - integration
+            - e2e
+            - rollback_plan
+            - observability_plan
+            - changelog
+          max_open_risk: 2
+          rollback_required: true
+      expect:
+        status: sealed
+        output:
+          subset:
+            schema: runx.launch_guard.v1
+            decision:
+              status: go
+            readiness_report:
+              blockers: []
+            release_proposal:
+              version: "2.4.0"
+              diff_ref: "compare/main...release-2.4.0"
+              consumed_by: release
+              gated: true
+            evidence:
+              harness_case: release_go
+              proposal_status: present
+              blocker_count: 0
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+
+    - name: blocked_no_go
+      runner: guard
+      inputs:
+        release_candidate:
+          version: "2.4.1"
+          diff_ref: "compare/main...release-2.4.1"
+          test_results:
+            - name: unit
+              status: passed
+              evidence: "ci://run/904/unit passed 1850 tests"
+            - name: integration
+              status: failed
+              evidence: "ci://run/904/integration failed payment-webhook-retry"
+            - name: e2e
+              status: passed
+              evidence: "ci://run/904/e2e passed 39 flows"
+          rollback_plan:
+            present: true
+            tested: false
+            evidence: "rollback plan written but rehearsal not run"
+          observability_plan:
+            dashboards:
+              - "release-health"
+            alerts: []
+            evidence: "dashboard exists but launch alerts are not configured"
+          changelog:
+            entries:
+              - "Changes webhook retry behavior."
+          risks:
+            - id: "risk-21"
+              status: open
+              severity: high
+              summary: "Webhook retry semantics may double-send events."
+            - id: "risk-22"
+              status: open
+              severity: medium
+              summary: "Rollback migration requires manual DB confirmation."
+        launch_policy:
+          required_checks:
+            - unit
+            - integration
+            - e2e
+            - rollback_plan
+            - observability_plan
+            - changelog
+          max_open_risk: 1
+          rollback_required: true
+      expect:
+        status: failure
+        output:
+          subset:
+            schema: runx.launch_guard.v1
+            decision:
+              status: no_go
+            release_proposal: null
+            evidence:
+              harness_case: blocked_no_go
+              proposal_status: absent
+              blocker_count: 4
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+
+runners:
+  guard:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      launch_guard: object
+    artifacts:
+      wrap_as: launch_guard_packet
+      packet: runx.launch_guard.v1
+    inputs:
+      release_candidate:
+        type: json
+        required: true
+        description: "release_candidate{version,diff_ref,test_results,rollback_plan,observability_plan,changelog}"
+      launch_policy:
+        type: json
+        required: true
+        description: "launch_policy{required_checks,max_open_risk,rollback_required}"
+      harness_case:
+        type: string
+        required: false
+        description: Optional case name recorded in evidence.

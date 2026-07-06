@@ -1,0 +1,65 @@
+{
+  "release_candidate": {
+    "version": "2.4.0",
+    "diff_ref": "compare/main...release-2.4.0",
+    "test_results": [
+      {
+        "name": "unit",
+        "status": "passed",
+        "evidence": "ci://run/871/unit passed 1842 tests"
+      },
+      {
+        "name": "integration",
+        "status": "passed",
+        "evidence": "ci://run/871/integration passed 212 tests"
+      },
+      {
+        "name": "e2e",
+        "status": "passed",
+        "evidence": "ci://run/871/e2e passed 38 flows"
+      }
+    ],
+    "rollback_plan": {
+      "present": true,
+      "tested": true,
+      "evidence": "rollback rehearsal rr-2026-07-06 restored version 2.3.9 in 7 minutes"
+    },
+    "observability_plan": {
+      "dashboards": [
+        "release-health",
+        "checkout-latency"
+      ],
+      "alerts": [
+        "5xx-rate",
+        "p95-latency"
+      ],
+      "evidence": "observability checklist obs-442 covers release-health and checkout-latency dashboards"
+    },
+    "changelog": {
+      "entries": [
+        "Adds receipt-backed release summaries.",
+        "Fixes registry metadata refresh for hosted skill pages."
+      ]
+    },
+    "risks": [
+      {
+        "id": "risk-17",
+        "status": "open",
+        "severity": "low",
+        "summary": "Docs screenshots update can trail launch by one day."
+      }
+    ]
+  },
+  "launch_policy": {
+    "required_checks": [
+      "unit",
+      "integration",
+      "e2e",
+      "rollback_plan",
+      "observability_plan",
+      "changelog"
+    ],
+    "max_open_risk": 2,
+    "rollback_required": true
+  }
+}
