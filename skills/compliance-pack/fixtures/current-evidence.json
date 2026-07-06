@@ -1,0 +1,51 @@
+{
+  "controls": [
+    {
+      "id": "SOC2-CC6.1",
+      "title": "Logical access controls",
+      "framework": "SOC2",
+      "requirement": "Access to production systems is restricted and reviewed.",
+      "required": true
+    },
+    {
+      "id": "SOC2-CC7.2",
+      "title": "Vulnerability remediation",
+      "framework": "SOC2",
+      "requirement": "Vulnerability findings are tracked through remediation.",
+      "required": true
+    }
+  ],
+  "evidence_refs": [
+    {
+      "id": "ev-access-review-q2",
+      "uri": "evidence://access-review/q2-2026",
+      "digest": "sha256:access-review-q2",
+      "control_ids": ["SOC2-CC6.1"],
+      "tags": ["access"],
+      "status": "current",
+      "collected_at": "2026-06-28",
+      "owner": "security",
+      "scope": "production",
+      "summary": "Quarterly access review approved by security lead."
+    },
+    {
+      "id": "ev-vuln-sla-june",
+      "uri": "evidence://vulnerability-sla/2026-06",
+      "digest": "sha256:vuln-sla-june",
+      "control_ids": ["SOC2-CC7.2"],
+      "tags": ["vulnerability-management"],
+      "status": "current",
+      "collected_at": "2026-06-27",
+      "owner": "appsec",
+      "scope": "production",
+      "summary": "June vulnerability SLA report with zero overdue criticals."
+    }
+  ],
+  "pack_policy": {
+    "framework": "SOC2",
+    "scope": "production",
+    "as_of_date": "2026-07-05",
+    "max_evidence_age_days": 45,
+    "pack_id": "soc2-production-july"
+  }
+}

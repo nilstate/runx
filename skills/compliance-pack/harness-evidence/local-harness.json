@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "sealed-maps-controls-to-current-evidence",
+    "refuses-missing-or-stale-evidence"
+  ],
+  "receipt_ids": [
+    "sha256:56784f1899b3ed6016e0749912e34f7c1b32172d16c17269ca499b713a570e9e",
+    "sha256:9bc2aa96c5ef4135c3c597e68ff74697046005775b385beb486074263ab5abb7"
+  ],
+  "graph_case_count": 0
+}

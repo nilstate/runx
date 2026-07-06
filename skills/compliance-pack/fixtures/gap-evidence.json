@@ -1,0 +1,49 @@
+{
+  "controls": [
+    {
+      "id": "SOC2-CC6.6",
+      "title": "Secrets management",
+      "framework": "SOC2",
+      "requirement": "Secrets are rotated and protected from unauthorized disclosure.",
+      "required": true
+    },
+    {
+      "id": "SOC2-CC7.4",
+      "title": "Incident evidence",
+      "framework": "SOC2",
+      "requirement": "Security incidents are tracked with response evidence.",
+      "required": true
+    }
+  ],
+  "evidence_refs": [
+    {
+      "id": "ev-secret-rotation-old",
+      "uri": "evidence://secret-rotation/2025-12",
+      "digest": "sha256:secret-rotation-old",
+      "control_ids": ["SOC2-CC6.6"],
+      "status": "current",
+      "collected_at": "2025-12-15",
+      "owner": "platform",
+      "scope": "production",
+      "summary": "Old rotation report outside the current evidence window."
+    },
+    {
+      "id": "ev-incident-template",
+      "uri": "evidence://incident/template-only",
+      "digest": "sha256:incident-template",
+      "control_ids": ["SOC2-CC7.4"],
+      "status": "draft",
+      "collected_at": "2026-06-25",
+      "owner": "security",
+      "scope": "production",
+      "summary": "Draft template, not approved incident response evidence."
+    }
+  ],
+  "pack_policy": {
+    "framework": "SOC2",
+    "scope": "production",
+    "as_of_date": "2026-07-05",
+    "max_evidence_age_days": 45,
+    "pack_id": "soc2-gap-review"
+  }
+}

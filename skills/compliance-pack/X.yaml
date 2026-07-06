@@ -1,0 +1,131 @@
+skill: compliance-pack
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed-maps-controls-to-current-evidence
+      inputs:
+        controls:
+          - id: SOC2-CC6.1
+            title: Logical access controls
+            framework: SOC2
+            requirement: Access to production systems is restricted and reviewed.
+            required: true
+          - id: SOC2-CC7.2
+            title: Vulnerability remediation
+            framework: SOC2
+            requirement: Vulnerability findings are tracked through remediation.
+            required: true
+        evidence_refs:
+          - id: ev-access-review-q2
+            uri: evidence://access-review/q2-2026
+            digest: sha256:access-review-q2
+            control_ids:
+              - SOC2-CC6.1
+            tags:
+              - access
+            status: current
+            collected_at: "2026-06-28"
+            owner: security
+            scope: production
+            summary: Quarterly access review approved by security lead.
+          - id: ev-vuln-sla-june
+            uri: evidence://vulnerability-sla/2026-06
+            digest: sha256:vuln-sla-june
+            control_ids:
+              - SOC2-CC7.2
+            tags:
+              - vulnerability-management
+            status: current
+            collected_at: "2026-06-27"
+            owner: appsec
+            scope: production
+            summary: June vulnerability SLA report with zero overdue criticals.
+        pack_policy:
+          framework: SOC2
+          scope: production
+          as_of_date: "2026-07-05"
+          max_evidence_age_days: 45
+          pack_id: soc2-production-july
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuses-missing-or-stale-evidence
+      inputs:
+        controls:
+          - id: SOC2-CC6.6
+            title: Secrets management
+            framework: SOC2
+            requirement: Secrets are rotated and protected from unauthorized disclosure.
+            required: true
+          - id: SOC2-CC7.4
+            title: Incident evidence
+            framework: SOC2
+            requirement: Security incidents are tracked with response evidence.
+            required: true
+        evidence_refs:
+          - id: ev-secret-rotation-old
+            uri: evidence://secret-rotation/2025-12
+            digest: sha256:secret-rotation-old
+            control_ids:
+              - SOC2-CC6.6
+            status: current
+            collected_at: "2025-12-15"
+            owner: platform
+            scope: production
+            summary: Old rotation report outside the current evidence window.
+          - id: ev-incident-template
+            uri: evidence://incident/template-only
+            digest: sha256:incident-template
+            control_ids:
+              - SOC2-CC7.4
+            status: draft
+            collected_at: "2026-06-25"
+            owner: security
+            scope: production
+            summary: Draft template, not approved incident response evidence.
+        pack_policy:
+          framework: SOC2
+          scope: production
+          as_of_date: "2026-07-05"
+          max_evidence_age_days: 45
+          pack_id: soc2-gap-review
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: failed
+
+runners:
+  pack:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      wrap_as: compliance_evidence_packet
+      packet: runx.compliance.pack.v1
+    inputs:
+      controls:
+        type: json
+        required: true
+        description: "Declared compliance controls with id, title, framework, requirement, and required flag."
+      evidence_refs:
+        type: json
+        required: true
+        description: "Caller-supplied evidence references with ids, digests or URIs, control links, status, date, owner, and scope."
+      pack_policy:
+        type: json
+        required: true
+        description: "Framework, scope, as-of date, freshness window, pack id, and optional tag matching rules."
