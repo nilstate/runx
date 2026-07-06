@@ -24,7 +24,9 @@ jobs:
           set -euo pipefail
           curl -fsSL -o runx.tar.gz https://github.com/runxhq/runx/releases/download/cli-v0.6.16/runx-0.6.16-x86_64-unknown-linux-musl.tar.gz
           curl -fsSL -o runx.tar.gz.sha256 https://github.com/runxhq/runx/releases/download/cli-v0.6.16/runx-0.6.16-x86_64-unknown-linux-musl.tar.gz.sha256
-          sha256sum -c runx.tar.gz.sha256
+          EXPECTED_SHA="$(cut -d ' ' -f 1 runx.tar.gz.sha256)"
+          ACTUAL_SHA="$(sha256sum runx.tar.gz | cut -d ' ' -f 1)"
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
           mkdir -p .frantic-86-tools/runx
           tar -xzf runx.tar.gz -C .frantic-86-tools/runx
           find .frantic-86-tools/runx -type f -name runx -exec chmod +x {} \;
