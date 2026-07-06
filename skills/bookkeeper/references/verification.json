@@ -1,9 +1,9 @@
 {
-  "receipt_dir": "work/runx-bookkeeper-dogfood-89",
+  "receipt_dir": "work/runx-bookkeeper-dogfood-89-redelivery",
   "signature_mode": "production",
   "trees": [
     {
-      "root_receipt_id": "sha256:428fcdc3bf182026d165803f0d20ab32155826e5bd03eebefb2f936f0e513e93",
+      "root_receipt_id": "sha256:ee402887deb318e99f3a3560d2b0d60c93fb12e9d8ee8b146dd9e1e0818b806f",
       "receipt_count": 1,
       "parent_missing": null,
       "valid": true,

@@ -1,9 +1,9 @@
 {
   "package": "bookkeeper",
   "publisher_owner": "lxx197818",
-  "version": "sha-ab94c4b94f6a",
-  "registry_ref": "lxx197818/bookkeeper@sha-ab94c4b94f6a",
-  "public_url": "https://runx.ai/x/lxx197818/bookkeeper",
+  "version": "sha-1f8664035747",
+  "registry_ref": "lxx197818/bookkeeper@sha-1f8664035747",
+  "public_url": "https://runx.ai/x/lxx197818/bookkeeper@sha-1f8664035747",
   "summary": "Bookkeeper was implemented, locally harnessed, published to the hosted runx registry, and dogfooded after publish. The clean transaction batch produced categorized lines, zero anomalies, and a read-only reconciliation artifact; the ambiguous harness path routes to manual review and performs no ledger mutation.",
   "runx_cli_version": "runx-cli 0.6.14",
   "publish": {
@@ -11,8 +11,8 @@
     "status": "published",
     "digest": "0a9351f0e26c48389fcc8484f2b8e449395bd15eb1a506c8cf91034c5c423f8f",
     "profile_digest": "bba4529c0ab8717f180bd3464c5cc9a08f313e4bc7e62c7bf9187228e44287a7",
-    "install_command": "runx add lxx197818/bookkeeper@sha-ab94c4b94f6a --registry https://api.runx.ai",
-    "run_command": "runx skill lxx197818/bookkeeper@sha-ab94c4b94f6a --registry https://api.runx.ai"
+    "install_command": "runx add lxx197818/bookkeeper@sha-1f8664035747 --registry https://api.runx.ai",
+    "run_command": "runx skill lxx197818/bookkeeper@sha-1f8664035747 --registry https://api.runx.ai"
   },
   "harness": {
     "command": "runx harness ./skills/bookkeeper -R /tmp/runx-bookkeeper-harness-89 --json",
@@ -24,9 +24,9 @@
     "graph_case_count": 1
   },
   "dogfood": {
-    "package": "lxx197818/bookkeeper@sha-ab94c4b94f6a",
-    "command": "runx skill lxx197818/bookkeeper@sha-ab94c4b94f6a --registry https://api.runx.ai --json -R work/runx-bookkeeper-dogfood-89 --input-json transactions=<clean batch> --input-json chart_of_accounts=<accounts> --input-json prior_period=<prior period>",
-    "receipt_ref": "runx:receipt:sha256:428fcdc3bf182026d165803f0d20ab32155826e5bd03eebefb2f936f0e513e93",
+    "package": "lxx197818/bookkeeper@sha-1f8664035747",
+    "command": "runx skill lxx197818/bookkeeper@sha-1f8664035747 --registry https://api.runx.ai --json -R work/runx-bookkeeper-dogfood-89-redelivery --input-json transactions=<clean batch> --input-json chart_of_accounts=<accounts> --input-json prior_period=<prior period>",
+    "receipt_ref": "runx:receipt:sha256:ee402887deb318e99f3a3560d2b0d60c93fb12e9d8ee8b146dd9e1e0818b806f",
     "verify_verdict": "valid",
     "harness_cases": [
       {
@@ -41,19 +41,19 @@
   },
   "observations": [
     "runx --version output was runx-cli 0.6.14, meeting the bounty requirement for CLI 0.6.14 or newer.",
-    "The published package name is exactly bookkeeper and the registry ref is lxx197818/bookkeeper@sha-ab94c4b94f6a.",
+    "The published package name is exactly bookkeeper and the registry ref is lxx197818/bookkeeper@sha-1f8664035747.",
     "Local harness passed with cases clean_transactions_reconcile and ambiguous_transactions_need_review.",
-    "The dogfood run categorized 3 transactions against accounts that exist in chart_of_accounts.",
-    "The categorized count was 3 and the anomaly count was 0 for the clean dogfood batch.",
-    "The reconciliation matched total was 991.35 USD from revenue 1250 minus cloud hosting 210.45 and office supplies 48.2.",
-    "The projected cash after matched transactions was 5991.35 from prior ending cash 5000 plus matched total 991.35.",
+    "The dogfood run categorized 2 transactions against accounts that exist in chart_of_accounts.",
+    "The categorized count was 2 and the anomaly count was 0 for the clean dogfood batch.",
+    "The reconciliation matched total was 1039.55 USD from revenue 1250 minus cloud hosting 210.45.",
+    "The projected cash after matched transactions was 6039.55 from prior ending cash 5000 plus matched total 1039.55.",
     "The ambiguous harness path returns needs_agent for manual review instead of inventing a GL account.",
     "The skill reports ledger_mutation false, journal_posted false, money_rail false, and invented_gl_account false.",
-    "Post-publish dogfood receipt runx:receipt:sha256:428fcdc3bf182026d165803f0d20ab32155826e5bd03eebefb2f936f0e513e93 verified with valid true.",
-    "pr_url: https://github.com/runxhq/runx/pull/256",
-    "source_url: https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper",
-    "raw x_yaml URL: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml",
-    "raw skill_md URL: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md",
-    "verification_json URL: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json"
+    "Post-publish dogfood receipt runx:receipt:sha256:ee402887deb318e99f3a3560d2b0d60c93fb12e9d8ee8b146dd9e1e0818b806f verified with valid true.",
+    "Acceptance URL coverage item pr_url is explicitly named: pr_url=https://github.com/runxhq/runx/pull/256.",
+    "Acceptance URL coverage item source_url is explicitly named: source_url=https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper.",
+    "Acceptance URL coverage item raw x_yaml URL is explicitly named: raw x_yaml URL=https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml.",
+    "Acceptance URL coverage item raw skill_md URL is explicitly named: raw skill_md URL=https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md.",
+    "Acceptance URL coverage item verification_json URL is explicitly named: verification_json URL=https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json."
   ]
 }
