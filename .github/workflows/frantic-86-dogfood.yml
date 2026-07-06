@@ -1,0 +1,277 @@
+name: Frantic 86 dogfood receipt
+
+on:
+  push:
+    branches:
+      - frantic-86-contract-drafter
+    paths:
+      - ".github/workflows/frantic-86-dogfood.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: frantic-86-contract-drafter
+
+      - name: Download official runx 0.6.16
+        run: |
+          set -euo pipefail
+          curl -fsSL -o runx.tar.gz https://github.com/runxhq/runx/releases/download/cli-v0.6.16/runx-0.6.16-x86_64-unknown-linux-musl.tar.gz
+          curl -fsSL -o runx.tar.gz.sha256 https://github.com/runxhq/runx/releases/download/cli-v0.6.16/runx-0.6.16-x86_64-unknown-linux-musl.tar.gz.sha256
+          sha256sum -c runx.tar.gz.sha256
+          mkdir -p .frantic-86-tools/runx
+          tar -xzf runx.tar.gz -C .frantic-86-tools/runx
+          find .frantic-86-tools/runx -type f -name runx -exec chmod +x {} \;
+          RUNX_BIN="$(find "$PWD/.frantic-86-tools/runx" -type f -name runx | head -n 1)"
+          echo "RUNX_BIN=$RUNX_BIN" >> "$GITHUB_ENV"
+          "$RUNX_BIN" --version
+
+      - name: Prepare ephemeral dogfood signer
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user pynacl
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import base64
+          from nacl.signing import SigningKey
+
+          signing_key = SigningKey.generate()
+          seed = bytes(signing_key)
+          public = bytes(signing_key.verify_key)
+          print("RUNX_RECEIPT_SIGN_KID=github-actions-frantic-86-dogfood")
+          print("RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=" + base64.b64encode(seed).decode("ascii"))
+          print("RUNX_RECEIPT_SIGN_ISSUER_TYPE=ci")
+          print("RUNX_RECEIPT_VERIFY_KID=github-actions-frantic-86-dogfood")
+          print("RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=" + base64.b64encode(public).decode("ascii"))
+          PY
+
+      - name: Run published contract-drafter dogfood and verify receipt
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import datetime as dt
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import shutil
+          import subprocess
+
+          root = pathlib.Path.cwd()
+          skill_dir = root / "skills" / "contract-drafter"
+          receipt_dir = root / ".frantic-86-dogfood-receipts"
+          receipt_dir.mkdir(exist_ok=True)
+          target_ref = "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+          runx_bin = os.environ["RUNX_BIN"]
+
+          dogfood_input = {
+              "template": {
+                  "template_id": "msa-standard-2026-07",
+                  "title": "Mutual Services Agreement",
+                  "baseline": {
+                      "governing_law": "New York",
+                      "payment_terms": "Net 30",
+                      "liability_cap": "Fees paid in the prior 12 months",
+                      "confidentiality_period": "3 years",
+                      "renewal": "Mutual written renewal only",
+                  },
+                  "required_terms": [
+                      "effective_date",
+                      "services",
+                      "fees",
+                      "payment_terms",
+                      "liability_cap",
+                      "governing_law",
+                  ],
+                  "clauses": [
+                      {
+                          "id": "introduction",
+                          "title": "Parties and Effective Date",
+                          "baseline": "The agreement identifies both parties and the effective date.",
+                      },
+                      {
+                          "id": "services",
+                          "title": "Services",
+                          "baseline": "Provider performs only the services listed in the statement of work.",
+                      },
+                      {
+                          "id": "fees",
+                          "title": "Fees and Payment",
+                          "baseline": "Customer pays the fees in USD under Net 30 payment terms.",
+                      },
+                      {
+                          "id": "liability_cap",
+                          "title": "Limitation of Liability",
+                          "baseline": "Liability is capped at fees paid in the prior 12 months.",
+                      },
+                      {
+                          "id": "confidentiality_period",
+                          "title": "Confidentiality",
+                          "baseline": "Confidentiality obligations survive for 3 years.",
+                      },
+                      {
+                          "id": "governing_law",
+                          "title": "Governing Law",
+                          "baseline": "New York law governs the agreement.",
+                      },
+                  ],
+              },
+              "parties": {
+                  "provider": {
+                      "legal_name": "Northstar Ops LLC",
+                      "signer": "Mira Chen",
+                      "email": "mira.chen@example.invalid",
+                  },
+                  "customer": {
+                      "legal_name": "Harbor Ledger Inc.",
+                      "signer": "Jules Patel",
+                      "email": "legal@example.invalid",
+                  },
+              },
+              "terms": {
+                  "effective_date": "2026-07-15",
+                  "services": "Monthly operations analytics and invoice reconciliation support.",
+                  "fees": "USD 9,500 per month",
+                  "payment_terms": "Net 45",
+                  "liability_cap": "USD 75,000 aggregate cap",
+                  "governing_law": "Delaware",
+                  "confidentiality_period": "3 years",
+                  "proposal_subject": "Review draft MSA for Harbor Ledger",
+              },
+          }
+
+          args = [
+              runx_bin,
+              "skill",
+              target_ref,
+              "--registry",
+              "https://api.runx.ai",
+              "--input-json",
+              "template=" + json.dumps(dogfood_input["template"], separators=(",", ":")),
+              "--input-json",
+              "parties=" + json.dumps(dogfood_input["parties"], separators=(",", ":")),
+              "--input-json",
+              "terms=" + json.dumps(dogfood_input["terms"], separators=(",", ":")),
+              "--receipt-dir",
+              str(receipt_dir),
+              "--json",
+          ]
+          env = os.environ.copy()
+          run = subprocess.run(args, env=env, text=True, capture_output=True, timeout=180)
+          (skill_dir / "contract-drafter-dogfood-runx-stdout.json").write_text(run.stdout, encoding="utf-8")
+          (skill_dir / "contract-drafter-dogfood-runx-stderr.txt").write_text(run.stderr, encoding="utf-8")
+          if run.returncode != 0:
+              raise SystemExit(f"runx skill failed with exit {run.returncode}: {run.stdout[:1000]} {run.stderr[:1000]}")
+
+          try:
+              stdout_json = json.loads(run.stdout)
+          except Exception as exc:
+              raise SystemExit(f"runx skill did not emit JSON: {exc}") from exc
+          if stdout_json.get("status") not in (None, "success", "completed", "ok"):
+              raise SystemExit(f"runx skill did not report success: {stdout_json}")
+
+          receipt_files = sorted(receipt_dir.glob("sha256-*.json"))
+          if not receipt_files:
+              raise SystemExit("runx skill produced no receipt JSON files")
+
+          receipt_id = (
+              stdout_json.get("receipt_id")
+              or (stdout_json.get("receipt") or {}).get("id")
+              or (stdout_json.get("run") or {}).get("receipt_id")
+          )
+          selected = None
+          if receipt_id and receipt_id.startswith("sha256:"):
+              candidate = receipt_dir / ("sha256-" + receipt_id.split(":", 1)[1] + ".json")
+              if candidate.exists():
+                  selected = candidate
+          if selected is None:
+              scored = []
+              for path in receipt_files:
+                  text = path.read_text(encoding="utf-8")
+                  receipt = json.loads(text)
+                  score = 0
+                  if target_ref in text:
+                      score += 100
+                  if receipt.get("seal", {}).get("disposition") == "closed":
+                      score += 10
+                  score += min(path.stat().st_size, 100000) / 100000
+                  scored.append((score, path))
+              selected = sorted(scored, reverse=True)[0][1]
+              receipt_id = json.loads(selected.read_text(encoding="utf-8")).get("id")
+
+          receipt_target = skill_dir / "contract-drafter-dogfood-receipt.json"
+          shutil.copyfile(selected, receipt_target)
+          verify = subprocess.run(
+              [runx_bin, "verify", "--receipt", str(receipt_target), "--json"],
+              env=env,
+              text=True,
+              capture_output=True,
+              timeout=60,
+          )
+          if verify.returncode != 0:
+              raise SystemExit(f"runx verify failed with exit {verify.returncode}: {verify.stdout[:1000]} {verify.stderr[:1000]}")
+          verify_json = json.loads(verify.stdout)
+          if verify_json.get("valid") is not True:
+              raise SystemExit(f"runx verify returned invalid verdict: {verify_json}")
+          (skill_dir / "contract-drafter-dogfood-verify.json").write_text(
+              json.dumps(verify_json, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          public_key = {
+              "kid": os.environ["RUNX_RECEIPT_VERIFY_KID"],
+              "alg": "Ed25519",
+              "public_key_base64": os.environ["RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64"],
+              "public_key_sha256": "sha256:" + hashlib.sha256(base64.b64decode(os.environ["RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64"])).hexdigest(),
+              "issuer_type": "ci",
+              "generated_by": "GitHub Actions ubuntu-latest using official runx-cli 0.6.16",
+              "receipt_ref": "runx:receipt:" + receipt_id,
+          }
+          (skill_dir / "contract-drafter-dogfood-public-key.json").write_text(
+              json.dumps(public_key, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          run_summary = {
+              "schema": "frantic.contract_drafter_dogfood_run.v1",
+              "target_ref": target_ref,
+              "runx_version": subprocess.check_output([runx_bin, "--version"], text=True).strip(),
+              "runner": "github-actions/ubuntu-latest",
+              "created_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+              "receipt_ref": "runx:receipt:" + receipt_id,
+              "selected_receipt_file": selected.name,
+              "receipt_file_count": len(receipt_files),
+              "stdout_status": stdout_json.get("status"),
+              "verify_valid": verify_json.get("valid"),
+              "verify_signature": verify_json.get("signature"),
+              "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir <github-actions-temp> --json",
+          }
+          (skill_dir / "contract-drafter-dogfood-run.json").write_text(
+              json.dumps(run_summary, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(run_summary, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Commit dogfood receipt artifacts
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            skills/contract-drafter/contract-drafter-dogfood-public-key.json \
+            skills/contract-drafter/contract-drafter-dogfood-receipt.json \
+            skills/contract-drafter/contract-drafter-dogfood-run.json \
+            skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json \
+            skills/contract-drafter/contract-drafter-dogfood-runx-stderr.txt \
+            skills/contract-drafter/contract-drafter-dogfood-verify.json
+          if git diff --cached --quiet; then
+            echo "No dogfood artifact changes to commit."
+            exit 0
+          fi
+          git commit -m "Refresh contract-drafter dogfood receipt on Linux"
+          git push
