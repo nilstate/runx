@@ -1,0 +1,34 @@
+{
+  "transactions": [
+    {
+      "id": "txn_001",
+      "date": "2026-07-01",
+      "description": "Stripe payout customer invoices",
+      "amount": 1250,
+      "currency": "USD"
+    },
+    {
+      "id": "txn_002",
+      "date": "2026-07-02",
+      "description": "AWS cloud hosting invoice",
+      "amount": -210.45,
+      "currency": "USD"
+    }
+  ],
+  "chart_of_accounts": [
+    {
+      "code": "4000",
+      "name": "Revenue",
+      "keywords": ["stripe", "invoice", "customer"]
+    },
+    {
+      "code": "6100",
+      "name": "Cloud hosting",
+      "keywords": ["aws", "hosting", "cloud"]
+    }
+  ],
+  "prior_period": {
+    "ending_cash": 5000,
+    "currency": "USD"
+  }
+}

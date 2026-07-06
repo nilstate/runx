@@ -1,0 +1,140 @@
+skill: bookkeeper
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: clean_transactions_reconcile
+      runner: default
+      inputs:
+        transactions:
+          - id: txn_001
+            date: "2026-07-01"
+            description: "Stripe payout customer invoices"
+            amount: 1250
+            currency: "USD"
+          - id: txn_002
+            date: "2026-07-02"
+            description: "AWS cloud hosting invoice"
+            amount: -210.45
+            currency: "USD"
+          - id: txn_003
+            date: "2026-07-03"
+            description: "Office supplies receipt"
+            amount: -48.2
+            currency: "USD"
+        chart_of_accounts:
+          - code: "4000"
+            name: "Revenue"
+            keywords: ["stripe", "invoice", "customer"]
+          - code: "6100"
+            name: "Cloud hosting"
+            keywords: ["aws", "hosting", "cloud"]
+          - code: "6200"
+            name: "Office supplies"
+            keywords: ["supplies", "office"]
+        prior_period:
+          ending_cash: 5000
+          currency: "USD"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: ambiguous_transactions_need_review
+      runner: review
+      inputs:
+        transactions:
+          - id: txn_004
+            date: "2026-07-04"
+            description: "Transfer"
+            amount: -300
+            currency: "USD"
+        chart_of_accounts:
+          - code: "1000"
+            name: "Cash"
+            keywords: ["bank", "deposit"]
+          - code: "6900"
+            name: "Miscellaneous expense"
+            keywords: ["misc"]
+        prior_period:
+          ending_cash: 5991.35
+          currency: "USD"
+      expect:
+        status: needs_agent
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: waiting
+
+policy:
+  allow:
+    - provider: transactions
+      method: READ
+      scope: runx:transactions:read
+    - provider: chart-of-accounts
+      method: READ
+      scope: runx:chart-of-accounts:read
+    - provider: prior-period
+      method: READ
+      scope: runx:prior-period:read
+  deny:
+    - ledger_write
+    - journal_post
+    - money_rail
+    - invented_gl_account
+    - invented_transaction
+
+emits:
+  - name: reconciliation_artifact
+    packet: reconciliation_artifact
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      transactions:
+        type: json
+        required: true
+      chart_of_accounts:
+        type: json
+        required: true
+      prior_period:
+        type: json
+        required: true
+  review:
+    type: graph
+    inputs:
+      transactions:
+        type: json
+        required: true
+      chart_of_accounts:
+        type: json
+        required: true
+      prior_period:
+        type: json
+        required: true
+    graph:
+      name: bookkeeper-ambiguous-review
+      steps:
+        - id: review_ambiguous_transaction
+          label: route ambiguous transaction to manual review without booking ledger entries
+          run:
+            type: agent-task
+            agent: finance
+            task: bookkeeper-needs-review
+            outputs:
+              decision: string
+              needs_review_reason: string
+              proposed_account_code: string

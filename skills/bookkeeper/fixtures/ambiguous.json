@@ -1,0 +1,27 @@
+{
+  "transactions": [
+    {
+      "id": "txn_004",
+      "date": "2026-07-04",
+      "description": "Transfer",
+      "amount": -300,
+      "currency": "USD"
+    }
+  ],
+  "chart_of_accounts": [
+    {
+      "code": "1000",
+      "name": "Cash",
+      "keywords": ["bank", "deposit"]
+    },
+    {
+      "code": "6900",
+      "name": "Miscellaneous expense",
+      "keywords": ["misc"]
+    }
+  ],
+  "prior_period": {
+    "ending_cash": 5991.35,
+    "currency": "USD"
+  }
+}

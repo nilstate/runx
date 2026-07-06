@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "work/runx-bookkeeper-dogfood-89",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:428fcdc3bf182026d165803f0d20ab32155826e5bd03eebefb2f936f0e513e93",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}
