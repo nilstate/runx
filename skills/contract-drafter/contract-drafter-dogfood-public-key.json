@@ -1,8 +1,9 @@
 {
-  "kid": "agent-497c05-contract-drafter-dogfood",
+  "kid": "github-actions-frantic-86-dogfood",
+  "alg": "Ed25519",
+  "public_key_base64": "HBbh/EZwi6TC0bjXtdAPPz+ZQwhfeQg27mGDeeDlp0Y=",
+  "public_key_sha256": "sha256:4d522410a8705bca458e936def6cf106d68a4db6d0a0aad05cc4b73632f69461",
   "issuer_type": "ci",
-  "public_key_sha256": "sha256:49e109b6d0387af7750e63acde3dd4fd9388470e68e491b9e2c4da65c6030cea",
-  "public_key_base64": "J5hQ6+EHB3az6/APeIZ9PwOxS8cTVgnIyTFtk+owEPI=",
-  "receipt_id": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017",
-  "receipt_ref": "runx:receipt:sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017"
+  "generated_by": "GitHub Actions ubuntu-latest using official runx-cli 0.6.16",
+  "receipt_ref": "runx:receipt:sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5"
 }

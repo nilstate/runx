@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-07-06T08:19:09.571Z",
+    "closed_at": "2026-07-06T08:20:49.944Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool draft completed"
@@ -321,7 +321,7 @@
       {
         "artifact_refs": [],
         "closure": {
-          "closed_at": "2026-07-06T08:19:09.571Z",
+          "closed_at": "2026-07-06T08:20:49.944Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -376,7 +376,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-07-06T08:19:09.571Z",
+    "created_at": "2026-07-06T08:20:49.944Z",
     "decisions": [
       {
         "artifact_refs": [],
@@ -404,8 +404,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:12c03cd8b1c9561f295366fde76ce1c094ca9f22e6bde814b3f4267da4828a98",
-    "id": "sha256:1cba626eb3db67bfafb209055145aa405f3f5bae7ec6381c0e68ec5aa2caddf8",
+    "digest": "sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24",
+    "id": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
     "idempotency": {
       "content_hash": "sha256:run_draft_5dc75c805aac-draft-content",
       "intent_key": "sha256:run_draft_5dc75c805aac-draft-intent",
@@ -413,7 +413,7 @@
     },
     "issuer": {
       "kid": "github-actions-frantic-86-dogfood",
-      "public_key_sha256": "sha256:7ebb40d63e61b86ba84f8b58af7dbea14bd409b4b1405e10e4807e9374404b8e",
+      "public_key_sha256": "sha256:4d522410a8705bca458e936def6cf106d68a4db6d0a0aad05cc4b73632f69461",
       "type": "ci"
     },
     "lineage": {
@@ -422,7 +422,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-07-06T08:19:09.571Z",
+      "closed_at": "2026-07-06T08:20:49.944Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -433,14 +433,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-07-06T08:19:09.571Z",
+      "last_observed_at": "2026-07-06T08:20:49.944Z",
       "reason_code": "process_closed",
       "summary": "cli-tool draft completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:RxMpufOII600XrEbWWR695gAdsLJIBSnCq9j6_avT3xgKUP9CjhdaQBGsXWhcyrQF-No6HON1NtsYPVxdHF-AA"
+      "value": "base64:nmxRw2GUhPMLc1jfTD0S2uu0CnWm1MkMedzJztBYt-uSaT_iUKPvClUU5tXtX-gJA8cBcc2kOS_jyTpkKbYeAQ"
     },
     "subject": {
       "commitments": [],
@@ -451,7 +451,7 @@
       }
     }
   },
-  "receipt_id": "sha256:1cba626eb3db67bfafb209055145aa405f3f5bae7ec6381c0e68ec5aa2caddf8",
+  "receipt_id": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
   "registry_provenance": {
     "digest": "sha256:ae3bc7a5b011100556f2c65ff32dc3507bc07db14520eae4730064598c589101",
     "profile_digest": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",

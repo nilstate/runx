@@ -1,21 +1,21 @@
 {
   "schema": "runx.verify_verdict.v1",
-  "receipt_id": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017",
+  "receipt_id": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
   "valid": true,
   "digest": {
     "status": "valid",
-    "expected": "sha256:9fa263882f21661f6cd332cd24cccbcb5f69e9ef694f0711f034a7a3605df242",
-    "actual": "sha256:9fa263882f21661f6cd332cd24cccbcb5f69e9ef694f0711f034a7a3605df242"
+    "expected": "sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24",
+    "actual": "sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24"
   },
   "content_address": {
     "status": "valid",
-    "expected": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017",
-    "actual": "sha256:c2f8890e9631a8334d137cc7b729c21a200644adfe559d14c54702d5e087c017"
+    "expected": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
+    "actual": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5"
   },
   "signature": {
     "mode": "production",
     "status": "valid",
-    "kid": "agent-497c05-contract-drafter-dogfood"
+    "kid": "github-actions-frantic-86-dogfood"
   },
   "lineage": {
     "status": "unverified",
