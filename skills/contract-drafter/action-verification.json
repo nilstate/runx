@@ -68,10 +68,8 @@
       "sealed-draft-with-visible-deviations",
       "refused-missing-required-payment-term"
     ],
-    "receipt_ids": [
-      "sha256:a7e5aeb8a5c9f359ab89fb398013a626c7ca8bab9fb74569d61161d7203f99d5",
-      "sha256:42c350d43b24475bafedb5a8b0fa4cfedd1f1e3366f9c8716c3eed98ded69d4a"
-    ]
+    "receipt_count": 2,
+    "note": "Harness fixture receipts are not the submitted delivery receipt_ref; the delivery receipt_ref is artifact_refs.receipt_ref and dogfood_receipt.receipt_ref."
   },
   "artifact_refs": {
     "public_url": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",

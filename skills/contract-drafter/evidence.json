@@ -27,10 +27,8 @@
       "sealed-draft-with-visible-deviations",
       "refused-missing-required-payment-term"
     ],
-    "receipt_ids": [
-      "sha256:a7e5aeb8a5c9f359ab89fb398013a626c7ca8bab9fb74569d61161d7203f99d5",
-      "sha256:42c350d43b24475bafedb5a8b0fa4cfedd1f1e3366f9c8716c3eed98ded69d4a"
-    ],
+    "receipt_count": 2,
+    "note": "Harness fixture receipts are intentionally not reused as delivery receipt_ref; delivery receipt_ref is dogfood.receipt_ref below.",
     "evidence_id": "runx-harness:iwannabefree00/contract-drafter:sha-8f6b4fdaeab7",
     "evidence_url": "https://runx.ai/x/iwannabefree00/contract-drafter#harness"
   },
@@ -115,13 +113,11 @@
     "harness_cases": [
       {
         "name": "sealed-draft-with-visible-deviations",
-        "status": "sealed",
-        "receipt_id": "sha256:a7e5aeb8a5c9f359ab89fb398013a626c7ca8bab9fb74569d61161d7203f99d5"
+        "status": "sealed"
       },
       {
         "name": "refused-missing-required-payment-term",
-        "status": "refused",
-        "receipt_id": "sha256:42c350d43b24475bafedb5a8b0fa4cfedd1f1e3366f9c8716c3eed98ded69d4a"
+        "status": "refused"
       }
     ],
     "windows_receipt_store_note": "Local Windows runx 0.6.14/0.6.16 hit receipt-store directory sync errors, so the final receipt was produced on Linux with official runx-cli 0.6.16 and verified with the included public key."
