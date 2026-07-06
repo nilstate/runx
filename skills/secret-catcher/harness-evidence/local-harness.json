@@ -2,12 +2,12 @@
   "runx_version": "runx-cli 0.6.14",
   "command": "runx harness ./skills/secret-catcher",
   "status": "passed",
-  "case_count": 2,
+  "case_count": 3,
   "assertion_error_count": 0,
   "case_names": [
     "block-planted-secret",
-    "allow-clean-diff"
+    "allow-clean-diff",
+    "refuse-empty-diff"
   ],
-  "graph_case_count": 2
+  "graph_case_count": 3
 }
-

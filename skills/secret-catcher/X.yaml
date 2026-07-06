@@ -42,12 +42,30 @@ harness:
           pull_request: 43
       expect:
         status: sealed
+    - name: refuse-empty-diff
+      runner: manual-review
+      inputs:
+        reason: No bounded diff was supplied for deterministic scanning.
+      expect:
+        status: needs_agent
 
 emits:
   - name: scan_result
     packet: runx.decision.v1
 
 runners:
+  manual-review:
+    type: agent-task
+    agent: reviewer
+    task: secret-catcher-manual-review
+    outputs:
+      decision: string
+      reason: string
+    inputs:
+      reason:
+        type: string
+        required: true
+        description: Reason deterministic diff scanning cannot proceed.
   scan:
     default: true
     type: graph
@@ -72,4 +90,3 @@ runners:
               scan_result: scan_result
             packets:
               scan_result: runx.decision.v1
-

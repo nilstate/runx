@@ -2,6 +2,10 @@ import fs from "node:fs";
 
 const input = readInputs();
 const diff = typeof input.diff === "string" ? input.diff : "";
+if (!diff.trim()) {
+  process.stderr.write("secret-catcher requires a non-empty diff\n");
+  process.exit(2);
+}
 const findings = [];
 const seen = new Set();
 
@@ -71,4 +75,3 @@ function safeContext(value) {
     pull_request: Number.isFinite(Number(value.pull_request)) ? Number(value.pull_request) : null,
   };
 }
-
