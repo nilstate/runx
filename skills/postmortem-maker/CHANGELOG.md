@@ -48,3 +48,18 @@ behavior, dogfood block present with receipt and valid production-signature
 verify verdict, `receipt_ref` is the post-publish dogfood run, typed inputs and
 outputs are complete, publish_proposal is correctly gated, report covers all
 required narrative fields.
+
+## 0.1.0+postmortem83-reverify — 2026-07-07
+
+- Confirmed PR head commit `1a978901` (hermes/frantic83-postmortem-maker-forkbase)
+  is byte-stable with public registry `jdjioe5-cpu/postmortem-maker@0.1.0` and
+  aligns `version: "0.1.0"` across X.yaml, evidence_json, public_url,
+  source_url, install record, verification_json, and report.
+- Confirmed all required dogfood-run output observations are present in
+  evidence.json: `dogfood_timeline_count`, `dogfood_impact`,
+  `dogfood_root_cause_status`, `dogfood_unknowns_count`,
+  `dogfood_unknowns_list`, `dogfood_action_items_count`,
+  `dogfood_action_items_list`, `dogfood_proposal_status`.
+- Confirmed PR #266 is OPEN MERGEABLE against runxhq/runx with 4 files:
+  X.yaml, SKILL.md, run.mjs, CHANGELOG.md.
+- No source code changes; this is a verification commit only.
