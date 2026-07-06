@@ -8,7 +8,7 @@ public acquire, dogfood execution, and receipt verification evidence.
 
 ## Artifacts
 
-- Public URL: <https://runx.ai/x/zhtwangk/meeting-followup>
+- Public URL: <https://runx.ai/x/zhtwangk/meeting-followup@sha-20a30dcf7ea9>
 - PR: <https://github.com/runxhq/runx/pull/260>
 - Source: <https://github.com/ZHTWangK/runx/tree/codex/meeting-followup-bounty/skills/meeting-followup>
 - Raw X.yaml: <https://raw.githubusercontent.com/ZHTWangK/runx/codex/meeting-followup-bounty/skills/meeting-followup/X.yaml>

@@ -3,7 +3,7 @@
   "status": "passed",
   "runx_cli_version": "runx-cli 0.6.16",
   "published_ref": "zhtwangk/meeting-followup@sha-20a30dcf7ea9",
-  "public_url": "https://runx.ai/x/zhtwangk/meeting-followup",
+  "public_url": "https://runx.ai/x/zhtwangk/meeting-followup@sha-20a30dcf7ea9",
   "hosted_registry_publish": {
     "status": "published",
     "owner": "zhtwangk",
