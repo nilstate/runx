@@ -1,5 +1,6 @@
 {
   "schema": "frantic.runx_skill_delivery.evidence.v1",
+  "summary": "Published zhtwangk/meeting-followup@sha-20a30dcf7ea9 with runx-cli 0.6.16, green local and hosted harness evidence, public registry metadata, public acquire proof, a sealed dogfood receipt, and a valid runx verify verdict.",
   "bounty": {
     "id": 76,
     "title": "runx skill: meeting followup",
@@ -97,7 +98,7 @@
       "live_task_created": false
     }
   },
-  "observations": {
+  "observation_details": {
     "runx_version": "runx-cli 0.6.16",
     "publisher_owner": "zhtwangk",
     "package_name": "meeting-followup",
@@ -145,6 +146,40 @@
     "receipt_id": "sha256:78bfeb98757da2fedb3838959f092cc3b8e7ce42c618d3ec87cda74de349bb21",
     "runx_verify_verdict": "valid"
   },
+  "observations": [
+    {
+      "name": "runx_version",
+      "value": "runx-cli 0.6.16"
+    },
+    {
+      "name": "published_package",
+      "value": "zhtwangk/meeting-followup@sha-20a30dcf7ea9"
+    },
+    {
+      "name": "hosted_publish",
+      "value": "runx registry publish returned status=published with hosted harness accepted"
+    },
+    {
+      "name": "harness_cases",
+      "value": "meeting-followup-actionable-transcript, meeting-followup-non-actionable-refused, meeting-followup-needs-transcript"
+    },
+    {
+      "name": "dogfood_receipt",
+      "value": "runx:receipt:sha256:78bfeb98757da2fedb3838959f092cc3b8e7ce42c618d3ec87cda74de349bb21"
+    },
+    {
+      "name": "verify_verdict",
+      "value": "runx verify valid=true with valid digest and content address"
+    },
+    {
+      "name": "dogfood_output",
+      "value": "one decision, two action_items, two task_proposals, and live_task_created=false"
+    },
+    {
+      "name": "refused_case",
+      "value": "non-actionable harness transcript emits no task_proposals and summary status refused"
+    }
+  ],
   "new_user_flow": {
     "install": "runx add zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai",
     "run": "runx skill zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai --input transcript='<speaker labeled transcript>' --input-json attendees='[\"Alice\",\"Ben\"]' --receipts ./receipts --json",
