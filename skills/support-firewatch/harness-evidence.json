@@ -11,9 +11,9 @@
       "support-firewatch-needs-required-inputs"
     ],
     "receipt_ids": [
-      "sha256:4c68fec79e6aacea6e5fd0c998349009ee90d80af1f2cb912b0b70bcb9ae8f3e",
-      "sha256:4a9797a6f6361bee90de7eb8c5b4bc94b11f0e5a2ddc28dad3fdfe59d5b3f607",
-      "sha256:240656444f24cbaefbf3a3faaeabcb95785f62e81e84232df2697b7b9babe5d2"
+      "sha256:221c3e17dc25b98b4023c93024f8bd3eceddd84f8dda4a37c941ddf6afec7d9f",
+      "sha256:ec64b2d406898e6a426cc628061eb13fe4d0f155cad495d817c168972d7c588e",
+      "sha256:7a8441df58d1d66bc3f2efa201516bd15682bd2c31dc387cd899667571121765"
     ]
   },
   "local_receipt_verify": {
