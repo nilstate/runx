@@ -208,7 +208,7 @@ jobs:
               )
               print(json.dumps(diagnostic, indent=2, ensure_ascii=False))
               sys.exit(0)
-          if stdout_json.get("status") not in (None, "success", "completed", "ok"):
+          if stdout_json.get("status") not in (None, "success", "completed", "ok", "sealed"):
               diagnostic["stdout_status"] = stdout_json.get("status")
               diagnostic["stdout_error"] = stdout_json.get("error")
               (skill_dir / "contract-drafter-dogfood-diagnostic.json").write_text(
