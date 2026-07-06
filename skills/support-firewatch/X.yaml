@@ -1,0 +1,86 @@
+skill: support-firewatch
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: support-firewatch-escalates-sla-and-churn-risk
+      inputs:
+        thread:
+          - id: t1
+            at: "2026-07-06T08:00:00Z"
+            role: customer
+            body: "We are still down, this is blocking checkout and we may cancel if nobody responds."
+          - id: t2
+            at: "2026-07-06T08:12:00Z"
+            role: customer
+            body: "Any update? This is urgent."
+        sla_policy:
+          now: "2026-07-06T09:10:00Z"
+          first_response_due_minutes: 30
+          followup_due_minutes: 45
+          churn_risk_terms: ["cancel", "churn", "refund", "switch vendor"]
+          negative_sentiment_terms: ["down", "blocking", "urgent", "angry"]
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: support-firewatch-healthy-thread-no-escalation
+      inputs:
+        thread:
+          - id: h1
+            at: "2026-07-06T08:00:00Z"
+            role: customer
+            body: "Can you confirm whether the export includes archived contacts?"
+          - id: h2
+            at: "2026-07-06T08:08:00Z"
+            role: agent
+            body: "Yes, archived contacts are included if the include_archived option is enabled."
+          - id: h3
+            at: "2026-07-06T08:11:00Z"
+            role: customer
+            body: "Thanks, that answers it."
+        sla_policy:
+          now: "2026-07-06T08:20:00Z"
+          first_response_due_minutes: 30
+          followup_due_minutes: 45
+          churn_risk_terms: ["cancel", "refund"]
+          negative_sentiment_terms: ["angry", "broken", "down"]
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: support-firewatch-needs-required-inputs
+      inputs: {}
+      expect:
+        status: failure
+
+runners:
+  analyze:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      signals: object
+      escalation: object
+    artifacts:
+      wrap_as: support_firewatch_packet
+      packet: runx.support.firewatch.v1
+    inputs:
+      thread:
+        type: json
+        required: true
+        description: Ordered support thread turns.
+      sla_policy:
+        type: json
+        required: true
+        description: SLA thresholds and escalation keyword policy.
