@@ -29,8 +29,10 @@ const decision = {
 const productName = stringValue(policy.product_name) ?? "the product";
 const signature = stringValue(policy.support_signature) ?? "Support";
 const proposal = buildProposal(lane, { supportThread, summary, contextFindings, missingContext, sensitiveTopics, productName, signature, bugSignals });
+const status = lane === "followup_plan" && missingContext.length > 0 ? "needs_agent" : "ready";
 
 const result = {
+  status,
   support_summary: summary,
   context_findings: contextFindings,
   decision,
@@ -50,7 +52,7 @@ const result = {
     sends_message: false,
     opens_ticket: false,
     mutates_account: false,
-    harness_case_names: ["docs-grounded-reply-only", "sensitive-billing-security-manual-review"],
+    harness_case_names: ["docs-grounded-reply-only", "sensitive-billing-security-manual-review", "missing-thread-failure"],
   },
 };
 

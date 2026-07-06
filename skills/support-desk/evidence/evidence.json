@@ -1,0 +1,65 @@
+{
+    "schema":  "frantic.runx.skill.evidence.v1",
+    "package":  "support-desk",
+    "owner":  "rohitmulani63-ops",
+    "registry_ref":  "rohitmulani63-ops/support-desk@sha-0b7352252dca",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/support-desk",
+    "pr_url":  "https://github.com/runxhq/runx/pull/265",
+    "source_url":  "https://github.com/rohitmulani63-ops/runx/tree/support-desk-frantic-78/skills/support-desk",
+    "runx_cli":  "0.6.14",
+    "validation":  {
+                       "local_inspect":  "passed",
+                       "linux_harness":  {
+                                             "status":  "passed",
+                                             "case_count":  3,
+                                             "receipt_ids":  [
+                                                                 "sha256:fa8bdcf974289750a08b84663c51b623fdc22e6de98b407616da6b3eca144411",
+                                                                 "sha256:0f52142c5e456b2e2fa6b612fea084df95e148688b52f577d6556b79052bbe11",
+                                                                 "sha256:bc89a596e7a4a14e50bf40d99e3f1ca9d47b32abc84df1911979a9f9351ea53a"
+                                                             ],
+                                             "case_names":  [
+                                                                "docs-grounded-reply-only",
+                                                                "sensitive-billing-security-manual-review",
+                                                                "missing-thread-failure"
+                                                            ],
+                                             "assertion_error_count":  0
+                                         },
+                       "remote_registry_read":  "passed",
+                       "published_registry_digest":  "c2e1e44e5dd7add82720c61f0445c95169e79d70756555d4934b2d08aa9d94a7",
+                       "profile_digest":  "8df2799d678d25297a520a9161853d1abb352d248f20b4622a5c3754425fca3b"
+                   },
+    "dogfood":  {
+                    "kind":  "post_publish",
+                    "package":  "rohitmulani63-ops/support-desk@sha-0b7352252dca",
+                    "public_url":  "https://runx.ai/x/rohitmulani63-ops/support-desk",
+                    "command":  "runx skill rohitmulani63-ops/support-desk@sha-0b7352252dca support --registry https://api.runx.ai -R .runx/support-desk-published-receipts --json",
+                    "receipt_ref":  "sha256:2675b5c3409619563fe800988f32d1f591bba2962a5091a60fb230058389e36c",
+                    "receipt_status":  "sealed",
+                    "decision_lane":  "reply_only",
+                    "sends_message":  false,
+                    "opens_ticket":  false,
+                    "mutates_account":  false,
+                    "citations":  [
+                                      {
+                                          "id":  "docs-domain-verify",
+                                          "url":  "https://docs.example.test/domain-verification"
+                                      }
+                                  ]
+                },
+    "verification":  {
+                         "command":  "runx verify sha256:2675b5c3409619563fe800988f32d1f591bba2962a5091a60fb230058389e36c --receipt-dir .runx/support-desk-published-receipts --json",
+                         "valid":  true,
+                         "signature_mode":  "production",
+                         "root_receipt_id":  "sha256:2675b5c3409619563fe800988f32d1f591bba2962a5091a60fb230058389e36c",
+                         "findings":  [
+
+                                      ]
+                     },
+    "safety":  {
+                   "external_side_effects":  "none",
+                   "no_customer_message_sent":  true,
+                   "no_ticket_opened":  true,
+                   "no_account_mutation":  true,
+                   "no_billing_or_security_action":  true
+               }
+}

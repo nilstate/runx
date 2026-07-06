@@ -83,6 +83,12 @@ harness:
           schema: runx.receipt.v1
           state: sealed
 
+    - name: missing-thread-failure
+      runner: support
+      inputs: {}
+      expect:
+        status: failure
+
 runners:
   support:
     default: true
@@ -98,6 +104,7 @@ runners:
       issue_intake_proposal: object
       followup_plan: object
       manual_review: object
+      status: string
       evidence: object
     artifacts:
       wrap_as: support_desk_packet

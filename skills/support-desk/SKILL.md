@@ -88,12 +88,13 @@ The runner emits `runx.support_desk.v1`:
   "issue_intake_proposal": null,
   "followup_plan": null,
   "manual_review": null,
+  "status": "ready",
   "evidence": {
     "side_effects": "none",
     "docs_used": ["docs-domain-verify"],
     "unsupported_claims": [],
     "sensitive_topics": [],
-    "harness_case_names": ["docs-grounded-reply-only", "sensitive-billing-security-manual-review"]
+    "harness_case_names": ["docs-grounded-reply-only", "sensitive-billing-security-manual-review", "missing-thread-failure"]
   }
 }
 ```
@@ -132,6 +133,8 @@ Expected harness cases:
 - `docs-grounded-reply-only`: sealed, docs-grounded reply proposal.
 - `sensitive-billing-security-manual-review`: sealed manual-review packet with
   no reply, no issue mutation, and no account or billing action.
+- `missing-thread-failure`: failure stop when the required support thread is
+  missing.
 
 ## Safety boundary
 
