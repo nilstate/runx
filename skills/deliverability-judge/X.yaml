@@ -1,0 +1,92 @@
+skill: deliverability-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: sealed_healthy_signals_continue
+      inputs:
+        evidence:
+          postmaster_report:
+            status: compliant
+            reputation_score: 92
+            source: postmaster-feed-a
+            timestamp: "2026-07-05T08:00:00Z"
+          bounce_metrics:
+            bounce_pct: 1.4
+            source: bounce-feed-b
+            timestamp: "2026-07-05T08:00:00Z"
+          complaint_metrics:
+            complaint_pct: 0.02
+            source: complaint-feed-c
+            timestamp: "2026-07-05T08:00:00Z"
+          placement_probe:
+            inbox_rate_pct: 91
+            source: placement-probe-d
+            timestamp: "2026-07-05T08:00:00Z"
+        policy:
+          min_reputation_score: 80
+          max_bounce_pct: 3
+          max_complaint_pct: 0.1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: contradictory_signals_refuse
+      inputs:
+        evidence:
+          postmaster_report:
+            status: compliant
+            reputation_score: 95
+            source: postmaster-feed-a
+            timestamp: "2026-07-05T08:00:00Z"
+          bounce_metrics:
+            bounce_pct: 8.7
+            source: bounce-feed-b
+            timestamp: "2026-07-05T08:00:00Z"
+          complaint_metrics:
+            complaint_pct: 0.04
+            source: complaint-feed-c
+            timestamp: "2026-07-05T08:00:00Z"
+          placement_probe:
+            inbox_rate_pct: 89
+            source: placement-probe-d
+            timestamp: "2026-07-05T08:00:00Z"
+        policy:
+          min_reputation_score: 80
+          max_bounce_pct: 3
+          max_complaint_pct: 0.1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  evaluate:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      verdict: object
+      recommendation: object
+      refusal: object
+    artifacts:
+      wrap_as: deliverability_verdict_packet
+      packet: runx.deliverability.verdict.v1
+    inputs:
+      evidence:
+        type: json
+        required: true
+        description: Sealed postmaster, bounce, complaint, and placement signal blocks with source and timestamp.
+      policy:
+        type: json
+        required: true
+        description: Bounds the operator is willing to accept (min_reputation_score, max_bounce_pct, max_complaint_pct).
