@@ -1,4 +1,4 @@
-﻿{
+{
     "schema":  "frantic.evidence.schema_guard.v1",
     "bounty":  84,
     "package":  "schema-guard",
@@ -96,4 +96,3 @@
                          "no live schema write is performed by the skill"
                      ]
 }
-

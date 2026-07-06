@@ -1,4 +1,4 @@
-﻿# schema-guard Frantic #84 report
+# schema-guard Frantic #84 report
 
 ## What shipped
 - Added the schema-guard runx package with typed schema compatibility inputs and guarded proposal output.
@@ -36,4 +36,3 @@
 - It separates safe additive changes from breaking changes.
 - It explains failures through validation results and migration notes instead of only returning pass/fail.
 - It creates a proposal object only after evidence passes, which keeps the skill safe for review workflows.
-

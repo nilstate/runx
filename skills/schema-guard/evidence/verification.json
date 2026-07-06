@@ -1,4 +1,4 @@
-﻿{
+{
     "schema":  "frantic.verification.schema_guard.v1",
     "package":  "schema-guard",
     "package_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
@@ -70,4 +70,3 @@
                ],
     "verdict":  "ready for Frantic preflight and delivery"
 }
-
