@@ -1,0 +1,20 @@
+{
+  "thread": [
+    {
+      "id": "t1",
+      "at": "2026-07-06T08:00:00Z",
+      "role": "customer",
+      "body": "We are still down, this is blocking checkout and we may cancel if nobody responds."
+    },
+    {
+      "id": "t2",
+      "at": "2026-07-06T08:12:00Z",
+      "role": "customer",
+      "body": "Any update? This is urgent."
+    }
+  ],
+  "sla_policy": {
+    "now": "2026-07-06T09:10:00Z",
+    "first_response_due_minutes": 30,
+    "followup_due_minutes": 45,
+    "churn_risk_terms": ["cancel", "churn", "refund", "switch vendor"],

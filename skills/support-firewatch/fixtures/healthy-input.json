@@ -1,0 +1,26 @@
+{
+  "thread": [
+    {
+      "id": "h1",
+      "at": "2026-07-06T08:00:00Z",
+      "role": "customer",
+      "body": "Can you confirm whether the export includes archived contacts?"
+    },
+    {
+      "id": "h2",
+      "at": "2026-07-06T08:08:00Z",
+      "role": "agent",
+      "body": "Yes, archived contacts are included if the include_archived option is enabled."
+    },
+    {
+      "id": "h3",
+      "at": "2026-07-06T08:11:00Z",
+      "role": "customer",
+      "body": "Thanks, that answers it."
+    }
+  ],
+  "sla_policy": {
+    "now": "2026-07-06T08:20:00Z",
+    "first_response_due_minutes": 30,
+    "followup_due_minutes": 45,
+    "churn_risk_terms": ["cancel", "refund"],
