@@ -1,0 +1,15 @@
+{
+  "receipt_dir": "work/runx-expense-dogfood-85",
+  "signature_mode": "production",
+  "trees": [
+    {
+      "root_receipt_id": "sha256:20893020a70a51c3bebc7ffb0824055cbc546ea0a7918742bf146273cfa3d1d3",
+      "receipt_count": 1,
+      "parent_missing": null,
+      "valid": true,
+      "findings": []
+    }
+  ],
+  "unreadable_files": [],
+  "valid": true
+}

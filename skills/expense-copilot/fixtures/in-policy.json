@@ -1,0 +1,19 @@
+{
+  "receipt": {
+    "merchant": "Rail Cafe",
+    "amount": 42.75,
+    "currency": "USD",
+    "category": "meals",
+    "date": "2026-07-01",
+    "employee_id": "emp_104",
+    "description": "Dinner during customer onsite travel"
+  },
+  "policy": {
+    "limits": {
+      "meals": 75,
+      "travel": 500,
+      "supplies": 150
+    },
+    "categories": ["meals", "travel", "supplies"]
+  }
+}

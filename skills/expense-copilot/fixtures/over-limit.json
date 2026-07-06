@@ -1,0 +1,19 @@
+{
+  "receipt": {
+    "merchant": "Luxury Resort Spa",
+    "amount": 325,
+    "currency": "USD",
+    "category": "meals",
+    "date": "2026-07-02",
+    "employee_id": "emp_104",
+    "description": "Team dinner and spa add-on"
+  },
+  "policy": {
+    "limits": {
+      "meals": 75,
+      "travel": 500,
+      "supplies": 150
+    },
+    "categories": ["meals", "travel", "supplies"]
+  }
+}

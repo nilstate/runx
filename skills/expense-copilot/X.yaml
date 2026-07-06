@@ -1,0 +1,124 @@
+skill: expense-copilot
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: in_policy_receipt_proposes_reimbursement
+      runner: default
+      inputs:
+        receipt:
+          merchant: "Rail Cafe"
+          amount: 42.75
+          currency: "USD"
+          category: "meals"
+          date: "2026-07-01"
+          employee_id: "emp_104"
+          description: "Dinner during customer onsite travel"
+        policy:
+          limits:
+            meals: 75
+            travel: 500
+            supplies: 150
+          categories:
+            - meals
+            - travel
+            - supplies
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+    - name: over_limit_receipt_refuses_reimbursement
+      runner: manual-review
+      inputs:
+        receipt:
+          merchant: "Luxury Resort Spa"
+          amount: 325
+          currency: "USD"
+          category: "meals"
+          date: "2026-07-02"
+          employee_id: "emp_104"
+          description: "Team dinner and spa add-on"
+        policy:
+          limits:
+            meals: 75
+            travel: 500
+            supplies: 150
+          categories:
+            - meals
+            - travel
+            - supplies
+      expect:
+        status: needs_agent
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: waiting
+
+policy:
+  allow:
+    - provider: receipt
+      method: READ
+      scope: runx:expense-receipt:read
+    - provider: expense-policy
+      method: READ
+      scope: runx:expense-policy:read
+  deny:
+    - reimbursement_execute
+    - money_rail
+    - payment_send
+    - card_charge
+    - operational_write
+    - invented_receipt_fields
+    - invented_amounts
+    - invented_categories
+
+emits:
+  - name: reimbursement_proposal
+    packet: reimbursement_proposal
+    dispatch_by_name: spend
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 30
+    inputs:
+      receipt:
+        type: json
+        required: true
+      policy:
+        type: json
+        required: true
+  manual-review:
+    type: graph
+    inputs:
+      receipt:
+        type: json
+        required: true
+      policy:
+        type: json
+        required: true
+    graph:
+      name: expense-copilot-manual-review
+      steps:
+        - id: review_over_limit
+          label: review an over-limit or out-of-policy expense without proposing reimbursement
+          run:
+            type: agent-task
+            agent: finance
+            task: expense-manual-review
+            outputs:
+              decision: string
+              violations: array
+              reimbursement_proposal: object

@@ -1,0 +1,88 @@
+{
+  "package": "expense-copilot",
+  "publisher_owner": "lxx197818",
+  "version": "sha-66f09fbe6b8a",
+  "registry_ref": "lxx197818/expense-copilot@sha-66f09fbe6b8a",
+  "public_url": "https://runx.ai/x/lxx197818/expense-copilot",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "publish": {
+    "method": "runx registry publish ./skills/expense-copilot --registry https://api.runx.ai --json",
+    "status": "published",
+    "digest": "b8f034ad89734ed1a02b9b9c36114061362158d1fd51047afc07aa28c870a2d8",
+    "profile_digest": "0b2ba288dac5f8b82a6985e07276a750b27185cf2e1e1bc887d48d3817b05bfa",
+    "install_command": "runx add lxx197818/expense-copilot@sha-66f09fbe6b8a --registry https://api.runx.ai",
+    "run_command": "runx skill lxx197818/expense-copilot@sha-66f09fbe6b8a --registry https://api.runx.ai"
+  },
+  "harness": {
+    "command": "runx harness ./skills/expense-copilot -R /tmp/runx-expense-harness-85 --json",
+    "status": "passed",
+    "case_names": [
+      "in_policy_receipt_proposes_reimbursement",
+      "over_limit_receipt_refuses_reimbursement"
+    ],
+    "graph_case_count": 1
+  },
+  "dogfood": {
+    "package": "lxx197818/expense-copilot@sha-66f09fbe6b8a",
+    "command": "runx skill lxx197818/expense-copilot@sha-66f09fbe6b8a --registry https://api.runx.ai --json -R work/runx-expense-dogfood-85 --input-json receipt=<in-policy receipt> --input-json policy=<policy>",
+    "input": {
+      "receipt": {
+        "merchant": "Rail Cafe",
+        "amount": 42.75,
+        "currency": "USD",
+        "category": "meals",
+        "date": "2026-07-01",
+        "employee_id": "emp_104",
+        "description": "Dinner during customer onsite travel"
+      },
+      "policy": {
+        "limits": {
+          "meals": 75,
+          "travel": 500,
+          "supplies": 150
+        },
+        "categories": ["meals", "travel", "supplies"]
+      }
+    },
+    "receipt_ref": "runx:receipt:sha256:20893020a70a51c3bebc7ffb0824055cbc546ea0a7918742bf146273cfa3d1d3",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "in_policy_receipt_proposes_reimbursement",
+        "status": "sealed"
+      },
+      {
+        "name": "over_limit_receipt_refuses_reimbursement",
+        "status": "needs_agent"
+      }
+    ]
+  },
+  "observations": {
+    "extracted": {
+      "merchant": "Rail Cafe",
+      "amount": 42.75,
+      "currency": "USD",
+      "category": "meals",
+      "date": "2026-07-01",
+      "employee_id": "emp_104"
+    },
+    "policy_result": {
+      "pass": true,
+      "violations": [],
+      "category_limit": 75,
+      "allowed_categories": ["meals", "travel", "supplies"]
+    },
+    "proposal": {
+      "packet": "reimbursement_proposal",
+      "downstream": "spend",
+      "requires_governed_spend_run": true
+    },
+    "escalation": null,
+    "effects": {
+      "reimbursement_executed": false,
+      "money_rail": false,
+      "accounting_state_written": false
+    },
+    "receipt_id": "sha256:20893020a70a51c3bebc7ffb0824055cbc546ea0a7918742bf146273cfa3d1d3"
+  }
+}
