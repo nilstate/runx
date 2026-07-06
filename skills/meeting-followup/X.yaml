@@ -1,0 +1,96 @@
+skill: meeting-followup
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: local-transcript
+      method: READ
+      scope: runx:meeting:read
+  deny:
+    - network_mutation
+    - credential_material
+    - live_task_write
+    - calendar_mutation
+
+emits:
+  - name: summary
+    packet: runx.meeting_followup.summary.v1
+  - name: decisions
+    packet: runx.meeting_followup.decisions.v1
+  - name: action_items
+    packet: runx.meeting_followup.action_items.v1
+  - name: task_proposals
+    packet: runx.meeting_followup.task_proposals.v1
+
+harness:
+  cases:
+    - name: meeting-followup-actionable-transcript
+      runner: default
+      inputs:
+        transcript: |
+          Alice: We decided to launch the beta intake form on 2026-07-15 after QA signs off.
+          Ben: I will prepare the QA checklist by 2026-07-10.
+          Chen: I will send the pilot customer list by 2026-07-09.
+          Alice: We agreed that launch scope excludes billing automation for this beta.
+        attendees:
+          - Alice
+          - Ben
+          - Chen
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: meeting-followup-non-actionable-refused
+      runner: default
+      inputs:
+        transcript: |
+          Alice: We chatted about the roadmap.
+          Ben: There are several options.
+          Chen: Let's revisit later when we have more data.
+        attendees:
+          - Alice
+          - Ben
+          - Chen
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 15
+    sandbox:
+      profile: readonly
+      cwd_policy: skill-directory
+      require_enforcement: false
+    artifacts:
+      named_emits:
+        summary: runx.meeting_followup.summary.v1
+        decisions: runx.meeting_followup.decisions.v1
+        action_items: runx.meeting_followup.action_items.v1
+        task_proposals: runx.meeting_followup.task_proposals.v1
+    inputs:
+      transcript:
+        type: string
+        required: true
+        description: Meeting transcript with speaker labels or bounded notes.
+      attendees:
+        type: json
+        required: true
+        description: Array of attendee names or attendee objects with name fields.

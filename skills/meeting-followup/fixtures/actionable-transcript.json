@@ -1,0 +1,5 @@
+{
+  "case": "meeting-followup-actionable-transcript",
+  "transcript": "Alice: We decided to launch the beta intake form on 2026-07-15 after QA signs off.\nBen: I will prepare the QA checklist by 2026-07-10.\nChen: I will send the pilot customer list by 2026-07-09.\nAlice: We agreed that launch scope excludes billing automation for this beta.",
+  "attendees": ["Alice", "Ben", "Chen"]
+}
