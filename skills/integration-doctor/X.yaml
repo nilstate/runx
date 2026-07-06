@@ -1,0 +1,127 @@
+skill: integration-doctor
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed-diagnoses-path-mismatch-and-proposes-issue
+      inputs:
+        integration_spec:
+          provider: acme-crm
+          auth_mode: bearer_token
+          owner: integrations
+          endpoints:
+            - id: list-customers
+              method: GET
+              path: /api/v2/customers
+        trace_bundle:
+          requests:
+            - id: req-1001
+              endpoint_id: list-customers
+              method: GET
+              path: /api/v1/customers
+              timestamp: "2026-07-05T08:30:00Z"
+              headers_redacted: true
+          responses:
+            - id: res-1001
+              request_id: req-1001
+              status: 404
+              timestamp: "2026-07-05T08:30:00Z"
+              body_shape:
+                error: string
+                code: string
+              excerpt: "not found: /api/v1/customers"
+          timestamps:
+            started_at: "2026-07-05T08:30:00Z"
+            ended_at: "2026-07-05T08:30:01Z"
+        expected_contract:
+          contract_id: acme-crm-customers-v2
+          endpoints:
+            - id: list-customers
+              method: GET
+              path: /api/v2/customers
+              expected_status: 200
+              required_fields:
+                - data
+                - data[].id
+                - data[].email
+        incident_context:
+          environment: staging
+          impact: customer sync job fails before importing contacts
+          objective: identify the next issue-intake action
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refuses-ambiguous-missing-response-evidence
+      inputs:
+        integration_spec:
+          provider: acme-crm
+          auth_mode: bearer_token
+          owner: integrations
+          endpoints:
+            - id: list-customers
+              method: GET
+              path: /api/v2/customers
+        trace_bundle:
+          requests:
+            - id: req-2001
+              endpoint_id: list-customers
+              method: GET
+              path: /api/v2/customers
+              timestamp: "2026-07-05T09:00:00Z"
+              headers_redacted: true
+          responses: []
+          timestamps:
+            started_at: "2026-07-05T09:00:00Z"
+        expected_contract:
+          contract_id: acme-crm-customers-v2
+          endpoints:
+            - id: list-customers
+              method: GET
+              path: /api/v2/customers
+              expected_status: 200
+              required_fields:
+                - data
+                - data[].id
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: failed
+
+runners:
+  diagnose:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      wrap_as: integration_diagnosis_packet
+      packet: runx.integration.doctor.v1
+    inputs:
+      integration_spec:
+        type: json
+        required: true
+        description: "Provider, endpoints, auth mode, and owner for the integration under investigation."
+      trace_bundle:
+        type: json
+        required: true
+        description: "Observed requests, responses, timestamps, and redaction metadata."
+      expected_contract:
+        type: json
+        required: true
+        description: "Expected endpoint paths, statuses, and required response fields."
+      incident_context:
+        type: json
+        required: false
+        description: "Environment, impact, and operator objective for this diagnosis."

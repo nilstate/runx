@@ -1,0 +1,42 @@
+{
+  "integration_spec": {
+    "provider": "acme-crm",
+    "auth_mode": "bearer_token",
+    "owner": "integrations",
+    "endpoints": [
+      {
+        "id": "list-customers",
+        "method": "GET",
+        "path": "/api/v2/customers"
+      }
+    ]
+  },
+  "trace_bundle": {
+    "requests": [
+      {
+        "id": "req-2001",
+        "endpoint_id": "list-customers",
+        "method": "GET",
+        "path": "/api/v2/customers",
+        "timestamp": "2026-07-05T09:00:00Z",
+        "headers_redacted": true
+      }
+    ],
+    "responses": [],
+    "timestamps": {
+      "started_at": "2026-07-05T09:00:00Z"
+    }
+  },
+  "expected_contract": {
+    "contract_id": "acme-crm-customers-v2",
+    "endpoints": [
+      {
+        "id": "list-customers",
+        "method": "GET",
+        "path": "/api/v2/customers",
+        "expected_status": 200,
+        "required_fields": ["data", "data[].id"]
+      }
+    ]
+  }
+}

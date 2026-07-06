@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "sealed-diagnoses-path-mismatch-and-proposes-issue",
+    "refuses-ambiguous-missing-response-evidence"
+  ],
+  "receipt_ids": [
+    "sha256:a56f0e98c636180679bad819a7b07c31a8e52c257f640780710188f5a68e0ee7",
+    "sha256:80adc9c7cff5220a3c05234a652884d30b07cd7cd92ac13ee6c87d2b9d2896c5"
+  ],
+  "graph_case_count": 0
+}
