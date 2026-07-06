@@ -82,7 +82,26 @@
                                    "valid":  true,
                                    "signature_mode":  "production",
                                    "receipt_dir":  "/work/.runx/schema-guard-published-receipts"
-                               }
+                               },
+                    "package":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
+                    "verify_verdict":  "valid",
+                    "harness_cases":  [
+                                          {
+                                              "name":  "additive-compatible-proposal",
+                                              "status":  "sealed",
+                                              "receipt":  "sha256:ce8b54e50189f18bc5b8cbb2a72f548e6814a410e169d9120e5562a1b9299853"
+                                          },
+                                          {
+                                              "name":  "breaking-change-refused-no-proposal",
+                                              "status":  "refused",
+                                              "receipt":  "sha256:9e7ad8183350cb464a561ce2cbc83885d2683249bcc6add57aed40615b325324"
+                                          },
+                                          {
+                                              "name":  "missing-schema-failure",
+                                              "status":  "refused",
+                                              "receipt":  "sha256:14859af0acb735cafa397a629fe08c1eae46156fba8d86c29cfe23846fee48df"
+                                          }
+                                      ]
                 },
     "observations":  [
                          "package name is exactly schema-guard",
