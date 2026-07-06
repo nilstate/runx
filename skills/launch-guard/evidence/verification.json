@@ -1,0 +1,82 @@
+{
+  "schema": "frantic.runx_skill_verification.v1",
+  "package": "dh0h/launch-guard@0.1.0",
+  "runx_cli_min_version": {
+    "required": "0.6.14",
+    "observed": "runx-cli 0.6.16",
+    "passed": true
+  },
+  "local_harness": {
+    "command": "runx harness ./skills/launch-guard --json",
+    "status": "passed",
+    "case_count": 2,
+    "case_names": [
+      "release_go",
+      "blocked_no_go"
+    ],
+    "assertion_error_count": 0,
+    "receipt_ids": [
+      "sha256:c83789e985a479e26ffda71c47f134d5885691a9b01d197535f8d9ea4d6e7f01",
+      "sha256:828e6620594218471a63cff7d4302a212f8ef3fed6a6e143428f66c2ca683f78"
+    ]
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "notes": "Registry publish returned status=published for dh0h/launch-guard@0.1.0."
+  },
+  "post_publish_dogfood": {
+    "command": "runx skill dh0h/launch-guard@0.1.0 --registry https://api.runx.ai --input-json release_candidate=<release_go fixture> --input-json launch_policy=<release_go fixture> --json",
+    "receipt_ref": "runx:receipt:sha256:277939d73bd3442d336df0bf9e729b6ea12b9f646e5bd7efc67850f15366fe87",
+    "verify_verdict": {
+      "valid": true,
+      "digest": "valid",
+      "content_address": "valid",
+      "signature": "valid",
+      "signature_mode": "local-development"
+    },
+    "harness_cases": [
+      {
+        "name": "release_go",
+        "status": "sealed"
+      },
+      {
+        "name": "blocked_no_go",
+        "status": "refused"
+      }
+    ]
+  },
+  "github": {
+    "required_star": "runxhq/runx",
+    "claimant": "dh0h",
+    "pr_url": "https://github.com/runxhq/runx/pull/257",
+    "raw_x_yaml": "https://raw.githubusercontent.com/dh0h/runx/codex/launch-guard/skills/launch-guard/X.yaml",
+    "raw_skill_md": "https://raw.githubusercontent.com/dh0h/runx/codex/launch-guard/skills/launch-guard/SKILL.md"
+  },
+  "semantic_checks": [
+    {
+      "id": "go_case_release_proposal",
+      "passed": true,
+      "summary": "release_go emits decision.status go, readiness_report with zero blockers, and release_proposal with version, diff_ref, consumed_by release, and gated true."
+    },
+    {
+      "id": "no_go_blocks_release_proposal",
+      "passed": true,
+      "summary": "blocked_no_go emits decision.status no_go, exact blockers, and release_proposal null."
+    },
+    {
+      "id": "grounded_readiness_checks",
+      "passed": true,
+      "summary": "Every check cites release_candidate.test_results, rollback_plan, observability_plan, changelog, or launch_policy.max_open_risk."
+    },
+    {
+      "id": "no_live_release_effects",
+      "passed": true,
+      "summary": "X.yaml declares mutating=false and forbids deployment systems, git tags, package registries, announcement channels, and downstream release execution."
+    },
+    {
+      "id": "dogfood_harness_cases_present",
+      "passed": true,
+      "summary": "evidence_json.dogfood.harness_cases includes release_go sealed and blocked_no_go refused."
+    }
+  ]
+}

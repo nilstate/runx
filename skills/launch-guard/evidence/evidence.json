@@ -1,0 +1,99 @@
+{
+  "schema": "frantic.runx_skill_evidence.v1",
+  "summary": "Published dh0h/launch-guard@0.1.0 as a runx release readiness guard with passing local and hosted harnesses, clean install proof, post-publish dogfood receipt, valid receipt verification, and explicit dogfood.harness_cases coverage.",
+  "package": {
+    "owner": "dh0h",
+    "name": "launch-guard",
+    "version": "0.1.0",
+    "registry_ref": "dh0h/launch-guard@0.1.0",
+    "public_url": "https://runx.ai/x/dh0h/launch-guard@0.1.0",
+    "source_url": "https://github.com/dh0h/runx/tree/codex/launch-guard/skills/launch-guard",
+    "pr_url": "https://github.com/runxhq/runx/pull/257",
+    "x_yaml": "https://raw.githubusercontent.com/dh0h/runx/codex/launch-guard/skills/launch-guard/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/dh0h/runx/codex/launch-guard/skills/launch-guard/SKILL.md",
+    "digest": "sha256:6b27276cc3a353119518f001a3e0e8437f4fb7eea3176ae76c1f0ad7c2e0eb4b",
+    "profile_digest": "sha256:5b15455defbc0b84fd22ce1d8d5c459fd3949d09ea45811520e8e0c1793b027c"
+  },
+  "runx": {
+    "version": "runx-cli 0.6.16",
+    "publish_method": "runx registry publish ./skills/launch-guard/SKILL.md --registry https://api.runx.ai --version 0.1.0 --json with an existing purpose-scoped RUNX_PUBLIC_API_TOKEN",
+    "install_command": "runx add dh0h/launch-guard@0.1.0 --registry https://api.runx.ai",
+    "dogfood_command": "runx skill dh0h/launch-guard@0.1.0 --registry https://api.runx.ai --input-json release_candidate=<fixture> --input-json launch_policy=<fixture> --json",
+    "hosted_harness_status": "passed: registry publish returned status=published",
+    "verify_verdict": "valid: digest, content address, and local-development signature all verified"
+  },
+  "observations": [
+    "runx --version output: runx-cli 0.6.16",
+    "publisher owner dh0h published package launch-guard version 0.1.0 as dh0h/launch-guard@0.1.0",
+    "registry read dh0h/launch-guard@0.1.0 resolved from https://api.runx.ai with digest sha256:6b27276cc3a353119518f001a3e0e8437f4fb7eea3176ae76c1f0ad7c2e0eb4b",
+    "public_url https://runx.ai/x/dh0h/launch-guard@0.1.0 returned HTTP 200",
+    "source_url https://github.com/dh0h/runx/tree/codex/launch-guard/skills/launch-guard",
+    "pr_url https://github.com/runxhq/runx/pull/257",
+    "raw x_yaml https://raw.githubusercontent.com/dh0h/runx/codex/launch-guard/skills/launch-guard/X.yaml",
+    "raw skill_md https://raw.githubusercontent.com/dh0h/runx/codex/launch-guard/skills/launch-guard/SKILL.md",
+    "verification_json is published at skills/launch-guard/evidence/verification.json in the same PR head",
+    "report is published at skills/launch-guard/evidence/report.md in the same PR head",
+    "publish method: runx registry publish ./skills/launch-guard/SKILL.md --registry https://api.runx.ai --version 0.1.0 --json",
+    "install command: runx add dh0h/launch-guard@0.1.0 --registry https://api.runx.ai",
+    "dogfood command: runx skill dh0h/launch-guard@0.1.0 --registry https://api.runx.ai --input-json release_candidate=<release_go fixture> --input-json launch_policy=<release_go fixture> --json",
+    "runx verify verdict: valid=true for digest and content address with local-development signature mode",
+    "hosted harness status: passed at registry publish with status=published",
+    "decision go with confidence 0.91 for release_go",
+    "checks evaluated for release_go: unit, integration, e2e, rollback_plan, observability_plan, changelog, and open_risk_count all passed",
+    "readiness_report for release_go has zero blockers and one low open risk within max_open_risk 2",
+    "release_proposal present for release_go with version 2.4.0, diff_ref compare/main...release-2.4.0, consumed_by release, gated true",
+    "decision no_go for blocked_no_go produces no release_proposal",
+    "blocked_no_go names exact blockers: integration failed, rollback untested, observability alerts missing, and open_risk_count 2 exceeds max 1",
+    "blocked_no_go is recorded as a controlled refused harness case, not as a deploy/publish/tag side effect",
+    "the skill is mutating=false and never deploys, tags, publishes, announces, mutates source, or invokes the release skill",
+    "harness cases release_go and blocked_no_go passed locally with assertion_error_count 0",
+    "clean install succeeded with runx add dh0h/launch-guard@0.1.0 --registry https://api.runx.ai",
+    "post-publish registry dogfood sealed receipt sha256:277939d73bd3442d336df0bf9e729b6ea12b9f646e5bd7efc67850f15366fe87",
+    "dogfood.harness_cases is present and lists both release_go sealed and blocked_no_go refused, directly addressing the prior #81 rejection reason"
+  ],
+  "dogfood": {
+    "package": "dh0h/launch-guard@0.1.0",
+    "input": "fixtures/release-go.json",
+    "command": "runx skill dh0h/launch-guard@0.1.0 --registry https://api.runx.ai --input-json release_candidate=<release_go fixture> --input-json launch_policy=<release_go fixture> --json",
+    "receipt_ref": "runx:receipt:sha256:277939d73bd3442d336df0bf9e729b6ea12b9f646e5bd7efc67850f15366fe87",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "release_go",
+        "status": "sealed",
+        "receipt_ref": "runx:receipt:sha256:c83789e985a479e26ffda71c47f134d5885691a9b01d197535f8d9ea4d6e7f01"
+      },
+      {
+        "name": "blocked_no_go",
+        "status": "refused",
+        "receipt_ref": "runx:receipt:sha256:828e6620594218471a63cff7d4302a212f8ef3fed6a6e143428f66c2ca683f78"
+      }
+    ]
+  },
+  "local_evidence": {
+    "harness": {
+      "command": "runx harness ./skills/launch-guard --json",
+      "status": "passed",
+      "case_count": 2,
+      "assertion_error_count": 0,
+      "case_names": [
+        "release_go",
+        "blocked_no_go"
+      ],
+      "receipt_ids": [
+        "sha256:c83789e985a479e26ffda71c47f134d5885691a9b01d197535f8d9ea4d6e7f01",
+        "sha256:828e6620594218471a63cff7d4302a212f8ef3fed6a6e143428f66c2ca683f78"
+      ]
+    },
+    "publish": {
+      "status": "published",
+      "public_url": "https://runx.ai/x/dh0h/launch-guard",
+      "versioned_public_url": "https://runx.ai/x/dh0h/launch-guard@0.1.0"
+    },
+    "verify": {
+      "receipt_id": "sha256:277939d73bd3442d336df0bf9e729b6ea12b9f646e5bd7efc67850f15366fe87",
+      "valid": true,
+      "signature_mode": "local-development"
+    }
+  }
+}
