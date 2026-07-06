@@ -18,3 +18,6 @@
     "first_response_due_minutes": 30,
     "followup_due_minutes": 45,
     "churn_risk_terms": ["cancel", "churn", "refund", "switch vendor"],
+    "negative_sentiment_terms": ["down", "blocking", "urgent", "angry"]
+  }
+}
