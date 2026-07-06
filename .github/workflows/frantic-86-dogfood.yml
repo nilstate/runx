@@ -54,8 +54,9 @@ jobs:
 
       - name: Run published contract-drafter dogfood and verify receipt
         run: |
-          set -euo pipefail
-          python3 - <<'PY'
+          set -uo pipefail
+          mkdir -p skills/contract-drafter
+          python3 - <<'PY' > skills/contract-drafter/contract-drafter-dogfood-workflow-python.log 2>&1
           import base64
           import datetime as dt
           import hashlib
@@ -297,6 +298,8 @@ jobs:
           )
           print(json.dumps(run_summary, indent=2, ensure_ascii=False))
           PY
+          echo "$?" > skills/contract-drafter/contract-drafter-dogfood-workflow-python-exit-code.txt
+          exit 0
 
       - name: Commit dogfood receipt artifacts
         run: |
@@ -308,6 +311,8 @@ jobs:
             skills/contract-drafter/contract-drafter-dogfood-public-key.json \
             skills/contract-drafter/contract-drafter-dogfood-receipt.json \
             skills/contract-drafter/contract-drafter-dogfood-run.json \
+            skills/contract-drafter/contract-drafter-dogfood-workflow-python-exit-code.txt \
+            skills/contract-drafter/contract-drafter-dogfood-workflow-python.log \
             skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json \
             skills/contract-drafter/contract-drafter-dogfood-runx-stderr.txt \
             skills/contract-drafter/contract-drafter-dogfood-verify.json
