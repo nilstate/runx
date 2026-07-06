@@ -1,0 +1,28 @@
+{
+  "package": "docs-doctor",
+  "runx_version": "runx-cli 0.6.14",
+  "local_harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "docs-doctor-flags-stale-coverage-with-proposal",
+      "docs-doctor-healthy-corpus-no-proposal",
+      "docs-doctor-needs-required-inputs"
+    ],
+    "receipt_ids": [
+      "sha256:195f66fa527cf01b3b58f181345c69ae2590d901ee31c4400b82e28c49bf9943",
+      "sha256:916b258949ebc7aff348f32e267e165e3cf7fd53c4ae774b63cc0fe7d240b88a",
+      "sha256:0b882ad74e4ef4fe75e9415abf542f19836e3312c35733adbe06b6c5fd00ad0b"
+    ]
+  },
+  "local_receipt_verify": {
+    "signature_mode": "production",
+    "signature_status": "valid",
+    "kid": "hermes-runx-20260701T140355Z"
+  },
+  "hosted_registry": {
+    "status": "not_run",
+    "reason": "publish authorization is not currently refreshed; do not use this evidence as hosted delivery proof"
+  }
+}

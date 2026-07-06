@@ -1,0 +1,24 @@
+{
+  "docs_corpus": [
+    {"page": "commands/runx-install", "path": "docs/commands/runx-install.md", "body": "# runx install (deprecated)\nUse `runx add <owner>/<package>@<version>` instead."},
+    {"page": "commands/runx-add", "path": "docs/commands/runx-add.md", "body": "# runx add\nInstall a published runx package by name and version."},
+    {"page": "commands/runx-publish", "path": "docs/commands/runx-publish.md", "body": "# runx publish\nPublish the current skill package to the registry."},
+    {"page": "commands/runx-verify", "path": "docs/commands/runx-verify.md", "body": "# runx verify\nVerify a sealed runx receipt."}
+  ],
+  "product_surface": {
+    "commands": [
+      {"name": "runx install", "stable": false},
+      {"name": "runx add", "stable": true},
+      {"name": "runx publish", "stable": true},
+      {"name": "runx verify", "stable": true}
+    ],
+    "endpoints": [],
+    "schemas": []
+  },
+  "user_task_matrix": [
+    {"task": "install a published skill", "expected_help": ["commands/runx-install", "commands/runx-add"]},
+    {"task": "publish a new skill version", "expected_help": ["commands/runx-publish"]},
+    {"task": "verify a published skill", "expected_help": ["commands/runx-verify"]}
+  ],
+  "style_policy": {"tone": "operator", "voice": "concise", "max_paragraph_chars": 280, "required_evidence_in_finding": true}
+}

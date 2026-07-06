@@ -1,0 +1,28 @@
+{
+  "docs_corpus": [
+    {"page": "commands/runx-install", "path": "docs/commands/runx-install.md", "body": "# runx install\nRun `runx install` to fetch a registered runx package by name."},
+    {"page": "commands/runx-publish", "path": "docs/commands/runx-publish.md", "body": "# runx publish\nRun `runx publish` to publish the current skill package."},
+    {"page": "endpoints/registry-publish", "path": "docs/endpoints/registry-publish.md", "body": "# registry publish\nPOST /v1/registry/packages publishes a new package version."}
+  ],
+  "product_surface": {
+    "commands": [
+      {"name": "runx install", "stable": true},
+      {"name": "runx add", "stable": true, "note": "canonical install"},
+      {"name": "runx publish", "stable": true},
+      {"name": "runx verify", "stable": true}
+    ],
+    "endpoints": [
+      {"name": "registry publish", "method": "POST", "path": "/v1/registry/packages"},
+      {"name": "registry read", "method": "GET", "path": "/v1/registry/packages/{name}@{version}"}
+    ],
+    "schemas": [
+      {"name": "runx.receipt.v1", "path": "schemas/receipt.json"}
+    ]
+  },
+  "user_task_matrix": [
+    {"task": "install a published skill", "expected_help": ["commands/runx-install", "commands/runx-add"]},
+    {"task": "publish a new skill version", "expected_help": ["commands/runx-publish"]},
+    {"task": "verify a published skill", "expected_help": ["commands/runx-verify"]}
+  ],
+  "style_policy": {"tone": "operator", "voice": "concise", "max_paragraph_chars": 280, "required_evidence_in_finding": true}
+}

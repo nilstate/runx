@@ -1,0 +1,160 @@
+skill: docs-doctor
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: docs-doctor-flags-stale-coverage-with-proposal
+      inputs:
+        docs_corpus:
+          - page: commands/runx-install
+            path: docs/commands/runx-install.md
+            body: |
+              # runx install
+              Run `runx install` to fetch a registered runx package by name.
+          - page: commands/runx-publish
+            path: docs/commands/runx-publish.md
+            body: |
+              # runx publish
+              Run `runx publish` to publish the current skill package.
+        product_surface:
+          commands:
+            - name: runx install
+              stable: true
+            - name: runx add
+              stable: true
+              note: canonical install command; runx install is deprecated.
+            - name: runx publish
+              stable: true
+            - name: runx verify
+              stable: true
+          endpoints:
+            - name: registry publish
+              method: POST
+              path: /v1/registry/packages
+            - name: registry read
+              method: GET
+              path: /v1/registry/packages/{name}@{version}
+          schemas:
+            - name: runx.receipt.v1
+              path: schemas/receipt.json
+        user_task_matrix:
+          - task: install a published skill
+            expected_help:
+              - commands/runx-install
+              - commands/runx-add
+          - task: publish a new skill version
+            expected_help:
+              - commands/runx-publish
+          - task: verify a published skill
+            expected_help:
+              - commands/runx-verify
+        style_policy:
+          tone: operator
+          voice: concise
+          max_paragraph_chars: 280
+          required_evidence_in_finding: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: docs-doctor-healthy-corpus-no-proposal
+      inputs:
+        docs_corpus:
+          - page: commands/runx-install
+            path: docs/commands/runx-install.md
+            body: |
+              # runx install (deprecated)
+              Use `runx add <owner>/<package>@<version>` instead.
+              See commands/runx-add for the canonical flow.
+          - page: commands/runx-add
+            path: docs/commands/runx-add.md
+            body: |
+              # runx add
+              Install a published runx package by name and version.
+          - page: commands/runx-publish
+            path: docs/commands/runx-publish.md
+            body: |
+              # runx publish
+              Publish the current skill package to the registry.
+          - page: commands/runx-verify
+            path: docs/commands/runx-verify.md
+            body: |
+              # runx verify
+              Verify a sealed runx receipt.
+        product_surface:
+          commands:
+            - name: runx install
+              stable: false
+            - name: runx add
+              stable: true
+            - name: runx publish
+              stable: true
+            - name: runx verify
+              stable: true
+          endpoints: []
+          schemas: []
+        user_task_matrix:
+          - task: install a published skill
+            expected_help:
+              - commands/runx-install
+              - commands/runx-add
+          - task: publish a new skill version
+            expected_help:
+              - commands/runx-publish
+          - task: verify a published skill
+            expected_help:
+              - commands/runx-verify
+        style_policy:
+          tone: operator
+          voice: concise
+          max_paragraph_chars: 280
+          required_evidence_in_finding: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: docs-doctor-needs-required-inputs
+      inputs: {}
+      expect:
+        status: failure
+
+runners:
+  evaluate:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      doc_findings: array
+      coverage_map: object
+      patch_plan: array
+      docs_pr_proposal: object
+    artifacts:
+      wrap_as: docs_doctor_packet
+      packet: runx.docs.doctor.v1
+    inputs:
+      docs_corpus:
+        type: json
+        required: true
+        description: Array of {page, path, body} entries describing the shipped docs.
+      product_surface:
+        type: json
+        required: true
+        description: "Object {commands[], endpoints[], schemas[]} describing the real surface."
+      user_task_matrix:
+        type: json
+        required: true
+        description: Array of {task, expected_help[]} entries describing user tasks.
+      style_policy:
+        type: json
+        required: true
+        description: "Object {tone, voice, max_paragraph_chars, required_evidence_in_finding}."
