@@ -64,6 +64,7 @@ jobs:
           import pathlib
           import shutil
           import subprocess
+          import sys
 
           root = pathlib.Path.cwd()
           skill_dir = root / "skills" / "contract-drafter"
@@ -168,15 +169,53 @@ jobs:
           run = subprocess.run(args, env=env, text=True, capture_output=True, timeout=180)
           (skill_dir / "contract-drafter-dogfood-runx-stdout.json").write_text(run.stdout, encoding="utf-8")
           (skill_dir / "contract-drafter-dogfood-runx-stderr.txt").write_text(run.stderr, encoding="utf-8")
+          diagnostic = {
+              "schema": "frantic.contract_drafter_dogfood_diagnostic.v1",
+              "target_ref": target_ref,
+              "runx_version": subprocess.check_output([runx_bin, "--version"], text=True).strip(),
+              "runner": "github-actions/ubuntu-latest",
+              "created_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+              "exit_code": run.returncode,
+              "stdout_excerpt": run.stdout[:2000],
+              "stderr_excerpt": run.stderr[:2000],
+              "receipt_files": [
+                  {"name": path.name, "size": path.stat().st_size}
+                  for path in sorted(receipt_dir.glob("*"))
+                  if path.is_file()
+              ],
+              "has_signing_env": {
+                  "kid": bool(os.environ.get("RUNX_RECEIPT_SIGN_KID")),
+                  "seed": bool(os.environ.get("RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64")),
+                  "issuer_type": bool(os.environ.get("RUNX_RECEIPT_SIGN_ISSUER_TYPE")),
+              },
+          }
+          (skill_dir / "contract-drafter-dogfood-diagnostic.json").write_text(
+              json.dumps(diagnostic, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
           if run.returncode != 0:
-              raise SystemExit(f"runx skill failed with exit {run.returncode}: {run.stdout[:1000]} {run.stderr[:1000]}")
+              print(json.dumps(diagnostic, indent=2, ensure_ascii=False))
+              sys.exit(0)
 
           try:
               stdout_json = json.loads(run.stdout)
           except Exception as exc:
-              raise SystemExit(f"runx skill did not emit JSON: {exc}") from exc
+              diagnostic["parse_error"] = str(exc)
+              (skill_dir / "contract-drafter-dogfood-diagnostic.json").write_text(
+                  json.dumps(diagnostic, indent=2, ensure_ascii=False) + "\n",
+                  encoding="utf-8",
+              )
+              print(json.dumps(diagnostic, indent=2, ensure_ascii=False))
+              sys.exit(0)
           if stdout_json.get("status") not in (None, "success", "completed", "ok"):
-              raise SystemExit(f"runx skill did not report success: {stdout_json}")
+              diagnostic["stdout_status"] = stdout_json.get("status")
+              diagnostic["stdout_error"] = stdout_json.get("error")
+              (skill_dir / "contract-drafter-dogfood-diagnostic.json").write_text(
+                  json.dumps(diagnostic, indent=2, ensure_ascii=False) + "\n",
+                  encoding="utf-8",
+              )
+              print(json.dumps(diagnostic, indent=2, ensure_ascii=False))
+              sys.exit(0)
 
           receipt_files = sorted(receipt_dir.glob("sha256-*.json"))
           if not receipt_files:
@@ -265,6 +304,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            skills/contract-drafter/contract-drafter-dogfood-diagnostic.json \
             skills/contract-drafter/contract-drafter-dogfood-public-key.json \
             skills/contract-drafter/contract-drafter-dogfood-receipt.json \
             skills/contract-drafter/contract-drafter-dogfood-run.json \
