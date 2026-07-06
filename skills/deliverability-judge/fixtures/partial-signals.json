@@ -1,0 +1,26 @@
+{
+  "evidence": {
+    "postmaster_report": {
+      "source": "Google Postmaster Tools domain dashboard export, example.org",
+      "timestamp": "2026-07-06T12:00:00Z",
+      "reputation_score": 92
+    },
+    "bounce_metrics": {
+      "source": "ESP delivery log aggregate",
+      "timestamp": "2026-07-06T12:00:00Z",
+      "sends": 25000,
+      "bounces": 100
+    },
+    "complaint_metrics": {
+      "source": "ESP feedback-loop aggregate",
+      "timestamp": "2026-07-06T12:00:00Z",
+      "delivered": 24900,
+      "complaints": 5
+    }
+  },
+  "policy": {
+    "min_reputation_score": 70,
+    "max_bounce_pct": 2,
+    "max_complaint_pct": 0.1
+  }
+}

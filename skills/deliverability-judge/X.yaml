@@ -1,0 +1,125 @@
+skill: deliverability-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sealed_healthy_signals_continue
+      inputs:
+        evidence:
+          postmaster_report:
+            source: "Google Postmaster Tools domain dashboard export, example.org"
+            timestamp: "2026-07-06T12:00:00Z"
+            reputation_score: 92
+          bounce_metrics:
+            source: "ESP delivery log aggregate, campaign window 2026-06-29/2026-07-05"
+            timestamp: "2026-07-06T12:00:00Z"
+            sends: 25000
+            bounces: 100
+          complaint_metrics:
+            source: "ESP feedback-loop aggregate, same campaign window"
+            timestamp: "2026-07-06T12:00:00Z"
+            delivered: 24900
+            complaints: 5
+          placement_probe:
+            source: "seed-list placement probe run 2026-07-06, 180-seed panel"
+            timestamp: "2026-07-06T12:05:00Z"
+            seeds: 180
+            inbox: 172
+        policy:
+          min_reputation_score: 70
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+          min_inbox_rate_pct: 80
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: contradictory_signals_escalate
+      inputs:
+        evidence:
+          postmaster_report:
+            source: "Google Postmaster Tools domain dashboard export, example.org"
+            timestamp: "2026-07-06T12:00:00Z"
+            reputation_score: 96
+          bounce_metrics:
+            source: "ESP delivery log aggregate, campaign window 2026-06-29/2026-07-05"
+            timestamp: "2026-07-06T12:00:00Z"
+            sends: 12000
+            bounces: 1140
+          complaint_metrics:
+            source: "ESP feedback-loop aggregate, same campaign window"
+            timestamp: "2026-07-06T12:00:00Z"
+            delivered: 11800
+            complaints: 3
+          placement_probe:
+            source: "seed-list placement probe run 2026-07-06, 180-seed panel"
+            timestamp: "2026-07-06T12:05:00Z"
+            seeds: 180
+            inbox: 150
+        policy:
+          min_reputation_score: 70
+          max_bounce_pct: 2
+          max_complaint_pct: 0.1
+          min_inbox_rate_pct: 80
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: malformed_policy_refused
+      inputs:
+        evidence:
+          postmaster_report:
+            source: "Google Postmaster Tools domain dashboard export, example.org"
+            timestamp: "2026-07-06T12:00:00Z"
+            reputation_score: 92
+          bounce_metrics:
+            source: "ESP delivery log aggregate"
+            timestamp: "2026-07-06T12:00:00Z"
+            sends: 25000
+            bounces: 100
+          complaint_metrics:
+            source: "ESP feedback-loop aggregate"
+            timestamp: "2026-07-06T12:00:00Z"
+            delivered: 24900
+            complaints: 5
+          placement_probe:
+            source: "seed-list placement probe run 2026-07-06, 180-seed panel"
+            timestamp: "2026-07-06T12:05:00Z"
+            seeds: 180
+            inbox: 172
+        policy:
+          max_bounce_pct: 2
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: failed
+
+runners:
+  judge:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      evidence:
+        type: json
+        required: true
+        description: "Sealed sending-posture evidence: postmaster_report (reputation_score), bounce_metrics (sends+bounces or bounce_rate_pct), complaint_metrics (delivered+complaints or complaint_rate_pct), placement_probe (seeds+inbox or inbox_rate_pct). Every signal must carry source and timestamp; unsealed or missing signals escalate instead of judging."
+      policy:
+        type: json
+        required: true
+        description: "Operator thresholds: min_reputation_score, max_bounce_pct, max_complaint_pct (all required numbers); optional min_inbox_rate_pct (default 80) and max_confidence_window (default 0.5)."

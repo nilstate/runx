@@ -1,0 +1,33 @@
+{
+  "evidence": {
+    "postmaster_report": {
+      "source": "Google Postmaster Tools domain dashboard export, example.org",
+      "timestamp": "2026-07-06T12:00:00Z",
+      "reputation_score": 96
+    },
+    "bounce_metrics": {
+      "source": "ESP delivery log aggregate, campaign window 2026-06-29/2026-07-05",
+      "timestamp": "2026-07-06T12:00:00Z",
+      "sends": 12000,
+      "bounces": 1140
+    },
+    "complaint_metrics": {
+      "source": "ESP feedback-loop aggregate, same campaign window",
+      "timestamp": "2026-07-06T12:00:00Z",
+      "delivered": 11800,
+      "complaints": 3
+    },
+    "placement_probe": {
+      "source": "seed-list placement probe run 2026-07-06, 180-seed panel",
+      "timestamp": "2026-07-06T12:05:00Z",
+      "seeds": 180,
+      "inbox": 150
+    }
+  },
+  "policy": {
+    "min_reputation_score": 70,
+    "max_bounce_pct": 2,
+    "max_complaint_pct": 0.1,
+    "min_inbox_rate_pct": 80
+  }
+}
