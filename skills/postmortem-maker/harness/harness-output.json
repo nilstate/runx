@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "consistent-evidence-yields-proposal",
+    "ambiguous-evidence-withholds-proposal",
+    "refuses-without-policy-or-evidence"
+  ],
+  "receipt_ids": [
+    "sha256:959d8aeeebc51766754ebb2171940886b5aa9a644f65cab719cc88dc7cf62fe9",
+    "sha256:2f9b6dcad63bb67657f23cb041d45f9324b2ff403a094826134edf76ace72d17",
+    "sha256:ae22f94ce125f4d6b219654f5f3cc944cae54fed3b6746e740e3d3eca6a55a2d"
+  ],
+  "graph_case_count": 0
+}

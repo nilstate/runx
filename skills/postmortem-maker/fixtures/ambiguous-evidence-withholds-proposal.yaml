@@ -1,0 +1,43 @@
+name: ambiguous-evidence-withholds-proposal
+kind: skill
+target: ..
+runner: default
+inputs:
+  incident_timeline:
+    - { at: "2026-03-02T14:05:00Z", text: "Incident declared: search latency degraded" }
+    - { text: "Some users retried and succeeded, time not recorded" }
+  alerts:
+    - { at: "2026-03-02T14:02:00Z", monitor: "search-latency-p99", severity: "high", status: "firing", summary: "p99 latency above 2s on search-api" }
+  deploy_events:
+    - { at: "2026-03-02T13:40:00Z", service: "search-api", version: "8.4.0", summary: "Deploy search-api 8.4.0" }
+    - { at: "2026-03-02T13:50:00Z", service: "cache-proxy", version: "1.9.2", summary: "Deploy cache-proxy 1.9.2" }
+  chat_notes:
+    - { author: "dev-1", text: "could be the cache-proxy 1.9.2 change or the search-api 8.4.0 deploy, hard to say" }
+  postmortem_policy:
+    allow_publish: true
+    require_root_cause: true
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  output:
+    postmortem:
+      status: draft_incomplete
+      root_cause:
+        status: undetermined
+    publish_proposal: null
+    summary:
+      unknown_count: 6
+      proposal_status: withheld
+metadata:
+  public_skill: postmortem-maker
+  source_case: ambiguous-evidence-withholds-proposal
+  source: skills-fixture
+  note: >-
+    Two deploys precede the first alert and a single note vaguely implicates
+    both, a timeline entry and a chat note lack timestamps, and no evidence
+    marks the alert or impact window resolved. The run still seals: unknowns
+    lists every gap with evidence refs (untimed_record, conflicting_root_cause_
+    evidence, impact_window_unresolved, alert_unresolved, required_section_
+    unmet), root_cause.status=undetermined, postmortem.status=draft_incomplete,
+    and NO publish_proposal is emitted — a provable, gated refusal to publish.

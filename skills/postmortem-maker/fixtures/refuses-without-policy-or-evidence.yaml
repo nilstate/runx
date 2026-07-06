@@ -1,0 +1,21 @@
+name: refuses-without-policy-or-evidence
+kind: skill
+target: ..
+runner: default
+inputs:
+  incident_timeline: []
+  alerts: []
+  deploy_events: []
+  chat_notes: []
+expect:
+  status: failure
+metadata:
+  public_skill: postmortem-maker
+  source_case: refuses-without-policy-or-evidence
+  source: skills-fixture
+  note: >-
+    No postmortem_policy and no evidence records at all. Nothing in a
+    postmortem could cite input evidence and publish gating cannot be
+    resolved, so the skill refuses and stops with a governed error naming the
+    unresolved gaps (missing policy; empty incident_timeline, alerts,
+    deploy_events, chat_notes). The governed stop case.

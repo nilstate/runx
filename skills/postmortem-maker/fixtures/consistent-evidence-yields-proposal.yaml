@@ -1,0 +1,46 @@
+name: consistent-evidence-yields-proposal
+kind: skill
+target: ..
+runner: default
+inputs:
+  incident_timeline:
+    - { at: "2026-03-14T09:12:00Z", text: "Incident declared: checkout errors spiking, users unable to complete purchases" }
+    - { at: "2026-03-14T09:40:00Z", text: "Rollback of checkout-api 2026.03.14.1 started" }
+    - { at: "2026-03-14T09:55:00Z", text: "Checkout recovered; error rate back to baseline" }
+  alerts:
+    - { at: "2026-03-14T09:10:00Z", monitor: "checkout-5xx-rate", severity: "critical", status: "firing", summary: "5xx rate above 5% on checkout-api" }
+    - { at: "2026-03-14T09:55:00Z", monitor: "checkout-5xx-rate", severity: "critical", status: "resolved", summary: "5xx rate back below 0.1% on checkout-api" }
+  deploy_events:
+    - { at: "2026-03-14T09:05:00Z", service: "checkout-api", version: "2026.03.14.1", actor: "deploy-bot", summary: "Deploy checkout-api 2026.03.14.1 (new payment retry logic)" }
+  chat_notes:
+    - { at: "2026-03-14T09:50:00Z", author: "sre-oncall", text: "Confirmed: the checkout-api 2026.03.14.1 deploy is the root cause; rollback fixed the 5xx spike" }
+  postmortem_policy:
+    allow_publish: true
+    require_root_cause: true
+    required_sections: [summary, timeline, impact, root_cause, action_items]
+    publish_target: { kind: "doc", path: "postmortems/2026-03-14-checkout-api.md" }
+    action_item_rules: { max_items: 10 }
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  output:
+    postmortem:
+      status: ready_for_review
+      root_cause:
+        status: determined
+    publish_proposal:
+      performed_by: doc-publisher
+    summary:
+      unknown_count: 0
+      action_item_count: 2
+metadata:
+  public_skill: postmortem-maker
+  source_case: consistent-evidence-yields-proposal
+  source: skills-fixture
+  note: >-
+    A deploy of checkout-api precedes the first alert and is corroborated by a
+    timeline event and a chat note without contradiction. Every timeline entry
+    cites its evidence ref, unknowns is empty, the root cause is determined with
+    cited refs, action_items are grounded, and a gated publish_proposal is
+    emitted for the doc-publisher executor.

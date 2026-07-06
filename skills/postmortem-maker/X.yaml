@@ -1,0 +1,171 @@
+skill: postmortem-maker
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  idempotency:
+    key: evidence_sha256
+  scopes:
+    - incident.read
+  policy:
+    data_classification: caller_supplied_incident_evidence
+    network:
+      allowed: []
+      forbidden:
+        - any network access
+        - posting or publishing documents
+        - sending messages or comms
+        - creating or assigning tasks
+    verifier_notes:
+      - Every timeline entry and root-cause claim cites input evidence by ref (for example incident_timeline[2], alerts[0]); untimed, contradictory, or missing facts go to unknowns[], never into the postmortem as facts.
+      - A root cause is asserted only when exactly one candidate deploy preceding the incident start is corroborated by a timeline event or chat note and disputed by none; multiple corroborated candidates, any dispute, or no corroboration yield root_cause.status=undetermined.
+      - A publish_proposal is emitted only when the policy allows publishing and unknowns is empty; conflicting or insufficient evidence populates unknowns and withholds the proposal.
+      - The proposal is gated for the doc-publisher executor (or send-as for comms); this skill posts nothing and assigns no live tasks.
+      - The consistent harness case seals with a proposal; the degraded case seals with unknowns and no proposal; the no-policy/no-evidence case is the governed stop case.
+  artifacts:
+    emits:
+      - postmortem_maker_result
+      - evidence_json
+      - report_md
+    wrap_as: postmortem_maker_packet
+
+harness:
+  cases:
+    - name: consistent-evidence-yields-proposal
+      runner: default
+      inputs:
+        incident_timeline:
+          - { at: "2026-03-14T09:12:00Z", text: "Incident declared: checkout errors spiking, users unable to complete purchases" }
+          - { at: "2026-03-14T09:40:00Z", text: "Rollback of checkout-api 2026.03.14.1 started" }
+          - { at: "2026-03-14T09:55:00Z", text: "Checkout recovered; error rate back to baseline" }
+        alerts:
+          - { at: "2026-03-14T09:10:00Z", monitor: "checkout-5xx-rate", severity: "critical", status: "firing", summary: "5xx rate above 5% on checkout-api" }
+          - { at: "2026-03-14T09:55:00Z", monitor: "checkout-5xx-rate", severity: "critical", status: "resolved", summary: "5xx rate back below 0.1% on checkout-api" }
+        deploy_events:
+          - { at: "2026-03-14T09:05:00Z", service: "checkout-api", version: "2026.03.14.1", actor: "deploy-bot", summary: "Deploy checkout-api 2026.03.14.1 (new payment retry logic)" }
+        chat_notes:
+          - { at: "2026-03-14T09:50:00Z", author: "sre-oncall", text: "Confirmed: the checkout-api 2026.03.14.1 deploy is the root cause; rollback fixed the 5xx spike" }
+        postmortem_policy:
+          allow_publish: true
+          require_root_cause: true
+          required_sections: [summary, timeline, impact, root_cause, action_items]
+          publish_target: { kind: "doc", path: "postmortems/2026-03-14-checkout-api.md" }
+          action_item_rules: { max_items: 10 }
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        output:
+          postmortem:
+            status: ready_for_review
+            root_cause:
+              status: determined
+          publish_proposal:
+            performed_by: doc-publisher
+          summary:
+            unknown_count: 0
+            action_item_count: 2
+
+    - name: ambiguous-evidence-withholds-proposal
+      runner: default
+      inputs:
+        incident_timeline:
+          - { at: "2026-03-02T14:05:00Z", text: "Incident declared: search latency degraded" }
+          - { text: "Some users retried and succeeded, time not recorded" }
+        alerts:
+          - { at: "2026-03-02T14:02:00Z", monitor: "search-latency-p99", severity: "high", status: "firing", summary: "p99 latency above 2s on search-api" }
+        deploy_events:
+          - { at: "2026-03-02T13:40:00Z", service: "search-api", version: "8.4.0", summary: "Deploy search-api 8.4.0" }
+          - { at: "2026-03-02T13:50:00Z", service: "cache-proxy", version: "1.9.2", summary: "Deploy cache-proxy 1.9.2" }
+        chat_notes:
+          - { author: "dev-1", text: "could be the cache-proxy 1.9.2 change or the search-api 8.4.0 deploy, hard to say" }
+        postmortem_policy:
+          allow_publish: true
+          require_root_cause: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        output:
+          postmortem:
+            status: draft_incomplete
+            root_cause:
+              status: undetermined
+          publish_proposal: null
+          summary:
+            unknown_count: 6
+            proposal_status: withheld
+
+    - name: refuses-without-policy-or-evidence
+      runner: default
+      inputs:
+        incident_timeline: []
+        alerts: []
+        deploy_events: []
+        chat_notes: []
+      expect:
+        status: failure
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - incident.read
+    policy:
+      reads:
+        - caller-supplied incident timeline, alerts, deploy events, chat notes, and postmortem policy
+      calls: []
+      writes:
+        - evidence.json
+        - report.md
+      disallows:
+        - network access
+        - posting or publishing documents
+        - sending messages or assigning tasks
+        - executing caller-supplied code
+    inputs:
+      incident_timeline:
+        type: array
+        required: true
+        description: Incident timeline records (objects with a timestamp field such as at/ts/timestamp and a text/description). Each becomes evidence ref incident_timeline[i].
+      alerts:
+        type: array
+        required: false
+        description: Alert records ({ at, monitor/name, severity, status, summary }). Each becomes evidence ref alerts[i].
+      deploy_events:
+        type: array
+        required: false
+        description: Deploy/change records ({ at, service, version, actor, summary }). Each becomes evidence ref deploy_events[i].
+      chat_notes:
+        type: array
+        required: false
+        description: Chat/notes records ({ at?, author, text }). Untimed notes stay out of the timeline but can corroborate or dispute a root cause. Each becomes evidence ref chat_notes[i].
+      postmortem_policy:
+        type: object
+        required: false
+        description: "{ allow_publish, require_root_cause, required_sections[], publish_target, action_item_rules{max_items} }. allow_publish defaults to false when unset (fail closed). Declared optional at the runner layer ON PURPOSE so the skill itself can emit the governed refusal (exit 64, gaps named) instead of a runner-level input rejection; governance-mandatory at runtime — the skill refuses to draft without a policy."
+      apply:
+        type: boolean
+        required: false
+        description: Must be absent or false. If set (also publish/post/assign), the skill refuses and stops — publishing belongs to the gated doc-publisher executor.
+      output_dir:
+        type: string
+        required: false
+        description: Directory inside the skill directory where evidence.json and report.md are written. Defaults to 'artifacts'; the artifacts are always emitted.
+    outputs:
+      postmortem: object
+      unknowns: array
+      action_items: array
+      publish_proposal: object
+      postmortem_maker_result: object
