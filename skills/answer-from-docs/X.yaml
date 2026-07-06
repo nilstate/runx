@@ -1,0 +1,93 @@
+skill: answer-from-docs
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: bounded-corpus
+      method: READ
+      scope: runx:docs:read
+  deny:
+    - network_read
+    - network_mutation
+    - credential_material
+    - live_retrieval
+    - live_write
+
+emits:
+  - name: grounded_answer
+    packet: runx.grounded_answer.v1
+
+harness:
+  cases:
+    - name: answer-from-docs-grounded-retention
+      runner: default
+      inputs:
+        question: How long are audit logs retained and who can export them?
+        corpus:
+          - id: audit-logs
+            title: Audit Log Policy
+            text: Audit logs are retained for 180 days. Workspace admins can export audit logs from the compliance page. Exports include actor, action, timestamp, and target resource.
+          - id: billing
+            title: Billing Notes
+            text: Billing invoices are generated monthly and are visible to billing admins.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: answer-from-docs-refuses-unsupported-sso
+      runner: default
+      inputs:
+        question: Does the product support SCIM provisioning for enterprise SSO?
+        corpus:
+          - id: audit-logs
+            title: Audit Log Policy
+            text: Audit logs are retained for 180 days. Workspace admins can export audit logs from the compliance page.
+          - id: billing
+            title: Billing Notes
+            text: Billing invoices are generated monthly and are visible to billing admins.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: answer-from-docs-needs-question
+      runner: default
+      inputs:
+        corpus:
+          - id: docs
+            title: Docs
+            text: The API returns JSON.
+      expect:
+        status: failure
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    timeout_seconds: 15
+    artifacts:
+      named_emits:
+        grounded_answer: runx.grounded_answer.v1
+    inputs:
+      question:
+        type: string
+        required: true
+        description: The user question to answer from the bounded corpus.
+      corpus:
+        type: json
+        required: true
+        description: Array of corpus items with id, title, and text fields.

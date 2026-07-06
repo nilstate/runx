@@ -1,0 +1,16 @@
+{
+  "case": "answer-from-docs-refuses-unsupported-sso",
+  "question": "Does the product support SCIM provisioning for enterprise SSO?",
+  "corpus": [
+    {
+      "id": "audit-logs",
+      "title": "Audit Log Policy",
+      "text": "Audit logs are retained for 180 days. Workspace admins can export audit logs from the compliance page."
+    },
+    {
+      "id": "billing",
+      "title": "Billing Notes",
+      "text": "Billing invoices are generated monthly and are visible to billing admins."
+    }
+  ]
+}

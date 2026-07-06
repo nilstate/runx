@@ -1,0 +1,16 @@
+{
+  "case": "answer-from-docs-grounded-retention",
+  "question": "How long are audit logs retained and who can export them?",
+  "corpus": [
+    {
+      "id": "audit-logs",
+      "title": "Audit Log Policy",
+      "text": "Audit logs are retained for 180 days. Workspace admins can export audit logs from the compliance page. Exports include actor, action, timestamp, and target resource."
+    },
+    {
+      "id": "billing",
+      "title": "Billing Notes",
+      "text": "Billing invoices are generated monthly and are visible to billing admins."
+    }
+  ]
+}
