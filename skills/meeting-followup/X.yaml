@@ -67,6 +67,12 @@ harness:
           state: sealed
           disposition: closed
 
+    - name: meeting-followup-needs-transcript
+      runner: default
+      inputs: {}
+      expect:
+        status: failure
+
 runners:
   default:
     default: true
@@ -75,10 +81,6 @@ runners:
     args:
       - run.mjs
     timeout_seconds: 15
-    sandbox:
-      profile: readonly
-      cwd_policy: skill-directory
-      require_enforcement: false
     artifacts:
       named_emits:
         summary: runx.meeting_followup.summary.v1

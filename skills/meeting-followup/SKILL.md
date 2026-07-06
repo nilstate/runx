@@ -7,9 +7,6 @@ source:
   args:
     - run.mjs
   timeout_seconds: 15
-  sandbox:
-    profile: readonly
-    cwd_policy: skill-directory
 inputs:
   transcript:
     type: string
@@ -83,8 +80,11 @@ contains enough evidence for an attendee owner and an explicit due date.
 
 ## Refusal Conditions
 
-- `transcript` is empty or not a string.
 - `attendees` is empty or malformed.
 - The transcript contains no explicit decisions, action items, or task proposals.
 - A line has an unclear owner or date; the item is preserved but marked
   `needs_human_assignment` instead of being promoted to a task proposal.
+
+## Input Failure Conditions
+
+- `transcript` is empty or not a string.

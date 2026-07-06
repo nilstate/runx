@@ -1,0 +1,77 @@
+{
+  "schema": "runx.meeting_followup.verification.v1",
+  "status": "passed",
+  "runx_cli_version": "runx-cli 0.6.16",
+  "published_ref": "zhtwangk/meeting-followup@sha-20a30dcf7ea9",
+  "public_url": "https://runx.ai/x/zhtwangk/meeting-followup",
+  "hosted_registry_publish": {
+    "status": "published",
+    "owner": "zhtwangk",
+    "name": "meeting-followup",
+    "version": "sha-20a30dcf7ea9",
+    "digest": "76d38d912802877ab71ad1fcc7d6dda6a580027d659a33db424dce705955b70d",
+    "profile_digest": "805716c373f0b6ea11f10ec43b3149cc686b05efed0a022c432830ce109651ae",
+    "trust_tier": "community",
+    "install_command": "runx add zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai",
+    "run_command": "runx skill zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai"
+  },
+  "local_harness": {
+    "command": "npx runx harness ./skills/meeting-followup --json",
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "meeting-followup-actionable-transcript",
+      "meeting-followup-non-actionable-refused",
+      "meeting-followup-needs-transcript"
+    ],
+    "receipt_ids": [
+      "sha256:2a68ac057064d2830f8660021511ae5719bedbb0295a2dc069aad28257c3dbc7",
+      "sha256:f7ae24f2cdaa0eb65b1954ca677463c171e8660ff7d2f0fde88c0b238ab1997d",
+      "sha256:0232e389b6c35145475d50226fddc8e6f15751cc5d9c78314756351c5214b87d"
+    ]
+  },
+  "public_registry_read": {
+    "method": "GET https://api.runx.ai/v1/skills/zhtwangk/meeting-followup%40sha-20a30dcf7ea9",
+    "status": "success",
+    "owner_handle": "@zhtwangk",
+    "maturity": "beta",
+    "source_type": "cli-tool",
+    "catalog_visibility": "public",
+    "page_url": "https://runx.ai/x/zhtwangk/meeting-followup@sha-20a30dcf7ea9"
+  },
+  "public_acquire": {
+    "method": "POST https://api.runx.ai/v1/skills/zhtwangk/meeting-followup/acquire",
+    "status": "success",
+    "installation_id": "codex-dogfood-20260706",
+    "version": "sha-20a30dcf7ea9",
+    "package_digest": "25392d8c881d50bea5adc9be9dcf09a1f8290f4d990fa605dc57626bebc37e77",
+    "signed_manifest_schema": "runx.registry.signed_manifest.v1",
+    "signed_manifest_signer": "runx-hosted-registry"
+  },
+  "dogfood": {
+    "published_command_attempt": "RUNX_HTTP_ALLOW_PRIVATE_NETWORK=1 npx runx skill zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai --input transcript=... --input-json attendees=... --receipts .runx/dogfood-public/meeting-followup --json",
+    "published_command_attempt_status": "blocked_by_codex_proxy_dns_guard",
+    "published_command_attempt_error": "runtime HTTP DNS resolved api.runx.ai to non-public address 198.18.0.19",
+    "fallback_command": "npx runx skill .runx/install-check-public-api/meeting-followup/zhtwangk/meeting-followup/sha-20a30dcf7ea9/SKILL.md --input transcript=... --input-json attendees=... --receipts .runx/dogfood-public/meeting-followup --json",
+    "fallback_basis": "package was acquired from the hosted registry after publish via the official acquire API and signed_manifest",
+    "status": "sealed",
+    "receipt_ref": "sha256:78bfeb98757da2fedb3838959f092cc3b8e7ce42c618d3ec87cda74de349bb21",
+    "receipt_path": ".runx/dogfood-public/meeting-followup/sha256-78bfeb98757da2fedb3838959f092cc3b8e7ce42c618d3ec87cda74de349bb21.json",
+    "summary_status": "completed",
+    "decision_count": 1,
+    "action_item_count": 2,
+    "task_proposal_count": 2,
+    "live_task_created": false
+  },
+  "runx_verify": {
+    "command": "npx runx verify --receipt .runx/dogfood-public/meeting-followup/sha256-78bfeb98757da2fedb3838959f092cc3b8e7ce42c618d3ec87cda74de349bb21.json --allow-local-development-signatures --json",
+    "valid": true,
+    "receipt_id": "sha256:78bfeb98757da2fedb3838959f092cc3b8e7ce42c618d3ec87cda74de349bb21",
+    "digest_status": "valid",
+    "content_address_status": "valid",
+    "signature_mode": "local-development",
+    "signature_status": "valid",
+    "findings": []
+  }
+}

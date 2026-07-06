@@ -1,0 +1,73 @@
+{
+  "schema": "frantic.runx_skill_delivery.evidence.v1",
+  "bounty": {
+    "id": 76,
+    "title": "runx skill: meeting followup",
+    "claim_id": "e9f32255-d4c8-446e-81f9-4768e2345316"
+  },
+  "package": {
+    "owner": "zhtwangk",
+    "name": "meeting-followup",
+    "version": "sha-20a30dcf7ea9",
+    "registry_ref": "zhtwangk/meeting-followup@sha-20a30dcf7ea9",
+    "public_url": "https://runx.ai/x/zhtwangk/meeting-followup",
+    "install_command": "runx add zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai",
+    "run_command": "runx skill zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai",
+    "digest": "76d38d912802877ab71ad1fcc7d6dda6a580027d659a33db424dce705955b70d",
+    "profile_digest": "805716c373f0b6ea11f10ec43b3149cc686b05efed0a022c432830ce109651ae",
+    "package_digest": "25392d8c881d50bea5adc9be9dcf09a1f8290f4d990fa605dc57626bebc37e77",
+    "trust_tier": "community"
+  },
+  "source": {
+    "pr_url": "https://github.com/runxhq/runx/pull/260",
+    "source_url": "https://github.com/ZHTWangK/runx/tree/codex/meeting-followup-bounty/skills/meeting-followup",
+    "x_yaml": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/meeting-followup-bounty/skills/meeting-followup/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/meeting-followup-bounty/skills/meeting-followup/SKILL.md",
+    "verification_json": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/meeting-followup-bounty/skills/meeting-followup/references/verification.json",
+    "evidence_json": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/meeting-followup-bounty/skills/meeting-followup/references/evidence.json",
+    "report": "https://raw.githubusercontent.com/ZHTWangK/runx/codex/meeting-followup-bounty/skills/meeting-followup/references/report.md"
+  },
+  "publisher": {
+    "runx_cli_version": "runx-cli 0.6.16",
+    "owner": "zhtwangk",
+    "owner_handle": "@zhtwangk",
+    "publish_method": "runx registry publish ./skills/meeting-followup/SKILL.md --registry https://api.runx.ai --json",
+    "hosted_harness_status": "passed",
+    "hosted_publish_status": "published"
+  },
+  "harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "meeting-followup-actionable-transcript",
+      "meeting-followup-non-actionable-refused",
+      "meeting-followup-needs-transcript"
+    ],
+    "coverage": [
+      "extracts explicit decisions, owners, due dates, action items, and gated task proposals",
+      "refuses to invent tasks from a non-actionable transcript",
+      "fails fast on missing transcript input to provide a stop/error harness case"
+    ]
+  },
+  "dogfood": {
+    "receipt_ref": "sha256:78bfeb98757da2fedb3838959f092cc3b8e7ce42c618d3ec87cda74de349bb21",
+    "verification_json": "skills/meeting-followup/references/verification.json",
+    "status": "sealed",
+    "runx_verify_valid": true,
+    "input_summary": "Three-line meeting transcript with one decision and two explicit I will commitments with ISO due dates.",
+    "output_summary": {
+      "summary_status": "completed",
+      "decision_count": 1,
+      "action_item_count": 2,
+      "task_proposal_count": 2,
+      "live_task_created": false
+    }
+  },
+  "new_user_flow": {
+    "install": "runx add zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai",
+    "run": "runx skill zhtwangk/meeting-followup@sha-20a30dcf7ea9 --registry https://api.runx.ai --input transcript='<speaker labeled transcript>' --input-json attendees='[\"Alice\",\"Ben\"]' --receipts ./receipts --json",
+    "verify": "runx verify --receipt ./receipts/<receipt-file>.json --json",
+    "note": "In this Codex network, runx CLI registry acquire is blocked by its public DNS guard because api.runx.ai resolves through a 198.18.0.19 proxy. Direct hosted publish and public acquire API both succeeded."
+  }
+}

@@ -185,7 +185,7 @@ function main() {
   const attendees = normalizeAttendees(rawAttendees);
   const lines = splitLines(transcript);
   if (!transcript.trim()) {
-    return writeRefusal("empty_transcript", attendees, lines);
+    return writeInputFailure("empty_transcript", "transcript is required and must not be empty");
   }
   if (attendees.length === 0) {
     return writeRefusal("missing_attendees", attendees, lines);
@@ -235,21 +235,19 @@ function writeRefusal(reason, attendees, lines) {
   })}\n`);
 }
 
+function writeInputFailure(reason, message) {
+  process.stderr.write(`${JSON.stringify({
+    error: {
+      reason,
+      message,
+    },
+  })}\n`);
+  process.exitCode = 2;
+}
+
 try {
   main();
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  process.stdout.write(`${JSON.stringify({
-    summary: {
-      status: "refused",
-      reason: "invalid_input",
-      error: message,
-      decision_count: 0,
-      action_item_count: 0,
-      task_proposal_count: 0,
-    },
-    decisions: [],
-    action_items: [],
-    task_proposals: [],
-  })}\n`);
+  writeInputFailure("invalid_input", message);
 }
