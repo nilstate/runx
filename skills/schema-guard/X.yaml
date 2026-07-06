@@ -1,0 +1,152 @@
+skill: schema-guard
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: additive-compatible-proposal
+      runner: guard
+      inputs:
+        current_schema:
+          name: "invoice_event"
+          version: "1.0.0"
+          fields:
+            id:
+              type: string
+              required: true
+            amount_cents:
+              type: number
+              required: true
+            status:
+              type: string
+              required: true
+              enum: [draft, paid]
+        proposed_schema:
+          name: "invoice_event"
+          version: "1.1.0"
+          fields:
+            id:
+              type: string
+              required: true
+            amount_cents:
+              type: number
+              required: true
+            status:
+              type: string
+              required: true
+              enum: [draft, paid]
+            memo:
+              type: string
+              required: false
+        sample_payloads:
+          - id: "inv_1"
+            amount_cents: 1200
+            status: paid
+          - id: "inv_2"
+            amount_cents: 0
+            status: draft
+            memo: "optional note"
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields: [id, amount_cents, status]
+          versioning_rule: semver_minor_for_additive
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: breaking-change-refused-no-proposal
+      runner: guard
+      inputs:
+        current_schema:
+          name: "invoice_event"
+          version: "1.0.0"
+          fields:
+            id:
+              type: string
+              required: true
+            amount_cents:
+              type: number
+              required: true
+            status:
+              type: string
+              required: true
+        proposed_schema:
+          name: "invoice_event"
+          version: "2.0.0"
+          fields:
+            id:
+              type: string
+              required: true
+            amount_cents:
+              type: string
+              required: true
+            state:
+              type: string
+              required: true
+        sample_payloads:
+          - id: "inv_3"
+            amount_cents: 1500
+            status: paid
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields: [id, amount_cents, status]
+          versioning_rule: semver_major_for_breaking
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+
+    - name: missing-schema-failure
+      runner: guard
+      inputs:
+        current_schema: {}
+        sample_payloads: []
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields: [id]
+          versioning_rule: semver_minor_for_additive
+      expect:
+        status: failure
+
+runners:
+  guard:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      compatibility: object
+      validation_results: object
+      migration_notes: object
+      publish_schema_proposal: object
+      status: string
+      evidence: object
+    artifacts:
+      wrap_as: schema_guard_packet
+      packet: runx.schema_guard.v1
+    inputs:
+      current_schema:
+        type: json
+        required: true
+        description: "Current schema contract with fields, required flags, types, and optional enum values."
+      proposed_schema:
+        type: json
+        required: true
+        description: "Proposed schema contract to compare against the current schema."
+      sample_payloads:
+        type: json
+        required: true
+        description: "Bounded sample payloads used only for compatibility evidence."
+      compatibility_policy:
+        type: json
+        required: true
+        description: "Policy object with breaking_allowed, required_fields, and versioning_rule."

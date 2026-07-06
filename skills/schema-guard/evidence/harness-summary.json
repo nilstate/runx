@@ -1,0 +1,18 @@
+{
+    "schema":  "runx.schema_guard.harness.v1",
+    "runx_cli":  "runx-cli 0.6.14",
+    "status":  "passed",
+    "case_count":  3,
+    "assertion_error_count":  0,
+    "case_names":  [
+                       "additive-compatible-proposal",
+                       "breaking-change-refused-no-proposal",
+                       "missing-schema-failure"
+                   ],
+    "receipt_ids":  [
+                        "sha256:ce8b54e50189f18bc5b8cbb2a72f548e6814a410e169d9120e5562a1b9299853",
+                        "sha256:9e7ad8183350cb464a561ce2cbc83885d2683249bcc6add57aed40615b325324",
+                        "sha256:14859af0acb735cafa397a629fe08c1eae46156fba8d86c29cfe23846fee48df"
+                    ],
+    "command":  "docker run --rm ... npx --yes @runxhq/cli@0.6.14 harness ./skills/schema-guard --json"
+}

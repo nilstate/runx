@@ -1,0 +1,5 @@
+{
+  "schema": "frantic.schema_guard.verification.placeholder",
+  "valid": false,
+  "summary": "Placeholder replaced after runx verify is complete."
+}

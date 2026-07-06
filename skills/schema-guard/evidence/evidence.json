@@ -1,0 +1,6 @@
+{
+  "schema": "frantic.schema_guard.evidence.placeholder",
+  "summary": "Placeholder replaced after harness, publish, dogfood, verify, and preflight complete.",
+  "observations": [],
+  "dogfood": null
+}

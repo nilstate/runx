@@ -1,0 +1,30 @@
+{
+  "current_schema": {
+    "name": "invoice_event",
+    "version": "1.0.0",
+    "fields": {
+      "id": { "type": "string", "required": true },
+      "amount_cents": { "type": "number", "required": true },
+      "status": { "type": "string", "required": true, "enum": ["draft", "paid"] }
+    }
+  },
+  "proposed_schema": {
+    "name": "invoice_event",
+    "version": "1.1.0",
+    "fields": {
+      "id": { "type": "string", "required": true },
+      "amount_cents": { "type": "number", "required": true },
+      "status": { "type": "string", "required": true, "enum": ["draft", "paid"] },
+      "memo": { "type": "string", "required": false }
+    }
+  },
+  "sample_payloads": [
+    { "id": "inv_1", "amount_cents": 1200, "status": "paid" },
+    { "id": "inv_2", "amount_cents": 0, "status": "draft", "memo": "optional note" }
+  ],
+  "compatibility_policy": {
+    "breaking_allowed": false,
+    "required_fields": ["id", "amount_cents", "status"],
+    "versioning_rule": "semver_minor_for_additive"
+  }
+}
