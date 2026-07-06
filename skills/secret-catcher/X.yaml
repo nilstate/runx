@@ -1,0 +1,75 @@
+skill: secret-catcher
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: block-planted-secret
+      inputs:
+        diff: |
+          diff --git a/config.js b/config.js
+          index 1111111..2222222 100644
+          --- a/config.js
+          +++ b/config.js
+          @@ -1,2 +1,3 @@
+           export const endpoint = "https://api.example.test";
+          +export const API_TOKEN = "demo_super_secret_value_123456789";
+           export const timeout = 5000;
+        scan_context:
+          repository: example/project
+          pull_request: 42
+      expect:
+        status: sealed
+    - name: allow-clean-diff
+      inputs:
+        diff: |
+          diff --git a/client.js b/client.js
+          index 3333333..4444444 100644
+          --- a/client.js
+          +++ b/client.js
+          @@ -1,2 +1,3 @@
+           export function request(url) {
+          +  const timeoutMs = 5000;
+             return fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+           }
+        scan_context:
+          repository: example/project
+          pull_request: 43
+      expect:
+        status: sealed
+
+emits:
+  - name: scan_result
+    packet: runx.decision.v1
+
+runners:
+  scan:
+    default: true
+    type: graph
+    inputs:
+      diff:
+        type: string
+        required: true
+      scan_context:
+        type: json
+        required: false
+    graph:
+      name: secret-catcher
+      steps:
+        - id: scan
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - graph/scan/run.mjs
+          artifacts:
+            named_emits:
+              scan_result: scan_result
+            packets:
+              scan_result: runx.decision.v1
+

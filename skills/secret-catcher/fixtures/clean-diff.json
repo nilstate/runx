@@ -1,0 +1,7 @@
+{
+  "diff": "diff --git a/client.js b/client.js\nindex 3333333..4444444 100644\n--- a/client.js\n+++ b/client.js\n@@ -1,2 +1,3 @@\n export function request(url) {\n+  const timeoutMs = 5000;\n   return fetch(url, { signal: AbortSignal.timeout(timeoutMs) });\n }",
+  "scan_context": {
+    "repository": "example/project",
+    "pull_request": 43
+  }
+}
