@@ -1,0 +1,27 @@
+{
+  "schema": "runx.receipt.v1",
+  "kind": "validation",
+  "runner": "frantic-claim-verification-guide-validation",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "bounty": 39,
+  "claim_id": "e7129c50-3ea0-414b-8a44-e3c83213d1f6",
+  "validated_at": "2026-07-06T11:16:00Z",
+  "checks": [
+    {
+      "name": "public_guide_has_lifecycle",
+      "status": "passed"
+    },
+    {
+      "name": "required_artifacts_named",
+      "status": "passed"
+    },
+    {
+      "name": "machine_review_boundary_explained",
+      "status": "passed"
+    },
+    {
+      "name": "delivery_shapes_included",
+      "status": "passed"
+    }
+  ]
+}
