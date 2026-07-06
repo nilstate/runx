@@ -1,6 +1,98 @@
-{
-  "schema": "frantic.schema_guard.evidence.placeholder",
-  "summary": "Placeholder replaced after harness, publish, dogfood, verify, and preflight complete.",
-  "observations": [],
-  "dogfood": null
+﻿{
+    "schema":  "frantic.evidence.schema_guard.v1",
+    "bounty":  84,
+    "package":  "schema-guard",
+    "operator":  "rohitmulani63-ops",
+    "summary":  "Published schema-guard as a runx skill that compares current_schema and proposed_schema against sample_payloads and a compatibility_policy, emits compatibility plus validation_results and migration_notes, and only emits publish_schema_proposal for compatible schema changes.",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard",
+    "package_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
+    "source_pr":  "https://github.com/runxhq/runx/pull/269",
+    "runx_cli_version":  "runx-cli 0.6.14",
+    "acceptance":  {
+                       "compatible_additive_case":  "sealed dogfood receipt proves compatible output and publish_schema_proposal",
+                       "github_star":  "Frantic machine verifier is expected to check GitHub star directly",
+                       "breaking_case":  "local harness proves breaking change is refused and produces no publish_schema_proposal",
+                       "typed_inputs":  [
+                                            "current_schema",
+                                            "proposed_schema",
+                                            "sample_payloads",
+                                            "compatibility_policy"
+                                        ],
+                       "typed_outputs":  [
+                                             "compatibility",
+                                             "validation_results",
+                                             "migration_notes",
+                                             "publish_schema_proposal"
+                                         ],
+                       "clean_install":  "schema-guard-clean-install-output.txt reports installed, signed yes, trust community"
+                   },
+    "harness":  {
+                    "status":  "passed",
+                    "runx_cli_version":  "runx-cli 0.6.14",
+                    "case_count":  3,
+                    "assertion_error_count":  0,
+                    "cases":  [
+                                  {
+                                      "expected":  "compatible output plus publish_schema_proposal",
+                                      "name":  "additive-compatible-proposal",
+                                      "receipt":  "sha256:ce8b54e50189f18bc5b8cbb2a72f548e6814a410e169d9120e5562a1b9299853"
+                                  },
+                                  {
+                                      "expected":  "refused breaking change and no proposal",
+                                      "name":  "breaking-change-refused-no-proposal",
+                                      "receipt":  "sha256:9e7ad8183350cb464a561ce2cbc83885d2683249bcc6add57aed40615b325324"
+                                  },
+                                  {
+                                      "expected":  "schema input guard failure",
+                                      "name":  "missing-schema-failure",
+                                      "receipt":  "sha256:14859af0acb735cafa397a629fe08c1eae46156fba8d86c29cfe23846fee48df"
+                                  }
+                              ]
+                },
+    "dogfood":  {
+                    "package_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
+                    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard",
+                    "command":  "runx skill rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai -j guard",
+                    "input":  {
+                                  "current_schema":  "invoice.v1 with id, amount_cents, status",
+                                  "proposed_schema":  "invoice.v1.1 additive optional metadata.source",
+                                  "sample_payloads_count":  2,
+                                  "compatibility_policy":  {
+                                                               "breaking_allowed":  false,
+                                                               "required_fields":  [
+                                                                                       "id",
+                                                                                       "amount_cents",
+                                                                                       "status"
+                                                                                   ],
+                                                               "versioning_rule":  "semver_minor_for_additive"
+                                                           }
+                              },
+                    "output":  {
+                                   "status":  "sealed",
+                                   "compatibility_status":  "compatible",
+                                   "compatible":  true,
+                                   "breaking_changes_count":  0,
+                                   "validation_results_count":  2,
+                                   "migration_notes_count":  1,
+                                   "publish_schema_proposal_present":  true
+                               },
+                    "receipt_ref":  "runx:receipt:sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35",
+                    "receipt_id":  "sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35",
+                    "verify":  {
+                                   "valid":  true,
+                                   "signature_mode":  "production",
+                                   "receipt_dir":  "/work/.runx/schema-guard-published-receipts"
+                               }
+                },
+    "observations":  [
+                         "package name is exactly schema-guard",
+                         "hosted registry publish succeeded",
+                         "registry read-back succeeded for rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
+                         "clean install succeeded from remote registry",
+                         "post-publish dogfood produced sealed receipt",
+                         "receipt verification returned valid true",
+                         "compatible additive change emits publish_schema_proposal",
+                         "breaking change local harness case refuses proposal output",
+                         "no live schema write is performed by the skill"
+                     ]
 }

@@ -1,5 +1,72 @@
-{
-  "schema": "frantic.schema_guard.verification.placeholder",
-  "valid": false,
-  "summary": "Placeholder replaced after runx verify is complete."
+﻿{
+    "schema":  "frantic.verification.schema_guard.v1",
+    "package":  "schema-guard",
+    "package_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
+    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard",
+    "source_pr":  "https://github.com/runxhq/runx/pull/269",
+    "runx_cli_version":  "runx-cli 0.6.14",
+    "checks":  [
+                   {
+                       "status":  "passed",
+                       "command":  "runx skill inspect ./skills/schema-guard -j",
+                       "name":  "inspect"
+                   },
+                   {
+                       "status":  "passed",
+                       "command":  "runx harness ./skills/schema-guard --json",
+                       "name":  "local_linux_harness",
+                       "cases":  [
+                                     {
+                                         "expected":  "compatible output plus publish_schema_proposal",
+                                         "name":  "additive-compatible-proposal",
+                                         "receipt":  "sha256:ce8b54e50189f18bc5b8cbb2a72f548e6814a410e169d9120e5562a1b9299853"
+                                     },
+                                     {
+                                         "expected":  "refused breaking change and no proposal",
+                                         "name":  "breaking-change-refused-no-proposal",
+                                         "receipt":  "sha256:9e7ad8183350cb464a561ce2cbc83885d2683249bcc6add57aed40615b325324"
+                                     },
+                                     {
+                                         "expected":  "schema input guard failure",
+                                         "name":  "missing-schema-failure",
+                                         "receipt":  "sha256:14859af0acb735cafa397a629fe08c1eae46156fba8d86c29cfe23846fee48df"
+                                     }
+                                 ]
+                   },
+                   {
+                       "status":  "passed",
+                       "command":  "runx registry publish ./skills/schema-guard/SKILL.md --registry https://api.runx.ai --json",
+                       "name":  "registry_publish",
+                       "version":  "sha-0b172e79bca1",
+                       "digest":  "1f232ced9a55c56624410901c2fd35a70f5aa8b0e5228d9231d19933e50fd7dd"
+                   },
+                   {
+                       "status":  "passed",
+                       "command":  "runx registry read rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai --json",
+                       "name":  "registry_read_back"
+                   },
+                   {
+                       "status":  "passed",
+                       "command":  "runx add rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai",
+                       "name":  "clean_install"
+                   },
+                   {
+                       "receipt_ref":  "runx:receipt:sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35",
+                       "status":  "passed",
+                       "command":  "runx skill rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai -j guard",
+                       "name":  "post_publish_dogfood"
+                   },
+                   {
+                       "valid":  true,
+                       "status":  "passed",
+                       "command":  "runx verify sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35 --receipt-dir .runx/schema-guard-published-receipts --json",
+                       "name":  "receipt_verify"
+                   },
+                   {
+                       "status":  "passed",
+                       "command":  "git diff --check plus touched-file control/bidi scan and secret-pattern scan",
+                       "name":  "diff_and_safety_scans"
+                   }
+               ],
+    "verdict":  "ready for Frantic preflight and delivery"
 }
