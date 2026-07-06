@@ -1,0 +1,6 @@
+{
+  "dataset": [{"id":"b1","active":true,"score":85},{"id":"b2","active":false,"score":92}],
+  "schema": {"fields":{"id":{"type":"string","required":true,"unique":true},"active":{"type":"boolean","required":true},"score":{"type":"number","required":true}}},
+  "quality_rules": {"max_missing_rate":0,"ranges":{"score":{"min":0,"max":100}}}
+}
+

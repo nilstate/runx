@@ -1,0 +1,9 @@
+{
+  "runx_version": "runx-cli 0.6.14",
+  "command": "runx harness ./skills/data-doctor",
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "case_names": ["report-quality-findings", "report-healthy-dataset", "refuse-missing-schema"]
+}
+

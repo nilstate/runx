@@ -1,0 +1,95 @@
+skill: data-doctor
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: report-quality-findings
+      inputs:
+        dataset:
+          - {id: a1, email: one@example.test, amount: 10}
+          - {id: a2, email: null, amount: 250}
+          - {id: a2, email: three@example.test, amount: bad}
+        schema:
+          fields:
+            id: {type: string, required: true, unique: true}
+            email: {type: string, required: true}
+            amount: {type: number, required: true}
+        quality_rules:
+          max_missing_rate: 0.1
+          ranges:
+            amount: {min: 0, max: 100}
+      expect:
+        status: sealed
+    - name: report-healthy-dataset
+      inputs:
+        dataset:
+          - {id: b1, active: true, score: 85}
+          - {id: b2, active: false, score: 92}
+        schema:
+          fields:
+            id: {type: string, required: true, unique: true}
+            active: {type: boolean, required: true}
+            score: {type: number, required: true}
+        quality_rules:
+          max_missing_rate: 0
+          ranges:
+            score: {min: 0, max: 100}
+      expect:
+        status: sealed
+    - name: refuse-missing-schema
+      runner: manual-review
+      inputs:
+        reason: A schema is required before deterministic quality checks can run.
+      expect:
+        status: needs_agent
+
+emits:
+  - name: quality_report
+    packet: runx.decision.v1
+
+runners:
+  manual-review:
+    type: agent-task
+    agent: reviewer
+    task: data-doctor-manual-review
+    outputs:
+      decision: string
+      reason: string
+    inputs:
+      reason:
+        type: string
+        required: true
+  diagnose:
+    default: true
+    type: graph
+    inputs:
+      dataset:
+        type: json
+        required: true
+      schema:
+        type: json
+        required: true
+      quality_rules:
+        type: json
+        required: true
+    graph:
+      name: data-doctor
+      steps:
+        - id: diagnose
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - graph/diagnose/run.mjs
+          artifacts:
+            named_emits:
+              quality_report: quality_report
+            packets:
+              quality_report: runx.decision.v1
+

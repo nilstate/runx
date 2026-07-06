@@ -1,0 +1,6 @@
+{
+  "dataset": [{"id":"a1","email":"one@example.test","amount":10},{"id":"a2","email":null,"amount":250},{"id":"a2","email":"three@example.test","amount":"bad"}],
+  "schema": {"fields":{"id":{"type":"string","required":true,"unique":true},"email":{"type":"string","required":true},"amount":{"type":"number","required":true}}},
+  "quality_rules": {"max_missing_rate":0.1,"ranges":{"amount":{"min":0,"max":100}}}
+}
+
