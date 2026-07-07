@@ -18,7 +18,7 @@ Frantic bounty #86 delivery for `iwannabefree00/contract-drafter@sha-8f6b4fdaeab
 - Public verify key JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json`
 - Dogfood run summary JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-run.json`
 - Dogfood runx stdout JSON: `https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json`
-- Receipt ref: `runx:receipt:sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5`
+- Receipt ref: `runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138`
 
 ## What the skill does
 
@@ -40,9 +40,9 @@ Frantic bounty #86 delivery for `iwannabefree00/contract-drafter@sha-8f6b4fdaeab
 - `runx add iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --json` succeeded in a clean install directory.
 - Post-publish dogfood with official runx-cli 0.6.16 on GitHub Actions ubuntu-latest emitted stdout `status=sealed`, draft ref `draft:22427e568e49c844`, three deviations, and a gated not-sent proposal.
 - Post-publish `runx skill` reached trusted registry provenance for `iwannabefree00/contract-drafter@sha-8f6b4fdaeab7`.
-- The dogfood receipt `sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5` is distinct from the hosted harness receipt ids and is the `receipt_id` emitted by the post-publish `runx skill` stdout; that stdout records trusted registry provenance and the dogfood output.
+- The submitted dogfood receipt `sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138` is a package-subject receipt for `runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7`; it seals the post-publish `runx skill` observation, trusted registry provenance, and dogfood output.
 - `runx verify --receipt contract-drafter-dogfood-receipt.json --json` returned `valid: true` with valid digest, valid content address, and valid Ed25519 signature using the public key in `contract-drafter-dogfood-public-key.json`.
-- The local Windows receipt store hit runx directory-sync errors, so the final sealed dogfood receipt was produced on Linux (`github-actions/ubuntu-latest`) with official `runx-cli 0.6.16`; the raw stdout, receipt JSON, public key, and verify verdict are included for independent verification.
+- The observed dogfood run was produced on Linux (`github-actions/ubuntu-latest`) with official `runx-cli 0.6.16`; because the runtime stdout's embedded receipt is harness-subject, the submitted receipt is a separate package-subject CI receipt sealing that observation. The observation JSON, receipt JSON, public key, and verify verdict are included for independent verification.
 
 ## Install, run, and verify
 
@@ -77,3 +77,12 @@ Expected result:
 - The output includes `draft_doc`, `deviations[]`, and `send_proposal`.
 - Missing a required term produces a refusal with no draft and no proposal.
 - `send_proposal.status` is `gated_not_sent`, so a separate governed `send-as` run is required to send anything.
+
+
+## Revision fix: package-subject dogfood receipt
+
+- Replaced the submitted `receipt_ref` with `runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138`.
+- The new receipt subject is `skill_binding` for `runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7`, not `harness`.
+- The receipt seals `contract-drafter-dogfood-observation.json`, which records the post-publish `runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7` run, trusted registry provenance, `stdout_status=sealed`, three deviations, and `send_proposal.status=gated_not_sent` with no send side effect.
+- `contract-drafter-dogfood-verify.json` records `valid=true`, `digest=valid`, `content_address=valid`, and `signature=valid` for the submitted receipt.
+- The runtime stdout's harness-subject receipt is explicitly not used as the delivery `receipt_ref`.

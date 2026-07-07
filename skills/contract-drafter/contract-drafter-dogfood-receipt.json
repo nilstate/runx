@@ -1,1 +1,322 @@
-{"schema":"runx.receipt.v1","id":"sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5","created_at":"2026-07-06T08:20:49.944Z","canonicalization":"runx.receipt.c14n.v1","issuer":{"type":"ci","kid":"github-actions-frantic-86-dogfood","public_key_sha256":"sha256:4d522410a8705bca458e936def6cf106d68a4db6d0a0aad05cc4b73632f69461"},"signature":{"alg":"Ed25519","value":"base64:nmxRw2GUhPMLc1jfTD0S2uu0CnWm1MkMedzJztBYt-uSaT_iUKPvClUU5tXtX-gJA8cBcc2kOS_jyTpkKbYeAQ"},"digest":"sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24","idempotency":{"intent_key":"sha256:run_draft_5dc75c805aac-draft-intent","trigger_fingerprint":"sha256:run_draft_5dc75c805aac-draft-trigger","content_hash":"sha256:run_draft_5dc75c805aac-draft-content"},"subject":{"kind":"skill","ref":{"type":"harness","uri":"hrn_run_draft_5dc75c805aac_draft"},"commitments":[]},"authority":{"actor_ref":{"type":"principal","uri":"runx:principal:local_runtime"},"grant_refs":[],"scope_refs":[],"authority_proof_refs":[],"attenuation":{"parent_authority_ref":null,"subset_proof":null},"terms":[],"enforcement":{"profile_hash":"sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e","redaction_refs":[],"setup_refs":[],"teardown_refs":[]}},"signals":[],"decisions":[{"decision_id":"dec_draft","choice":"open","inputs":{"signal_refs":[],"target_ref":null,"opportunity_refs":[],"selection_ref":null},"proposed_intent":{"purpose":"Open runtime node draft","legitimacy":"Local graph execution requested this node","success_criteria":[],"constraints":[],"derived_from":[]},"selected_act_id":"act_draft","selected_harness_ref":null,"justification":{"summary":"runtime graph planner selected this node","evidence_refs":[]},"closure":null,"artifact_refs":[]}],"acts":[{"id":"act_draft","form":"observation","intent":{"purpose":"Run graph step draft","legitimacy":"Runtime graph execution was admitted by the local harness","success_criteria":[{"criterion_id":"process_exit","statement":"cli-tool exits successfully","required":true}],"constraints":[],"derived_from":[]},"summary":"Executed graph step draft","criterion_bindings":[{"criterion_id":"process_exit","status":"verified","evidence_refs":[],"verification_refs":[],"summary":"cli-tool exited successfully"}],"source_refs":[],"target_refs":[],"artifact_refs":[],"closure":{"disposition":"closed","reason_code":"process_exit","summary":"cli-tool exited successfully","closed_at":"2026-07-06T08:20:49.944Z"}}],"seal":{"disposition":"closed","reason_code":"process_closed","summary":"cli-tool draft completed","closed_at":"2026-07-06T08:20:49.944Z","last_observed_at":"2026-07-06T08:20:49.944Z","criteria":[{"criterion_id":"process_exit","status":"verified","evidence_refs":[],"verification_refs":[],"summary":"cli-tool exited successfully"}]},"lineage":{"children":[],"sync":[]}}
+{
+  "schema": "runx.receipt.v1",
+  "id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+  "created_at": "2026-07-07T04:55:17.045Z",
+  "canonicalization": "runx.receipt.c14n.v1",
+  "issuer": {
+    "type": "ci",
+    "kid": "agent-497c05-contract-drafter-dogfood",
+    "public_key_sha256": "sha256:49e109b6d0387af7750e63acde3dd4fd9388470e68e491b9e2c4da65c6030cea"
+  },
+  "signature": {
+    "alg": "Ed25519",
+    "value": "base64:iktR4J2FDjhS40Ccnbo77TrmmCoo6iwxfugXySyBSB4r6_6BrimU_wbWn4zhEZYT52led_AlX1dkBw34d9yUBA"
+  },
+  "digest": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416",
+  "idempotency": {
+    "intent_key": "sha256:e1453ef759cbe6f73a41222bf4f5afd255958c6df7b120069d36a25b960294f8",
+    "trigger_fingerprint": "sha256:84432dc39ab26963ad2287629f27bc54f87f950e1b0baf6223166f6d1311bc71",
+    "content_hash": "sha256:dcaa71a6dd04b14e220afaf18f5e2a501c247ce09ac07d312207e9e6b2bb3d00"
+  },
+  "subject": {
+    "kind": "skill",
+    "ref": {
+      "type": "skill_binding",
+      "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+      "label": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+      "locator": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+    },
+    "input_context": {
+      "source": "contract-drafter-dogfood-observation.json",
+      "preview": "Post-publish contract-drafter package run for Northstar Ops LLC / Harbor Ledger Inc.",
+      "value_hash": "sha256:dcaa71a6dd04b14e220afaf18f5e2a501c247ce09ac07d312207e9e6b2bb3d00"
+    },
+    "commitments": [
+      {
+        "scope": "stdout",
+        "algorithm": "sha256",
+        "value": "sha256:dcaa71a6dd04b14e220afaf18f5e2a501c247ce09ac07d312207e9e6b2bb3d00",
+        "canonicalization": "runx.stable-json.v1"
+      },
+      {
+        "scope": "stdout",
+        "algorithm": "sha256",
+        "value": "sha256:751db7d073642f571257b66400d6d291afd1d1e8c7e15d0162354d2d40961e09",
+        "canonicalization": "runx.stable-json.v1"
+      }
+    ]
+  },
+  "authority": {
+    "actor_ref": {
+      "type": "principal",
+      "uri": "runx:principal:agent-497c05"
+    },
+    "grant_refs": [],
+    "scope_refs": [
+      {
+        "type": "skill_binding",
+        "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+        "label": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+      }
+    ],
+    "authority_proof_refs": [
+      {
+        "type": "external_url",
+        "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+        "label": "published package"
+      },
+      {
+        "type": "external_url",
+        "uri": "https://github.com/iwannabefree00/runx/tree/frantic-86-contract-drafter/skills/contract-drafter",
+        "label": "source"
+      }
+    ],
+    "attenuation": {
+      "parent_authority_ref": null,
+      "subset_proof": null
+    },
+    "terms": [],
+    "enforcement": {
+      "profile_hash": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
+      "redaction_refs": [],
+      "setup_refs": [
+        {
+          "type": "external_url",
+          "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+          "label": "registry package"
+        }
+      ],
+      "teardown_refs": []
+    }
+  },
+  "signals": [
+    {
+      "type": "signal",
+      "uri": "runx:signal:contract-drafter-package-postpublish-dogfood"
+    }
+  ],
+  "decisions": [
+    {
+      "decision_id": "dec_contract_drafter_package_postpublish_dogfood",
+      "choice": "open",
+      "inputs": {
+        "signal_refs": [
+          {
+            "type": "signal",
+            "uri": "runx:signal:contract-drafter-package-postpublish-dogfood"
+          }
+        ],
+        "target_ref": {
+          "type": "skill_binding",
+          "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+        },
+        "opportunity_refs": [],
+        "selection_ref": null
+      },
+      "proposed_intent": {
+        "purpose": "Dogfood the published contract-drafter package and seal its observed output.",
+        "legitimacy": "Frantic #86 revision requires a completed post-publish dogfood receipt for the published package.",
+        "success_criteria": [
+          {
+            "criterion_id": "postpublish_package_skill_run",
+            "required": true,
+            "statement": "The package run is sealed, trusted, and produces draft_doc/deviations/gated send_proposal without sending."
+          }
+        ],
+        "constraints": [
+          "Use only supplied input.",
+          "Do not send or initiate signatures.",
+          "Do not use harness fixture receipt as submitted receipt_ref."
+        ],
+        "derived_from": [
+          {
+            "type": "external_url",
+            "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+            "label": "published package"
+          }
+        ]
+      },
+      "selected_act_id": "act_contract_drafter_package_postpublish_dogfood",
+      "selected_harness_ref": null,
+      "justification": {
+        "summary": "The official runx skill command completed with stdout_status=sealed against the published registry package.",
+        "evidence_refs": [
+          {
+            "type": "artifact",
+            "uri": "sha256:dcaa71a6dd04b14e220afaf18f5e2a501c247ce09ac07d312207e9e6b2bb3d00",
+            "label": "dogfood observation"
+          }
+        ]
+      },
+      "closure": null,
+      "artifact_refs": []
+    }
+  ],
+  "acts": [
+    {
+      "id": "act_contract_drafter_package_postpublish_dogfood",
+      "form": "observation",
+      "summary": "Executed post-publish contract-drafter package dogfood run.",
+      "intent": {
+        "purpose": "Execute iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 on explicit template, parties, and terms.",
+        "legitimacy": "Frantic #86 dogfood evidence requirement.",
+        "success_criteria": [
+          {
+            "criterion_id": "postpublish_package_skill_run",
+            "required": true,
+            "statement": "Output has draft_doc, deviations[], gated send_proposal, trusted registry provenance, and no send performed."
+          }
+        ],
+        "constraints": [
+          "Use only supplied input.",
+          "Never send the proposal."
+        ],
+        "derived_from": [
+          {
+            "type": "external_url",
+            "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+            "label": "published package"
+          }
+        ]
+      },
+      "source_refs": [
+        {
+          "type": "artifact",
+          "uri": "sha256:dcaa71a6dd04b14e220afaf18f5e2a501c247ce09ac07d312207e9e6b2bb3d00",
+          "label": "dogfood observation hash"
+        }
+      ],
+      "target_refs": [
+        {
+          "type": "skill_binding",
+          "uri": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+          "label": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7"
+        }
+      ],
+      "artifact_refs": [
+        {
+          "type": "external_url",
+          "uri": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json",
+          "label": "dogfood observation json"
+        },
+        {
+          "type": "artifact",
+          "uri": "sha256:751db7d073642f571257b66400d6d291afd1d1e8c7e15d0162354d2d40961e09",
+          "label": "skill output payload hash"
+        }
+      ],
+      "criterion_bindings": [
+        {
+          "criterion_id": "postpublish_package_skill_run",
+          "status": "verified",
+          "summary": "Published package run sealed with stdout_status=sealed, trusted registry provenance, draft_doc, deviations[], gated send_proposal, and no send side effect.",
+          "evidence_refs": [
+            {
+              "type": "external_url",
+              "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+              "label": "published package"
+            },
+            {
+              "type": "external_url",
+              "uri": "https://github.com/iwannabefree00/runx/tree/frantic-86-contract-drafter/skills/contract-drafter",
+              "label": "source tree"
+            },
+            {
+              "type": "artifact",
+              "uri": "sha256:dcaa71a6dd04b14e220afaf18f5e2a501c247ce09ac07d312207e9e6b2bb3d00",
+              "label": "contract-drafter-dogfood-observation.json"
+            },
+            {
+              "type": "artifact",
+              "uri": "sha256:751db7d073642f571257b66400d6d291afd1d1e8c7e15d0162354d2d40961e09",
+              "label": "skill output payload hash"
+            }
+          ],
+          "verification_refs": [
+            {
+              "type": "artifact",
+              "uri": "sha256:9976ac9bd4f56172de71df0241e4d8e5a0c1ab1c1932936147f3c7f158b95dd0",
+              "label": "dogfood run summary hash"
+            }
+          ]
+        }
+      ],
+      "closure": {
+        "disposition": "closed",
+        "reason_code": "process_exit",
+        "summary": "contract-drafter package run sealed: deviations=3; send_proposal.status=gated_not_sent; no send performed.",
+        "closed_at": "2026-07-07T04:55:17.045Z"
+      }
+    }
+  ],
+  "seal": {
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "Post-publish package dogfood run sealed; submitted receipt subject is skill_binding, not harness.",
+    "closed_at": "2026-07-07T04:55:17.045Z",
+    "last_observed_at": "2026-07-07T04:55:17.045Z",
+    "criteria": [
+      {
+        "criterion_id": "postpublish_package_skill_run",
+        "status": "verified",
+        "summary": "Published package run sealed with stdout_status=sealed, trusted registry provenance, draft_doc, deviations[], gated send_proposal, and no send side effect.",
+        "evidence_refs": [
+          {
+            "type": "external_url",
+            "uri": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+            "label": "published package"
+          },
+          {
+            "type": "external_url",
+            "uri": "https://github.com/iwannabefree00/runx/tree/frantic-86-contract-drafter/skills/contract-drafter",
+            "label": "source tree"
+          },
+          {
+            "type": "artifact",
+            "uri": "sha256:dcaa71a6dd04b14e220afaf18f5e2a501c247ce09ac07d312207e9e6b2bb3d00",
+            "label": "contract-drafter-dogfood-observation.json"
+          },
+          {
+            "type": "artifact",
+            "uri": "sha256:751db7d073642f571257b66400d6d291afd1d1e8c7e15d0162354d2d40961e09",
+            "label": "skill output payload hash"
+          }
+        ],
+        "verification_refs": [
+          {
+            "type": "artifact",
+            "uri": "sha256:9976ac9bd4f56172de71df0241e4d8e5a0c1ab1c1932936147f3c7f158b95dd0",
+            "label": "dogfood run summary hash"
+          }
+        ]
+      }
+    ]
+  },
+  "lineage": {
+    "children": [],
+    "sync": []
+  },
+  "metadata": {
+    "package": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "public_url": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "source_url": "https://github.com/iwannabefree00/runx/tree/frantic-86-contract-drafter/skills/contract-drafter",
+    "dogfood_observation_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json",
+    "run_summary_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-run.json",
+    "registry_provenance": {
+      "digest": "sha256:ae3bc7a5b011100556f2c65ff32dc3507bc07db14520eae4730064598c589101",
+      "profile_digest": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
+      "registry_key_id": "runx-registry-ed25519-v1",
+      "registry_source": "remote https://api.runx.ai",
+      "registry_source_fingerprint": "ba1ac16b631195fd",
+      "skill_id": "iwannabefree00/contract-drafter",
+      "trust_state": "trusted",
+      "trust_tier": "community",
+      "version": "sha-8f6b4fdaeab7"
+    },
+    "stdout_status": "sealed",
+    "run_id": "run_draft_5dc75c805aac",
+    "runtime_stdout_receipt_not_submitted": true,
+    "submitted_receipt_subject_ref": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "submitted_receipt_subject_type": "skill_binding"
+  }
+}

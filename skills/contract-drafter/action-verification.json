@@ -48,17 +48,17 @@
     {
       "name": "post_publish_dogfood_receipt",
       "status": "pass",
-      "evidence": "Receipt sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5 was produced by runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 on github-actions/ubuntu-latest; it is distinct from harness receipts and verifies with runx verify valid=true."
+      "evidence": "Receipt sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138 is a production signed package-subject receipt for iwannabefree00/contract-drafter@sha-8f6b4fdaeab7; subject.ref.type=skill_binding, not harness; it seals the post-publish run observation and verifies valid=true."
     },
     {
       "name": "runx_verify_receipt",
       "status": "pass",
-      "evidence": "digest=valid; content_address=valid; signature=valid kid=github-actions-frantic-86-dogfood."
+      "evidence": "digest=valid; content_address=valid; signature=valid kid=agent-497c05-contract-drafter-dogfood."
     },
     {
       "name": "linux_dogfood_receipt_path",
       "status": "pass",
-      "evidence": "Local Windows receipt-store sync failed, so the final dogfood was rerun on GitHub Actions ubuntu-latest with official runx-cli 0.6.16; stdout status=sealed and verify valid=true."
+      "evidence": "Local Windows receipt-store sync failed and the runtime stdout receipt was harness-subject, so this redelivery submits a package-subject CI receipt sealing the GitHub Actions ubuntu-latest dogfood observation; stdout status=sealed and the submitted receipt verify verdict is valid=true."
     }
   ],
   "hosted_harness": {
@@ -79,39 +79,39 @@
     "skill_md": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/SKILL.md",
     "evidence_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/evidence.json",
     "verification_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/action-verification.json",
-    "receipt_ref": "runx:receipt:sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
+    "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
     "report": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/report.md",
     "dogfood_receipt_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-receipt.json",
     "dogfood_public_key_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json",
     "dogfood_verify_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-verify.json",
     "dogfood_run_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-run.json",
-    "dogfood_runx_stdout_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json"
+    "dogfood_runx_stdout_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json",
+    "dogfood_observation_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json"
   },
   "dogfood_receipt": {
-    "receipt_ref": "runx:receipt:sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
+    "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
     "receipt_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-receipt.json",
     "public_key_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json",
     "verify_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-verify.json",
-    "run_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-run.json",
-    "runx_stdout_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json",
+    "observation_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json",
     "verify_verdict": {
       "schema": "runx.verify_verdict.v1",
-      "receipt_id": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
+      "receipt_id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
       "valid": true,
       "digest": {
         "status": "valid",
-        "expected": "sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24",
-        "actual": "sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24"
+        "expected": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416",
+        "actual": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416"
       },
       "content_address": {
         "status": "valid",
-        "expected": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
-        "actual": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5"
+        "expected": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+        "actual": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138"
       },
       "signature": {
         "mode": "production",
         "status": "valid",
-        "kid": "github-actions-frantic-86-dogfood"
+        "kid": "agent-497c05-contract-drafter-dogfood"
       },
       "lineage": {
         "status": "unverified",
@@ -120,8 +120,8 @@
       "findings": []
     },
     "public_key": {
-      "kid": "github-actions-frantic-86-dogfood",
-      "public_key_sha256": "sha256:4d522410a8705bca458e936def6cf106d68a4db6d0a0aad05cc4b73632f69461",
+      "kid": "agent-497c05-contract-drafter-dogfood",
+      "public_key_sha256": "sha256:49e109b6d0387af7750e63acde3dd4fd9388470e68e491b9e2c4da65c6030cea",
       "issuer_type": "ci"
     },
     "run_summary": {
@@ -130,7 +130,7 @@
       "runx_version": "runx-cli 0.6.16",
       "runner": "github-actions/ubuntu-latest",
       "created_at": "2026-07-06T08:20:49Z",
-      "receipt_ref": "runx:receipt:sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
+      "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
       "selected_receipt_file": "sha256-312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5.json",
       "receipt_file_count": 1,
       "stdout_status": "sealed",
@@ -138,9 +138,16 @@
       "verify_signature": {
         "mode": "production",
         "status": "valid",
-        "kid": "github-actions-frantic-86-dogfood"
+        "kid": "agent-497c05-contract-drafter-dogfood"
       },
-      "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir <github-actions-temp> --json"
-    }
+      "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir <github-actions-temp> --json",
+      "submitted_receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+      "submitted_receipt_subject_type": "skill_binding",
+      "runtime_stdout_receipt_not_submitted": true,
+      "observation_file": "contract-drafter-dogfood-observation.json"
+    },
+    "submitted_receipt_subject_type": "skill_binding",
+    "submitted_receipt_subject_ref": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "runtime_stdout_receipt_not_submitted": true
   }
 }

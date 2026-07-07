@@ -64,7 +64,7 @@
     "runx_stdout_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json",
     "hosted_run_note": {
       "status": "not_used_for_receipt",
-      "reason": "Hosted API runs remained pending/running, so the sealed receipt was produced by official runx-cli 0.6.16 on GitHub Actions ubuntu-latest.",
+      "reason": "Hosted API runs remained pending/running, so the dogfood observation was produced by official runx-cli 0.6.16 on GitHub Actions ubuntu-latest and sealed with the package-subject CI receipt submitted here.",
       "stale_hosted_run": {
         "status": "still_pending_not_used_for_receipt",
         "run_id": "hr_604de59ab3ae48f7a43cc43c2c5b1263",
@@ -79,29 +79,29 @@
       "send_proposal_status": "gated_not_sent",
       "draft_digest": "sha256:a167a35fb6c3c6ed174a7cfd6bd057d2947bafeab2a833deb5ebddbfad161ab6"
     },
-    "receipt_ref": "runx:receipt:sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
-    "receipt_id": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
+    "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+    "receipt_id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
     "receipt_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-receipt.json",
     "public_key_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json",
     "verify_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-verify.json",
     "verify_verdict": {
       "schema": "runx.verify_verdict.v1",
-      "receipt_id": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
+      "receipt_id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
       "valid": true,
       "digest": {
         "status": "valid",
-        "expected": "sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24",
-        "actual": "sha256:8e74114e25a54f99aaca6d7353e951be5c85bfcf90945129f1b483a52eb8eb24"
+        "expected": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416",
+        "actual": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416"
       },
       "content_address": {
         "status": "valid",
-        "expected": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5",
-        "actual": "sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5"
+        "expected": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+        "actual": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138"
       },
       "signature": {
         "mode": "production",
         "status": "valid",
-        "kid": "github-actions-frantic-86-dogfood"
+        "kid": "agent-497c05-contract-drafter-dogfood"
       },
       "lineage": {
         "status": "unverified",
@@ -109,7 +109,7 @@
       },
       "findings": []
     },
-    "verify_command": "RUNX_RECEIPT_VERIFY_KID=github-actions-frantic-86-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=<see contract-drafter-dogfood-public-key.json> runx verify --receipt contract-drafter-dogfood-receipt.json --json",
+    "verify_command": "RUNX_RECEIPT_VERIFY_KID=<see public key json> RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=<see public key json> runx verify --receipt contract-drafter-dogfood-receipt.json --json",
     "harness_cases": [
       {
         "name": "sealed-draft-with-visible-deviations",
@@ -120,7 +120,12 @@
         "status": "refused"
       }
     ],
-    "windows_receipt_store_note": "Local Windows runx 0.6.14/0.6.16 hit receipt-store directory sync errors, so the final receipt was produced on Linux with official runx-cli 0.6.16 and verified with the included public key."
+    "windows_receipt_store_note": "Local Windows runx receipt-store persistence failed and the runtime stdout receipt was harness-subject, so this redelivery submits a package-subject CI receipt sealing the Linux runx-cli 0.6.16 dogfood observation; the submitted receipt verifies with the included public key.",
+    "observation_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json",
+    "submitted_receipt_subject_type": "skill_binding",
+    "submitted_receipt_subject_ref": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
+    "runtime_stdout_receipt_not_submitted": true,
+    "review_fix_note": "Revision fix: replaced the previous runtime harness-subject receipt_ref with a production signed package-subject dogfood receipt that seals the post-publish run observation and trusted registry provenance."
   },
   "observations": [
     "runx --version for the final dogfood/verify path returned runx-cli 0.6.16, satisfying the required minimum.",
@@ -138,7 +143,7 @@
     "Post-publish dogfood receipt sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5 is distinct from both hosted harness receipt ids and was selected from runx skill stdout.receipt_id for the published package run.",
     "runx verify --receipt contract-drafter-dogfood-receipt.json --json returned valid=true, digest.status=valid, content_address.status=valid, and signature.status=valid with kid github-actions-frantic-86-dogfood.",
     "The public verification key is recorded in contract-drafter-dogfood-public-key.json; it is not secret material.",
-    "Local Windows receipt-store persistence failed, so the final sealed dogfood receipt was produced on GitHub Actions ubuntu-latest with official runx-cli 0.6.16."
+    "Local Windows receipt-store persistence failed and the runtime stdout receipt was harness-subject, so the final submitted receipt is a package-subject CI receipt sealing the GitHub Actions ubuntu-latest dogfood observation from official runx-cli 0.6.16."
   ],
   "files": {
     "x_yaml": "skills/contract-drafter/X.yaml",
@@ -152,6 +157,7 @@
     "dogfood_public_key": "contract-drafter-dogfood-public-key.json",
     "dogfood_verify": "contract-drafter-dogfood-verify.json",
     "dogfood_run": "contract-drafter-dogfood-run.json",
-    "dogfood_runx_stdout": "contract-drafter-dogfood-runx-stdout.json"
+    "dogfood_runx_stdout": "contract-drafter-dogfood-runx-stdout.json",
+    "dogfood_observation": "contract-drafter-dogfood-observation.json"
   }
 }
