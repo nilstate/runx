@@ -7,8 +7,13 @@
   "delivery_urls": {
     "pr_url": "https://github.com/runxhq/runx/pull/256",
     "source_url": "https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper",
+    "x_yaml": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml",
     "raw_x_yaml_url": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md",
     "raw_skill_md_url": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md",
+    "evidence_json": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/evidence.json",
+    "verification_json": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json",
+    "report": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/report.md",
     "verification_json_url": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json"
   },
   "summary": "Bookkeeper was implemented, locally harnessed, published to the hosted runx registry, and dogfooded after publish. The clean transaction batch produced categorized lines, zero anomalies, and a read-only reconciliation artifact; the ambiguous harness path routes to manual review and performs no ledger mutation.",
@@ -66,6 +71,22 @@
     "Machine-readable delivery_urls.source_url is present and names the source URL.",
     "Machine-readable delivery_urls.raw_x_yaml_url is present and names the raw x_yaml URL.",
     "Machine-readable delivery_urls.raw_skill_md_url is present and names the raw skill_md URL.",
-    "Machine-readable delivery_urls.verification_json_url is present and names the verification_json URL."
-  ]
+    "Machine-readable delivery_urls.verification_json_url is present and names the verification_json URL.",
+    "Top-level evidence_json.pr_url is explicitly present: https://github.com/runxhq/runx/pull/256.",
+    "Machine-readable delivery_urls.x_yaml and delivery_urls.skill_md use the exact artifact names expected by the delivery preflight.",
+    "Top-level evidence_json.source_url is explicitly present and commit-pinned: https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper.",
+    "Top-level evidence_json.x_yaml is explicitly present and raw-fetchable: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml.",
+    "Top-level evidence_json.skill_md is explicitly present and raw-fetchable: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md.",
+    "Top-level evidence_json.verification_json is explicitly present and raw-fetchable: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json.",
+    "Top-level evidence_json.evidence_json is explicitly present and raw-fetchable: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/evidence.json.",
+    "Top-level evidence_json.report is explicitly present and raw-fetchable: https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/report.md."
+  ],
+  "pr_url": "https://github.com/runxhq/runx/pull/256",
+  "source_url": "https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper",
+  "x_yaml": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md",
+  "evidence_json": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/evidence.json",
+  "verification_json": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json",
+  "report": "https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/report.md",
+  "source_revision": "codex/frantic-bookkeeper-89"
 }

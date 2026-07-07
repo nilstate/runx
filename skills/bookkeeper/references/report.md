@@ -28,17 +28,29 @@ rails, and never invents a GL account.
 
 - Acceptance URL coverage item `pr_url`: <https://github.com/runxhq/runx/pull/256>
 - Acceptance URL coverage item `source_url`: <https://github.com/lxx197818/runx/tree/codex/frantic-bookkeeper-89/skills/bookkeeper>
-- Acceptance URL coverage item `raw x_yaml URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml>
-- Acceptance URL coverage item `raw skill_md URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md>
-- Acceptance URL coverage item `verification_json URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json>
+- Acceptance URL coverage item `x_yaml` / `raw x_yaml URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/X.yaml>
+- Acceptance URL coverage item `skill_md` / `raw skill_md URL`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/SKILL.md>
+- Acceptance URL coverage item `evidence_json`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/evidence.json>
+- Acceptance URL coverage item `verification_json`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/verification.json>
+- Acceptance URL coverage item `report`: <https://raw.githubusercontent.com/lxx197818/runx/codex/frantic-bookkeeper-89/skills/bookkeeper/references/report.md>
 
 Machine-readable URL keys are also present in `evidence_json.delivery_urls`:
 
 - `delivery_urls.pr_url`
 - `delivery_urls.source_url`
+- `delivery_urls.x_yaml`
 - `delivery_urls.raw_x_yaml_url`
+- `delivery_urls.skill_md`
 - `delivery_urls.raw_skill_md_url`
+- `delivery_urls.evidence_json`
 - `delivery_urls.verification_json_url`
+- `delivery_urls.verification_json`
+- `delivery_urls.report`
+
+The same required URLs are duplicated at the top level of `evidence_json` under
+the exact keys `pr_url`, `source_url`, `x_yaml`, `skill_md`, `evidence_json`,
+`verification_json`, and `report` so both human review and machine review can
+locate the named evidence without interpreting prose.
 
 ## Dogfood observation
 
