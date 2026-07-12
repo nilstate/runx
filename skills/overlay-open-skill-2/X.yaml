@@ -1,0 +1,61 @@
+skill: overlay-open-skill-2
+version: "0.1.0"
+runx:
+  overlay:
+    wraps:
+      path: https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/brand-guidelines/SKILL.md
+      version: sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe
+    pinned_digest: sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+harness:
+  cases:
+    - name: pinned-digest-seals
+      runner: default
+      inputs:
+        objective: Confirm the immutable wrapped styling instructions remain current before applying them.
+        resolved_digest: sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: digest-stale-refuses
+      runner: default
+      inputs:
+        objective: Refuse changed wrapped instructions before any styling guidance is applied.
+        resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    mutating: false
+    runx:
+      scopes:
+        - fs.read
+      allowed_tools:
+        - fs.read
+    inputs:
+      objective:
+        type: string
+        required: false
+        description: Styling intent recorded in the sealed receipt without granting authority.
+      resolved_digest:
+        type: string
+        required: false
+        description: Recomputed sha256 digest of the immutable wrapped SKILL.md bytes.

@@ -1,0 +1,25 @@
+{
+  "upstream_skill": "brand-guidelines",
+  "upstream_repo": "anthropics/skills",
+  "upstream_path": "skills/brand-guidelines/SKILL.md",
+  "upstream_commit": "9d2f1ae187231d8199c64b5b762e1bdf2244733d",
+  "immutable_source_url": "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/brand-guidelines/SKILL.md",
+  "sha256": "1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe",
+  "byte_count": 2235,
+  "license": "Apache-2.0",
+  "license_url": "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/brand-guidelines/LICENSE.txt",
+  "maintenance": {
+    "archived": false,
+    "stars_at_check": 160431,
+    "forks_at_check": 18937,
+    "pushed_at": "2026-07-01T18:11:25Z"
+  },
+  "selection": {
+    "permissive_license_verified": true,
+    "actively_maintained_verified": true,
+    "upstream_content_copied": false,
+    "companion_overlay_target_collision_found": false,
+    "companion_overlay_target": "verification-before-completion (obra/superpowers) wrapped by overlay-open-skill-1"
+  },
+  "checked_at": "2026-07-12T09:15:00Z"
+}

@@ -1,0 +1,18 @@
+name: pinned-digest-seals
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Confirm the immutable wrapped styling instructions remain current before applying them.
+  resolved_digest: sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: overlay-open-skill-2
+  source_case: pinned-digest-seals
+  source: skills-fixture
