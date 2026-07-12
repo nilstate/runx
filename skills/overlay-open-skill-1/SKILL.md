@@ -20,14 +20,14 @@ recomputed digest as `resolved_digest`.
    one explicit tool.
 4. Emits a machine-readable ready decision or a sealed stale-digest refusal.
 
-## When to use
+## When to use this skill
 
 - Before claiming that repository work is complete, fixed, or passing.
 - When an operator wants the wrapped verification discipline without granting
   repository write or network authority.
 - When the upstream instructions must remain content-addressed and reviewable.
 
-## When not to use
+## When not to use this skill
 
 - To modify, commit, push, publish, or otherwise mutate a repository.
 - To download mutable instructions or trust an unpinned branch URL.
@@ -73,8 +73,8 @@ runx skill . \
 ```
 
 The optional `objective` is receipt context only; it grants no additional
-authority. When `resolved_digest` is omitted, the immutable pin is used so a
-no-input registry smoke run remains deterministic.
+authority. When `resolved_digest` is omitted, the runner seals a deterministic
+`needs_input` receipt and does not claim that current bytes match the pin.
 
 ## Refusal
 
@@ -86,6 +86,8 @@ the same refusal path.
 ## Edge cases and stop conditions
 
 - **Malformed digest:** refuse with `runx.overlay.digest.stale`.
+- **Missing digest:** return `needs_input` with
+  `runx.overlay.digest.required`; do not claim the pin is current.
 - **Well-formed mismatch:** refuse with `runx.overlay.digest.stale`; do not run
   the wrapped instructions.
 - **Mutable or unavailable source:** stop before execution and resolve the
@@ -105,14 +107,14 @@ the same refusal path.
     "path": "immutable HTTPS URL",
     "digest": "sha256:<64 lowercase hex>"
   },
-  "resolved_digest": "sha256:<64 lowercase hex>",
+  "resolved_digest": "sha256:<64 lowercase hex> | null",
   "runner": {
     "type": "agent",
     "scopes": ["repo.read"],
     "allowed_tools": ["shell.exec"],
     "denied_capabilities": ["string"]
   },
-  "decision": "ready | refused",
+  "decision": "ready | needs_input | refused",
   "diagnostics": [
     { "id": "string", "severity": "error", "message": "string" }
   ]
@@ -132,8 +134,8 @@ without executing the changed instructions.
 - `objective` (optional string): verification intent captured in the receipt;
   it grants no authority.
 - `resolved_digest` (optional string): freshly recomputed sha256 of the
-  immutable wrapped bytes. The immutable pin is the deterministic no-input
-  default used by registry smoke verification.
+  immutable wrapped bytes. Omitting it produces a sealed `needs_input` result,
+  never a matching-digest claim.
 
 ## Verification contract
 

@@ -13,16 +13,16 @@
     {
       "name": "pinned-digest-seals",
       "expected_status": "sealed",
-      "receipt_id": "sha256:717b20bd513467b45520e33014d5be861939f5628b17a4fcb074d0f003e5a482"
+      "receipt_id": "sha256:fe2a453151d514f1f58201095be88c801a962c943231cb9c2e8622e28eb8f55b"
     },
     {
       "name": "digest-stale-refuses",
       "expected_status": "refused",
       "runtime_status": "failure",
       "diagnostic_id": "runx.overlay.digest.stale",
-      "receipt_id": "sha256:46e57a8de23e52b94eaf96edb681bde1cdaab64b8537ebad5a07d4e3830d8309"
+      "receipt_id": "sha256:8b493c7499df02e6a9a9f6d6c9a3bf082ffa829281181631a33cf9b6f18059d0"
     }
   ],
   "graph_case_count": 0,
-  "checked_at": "2026-07-12T08:11:51Z"
+  "checked_at": "2026-07-12T08:24:23Z"
 }

@@ -17,11 +17,8 @@ const objective = (
   process.env.RUNX_INPUT_OBJECTIVE ??
   "Verify current work before making a completion claim."
 ).trim();
-const resolvedDigest = (
-  process.env.RUNX_INPUT_RESOLVED_DIGEST ?? PINNED_DIGEST
-)
-  .trim()
-  .toLowerCase();
+const providedDigest = process.env.RUNX_INPUT_RESOLVED_DIGEST;
+const resolvedDigest = providedDigest ? providedDigest.trim().toLowerCase() : null;
 
 const base = {
   schema: "runx.skill_overlay.v1",
@@ -39,7 +36,21 @@ const base = {
   },
 };
 
-if (!/^sha256:[0-9a-f]{64}$/.test(resolvedDigest)) {
+if (resolvedDigest === null) {
+  const output = {
+    ...base,
+    decision: "needs_input",
+    diagnostics: [
+      {
+        id: "runx.overlay.digest.required",
+        severity: "warning",
+        message:
+          "Resolve the immutable wrapped SKILL.md and provide its recomputed sha256 digest before making a verification claim.",
+      },
+    ],
+  };
+  process.stdout.write(`${JSON.stringify(output)}\n`);
+} else if (!/^sha256:[0-9a-f]{64}$/.test(resolvedDigest)) {
   const output = {
     ...base,
     decision: "refused",

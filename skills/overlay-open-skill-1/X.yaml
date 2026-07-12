@@ -10,7 +10,7 @@ catalog:
   kind: skill
   audience: public
   visibility: public
-  role: canonical
+  role: context
 harness:
   cases:
     - name: pinned-digest-seals
@@ -45,9 +45,6 @@ runners:
     args:
       - run.mjs
     mutating: false
-    sandbox:
-      profile: readonly
-      cwd_policy: skill-directory
     runx:
       scopes:
         - repo.read
