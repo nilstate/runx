@@ -1,0 +1,156 @@
+skill: rollback-judge
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: critical-signal-rollback
+      inputs:
+        deploy_signal:
+          severity: critical
+          kind: error_rate_spike
+          evidence:
+            metric: http_5xx_rate
+            observed: "18.4%"
+            threshold: "2%"
+            window: 15m
+            source_ref: metrics://checkout/http_5xx_rate/2026-07-12T03:20Z
+            failing: true
+        current_version:
+          version: "2026.07.12.3"
+          digest: sha256:current-checkout-20260712-3
+          deployed_at: "2026-07-12T03:05:00Z"
+        prior_version:
+          version: "2026.07.12.2"
+          digest: sha256:prior-checkout-20260712-2
+          deployed_at: "2026-07-12T01:40:00Z"
+          health: last_known_good
+        forward_fix_evidence:
+          test_runs: []
+          review_signoff: null
+      caller:
+        answers:
+          agent_task.rollback-judge.output:
+            decision:
+              action: rollback
+              reason: error_rate_critical
+              version_target:
+                version: "2026.07.12.2"
+                digest: sha256:prior-checkout-20260712-2
+                source: prior_version
+            escalation:
+              required: false
+              reason: null
+              missing_evidence: []
+            release_publish_approval:
+              gate_id: release.publish.approval
+              approved: true
+              reason: error_rate_critical
+              dispatch:
+                skill: release
+                answer_key: release.publish.approval
+                note: Release graph owns the rollback consequence.
+            review_record:
+              form: review
+              signal:
+                severity: critical
+                kind: error_rate_spike
+              evidence_used:
+                - deploy_signal.evidence.metric
+                - deploy_signal.evidence.observed
+                - deploy_signal.evidence.threshold
+                - prior_version.version
+              refused:
+                reason: null
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: signal-contradictory-block
+      inputs:
+        deploy_signal:
+          severity: critical
+          kind: mixed_health_signal
+          evidence:
+            metric: http_5xx_rate
+            observed: "1.4%"
+            threshold: "2%"
+            window: 15m
+            source_ref: metrics://checkout/http_5xx_rate/2026-07-12T04:10Z
+            failing: false
+            contradiction: severity says critical but metric is below threshold
+        current_version:
+          version: "2026.07.12.3"
+          digest: sha256:current-checkout-20260712-3
+          deployed_at: "2026-07-12T03:05:00Z"
+        prior_version:
+          version: "2026.07.12.2"
+          digest: sha256:prior-checkout-20260712-2
+          deployed_at: "2026-07-12T01:40:00Z"
+          health: last_known_good
+        forward_fix_evidence:
+          test_runs: []
+          review_signoff: null
+      expect:
+        status: needs_agent
+
+runners:
+  judge:
+    default: true
+    type: agent-task
+    act:
+      form: review
+      purpose: Judge a supplied deploy signal and record a bounded rollback or escalation decision.
+      legitimacy: Local operator supplied deploy evidence for review; release owns any downstream consequence.
+    agent: reviewer
+    task: rollback-judge
+    outputs:
+      decision: object
+      escalation: object
+      release_publish_approval: object
+      review_record: object
+    artifacts:
+      wrap_as: rollback_decision_packet
+      packet: runx.rollback_judge.decision.v1
+    runx:
+      category: ops
+    instructions: >
+      Produce exactly one review decision from the supplied deploy_signal,
+      current_version, prior_version, and forward_fix_evidence. Do not deploy,
+      roll back, publish, call providers, mint authority, or create a universal
+      proposal envelope. If deploy_signal is critical/failing and prior_version
+      is supplied, return decision.action rollback, reason error_rate_critical
+      when the signal kind/evidence shows an error-rate critical incident, and
+      set decision.version_target from prior_version only. Seed
+      release_publish_approval with gate_id release.publish.approval,
+      approved true, and the same reason; name release as the downstream skill
+      that owns the actual consequence. If the signal is contradictory, thin,
+      nonfailing, lacks evidence, lacks prior_version for rollback, or lacks
+      tested forward-fix evidence for roll-forward, return a hold decision with
+      escalation.required true, name the missing evidence, set
+      release_publish_approval.approved false, and do not invent targets,
+      tests, signoff, or authority. review_record.form must be review and must
+      cite the supplied signal severity/kind plus the evidence fields used.
+    inputs:
+      deploy_signal:
+        type: object
+        required: true
+        description: "Deploy signal with severity, kind, and caller-supplied evidence."
+      current_version:
+        type: object
+        required: true
+        description: "Currently deployed version metadata."
+      prior_version:
+        type: object
+        required: false
+        description: "Caller-supplied rollback target candidate."
+      forward_fix_evidence:
+        type: object
+        required: false
+        description: "Caller-supplied roll-forward fix evidence with test_runs and review_signoff."
