@@ -1,0 +1,26 @@
+{
+  "purchase_request": {
+    "amount": 75,
+    "currency": "USD",
+    "vendor": "Acme Corp",
+    "purpose": "office supplies for the design team"
+  },
+  "procurement_policy": {
+    "approved_vendors": ["Acme Corp", "TechHub"],
+    "max_single_purchase": 500,
+    "requires_approval_above": 200
+  },
+  "current_budget_balance": {
+    "amount": 1000,
+    "currency": "USD"
+  },
+  "requested_scope": {
+    "schema": "runx.authority_bounds.v1",
+    "scopes": ["spend.reserve", "spend.settle", "receipt.seal"],
+    "max_amount": {
+      "amount": 100,
+      "currency": "USD"
+    },
+    "expires_at": "2026-07-31T00:00:00Z"
+  }
+}

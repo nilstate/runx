@@ -1,0 +1,130 @@
+{
+  "_note": "Local verification results for Frantic bounty #109, measured on 2026-07-12. Every field below was produced by a real local command. Fields whose value can only exist after an external action (publish, PR, star) are left as empty strings and MUST NOT be filled in by hand without running the command that produces them.",
+  "schema": "runx.purchase_approval.verification.v1",
+  "verified_at": "2026-07-12T16:45:55Z",
+  "bounty": 109,
+  "cli": {
+    "version": "runx-cli 0.7.0",
+    "command": "runx --version",
+    "meets_minimum": true,
+    "minimum_required": "0.6.14"
+  },
+  "package": {
+    "name": "purchase-approval",
+    "kind": "graph",
+    "version": "0.1.0",
+    "skill_id": "",
+    "owner": "",
+    "registry_ref": "",
+    "digest": "",
+    "public_url": "",
+    "source_url": "",
+    "pr_url": "",
+    "x_yaml": "",
+    "skill_md": ""
+  },
+  "checks": [
+    {
+      "name": "runx cli version",
+      "command": "runx --version",
+      "status": "passed",
+      "output": "runx-cli 0.7.0"
+    },
+    {
+      "name": "skill inspect",
+      "command": "runx skill inspect .",
+      "status": "passed",
+      "runners": ["review"],
+      "note": "Single graph runner 'review'; default."
+    },
+    {
+      "name": "local harness",
+      "command": "runx harness . --json",
+      "status": "passed",
+      "case_count": 2,
+      "assertion_error_count": 0,
+      "case_names": [
+        "purchase-approval-in-policy-ceiling",
+        "purchase-approval-stop-over-budget-needs-agent"
+      ],
+      "case_results": {
+        "purchase-approval-in-policy-ceiling": "sealed",
+        "purchase-approval-stop-over-budget-needs-agent": "needs_agent (refused, no ceiling)"
+      },
+      "sealed_receipt_id": "sha256:447122c9564366c7ba7e9fdb6db9772b01615d2ac4ab1e1d91d4399f64ea2a64",
+      "note": "This is the harness fixture seal, NOT the dogfood receipt_ref the bounty asks for. Harness receipt ids are per-run and not content-stable; a re-run produces a different id. The reproducible assertions are status=passed, case_count=2, assertion_error_count=0 and the two case names."
+    },
+    {
+      "name": "local dogfood start (in-policy) blocks at the human approval sub-step",
+      "command": "runx skill . review --json --approve-operator-context <digest> --input-json purchase_request=... --input-json procurement_policy=... --input-json current_budget_balance=... --input-json requested_scope=...",
+      "status": "passed",
+      "result_status": "needs_agent",
+      "run_id": "run_review_f48e576897f9",
+      "note": "The agent-task review boundary blocks until an answer is supplied. It never guesses."
+    },
+    {
+      "name": "local dogfood resume (in-policy) seals with exactly one bounded ceiling",
+      "command": "runx resume run_review_f48e576897f9 fixtures/in-policy-answers.json --json",
+      "status": "passed",
+      "result_status": "sealed",
+      "receipt_id": "sha256:d78d0c325e71d3795e2141b10b710e2b05a2889088d0d2c67d516ca84416a9ff",
+      "decision_approved": true,
+      "decision_mode": "approve_in_full",
+      "bounded_ceiling_count": 1,
+      "ceiling_schema": "runx.attenuation_request.v1",
+      "ceiling_form": "data",
+      "ceiling_amount": 75,
+      "ceiling_currency": "USD",
+      "ceiling_counterparty": "Acme Corp",
+      "operational_proposal_emitted": false
+    },
+    {
+      "name": "local receipt verify (in-policy seal)",
+      "command": "runx verify --receipt .runx/receipts/sha256-d78d0c325e71d3795e2141b10b710e2b05a2889088d0d2c67d516ca84416a9ff.json --allow-local-development-signatures --json",
+      "status": "passed",
+      "schema": "runx.verify_verdict.v1",
+      "valid": true,
+      "digest": "valid",
+      "content_address": "valid",
+      "signature_status": "valid",
+      "signature_mode": "local-development",
+      "signature_kid": "runtime-skeleton",
+      "lineage": "unverified",
+      "findings": [],
+      "note": "Local receipts are signed with the local-development key, so --allow-local-development-signatures is required and lineage is unverified. The receipt_ref submitted to the bounty must instead be the post-publish dogfood run, whose signature is a real registry signature."
+    },
+    {
+      "name": "local dogfood start (stop lane) blocks with answers omitted",
+      "command": "runx skill . review --json --approve-operator-context <digest> --input-json ... (fixtures/over-budget-input.json)",
+      "status": "passed",
+      "result_status": "needs_agent",
+      "run_id": "run_review_3f23ca0e0a8b",
+      "note": "caller.answers omitted => the human approval sub-step blocks. No ceiling exists to hand to C3, so the spend cannot fire."
+    },
+    {
+      "name": "local dogfood resume (stop lane) refuses and emits no ceiling",
+      "command": "runx resume run_review_3f23ca0e0a8b fixtures/over-budget-answers.json --json",
+      "status": "passed",
+      "result_status": "sealed",
+      "receipt_id": "sha256:0920684db0f6cb8fcb4fa615868e31ddce6a11705d4f0f571aca8f949c01da92",
+      "decision_approved": false,
+      "decision_mode": "deny",
+      "bounded_ceiling_count": 0,
+      "attenuation_requests_anywhere_in_run": 0,
+      "named_violation": "USD 1500 exceeds current_budget_balance USD 400 by USD 1100 (budget overage); exceeds max_single_purchase USD 500; vendor Shady Parts Co is not in approved_vendors"
+    }
+  ],
+  "external_gates_not_yet_run": {
+    "_note": "These are blank because the corresponding external action has NOT been performed. No value here may be invented.",
+    "github_star_runxhq_runx": "",
+    "publish_command": "runx login --provider github --for publish && runx registry publish ./skills/purchase-approval/SKILL.md --registry https://api.runx.ai",
+    "published_version": "",
+    "registry_read": "",
+    "install_command": "",
+    "clean_install_status": "",
+    "hosted_harness_status": "",
+    "post_publish_dogfood_command": "",
+    "post_publish_receipt_ref": "",
+    "post_publish_verify_verdict": ""
+  }
+}

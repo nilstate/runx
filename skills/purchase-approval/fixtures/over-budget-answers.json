@@ -1,0 +1,45 @@
+{
+  "agent_task.purchase-approval.output": {
+    "purchase_approval_packet": {
+      "schema": "runx.purchase.approval.v1",
+      "decision": {
+        "approved": false,
+        "mode": "deny",
+        "reason": "Refused: USD 1500 exceeds current_budget_balance USD 400 by USD 1100 (budget overage), exceeds procurement_policy.max_single_purchase USD 500 by USD 1000, and vendor Shady Parts Co is not in procurement_policy.approved_vendors [Acme Corp, TechHub] (policy violation). No approved vendor, cap, or threshold is invented to cover the gap."
+      },
+      "ceilings": [],
+      "escalation": {
+        "required": true,
+        "lane": "human_approval",
+        "reason": "Out-of-policy spend and a budget overage require a human approval lane; the run blocks here rather than guessing. No ceiling is emitted, so the downstream C3 spend/refund runner has nothing to consume and the spend cannot fire."
+      },
+      "observations": {
+        "verdict": "refused",
+        "vendor": "Shady Parts Co",
+        "vendor_listed": false,
+        "requested_amount": {
+          "amount": 1500,
+          "currency": "USD"
+        },
+        "ceiling_amount": null,
+        "ceiling_currency": null,
+        "bounded_ceiling_count": 0,
+        "max_single_purchase": 500,
+        "requires_approval_above": 200,
+        "budget_balance_before": {
+          "amount": 400,
+          "currency": "USD"
+        },
+        "budget_overage": {
+          "amount": 1100,
+          "currency": "USD"
+        },
+        "refused_or_stop_reason": "budget overage of USD 1100 against current_budget_balance USD 400, plus unlisted vendor Shady Parts Co",
+        "harness_cases": [
+          "purchase-approval-in-policy-ceiling",
+          "purchase-approval-stop-over-budget-needs-agent"
+        ]
+      }
+    }
+  }
+}

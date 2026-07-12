@@ -1,0 +1,238 @@
+skill: purchase-approval
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: context
+  part_of:
+    - runx/spend
+    - runx/refund
+
+emits:
+  - name: purchase_approval_packet
+    packet: runx.purchase.approval.v1
+
+harness:
+  cases:
+    # Sealed case: in-policy purchase within budget. The reviewer answer supplies
+    # decision.approved true and exactly one bounded runx.attenuation_request.v1
+    # ceiling carried as data, and the review receipt seals.
+    - name: purchase-approval-in-policy-ceiling
+      inputs:
+        purchase_request:
+          amount: 75
+          currency: USD
+          vendor: Acme Corp
+          purpose: office supplies for the design team
+        procurement_policy:
+          approved_vendors:
+            - Acme Corp
+            - TechHub
+          max_single_purchase: 500
+          requires_approval_above: 200
+        current_budget_balance:
+          amount: 1000
+          currency: USD
+        requested_scope:
+          schema: runx.authority_bounds.v1
+          scopes:
+            - spend.reserve
+            - spend.settle
+            - receipt.seal
+          max_amount:
+            amount: 100
+            currency: USD
+          expires_at: "2026-07-31T00:00:00Z"
+      caller:
+        answers:
+          agent_task.purchase-approval.output:
+            purchase_approval_packet:
+              schema: runx.purchase.approval.v1
+              decision:
+                approved: true
+                mode: approve_in_full
+                reason: >-
+                  Acme Corp is listed in procurement_policy.approved_vendors; USD 75 is at or
+                  below max_single_purchase USD 500, at or below requires_approval_above USD 200,
+                  at or below current_budget_balance USD 1000, and at or below the requested
+                  budget-bounded scope max_amount USD 100, so the purchase is approved in full.
+              ceilings:
+                - schema: runx.attenuation_request.v1
+                  form: data
+                  amount:
+                    amount: 75
+                    currency: USD
+                  currency: USD
+                  counterparty: Acme Corp
+                  scopes:
+                    - spend.reserve
+                    - spend.settle
+                    - receipt.seal
+                  purpose: office supplies for the design team
+                  idempotency_key: purchase-approval:acme-corp:office-supplies:usd-75
+                  downstream_runner: registry:runx/spend@0.1.1
+                  clamp:
+                    parent_bound_ref: requested_scope
+                    max_amount:
+                      amount: 100
+                      currency: USD
+                    result: within_parent_bounds
+              escalation:
+                required: false
+                lane: null
+                reason: null
+              observations:
+                verdict: approved
+                vendor: Acme Corp
+                vendor_listed: true
+                requested_amount:
+                  amount: 75
+                  currency: USD
+                ceiling_amount:
+                  amount: 75
+                  currency: USD
+                ceiling_currency: USD
+                bounded_ceiling_count: 1
+                max_single_purchase: 500
+                requires_approval_above: 200
+                budget_balance_before:
+                  amount: 1000
+                  currency: USD
+                refused_or_stop_reason: null
+                harness_cases:
+                  - purchase-approval-in-policy-ceiling
+                  - purchase-approval-stop-over-budget-needs-agent
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    # Stop case: the requested amount exceeds current_budget_balance (USD 1500
+    # against USD 400 remaining, a USD 1100 overage) and the vendor is absent from
+    # procurement_policy.approved_vendors. caller.answers is intentionally omitted,
+    # so the human approval sub-step blocks to needs_agent, no ceiling is emitted,
+    # and the run cannot advance to a spend. fixtures/over-budget-answers.json
+    # carries the refusal that names the overage and the unlisted vendor on resume.
+    - name: purchase-approval-stop-over-budget-needs-agent
+      inputs:
+        purchase_request:
+          amount: 1500
+          currency: USD
+          vendor: Shady Parts Co
+          purpose: unplanned server hardware
+        procurement_policy:
+          approved_vendors:
+            - Acme Corp
+            - TechHub
+          max_single_purchase: 500
+          requires_approval_above: 200
+        current_budget_balance:
+          amount: 400
+          currency: USD
+        requested_scope:
+          schema: runx.authority_bounds.v1
+          scopes:
+            - spend.reserve
+            - spend.settle
+            - receipt.seal
+          max_amount:
+            amount: 1500
+            currency: USD
+          expires_at: "2026-07-31T00:00:00Z"
+      expect:
+        status: needs_agent
+
+runners:
+  review:
+    default: true
+    type: graph
+    inputs:
+      purchase_request:
+        type: json
+        required: true
+        description: purchase_request{amount,currency,vendor,purpose} for one purchase.
+      procurement_policy:
+        type: json
+        required: true
+        description: >-
+          procurement_policy{approved_vendors,max_single_purchase,requires_approval_above}.
+          The only policy authority; nothing outside it may be assumed.
+      current_budget_balance:
+        type: json
+        required: true
+        description: >-
+          current_budget_balance{amount,currency} remaining under the operator's budget
+          authority. Carries its own currency so a currency mismatch escalates instead of
+          being guessed.
+      requested_scope:
+        type: json
+        required: true
+        description: >-
+          The requested budget-bounded scope{scopes,max_amount,expires_at} an approval may
+          delegate. Any emitted ceiling is clamped inside these bounds.
+    graph:
+      name: purchase-approval
+      steps:
+        - id: review-purchase
+          label: decide approve-in-full, scope-down, or deny and emit the bounded ceiling
+          run:
+            type: agent-task
+            agent: finance
+            task: purchase-approval
+            outputs:
+              purchase_approval_packet: object
+          instructions: >
+            Decide one purchase request against the supplied procurement_policy,
+            current_budget_balance, and requested_scope. Use only those inputs: never
+            invent an approved vendor, a single-purchase cap, or an approval threshold
+            that is absent from procurement_policy, and never assume a budget balance.
+
+            Refuse with decision.approved false, zero ceilings, and escalation.lane
+            human_approval when the vendor is absent from
+            procurement_policy.approved_vendors, when purchase_request.amount exceeds
+            current_budget_balance.amount, when it exceeds
+            procurement_policy.max_single_purchase, when purchase_request.currency does not
+            match current_budget_balance.currency, or when budget authority is unclear.
+            decision.reason must name the exact policy violation or the budget overage
+            amount. Blocking is the correct outcome; never guess.
+
+            Escalate with escalation.required true, escalation.lane human_approval, and zero
+            ceilings when purchase_request.amount exceeds
+            procurement_policy.requires_approval_above but is otherwise in policy. The human
+            lane blocks the run; it does not approve it.
+
+            Approve only when the vendor is listed and the amount is at or below
+            max_single_purchase, requires_approval_above, current_budget_balance.amount, and
+            requested_scope.max_amount. Emit exactly one bounded
+            runx.attenuation_request.v1 ceiling as DATA with amount, currency, counterparty,
+            and scopes, clamped inside requested_scope and never above the requested amount.
+            Set decision.mode approve_in_full when the ceiling equals the requested amount
+            and scope_down when the clamp lowers it.
+
+            This skill is a judgment, not an executor. Never mint authority, never reserve,
+            never settle, never move money, never emit a runx.operational_proposal.v1, and
+            never claim an attenuated subset proof. A downstream driver hands the emitted
+            ceiling to the core spend/refund accepting runner (C3), which alone mints,
+            reserves, settles, and seals the attenuated subset capped at that ceiling. A
+            denial or a blocked approval therefore leaves nothing for C3 to consume and the
+            spend cannot fire.
+          # No tools: the judgment reads only the typed inputs. It has no filesystem,
+          # network, or ledger access, so it cannot discover a vendor, cap, threshold,
+          # or balance that procurement_policy and current_budget_balance do not state.
+          allowed_tools: []
+          scopes:
+            - purchase:approval:review
+          inputs:
+            purchase_request: "$input.purchase_request"
+            procurement_policy: "$input.procurement_policy"
+            current_budget_balance: "$input.current_budget_balance"
+            requested_scope: "$input.requested_scope"
+          artifacts:
+            named_emits:
+              purchase_approval_packet: purchase_approval_packet
+            packets:
+              purchase_approval_packet: runx.purchase.approval.v1

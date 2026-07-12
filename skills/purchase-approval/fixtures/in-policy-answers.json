@@ -1,0 +1,67 @@
+{
+  "agent_task.purchase-approval.output": {
+    "purchase_approval_packet": {
+      "schema": "runx.purchase.approval.v1",
+      "decision": {
+        "approved": true,
+        "mode": "approve_in_full",
+        "reason": "Acme Corp is listed in procurement_policy.approved_vendors; USD 75 is at or below max_single_purchase USD 500, at or below requires_approval_above USD 200, at or below current_budget_balance USD 1000, and at or below the requested budget-bounded scope max_amount USD 100, so the purchase is approved in full."
+      },
+      "ceilings": [
+        {
+          "schema": "runx.attenuation_request.v1",
+          "form": "data",
+          "amount": {
+            "amount": 75,
+            "currency": "USD"
+          },
+          "currency": "USD",
+          "counterparty": "Acme Corp",
+          "scopes": ["spend.reserve", "spend.settle", "receipt.seal"],
+          "purpose": "office supplies for the design team",
+          "idempotency_key": "purchase-approval:acme-corp:office-supplies:usd-75",
+          "downstream_runner": "registry:runx/spend@0.1.1",
+          "clamp": {
+            "parent_bound_ref": "requested_scope",
+            "max_amount": {
+              "amount": 100,
+              "currency": "USD"
+            },
+            "result": "within_parent_bounds"
+          }
+        }
+      ],
+      "escalation": {
+        "required": false,
+        "lane": null,
+        "reason": null
+      },
+      "observations": {
+        "verdict": "approved",
+        "vendor": "Acme Corp",
+        "vendor_listed": true,
+        "requested_amount": {
+          "amount": 75,
+          "currency": "USD"
+        },
+        "ceiling_amount": {
+          "amount": 75,
+          "currency": "USD"
+        },
+        "ceiling_currency": "USD",
+        "bounded_ceiling_count": 1,
+        "max_single_purchase": 500,
+        "requires_approval_above": 200,
+        "budget_balance_before": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "refused_or_stop_reason": null,
+        "harness_cases": [
+          "purchase-approval-in-policy-ceiling",
+          "purchase-approval-stop-over-budget-needs-agent"
+        ]
+      }
+    }
+  }
+}

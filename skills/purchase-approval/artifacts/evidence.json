@@ -1,0 +1,142 @@
+{
+  "_note": "evidence_json for Frantic bounty #109. Observations below were measured locally on 2026-07-12 with runx-cli 0.7.0. Every field that can only exist after publish/PR/star is an empty string and must be filled by running the command that produces it — never by hand.",
+  "schema": "frantic.evidence.v1",
+  "bounty": 109,
+  "package_name": "purchase-approval",
+  "package_kind": "graph",
+  "package_version": "0.1.0",
+  "canonical_public_url": "",
+  "cli": {
+    "version_command": "runx --version",
+    "version": "runx-cli 0.7.0",
+    "meets_minimum": true,
+    "minimum_required": "0.6.14"
+  },
+  "publisher": {
+    "owner": "",
+    "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/purchase-approval/SKILL.md --registry https://api.runx.ai",
+    "registry_ref": "",
+    "install_command": "",
+    "github_star_runxhq_runx": ""
+  },
+  "artifact_refs": {
+    "public_url": "",
+    "source_url": "",
+    "pr_url": "",
+    "x_yaml": "",
+    "skill_md": "",
+    "evidence_json": "",
+    "verification_json": "",
+    "receipt_ref": "",
+    "report": ""
+  },
+  "decision_observations": {
+    "approved": true,
+    "mode": "approve_in_full",
+    "reason": "Acme Corp is listed in procurement_policy.approved_vendors; USD 75 is at or below max_single_purchase USD 500, at or below requires_approval_above USD 200, at or below current_budget_balance USD 1000, and at or below the requested budget-bounded scope max_amount USD 100, so the purchase is approved in full.",
+    "bounded_ceiling": {
+      "schema": "runx.attenuation_request.v1",
+      "form": "data",
+      "amount": { "amount": 75, "currency": "USD" },
+      "currency": "USD",
+      "counterparty": "Acme Corp",
+      "scopes": ["spend.reserve", "spend.settle", "receipt.seal"],
+      "idempotency_key": "purchase-approval:acme-corp:office-supplies:usd-75",
+      "downstream_runner": "registry:runx/spend@0.1.1",
+      "clamp": {
+        "parent_bound_ref": "requested_scope",
+        "max_amount": { "amount": 100, "currency": "USD" },
+        "result": "within_parent_bounds"
+      }
+    },
+    "bounded_ceiling_count": 1,
+    "ceiling_amount": 75,
+    "ceiling_currency": "USD",
+    "operational_proposal_emitted": false,
+    "attenuated_subset_claimed": false,
+    "escalation": { "required": false, "lane": null, "reason": null }
+  },
+  "refusal_observations": {
+    "approved": false,
+    "mode": "deny",
+    "refused_reason": "Refused: USD 1500 exceeds current_budget_balance USD 400 by USD 1100 (budget overage), exceeds procurement_policy.max_single_purchase USD 500 by USD 1000, and vendor Shady Parts Co is not in procurement_policy.approved_vendors [Acme Corp, TechHub] (policy violation). No approved vendor, cap, or threshold is invented to cover the gap.",
+    "cited_policy_violation": "vendor Shady Parts Co absent from procurement_policy.approved_vendors; amount above procurement_policy.max_single_purchase USD 500",
+    "cited_budget_overage": { "amount": 1100, "currency": "USD" },
+    "bounded_ceiling_count": 0,
+    "escalation": {
+      "required": true,
+      "lane": "human_approval",
+      "reason": "Out-of-policy spend and a budget overage require a human approval lane; the run blocks here rather than guessing. No ceiling is emitted, so the downstream C3 spend/refund runner has nothing to consume and the spend cannot fire."
+    }
+  },
+  "harness": {
+    "command": "runx harness . --json",
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "sealed_receipt_id": "sha256:447122c9564366c7ba7e9fdb6db9772b01615d2ac4ab1e1d91d4399f64ea2a64",
+    "sealed_receipt_id_note": "Record of one local harness run on 2026-07-12. Harness receipt ids are per-run, not content-stable: re-running `runx harness .` yields a different id. Do not treat this as a digest to match.",
+    "sealed_receipt_is_fixture_seal_not_dogfood": true,
+    "hosted_harness_status": "",
+    "cases": [
+      {
+        "name": "purchase-approval-in-policy-ceiling",
+        "status": "sealed",
+        "result": "decision.approved true, exactly one bounded runx.attenuation_request.v1 ceiling as data, sealed review receipt"
+      },
+      {
+        "name": "purchase-approval-stop-over-budget-needs-agent",
+        "status": "needs_agent",
+        "result": "caller.answers omitted, so the human approval sub-step blocks to needs_agent; no ceiling emitted; the refusal names the USD 1100 budget overage and the unlisted vendor Shady Parts Co"
+      }
+    ]
+  },
+  "local_dogfood": {
+    "_note": "Local start/resume proof that the graph blocks and seals as designed. This is NOT the receipt_ref the bounty requires; see dogfood below.",
+    "in_policy": {
+      "start_command": "runx skill . review --json --approve-operator-context <digest> --input-json purchase_request=... --input-json procurement_policy=... --input-json current_budget_balance=... --input-json requested_scope=...  # fixtures/in-policy-input.json",
+      "start_status": "needs_agent",
+      "run_id": "run_review_f48e576897f9",
+      "resume_command": "runx resume run_review_f48e576897f9 fixtures/in-policy-answers.json --json",
+      "resume_status": "sealed",
+      "receipt_id": "sha256:d78d0c325e71d3795e2141b10b710e2b05a2889088d0d2c67d516ca84416a9ff",
+      "verify_command": "runx verify --receipt .runx/receipts/sha256-d78d0c325e71d3795e2141b10b710e2b05a2889088d0d2c67d516ca84416a9ff.json --allow-local-development-signatures --json",
+      "verify_valid": true,
+      "verify_signature_mode": "local-development",
+      "verify_lineage": "unverified"
+    },
+    "stop_lane": {
+      "start_command": "runx skill . review --json --approve-operator-context <digest> --input-json ...  # fixtures/over-budget-input.json, answers omitted",
+      "start_status": "needs_agent",
+      "run_id": "run_review_3f23ca0e0a8b",
+      "resume_command": "runx resume run_review_3f23ca0e0a8b fixtures/over-budget-answers.json --json",
+      "resume_status": "sealed",
+      "receipt_id": "sha256:0920684db0f6cb8fcb4fa615868e31ddce6a11705d4f0f571aca8f949c01da92",
+      "bounded_ceiling_count": 0,
+      "attenuation_requests_anywhere_in_run": 0
+    }
+  },
+  "dogfood": {
+    "_note": "REQUIRED by acceptance: this must be the post-publish run of <owner>/purchase-approval@<version>, not the harness fixture seal and not the local run above. Blank until publish happens.",
+    "package": "",
+    "input": "",
+    "command": "",
+    "receipt_ref": "",
+    "verify_verdict": "",
+    "harness_cases": [
+      { "name": "purchase-approval-in-policy-ceiling", "status": "sealed" },
+      { "name": "purchase-approval-stop-over-budget-needs-agent", "status": "refused" }
+    ]
+  },
+  "handoff_seam": {
+    "description": "The bounded ceiling is the seam. A downstream driver hands the emitted runx.attenuation_request.v1 to the core spend/refund accepting runner (C3), which alone mints, reserves, settles, and seals the attenuated subset capped at that ceiling. This skill emits the ceiling itself, never an attenuated subset, and never mints, reserves, settles, or moves money.",
+    "denial_consequence": "A denial or a blocked approval emits no ceiling, so C3 has nothing to consume and the spend cannot fire.",
+    "human_lane": "Out-of-policy spend, a currency mismatch, or unclear budget authority routes to a human approval lane that blocks rather than guesses."
+  },
+  "how_a_new_user_installs_runs_and_verifies": {
+    "install": "",
+    "run": "",
+    "verify": "",
+    "_note": "Fill from the real post-publish commands; the shapes are in DELIVERY.md."
+  }
+}
