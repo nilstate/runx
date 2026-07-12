@@ -13,9 +13,13 @@ records the decision with compare-and-set persistence. The skill emits data for
 an operator or another governed lane to execute; it never sends a message or
 moves money itself.
 
-The published graph composes `registry:runx/data-store@0.1.2`. In this source
-repository the graph uses the canonical sibling `../data-store`, which is the
-same package tested and published by runx.
+The bounty contract names `registry:runx/data-store@0.1.2`. That historical
+registry alias now returns 404. The executable graph therefore pins the current
+signed first-party replacement,
+`registry:runx/data-store@sha-567d29ed2d9a`, whose materialized profile exposes
+the required `read_projection` and `append_event` runners. Runx resolves it only
+from the local registry; install or sync that package before execution because
+graph runs never fetch remote dependency content implicitly.
 
 ## Use it when
 

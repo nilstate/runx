@@ -7,9 +7,9 @@ catalog:
   visibility: public
   role: canonical
 
-# Published dependency: registry:runx/data-store@0.1.2.
-# The repository-relative path below keeps upstream harnesses reproducible while
-# the public package resolves the same canonical data-store skill.
+# The bounty names registry:runx/data-store@0.1.2. That historical alias now
+# returns 404, so execution pins the registry's signed immutable replacement,
+# sha-567d29ed2d9a (profile exposes read_projection and append_event).
 harness:
   cases:
     - name: sealed-billing-error-credit-recovery
@@ -244,7 +244,7 @@ runners:
       name: csat-detractor-recovery
       steps:
         - id: read-state
-          skill: ../data-store
+          skill: registry:runx/data-store@sha-567d29ed2d9a
           runner: read_projection
           inputs:
             data_source_ref: "$input.data_source_ref"
@@ -267,7 +267,7 @@ runners:
             wrap_as: recovery_decision
             packet: runx.csat.recovery_decision.v1
         - id: append-state
-          skill: ../data-store
+          skill: registry:runx/data-store@sha-567d29ed2d9a
           runner: append_event
           inputs:
             data_source_ref: "$input.data_source_ref"
