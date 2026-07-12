@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "bilbop1/overlay-open-skill-1@sha-9a732e299686",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/overlay-open-skill-1-clean-install/bilbop1/overlay-open-skill-1/sha-9a732e299686/SKILL.md",
+      "skill_name": "overlay-open-skill-1",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "bilbop1/overlay-open-skill-1",
+      "version": "sha-9a732e299686",
+      "digest": "sha256:7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1",
+      "profile_digest": "sha256:84e595574bf7248692230e9580f62759b99053374d6643a21c0a1f7ff89fa142",
+      "profile_state_path": "/tmp/overlay-open-skill-1-clean-install/bilbop1/overlay-open-skill-1/sha-9a732e299686/.runx/profile.json",
+      "runner_names": [
+        "default"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/overlay-open-skill-1-clean-install/bilbop1/overlay-open-skill-1/sha-9a732e299686/SKILL.md",
+      "digest": "sha256:7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1",
+      "install_count": 1,
+      "package_digest": "e0609522403002f5f61565a3339b2deef893d71b014c4e83607ff9fca2ee3cd5",
+      "profile_digest": "sha256:84e595574bf7248692230e9580f62759b99053374d6643a21c0a1f7ff89fa142",
+      "publisher": {
+        "display_name": "bilbop1",
+        "handle": "bilbop1",
+        "id": "user_e0a6dce3357e415676ead0ab",
+        "kind": "user"
+      },
+      "ref": "bilbop1/overlay-open-skill-1@sha-9a732e299686",
+      "skill_id": "bilbop1/overlay-open-skill-1",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-9a732e299686"
+    }
+  }
+}

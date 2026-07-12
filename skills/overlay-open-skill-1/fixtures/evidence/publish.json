@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "bilbop1/overlay-open-skill-1",
+      "owner": "bilbop1",
+      "name": "overlay-open-skill-1",
+      "version": "sha-9a732e299686",
+      "digest": "7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1",
+      "profile_digest": "84e595574bf7248692230e9580f62759b99053374d6643a21c0a1f7ff89fa142",
+      "trust_tier": "community",
+      "install_command": "runx add bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai",
+      "run_command": "runx skill bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/bilbop1/overlay-open-skill-1"
+    }
+  }
+}

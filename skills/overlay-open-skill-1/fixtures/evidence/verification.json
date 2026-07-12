@@ -1,0 +1,25 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:2351f2559e19c41ffed02dae2bd653d59f87d9c0992cfe595938a1bfa0dc1e15",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:cb5c78e4b58f761bcf97d90b84c64cd1bc5cdd2bde2c0e4b348bf5c22d1f7429",
+    "actual": "sha256:cb5c78e4b58f761bcf97d90b84c64cd1bc5cdd2bde2c0e4b348bf5c22d1f7429"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:2351f2559e19c41ffed02dae2bd653d59f87d9c0992cfe595938a1bfa0dc1e15",
+    "actual": "sha256:2351f2559e19c41ffed02dae2bd653d59f87d9c0992cfe595938a1bfa0dc1e15"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "bilbop1-overlay-open-skill-1-sha-9a732e299686"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
+}

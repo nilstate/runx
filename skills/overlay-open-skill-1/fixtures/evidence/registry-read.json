@@ -1,0 +1,52 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "bilbop1/overlay-open-skill-1@sha-9a732e299686",
+    "skill": {
+      "skill_id": "bilbop1/overlay-open-skill-1",
+      "owner": "bilbop1",
+      "name": "overlay-open-skill-1",
+      "description": "Govern a public verification-before-completion skill under an immutable sha256 pin, read-only repository scope, and an explicit shell execution allowlist.",
+      "category": "code",
+      "version": "sha-9a732e299686",
+      "digest": "7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1",
+      "markdown": "---\nname: overlay-open-skill-1\ndescription: Govern a public verification-before-completion skill under an immutable sha256 pin, read-only repository scope, and an explicit shell execution allowlist.\nrunx:\n  category: governance\n---\n\n# Governed verification overlay\n\nThis package wraps a public `verification-before-completion` skill without\ncopying or editing its instructions. The immutable upstream reference and\nsha256 pin live in `X.yaml`; the caller resolves those bytes and supplies the\nrecomputed digest as `resolved_digest`.\n\n## What this skill does\n\n1. Admits only the immutable wrapped instructions named in `X.yaml`.\n2. Compares a freshly resolved sha256 digest with the reviewed pin.\n3. Bounds the wrapped instructions to read-only repository verification through\n   one explicit tool.\n4. Emits a machine-readable ready decision or a sealed stale-digest refusal.\n\n## When to use this skill\n\n- Before claiming that repository work is complete, fixed, or passing.\n- When an operator wants the wrapped verification discipline without granting\n  repository write or network authority.\n- When the upstream instructions must remain content-addressed and reviewable.\n\n## When not to use this skill\n\n- To modify, commit, push, publish, or otherwise mutate a repository.\n- To download mutable instructions or trust an unpinned branch URL.\n- To execute a changed upstream skill before its new digest is reviewed.\n- To substitute a previous test result for a fresh verification command.\n\n## Governance boundary\n\n- **Pinned instructions:** only the exact bytes identified by\n  `sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c`\n  are admitted.\n- **Scope bound:** `repo.read` permits inspection and verification of the\n  repository already in scope. It does not grant repository mutation.\n- **Allowed tools:** `shell.exec` is the only tool the wrapped instructions may\n  use, and only for the operator-selected verification command.\n- **Explicit exclusions:** no file writes, commits, pushes, publishing,\n  network access, credential access, secret access, or destructive commands.\n\nThe most restrictive authority wins. A graph or host may narrow this envelope,\nbut the overlay never widens it.\n\n## Procedure\n\n1. Resolve the immutable `wraps.path` declared in `X.yaml`.\n2. Compute sha256 over the exact response bytes without transforming them.\n3. Pass the prefixed value as `resolved_digest` and state the verification\n   intent as `objective`.\n4. Continue only when the result is `decision: ready` with no diagnostics.\n5. Run the operator-selected verification command through `shell.exec`, read\n   its complete output and exit code, and make only the claim that evidence\n   supports.\n\n## Run\n\nRecompute the digest of the immutable source referenced by `X.yaml`, then pass\nthat value to the overlay:\n\n```sh\nrunx skill . \\\n  -i objective='Verify the current work before making a completion claim.' \\\n  -i resolved_digest='sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c' \\\n  --json\n```\n\nThe optional `objective` is receipt context only; it grants no additional\nauthority. When `resolved_digest` is omitted, the runner seals a deterministic\n`needs_input` receipt and does not claim that current bytes match the pin.\n\n## Refusal\n\nIf the resolved bytes do not match the pin, the runner emits\n`runx.overlay.digest.stale`, exits nonzero, and lets runx seal a failed receipt.\nChanged instructions are never executed unseen. Invalid sha256 input follows\nthe same refusal path.\n\n## Edge cases and stop conditions\n\n- **Malformed digest:** refuse with `runx.overlay.digest.stale`.\n- **Missing digest:** return `needs_input` with\n  `runx.overlay.digest.required`; do not claim the pin is current.\n- **Well-formed mismatch:** refuse with `runx.overlay.digest.stale`; do not run\n  the wrapped instructions.\n- **Mutable or unavailable source:** stop before execution and resolve the\n  immutable source out of band; the overlay has no network grant.\n- **Requested write, secret, network, commit, push, or publish action:** stop\n  because it is outside both scope and the explicit tool contract.\n- **Verification command fails:** report the failure evidence; never convert it\n  into a completion claim.\n\n## Output schema\n\n```json\n{\n  \"schema\": \"runx.skill_overlay.v1\",\n  \"objective\": \"string\",\n  \"wraps\": {\n    \"path\": \"immutable HTTPS URL\",\n    \"digest\": \"sha256:<64 lowercase hex>\"\n  },\n  \"resolved_digest\": \"sha256:<64 lowercase hex> | null\",\n  \"runner\": {\n    \"type\": \"agent\",\n    \"scopes\": [\"repo.read\"],\n    \"allowed_tools\": [\"shell.exec\"],\n    \"denied_capabilities\": [\"string\"]\n  },\n  \"decision\": \"ready | needs_input | refused\",\n  \"diagnostics\": [\n    { \"id\": \"string\", \"severity\": \"error\", \"message\": \"string\" }\n  ]\n}\n```\n\n## Worked example\n\nAn operator resolves the immutable source and recomputes the exact pinned\ndigest. The overlay returns `decision: ready`, so the host admits one fresh\nread-only test command. If even one upstream byte changes, the digest differs,\nthe overlay returns `decision: refused`, and runx seals the failed attempt\nwithout executing the changed instructions.\n\n## Inputs\n\n- `objective` (optional string): verification intent captured in the receipt;\n  it grants no authority.\n- `resolved_digest` (optional string): freshly recomputed sha256 of the\n  immutable wrapped bytes. Omitting it produces a sealed `needs_input` result,\n  never a matching-digest claim.\n\n## Verification contract\n\nThe inline harness contains two cases:\n\n1. `pinned-digest-seals` proves the exact pinned digest seals successfully.\n2. `digest-stale-refuses` proves changed content is refused with a sealed failed\n   receipt.\n\nStandalone fixture mirrors live under `fixtures/` for direct replay and public\nreview.",
+      "profile_digest": "84e595574bf7248692230e9580f62759b99053374d6643a21c0a1f7ff89fa142",
+      "runner_names": [
+        "default"
+      ],
+      "source_type": "agent",
+      "trust_tier": "community",
+      "required_scopes": [
+        "repo.read"
+      ],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_e0a6dce3357e415676ead0ab",
+        "handle": "bilbop1",
+        "display_name": "bilbop1"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_e0a6dce3357e415676ead0ab",
+          "status": "declared",
+          "summary": "bilbop1",
+          "issued_at": "2026-07-12T08:26:19.778Z",
+          "metadata": {
+            "publisher_display_name": "bilbop1",
+            "publisher_handle": "bilbop1",
+            "publisher_id": "user_e0a6dce3357e415676ead0ab",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai",
+      "run_command": "runx skill bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai"
+    }
+  }
+}

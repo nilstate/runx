@@ -1,0 +1,136 @@
+{
+  "schema": "runx.bounty.evidence.v1",
+  "summary": "A public, installable overlay that pins an actively maintained MIT-licensed verification skill, bounds it to repo.read and shell.exec, refuses digest drift, passes local and hosted harnesses, and produces a cryptographically valid post-publish dogfood receipt.",
+  "package": {
+    "owner": "bilbop1",
+    "name": "overlay-open-skill-1",
+    "version": "sha-9a732e299686",
+    "ref": "bilbop1/overlay-open-skill-1@sha-9a732e299686",
+    "digest": "sha256:7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1",
+    "profile_digest": "sha256:84e595574bf7248692230e9580f62759b99053374d6643a21c0a1f7ff89fa142",
+    "trust_tier": "community",
+    "source_revision": "658ca36a1945631940c61701457e3f0ef293cda4"
+  },
+  "upstream": {
+    "skill": "verification-before-completion",
+    "repo": "obra/superpowers",
+    "path": "skills/verification-before-completion/SKILL.md",
+    "commit": "d884ae04edebef577e82ff7c4e143debd0bbec99",
+    "license": "MIT",
+    "digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+    "actively_maintained": true,
+    "copied_into_overlay": false
+  },
+  "urls": {
+    "public_url": "https://runx.ai/x/bilbop1/overlay-open-skill-1@sha-9a732e299686",
+    "source_url": "https://github.com/bilbop1/runx/tree/658ca36a1945631940c61701457e3f0ef293cda4/skills/overlay-open-skill-1",
+    "pr_url": "https://github.com/runxhq/runx/pull/281",
+    "x_yaml": "https://raw.githubusercontent.com/bilbop1/runx/658ca36a1945631940c61701457e3f0ef293cda4/skills/overlay-open-skill-1/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/bilbop1/runx/658ca36a1945631940c61701457e3f0ef293cda4/skills/overlay-open-skill-1/SKILL.md",
+    "hosted_harness": "https://api.runx.ai/v1/skills/bilbop1/overlay-open-skill-1@sha-9a732e299686/harness"
+  },
+  "artifacts": {
+    "verification_json": "skills/overlay-open-skill-1/fixtures/evidence/verification.json",
+    "dogfood_receipt_json": "skills/overlay-open-skill-1/fixtures/evidence/dogfood-receipt.json",
+    "report": "skills/overlay-open-skill-1/fixtures/evidence/report.md"
+  },
+  "observations": [
+    {
+      "id": "runx_cli_version",
+      "command": "runx --version",
+      "output": "runx-cli 0.6.19",
+      "status": "passed"
+    },
+    {
+      "id": "upstream_digest",
+      "command": "curl -fsSL <immutable-source-url> | shasum -a 256",
+      "output": "ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+      "status": "passed"
+    },
+    {
+      "id": "local_harness",
+      "command": "runx harness ./skills/overlay-open-skill-1 -R /tmp/overlay-open-skill-1-review-final-receipts --json",
+      "output": "2 cases passed; 0 assertion errors",
+      "status": "passed"
+    },
+    {
+      "id": "harness_case_pinned_digest_seals",
+      "output": "sealed",
+      "status": "passed"
+    },
+    {
+      "id": "harness_case_digest_stale_refuses",
+      "output": "refused with runx.overlay.digest.stale and sealed failed receipt",
+      "status": "passed"
+    },
+    {
+      "id": "hosted_harness",
+      "command": "GET https://api.runx.ai/v1/skills/bilbop1/overlay-open-skill-1@sha-9a732e299686/harness",
+      "output": "2 declared; 2 passed; 0 failed",
+      "status": "passed"
+    },
+    {
+      "id": "publish",
+      "command": "runx registry publish ./skills/overlay-open-skill-1/SKILL.md --registry https://api.runx.ai --json",
+      "output": "published bilbop1/overlay-open-skill-1@sha-9a732e299686",
+      "status": "passed"
+    },
+    {
+      "id": "registry_read",
+      "command": "runx registry read bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai --json",
+      "output": "metadata and digests resolved",
+      "status": "passed"
+    },
+    {
+      "id": "clean_install",
+      "command": "runx add bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai --digest 7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1 --to <empty-directory> --json",
+      "output": "installed with matching package and profile digests",
+      "status": "passed"
+    },
+    {
+      "id": "dogfood",
+      "command": "runx skill bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai --digest 7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1 -i objective=<verification-objective> -i resolved_digest=sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c -R <receipt-directory> --json",
+      "output": "sealed ready decision",
+      "status": "passed"
+    },
+    {
+      "id": "verification_json",
+      "command": "runx verify --receipt dogfood-receipt.json --json",
+      "output": "valid=true; production signature valid; digest valid; content address valid",
+      "status": "passed"
+    },
+    {
+      "id": "github_star",
+      "command": "Frantic github.repo_starred_by verifier",
+      "output": "bilbop1 stars runxhq/runx",
+      "status": "passed"
+    }
+  ],
+  "dogfood": {
+    "package": "bilbop1/overlay-open-skill-1@sha-9a732e299686",
+    "input": {
+      "objective": "Summarize the governed verification scope and confirm the pinned upstream digest is current.",
+      "resolved_digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c"
+    },
+    "command": "runx skill bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai --digest 7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1 -i objective='Summarize the governed verification scope and confirm the pinned upstream digest is current.' -i resolved_digest=sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c -R /tmp/overlay-open-skill-1-dogfood-receipts --json",
+    "receipt_ref": "runx:receipt:sha256:2351f2559e19c41ffed02dae2bd653d59f87d9c0992cfe595938a1bfa0dc1e15",
+    "verify_verdict": "valid",
+    "harness_cases": [
+      {
+        "name": "pinned-digest-seals",
+        "status": "sealed"
+      },
+      {
+        "name": "digest-stale-refuses",
+        "status": "refused"
+      }
+    ]
+  },
+  "adoption": {
+    "install_command": "runx add bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai",
+    "run_command": "runx skill bilbop1/overlay-open-skill-1@sha-9a732e299686 --registry https://api.runx.ai -i resolved_digest=sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c --json",
+    "verify_command": "runx verify --receipt dogfood-receipt.json --json",
+    "private_context_required": false
+  },
+  "checked_at": "2026-07-12T08:28:06Z"
+}

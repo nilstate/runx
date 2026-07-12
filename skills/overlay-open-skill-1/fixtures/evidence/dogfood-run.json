@@ -1,0 +1,248 @@
+{
+  "closure": {
+    "closed_at": "2026-07-12T08:28:06.199Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool default completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "decision": "ready",
+      "diagnostics": [],
+      "objective": "Summarize the governed verification scope and confirm the pinned upstream digest is current.",
+      "resolved_digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+      "runner": {
+        "allowed_tools": [
+          "shell.exec"
+        ],
+        "denied_capabilities": [
+          "filesystem.write",
+          "repo.commit",
+          "repo.push",
+          "network.access",
+          "publish",
+          "secrets.read"
+        ],
+        "scopes": [
+          "repo.read"
+        ],
+        "type": "agent"
+      },
+      "schema": "runx.skill_overlay.v1",
+      "wraps": {
+        "digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+        "path": "https://raw.githubusercontent.com/obra/superpowers/d884ae04edebef577e82ff7c4e143debd0bbec99/skills/verification-before-completion/SKILL.md"
+      }
+    },
+    "stderr": "",
+    "stdout": "{\"schema\":\"runx.skill_overlay.v1\",\"objective\":\"Summarize the governed verification scope and confirm the pinned upstream digest is current.\",\"wraps\":{\"path\":\"https://raw.githubusercontent.com/obra/superpowers/d884ae04edebef577e82ff7c4e143debd0bbec99/skills/verification-before-completion/SKILL.md\",\"digest\":\"sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c\"},\"resolved_digest\":\"sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c\",\"runner\":{\"type\":\"agent\",\"scopes\":[\"repo.read\"],\"allowed_tools\":[\"shell.exec\"],\"denied_capabilities\":[\"filesystem.write\",\"repo.commit\",\"repo.push\",\"network.access\",\"publish\",\"secrets.read\"]},\"decision\":\"ready\",\"diagnostics\":[]}\n",
+    "structured_output": {
+      "decision": "ready",
+      "diagnostics": [],
+      "objective": "Summarize the governed verification scope and confirm the pinned upstream digest is current.",
+      "resolved_digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+      "runner": {
+        "allowed_tools": [
+          "shell.exec"
+        ],
+        "denied_capabilities": [
+          "filesystem.write",
+          "repo.commit",
+          "repo.push",
+          "network.access",
+          "publish",
+          "secrets.read"
+        ],
+        "scopes": [
+          "repo.read"
+        ],
+        "type": "agent"
+      },
+      "schema": "runx.skill_overlay.v1",
+      "wraps": {
+        "digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+        "path": "https://raw.githubusercontent.com/obra/superpowers/d884ae04edebef577e82ff7c4e143debd0bbec99/skills/verification-before-completion/SKILL.md"
+      }
+    }
+  },
+  "payload": {
+    "decision": "ready",
+    "diagnostics": [],
+    "objective": "Summarize the governed verification scope and confirm the pinned upstream digest is current.",
+    "resolved_digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+    "runner": {
+      "allowed_tools": [
+        "shell.exec"
+      ],
+      "denied_capabilities": [
+        "filesystem.write",
+        "repo.commit",
+        "repo.push",
+        "network.access",
+        "publish",
+        "secrets.read"
+      ],
+      "scopes": [
+        "repo.read"
+      ],
+      "type": "agent"
+    },
+    "schema": "runx.skill_overlay.v1",
+    "wraps": {
+      "digest": "sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+      "path": "https://raw.githubusercontent.com/obra/superpowers/d884ae04edebef577e82ff7c4e143debd0bbec99/skills/verification-before-completion/SKILL.md"
+    }
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-07-12T08:28:06.199Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-07-12T08:28:06.199Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:cb5c78e4b58f761bcf97d90b84c64cd1bc5cdd2bde2c0e4b348bf5c22d1f7429",
+    "id": "sha256:2351f2559e19c41ffed02dae2bd653d59f87d9c0992cfe595938a1bfa0dc1e15",
+    "idempotency": {
+      "content_hash": "sha256:run_default_e395cf205e3c-default-content",
+      "intent_key": "sha256:run_default_e395cf205e3c-default-intent",
+      "trigger_fingerprint": "sha256:run_default_e395cf205e3c-default-trigger"
+    },
+    "issuer": {
+      "kid": "bilbop1-overlay-open-skill-1-sha-9a732e299686",
+      "public_key_sha256": "sha256:e820e13b8ec2d279d28de06fb44a13c94ed916df57ff1afb175e252faa77f84a",
+      "type": "ci"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-07-12T08:28:06.199Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-07-12T08:28:06.199Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:-zGb1K8ILvKAjjI7sNTB2n4ifkgoqs0nxQAKNAWlWaD3r-x766UScHaA94Xt3TFEayT0qG2GkJa5_2U5fXD8DA"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_default_e395cf205e3c_default"
+      }
+    }
+  },
+  "receipt_id": "sha256:2351f2559e19c41ffed02dae2bd653d59f87d9c0992cfe595938a1bfa0dc1e15",
+  "registry_provenance": {
+    "digest": "sha256:7f99e790480cd9efe1fff0afbd05c3287cacfd03c6c32d6181d6bf2f997360a1",
+    "profile_digest": "sha256:84e595574bf7248692230e9580f62759b99053374d6643a21c0a1f7ff89fa142",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "bilbop1/overlay-open-skill-1",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-9a732e299686"
+  },
+  "run_id": "run_default_e395cf205e3c",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "overlay-open-skill-1",
+  "status": "sealed"
+}
