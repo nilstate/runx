@@ -1,0 +1,75 @@
+{
+  "schema": "runx.renewal_decision.verification.v1",
+  "verified_at": "2026-07-12T05:12:00Z",
+  "cli": {
+    "version": "runx-cli 0.6.19",
+    "meets_minimum": true,
+    "minimum_required": "0.6.14"
+  },
+  "package": {
+    "skill_id": "dh0h/renewal-decision",
+    "name": "renewal-decision",
+    "version": "sha-23e7a258c30a",
+    "digest": "sha256:82d748c07ba3140c7696d73c8aab7dcf7b7985052db53b6fb73843d5ba238b67",
+    "profile_digest": "sha256:19bea0b549a57228406e92b823e0ddac486a4ddb42cdb609f2a44bffa6914c61",
+    "public_url": "https://runx.ai/x/dh0h/renewal-decision@sha-23e7a258c30a"
+  },
+  "checks": [
+    {
+      "name": "local harness",
+      "command": "runx harness skills/renewal-decision -R /tmp/runx-renewal-local-receipts --json",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": [
+        "renewal-decision-renew-with-bounded-ceiling",
+        "renewal-decision-stop-over-policy-cap"
+      ],
+      "sealed_receipt_id": "sha256:d046a39157e2356743014c99a3d3ec0eab7c6bc72edd2f72a2c37886845916f1"
+    },
+    {
+      "name": "local receipt verify",
+      "command": "runx verify sha256:d046a39157e2356743014c99a3d3ec0eab7c6bc72edd2f72a2c37886845916f1 --receipt-dir /tmp/runx-renewal-local-receipts --allow-local-development-signatures --json",
+      "status": "passed",
+      "valid": true,
+      "receipt_count": 4,
+      "signature_mode": "local-development"
+    },
+    {
+      "name": "hosted registry publish gate",
+      "command": "runx registry publish skills/renewal-decision --registry https://api.runx.ai --profile skills/renewal-decision/X.yaml --json",
+      "status": "published",
+      "hosted_harness_status": "passed"
+    },
+    {
+      "name": "registry read",
+      "command": "runx registry read dh0h/renewal-decision --version sha-23e7a258c30a --registry https://api.runx.ai --json",
+      "status": "passed",
+      "trust_tier": "community",
+      "runner_names": [
+        "decide"
+      ]
+    },
+    {
+      "name": "registry install",
+      "command": "runx add dh0h/renewal-decision@sha-23e7a258c30a --registry https://api.runx.ai --to /tmp/runx-renewal-install-check-v2 --json",
+      "status": "installed"
+    },
+    {
+      "name": "published package dogfood",
+      "command": "runx skill dh0h/renewal-decision@sha-23e7a258c30a --registry https://api.runx.ai ...; runx resume run_decide_c0c09bd6582d answers.json --receipt-dir /tmp/runx-renewal-published-receipts-v3 --json",
+      "status": "sealed",
+      "run_id": "run_decide_c0c09bd6582d",
+      "receipt_id": "sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a",
+      "receipt_ref": "runx:receipt:sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a",
+      "registry_trust_state": "trusted"
+    },
+    {
+      "name": "published receipt verify",
+      "command": "runx verify sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a --receipt-dir /tmp/runx-renewal-published-receipts-v3 --allow-local-development-signatures --json",
+      "status": "passed",
+      "valid": true,
+      "receipt_count": 4,
+      "signature_mode": "local-development"
+    }
+  ]
+}

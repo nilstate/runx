@@ -20,7 +20,8 @@ a separate governed send-as run named by the downstream driver.
 
 ## What This Skill Does
 
-1. Reads the current vendor projection through `registry:runx/data-store@0.1.2`.
+1. Reads the current vendor projection through the
+   `registry:runx/data-store@0.1.2` operation contract.
 2. Matches the renewal offer to `vendor_contract.vendor_id`.
 3. Computes usage alignment from supplied `usage_actuals`; it never invents
    missing units, cost, or spend.
@@ -109,7 +110,11 @@ policy minimum, or the offer exceeds the allowed renewal percentage.
 
 ## Data-Store Handoff
 
-This skill composes `registry:runx/data-store@0.1.2` through the graph:
+This skill carries the `registry:runx/data-store@0.1.2` handoff contract in the
+decision packet and executes the same governed data operation envelope through
+`data.source` graph steps. The package includes the data-store provider adapter
+catalog so the hosted publish harness can run the pinned fixture store without
+external services.
 
 - `read_projection` reads `resource: vendor_renewals` for the vendor aggregate.
 - `append_event` writes a `renewal_decision.recorded` event.
@@ -146,8 +151,8 @@ The harness carries exactly two cases:
 
 - `renewal-decision-renew-with-bounded-ceiling` seals a renew judgment with an
   `AttenuationRequest` ceiling and a CAS append event.
-- `renewal-decision-stop-over-policy-cap` seals a cancel judgment with no
-  ceiling when usage is low and the offer exceeds policy.
+- `renewal-decision-stop-over-policy-cap` stops at `needs_agent` for a low-usage,
+  over-cap offer; no ceiling, mint, vendor notice, or append event is emitted.
 
 The dogfood run should execute the published package after install and verify
 the receipt from that post-publish run, not a local harness fixture receipt.
