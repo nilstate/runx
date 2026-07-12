@@ -1,0 +1,109 @@
+skill: agency-health
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: context
+
+emits:
+  - name: health_bundle
+    packet: runx.agency.health.v1
+
+harness:
+  cases:
+    - name: agency-health-healthy
+      runner: health
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-agency/health-dev
+        case_id: case-healthy-001
+        agency_ref: health-dev
+        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+      caller:
+        answers:
+          agent_task.agency-health.output:
+            health_bundle:
+              verdict: healthy
+              folded:
+                turns_total: 4
+                status_histogram: { advanced: 3, awaiting_approval: 0, resolved: 1, failed: 0, needs_input: 0 }
+      expect:
+        status: sealed
+    - name: agency-health-degraded-stall
+      runner: health
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-agency/health-dev
+        case_id: case-stalled-002
+        agency_ref: health-dev
+        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+      caller:
+        answers:
+          agent_task.agency-health.output:
+            health_bundle:
+              verdict: degraded
+              intervention_findings:
+                - lane: human
+                  signal: stalled_turns
+                  severity: degraded
+      expect:
+        status: sealed
+
+runners:
+  health:
+    default: true
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Registry-pinned logical ref for the agency's data source.
+      case_id:
+        type: string
+        required: true
+        description: The agency case aggregate id.
+      agency_ref:
+        type: string
+        required: true
+        description: Operator/agency handle for the C7 ledger query.
+      period:
+        type: json
+        required: false
+        description: ISO window or turn range to grade.
+      norms:
+        type: json
+        required: false
+        description: Override the declared default norms.
+    graph:
+      name: agency-health
+      steps:
+        - id: read
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: agency_cases
+            aggregate_id: "$input.case_id"
+            limit: 500
+        - id: grade
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - ./tools/agency-health.mjs
+          inputs:
+            case_id: "$input.case_id"
+            agency_ref: "$input.agency_ref"
+            period: "$input.period"
+            norms: "$input.norms"
+          context:
+            projection: read.data_operation_result.data
+          artifacts:
+            named_emits:
+              health_bundle: agent_task.agency-health.output.health_bundle
+            packets:
+              health_bundle: runx.agency.health.v1

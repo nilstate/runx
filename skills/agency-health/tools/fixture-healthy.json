@@ -1,0 +1,16 @@
+{
+  "case_id": "case-healthy-001",
+  "agency_ref": "health-dev",
+  "data_source_ref": "local://runx-agency/health-dev",
+  "period": { "from": "2026-07-01T00:00:00Z", "to": "2026-07-08T00:00:00Z" },
+  "store_id": "health-dev",
+  "projection": {
+    "events": [
+      { "version": 1, "turn_id": "t1", "status": "advanced", "acts": 2, "spend": 10 },
+      { "version": 2, "turn_id": "t2", "status": "advanced", "acts": 1, "spend": 5 },
+      { "version": 3, "turn_id": "t3", "status": "advanced", "acts": 3, "spend": 12 },
+      { "version": 4, "turn_id": "t4", "status": "resolved", "acts": 0, "spend": 0 }
+    ]
+  },
+  "ledger_query": { "seal_rate": 0.95, "refusal_rate": 0.05, "receipt_stubs": ["r/aa01", "r/aa02"] }
+}
