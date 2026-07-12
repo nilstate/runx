@@ -1,0 +1,20 @@
+{
+  "streams": {
+    "case-healthy-001": {
+      "events": [
+        { "version": 1, "turn_id": "t1", "status": "advanced", "acts": 2, "spend": 10 },
+        { "version": 2, "turn_id": "t2", "status": "advanced", "acts": 1, "spend": 5 },
+        { "version": 3, "turn_id": "t3", "status": "advanced", "acts": 3, "spend": 12 },
+        { "version": 4, "turn_id": "t4", "status": "resolved", "acts": 0, "spend": 0 }
+      ]
+    },
+    "case-stalled-002": {
+      "events": [
+        { "version": 1, "turn_id": "s1", "status": "advanced", "acts": 1, "spend": 4 },
+        { "version": 2, "turn_id": "s2", "status": "awaiting_approval", "acts": 0, "spend": 0, "stalled_turns": 7 },
+        { "version": 3, "turn_id": "s3", "status": "advanced", "acts": 2, "spend": 8, "stalled_turns": 7 },
+        { "version": 4, "turn_id": "s4", "status": "needs_input", "acts": 0, "spend": 0, "stalled_turns": 7 }
+      ]
+    }
+  }
+}

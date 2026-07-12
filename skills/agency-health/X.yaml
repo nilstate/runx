@@ -21,6 +21,7 @@ harness:
         data_source_ref: local://runx-agency/health-dev
         case_id: case-healthy-001
         agency_ref: health-dev
+        store_id: health-dev
         period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
       caller:
         answers:
@@ -40,6 +41,7 @@ harness:
         data_source_ref: local://runx-agency/health-dev
         case_id: case-stalled-002
         agency_ref: health-dev
+        store_id: health-dev
         period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
       caller:
         answers:
@@ -82,26 +84,34 @@ runners:
       name: agency-health
       steps:
         - id: read
-          skill: ../data-store
-          runner: read_projection
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - /root/workspace/runx/skills/agency-health/tools/load_case.mjs
           inputs:
             data_source_ref: "$input.data_source_ref"
-            resource: agency_cases
-            aggregate_id: "$input.case_id"
+            case_id: "$input.case_id"
+            store_id: "$input.store_id"
             limit: 500
+          artifacts:
+            named_emits:
+              case_events: events
+            packets:
+              case_events: runx.data.events.v1
         - id: grade
           run:
             type: cli-tool
             command: node
             args:
-              - ./tools/agency-health.mjs
+              - /root/workspace/runx/skills/agency-health/tools/agency-health.mjs
           inputs:
             case_id: "$input.case_id"
             agency_ref: "$input.agency_ref"
             period: "$input.period"
             norms: "$input.norms"
           context:
-            projection: read.data_operation_result.data
+            projection: read.case_events.data
           artifacts:
             named_emits:
               health_bundle: agent_task.agency-health.output.health_bundle
