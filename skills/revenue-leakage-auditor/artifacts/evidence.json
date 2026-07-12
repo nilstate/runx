@@ -45,6 +45,76 @@
     ]
   },
   "dogfood": {
+    "package": "dh0h/revenue-leakage-auditor@sha-8534d7161607",
+    "input": {
+      "data_source_ref": "tenant://revenue-leakage/account-ledger",
+      "store_id": "revenue-leakage-dogfood-v1",
+      "usage_records": {
+        "account_id": "account:atlas-team",
+        "usage_amount": 15000,
+        "currency": "USD",
+        "period": "2026-06",
+        "evidence_ref": "usage:account:atlas-team:2026-06"
+      },
+      "billing_history": {
+        "account_id": "account:atlas-team",
+        "billed_amount": 10000,
+        "currency": "USD",
+        "period": "2026-06",
+        "evidence_ref": "billing:account:atlas-team:2026-06"
+      },
+      "discount_policy": {
+        "excluded_accounts": [
+          "account:internal-sandbox"
+        ],
+        "known_discounts": [
+          {
+            "account_id": "account:legacy-partner",
+            "period": "2026-06",
+            "amount": {
+              "amount": 5000,
+              "currency": "USD"
+            },
+            "reason": "contracted launch discount"
+          }
+        ]
+      },
+      "charge_threshold_pct": 10,
+      "parent_adjustment_bounds": {
+        "schema": "runx.authority_bounds.v1",
+        "amount": {
+          "max_per_account": 6000,
+          "currency": "USD"
+        },
+        "scopes": [
+          "spend.reserve",
+          "spend.settle",
+          "receipt.seal"
+        ],
+        "expires_at": "2026-07-31T00:00:00Z"
+      }
+    },
+    "command": "runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 --registry https://api.runx.ai skills/revenue-leakage-auditor/fixtures/leakage-input.json --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json; runx resume run_audit_c7fadde7d95f skills/revenue-leakage-auditor/fixtures/leakage-answers.json --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json",
+    "receipt_ref": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+    "verify_verdict": {
+      "status": "passed",
+      "valid": true,
+      "receipt_count": 4,
+      "signature_mode": "local-development",
+      "findings": []
+    },
+    "harness_cases": [
+      {
+        "name": "revenue-leakage-auditor-underbilling-ceiling",
+        "status": "sealed",
+        "result": "passed"
+      },
+      {
+        "name": "revenue-leakage-auditor-stop-needs-agent",
+        "status": "needs_agent",
+        "result": "passed"
+      }
+    ],
     "status": "sealed",
     "run_id": "run_audit_c7fadde7d95f",
     "receipt_id": "sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
@@ -171,6 +241,11 @@
       "name": "stop_path_safety",
       "value": "needs_agent stop case",
       "evidence": "The second inline harness case omits caller answers and expects needs_agent, so no ceiling, mint, settlement, or append event is emitted."
+    },
+    {
+      "name": "refused_or_stop_reason",
+      "value": "stop case blocks to needs_agent and policy refusals emit no ceiling",
+      "evidence": "The stop harness case intentionally omits caller answers, producing needs_agent with no ceiling or append event; excluded accounts are refused before ceiling consideration and gaps covered by known discounts are treated as no_change."
     },
     {
       "name": "authority_boundary",
