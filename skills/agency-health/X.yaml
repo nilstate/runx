@@ -49,6 +49,13 @@ harness:
           disposition: closed
           reason_code: process_closed
 
+    - name: missing-agency-ref-stop
+      runner: default
+      inputs:
+        data_source_ref: fixture://agency
+      expect:
+        status: failure
+
 runners:
   default:
     default: true

@@ -1,15 +1,17 @@
 {
   "status": "passed",
-  "case_count": 2,
+  "case_count": 3,
   "assertion_error_count": 0,
   "assertion_errors": [],
   "case_names": [
     "concerning-agency-sealed",
-    "no-case-events-stop"
+    "no-case-events-stop",
+    "missing-agency-ref-stop"
   ],
   "receipt_ids": [
-    "sha256:10a060718c80b81883a9da3a469e70f7c524e53765f8715f93c98ca301e5b417",
-    "sha256:ba8bee74fbb7aa733165e4e99b4f72753c8c88b61632ad335afe967e549c6fd4"
+    "sha256:384cd0df92acea70916f6da2c7cdaae11eec2553f4624de7f6ab2f00929ed4a0",
+    "sha256:e9a95ebb5cd985e394cf69f0a8f6439b0103ae5961122c3a1725686e25c9ac23",
+    "sha256:19a0f880af0a9f4377f0e6f9d9edeeeb15c5aa83071865d28aac750861fb3398"
   ],
   "graph_case_count": 0
 }

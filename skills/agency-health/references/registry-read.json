@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "zdfgu113/agency-health@0.1.0",
+    "skill": {
+      "skill_id": "zdfgu113/agency-health",
+      "owner": "zdfgu113",
+      "name": "agency-health",
+      "description": "Fold one governed agency case stream into a read-only health verdict with grounded intervention findings.",
+      "category": "ops",
+      "version": "0.1.0",
+      "digest": "09fe302df90eac52cde2714e227cec733d1c7707b591dac6efc6546ea41ea476",
+      "markdown": "---\nname: agency-health\ndescription: Fold one governed agency case stream into a read-only health verdict with grounded intervention findings.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\n  timeout_seconds: 10\n  sandbox:\n    profile: readonly\n    cwd_policy: skill-directory\ninputs:\n  data_source_ref:\n    type: string\n    required: true\n    description: Logical data-store source for the agency projection.\n  store_id:\n    type: string\n    required: false\n    description: Optional fixture or hosted data-store id.\n  agency_ref:\n    type: string\n    required: true\n    description: Domain-keyed agency reference.\n  period:\n    type: string\n    required: false\n    description: Window to grade, such as 7d.\n  case_id:\n    type: string\n    required: false\n    description: Optional agency case id.\n  health_baseline:\n    type: json\n    required: false\n    description: Optional thresholds for stuck turns, cap pressure, and refusal spike rate.\nrunx:\n  category: ops\n  input_resolution:\n    required:\n      - data_source_ref\n      - agency_ref\n---\n\n# Agency Health\n\n`agency-health` reads one standing agency case and returns a sealed, read-only\nhealth bundle. It is for operators who need to know whether a governed agency is\nmoving, stuck, approaching its charter caps, or producing refusal spikes.\n\n## What This Skill Does\n\n1. Names the domain-keyed state read: `data-store.read_projection` over the\n   agency case stream.\n2. Names the cross-run aggregate read: ledger evidence by receipt id-stub only.\n3. Folds the case projection in version order and grades only grounded signals.\n4. Emits `health_verdict` and typed `intervention_findings`.\n5. Routes findings by name to a downstream lane such as `policy-author`,\n   `improve-skill`, or `human-ops`.\n\n## Boundaries\n\n- Read-only. It appends nothing, sends nothing, executes no rail, moves no\n  money, and grants no access.\n- Dispatch by naming only. An intervention finding is consumed only when a\n  separate driver or operator issues a governed run.\n- No ceilings or effect bounds are emitted because this skill owns no effect.\n- Human ops is the escalation lane for critical findings and any remedy that\n  would widen a cap or authority.\n\n## Refusals\n\nThe skill stops with `needs_more_evidence` when no readable case events exist.\nIt refuses to grade a signal that is not grounded in the folded case projection\nor in a ledger id-stub aggregate. It does not invent a cap, threshold, or turn\nstate absent from the charter snapshot, baseline, or sealed event order.\n\n## Output\n\n```yaml\ndecision: ready | needs_more_evidence | needs_human\nhealth_verdict:\n  status: healthy | watch | degraded | critical | unknown\n  findings:\n    - metric: seal_rate | stuck_case_count | cap_usage_pct | escalation_backlog\n      value: string\n      norm: string\n      assessment: good | warning | critical | info\n      grounding:\n        case_id: string\n        turns: [number]\n        ledger_id_stubs: [string]\nintervention_findings:\n  - target_lane: policy-author | improve-skill | human-ops\n    reason: string\n    grounding_case_id: string\n    grounding_turns: [number]\n    ledger_id_stubs: [string]\n    effect_bound: null\n    ceiling: null\nread_plan:\n  domain_state_read: data-store.read_projection\n  ledger_aggregate_read: ledger.read by receipt id-stub\n```\n\n## Fixture Mode\n\nFor public harnesses and adoption smoke tests, `data_source_ref=fixture://agency`\nuses deterministic case streams shipped with the package. Hosted operators bind\nthe same typed inputs to their registry-pinned data-store projection and ledger\nread runner.",
+      "profile_digest": "2254aceaaad882fc296790c72f64352b7a9fb6980bc89aa67295c55da233b7cb",
+      "runner_names": [
+        "default"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_029f74b8258386ff624c5320",
+        "handle": "zdfgu113",
+        "display_name": "zdfgu113"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_029f74b8258386ff624c5320",
+          "status": "declared",
+          "summary": "zdfgu113",
+          "issued_at": "2026-07-12T07:43:30.926Z",
+          "metadata": {
+            "publisher_display_name": "zdfgu113",
+            "publisher_handle": "zdfgu113",
+            "publisher_id": "user_029f74b8258386ff624c5320",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add zdfgu113/agency-health@0.1.0 --registry https://api.runx.ai",
+      "run_command": "runx skill zdfgu113/agency-health@0.1.0 --registry https://api.runx.ai"
+    }
+  }
+}

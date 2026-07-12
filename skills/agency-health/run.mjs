@@ -1,4 +1,8 @@
 const inputs = readInputs();
+if (!inputs.data_source_ref || !inputs.agency_ref) {
+  process.stderr.write("missing required data_source_ref or agency_ref\n");
+  process.exit(1);
+}
 const baseline = normalizeBaseline(inputs.health_baseline);
 const projection = loadProjection(inputs);
 const ledger = loadLedger(inputs);

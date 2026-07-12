@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "zdfgu113/agency-health@0.1.0",
+    "install": {
+      "status": "installed",
+      "destination": "/home/zjs/installed/zdfgu113/agency-health/0.1.0/SKILL.md",
+      "skill_name": "agency-health",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "zdfgu113/agency-health",
+      "version": "0.1.0",
+      "digest": "sha256:09fe302df90eac52cde2714e227cec733d1c7707b591dac6efc6546ea41ea476",
+      "profile_digest": "sha256:2254aceaaad882fc296790c72f64352b7a9fb6980bc89aa67295c55da233b7cb",
+      "profile_state_path": "/home/zjs/installed/zdfgu113/agency-health/0.1.0/.runx/profile.json",
+      "runner_names": [
+        "default"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/home/zjs/installed/zdfgu113/agency-health/0.1.0/SKILL.md",
+      "digest": "sha256:09fe302df90eac52cde2714e227cec733d1c7707b591dac6efc6546ea41ea476",
+      "install_count": 1,
+      "package_digest": "3160840038bd913c04568256b59757eecfe172c14132a80d1c7b6e538c605d98",
+      "profile_digest": "sha256:2254aceaaad882fc296790c72f64352b7a9fb6980bc89aa67295c55da233b7cb",
+      "publisher": {
+        "display_name": "zdfgu113",
+        "handle": "zdfgu113",
+        "id": "user_029f74b8258386ff624c5320",
+        "kind": "user"
+      },
+      "ref": "zdfgu113/agency-health@0.1.0",
+      "skill_id": "zdfgu113/agency-health",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "0.1.0"
+    }
+  }
+}

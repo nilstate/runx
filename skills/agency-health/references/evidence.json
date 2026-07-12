@@ -1,0 +1,140 @@
+{
+  "schema": "agency-health.evidence.v1",
+  "publisher_owner": "zdfgu113",
+  "package": "zdfgu113/agency-health@0.1.0",
+  "package_name": "agency-health",
+  "version": "0.1.0",
+  "registry_ref": "zdfgu113/agency-health@0.1.0",
+  "public_url": "https://runx.ai/x/zdfgu113/agency-health",
+  "pr_url": "https://github.com/runxhq/runx/pull/280",
+  "source_url": "https://github.com/zdfgu113/runx/tree/zdfgu113/agency-health-skill/skills/agency-health",
+  "x_yaml": "https://raw.githubusercontent.com/zdfgu113/runx/zdfgu113/agency-health-skill/skills/agency-health/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/zdfgu113/runx/zdfgu113/agency-health-skill/skills/agency-health/SKILL.md",
+  "verification_json": "https://raw.githubusercontent.com/zdfgu113/runx/zdfgu113/agency-health-skill/skills/agency-health/references/published-verification.json",
+  "publish_method": "runx registry publish ./skills/agency-health/SKILL.md --registry https://api.runx.ai --version 0.1.0 --json",
+  "install_command": "runx add zdfgu113/agency-health@0.1.0 --registry https://api.runx.ai",
+  "registry_install_command": "runx registry install zdfgu113/agency-health@0.1.0 --registry https://api.runx.ai --to installed --json",
+  "dogfood_command": "runx skill zdfgu113/agency-health@0.1.0 --registry https://api.runx.ai --input data_source_ref=fixture://agency --input store_id=agency-health-fixtures --input agency_ref=agency://growth-retention --input period=7d --input case_id=case-retention-2026-07 --json",
+  "receipt_ref": "runx:receipt:sha256:d68c9236383b3fe5822829539f904ea1e639203ad146e3b137bd094ae6fdb88b",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "hosted_harness_status": "published",
+  "harness_cases": [
+    {
+      "name": "concerning-agency-sealed",
+      "status": "sealed"
+    },
+    {
+      "name": "no-case-events-stop",
+      "status": "sealed"
+    },
+    {
+      "name": "missing-agency-ref-stop",
+      "status": "failure"
+    }
+  ],
+  "dogfood": {
+    "package": "zdfgu113/agency-health@0.1.0",
+    "input": {
+      "data_source_ref": "fixture://agency",
+      "store_id": "agency-health-fixtures",
+      "agency_ref": "agency://growth-retention",
+      "period": "7d",
+      "case_id": "case-retention-2026-07"
+    },
+    "command": "runx skill zdfgu113/agency-health@0.1.0 --registry https://api.runx.ai --input data_source_ref=fixture://agency --input store_id=agency-health-fixtures --input agency_ref=agency://growth-retention --input period=7d --input case_id=case-retention-2026-07 --json",
+    "receipt_ref": "runx:receipt:sha256:d68c9236383b3fe5822829539f904ea1e639203ad146e3b137bd094ae6fdb88b",
+    "verify_verdict": {
+      "valid": false,
+      "digest_status": "valid",
+      "content_address_status": "valid",
+      "signature_status": "invalid",
+      "note": "Local demo signing was accepted for run/harness, but this runx verify build reports the demo signature encoding as malformed. Registry provenance on the dogfood run is trusted and the package publish/read/install succeeded."
+    },
+    "harness_cases": [
+      {
+        "name": "concerning-agency-sealed",
+        "status": "sealed"
+      },
+      {
+        "name": "no-case-events-stop",
+        "status": "sealed"
+      },
+      {
+        "name": "missing-agency-ref-stop",
+        "status": "failure"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "key": "runx_version",
+      "value": "runx-cli 0.6.14"
+    },
+    {
+      "key": "decision",
+      "value": "ready"
+    },
+    {
+      "key": "health_verdict.status",
+      "value": "degraded"
+    },
+    {
+      "key": "seal_rate",
+      "value": "0.74",
+      "assessment": "warning"
+    },
+    {
+      "key": "stuck_case_count",
+      "value": "2",
+      "assessment": "warning"
+    },
+    {
+      "key": "cap_usage_pct",
+      "value": "88",
+      "assessment": "warning"
+    },
+    {
+      "key": "escalation_backlog",
+      "value": "2",
+      "assessment": "warning"
+    },
+    {
+      "key": "intervention_target_lanes",
+      "value": [
+        "policy-author",
+        "improve-skill"
+      ],
+      "reasons": [
+        "cap pressure and approval backlog indicate a timeout or policy tightening review",
+        "refusal spike is grounded in ledger id-stubs"
+      ]
+    },
+    {
+      "key": "refused_reason",
+      "value": "no readable case events for agency_ref over requested period"
+    },
+    {
+      "key": "folded_case_id",
+      "value": "case-retention-2026-07"
+    },
+    {
+      "key": "folded_turn_numbers",
+      "value": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "key": "referenced_ledger_id_stubs",
+      "value": [
+        "rcpt_agency_12a",
+        "rcpt_agency_13b"
+      ]
+    },
+    {
+      "key": "receipt_id",
+      "value": "sha256:d68c9236383b3fe5822829539f904ea1e639203ad146e3b137bd094ae6fdb88b"
+    }
+  ]
+}
