@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "concerning-agency-sealed",
+    "no-case-events-stop"
+  ],
+  "receipt_ids": [
+    "sha256:10a060718c80b81883a9da3a469e70f7c524e53765f8715f93c98ca301e5b417",
+    "sha256:ba8bee74fbb7aa733165e4e99b4f72753c8c88b61632ad335afe967e549c6fd4"
+  ],
+  "graph_case_count": 0
+}

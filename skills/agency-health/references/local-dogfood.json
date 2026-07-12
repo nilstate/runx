@@ -1,0 +1,585 @@
+{
+  "closure": {
+    "closed_at": "2026-07-12T07:38:00.363Z",
+    "disposition": "closed",
+    "reason_code": "process_closed",
+    "summary": "cli-tool default completed"
+  },
+  "execution": {
+    "exit_code": 0,
+    "skill_claim": {
+      "decision": "ready",
+      "evidence_summary": {
+        "baseline": {
+          "cap_pressure_pct": 80,
+          "refusal_spike_rate": 0.2,
+          "threshold_days_stuck": 2
+        },
+        "case_id": "case-retention-2026-07",
+        "folded_turns": [
+          11,
+          12,
+          13
+        ],
+        "ledger_id_stubs": [
+          "rcpt_agency_12a",
+          "rcpt_agency_13b"
+        ],
+        "period": "7d",
+        "refused_reason": null
+      },
+      "health_verdict": {
+        "findings": [
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                11,
+                12,
+                13
+              ]
+            },
+            "metric": "seal_rate",
+            "norm": "good >=0.9, warning 0.7-0.9, critical <0.7",
+            "value": "0.74"
+          },
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                12,
+                13
+              ]
+            },
+            "metric": "stuck_case_count",
+            "norm": "warning when turns stuck >= 2 days",
+            "value": "2"
+          },
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                11,
+                12,
+                13
+              ]
+            },
+            "metric": "cap_usage_pct",
+            "norm": "warning >= 80, critical >= 95",
+            "value": "88"
+          },
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                11,
+                12,
+                13
+              ]
+            },
+            "metric": "escalation_backlog",
+            "norm": "warning when any approval backlog is open",
+            "value": "2"
+          }
+        ],
+        "status": "degraded"
+      },
+      "intervention_findings": [
+        {
+          "ceiling": null,
+          "effect_bound": null,
+          "grounding_case_id": "case-retention-2026-07",
+          "grounding_turns": [
+            12,
+            13
+          ],
+          "ledger_id_stubs": [
+            "rcpt_agency_12a",
+            "rcpt_agency_13b"
+          ],
+          "reason": "Cap pressure and approval backlog indicate a timeout or policy tightening review, not a cap increase.",
+          "target_lane": "policy-author"
+        },
+        {
+          "ceiling": null,
+          "effect_bound": null,
+          "grounding_case_id": "case-retention-2026-07",
+          "grounding_turns": [
+            12,
+            13
+          ],
+          "ledger_id_stubs": [
+            "rcpt_agency_12a",
+            "rcpt_agency_13b"
+          ],
+          "reason": "Refusal spike is grounded in ledger id-stubs and should be debugged on the member behind repeated stuck turns.",
+          "target_lane": "improve-skill"
+        }
+      ],
+      "read_plan": {
+        "domain_state_inputs": {
+          "aggregate_id": "case-retention-2026-07",
+          "data_source_ref": "fixture://agency",
+          "resource": "agency.case_projection",
+          "store_id": "agency-health-fixtures"
+        },
+        "domain_state_read": "data-store.read_projection",
+        "ledger_aggregate_read": "ledger.read_by_receipt_id_stub",
+        "ledger_scope": {
+          "agency_ref": "agency://growth-retention",
+          "period": "7d"
+        }
+      }
+    },
+    "stderr": "",
+    "stdout": "{\n  \"decision\": \"ready\",\n  \"health_verdict\": {\n    \"status\": \"degraded\",\n    \"findings\": [\n      {\n        \"metric\": \"seal_rate\",\n        \"value\": \"0.74\",\n        \"norm\": \"good >=0.9, warning 0.7-0.9, critical <0.7\",\n        \"assessment\": \"warning\",\n        \"grounding\": {\n          \"case_id\": \"case-retention-2026-07\",\n          \"turns\": [\n            11,\n            12,\n            13\n          ],\n          \"ledger_id_stubs\": [\n            \"rcpt_agency_12a\",\n            \"rcpt_agency_13b\"\n          ]\n        }\n      },\n      {\n        \"metric\": \"stuck_case_count\",\n        \"value\": \"2\",\n        \"norm\": \"warning when turns stuck >= 2 days\",\n        \"assessment\": \"warning\",\n        \"grounding\": {\n          \"case_id\": \"case-retention-2026-07\",\n          \"turns\": [\n            12,\n            13\n          ],\n          \"ledger_id_stubs\": [\n            \"rcpt_agency_12a\",\n            \"rcpt_agency_13b\"\n          ]\n        }\n      },\n      {\n        \"metric\": \"cap_usage_pct\",\n        \"value\": \"88\",\n        \"norm\": \"warning >= 80, critical >= 95\",\n        \"assessment\": \"warning\",\n        \"grounding\": {\n          \"case_id\": \"case-retention-2026-07\",\n          \"turns\": [\n            11,\n            12,\n            13\n          ],\n          \"ledger_id_stubs\": [\n            \"rcpt_agency_12a\",\n            \"rcpt_agency_13b\"\n          ]\n        }\n      },\n      {\n        \"metric\": \"escalation_backlog\",\n        \"value\": \"2\",\n        \"norm\": \"warning when any approval backlog is open\",\n        \"assessment\": \"warning\",\n        \"grounding\": {\n          \"case_id\": \"case-retention-2026-07\",\n          \"turns\": [\n            11,\n            12,\n            13\n          ],\n          \"ledger_id_stubs\": [\n            \"rcpt_agency_12a\",\n            \"rcpt_agency_13b\"\n          ]\n        }\n      }\n    ]\n  },\n  \"intervention_findings\": [\n    {\n      \"target_lane\": \"policy-author\",\n      \"reason\": \"Cap pressure and approval backlog indicate a timeout or policy tightening review, not a cap increase.\",\n      \"grounding_case_id\": \"case-retention-2026-07\",\n      \"grounding_turns\": [\n        12,\n        13\n      ],\n      \"ledger_id_stubs\": [\n        \"rcpt_agency_12a\",\n        \"rcpt_agency_13b\"\n      ],\n      \"effect_bound\": null,\n      \"ceiling\": null\n    },\n    {\n      \"target_lane\": \"improve-skill\",\n      \"reason\": \"Refusal spike is grounded in ledger id-stubs and should be debugged on the member behind repeated stuck turns.\",\n      \"grounding_case_id\": \"case-retention-2026-07\",\n      \"grounding_turns\": [\n        12,\n        13\n      ],\n      \"ledger_id_stubs\": [\n        \"rcpt_agency_12a\",\n        \"rcpt_agency_13b\"\n      ],\n      \"effect_bound\": null,\n      \"ceiling\": null\n    }\n  ],\n  \"read_plan\": {\n    \"domain_state_read\": \"data-store.read_projection\",\n    \"domain_state_inputs\": {\n      \"data_source_ref\": \"fixture://agency\",\n      \"store_id\": \"agency-health-fixtures\",\n      \"resource\": \"agency.case_projection\",\n      \"aggregate_id\": \"case-retention-2026-07\"\n    },\n    \"ledger_aggregate_read\": \"ledger.read_by_receipt_id_stub\",\n    \"ledger_scope\": {\n      \"agency_ref\": \"agency://growth-retention\",\n      \"period\": \"7d\"\n    }\n  },\n  \"evidence_summary\": {\n    \"refused_reason\": null,\n    \"case_id\": \"case-retention-2026-07\",\n    \"period\": \"7d\",\n    \"folded_turns\": [\n      11,\n      12,\n      13\n    ],\n    \"ledger_id_stubs\": [\n      \"rcpt_agency_12a\",\n      \"rcpt_agency_13b\"\n    ],\n    \"baseline\": {\n      \"threshold_days_stuck\": 2,\n      \"cap_pressure_pct\": 80,\n      \"refusal_spike_rate\": 0.2\n    }\n  }\n}\n",
+    "structured_output": {
+      "decision": "ready",
+      "evidence_summary": {
+        "baseline": {
+          "cap_pressure_pct": 80,
+          "refusal_spike_rate": 0.2,
+          "threshold_days_stuck": 2
+        },
+        "case_id": "case-retention-2026-07",
+        "folded_turns": [
+          11,
+          12,
+          13
+        ],
+        "ledger_id_stubs": [
+          "rcpt_agency_12a",
+          "rcpt_agency_13b"
+        ],
+        "period": "7d",
+        "refused_reason": null
+      },
+      "health_verdict": {
+        "findings": [
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                11,
+                12,
+                13
+              ]
+            },
+            "metric": "seal_rate",
+            "norm": "good >=0.9, warning 0.7-0.9, critical <0.7",
+            "value": "0.74"
+          },
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                12,
+                13
+              ]
+            },
+            "metric": "stuck_case_count",
+            "norm": "warning when turns stuck >= 2 days",
+            "value": "2"
+          },
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                11,
+                12,
+                13
+              ]
+            },
+            "metric": "cap_usage_pct",
+            "norm": "warning >= 80, critical >= 95",
+            "value": "88"
+          },
+          {
+            "assessment": "warning",
+            "grounding": {
+              "case_id": "case-retention-2026-07",
+              "ledger_id_stubs": [
+                "rcpt_agency_12a",
+                "rcpt_agency_13b"
+              ],
+              "turns": [
+                11,
+                12,
+                13
+              ]
+            },
+            "metric": "escalation_backlog",
+            "norm": "warning when any approval backlog is open",
+            "value": "2"
+          }
+        ],
+        "status": "degraded"
+      },
+      "intervention_findings": [
+        {
+          "ceiling": null,
+          "effect_bound": null,
+          "grounding_case_id": "case-retention-2026-07",
+          "grounding_turns": [
+            12,
+            13
+          ],
+          "ledger_id_stubs": [
+            "rcpt_agency_12a",
+            "rcpt_agency_13b"
+          ],
+          "reason": "Cap pressure and approval backlog indicate a timeout or policy tightening review, not a cap increase.",
+          "target_lane": "policy-author"
+        },
+        {
+          "ceiling": null,
+          "effect_bound": null,
+          "grounding_case_id": "case-retention-2026-07",
+          "grounding_turns": [
+            12,
+            13
+          ],
+          "ledger_id_stubs": [
+            "rcpt_agency_12a",
+            "rcpt_agency_13b"
+          ],
+          "reason": "Refusal spike is grounded in ledger id-stubs and should be debugged on the member behind repeated stuck turns.",
+          "target_lane": "improve-skill"
+        }
+      ],
+      "read_plan": {
+        "domain_state_inputs": {
+          "aggregate_id": "case-retention-2026-07",
+          "data_source_ref": "fixture://agency",
+          "resource": "agency.case_projection",
+          "store_id": "agency-health-fixtures"
+        },
+        "domain_state_read": "data-store.read_projection",
+        "ledger_aggregate_read": "ledger.read_by_receipt_id_stub",
+        "ledger_scope": {
+          "agency_ref": "agency://growth-retention",
+          "period": "7d"
+        }
+      }
+    }
+  },
+  "payload": {
+    "decision": "ready",
+    "evidence_summary": {
+      "baseline": {
+        "cap_pressure_pct": 80,
+        "refusal_spike_rate": 0.2,
+        "threshold_days_stuck": 2
+      },
+      "case_id": "case-retention-2026-07",
+      "folded_turns": [
+        11,
+        12,
+        13
+      ],
+      "ledger_id_stubs": [
+        "rcpt_agency_12a",
+        "rcpt_agency_13b"
+      ],
+      "period": "7d",
+      "refused_reason": null
+    },
+    "health_verdict": {
+      "findings": [
+        {
+          "assessment": "warning",
+          "grounding": {
+            "case_id": "case-retention-2026-07",
+            "ledger_id_stubs": [
+              "rcpt_agency_12a",
+              "rcpt_agency_13b"
+            ],
+            "turns": [
+              11,
+              12,
+              13
+            ]
+          },
+          "metric": "seal_rate",
+          "norm": "good >=0.9, warning 0.7-0.9, critical <0.7",
+          "value": "0.74"
+        },
+        {
+          "assessment": "warning",
+          "grounding": {
+            "case_id": "case-retention-2026-07",
+            "ledger_id_stubs": [
+              "rcpt_agency_12a",
+              "rcpt_agency_13b"
+            ],
+            "turns": [
+              12,
+              13
+            ]
+          },
+          "metric": "stuck_case_count",
+          "norm": "warning when turns stuck >= 2 days",
+          "value": "2"
+        },
+        {
+          "assessment": "warning",
+          "grounding": {
+            "case_id": "case-retention-2026-07",
+            "ledger_id_stubs": [
+              "rcpt_agency_12a",
+              "rcpt_agency_13b"
+            ],
+            "turns": [
+              11,
+              12,
+              13
+            ]
+          },
+          "metric": "cap_usage_pct",
+          "norm": "warning >= 80, critical >= 95",
+          "value": "88"
+        },
+        {
+          "assessment": "warning",
+          "grounding": {
+            "case_id": "case-retention-2026-07",
+            "ledger_id_stubs": [
+              "rcpt_agency_12a",
+              "rcpt_agency_13b"
+            ],
+            "turns": [
+              11,
+              12,
+              13
+            ]
+          },
+          "metric": "escalation_backlog",
+          "norm": "warning when any approval backlog is open",
+          "value": "2"
+        }
+      ],
+      "status": "degraded"
+    },
+    "intervention_findings": [
+      {
+        "ceiling": null,
+        "effect_bound": null,
+        "grounding_case_id": "case-retention-2026-07",
+        "grounding_turns": [
+          12,
+          13
+        ],
+        "ledger_id_stubs": [
+          "rcpt_agency_12a",
+          "rcpt_agency_13b"
+        ],
+        "reason": "Cap pressure and approval backlog indicate a timeout or policy tightening review, not a cap increase.",
+        "target_lane": "policy-author"
+      },
+      {
+        "ceiling": null,
+        "effect_bound": null,
+        "grounding_case_id": "case-retention-2026-07",
+        "grounding_turns": [
+          12,
+          13
+        ],
+        "ledger_id_stubs": [
+          "rcpt_agency_12a",
+          "rcpt_agency_13b"
+        ],
+        "reason": "Refusal spike is grounded in ledger id-stubs and should be debugged on the member behind repeated stuck turns.",
+        "target_lane": "improve-skill"
+      }
+    ],
+    "read_plan": {
+      "domain_state_inputs": {
+        "aggregate_id": "case-retention-2026-07",
+        "data_source_ref": "fixture://agency",
+        "resource": "agency.case_projection",
+        "store_id": "agency-health-fixtures"
+      },
+      "domain_state_read": "data-store.read_projection",
+      "ledger_aggregate_read": "ledger.read_by_receipt_id_stub",
+      "ledger_scope": {
+        "agency_ref": "agency://growth-retention",
+        "period": "7d"
+      }
+    }
+  },
+  "receipt": {
+    "acts": [
+      {
+        "artifact_refs": [],
+        "closure": {
+          "closed_at": "2026-07-12T07:38:00.363Z",
+          "disposition": "closed",
+          "reason_code": "process_exit",
+          "summary": "cli-tool exited successfully"
+        },
+        "criterion_bindings": [
+          {
+            "criterion_id": "process_exit",
+            "evidence_refs": [],
+            "status": "verified",
+            "summary": "cli-tool exited successfully",
+            "verification_refs": []
+          }
+        ],
+        "form": "observation",
+        "id": "act_default",
+        "intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Runtime graph execution was admitted by the local harness",
+          "purpose": "Run graph step default",
+          "success_criteria": [
+            {
+              "criterion_id": "process_exit",
+              "required": true,
+              "statement": "cli-tool exits successfully"
+            }
+          ]
+        },
+        "source_refs": [],
+        "summary": "Executed graph step default",
+        "target_refs": []
+      }
+    ],
+    "authority": {
+      "actor_ref": {
+        "type": "principal",
+        "uri": "runx:principal:local_runtime"
+      },
+      "attenuation": {
+        "parent_authority_ref": null,
+        "subset_proof": null
+      },
+      "authority_proof_refs": [],
+      "enforcement": {
+        "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
+        "redaction_refs": [],
+        "setup_refs": [],
+        "teardown_refs": []
+      },
+      "grant_refs": [],
+      "scope_refs": [],
+      "terms": []
+    },
+    "canonicalization": "runx.receipt.c14n.v1",
+    "created_at": "2026-07-12T07:38:00.363Z",
+    "decisions": [
+      {
+        "artifact_refs": [],
+        "choice": "open",
+        "closure": null,
+        "decision_id": "dec_default",
+        "inputs": {
+          "opportunity_refs": [],
+          "selection_ref": null,
+          "signal_refs": [],
+          "target_ref": null
+        },
+        "justification": {
+          "evidence_refs": [],
+          "summary": "runtime graph planner selected this node"
+        },
+        "proposed_intent": {
+          "constraints": [],
+          "derived_from": [],
+          "legitimacy": "Local graph execution requested this node",
+          "purpose": "Open runtime node default",
+          "success_criteria": []
+        },
+        "selected_act_id": "act_default",
+        "selected_harness_ref": null
+      }
+    ],
+    "digest": "sha256:a479330cdfe33a0537971958496e4852b618439f1e1029fd4c31da2c10d4001e",
+    "id": "sha256:bdccb770be4a9c0d97d0e3b3e9cb670cde239a75810bdcc16eea8d82c103712a",
+    "idempotency": {
+      "content_hash": "sha256:run_default_29040a493583-default-content",
+      "intent_key": "sha256:run_default_29040a493583-default-intent",
+      "trigger_fingerprint": "sha256:run_default_29040a493583-default-trigger"
+    },
+    "issuer": {
+      "kid": "runx-demo-key",
+      "public_key_sha256": "sha256:3097e2dee2cb4a34b53840cdb705aed71067c36f68db0e0f559c3f3fa043315f",
+      "type": "hosted"
+    },
+    "lineage": {
+      "children": [],
+      "sync": []
+    },
+    "schema": "runx.receipt.v1",
+    "seal": {
+      "closed_at": "2026-07-12T07:38:00.363Z",
+      "criteria": [
+        {
+          "criterion_id": "process_exit",
+          "evidence_refs": [],
+          "status": "verified",
+          "summary": "cli-tool exited successfully",
+          "verification_refs": []
+        }
+      ],
+      "disposition": "closed",
+      "last_observed_at": "2026-07-12T07:38:00.363Z",
+      "reason_code": "process_closed",
+      "summary": "cli-tool default completed"
+    },
+    "signals": [],
+    "signature": {
+      "alg": "Ed25519",
+      "value": "base64:ehzu4hHJmrbSslRg0G0xUef6_FXddEZwwE9E-m-kQ1tQvzAoOaU2vqU8ZI_CWzbjurUa_Akw5jrApaN3pz8KCg"
+    },
+    "subject": {
+      "commitments": [],
+      "kind": "skill",
+      "ref": {
+        "type": "harness",
+        "uri": "hrn_run_default_29040a493583_default"
+      }
+    }
+  },
+  "receipt_id": "sha256:bdccb770be4a9c0d97d0e3b3e9cb670cde239a75810bdcc16eea8d82c103712a",
+  "run_id": "run_default_29040a493583",
+  "schema": "runx.skill_run.v1",
+  "skill_name": "agency-health",
+  "status": "sealed"
+}

@@ -1,0 +1,12 @@
+{
+  "data_source_ref": "fixture://agency",
+  "store_id": "agency-health-fixtures",
+  "agency_ref": "agency://growth-retention",
+  "period": "7d",
+  "case_id": "case-retention-2026-07",
+  "health_baseline": {
+    "threshold_days_stuck": 2,
+    "cap_pressure_pct": 80,
+    "refusal_spike_rate": 0.2
+  }
+}
