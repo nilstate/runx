@@ -1,0 +1,29 @@
+{
+  "schema": "runx.skill_harness_evidence.v1",
+  "skill": "rollback-judge",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "command": "RUNX_RECEIPT_SIGN_KID=<kid> RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<seed> RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted runx harness ./skills/rollback-judge --json",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "critical-signal-rollback",
+    "signal-contradictory-block"
+  ],
+  "coverage": {
+    "critical-signal-rollback": [
+      "critical deploy signal yields rollback decision packet",
+      "release_publish_approval seeds gate_id release.publish.approval with approved=true",
+      "reason is error_rate_critical",
+      "version_target is copied from supplied prior_version",
+      "receipt act is declared with form review"
+    ],
+    "signal-contradictory-block": [
+      "contradictory/thin signal omits caller.answers",
+      "judgment pauses with needs_agent",
+      "no decision is sealed and no release approval is seeded"
+    ]
+  },
+  "note": "Private signing seed is intentionally omitted; public verification key and post-publish receipt verification are published in the bounty evidence artifacts."
+}
