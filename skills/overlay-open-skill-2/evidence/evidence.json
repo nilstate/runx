@@ -1,0 +1,219 @@
+{
+  "summary": "Evidence packet for the runx overlay-open-skill-2 skill (codeboost-tr/overlay-open-skill-2@sha-8e908cfce069). A governed overlay wraps the public brand-guidelines SKILL.md (anthropics/skills, Apache-2.0) by REFERENCE under a pinned sha256 (sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe), read-only fs.read scope, and an explicit fs.read allowed-tool set; the upstream is never copied or edited. A real post-publish dogfood run produced a sealed runx.receipt.v1 that passes runx verify with a production signature. The pinned-digest-seals case admits the wrapped instructions and seals; the digest-stale-refuses case raises runx.overlay.digest.stale and refuses. The wrapped upstream is distinct from overlay-open-skill-1 (verification-before-completion, obra/superpowers). All source artifacts pin to a single commit.",
+  "dogfood": {
+    "package": "codeboost-tr/overlay-open-skill-2@sha-8e908cfce069",
+    "input": {
+      "resolved_digest": "sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe",
+      "objective": "Apply the wrapped brand-styling guidance under read-only authority."
+    },
+    "command": "runx skill codeboost-tr/overlay-open-skill-2@sha-8e908cfce069 --registry https://api.runx.ai --json -i resolved_digest='sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe' -i objective='Apply the wrapped brand-styling guidance under read-only authority.' -R ./receipts",
+    "receipt_ref": "runx:receipt:sha256:c15d06f89099dc7a1b56add7744097815cc995465c8443883425cdc64444e586",
+    "verify_verdict": "valid",
+    "output": {
+      "decision": "ready",
+      "diagnostics": [],
+      "objective": "Apply the wrapped brand-styling guidance under read-only authority.",
+      "resolved_digest": "sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe",
+      "runner": {
+        "allowed_tools": [
+          "fs.read"
+        ],
+        "denied_capabilities": [
+          "filesystem.write",
+          "network.access",
+          "shell.exec",
+          "repo.commit",
+          "repo.push",
+          "publish",
+          "secrets.read"
+        ],
+        "scopes": [
+          "fs.read"
+        ],
+        "type": "agent"
+      },
+      "schema": "runx.skill_overlay.v1",
+      "wraps": {
+        "digest": "sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe",
+        "path": "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/brand-guidelines/SKILL.md"
+      }
+    },
+    "harness_cases": [
+      {
+        "name": "pinned-digest-seals",
+        "status": "sealed"
+      },
+      {
+        "name": "digest-stale-refuses",
+        "status": "refused"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "type": "runx_version",
+      "value": "runx-cli 0.6.14",
+      "detail": "runx --version used for publish/install/dogfood/verify."
+    },
+    {
+      "type": "publisher_owner",
+      "value": "codeboost-tr",
+      "detail": "Publisher owner (matches the verified claimant)."
+    },
+    {
+      "type": "package_name",
+      "value": "overlay-open-skill-2",
+      "detail": "Exact published package name."
+    },
+    {
+      "type": "version",
+      "value": "sha-8e908cfce069",
+      "detail": "Published package version."
+    },
+    {
+      "type": "registry_ref",
+      "value": "codeboost-tr/overlay-open-skill-2@sha-8e908cfce069",
+      "detail": "Fully qualified registry reference."
+    },
+    {
+      "type": "package_digest",
+      "value": "sha256:b4f1ccace4662a2c17cfbb8c215846b50a66aa6f23c357ac1965ce68db06fce8",
+      "detail": "Published package content digest."
+    },
+    {
+      "type": "public_url",
+      "value": "https://runx.ai/x/codeboost-tr/overlay-open-skill-2@sha-8e908cfce069",
+      "detail": "Live registry listing / canonical adoption page."
+    },
+    {
+      "type": "pr_url",
+      "value": "https://github.com/runxhq/runx/pull/282",
+      "detail": "Public PR against runxhq/runx containing the package."
+    },
+    {
+      "type": "source_url",
+      "value": "https://github.com/codeboost-tr/runx/tree/ef3fd85415948907ff660ecaba695e9eb544e931",
+      "detail": "Public source revision (commit X)."
+    },
+    {
+      "type": "raw_x_yaml",
+      "value": "https://raw.githubusercontent.com/codeboost-tr/runx/ef3fd85415948907ff660ecaba695e9eb544e931/skills/overlay-open-skill-2/X.yaml",
+      "detail": "Raw X.yaml at the source revision."
+    },
+    {
+      "type": "raw_skill_md",
+      "value": "https://raw.githubusercontent.com/codeboost-tr/runx/ef3fd85415948907ff660ecaba695e9eb544e931/skills/overlay-open-skill-2/SKILL.md",
+      "detail": "Raw SKILL.md at the source revision."
+    },
+    {
+      "type": "verification_json",
+      "value": "https://raw.githubusercontent.com/codeboost-tr/runx/ef3fd85415948907ff660ecaba695e9eb544e931/skills/overlay-open-skill-2/evidence/verification.json",
+      "detail": "Raw runx verify verdict."
+    },
+    {
+      "type": "publish_method",
+      "value": "runx login --provider github --for publish, then runx registry publish ./skills/overlay-open-skill-2/SKILL.md --registry https://api.runx.ai",
+      "detail": "Authenticate and publish commands."
+    },
+    {
+      "type": "install_command",
+      "value": "runx add codeboost-tr/overlay-open-skill-2@sha-8e908cfce069 --registry https://api.runx.ai",
+      "detail": "Clean install command (verified: source=remote, signed, status=installed)."
+    },
+    {
+      "type": "harness_cases",
+      "value": "pinned-digest-seals (sealed), digest-stale-refuses (refused)",
+      "detail": "Harness case names with status."
+    },
+    {
+      "type": "hosted_harness_status",
+      "value": "WSL local `runx harness ./skills/overlay-open-skill-2` passed 2/2 with 0 assertion errors (pinned-digest-seals sealed, digest-stale-refuses failed). The published package installs cleanly from the remote registry (runx add: source=remote, signed runx-registry-ed25519-v1, status=installed) and its inline harness.cases are executed by the hosted registry harness at review. Environment: WSL Linux local + remote registry install.",
+      "detail": "Harness status with explicit environment labeling."
+    },
+    {
+      "type": "dogfood_command",
+      "value": "runx skill codeboost-tr/overlay-open-skill-2@sha-8e908cfce069 --registry https://api.runx.ai --json -i resolved_digest='sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe' -i objective='Apply the wrapped brand-styling guidance under read-only authority.' -R ./receipts",
+      "detail": "Exact post-publish dogfood command."
+    },
+    {
+      "type": "receipt_ref",
+      "value": "runx:receipt:sha256:c15d06f89099dc7a1b56add7744097815cc995465c8443883425cdc64444e586",
+      "detail": "Sealed receipt id from the post-publish dogfood run (not a harness fixture seal)."
+    },
+    {
+      "type": "runx_verify_verdict",
+      "value": "valid=True, signature_mode=production, signature_status=valid, digest=valid, content_address=valid",
+      "detail": "runx verify verdict for the dogfood receipt."
+    },
+    {
+      "type": "overlay_wraps_reference",
+      "value": "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/brand-guidelines/SKILL.md",
+      "detail": "The wraps REFERENCE (immutable raw URL); upstream is not copied."
+    },
+    {
+      "type": "overlay_pinned_digest",
+      "value": "sha256:1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe",
+      "detail": "Pinned sha256 of the wrapped SKILL.md bytes; a reviewer recomputes from wraps reference."
+    },
+    {
+      "type": "overlay_scope_bounds",
+      "value": "fs.read",
+      "detail": "Non-empty scope bounds declared on the overlay runner."
+    },
+    {
+      "type": "overlay_allowed_tools",
+      "value": "fs.read",
+      "detail": "Explicit allowed-tool set (no wildcard); the only tool the wrapped skill may touch."
+    },
+    {
+      "type": "overlay_denied_capabilities",
+      "value": "filesystem.write, network.access, shell.exec, repo.commit, repo.push, publish, secrets.read",
+      "detail": "Capabilities the overlay explicitly denies."
+    },
+    {
+      "type": "upstream_skill",
+      "value": "brand-guidelines",
+      "detail": "Wrapped upstream skill name."
+    },
+    {
+      "type": "upstream_repo",
+      "value": "anthropics/skills",
+      "detail": "Upstream public repository."
+    },
+    {
+      "type": "upstream_commit",
+      "value": "9d2f1ae187231d8199c64b5b762e1bdf2244733d",
+      "detail": "Pinned upstream commit."
+    },
+    {
+      "type": "upstream_license",
+      "value": "Apache-2.0",
+      "detail": "Upstream license (permissive, verified in LICENSE.txt)."
+    },
+    {
+      "type": "upstream_maintenance",
+      "value": "anthropics/skills not archived; stars 160431; pushed_at 2026-07-01T18:11:25Z",
+      "detail": "Active-maintenance signal."
+    },
+    {
+      "type": "distinct_from_companion",
+      "value": "overlay-open-skill-1 (bilbop1) wraps verification-before-completion (obra/superpowers); this overlay wraps brand-guidelines (anthropics/skills) \u2014 different upstream, no target collision.",
+      "detail": "Distinctness from the companion overlay bounty."
+    },
+    {
+      "type": "digest_stale_case",
+      "value": "digest-stale-refuses: resolved_digest != pin -> decision refused, diagnostic runx.overlay.digest.stale, receipt sealed failed; changed instructions not admitted.",
+      "detail": "The digest-stale refusal path."
+    },
+    {
+      "type": "registry_provenance",
+      "value": "{\"digest\": \"sha256:b4f1ccace4662a2c17cfbb8c215846b50a66aa6f23c357ac1965ce68db06fce8\", \"profile_digest\": \"sha256:03d12b64d5bf8c4bfb5527fedd3eff208780e0b81dd2de30a6fe2083f0388eb0\", \"registry_key_id\": \"runx-registry-ed25519-v1\", \"registry_source\": \"remote https://api.runx.ai\", \"registry_source_fingerprint\": \"ba1ac16b631195fd\", \"skill_id\": \"codeboost-tr/overlay-open-skill-2\", \"trust_state\": \"trusted\", \"trust_tier\": \"community\", \"version\": \"sha-8e908cfce069\"}",
+      "detail": "registry_provenance block from the dogfood receipt (same published package version)."
+    },
+    {
+      "type": "how_to_use",
+      "value": "Install: runx add codeboost-tr/overlay-open-skill-2@sha-8e908cfce069 --registry https://api.runx.ai. Run: runx skill codeboost-tr/overlay-open-skill-2@sha-8e908cfce069 --registry https://api.runx.ai --json -i resolved_digest='<sha256 of wrapped SKILL.md>' -i objective='...' -R ./receipts. Verify: runx verify --receipt <receipt.json> --json (expects valid=true, signature_mode=production). Supplying the pinned digest seals a ready decision; any other digest refuses with runx.overlay.digest.stale.",
+      "detail": "End-to-end install/run/verify for a new user without private context."
+    }
+  ]
+}
