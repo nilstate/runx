@@ -1,0 +1,141 @@
+skill: seo-gap-miner
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+harness:
+  cases:
+    - name: seo-gap-miner-prioritizes-real-gaps
+      inputs:
+        site_inventory:
+          site: example.com
+          pages:
+            - url: /pricing
+              topic: pricing
+              coverage: strong
+            - url: /services/crm-implementation
+              topic: crm implementation
+              coverage: weak
+            - url: /blog/warehouse-automation
+              topic: warehouse automation
+              coverage: strong
+        demand_fixtures:
+          terms:
+            - term: crm migration checklist
+              demand_signal: Sales calls repeatedly ask for a migration checklist before kickoff.
+              source: sales-call-notes
+            - term: crm implementation vs migration
+              demand_signal: Demo follow-ups ask for implementation-vs-migration comparisons.
+              source: post-demo-followups
+            - term: casino affiliate tactics
+              demand_signal: Third-party keyword export shows traffic potential.
+              source: imported-keyword-sheet
+        content_policy:
+          excluded_topics:
+            - casino affiliate tactics
+          priority_themes:
+            - crm migration
+            - crm implementation
+      caller:
+        answers:
+          agent_task.seo-gap-miner.output:
+            seo_gap_report:
+              decision: ready
+              gap_findings:
+                - term: crm migration checklist
+                  demand_grounding: Sales calls repeatedly ask for a migration checklist before kickoff.
+                  page_verdict:
+                    status: missing
+                    page: none
+                  priority:
+                    level: high
+                    reason: Repeated buyer demand exists and no page answers the checklist intent.
+                  dispatch_target: draft-content
+                - term: crm implementation vs migration
+                  demand_grounding: Demo follow-ups ask for implementation-vs-migration comparisons.
+                  page_verdict:
+                    status: weak
+                    page: /services/crm-implementation
+                  priority:
+                    level: medium
+                    reason: A related page exists, but it does not satisfy comparison intent.
+                  dispatch_target: draft-content
+              policy_exclusions:
+                - term: casino affiliate tactics
+                  reason: Excluded by content_policy.excluded_topics.
+              blockers: []
+              needs_input: []
+              success_checkpoint:
+                milestone: prioritized_gap_packet_ready
+                description: The report identifies only policy-allowed, evidence-backed gaps and routes them to draft-content.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: seo-gap-miner-stops-on-thin-demand
+      inputs:
+        site_inventory:
+          site: example.com
+          pages:
+            - url: /blog/automation-trends
+              topic: automation trends
+              coverage: strong
+        demand_fixtures:
+          terms:
+            - term: automation
+              demand_signal: Someone said SEO might matter here.
+              source: vague-note
+        content_policy:
+          excluded_topics: []
+          priority_themes:
+            - automation
+      caller:
+        answers:
+          agent_task.seo-gap-miner.output:
+            seo_gap_report:
+              decision: needs_more_evidence
+              gap_findings: []
+              policy_exclusions: []
+              blockers: []
+              needs_input:
+                - Demand is too thin to prioritize a credible SEO gap. Provide stronger named signals such as repeated buyer questions, search console patterns, or a governed keyword packet.
+              success_checkpoint:
+                milestone: awaiting_stronger_demand
+                description: The report stops instead of inventing opportunity from a vague signal.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  analyze:
+    default: true
+    type: agent-task
+    agent: researcher
+    task: seo-gap-miner
+    outputs:
+      seo_gap_report: object
+    artifacts:
+      wrap_as: seo_gap_report_packet
+      packet: runx.seo_gap_report.v1
+    inputs:
+      site_inventory:
+        type: json
+        required: true
+        description: "Current site pages with url, topic, and coverage."
+      demand_fixtures:
+        type: json
+        required: true
+        description: "Demand fixtures with terms[] carrying term, demand_signal, and source."
+      content_policy:
+        type: json
+        required: true
+        description: "Content policy with excluded_topics and priority_themes."

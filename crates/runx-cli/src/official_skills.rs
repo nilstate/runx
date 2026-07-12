@@ -281,6 +281,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "ee71759e8099dba9a4925a81b2da69c1d83e73a6fd57b3e21839a6bb637e9ca1",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/seo-gap-miner",
+        version: "sha-6e0f3a805d8f",
+        digest: "b2047fa3f865898d91311e720c4eea6306b2844d0ed84921e7292928ef1028d3",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/settle-invoice",
         version: "sha-dff8399d530f",
         digest: "f016ad099d4777d37e06bd3ca5412293166bee4fa15fba8eba1ffab77f729246",
