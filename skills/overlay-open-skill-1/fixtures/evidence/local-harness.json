@@ -1,0 +1,28 @@
+{
+  "command": "runx harness ./skills/overlay-open-skill-1 -R /tmp/overlay-open-skill-1-harness-receipts --json",
+  "runx_version": "runx-cli 0.6.19",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "pinned-digest-seals",
+    "digest-stale-refuses"
+  ],
+  "case_results": [
+    {
+      "name": "pinned-digest-seals",
+      "expected_status": "sealed",
+      "receipt_id": "sha256:717b20bd513467b45520e33014d5be861939f5628b17a4fcb074d0f003e5a482"
+    },
+    {
+      "name": "digest-stale-refuses",
+      "expected_status": "refused",
+      "runtime_status": "failure",
+      "diagnostic_id": "runx.overlay.digest.stale",
+      "receipt_id": "sha256:46e57a8de23e52b94eaf96edb681bde1cdaab64b8537ebad5a07d4e3830d8309"
+    }
+  ],
+  "graph_case_count": 0,
+  "checked_at": "2026-07-12T08:11:51Z"
+}

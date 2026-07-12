@@ -1,0 +1,64 @@
+skill: overlay-open-skill-1
+version: "0.1.0"
+runx:
+  overlay:
+    wraps:
+      path: https://raw.githubusercontent.com/obra/superpowers/d884ae04edebef577e82ff7c4e143debd0bbec99/skills/verification-before-completion/SKILL.md
+      version: sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c
+    pinned_digest: sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+harness:
+  cases:
+    - name: pinned-digest-seals
+      runner: default
+      inputs:
+        objective: Confirm the immutable wrapped instructions remain current before verification.
+        resolved_digest: sha256:ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: digest-stale-refuses
+      runner: default
+      inputs:
+        objective: Refuse changed wrapped instructions before any verification command runs.
+        resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    mutating: false
+    sandbox:
+      profile: readonly
+      cwd_policy: skill-directory
+    runx:
+      scopes:
+        - repo.read
+      allowed_tools:
+        - shell.exec
+    inputs:
+      objective:
+        type: string
+        required: false
+        description: Verification intent recorded in the sealed receipt without granting authority.
+      resolved_digest:
+        type: string
+        required: false
+        description: Recomputed sha256 digest of the immutable wrapped SKILL.md bytes.
