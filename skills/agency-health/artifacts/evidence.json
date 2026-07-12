@@ -1,0 +1,472 @@
+{
+  "_note": "Measured evidence for Frantic bounty #106 (runx skill: agency health). Every value below is copied from a captured artifact in this directory: registry-publish.json, registry-read.json, registry-install.json, dogfood-receipt.json, dogfood-verify.json, runx-version.txt, plus the clean-install run ledger. The upstream PR is runxhq/runx#288. Raw URLs for files present at the source commit are pinned to 62db2f95c7bb0f8a705bb7a440cca4d058acca74; evidence.json, verification.json and report.md are added by the later evidence commit and are therefore referenced on the PR branch codex/agency-health-106, since a commit cannot contain its own hash. No hosted receipt-notary success is claimed.",
+  "schema": "frantic.evidence.v1",
+  "bounty": 106,
+  "package_name": "agency-health",
+  "package_kind": "skill",
+  "package_source_version": "0.1.0",
+  "package_version": "sha-599c8cab4e9c",
+  "canonical_public_url": "https://runx.ai/x/fablerlabs/agency-health",
+  "cli": {
+    "version_command": "runx --version",
+    "version": "runx-cli 0.7.0",
+    "meets_minimum": true,
+    "minimum_required": "0.6.14",
+    "note": "The same binary (/usr/bin/runx) ran the local harness, publish, registry read, clean install, post-publish dogfood, and verify."
+  },
+  "publisher": {
+    "owner": "fablerlabs",
+    "publisher_handle": "fablerlabs",
+    "publisher_display_name": "Fabler Labs",
+    "publisher_kind": "user",
+    "trust_tier": "community",
+    "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/agency-health/SKILL.md --registry https://api.runx.ai --json",
+    "registry_ref": "fablerlabs/agency-health@sha-599c8cab4e9c",
+    "install_command": "runx add fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai",
+    "run_command": "runx skill fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai",
+    "digest": "sha256:2e3febbc8723a4b60729caeea738f6805aac7fbf5414324da7e823fe6940fa8f",
+    "profile_digest": "sha256:869b9279ed764dff0b187b48c0f3be3310fc0db584a5cd32b800e776501f86ef",
+    "runner_names": [
+      "assess"
+    ],
+    "github_star_runxhq_runx": true,
+    "github_star_evidence": "The publishing account fablerlabs stars runxhq/runx; GET /user/starred/runxhq/runx returned HTTP 204 for this account on 2026-07-12 (recorded in the sibling delivery work/f109/purchase-approval/artifacts/verification.json). Frantic re-checks this live through the github.repo_starred_by verifier; no star artifact is offered as a substitute."
+  },
+  "artifact_refs": {
+    "public_url": "https://runx.ai/x/fablerlabs/agency-health@sha-599c8cab4e9c",
+    "public_url_returned_by_publish": "https://runx.ai/x/fablerlabs/agency-health",
+    "source_url": "https://github.com/fablerlabs/runx/tree/62db2f95c7bb0f8a705bb7a440cca4d058acca74/skills/agency-health",
+    "pr_url": "https://github.com/runxhq/runx/pull/288",
+    "x_yaml": "https://raw.githubusercontent.com/fablerlabs/runx/62db2f95c7bb0f8a705bb7a440cca4d058acca74/skills/agency-health/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/fablerlabs/runx/62db2f95c7bb0f8a705bb7a440cca4d058acca74/skills/agency-health/SKILL.md",
+    "evidence_json": "https://raw.githubusercontent.com/fablerlabs/runx/codex/agency-health-106/skills/agency-health/artifacts/evidence.json",
+    "verification_json": "https://raw.githubusercontent.com/fablerlabs/runx/codex/agency-health-106/skills/agency-health/artifacts/verification.json",
+    "receipt_ref": "runx:receipt:sha256:96815c62d05f7e7237e3428aeeb4441c0da421fdcb3e4017f65b7baa4db0ba50",
+    "receipt_url": "https://raw.githubusercontent.com/fablerlabs/runx/62db2f95c7bb0f8a705bb7a440cca4d058acca74/skills/agency-health/artifacts/dogfood-receipt.json",
+    "report": "https://raw.githubusercontent.com/fablerlabs/runx/codex/agency-health-106/skills/agency-health/artifacts/report.md",
+    "_ref_note": "Files present at source commit 62db2f95c7bb0f8a705bb7a440cca4d058acca74 are pinned to that commit. evidence.json, verification.json and report.md are added by the later evidence commit and are referenced on PR branch codex/agency-health-106 (a commit cannot contain its own hash). The upstream PR is runxhq/runx#288."
+  },
+  "the_two_reads": {
+    "domain_keyed_state_read": {
+      "ref": "registry:runx/data-store@0.1.2",
+      "operation": "read_projection",
+      "resolved_from": "upstream skills/data-store/X.yaml:153",
+      "keyed_on": "agency_ref (narrowed by optional case_id)",
+      "fold": "version order",
+      "role": "the only read that yields case and turn state"
+    },
+    "cross_run_aggregate_read": {
+      "ref": "registry:runx/ledger@0.2.0",
+      "runner": "read",
+      "resolved_from": "upstream skills/ledger/X.yaml:98",
+      "reference_form": "receipt id-stub only",
+      "role": "audit-only cross-run aggregate (seal rate, refusal spikes)"
+    },
+    "why_the_ledger_can_never_be_the_domain_keyed_read": "Upstream skills/ledger/SKILL.md:41 states of the ledger's runners: \"Both runners project to id-stubs only.\" An id-stub is a receipt handle, not a domain-keyed projection of a case, so the ledger is structurally incapable of a domain-keyed state read. It can corroborate that a run happened; it cannot say what turn a case is on. Substituting it for the data-store read_projection would mean inventing the very turn state this skill refuses to invent. This is source proof, not inference."
+  },
+  "decision_observations": {
+    "case": "concerning-agency-sealed",
+    "agency_ref": "agency:acme-support",
+    "period": "30d",
+    "decision": "ready",
+    "health_verdict_status": "degraded",
+    "health_baseline": {
+      "threshold_days_stuck": 3,
+      "cap_pressure_pct": 80,
+      "refusal_spike_rate": 0.15
+    },
+    "graded_findings": [
+      {
+        "metric": "seal_rate",
+        "value": "0.71",
+        "assessment": "warning",
+        "norm": "health_baseline.refusal_spike_rate 0.15: an implied refusal rate at or below 0.15 is healthy, so a seal rate at or above 0.85 is the norm.",
+        "detail": "24 of 34 folded turns sealed; the implied refusal rate 0.29 is above the 0.15 refusal_spike_rate norm.",
+        "grounding": {
+          "folded_from": "domain_keyed_state_read",
+          "case_ids": [
+            "case:acme-support:1042",
+            "case:acme-support:1055",
+            "case:acme-support:1061"
+          ],
+          "ledger_id_stubs": [
+            "runx:receipt:sha256:9f21c7a4"
+          ]
+        }
+      },
+      {
+        "metric": "stuck_case_count",
+        "value": "2",
+        "assessment": "warning",
+        "norm": "health_baseline.threshold_days_stuck 3: a case whose latest folded turn has not advanced for more than 3 days is stuck. The norm is zero stuck cases.",
+        "detail": "case:acme-support:1042 has not advanced past turn 4 in 9 days and case:acme-support:1061 has not advanced past turn 3 in 5 days; both exceed the 3-day threshold.",
+        "grounding": {
+          "folded_from": "domain_keyed_state_read",
+          "case_ids": [
+            "case:acme-support:1042",
+            "case:acme-support:1061"
+          ],
+          "turns": [
+            {
+              "case_id": "case:acme-support:1042",
+              "turn": 4
+            },
+            {
+              "case_id": "case:acme-support:1061",
+              "turn": 3
+            }
+          ]
+        }
+      },
+      {
+        "metric": "cap_usage_pct",
+        "value": "93",
+        "assessment": "critical",
+        "norm": "health_baseline.cap_pressure_pct 80: sustained cap usage above 80 percent of the agency charter's granted cap is cap pressure.",
+        "detail": "Folded spend against the agency charter cap is at 93 percent, above the 80 percent cap_pressure_pct norm. The remedy widens a cap, so it escalates to the human ops lane rather than routing as a routine tighten.",
+        "grounding": {
+          "folded_from": "domain_keyed_state_read",
+          "case_ids": [
+            "case:acme-support:1055"
+          ],
+          "ledger_id_stubs": [
+            "runx:receipt:sha256:2ab30de1"
+          ]
+        }
+      },
+      {
+        "metric": "escalation_backlog",
+        "value": "3",
+        "assessment": "warning",
+        "norm": "An escalation is expected to be picked up within the same period it is raised, so the norm is an empty backlog at period close.",
+        "detail": "3 escalations raised in the folded projection are still unclaimed at period close; the oldest is 9 days old.",
+        "grounding": {
+          "folded_from": "domain_keyed_state_read",
+          "case_ids": [
+            "case:acme-support:1042",
+            "case:acme-support:1061"
+          ],
+          "ledger_id_stubs": [
+            "runx:receipt:sha256:77c9be05"
+          ]
+        }
+      }
+    ],
+    "folded_case_projection": {
+      "read": "registry:runx/data-store@0.1.2 read_projection",
+      "store_id": "agency-ops-store",
+      "key": "agency:acme-support",
+      "folded_in_version_order": true,
+      "cases_folded": [
+        {
+          "case_id": "case:acme-support:1042",
+          "turns": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "latest_version": 4
+        },
+        {
+          "case_id": "case:acme-support:1055",
+          "turns": [
+            1,
+            2
+          ],
+          "latest_version": 2
+        },
+        {
+          "case_id": "case:acme-support:1061",
+          "turns": [
+            1,
+            2,
+            3
+          ],
+          "latest_version": 3
+        }
+      ]
+    },
+    "referenced_ledger_id_stubs": [
+      "runx:receipt:sha256:9f21c7a4",
+      "runx:receipt:sha256:2ab30de1",
+      "runx:receipt:sha256:77c9be05"
+    ],
+    "intervention_findings": [
+      {
+        "target_lane": "improve-skill",
+        "reason": "Stuck turns concentrated behind repeated refusals are a skill-behavior defect, which is the improve-skill lane's subject.",
+        "finding": "Two cases are stuck past the 3-day threshold with no advancing turn, and the implied refusal rate 0.29 is nearly double the 0.15 norm.",
+        "grounding": {
+          "case_id": "case:acme-support:1042",
+          "turn": 4,
+          "ledger_id_stub": "runx:receipt:sha256:9f21c7a4"
+        },
+        "ceiling": null,
+        "effect_bound": null,
+        "consumed_by": "Nothing here. A downstream driver or operator must issue a separate improve-skill run."
+      },
+      {
+        "target_lane": "human_ops",
+        "reason": "A cap-widening remedy widens authority and this finding is graded critical, so it escalates to the human ops lane instead of routing as a routine tighten.",
+        "finding": "Cap usage is at 93 percent of the agency charter cap, above the 80 percent norm, and the plausible remedy widens the cap.",
+        "grounding": {
+          "case_id": "case:acme-support:1055",
+          "turn": 2,
+          "ledger_id_stub": "runx:receipt:sha256:2ab30de1"
+        },
+        "ceiling": null,
+        "effect_bound": null,
+        "consumed_by": "Nothing here. The human ops lane decides; this skill only reports."
+      },
+      {
+        "target_lane": "policy-author",
+        "reason": "An escalation backlog is a routing-policy defect, which is the policy-author lane's subject. No cap or authority is widened by re-routing, so it does not escalate to human ops.",
+        "finding": "3 escalations are unclaimed at period close, the oldest 9 days old, so the routing policy is not draining the backlog.",
+        "grounding": {
+          "case_id": "case:acme-support:1061",
+          "turn": 3,
+          "ledger_id_stub": "runx:receipt:sha256:77c9be05"
+        },
+        "ceiling": null,
+        "effect_bound": null,
+        "consumed_by": "Nothing here. A separate policy-author run must be issued to change routing."
+      }
+    ],
+    "emitted_ceilings": 0,
+    "emitted_effect_bounds": 0,
+    "rail_runs_issued": 0
+  },
+  "refusal_observations": {
+    "case": "no-case-events-stop",
+    "agency_ref": "agency:empty-desk",
+    "period": "30d",
+    "decision": "needs_more_evidence",
+    "health_verdict_status": "unknown",
+    "graded_findings": [],
+    "intervention_findings": [],
+    "refused_reason": "The domain-keyed read_projection for agency:empty-desk returned no readable case events over the 30d period. Grading seal_rate, stuck_case_count, cap_usage_pct, or escalation_backlog would mean inventing a turn state the sealed event order does not show, so no finding is graded and no intervention is emitted.",
+    "second_refusal": "An intervention must cite the case_id and the turn or ledger id-stub that grounds it. With an empty folded projection there is no grounding to cite.",
+    "needs_input": "A store_id and agency_ref whose read_projection returns case events for the period, or a wider period that covers the agency's actual activity.",
+    "ledger_id_stubs_cited": [],
+    "seals_anyway": true,
+    "seals_anyway_note": "The deterministic conflict still seals: reporting honestly that the projection is empty IS the complete run, so the receipt closes rather than erroring."
+  },
+  "harness": {
+    "command": "runx harness ./skills/agency-health --json",
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "concerning-agency-sealed",
+      "no-case-events-stop",
+      "cap-widening-escalates-human-ops"
+    ],
+    "sealed_case_count": 2,
+    "hosted_harness_status": "passed; the hosted registry harness is the publish gate, and registry publish returned status: published for fablerlabs/agency-health@sha-599c8cab4e9c",
+    "sealed_receipt_is_fixture_seal_not_dogfood": true,
+    "sealed_receipt_ids_note": "Harness receipt ids are per-run and not content-stable; a re-run yields different ids. The reproducible assertions are status=passed, case_count=3, assertion_error_count=0 and the three case names. The bounty receipt_ref is the post-publish dogfood receipt, not any harness fixture seal.",
+    "cases": [
+      {
+        "name": "concerning-agency-sealed",
+        "status": "sealed",
+        "result": "decision ready, health_verdict.status degraded, all four findings graded against named norms, three typed intervention findings with named target lanes, zero ceilings and zero effect bounds"
+      },
+      {
+        "name": "no-case-events-stop",
+        "status": "sealed",
+        "result": "decision needs_more_evidence, no finding graded, no intervention emitted; the receipt seals on the refusal (a deterministic conflict that still seals)"
+      },
+      {
+        "name": "cap-widening-escalates-human-ops",
+        "status": "needs_agent",
+        "result": "the assessment blocks to the human ops lane instead of self-sealing a cap-widening remedy; no finding is routed and no intervention is emitted, so nothing downstream can consume it"
+      }
+    ],
+    "why_a_third_case_exists": "Honest forcing reason, recorded verbatim in artifacts/registry-publish.json: an earlier publish of this same package carrying ONLY the two contract-named cases was REFUSED by the hosted registry harness with [skill_harness_incomplete]: \"Publish harness must include a stop/error case such as needs_agent, policy_denied, failure, or escalated.\" Both contract-named cases expect status sealed, so a two-case harness is unpublishable, and publishing is itself an acceptance criterion. The third case is not filler: it exercises the one seam the spec already defines that neither sealed case can reach - an agency at 97 percent of its charter cap whose only remedy WIDENS a cap may never route as a routine tighten, so the run blocks to the human ops lane. The two contract-named cases are unchanged."
+  },
+  "dogfood": {
+    "_note": "Post-publish run of the exact hosted registry package from a clean install directory, not the local source tree and not the harness fixture seal. The clean-install run ledger (.runx/receipts/ledgers/run_agent_task-agency-health-output.jsonl) records resume_skill_ref = /home/agent/.runx/registry-skills/<cache>/fablerlabs/agency-health/sha-599c8cab4e9c/... with selected_runner assess and step agent_task.agency-health.output, which is direct proof the registry-resolved package at this version was the thing that ran.",
+    "package": "fablerlabs/agency-health@sha-599c8cab4e9c",
+    "input": {
+      "data_source_ref": "registry:runx/data-store@0.1.2",
+      "store_id": "agency-ops-store",
+      "agency_ref": "agency:acme-support",
+      "period": "30d",
+      "health_baseline": {
+        "threshold_days_stuck": 3,
+        "cap_pressure_pct": 80,
+        "refusal_spike_rate": 0.15
+      },
+      "input_fixture": "fixtures/concerning-agency-sealed-input.json",
+      "answer_fixture": "fixtures/concerning-agency-sealed-answers.json"
+    },
+    "command": "runx add fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai   # into an empty directory\nrunx skill fablerlabs/agency-health@sha-599c8cab4e9c assess --registry https://api.runx.ai --json --input data_source_ref=registry:runx/data-store@0.1.2 --input store_id=agency-ops-store --input agency_ref=agency:acme-support --input period=30d --input-json health_baseline='{\"threshold_days_stuck\":3,\"cap_pressure_pct\":80,\"refusal_spike_rate\":0.15}'\nrunx resume <run-id> fixtures/concerning-agency-sealed-answers.json --json\nrunx verify --receipt .runx/receipts/sha256-96815c62d05f7e7237e3428aeeb4441c0da421fdcb3e4017f65b7baa4db0ba50.json --allow-local-development-signatures --json",
+    "command_note": "The agent-task boundary requests resolution before it seals (run ledger: kind resolution_requested at 2026-07-12T17:50:30.480Z and 2026-07-12T17:51:19.570Z, selected_runner assess). The run id printed by the start command is per-run and is not carried inside the content-addressed receipt, so it is shown as <run-id>; a reviewer re-running gets their own. The sealed receipt id below is the stable, checkable artifact.",
+    "run_started_at": "2026-07-12T17:50:30.480Z",
+    "sealed_at": "2026-07-12T17:51:24.272Z",
+    "runner": "assess",
+    "step_id": "agent_task.agency-health.output",
+    "receipt_id": "sha256:96815c62d05f7e7237e3428aeeb4441c0da421fdcb3e4017f65b7baa4db0ba50",
+    "receipt_ref": "runx:receipt:sha256:96815c62d05f7e7237e3428aeeb4441c0da421fdcb3e4017f65b7baa4db0ba50",
+    "receipt_url": "https://raw.githubusercontent.com/fablerlabs/runx/62db2f95c7bb0f8a705bb7a440cca4d058acca74/skills/agency-health/artifacts/dogfood-receipt.json",
+    "receipt_seal": {
+      "schema": "runx.receipt.v1",
+      "disposition": "closed",
+      "reason_code": "agent_act_closed",
+      "canonicalization": "runx.receipt.c14n.v1",
+      "digest": "sha256:0cd3f4269ef0197058364a14a6d1896838c068b77da4dcd3905bff8fdb808206"
+    },
+    "verify_command": "runx verify --receipt <dogfood-receipt.json> --allow-local-development-signatures --json",
+    "verify_verdict": {
+      "schema": "runx.verify_verdict.v1",
+      "receipt_id": "sha256:96815c62d05f7e7237e3428aeeb4441c0da421fdcb3e4017f65b7baa4db0ba50",
+      "valid": true,
+      "digest": "valid",
+      "content_address": "valid",
+      "signature_status": "valid",
+      "signature_mode": "local-development",
+      "signature_kid": "runtime-skeleton",
+      "lineage": "unverified",
+      "findings": [],
+      "verdict_note": "runx verify returned valid: true with zero findings. Digest and content address both check out. The receipt is signed by the runtime's local-development key, so the local-development signature policy must be allowed explicitly; lineage is reported unverified because a single receipt cannot prove a receipt tree. The raw verdict is artifacts/dogfood-verify.json."
+    },
+    "public_notary_publish": {
+      "attempted": true,
+      "status": "not_claimed",
+      "note": "The purpose-scoped registry publish credential does not authorize the separate hosted receipt-notary endpoint (it returns Unauthorized). No hosted notarization is claimed; the signed receipt and its verification verdict are published in the public PR at artifacts/dogfood-receipt.json and artifacts/dogfood-verify.json so any reviewer can re-verify them."
+    },
+    "harness_cases": [
+      {
+        "name": "concerning-agency-sealed",
+        "status": "sealed",
+        "result": "passed"
+      },
+      {
+        "name": "no-case-events-stop",
+        "status": "sealed",
+        "result": "passed"
+      },
+      {
+        "name": "cap-widening-escalates-human-ops",
+        "status": "needs_agent",
+        "result": "passed"
+      }
+    ]
+  },
+  "handoff_seam": {
+    "kind": "dispatch-by-naming",
+    "description": "This lane moves no money and grants no access, so every intervention_finding carries no ceiling and no effect bound. It is not a proposal a rail can consume; it is a named finding pointed at a named lane. It is consumed only when a downstream driver or operator issues a separate policy-author or improve-skill run.",
+    "routing": {
+      "skill_behavior_defect": "improve-skill",
+      "routing_policy_defect": "policy-author",
+      "cap_or_authority_widening_remedy_or_any_critical_finding": "human ops lane, never a routine tighten"
+    },
+    "rail_claims": "This skill issues no rail run and claims that no rail consumes its output. Read-only: it appends nothing, sends nothing, executes nothing, and consumes no effect. Its runner declares allowed_tools: [] and read-only scopes (agency:health:read, data-store:projection:read, ledger:aggregate:read)."
+  },
+  "refusals": [
+    "Refuses to grade a signal not grounded in the folded case projection or a ledger id-stub aggregate.",
+    "Refuses to invent a cap or threshold it cannot read from the agency charter snapshot or the supplied health_baseline.",
+    "Never invents a turn state the sealed event order does not show."
+  ],
+  "how_a_new_user_installs_runs_and_verifies": {
+    "install": "runx add fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai",
+    "run": "runx skill fablerlabs/agency-health@sha-599c8cab4e9c assess --registry https://api.runx.ai --json with the typed inputs data_source_ref, store_id, agency_ref and optional period, case_id, health_baseline; supply the assess output at the agent-task boundary (the public fixture fixtures/concerning-agency-sealed-answers.json reproduces the sealed case).",
+    "verify": "runx verify --receipt <receipt.json> --allow-local-development-signatures --json",
+    "private_context_required": false,
+    "private_context_note": "Every input, answer fixture, receipt, and verdict needed to reproduce the run is public in the PR. No private token, no private store, and no operator-only link is required to install, run, or verify."
+  },
+  "summary": "Published, harnessed, installed, dogfooded, and verified the exact agency-health runx skill under fablerlabs at version sha-599c8cab4e9c. The skill assembles a read-only health bundle for one running agency: it folds the domain-keyed data-store read_projection (registry:runx/data-store@0.1.2, C2) over the agency case in version order, corroborates it against the audit-only ledger read runner (registry:runx/ledger@0.2.0, C7) by receipt id-stub only, grades seal_rate, stuck_case_count, cap_usage_pct, and escalation_backlog against named norms, and seals a health_verdict plus typed intervention findings that name their target lane and cite the case_id and turn or ledger id-stub that grounds them. It is read-only: no ceiling, no effect bound, no rail run, no money, no access. The local harness passed three cases with zero assertion errors, the hosted registry harness passed at publish, a clean runx add installed the published version, and a post-publish dogfood of the registry package sealed receipt sha256:96815c62d05f7e7237e3428aeeb4441c0da421fdcb3e4017f65b7baa4db0ba50, which runx verify reports valid with zero findings.",
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.7.0",
+      "evidence": "Exact output of runx --version, captured in artifacts/runx-version.txt. The same binary ran the local harness, registry publish, registry read, clean install, post-publish dogfood, and verify. The minimum required is 0.6.14."
+    },
+    {
+      "name": "publisher_package_and_version",
+      "value": "owner fablerlabs; package agency-health; version sha-599c8cab4e9c; registry ref fablerlabs/agency-health@sha-599c8cab4e9c",
+      "evidence": "registry-publish.json returned status published with owner fablerlabs, name agency-health, version sha-599c8cab4e9c, digest sha256:2e3febbc8723a4b60729caeea738f6805aac7fbf5414324da7e823fe6940fa8f, profile digest sha256:869b9279ed764dff0b187b48c0f3be3310fc0db584a5cd32b800e776501f86ef, trust tier community. The exact package name is agency-health; no near-name or renamed implementation was published. X.yaml declares source version 0.1.0; the registry assigns the content-addressed version sha-599c8cab4e9c, which is the version every artifact in this packet names."
+    },
+    {
+      "name": "publish_method_and_public_url",
+      "value": "runx login --provider github --for publish; runx registry publish ./skills/agency-health/SKILL.md --registry https://api.runx.ai -> https://runx.ai/x/fablerlabs/agency-health@sha-599c8cab4e9c",
+      "evidence": "registry-publish.json records the publish command and the returned canonical listing https://runx.ai/x/fablerlabs/agency-health; the versioned listing is the public adoption page for this exact version. registry-read.json is a fresh remote read of fablerlabs/agency-health@sha-599c8cab4e9c that resolves the metadata, both digests, the published markdown, the runner assess, and the fablerlabs publisher attestation issued 2026-07-12T17:49:51.027Z. No token or secret appears in any artifact."
+    },
+    {
+      "name": "hosted_harness_status",
+      "value": "passed (publish gate)",
+      "evidence": "The hosted registry harness is the publish gate itself: publish returns status published only when it passes. registry-publish.json records status published for sha-599c8cab4e9c. It also records verbatim the earlier REFUSAL of this same package - [skill_harness_incomplete]: \"Publish harness must include a stop/error case such as needs_agent, policy_denied, failure, or escalated.\" - which is the honest forcing reason for the third harness case."
+    },
+    {
+      "name": "harness_cases",
+      "value": "concerning-agency-sealed=sealed; no-case-events-stop=sealed; cap-widening-escalates-human-ops=needs_agent",
+      "evidence": "runx harness ./skills/agency-health --json returned status passed, case_count 3, assertion_error_count 0, case names [concerning-agency-sealed, no-case-events-stop, cap-widening-escalates-human-ops]. Both contract-named cases expect status sealed and do seal, including the stop case - a deterministic conflict that still seals. The third case exists because the registry refused to publish a harness with no stop/error case; it is not filler, it exercises the human-ops escalation seam the spec defines and the two sealed cases cannot reach: at 97 percent of its charter cap the only remedy WIDENS a cap, which may never route as a routine tighten, so the run blocks to the human ops lane rather than self-sealing a verdict."
+    },
+    {
+      "name": "clean_install",
+      "value": "installed",
+      "evidence": "registry-install.json: runx add fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai into an empty directory returned status installed, with digest sha256:2e3febbc8723a4b60729caeea738f6805aac7fbf5414324da7e823fe6940fa8f, profile digest sha256:869b9279ed764dff0b187b48c0f3be3310fc0db584a5cd32b800e776501f86ef, and runner assess. The installed profile document is byte-identical to the published X.yaml."
+    },
+    {
+      "name": "the_two_reads",
+      "value": "domain-keyed state read = registry:runx/data-store@0.1.2 operation read_projection; cross-run aggregate read = registry:runx/ledger@0.2.0 runner read, by receipt id-stub only",
+      "evidence": "Both refs are resolved from upstream source, not invented: skills/data-store/X.yaml:153 for read_projection and skills/ledger/X.yaml:98 for the ledger read runner. Upstream skills/ledger/SKILL.md:41 says of the ledger's runners: \"Both runners project to id-stubs only.\" An id-stub is a receipt handle, not a domain-keyed projection, so the ledger is structurally incapable of the domain-keyed state read and is audit-only. That is source proof, not policy: substituting it would mean inventing the turn state this skill refuses to invent."
+    },
+    {
+      "name": "decision_and_health_verdict",
+      "value": "decision ready; health_verdict.status degraded",
+      "evidence": "The concerning-agency-sealed case folds agency:acme-support over 30d and seals decision ready with health_verdict.status degraded. The verdict is degraded rather than healthy because one finding grades critical and three grade warning against the supplied health_baseline norms."
+    },
+    {
+      "name": "graded_findings",
+      "value": "seal_rate 0.71 = warning; stuck_case_count 2 = warning; cap_usage_pct 93 = critical; escalation_backlog 3 = warning",
+      "evidence": "Each finding ties a folded metric to a NAMED norm, never a bare number. seal_rate 0.71 against the refusal_spike_rate 0.15 norm (24 of 34 folded turns sealed; implied refusal rate 0.29). stuck_case_count 2 against threshold_days_stuck 3 (case:acme-support:1042 stuck at turn 4 for 9 days; case:acme-support:1061 stuck at turn 3 for 5 days). cap_usage_pct 93 against cap_pressure_pct 80. escalation_backlog 3 against the empty-backlog-at-period-close norm (oldest 9 days). Every norm comes from health_baseline or the charter snapshot; none is invented."
+    },
+    {
+      "name": "folded_case_ids_and_turns",
+      "value": "case:acme-support:1042 turns 1-4 (latest_version 4); case:acme-support:1055 turns 1-2 (latest_version 2); case:acme-support:1061 turns 1-3 (latest_version 3)",
+      "evidence": "The domain-keyed read_projection at store_id agency-ops-store, keyed on agency:acme-support, folded in version order. Version order is what makes the fold deterministic: the latest turn is the last one the sealed event order shows, not the last one written."
+    },
+    {
+      "name": "referenced_ledger_id_stubs",
+      "value": "runx:receipt:sha256:9f21c7a4; runx:receipt:sha256:2ab30de1; runx:receipt:sha256:77c9be05",
+      "evidence": "The cross-run aggregate (seal rate, refusal spikes) is referenced by receipt id-stub ONLY, never as a state read: 9f21c7a4 grounds seal_rate and the improve-skill intervention, 2ab30de1 grounds cap_usage_pct and the human-ops escalation, 77c9be05 grounds escalation_backlog and the policy-author intervention."
+    },
+    {
+      "name": "intervention_target_lanes_and_reasons",
+      "value": "improve-skill; human_ops; policy-author",
+      "evidence": "improve-skill: stuck turns concentrated behind repeated refusals are a skill-behavior defect (grounded in case:acme-support:1042 turn 4, id-stub 9f21c7a4). human_ops: cap usage at 93 percent is graded critical and the plausible remedy WIDENS a cap, so it escalates to the human ops lane instead of routing as a routine tighten (case:acme-support:1055 turn 2, id-stub 2ab30de1). policy-author: an escalation backlog that will not drain is a routing-policy defect and widens no authority (case:acme-support:1061 turn 3, id-stub 77c9be05). Every intervention carries ceiling null and effect_bound null."
+    },
+    {
+      "name": "refused_reason_when_no_events_readable",
+      "value": "decision needs_more_evidence; nothing graded; nothing emitted; receipt still seals",
+      "evidence": "no-case-events-stop folds agency:empty-desk and the read_projection returns no readable case events over the 30d period. Refusal recorded verbatim: grading seal_rate, stuck_case_count, cap_usage_pct, or escalation_backlog \"would mean inventing a turn state the sealed event order does not show, so no finding is graded and no intervention is emitted.\" A second refusal blocks emitting an intervention with no case_id or id-stub to cite. health_verdict.status is unknown, no ledger id-stub is cited, and the run seals on the refusal rather than erroring."
+    },
+    {
+      "name": "read_only_and_dispatch_by_naming_seam",
+      "value": "0 ceilings; 0 effect bounds; 0 rail runs",
+      "evidence": "The runner declares allowed_tools: [] and only read scopes (agency:health:read, data-store:projection:read, ledger:aggregate:read). Every intervention_finding carries ceiling null and effect_bound null and is consumed only when a downstream driver or operator issues a separate policy-author or improve-skill run. The skill issues no rail run and claims no rail consumes its output."
+    },
+    {
+      "name": "post_publish_dogfood_and_receipt",
+      "value": "runx:receipt:sha256:96815c62d05f7e7237e3428aeeb4441c0da421fdcb3e4017f65b7baa4db0ba50",
+      "evidence": "The exact registry package fablerlabs/agency-health@sha-599c8cab4e9c was run from a clean install directory (not the source tree, not a harness fixture seal) and sealed at 2026-07-12T17:51:24.272Z with disposition closed and reason_code agent_act_closed. The clean-install run ledger records resume_skill_ref pointing at the registry-resolved sha-599c8cab4e9c package with selected_runner assess and step agent_task.agency-health.output. The full signed receipt is artifacts/dogfood-receipt.json."
+    },
+    {
+      "name": "runx_verify_verdict",
+      "value": "valid: true; zero findings",
+      "evidence": "artifacts/dogfood-verify.json (runx.verify_verdict.v1) for receipt sha256:96815c62...: valid true, digest valid, content_address valid, signature valid under kid runtime-skeleton in local-development mode, lineage unverified (a single receipt cannot prove a receipt tree), findings []. The local-development signature policy is stated openly rather than claimed as a hosted notarization; the hosted receipt-notary endpoint does not accept the purpose-scoped publish credential, so the signed receipt and this verdict are published in the PR for anyone to re-verify."
+    },
+    {
+      "name": "public_pr_and_source_revision",
+      "value": "PR into runxhq/runx containing skills/agency-health/{X.yaml,SKILL.md,fixtures/,artifacts/}; x_yaml and skill_md raw-fetchable from the PR head commit",
+      "evidence": "The PR carries the package files, the fixtures for all three harness cases, and the harness evidence (this evidence.json, verification.json, report.md, the signed dogfood receipt, and its verify verdict). Every raw URL in artifact_refs is pinned to the PR head commit (62db2f95c7bb0f8a705bb7a440cca4d058acca74 is substituted at delivery), never a landing page, and the published registry package, PR head commit, source_url, x_yaml, skill_md, evidence_json, verification_json, receipt_ref, and report all describe the same version sha-599c8cab4e9c."
+    },
+    {
+      "name": "new_user_flow_without_private_context",
+      "value": "runx add -> runx skill -> supply the assess answer -> runx verify",
+      "evidence": "runx add fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai; runx skill fablerlabs/agency-health@sha-599c8cab4e9c assess --registry https://api.runx.ai --json with data_source_ref, store_id, agency_ref (+ optional period, case_id, health_baseline); reproduce the sealed case with the public fixtures/concerning-agency-sealed-answers.json; runx verify --receipt <receipt.json> --allow-local-development-signatures --json. No private token, store, or operator-only link is required at any step."
+    }
+  ]
+}
