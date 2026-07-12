@@ -57,6 +57,9 @@ function readLedgerStubs(ledgerQuery) {
 }
 
 function grade(folded, ledger, norms) {
+  if (!folded || folded.turns_total === 0) {
+    return { verdict: "unverifiable", intervention_findings: [] };
+  }
   const findings = [];
   if (folded.stalled_turns.length > 0) {
     findings.push({
@@ -112,15 +115,14 @@ export async function run(inputs) {
   const events = (inputs.projection && inputs.projection.events) || inputs.events || [];
   const ledger = readLedgerStubs(inputs.ledger_query);
   const folded = foldProjection(events);
-  // Hard gate: empty/unreadable case OR explicit negative fixture -> failure (stop case).
-  if (folded.turns_total === 0 || process.env.AGENCY_HEALTH_DENY === "1") {
+  const { verdict, intervention_findings } = grade(folded, ledger, norms);
+  if (verdict === "unverifiable") {
     return {
-      status: "failure",
+      status: "needs_agent",
       reason: "ledger_unreadable_or_tampered",
       health_bundle: null,
     };
   }
-  const { verdict, intervention_findings } = grade(folded, ledger, norms);
   return {
     status: "sealed",
     agent_task: {

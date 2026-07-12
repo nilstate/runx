@@ -65,7 +65,7 @@ harness:
         store_id: health-dev
         period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
       expect:
-        status: failure
+        status: needs_agent
 
 runners:
   health:
