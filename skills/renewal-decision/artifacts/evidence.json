@@ -1,6 +1,8 @@
 {
   "schema": "runx.renewal_decision.evidence.v1",
   "bounty": 110,
+  "summary": "Published renewal-decision as a runx registry skill with a hosted publish gate pass, a public PR, raw X.yaml/SKILL.md/artifact URLs, and a sealed dogfood receipt from the published package. The skill makes a renewal spend judgment only: it emits a typed decision, carries a bounded AttenuationRequest ceiling as data for approved renew paths, records the decision through a CAS append_event, and leaves money movement, grant minting, and vendor notice to downstream governed runners.",
+  "runx_cli_version": "runx-cli 0.6.19",
   "skill": "renewal-decision",
   "owner": "dh0h",
   "package_ref": "dh0h/renewal-decision@sha-23e7a258c30a",
@@ -101,6 +103,48 @@
       "reason": "Renewal is within policy but exceeds the approval threshold, so a human must approve before C3 consumes the ceiling."
     }
   },
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.6.19",
+      "evidence": "All publish, harness, install, dogfood, and verify commands were run with runx-cli 0.6.19."
+    },
+    {
+      "name": "hosted_registry_package",
+      "value": "dh0h/renewal-decision@sha-23e7a258c30a",
+      "evidence": "Hosted registry publish returned status=published with digest sha256:82d748c07ba3140c7696d73c8aab7dcf7b7985052db53b6fb73843d5ba238b67."
+    },
+    {
+      "name": "harness_shape",
+      "value": "one sealed renew case and one needs_agent stop case",
+      "evidence": "Local harness passed both inline cases; hosted registry publish gate also passed."
+    },
+    {
+      "name": "dogfood_receipt",
+      "value": "runx:receipt:sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a",
+      "evidence": "Published-package dogfood run sealed and receipt verification reported a valid 4-receipt tree with no findings."
+    },
+    {
+      "name": "bounded_ceiling",
+      "value": "USD 112000 ceiling for vendor:acme-observability",
+      "evidence": "The renew decision emitted a runx.attenuation_request.v1 data object with spend.reserve, spend.settle, and receipt.seal scopes."
+    },
+    {
+      "name": "data_store_handoff",
+      "value": "read_projection plus CAS append_event keyed by vendor_id",
+      "evidence": "Dogfood read projection saw version 0; append_event committed vendor_renewals:vendor:acme-observability:1 with idempotency key renewal-decision:vendor:acme-observability:2026-08:renew."
+    },
+    {
+      "name": "stop_path_safety",
+      "value": "no ceiling, mint, vendor notice, or append on stop fixture",
+      "evidence": "The low-usage over-cap fixture expects needs_agent and stops before the append step."
+    },
+    {
+      "name": "authority_boundary",
+      "value": "judgment only",
+      "evidence": "The skill moves no money, mints no grant, and names the downstream spend/refund accepting runner plus human approval lane before ceiling consumption."
+    }
+  ],
   "safety_checks": {
     "operational_proposal_emitted": false,
     "mint_performed_by_skill": false,
