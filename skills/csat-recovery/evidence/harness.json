@@ -1,0 +1,35 @@
+{
+    "schema":  "runx.csat_recovery.harness_evidence.v1",
+    "package":  "csat-recovery",
+    "version":  "0.1.0",
+    "runx_version":  "runx-cli 0.6.14",
+    "runtime":  "Docker Linux node:24-bookworm",
+    "registry_dependency":  {
+                                "requested":  "registry:runx/data-store@0.1.2",
+                                "executable":  "registry:runx/data-store@sha-567d29ed2d9a",
+                                "digest":  "sha256:5af0e2dd3dd2116874e4fb886e0424f4b944c136b3430a10c31e400a0249113b",
+                                "runners":  [
+                                                "read_projection",
+                                                "append_event"
+                                            ]
+                            },
+    "command":  "runx harness ./skills/csat-recovery --json",
+    "status":  "passed",
+    "case_count":  2,
+    "assertion_error_count":  0,
+    "cases":  [
+                  {
+                      "name":  "sealed-billing-error-credit-recovery",
+                      "expected":  "sealed",
+                      "observed":  "sealed"
+                  },
+                  {
+                      "name":  "stop-credit-without-sealed-charge",
+                      "expected":  "needs_agent",
+                      "observed":  "needs_agent"
+                  }
+              ],
+    "receipt_ids":  [
+                        "sha256:5ea9a07bc1a94e6c22ac5849af555c3e65f3d917f2b14e23cac7fa00cda10abd"
+                    ]
+}

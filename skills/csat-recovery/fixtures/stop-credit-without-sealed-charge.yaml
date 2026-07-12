@@ -1,0 +1,23 @@
+runner: recover
+inputs:
+  data_source_ref: local://csat-recovery/unsealed-stop
+  store_id: csat-recovery-v1
+  resource: recovery_events
+  detractor_signal:
+    score: 2
+    reason: billing complaint without receipt proof
+    timestamp: 2026-07-13T00:05:00Z
+  customer_context:
+    id: cus_018
+    ltv: 40000
+    timezone: Asia/Dubai
+  recovery_policy:
+    monthly_credit_limit: 5000
+    plays: [message, credit, escalate]
+    message_templates:
+      billing_error_credit_v1: We are sorry for the billing error. Your case qualifies for a bounded service credit linked to the original charge.
+  recovery_request:
+    amount_minor: 3000
+    currency: USD
+    counterparty: merchant:example
+    scopes: [customer_credit:issue]

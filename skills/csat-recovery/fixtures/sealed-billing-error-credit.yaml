@@ -1,0 +1,30 @@
+runner: recover
+inputs:
+  data_source_ref: local://csat-recovery/sealed-credit
+  store_id: csat-recovery-v1
+  resource: recovery_events
+  detractor_signal:
+    score: 1
+    reason: duplicate billing charge
+    timestamp: 2026-07-13T00:00:00Z
+  customer_context:
+    id: cus_017
+    ltv: 250000
+    timezone: Asia/Dubai
+  recovery_policy:
+    monthly_credit_limit: 5000
+    plays: [message, credit, escalate]
+    message_templates:
+      billing_error_credit_v1: We are sorry for the billing error. Your case qualifies for a bounded service credit linked to the original charge.
+  recovery_request:
+    amount_minor: 2500
+    currency: USD
+    counterparty: merchant:example
+    scopes: [customer_credit:issue]
+  charge_receipt:
+    sealed: true
+    original_receipt_ref: runx:receipt:charge:sha256:billing017
+    amount_minor: 12000
+    remaining_refundable_minor: 3000
+    currency: USD
+    counterparty: merchant:example

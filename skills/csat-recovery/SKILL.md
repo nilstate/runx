@@ -1,143 +1,144 @@
 ---
 name: csat-recovery
-description: Route a sealed CSAT detractor signal into a bounded, receipt-grounded recovery decision and persist the decision with compare-and-set state.
+description: Turn a detractor signal into a bounded receipt-linked recovery decision, a governed send plan, and compare-and-set recovery state without performing a live act.
 runx:
   category: support
 ---
 
 # CSAT Recovery
 
-`csat-recovery` turns a detractor signal into one governed recovery decision.
-It reads the customer's prior recovery projection, selects a bounded play, and
-records the decision with compare-and-set persistence. The skill emits data for
-an operator or another governed lane to execute; it never sends a message or
-moves money itself.
+`csat-recovery` is the live-save counterpart to triage and churn analysis. It
+reads a detractor signal and prior recovery state, chooses one bounded recovery
+play, and records the decision. The result is data for downstream governed
+runners. This skill never mints authority, moves money, refunds, credits, or
+sends a message.
 
 The bounty contract names `registry:runx/data-store@0.1.2`. That historical
-registry alias now returns 404. The executable graph therefore pins the current
-signed first-party replacement,
-`registry:runx/data-store@sha-567d29ed2d9a`, whose materialized profile exposes
-the required `read_projection` and `append_event` runners. Runx resolves it only
-from the local registry; install or sync that package before execution because
-graph runs never fetch remote dependency content implicitly.
+registry alias now returns 404. The executable graph pins the current signed
+first-party replacement, `registry:runx/data-store@sha-567d29ed2d9a`, whose
+profile exposes the required `read_projection` and `append_event` runners.
 
-## Use it when
+## Execution graph
 
-- A sealed CSAT or NPS detractor signal needs a consistent recovery decision.
-- Billing-error recovery needs a receipt-linked credit ceiling rather than an
-  unbounded promise.
-- Customer support needs a draft send plan plus an explicit escalation path.
-- Recovery history must be loaded by customer id and updated without lost
-  writes.
+1. Read the recovery projection with `read_projection`, keyed by
+   `customer_context.id` and a pinned `store_id`.
+2. Judge the recovery request against the sealed charge, remaining refundable
+   amount, monthly policy limit, and prior recoveries.
+3. Emit one typed `recovery_decision` as data.
+4. Append a redacted decision event with an ungated, idempotent compare-and-set
+   `append_event(idempotency_key, expected_version)`.
 
-Do not use this skill to execute a refund, issue a credit, send a message, or
-infer money authority from a complaint alone. Those effects belong in separate
-governed skills after explicit approval.
-
-## Graph
-
-1. `read-state` calls `data-store.read_projection` using `customer_id` as the
-   aggregate key and a caller-pinned `store_id`.
-2. `decide` evaluates the detractor signal, customer context, policy, request,
-   charge receipt, caller-provided history, and stored projection.
-3. `append-state` calls `data-store.append_event` with the decision's
-   `expected_version`, stable idempotency key, and redacted event.
-
-The append is compare-and-set. A stale projection cannot silently overwrite a
-newer recovery decision.
-
-## Decision rules
-
-The chosen play is exactly one of:
-
-- `credit`: a data-only `AttenuationRequest` bounded by a sealed original charge.
-- `replacement`: a non-monetary replacement plan subject to operator execution.
-- `concierge`: a high-touch follow-up plan subject to operator execution.
-- `escalate`: no safe automated recovery decision is available.
-
-A money-related ceiling is refused when any of these conditions holds:
-
-- The original charge receipt is missing or unsealed.
-- Receipt customer, counterparty, or currency does not match the request/policy.
-- The requested amount exceeds the original charge.
-- The request exceeds the remaining monthly or per-action policy ceiling.
-- Prior recovery or projection state is ambiguous.
-
-In those cases the decision must use `status: needs_agent`,
-`chosen_play: escalate`, and `credit_ceiling: null`. No money ceiling may be
-invented.
-
-## Inputs
-
-| Input | Required | Meaning |
-| --- | --- | --- |
-| `data_source_ref` | yes | Logical durable data source binding. |
-| `store_id` | yes | Pinned store owner for deterministic state. |
-| `resource` | yes | Event stream/projection resource. |
-| `customer_id` | yes | Projection partition key. |
-| `detractor_signal` | yes | Sealed signal, score, source, and reason. |
-| `customer_context` | yes | Minimal redacted context used for routing. |
-| `recovery_policy` | yes | Allowed plays and bounded money policy. |
-| `recovery_request` | yes | Requested play, amount, and reason. |
-| `charge_receipt` | for money | Sealed original charge receipt. |
-| `prior_recovery` | no | Caller-provided recovery summary. |
-
-## Output
-
-The `runx.csat.recovery_decision.v1` packet is data only:
+## Typed inputs
 
 ```yaml
-status: ready | needs_agent | refused
-chosen_play: credit | replacement | concierge | escalate
-rationale: string
-credit_ceiling:
-  type: AttenuationRequest
-  resource: customer_credit
+detractor_signal:
+  score: number
+  reason: string
+  timestamp: RFC3339 timestamp
+customer_context:
+  id: string
+  ltv: integer
+  timezone: IANA timezone
+recovery_policy:
+  monthly_credit_limit: integer
+  plays: [message, credit, escalate]
+  message_templates: object
+recovery_request:
   amount_minor: integer
   currency: string
-  original_receipt_ref: string
   counterparty: string
-  constraints: object
-send_plan:
-  mode: draft_only
-  channel: string
-  template: string
-  requires_operator_send: true
-escalation:
-  required: boolean
-  reason: string | null
-  queue: string | null
-expected_version: integer
-idempotency_key: string
-state_event: object
+  scopes: [string]
+charge_receipt:
+  sealed: true
+  original_receipt_ref: string
+  amount_minor: integer
+  remaining_refundable_minor: integer
+  currency: string
+  counterparty: string
+prior_recovery_ref: string | null
 ```
 
-For non-credit plays, `credit_ceiling` is `null`. A send plan is always a draft
-and cannot claim that a customer was contacted.
+`charge_receipt` is mandatory when `chosen_play` is `credit`. The receipt must
+be sealed and linkable to the request's currency and counterparty.
 
-## Harness coverage
+## Typed output
 
-- `sealed-billing-error-credit-recovery` proves a sealed duplicate charge can
-  produce `chosen_play: credit` and a bounded `AttenuationRequest` linked to the
-  original charge receipt, followed by a compare-and-set state append.
-- `stop-credit-without-sealed-charge` omits a sealed charge and deliberately
-  provides no caller answer to the escalation decision sub-step. The graph must
-  stop at `needs_agent`; it cannot emit a credit ceiling or append a recovery
-  decision.
+```yaml
+recovery_decision:
+  chosen_play: message | credit | escalate
+  reason: string
+  credit_ceiling:
+    type: AttenuationRequest
+    amount_minor: integer
+    currency: string
+    counterparty: string
+    original_receipt_ref: string
+    scopes: [string]
+  send_plan:
+    principal: string
+    audience: string
+    content_template_id: string
+    content_digest: sha256:string
+  escalation:
+    required: boolean
+    lane: string
+    reason: string | null
+  remaining_monthly_credit_after_minor: integer
+  expected_version: integer
+  idempotency_key: string
+  state_event: object
+```
 
-Run locally:
+`credit_ceiling` is emitted only for a credit play. It is an
+`AttenuationRequest` ceiling, not minted authority and not a settled credit. A
+downstream C3 spend/refund accepting runner must independently mint, reserve,
+settle, and seal any approved credit against `original_receipt_ref`.
+
+`send_plan` is dispatch-by-naming. It identifies the principal, audience,
+template, and digest for a separate governed `send-as` run. It does not claim a
+message was sent.
+
+## Refusal and escalation rules
+
+The decision cannot emit a credit ceiling when:
+
+- customer identity is missing;
+- the charge receipt is missing, unsealed, or unlinkable;
+- currency or counterparty does not match;
+- requested amount exceeds the original charge;
+- requested amount exceeds `remaining_refundable_minor`;
+- requested amount exceeds the remaining monthly limit after prior recoveries;
+- scopes, policy limits, or prior state are ambiguous.
+
+Each unsafe case selects `escalate`, sets `credit_ceiling: null`, and names the
+human approval lane and reason. The skill never invents proof or authority.
+
+## Harness
+
+- `sealed-billing-error-credit-recovery` proves a sealed overcharge can yield
+  `chosen_play: credit`, a bounded receipt-linked `AttenuationRequest`, a
+  digest-bound send plan, a remaining monthly balance, and a CAS state append.
+- `stop-credit-without-sealed-charge` requests credit without a linkable sealed
+  receipt and intentionally omits `caller.answers` for the escalation agent-task
+  sub-step. The graph stops at `needs_agent` before emitting a money ceiling or
+  appending state.
+
+The reproducible fixture inputs live under `fixtures/`.
 
 ```bash
+runx --version
 runx harness ./skills/csat-recovery --json
 ```
 
-After registry publication, install and dogfood the immutable package:
+## Publish, install, run, verify
 
 ```bash
-runx add rohitmulani63-ops/csat-recovery@0.1.0
-runx skill rohitmulani63-ops/csat-recovery@0.1.0 --json
-runx verify <receipt-ref> --json
+runx login --provider github --for publish
+runx registry publish ./skills/csat-recovery/SKILL.md --registry https://api.runx.ai
+runx add rohitmulani63-ops/csat-recovery@0.1.0 --registry https://api.runx.ai
+runx skill rohitmulani63-ops/csat-recovery@0.1.0 --registry https://api.runx.ai --json
+runx verify --receipt <receipt.json> --json
 ```
 
-The verified post-publish receipt, not a harness fixture receipt, is the delivery
-receipt for Frantic evidence.
+For a real dogfood run, supply the typed input object shown above. Record the
+post-publish skill receipt, not an inline harness fixture receipt.
