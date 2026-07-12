@@ -35,7 +35,9 @@ function main() {
   const doc = JSON.parse(readFileSync(path, "utf8"));
   const aggregateId = inputs.case_id;
   const streams = doc.streams || doc.events || {};
-  const stream = streams[aggregateId] || streams["agency_cases"] || [];
+  // Exact aggregate match only — no wildcard fallback (so a missing/tampered
+  // case yields an empty stream, which the grader treats as policy_denied).
+  const stream = streams[aggregateId] || [];
   const events = Array.isArray(stream) ? stream : (stream.events || []);
   const limit = inputs.limit || 500;
   console.log(JSON.stringify({ case_events: { events: events.slice(-limit), aggregate_id: aggregateId, resource: "agency_cases" } }));

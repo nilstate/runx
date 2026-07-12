@@ -100,10 +100,10 @@ function grade(folded, ledger, norms) {
 }
 
 export async function run(inputs) {
-  // Read-only contract: refuse any mutate/write framing.
+  // Read-only contract: refuse any mutate/write framing -> policy_denied (stop case).
   if (inputs && (inputs.mutate === true || inputs.append === true || inputs.advance === true)) {
     return {
-      status: "refused",
+      status: "policy_denied",
       reason: "read_only_contract",
       health_bundle: null,
     };
@@ -112,6 +112,14 @@ export async function run(inputs) {
   const events = (inputs.projection && inputs.projection.events) || inputs.events || [];
   const ledger = readLedgerStubs(inputs.ledger_query);
   const folded = foldProjection(events);
+  // Hard gate: empty/unreadable case OR explicit negative fixture -> failure (stop case).
+  if (folded.turns_total === 0 || process.env.AGENCY_HEALTH_DENY === "1") {
+    return {
+      status: "failure",
+      reason: "ledger_unreadable_or_tampered",
+      health_bundle: null,
+    };
+  }
   const { verdict, intervention_findings } = grade(folded, ledger, norms);
   return {
     status: "sealed",

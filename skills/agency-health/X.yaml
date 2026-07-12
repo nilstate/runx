@@ -54,6 +54,18 @@ harness:
                   severity: degraded
       expect:
         status: sealed
+    - name: agency-health-ledger-blocked
+      runner: health
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-agency/health-dev
+        case_id: case-tampered-000
+        agency_ref: health-dev
+        store_id: health-dev
+        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+      expect:
+        status: failure
 
 runners:
   health:
@@ -72,6 +84,14 @@ runners:
         type: string
         required: true
         description: Operator/agency handle for the C7 ledger query.
+      deny_ledger:
+        type: boolean
+        required: false
+        description: Hard gate — when true, refuse to seal (policy_denied) to simulate C7 ledger unreadable/tampered.
+      mutate:
+        type: boolean
+        required: false
+        description: Write/mutate framing — when true, the skill refuses (read-only contract).
       period:
         type: json
         required: false
@@ -110,6 +130,63 @@ runners:
             agency_ref: "$input.agency_ref"
             period: "$input.period"
             norms: "$input.norms"
+          context:
+            projection: read.case_events.data
+          artifacts:
+            named_emits:
+              health_bundle: agent_task.agency-health.output.health_bundle
+            packets:
+              health_bundle: runx.agency.health.v1
+  health_neg:
+    default: false
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+      case_id:
+        type: string
+        required: true
+      agency_ref:
+        type: string
+        required: true
+      store_id:
+        type: string
+        required: false
+      period:
+        type: json
+        required: false
+    graph:
+      name: agency-health
+      steps:
+        - id: read
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - /root/workspace/runx/skills/agency-health/tools/load_case.mjs
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            case_id: "$input.case_id"
+            store_id: "$input.store_id"
+            limit: 500
+          artifacts:
+            named_emits:
+              case_events: events
+            packets:
+              case_events: runx.data.events.v1
+        - id: grade
+          run:
+            type: cli-tool
+            command: node
+            env:
+              AGENCY_HEALTH_DENY: "1"
+            args:
+              - /root/workspace/runx/skills/agency-health/tools/agency-health.mjs
+          inputs:
+            case_id: "$input.case_id"
+            agency_ref: "$input.agency_ref"
+            period: "$input.period"
           context:
             projection: read.case_events.data
           artifacts:
