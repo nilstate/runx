@@ -357,6 +357,13 @@
     "catalog_role": "context"
   },
   {
+    "skill_id": "runx/rollback-judge",
+    "version": "sha-512a4941d6f7",
+    "digest": "b8a7ab5dd095c4f194cb652520c6cf2d70f3b59ce19c4812813345d2fe4578f3",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/run-history-analyst",
     "version": "sha-0ec78eb20018",
     "digest": "1a1441365a20b74442998656478fc3d530f2d09f25f811d970b403a8a7920df4",

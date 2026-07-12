@@ -266,6 +266,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "6fc1b341d55e3c6be8a5f7693dfe3312654b89a14f88fe42e4ffc84a65a9cd09",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/rollback-judge",
+        version: "sha-512a4941d6f7",
+        digest: "b8a7ab5dd095c4f194cb652520c6cf2d70f3b59ce19c4812813345d2fe4578f3",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/run-history-analyst",
         version: "sha-0ec78eb20018",
         digest: "1a1441365a20b74442998656478fc3d530f2d09f25f811d970b403a8a7920df4",
