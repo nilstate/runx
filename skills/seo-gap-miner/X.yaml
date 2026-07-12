@@ -115,6 +115,26 @@ harness:
           state: sealed
           disposition: closed
 
+    - name: seo-gap-miner-needs-agent-without-grounded-answer
+      inputs:
+        site_inventory:
+          site: example.com
+          pages:
+            - url: /services/crm-implementation
+              topic: crm implementation
+              coverage: weak
+        demand_fixtures:
+          terms:
+            - term: crm migration checklist
+              demand_signal: Sales calls repeatedly ask for a migration checklist before kickoff.
+              source: sales-call-notes
+        content_policy:
+          excluded_topics: []
+          priority_themes:
+            - crm migration
+      expect:
+        status: needs_agent
+
 runners:
   analyze:
     default: true
