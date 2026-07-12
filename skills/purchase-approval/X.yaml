@@ -1,0 +1,110 @@
+skill: purchase-approval
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+harness:
+  cases:
+    - name: approved-vendor-under-budget
+      inputs:
+        purchase_request:
+          vendor: sourcey
+          amount: 125
+          currency: USD
+          purpose: generate public llms.txt docs for a maintained OSS project
+        procurement_policy:
+          currency: USD
+          remaining_budget: 300
+          single_purchase_cap: 200
+          approved_vendors:
+            - sourcey
+            - runx
+          approval_threshold: 200
+      caller:
+        answers:
+          agent_task.purchase-approval.output:
+            purchase_approval:
+              decision: approved
+              reason: vendor is approved, currency matches policy, and amount is within remaining budget and single-purchase cap
+              ceiling_amount: 125
+              currency: USD
+              vendor: sourcey
+              human_lane: null
+              refused_reason: null
+              policy_refs:
+                - approved_vendors
+                - remaining_budget
+                - single_purchase_cap
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: refused-vendor-over-budget
+      inputs:
+        purchase_request:
+          vendor: unknown-ai-tool
+          amount: 450
+          currency: USD
+          purpose: buy unreviewed credits
+        procurement_policy:
+          currency: USD
+          remaining_budget: 300
+          single_purchase_cap: 200
+          approved_vendors:
+            - sourcey
+            - runx
+          approval_threshold: 200
+      caller:
+        answers:
+          agent_task.purchase-approval.output:
+            purchase_approval:
+              decision: refused
+              reason: vendor is not approved and amount exceeds both remaining budget and single-purchase cap
+              ceiling_amount: 0
+              currency: USD
+              vendor: unknown-ai-tool
+              human_lane: procurement-review
+              refused_reason: unapproved_vendor_and_budget_overage
+              policy_refs:
+                - approved_vendors
+                - remaining_budget
+                - single_purchase_cap
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+runners:
+  decision:
+    default: true
+    type: agent-task
+    agent: operator
+    task: purchase-approval
+    outputs:
+      purchase_approval: object
+      decision: string
+      reason: string
+      ceiling_amount: number
+      currency: string
+      human_lane: string
+      refused_reason: string
+      policy_refs: array
+    artifacts:
+      wrap_as: purchase_approval_packet
+      packet: runx.ops.purchase_approval.v1
+    runx:
+      category: operations
+    inputs:
+      purchase_request:
+        type: json
+        required: true
+        description: Proposed purchase with vendor, amount, currency, and purpose.
+      procurement_policy:
+        type: json
+        required: true
+        description: Approved vendors, currency, remaining budget, single-purchase cap, and approval thresholds.
+      prior_spend:
+        type: json
+        required: false
+        description: Optional already-committed spend or reserved purchase receipts.
