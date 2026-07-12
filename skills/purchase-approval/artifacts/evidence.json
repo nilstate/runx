@@ -215,5 +215,68 @@
     "run": "runx skill fablerlabs/purchase-approval@sha-56c91c6936e4 review --registry https://api.runx.ai --json with the four typed inputs; approve the printed operator-context digest; resume with fixtures/in-policy-answers.json",
     "verify": "runx verify --receipt <receipt.json> --allow-local-development-signatures --json",
     "private_context_required": false
-  }
+  },
+  "summary": "Published and dogfooded the exact purchase-approval runx graph skill under fablerlabs, with a green local and hosted harness, clean registry install, open upstream PR, one sealed bounded approval ceiling, a blocking over-budget refusal path, and a publicly inspectable signed receipt plus valid verification verdict.",
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.7.0",
+      "evidence": "The same binary ran local harness, publish, registry read/install, post-publish dogfood, and verify; minimum is 0.6.14."
+    },
+    {
+      "name": "publisher_and_package",
+      "value": "fablerlabs/purchase-approval@sha-56c91c6936e4",
+      "evidence": "Hosted registry publish returned owner fablerlabs, exact name purchase-approval, status published, and community trust."
+    },
+    {
+      "name": "public_registry_listing",
+      "value": "https://runx.ai/x/fablerlabs/purchase-approval@sha-56c91c6936e4",
+      "evidence": "Versioned listing is publicly fetchable and registry read returns the recorded digests and review runner."
+    },
+    {
+      "name": "public_source_and_pr",
+      "value": "runxhq/runx#285 from fablerlabs/runx commit 90a73a2e739a35c6f3783f7aa60424b7959fedaa",
+      "evidence": "The public PR contains X.yaml, SKILL.md, fixtures, report, evidence, verification, and receipt artifacts; X.yaml and SKILL.md are raw-fetchable."
+    },
+    {
+      "name": "harness",
+      "value": "purchase-approval-in-policy-ceiling=sealed; purchase-approval-stop-over-budget-needs-agent=needs_agent",
+      "evidence": "Local harness passed two cases with zero assertion errors; hosted harness passed during registry publish."
+    },
+    {
+      "name": "clean_install",
+      "value": "installed",
+      "evidence": "runx add fablerlabs/purchase-approval@sha-56c91c6936e4 into an empty directory installed SKILL.md, X.yaml, profile digest, and runner review."
+    },
+    {
+      "name": "approval_decision",
+      "value": "approved=true; USD 75 ceiling; currency USD",
+      "evidence": "The post-publish dogfood run approved listed vendor Acme Corp within all supplied caps and emitted exactly one bounded runx.attenuation_request.v1 ceiling as data."
+    },
+    {
+      "name": "refusal_decision",
+      "value": "approved=false; zero ceilings; USD 1100 budget overage and unlisted vendor",
+      "evidence": "The stop harness omits caller answers and blocks at needs_agent; the refusal fixture names the budget and policy violations rather than inventing authority."
+    },
+    {
+      "name": "authority_handoff",
+      "value": "ceiling data to downstream C3 spend/refund accepting runner",
+      "evidence": "The skill never mints, reserves, settles, moves money, or emits an operational proposal; denial leaves nothing for C3 to consume."
+    },
+    {
+      "name": "post_publish_dogfood",
+      "value": "run_review_f48e576897f9 sealed",
+      "evidence": "The exact hosted registry version started at needs_agent and resumed with the public answer fixture to one sealed approval receipt."
+    },
+    {
+      "name": "receipt",
+      "value": "runx:receipt:sha256:d8b48bdf9970ea80ea212f12b8f66247b4f18f61b0ef98fc816da64c829af902",
+      "evidence": "The public receipt verifies valid digest, content address, and local-development signature with zero findings; hosted notary publication was attempted and honestly returned Unauthorized."
+    },
+    {
+      "name": "new_user_flow",
+      "value": "runx add -> runx skill -> runx resume -> runx verify",
+      "evidence": "Exact public install/run/verify commands and typed fixtures are recorded in report.md and DELIVERY.md; no private context is required."
+    }
+  ]
 }
