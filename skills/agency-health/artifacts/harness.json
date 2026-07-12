@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "concerning-agency-sealed",
+    "no-case-events-stop",
+    "cap-widening-escalates-human-ops"
+  ],
+  "receipt_ids": [
+    "sha256:3b25ec2f5baba9628e5f7214f8c1ac257d301891c2f045da7a333955fc7e58d7",
+    "sha256:3cf461407ab58529f07d0358fc8a3632d61f2b524bfecc0e4b0fa94fe12ef0a8"
+  ],
+  "graph_case_count": 0
+}

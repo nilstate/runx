@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "publish_failed",
+    "message": "runx-api publish returned error [api_error]: Unauthorized."
+  },
+  "status": "failure"
+}

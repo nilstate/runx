@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "fablerlabs/agency-health",
+      "owner": "fablerlabs",
+      "name": "agency-health",
+      "version": "sha-d4d7ffe272cb",
+      "digest": "c7340bf9a06b465fbd5019b3a1e1ce7fe92ab8addfe6a5fb9aada69280d300c6",
+      "profile_digest": "68795be1483ae362b1e47011469d04a131cda51c8b49dcec13b4c7ee02b85049",
+      "trust_tier": "community",
+      "install_command": "runx add fablerlabs/agency-health@sha-d4d7ffe272cb --registry https://api.runx.ai",
+      "run_command": "runx skill fablerlabs/agency-health@sha-d4d7ffe272cb --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/fablerlabs/agency-health"
+    }
+  }
+}

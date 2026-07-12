@@ -1,0 +1,55 @@
+{
+  "registry_provenance": {
+    "digest": "sha256:c7340bf9a06b465fbd5019b3a1e1ce7fe92ab8addfe6a5fb9aada69280d300c6",
+    "profile_digest": "sha256:68795be1483ae362b1e47011469d04a131cda51c8b49dcec13b4c7ee02b85049",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "fablerlabs/agency-health",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-d4d7ffe272cb"
+  },
+  "requests": [
+    {
+      "id": "agent_task.agency-health.output",
+      "invocation": {
+        "agent": "researcher",
+        "envelope": {
+          "allowed_tools": [],
+          "current_context": [],
+          "execution_location": {
+            "skill_directory": "/home/agent/.runx/registry-skills/ba1ac16b631195fd/fablerlabs/agency-health/sha-d4d7ffe272cb/48f9f7687440cb10/fablerlabs/agency-health/sha-d4d7ffe272cb"
+          },
+          "historical_context": [],
+          "inputs": {
+            "agency_ref": "agency:acme-support",
+            "data_source_ref": "registry:runx/data-store@0.1.2",
+            "health_baseline": {
+              "cap_pressure_pct": 80,
+              "refusal_spike_rate": 0.15,
+              "threshold_days_stuck": 3
+            },
+            "period": "30d",
+            "store_id": "agency-ops-store"
+          },
+          "instructions": "Assess one agency's operational health, read-only, and report it. Grade only what the folded case projection or an audit-only ledger aggregate actually shows.\nPerform exactly two reads and keep them distinct. The DOMAIN-KEYED STATE READ is the data-store read_projection operation at data_source_ref, keyed on agency_ref (narrowed by case_id when supplied), folded in VERSION ORDER. This is the only read that yields case and turn state. The CROSS-RUN AGGREGATE READ is the ledger read runner at registry:runx/ledger@0.2.0, referenced by receipt ID-STUB ONLY: the ledger's runners project to id-stubs only, so it is structurally incapable of a domain-keyed state read and is audit-only. Never substitute the ledger aggregate for the domain-keyed read.\nGrade all four findings when the projection is readable: seal_rate, stuck_case_count, cap_usage_pct, and escalation_backlog. Each finding ties a folded metric to a NAMED norm -- from health_baseline or from the agency charter snapshot in the projection -- and carries an assessment, never a bare number. Set health_verdict.status from the graded set.\nEmit an intervention_finding for each condition that warrants action. Each one names a TARGET LANE and cites the grounding case_id plus the turn or ledger id-stub it folds from. Route a skill-behavior defect to improve-skill and a routing-policy defect to policy-author. Any CAP-WIDENING or AUTHORITY-WIDENING remedy, and any finding graded critical, escalates to the human ops lane instead of routing as a routine tighten.\nThis skill is read-only. It appends nothing, sends nothing, executes nothing, and consumes no effect. It moves no money and grants no access, so every intervention_finding carries NO ceiling and NO effect bound and is consumed only when a downstream driver or operator issues a separate policy-author or improve-skill run. Issue no rail run and claim no rail consumes this output.\nRefuse rather than guess. Refuse to grade a signal that is not grounded in the folded case projection or a ledger id-stub aggregate. Refuse to invent a cap or threshold that is in neither the agency charter snapshot nor health_baseline. Never invent a turn state the sealed event order does not show. When the projection returns no readable case events, set decision needs_more_evidence, grade NO findings, emit NO intervention, and say exactly what is missing: reporting the deterministic conflict IS the complete run.\n",
+          "output": {
+            "agency_health_packet": "object"
+          },
+          "provenance": [],
+          "run_id": "rx_pending",
+          "skill": "assess",
+          "trust_boundary": "native-managed: runx executes the model and tool loop directly, receipts the result, and only yields to a surface for explicit human resolution outside this path"
+        },
+        "id": "agent_task.agency-health.output",
+        "source_type": "agent-task",
+        "task": "agency-health"
+      },
+      "kind": "agent_act"
+    }
+  ],
+  "run_id": "run_agent_task-agency-health-output",
+  "schema": "runx.skill_run.v1",
+  "status": "needs_agent"
+}
