@@ -1,0 +1,87 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "data.redis",
+  "version": "0.1.0",
+  "description": "Redis event-store adapter for the provider-agnostic runx data operation envelope.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "inputs": {
+    "operation": {
+      "type": "string",
+      "required": true,
+      "description": "append_event, read_events, or read_projection."
+    },
+    "data_source_ref": {
+      "type": "string",
+      "required": true,
+      "description": "Stable logical data-source reference."
+    },
+    "data_source_binding": {
+      "type": "json",
+      "required": false,
+      "description": "Non-secret data-source binding injected by data.source."
+    },
+    "redis_url": {
+      "type": "string",
+      "required": false,
+      "description": "Redis URL for direct harness use. Prefer data_source_binding.endpoint."
+    },
+    "key_prefix": {
+      "type": "string",
+      "required": false,
+      "description": "Redis key prefix for direct harness use. Prefer data_source_binding.key_prefix."
+    },
+    "resource": {
+      "type": "string",
+      "required": true,
+      "description": "Declared event resource or stream family."
+    },
+    "aggregate_id": {
+      "type": "string",
+      "required": true,
+      "description": "Stream or partition key."
+    },
+    "expected_version": {
+      "type": "number",
+      "required": false,
+      "description": "Required current stream version for append_event."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "required": false,
+      "description": "Stable retry key for append_event."
+    },
+    "event": {
+      "type": "json",
+      "required": false,
+      "description": "Domain event or transition packet for append_event."
+    },
+    "limit": {
+      "type": "number",
+      "required": false,
+      "default": 50,
+      "description": "Maximum events returned by read_events."
+    }
+  },
+  "scopes": ["runx:data:read", "runx:data:append"],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "data_operation_result": "runx.data.operation_result.v1"
+      },
+      "wrap_as": "data_operation_result"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "output": {
+    "packet": "runx.data.operation_result.v1",
+    "wrap_as": "data_operation_result"
+  },
+  "toolkit_version": "0.1.4"
+}

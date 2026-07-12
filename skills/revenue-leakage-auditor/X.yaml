@@ -1,0 +1,296 @@
+skill: revenue-leakage-auditor
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: context
+  part_of:
+    - runx/spend
+    - runx/refund
+
+emits:
+  - name: revenue_leakage_audit_packet
+    packet: runx.revenue.leakage_audit.v1
+
+harness:
+  cases:
+    - name: revenue-leakage-auditor-underbilling-ceiling
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://revenue-leakage/account-ledger":{"adapter":"data.local","resources":{"account_reconciliations":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: tenant://revenue-leakage/account-ledger
+        store_id: revenue-leakage-harness-v1
+        usage_records:
+          account_id: account:atlas-team
+          usage_amount: 15000
+          currency: USD
+          period: 2026-06
+          evidence_ref: usage:account:atlas-team:2026-06
+        billing_history:
+          account_id: account:atlas-team
+          billed_amount: 10000
+          currency: USD
+          period: 2026-06
+          evidence_ref: billing:account:atlas-team:2026-06
+        discount_policy:
+          excluded_accounts:
+            - account:internal-sandbox
+          known_discounts:
+            - account_id: account:legacy-partner
+              period: 2026-06
+              amount:
+                amount: 5000
+                currency: USD
+              reason: contracted launch discount
+        charge_threshold_pct: 10
+        parent_adjustment_bounds:
+          schema: runx.authority_bounds.v1
+          amount:
+            max_per_account: 6000
+            currency: USD
+          scopes:
+            - spend.reserve
+            - spend.settle
+            - receipt.seal
+          expires_at: "2026-07-31T00:00:00Z"
+      caller:
+        answers:
+          agent_task.revenue-leakage-auditor.output:
+            leakage_audit_packet:
+              schema: runx.revenue.leakage_audit.v1
+              decision:
+                leakage_found: true
+                reason: account:atlas-team used USD 15000 in 2026-06, was billed USD 10000, and the 50% under-billing gap exceeds the 10% threshold with no exclusion or known discount.
+              ceilings:
+                - schema: runx.attenuation_request.v1
+                  form: data
+                  account_id: account:atlas-team
+                  amount:
+                    amount: 5000
+                    currency: USD
+                  currency: USD
+                  scopes:
+                    - spend.reserve
+                    - spend.settle
+                    - receipt.seal
+                  counterparty: account:atlas-team
+                  usage_evidence_ref: usage:account:atlas-team:2026-06
+                  billing_evidence_ref: billing:account:atlas-team:2026-06
+                  idempotency_key: revenue-leakage:account:atlas-team:2026-06:recover
+                  downstream_runner: registry:runx/spend@0.1.1
+                  clamp:
+                    parent_bound_ref: parent_adjustment_bounds
+                    max_amount:
+                      amount: 6000
+                      currency: USD
+                    result: within_parent_bounds
+              escalation:
+                required: true
+                lane: human_approval
+                reason: Finance approval is required before a downstream C3 runner consumes the adjustment ceiling.
+              data_store:
+                package_ref: registry:runx/data-store@0.1.2
+                data_source_ref: tenant://revenue-leakage/account-ledger
+                store_id: revenue-leakage-harness-v1
+                read_projection:
+                  runner: read_projection
+                  resource: account_reconciliations
+                  aggregate_id: account:atlas-team
+                append_event:
+                  runner: append_event
+                  resource: account_reconciliations
+                  aggregate_id: account:atlas-team
+                  expected_version: 0
+                  idempotency_key: revenue-leakage:account:atlas-team:2026-06:detected
+                  event:
+                    type: revenue_leakage.detected
+                    payload:
+                      account_id: account:atlas-team
+                      period: 2026-06
+                      usage_amount:
+                        amount: 15000
+                        currency: USD
+                      billed_amount:
+                        amount: 10000
+                        currency: USD
+                      under_billed_amount:
+                        amount: 5000
+                        currency: USD
+                      threshold_pct: 10
+                      ceiling_idempotency_key: revenue-leakage:account:atlas-team:2026-06:recover
+              observations:
+                verdict: leakage_found
+                account_id: account:atlas-team
+                period: 2026-06
+                usage_evidence_ref: usage:account:atlas-team:2026-06
+                billing_evidence_ref: billing:account:atlas-team:2026-06
+                usage_amount:
+                  amount: 15000
+                  currency: USD
+                billed_amount:
+                  amount: 10000
+                  currency: USD
+                under_billed_amount:
+                  amount: 5000
+                  currency: USD
+                under_billed_pct: 50
+                threshold_pct: 10
+                bounded_ceiling_count: 1
+                aggregate_id: account:atlas-team
+                appended_version: 1
+                refused_or_stop_reason: null
+                harness_cases:
+                  - revenue-leakage-auditor-underbilling-ceiling
+                  - revenue-leakage-auditor-stop-needs-agent
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: revenue-leakage-auditor-stop-needs-agent
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://revenue-leakage/account-ledger":{"adapter":"data.local","resources":{"account_reconciliations":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: tenant://revenue-leakage/account-ledger
+        store_id: revenue-leakage-harness-v1
+        usage_records:
+          account_id: account:bravo-team
+          usage_amount: 10500
+          currency: USD
+          period: 2026-06
+          evidence_ref: usage:account:bravo-team:2026-06
+        billing_history:
+          account_id: account:bravo-team
+          billed_amount: 10000
+          currency: USD
+          period: 2026-06
+          evidence_ref: billing:account:bravo-team:2026-06
+        discount_policy:
+          excluded_accounts:
+            - account:internal-sandbox
+          known_discounts:
+            - account_id: account:legacy-partner
+              period: 2026-06
+              amount:
+                amount: 5000
+                currency: USD
+              reason: contracted launch discount
+        charge_threshold_pct: 10
+        parent_adjustment_bounds:
+          schema: runx.authority_bounds.v1
+          amount:
+            max_per_account: 6000
+            currency: USD
+          scopes:
+            - spend.reserve
+            - spend.settle
+            - receipt.seal
+          expires_at: "2026-07-31T00:00:00Z"
+      expect:
+        status: needs_agent
+
+runners:
+  audit:
+    default: true
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data source holding per-account revenue reconciliation state.
+      store_id:
+        type: string
+        required: false
+        description: Optional deterministic local fixture store id.
+      usage_records:
+        type: json
+        required: true
+        description: usage_records{account_id,usage_amount,period}.
+      billing_history:
+        type: json
+        required: true
+        description: billing_history{account_id,billed_amount,period}.
+      discount_policy:
+        type: json
+        required: true
+        description: discount_policy{excluded_accounts,known_discounts}.
+      charge_threshold_pct:
+        type: number
+        required: true
+        description: Minimum under-billed percentage required before emitting a ceiling.
+      parent_adjustment_bounds:
+        type: json
+        required: true
+        description: AuthorityBounds clamp for any adjustment ceiling emitted as data.
+    graph:
+      name: revenue-leakage-auditor
+      steps:
+        - id: read-account
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: account_reconciliations
+            aggregate_id: "$input.usage_records.account_id"
+        - id: judge-leakage
+          label: decide revenue leakage and bounded adjustment ceilings
+          run:
+            type: agent-task
+            agent: finance
+            task: revenue-leakage-auditor
+            outputs:
+              leakage_audit_packet: object
+          instructions: >
+            Compare usage_records to billing_history for the same account_id and
+            period. Use only the supplied records and discount_policy. Emit
+            decision.leakage_found true only when usage exceeds billed amount
+            beyond charge_threshold_pct, the account is not excluded, no known
+            discount covers the gap, and parent_adjustment_bounds can clamp the
+            ceiling. Emit one bounded runx.attenuation_request.v1 ceiling as
+            DATA per eligible account with amount, currency, scopes,
+            usage_evidence_ref, billing_evidence_ref, and a stable
+            idempotency_key. Never mint authority, never move money, never emit
+            an operational_proposal, and never claim an attenuation subset proof.
+            Include data_store.append_event with expected_version and an
+            idempotency_key keyed by account_id and period so the next graph step
+            can CAS append the reconciliation event. Escalate ambiguous or
+            incomplete billing evidence to human_approval instead of emitting a
+            ceiling.
+          allowed_tools:
+            - fs.read
+          scopes:
+            - revenue:leakage:review
+          inputs:
+            usage_records: "$input.usage_records"
+            billing_history: "$input.billing_history"
+            discount_policy: "$input.discount_policy"
+            charge_threshold_pct: "$input.charge_threshold_pct"
+            parent_adjustment_bounds: "$input.parent_adjustment_bounds"
+          context:
+            account_projection: read-account.data_operation_result.data.projection
+          artifacts:
+            named_emits:
+              revenue_leakage_audit_packet: leakage_audit_packet
+            packets:
+              revenue_leakage_audit_packet: runx.revenue.leakage_audit.v1
+        - id: append-review
+          tool: data.source
+          scopes:
+            - runx:data:append
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: account_reconciliations
+            aggregate_id: "$input.usage_records.account_id"
+          context:
+            expected_version: judge-leakage.leakage_audit_packet.data_store.append_event.expected_version
+            idempotency_key: judge-leakage.leakage_audit_packet.data_store.append_event.idempotency_key
+            event: judge-leakage.leakage_audit_packet.data_store.append_event.event

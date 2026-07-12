@@ -1,0 +1,48 @@
+{
+  "data_source_ref": "tenant://revenue-leakage/account-ledger",
+  "store_id": "revenue-leakage-dogfood-v1",
+  "usage_records": {
+    "account_id": "account:bravo-team",
+    "usage_amount": 10500,
+    "currency": "USD",
+    "period": "2026-06",
+    "evidence_ref": "usage:account:bravo-team:2026-06"
+  },
+  "billing_history": {
+    "account_id": "account:bravo-team",
+    "billed_amount": 10000,
+    "currency": "USD",
+    "period": "2026-06",
+    "evidence_ref": "billing:account:bravo-team:2026-06"
+  },
+  "discount_policy": {
+    "excluded_accounts": [
+      "account:internal-sandbox"
+    ],
+    "known_discounts": [
+      {
+        "account_id": "account:legacy-partner",
+        "period": "2026-06",
+        "amount": {
+          "amount": 5000,
+          "currency": "USD"
+        },
+        "reason": "contracted launch discount"
+      }
+    ]
+  },
+  "charge_threshold_pct": 10,
+  "parent_adjustment_bounds": {
+    "schema": "runx.authority_bounds.v1",
+    "amount": {
+      "max_per_account": 6000,
+      "currency": "USD"
+    },
+    "scopes": [
+      "spend.reserve",
+      "spend.settle",
+      "receipt.seal"
+    ],
+    "expires_at": "2026-07-31T00:00:00Z"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "agent_task.revenue-leakage-auditor.output": {
+    "leakage_audit_packet": {
+      "schema": "runx.revenue.leakage_audit.v1",
+      "decision": {
+        "leakage_found": true,
+        "reason": "account:atlas-team used USD 15000 in 2026-06, was billed USD 10000, and the 50% under-billing gap exceeds the 10% threshold with no exclusion or known discount."
+      },
+      "ceilings": [
+        {
+          "schema": "runx.attenuation_request.v1",
+          "form": "data",
+          "account_id": "account:atlas-team",
+          "amount": {
+            "amount": 5000,
+            "currency": "USD"
+          },
+          "currency": "USD",
+          "scopes": [
+            "spend.reserve",
+            "spend.settle",
+            "receipt.seal"
+          ],
+          "counterparty": "account:atlas-team",
+          "usage_evidence_ref": "usage:account:atlas-team:2026-06",
+          "billing_evidence_ref": "billing:account:atlas-team:2026-06",
+          "idempotency_key": "revenue-leakage:account:atlas-team:2026-06:recover",
+          "downstream_runner": "registry:runx/spend@0.1.1",
+          "clamp": {
+            "parent_bound_ref": "parent_adjustment_bounds",
+            "max_amount": {
+              "amount": 6000,
+              "currency": "USD"
+            },
+            "result": "within_parent_bounds"
+          }
+        }
+      ],
+      "escalation": {
+        "required": true,
+        "lane": "human_approval",
+        "reason": "Finance approval is required before a downstream C3 runner consumes the adjustment ceiling."
+      },
+      "data_store": {
+        "package_ref": "registry:runx/data-store@0.1.2",
+        "data_source_ref": "tenant://revenue-leakage/account-ledger",
+        "store_id": "revenue-leakage-dogfood-v1",
+        "read_projection": {
+          "runner": "read_projection",
+          "resource": "account_reconciliations",
+          "aggregate_id": "account:atlas-team"
+        },
+        "append_event": {
+          "runner": "append_event",
+          "resource": "account_reconciliations",
+          "aggregate_id": "account:atlas-team",
+          "expected_version": 0,
+          "idempotency_key": "revenue-leakage:account:atlas-team:2026-06:detected",
+          "event": {
+            "type": "revenue_leakage.detected",
+            "payload": {
+              "account_id": "account:atlas-team",
+              "period": "2026-06",
+              "usage_amount": {
+                "amount": 15000,
+                "currency": "USD"
+              },
+              "billed_amount": {
+                "amount": 10000,
+                "currency": "USD"
+              },
+              "under_billed_amount": {
+                "amount": 5000,
+                "currency": "USD"
+              },
+              "threshold_pct": 10,
+              "ceiling_idempotency_key": "revenue-leakage:account:atlas-team:2026-06:recover"
+            }
+          }
+        }
+      },
+      "observations": {
+        "verdict": "leakage_found",
+        "account_id": "account:atlas-team",
+        "period": "2026-06",
+        "usage_evidence_ref": "usage:account:atlas-team:2026-06",
+        "billing_evidence_ref": "billing:account:atlas-team:2026-06",
+        "usage_amount": {
+          "amount": 15000,
+          "currency": "USD"
+        },
+        "billed_amount": {
+          "amount": 10000,
+          "currency": "USD"
+        },
+        "under_billed_amount": {
+          "amount": 5000,
+          "currency": "USD"
+        },
+        "under_billed_pct": 50,
+        "threshold_pct": 10,
+        "bounded_ceiling_count": 1,
+        "aggregate_id": "account:atlas-team",
+        "appended_version": 1,
+        "refused_or_stop_reason": null,
+        "harness_cases": [
+          "revenue-leakage-auditor-underbilling-ceiling",
+          "revenue-leakage-auditor-stop-needs-agent"
+        ]
+      }
+    }
+  }
+}
