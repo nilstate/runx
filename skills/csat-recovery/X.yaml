@@ -278,4 +278,3 @@ runners:
             expected_version: decide.recovery_decision.data.expected_version
             idempotency_key: decide.recovery_decision.data.idempotency_key
             event: decide.recovery_decision.data.state_event
-
