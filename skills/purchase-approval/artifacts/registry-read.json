@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "fablerlabs/purchase-approval@sha-56c91c6936e4",
+    "skill": {
+      "skill_id": "fablerlabs/purchase-approval",
+      "owner": "fablerlabs",
+      "name": "purchase-approval",
+      "description": "Decide one purchase request against a typed procurement policy and the current budget balance, emitting a typed approval decision plus, only on approval, exactly one bounded AttenuationRequest ceiling as data before any spend is committed.",
+      "category": "ops",
+      "version": "sha-56c91c6936e4",
+      "digest": "2709d9122c7fa14205dce69acd61565d1416cfb676ab3e4043afabf4db1d1173",
+      "markdown": "---\nname: purchase-approval\ndescription: Decide one purchase request against a typed procurement policy and the current budget balance, emitting a typed approval decision plus, only on approval, exactly one bounded AttenuationRequest ceiling as data before any spend is committed.\nrunx:\n  category: business\n---\n\n# Purchase Approval\n\n`purchase-approval` is a finance review skill. It reads one purchase request, the\nactive procurement policy, the remaining budget balance, and the requested\nbudget-bounded scope, then decides **approve-in-full**, **scope-down**, or\n**deny** *before* any money moves. The dangerous part of a purchase is the\napproval call, not the payment.\n\nThe output is a typed decision plus, only when approved, exactly one bounded\n`runx.attenuation_request.v1` ceiling carried as **data**. The skill is a\njudgment, not an executor: it never mints authority, never reserves, never\nsettles, never moves money, and never emits a `runx.operational_proposal.v1`.\n\nIt is the forward counterpart to `settle-invoice`, which settles an invoice\nalready approved against a grant, and is distinct from `expense-policy-check`,\nwhich judges post-hoc reimbursement after money has already moved.\n`budget-sentry` watches cumulative burn; this skill approves one purchase and\nemits the bounded spend ceiling for it.\n\n## What This Skill Does\n\n1. Checks `purchase_request.vendor` against `procurement_policy.approved_vendors`.\n2. Checks `purchase_request.amount` against `procurement_policy.max_single_purchase`.\n3. Checks the amount against `current_budget_balance.amount` — remaining budget authority.\n4. Checks `purchase_request.currency` against `current_budget_balance.currency`.\n5. Checks the amount against `procurement_policy.requires_approval_above` to route\n   the human approval lane.\n6. Clamps any emitted ceiling inside `requested_scope` (the requested\n   budget-bounded scope) and never above the requested amount.\n7. Emits exactly one bounded ceiling as data on approval, and zero ceilings otherwise.\n\nThe graph review boundary is a single `agent-task` step (`review-purchase`). The\ndecision is sealed into a `runx.receipt.v1` review receipt. When the human\napproval sub-step has no answer, the run blocks at `needs_agent` rather than\nguessing.\n\n## Inputs\n\n```yaml\npurchase_request:\n  amount: number\n  currency: string\n  vendor: string\n  purpose: string\nprocurement_policy:\n  approved_vendors: [string]\n  max_single_purchase: number\n  requires_approval_above: number\ncurrent_budget_balance:\n  amount: number\n  currency: string\nrequested_scope:            # the requested budget-bounded scope\n  scopes: [string]\n  max_amount: {amount: number, currency: string}\n  expires_at: string\n```\n\n`current_budget_balance` carries its own currency so that a currency mismatch\nagainst `purchase_request.currency` escalates to the human lane instead of being\nsilently assumed. `procurement_policy` is a typed input; a durable `policy_ref`\nwith an expiry window arrives with the C6 policy-store family.\n\n## Output\n\nOne `runx.purchase.approval.v1` packet:\n\n```yaml\ndecision:\n  approved: boolean\n  mode: approve_in_full | scope_down | deny\n  reason: string           # names the exact policy violation or budget overage\nceilings:                  # exactly one when approved; empty otherwise\n  - schema: runx.attenuation_request.v1\n    form: data\n    amount: {amount: number, currency: string}\n    currency: string\n    counterparty: string   # the approved vendor\n    scopes: [string]\n    clamp: {parent_bound_ref, max_amount, result}\nescalation:\n  required: boolean\n  lane: human_approval | null\n  reason: string | null\nobservations: {...}\n```\n\n## Decision Table\n\n| Condition | Decision | Ceiling |\n|---|---|---|\n| Vendor listed, amount at or below every cap, the balance, and the scope bound | `approved: true`, `approve_in_full` | Exactly one, at the requested amount |\n| Vendor listed, in policy, but a clamp lowers the amount | `approved: true`, `scope_down` | Exactly one, at the clamped amount |\n| Amount above `requires_approval_above`, otherwise in policy | Escalates, blocks | None |\n| Vendor not in `approved_vendors` | `approved: false`, `deny` | None |\n| Amount above `current_budget_balance.amount` | `approved: false`, `deny` | None |\n| Amount above `max_single_purchase` | `approved: false`, `deny` | None |\n| `purchase_request.currency` differs from `current_budget_balance.currency` | Escalates, blocks | None |\n| Budget authority unclear | Escalates, blocks | None |\n\nThe judgment never invents an approved vendor, a single-purchase cap, or an\napproval threshold that is absent from `procurement_policy`, and never assumes a\nbudget balance.\n\n## Handoff Seam (C3)\n\nThe bounded ceiling **is** the handoff seam. A downstream driver hands the\nemitted `runx.attenuation_request.v1` to the core spend/refund accepting runner\n(C3), which alone mints, reserves, settles, and seals the attenuated subset —\ncapped at that ceiling. This skill emits the ceiling itself, never an attenuated\nsubset.\n\nBecause a denial or a blocked approval emits **no ceiling**, there is nothing for\nC3 to consume and **the spend cannot fire**. Out-of-policy spend, a currency\nmismatch, or unclear budget authority routes to a human approval lane that\n**blocks rather than guesses**.\n\n## Harness Cases\n\n- `purchase-approval-in-policy-ceiling` — in-policy USD 75 to a listed vendor\n  within a USD 1000 balance. Yields `decision.approved: true`, exactly one bounded\n  ceiling, and a **sealed** review receipt.\n- `purchase-approval-stop-over-budget-needs-agent` — USD 1500 against a USD 400\n  balance (a USD 1100 overage) from a vendor outside `approved_vendors`. It\n  intentionally omits `caller.answers`, so the human approval sub-step blocks to\n  **`needs_agent`**, emits **no ceiling**, and the refusal names the budget overage\n  and the unlisted vendor.\n\n## Install, Run, Verify\n\n```bash\nrunx add <owner>/purchase-approval@<version>\nrunx skill <owner>/purchase-approval@<version> --json \\\n  --input-json purchase_request=\"$(jq -c .purchase_request fixtures/in-policy-input.json)\" \\\n  --input-json procurement_policy=\"$(jq -c .procurement_policy fixtures/in-policy-input.json)\" \\\n  --input-json current_budget_balance=\"$(jq -c .current_budget_balance fixtures/in-policy-input.json)\" \\\n  --input-json requested_scope=\"$(jq -c .requested_scope fixtures/in-policy-input.json)\"\nrunx resume <run-id> fixtures/in-policy-answers.json --json\nrunx verify --receipt <receipt.json> --json\n```\n\nSee `DELIVERY.md` for the exact start/resume dogfood commands and the fixtures in\n`fixtures/`.",
+      "profile_digest": "0bc1e14d1a9c19607f3272039bf084c6f1f8dfab198ae869f7192d9564edc1ed",
+      "runner_names": [
+        "review"
+      ],
+      "source_type": "agent",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "user",
+        "id": "user_8d9407b3a8e0c1c2c9e8c9fe",
+        "handle": "fablerlabs",
+        "display_name": "Fabler Labs"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:user_8d9407b3a8e0c1c2c9e8c9fe",
+          "status": "declared",
+          "summary": "Fabler Labs",
+          "issued_at": "2026-07-12T16:58:16.277Z",
+          "metadata": {
+            "publisher_display_name": "Fabler Labs",
+            "publisher_handle": "fablerlabs",
+            "publisher_id": "user_8d9407b3a8e0c1c2c9e8c9fe",
+            "publisher_kind": "user",
+            "trust_tier": "community"
+          }
+        }
+      ],
+      "install_command": "runx add fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai",
+      "run_command": "runx skill fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai"
+    }
+  }
+}

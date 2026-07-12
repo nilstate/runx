@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "publish",
+    "publish": {
+      "target": "hosted",
+      "status": "published",
+      "skill_id": "fablerlabs/purchase-approval",
+      "owner": "fablerlabs",
+      "name": "purchase-approval",
+      "version": "sha-56c91c6936e4",
+      "digest": "2709d9122c7fa14205dce69acd61565d1416cfb676ab3e4043afabf4db1d1173",
+      "profile_digest": "0bc1e14d1a9c19607f3272039bf084c6f1f8dfab198ae869f7192d9564edc1ed",
+      "trust_tier": "community",
+      "install_command": "runx add fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai",
+      "run_command": "runx skill fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai",
+      "public_url": "https://runx.ai/x/fablerlabs/purchase-approval"
+    }
+  }
+}

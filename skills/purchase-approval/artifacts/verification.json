@@ -1,7 +1,7 @@
 {
-  "_note": "Local verification results for Frantic bounty #109, measured on 2026-07-12. Every field below was produced by a real local command. Fields whose value can only exist after an external action (publish, PR, star) are left as empty strings and MUST NOT be filled in by hand without running the command that produces them.",
+  "_note": "Measured local and hosted verification for Frantic #109. No unrun gate is represented as passed. The receipt notary rejected the purpose-scoped token; the signed dogfood receipt remains publicly inspectable in this PR and verifies valid under the documented local-development signature policy.",
   "schema": "runx.purchase_approval.verification.v1",
-  "verified_at": "2026-07-12T16:45:55Z",
+  "verified_at": "2026-07-12T17:01:40Z",
   "bounty": 109,
   "cli": {
     "version": "runx-cli 0.7.0",
@@ -12,16 +12,18 @@
   "package": {
     "name": "purchase-approval",
     "kind": "graph",
-    "version": "0.1.0",
-    "skill_id": "",
-    "owner": "",
-    "registry_ref": "",
-    "digest": "",
-    "public_url": "",
-    "source_url": "",
-    "pr_url": "",
-    "x_yaml": "",
-    "skill_md": ""
+    "source_version": "0.1.0",
+    "version": "sha-56c91c6936e4",
+    "skill_id": "fablerlabs/purchase-approval",
+    "owner": "fablerlabs",
+    "registry_ref": "fablerlabs/purchase-approval@sha-56c91c6936e4",
+    "digest": "sha256:2709d9122c7fa14205dce69acd61565d1416cfb676ab3e4043afabf4db1d1173",
+    "profile_digest": "sha256:0bc1e14d1a9c19607f3272039bf084c6f1f8dfab198ae869f7192d9564edc1ed",
+    "public_url": "https://runx.ai/x/fablerlabs/purchase-approval@sha-56c91c6936e4",
+    "source_url": "https://github.com/fablerlabs/runx/tree/90a73a2e739a35c6f3783f7aa60424b7959fedaa/skills/purchase-approval",
+    "pr_url": "https://github.com/runxhq/runx/pull/285",
+    "x_yaml": "https://raw.githubusercontent.com/fablerlabs/runx/90a73a2e739a35c6f3783f7aa60424b7959fedaa/skills/purchase-approval/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/fablerlabs/runx/90a73a2e739a35c6f3783f7aa60424b7959fedaa/skills/purchase-approval/SKILL.md"
   },
   "checks": [
     {
@@ -34,7 +36,9 @@
       "name": "skill inspect",
       "command": "runx skill inspect .",
       "status": "passed",
-      "runners": ["review"],
+      "runners": [
+        "review"
+      ],
       "note": "Single graph runner 'review'; default."
     },
     {
@@ -112,19 +116,86 @@
       "bounded_ceiling_count": 0,
       "attenuation_requests_anywhere_in_run": 0,
       "named_violation": "USD 1500 exceeds current_budget_balance USD 400 by USD 1100 (budget overage); exceeds max_single_purchase USD 500; vendor Shady Parts Co is not in approved_vendors"
+    },
+    {
+      "name": "GitHub star",
+      "command": "GET /user/starred/runxhq/runx",
+      "status": "passed",
+      "http_status": 204,
+      "account": "fablerlabs"
+    },
+    {
+      "name": "hosted registry publish and harness",
+      "command": "runx registry publish skills/purchase-approval/SKILL.md --registry https://api.runx.ai --json",
+      "status": "published",
+      "hosted_harness_status": "passed",
+      "registry_ref": "fablerlabs/purchase-approval@sha-56c91c6936e4"
+    },
+    {
+      "name": "registry read",
+      "command": "runx registry read fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai --json",
+      "status": "passed",
+      "digest": "sha256:2709d9122c7fa14205dce69acd61565d1416cfb676ab3e4043afabf4db1d1173"
+    },
+    {
+      "name": "clean registry install",
+      "command": "runx add fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai --to <empty-dir> --json",
+      "status": "installed",
+      "runners": [
+        "review"
+      ]
+    },
+    {
+      "name": "public upstream PR",
+      "command": "gh pr create --repo runxhq/runx",
+      "status": "open",
+      "pr_url": "https://github.com/runxhq/runx/pull/285"
+    },
+    {
+      "name": "post-publish dogfood start",
+      "command": "runx skill fablerlabs/purchase-approval@sha-56c91c6936e4 review --registry https://api.runx.ai ...",
+      "status": "needs_agent",
+      "run_id": "run_review_f48e576897f9",
+      "registry_trust_state": "trusted"
+    },
+    {
+      "name": "post-publish dogfood resume",
+      "command": "runx resume run_review_f48e576897f9 fixtures/in-policy-answers.json --receipt-dir <dir> --json",
+      "status": "sealed",
+      "receipt_ref": "runx:receipt:sha256:d8b48bdf9970ea80ea212f12b8f66247b4f18f61b0ef98fc816da64c829af902",
+      "approved": true,
+      "bounded_ceiling_count": 1
+    },
+    {
+      "name": "post-publish receipt verify",
+      "command": "runx verify --receipt artifacts/dogfood-receipt.json --allow-local-development-signatures --json",
+      "status": "passed",
+      "valid": true,
+      "signature_mode": "local-development",
+      "lineage": "unverified",
+      "findings": []
+    },
+    {
+      "name": "hosted receipt notary publish",
+      "command": "runx publish artifacts/dogfood-receipt.json --json",
+      "status": "failure",
+      "error": "Unauthorized",
+      "blocking": false,
+      "note": "Purpose-scoped registry token did not authorize the separate receipt-notary endpoint; no hosted-notary success is claimed."
     }
   ],
-  "external_gates_not_yet_run": {
-    "_note": "These are blank because the corresponding external action has NOT been performed. No value here may be invented.",
-    "github_star_runxhq_runx": "",
-    "publish_command": "runx login --provider github --for publish && runx registry publish ./skills/purchase-approval/SKILL.md --registry https://api.runx.ai",
-    "published_version": "",
-    "registry_read": "",
-    "install_command": "",
-    "clean_install_status": "",
-    "hosted_harness_status": "",
-    "post_publish_dogfood_command": "",
-    "post_publish_receipt_ref": "",
-    "post_publish_verify_verdict": ""
+  "external_gates": {
+    "github_star_runxhq_runx": true,
+    "publish_command": "runx registry publish skills/purchase-approval/SKILL.md --registry https://api.runx.ai --json",
+    "published_version": "sha-56c91c6936e4",
+    "registry_read": "passed",
+    "install_command": "runx add fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai",
+    "clean_install_status": "installed",
+    "hosted_harness_status": "passed",
+    "post_publish_dogfood_command": "runx skill fablerlabs/purchase-approval@sha-56c91c6936e4 review --registry https://api.runx.ai; runx resume run_review_f48e576897f9 fixtures/in-policy-answers.json",
+    "post_publish_receipt_ref": "runx:receipt:sha256:d8b48bdf9970ea80ea212f12b8f66247b4f18f61b0ef98fc816da64c829af902",
+    "post_publish_verify_verdict": "valid with zero findings; local-development signature accepted explicitly",
+    "public_pr": "https://github.com/runxhq/runx/pull/285",
+    "receipt_notary_status": "Unauthorized; signed receipt published in PR instead"
   }
 }

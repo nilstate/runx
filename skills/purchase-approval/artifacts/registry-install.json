@@ -1,0 +1,42 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "fablerlabs/purchase-approval@sha-56c91c6936e4",
+    "install": {
+      "status": "installed",
+      "destination": "/tmp/f109-install.vDrcIn/fablerlabs/purchase-approval/sha-56c91c6936e4/SKILL.md",
+      "skill_name": "purchase-approval",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "fablerlabs/purchase-approval",
+      "version": "sha-56c91c6936e4",
+      "digest": "sha256:2709d9122c7fa14205dce69acd61565d1416cfb676ab3e4043afabf4db1d1173",
+      "profile_digest": "sha256:0bc1e14d1a9c19607f3272039bf084c6f1f8dfab198ae869f7192d9564edc1ed",
+      "profile_state_path": "/tmp/f109-install.vDrcIn/fablerlabs/purchase-approval/sha-56c91c6936e4/.runx/profile.json",
+      "runner_names": [
+        "review"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/tmp/f109-install.vDrcIn/fablerlabs/purchase-approval/sha-56c91c6936e4/SKILL.md",
+      "digest": "sha256:2709d9122c7fa14205dce69acd61565d1416cfb676ab3e4043afabf4db1d1173",
+      "install_count": 1,
+      "profile_digest": "sha256:0bc1e14d1a9c19607f3272039bf084c6f1f8dfab198ae869f7192d9564edc1ed",
+      "publisher": {
+        "display_name": "Fabler Labs",
+        "handle": "fablerlabs",
+        "id": "user_8d9407b3a8e0c1c2c9e8c9fe",
+        "kind": "user"
+      },
+      "ref": "fablerlabs/purchase-approval@sha-56c91c6936e4",
+      "skill_id": "fablerlabs/purchase-approval",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-56c91c6936e4"
+    }
+  }
+}

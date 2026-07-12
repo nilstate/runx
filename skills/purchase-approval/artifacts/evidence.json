@@ -1,11 +1,11 @@
 {
-  "_note": "evidence_json for Frantic bounty #109. Observations below were measured locally on 2026-07-12 with runx-cli 0.7.0. Every field that can only exist after publish/PR/star is an empty string and must be filled by running the command that produces it — never by hand.",
+  "_note": "Measured evidence for Frantic bounty #109. Registry publish, hosted harness, public PR, clean install, and post-publish dogfood ran on 2026-07-12 with runx-cli 0.7.0. The hosted receipt-notary publish endpoint rejected the purpose-scoped token as unauthorized; the signed receipt and valid local-development verification verdict are therefore published in the public PR without claiming hosted notarization.",
   "schema": "frantic.evidence.v1",
   "bounty": 109,
   "package_name": "purchase-approval",
   "package_kind": "graph",
   "package_version": "0.1.0",
-  "canonical_public_url": "",
+  "canonical_public_url": "https://runx.ai/x/fablerlabs/purchase-approval",
   "cli": {
     "version_command": "runx --version",
     "version": "runx-cli 0.7.0",
@@ -13,22 +13,23 @@
     "minimum_required": "0.6.14"
   },
   "publisher": {
-    "owner": "",
+    "owner": "fablerlabs",
     "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/purchase-approval/SKILL.md --registry https://api.runx.ai",
-    "registry_ref": "",
-    "install_command": "",
-    "github_star_runxhq_runx": ""
+    "registry_ref": "fablerlabs/purchase-approval@sha-56c91c6936e4",
+    "install_command": "runx add fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai",
+    "github_star_runxhq_runx": true
   },
   "artifact_refs": {
-    "public_url": "",
-    "source_url": "",
-    "pr_url": "",
-    "x_yaml": "",
-    "skill_md": "",
-    "evidence_json": "",
-    "verification_json": "",
-    "receipt_ref": "",
-    "report": ""
+    "public_url": "https://runx.ai/x/fablerlabs/purchase-approval@sha-56c91c6936e4",
+    "source_url": "https://github.com/fablerlabs/runx/tree/90a73a2e739a35c6f3783f7aa60424b7959fedaa/skills/purchase-approval",
+    "pr_url": "https://github.com/runxhq/runx/pull/285",
+    "x_yaml": "https://raw.githubusercontent.com/fablerlabs/runx/90a73a2e739a35c6f3783f7aa60424b7959fedaa/skills/purchase-approval/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/fablerlabs/runx/90a73a2e739a35c6f3783f7aa60424b7959fedaa/skills/purchase-approval/SKILL.md",
+    "evidence_json": "https://raw.githubusercontent.com/fablerlabs/runx/codex/purchase-approval-109/skills/purchase-approval/artifacts/evidence.json",
+    "verification_json": "https://raw.githubusercontent.com/fablerlabs/runx/codex/purchase-approval-109/skills/purchase-approval/artifacts/verification.json",
+    "receipt_ref": "runx:receipt:sha256:d8b48bdf9970ea80ea212f12b8f66247b4f18f61b0ef98fc816da64c829af902",
+    "receipt_url": "https://raw.githubusercontent.com/fablerlabs/runx/codex/purchase-approval-109/skills/purchase-approval/artifacts/dogfood-receipt.json",
+    "report": "https://raw.githubusercontent.com/fablerlabs/runx/codex/purchase-approval-109/skills/purchase-approval/artifacts/report.md"
   },
   "decision_observations": {
     "approved": true,
@@ -37,15 +38,25 @@
     "bounded_ceiling": {
       "schema": "runx.attenuation_request.v1",
       "form": "data",
-      "amount": { "amount": 75, "currency": "USD" },
+      "amount": {
+        "amount": 75,
+        "currency": "USD"
+      },
       "currency": "USD",
       "counterparty": "Acme Corp",
-      "scopes": ["spend.reserve", "spend.settle", "receipt.seal"],
+      "scopes": [
+        "spend.reserve",
+        "spend.settle",
+        "receipt.seal"
+      ],
       "idempotency_key": "purchase-approval:acme-corp:office-supplies:usd-75",
       "downstream_runner": "registry:runx/spend@0.1.1",
       "clamp": {
         "parent_bound_ref": "requested_scope",
-        "max_amount": { "amount": 100, "currency": "USD" },
+        "max_amount": {
+          "amount": 100,
+          "currency": "USD"
+        },
         "result": "within_parent_bounds"
       }
     },
@@ -54,14 +65,21 @@
     "ceiling_currency": "USD",
     "operational_proposal_emitted": false,
     "attenuated_subset_claimed": false,
-    "escalation": { "required": false, "lane": null, "reason": null }
+    "escalation": {
+      "required": false,
+      "lane": null,
+      "reason": null
+    }
   },
   "refusal_observations": {
     "approved": false,
     "mode": "deny",
     "refused_reason": "Refused: USD 1500 exceeds current_budget_balance USD 400 by USD 1100 (budget overage), exceeds procurement_policy.max_single_purchase USD 500 by USD 1000, and vendor Shady Parts Co is not in procurement_policy.approved_vendors [Acme Corp, TechHub] (policy violation). No approved vendor, cap, or threshold is invented to cover the gap.",
     "cited_policy_violation": "vendor Shady Parts Co absent from procurement_policy.approved_vendors; amount above procurement_policy.max_single_purchase USD 500",
-    "cited_budget_overage": { "amount": 1100, "currency": "USD" },
+    "cited_budget_overage": {
+      "amount": 1100,
+      "currency": "USD"
+    },
     "bounded_ceiling_count": 0,
     "escalation": {
       "required": true,
@@ -77,7 +95,7 @@
     "sealed_receipt_id": "sha256:447122c9564366c7ba7e9fdb6db9772b01615d2ac4ab1e1d91d4399f64ea2a64",
     "sealed_receipt_id_note": "Record of one local harness run on 2026-07-12. Harness receipt ids are per-run, not content-stable: re-running `runx harness .` yields a different id. Do not treat this as a digest to match.",
     "sealed_receipt_is_fixture_seal_not_dogfood": true,
-    "hosted_harness_status": "",
+    "hosted_harness_status": "passed; registry publish returned status=published",
     "cases": [
       {
         "name": "purchase-approval-in-policy-ceiling",
@@ -117,15 +135,74 @@
     }
   },
   "dogfood": {
-    "_note": "REQUIRED by acceptance: this must be the post-publish run of <owner>/purchase-approval@<version>, not the harness fixture seal and not the local run above. Blank until publish happens.",
-    "package": "",
-    "input": "",
-    "command": "",
-    "receipt_ref": "",
-    "verify_verdict": "",
+    "_note": "Post-publish run of the exact hosted registry package. It started at needs_agent, resumed with the public in-policy answer fixture, sealed one bounded ceiling, and verified valid with zero findings under the local-development signature policy. Hosted receipt-notary publication was attempted and returned Unauthorized, so receipt_url points to the public signed receipt in the PR.",
+    "package": "fablerlabs/purchase-approval@sha-56c91c6936e4",
+    "input": {
+      "purchase_request": {
+        "amount": 75,
+        "currency": "USD",
+        "vendor": "Acme Corp",
+        "purpose": "office supplies for the design team"
+      },
+      "procurement_policy": {
+        "approved_vendors": [
+          "Acme Corp",
+          "TechHub"
+        ],
+        "max_single_purchase": 500,
+        "requires_approval_above": 200
+      },
+      "current_budget_balance": {
+        "amount": 1000,
+        "currency": "USD"
+      },
+      "requested_scope": {
+        "schema": "runx.authority_bounds.v1",
+        "scopes": [
+          "spend.reserve",
+          "spend.settle",
+          "receipt.seal"
+        ],
+        "max_amount": {
+          "amount": 100,
+          "currency": "USD"
+        },
+        "expires_at": "2026-07-31T00:00:00Z"
+      }
+    },
+    "command": "runx skill fablerlabs/purchase-approval@sha-56c91c6936e4 review --registry https://api.runx.ai --receipt-dir <dir> --json --approve-operator-context sha256:c59c6cddd53f334d5c23747b4cf6b3efefc07c2d7ab80c77c9ab112c344ab2ca --input-json purchase_request=<json> --input-json procurement_policy=<json> --input-json current_budget_balance=<json> --input-json requested_scope=<json>; runx resume run_review_f48e576897f9 fixtures/in-policy-answers.json --receipt-dir <dir> --json",
+    "start_status": "needs_agent",
+    "resume_status": "sealed",
+    "run_id": "run_review_f48e576897f9",
+    "receipt_ref": "runx:receipt:sha256:d8b48bdf9970ea80ea212f12b8f66247b4f18f61b0ef98fc816da64c829af902",
+    "receipt_url": "https://raw.githubusercontent.com/fablerlabs/runx/codex/purchase-approval-109/skills/purchase-approval/artifacts/dogfood-receipt.json",
+    "verify_command": "runx verify --receipt <dogfood-receipt.json> --allow-local-development-signatures --json",
+    "verify_verdict": {
+      "schema": "runx.verify_verdict.v1",
+      "valid": true,
+      "digest": "valid",
+      "content_address": "valid",
+      "signature_status": "valid",
+      "signature_mode": "local-development",
+      "lineage": "unverified",
+      "findings": []
+    },
+    "public_notary_publish": {
+      "status": "failure",
+      "error": "Unauthorized",
+      "claim": "No hosted notarization claimed"
+    },
     "harness_cases": [
-      { "name": "purchase-approval-in-policy-ceiling", "status": "sealed" },
-      { "name": "purchase-approval-stop-over-budget-needs-agent", "status": "refused" }
+      {
+        "name": "purchase-approval-in-policy-ceiling",
+        "status": "sealed",
+        "result": "passed"
+      },
+      {
+        "name": "purchase-approval-stop-over-budget-needs-agent",
+        "status": "needs_agent",
+        "result": "passed"
+      }
     ]
   },
   "handoff_seam": {
@@ -134,9 +211,9 @@
     "human_lane": "Out-of-policy spend, a currency mismatch, or unclear budget authority routes to a human approval lane that blocks rather than guesses."
   },
   "how_a_new_user_installs_runs_and_verifies": {
-    "install": "",
-    "run": "",
-    "verify": "",
-    "_note": "Fill from the real post-publish commands; the shapes are in DELIVERY.md."
+    "install": "runx add fablerlabs/purchase-approval@sha-56c91c6936e4 --registry https://api.runx.ai",
+    "run": "runx skill fablerlabs/purchase-approval@sha-56c91c6936e4 review --registry https://api.runx.ai --json with the four typed inputs; approve the printed operator-context digest; resume with fixtures/in-policy-answers.json",
+    "verify": "runx verify --receipt <receipt.json> --allow-local-development-signatures --json",
+    "private_context_required": false
   }
 }
