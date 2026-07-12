@@ -1,0 +1,33 @@
+{
+  "schema": "purchase_approval_harness_evidence.v1",
+  "generated_at": "2026-07-12T19:21:19Z",
+  "runx_cli": "runx-cli 0.7.0",
+  "checks": [
+    {
+      "name": "inline_harness",
+      "command": "npx -y @runxhq/cli@0.7.0 harness ./skills/purchase-approval --json",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": [
+        "purchase-approval-in-policy-sealed",
+        "purchase-approval-out-of-policy-needs-agent"
+      ],
+      "assertion_error_count": 0,
+      "receipt_id": "sha256:2d874021ddb948ba5264255762c5dfeefff5832236256d768dc981d438815f1c"
+    },
+    {
+      "name": "profile_doctor",
+      "command": "npx -y @runxhq/cli@0.7.0 doctor ./skills/purchase-approval --json",
+      "status": "success",
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "name": "scope_down_consent",
+      "command": "node skills/purchase-approval/run.mjs evaluate",
+      "status": "passed",
+      "assertion": "A 180 USD request with allow_scope_down=true emitted a 100 USD scope_down ceiling; the deterministic evaluator did not silently reduce the request."
+    }
+  ],
+  "boundary": "The harness exercises only policy and review data. It does not mint authority, reserve funds, move money, or call a payment rail."
+}

@@ -1,0 +1,84 @@
+name: purchase-approval-in-policy-sealed
+kind: skill
+target: ..
+runner: purchase-approval
+inputs:
+  purchase_request:
+    amount: 84
+    currency: USD
+    vendor: merchant:acme-cloud
+    purpose: Renew the production observability subscription for one month.
+  procurement_policy:
+    approved_vendors:
+      - merchant:acme-cloud
+    max_single_purchase:
+      amount: 100
+      currency: USD
+    requires_approval_above:
+      amount: 250
+      currency: USD
+  current_budget_balance:
+    amount: 500
+    currency: USD
+  requested_budget_bounded_scope:
+    ceiling:
+      amount: 84
+      currency: USD
+    counterparty: merchant:acme-cloud
+    scopes:
+      - payment:prepare
+      - payment:commit
+    allow_scope_down: false
+    attenuation_request:
+      principal_ref:
+        type: principal
+        uri: runx:principal:purchase-requester
+      resource_ref:
+        type: surface
+        uri: merchant:acme-cloud
+      resource_family: effect
+      verbs:
+        - prepare
+        - commit
+      capabilities:
+        - effect_single_use_capability
+      bounds:
+        effect_limits:
+          - family: payment
+            unit: USD
+            max_per_call_units: 84
+            max_per_run_units: 84
+            channels:
+              - approved-rail
+            peer: merchant:acme-cloud
+            operation: procurement.purchase
+            approval_threshold_units: 250
+            authorization_form: single_use_capability
+            preflight_required: true
+            commitment_required: true
+            idempotency_required: true
+            recovery_required: true
+            receipt_before_success: true
+            single_use_capability: true
+      expires_at: 2026-12-31T00:00:00Z
+caller:
+  answers:
+    agent_task.purchase-approval-review.output:
+      approval_decision:
+        approved: true
+        reason: The reviewer approves this one bounded Acme Cloud renewal.
+      closure:
+        disposition: closed
+        reason_code: human_review_approved
+        summary: The human reviewer approved the bounded purchase ceiling.
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - evaluate-policy
+    - human-review
+    - emit-ceiling
+metadata:
+  public_skill: purchase-approval
+  source_case: in-policy-purchase
