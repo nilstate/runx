@@ -1,0 +1,274 @@
+skill: renewal-decision
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: context
+  part_of:
+    - runx/spend
+
+emits:
+  - name: renewal_decision_packet
+    packet: runx.renewal.decision.v1
+
+harness:
+  cases:
+    - name: renewal-decision-renew-with-bounded-ceiling
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://renewal-decision/vendor-ledger":{"adapter":"data.local","resources":{"vendor_renewals":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: tenant://renewal-decision/vendor-ledger
+        store_id: renewal-decision-harness-v1
+        vendor_contract:
+          vendor_id: vendor:acme-observability
+          contract_ref: contract:acme-observability:2026
+          current_terms:
+            service: observability platform
+            plan: business
+            seats: 42
+            renewal_notice_days: 30
+          contract_value:
+            amount: 100000
+            currency: USD
+          expiry: "2026-08-31"
+        usage_actuals:
+          periods:
+            - period: 2026-04
+              units_consumed: 1180
+              spend: 9200
+            - period: 2026-05
+              units_consumed: 1240
+              spend: 9450
+            - period: 2026-06
+              units_consumed: 1275
+              spend: 9500
+          units_consumed: 3695
+          cost_per_unit: 7.62
+        renewal_offer:
+          amount:
+            amount: 112000
+            currency: USD
+          currency: USD
+          terms:
+            term_months: 12
+            price_increase_pct: 12
+            support_tier: business
+          expiry: "2026-08-15"
+        procurement_policy:
+          min_usage_units: 3000
+          max_renewal_pct: 15
+          approval_threshold:
+            amount: 100000
+            currency: USD
+      caller:
+        answers:
+          agent_task.renewal-decision.output:
+            decision_packet:
+              decision:
+                action: renew
+                reason: Active usage exceeds the minimum, vendor identity matches the contract, and the $112000 offer is within the 15% renewal cap over the $100000 contract value.
+                confidence: high
+              bounded_ceiling:
+                schema: runx.attenuation_request.v1
+                form: data
+                amount:
+                  amount: 112000
+                  currency: USD
+                currency: USD
+                scopes:
+                  - spend.reserve
+                  - spend.settle
+                  - receipt.seal
+                counterparty: vendor:acme-observability
+                idempotency_key: renewal-decision:vendor:acme-observability:2026-08:renew
+                expires_at: "2026-08-15T00:00:00Z"
+                downstream_runner: registry:runx/spend@0.1.1
+              escalation_packet:
+                approval_required: true
+                lane: human_approval
+                reason: Renewal is within policy but exceeds the approval threshold, so a human must approve before C3 consumes the ceiling.
+                notice_runner: governed send-as run named by the downstream driver after approval
+              data_store:
+                package_ref: registry:runx/data-store@0.1.2
+                data_source_ref: tenant://renewal-decision/vendor-ledger
+                store_id: renewal-decision-harness-v1
+                read_projection:
+                  runner: read_projection
+                  resource: vendor_renewals
+                  aggregate_id: vendor:acme-observability
+                append_event:
+                  runner: append_event
+                  resource: vendor_renewals
+                  aggregate_id: vendor:acme-observability
+                  expected_version: 0
+                  idempotency_key: renewal-decision:vendor:acme-observability:2026-08:renew
+                  event:
+                    type: renewal_decision.recorded
+                    payload:
+                      action: renew
+                      contract_ref: contract:acme-observability:2026
+                      offer_amount:
+                        amount: 112000
+                        currency: USD
+                      cap_pct: 15
+                      usage_units: 3695
+                      bounded_ceiling_ref: attenuation:renewal-decision:vendor:acme-observability:2026-08
+              observations:
+                verdict: renew
+                matched_vendor_id: vendor:acme-observability
+                sealed_contract_reference: contract:acme-observability:2026
+                usage_alignment: 3695 units exceeds the 3000 unit minimum.
+                spend_variance: 12% increase is within the 15% cap.
+                policy_cap_check: pass
+                aggregate_id: vendor:acme-observability
+                appended_version: 1
+                stop_reason: null
+                harness_cases:
+                  - renewal-decision-renew-with-bounded-ceiling
+                  - renewal-decision-stop-over-policy-cap
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: renewal-decision-stop-over-policy-cap
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://renewal-decision/vendor-ledger":{"adapter":"data.local","resources":{"vendor_renewals":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: tenant://renewal-decision/vendor-ledger
+        store_id: renewal-decision-harness-v1
+        vendor_contract:
+          vendor_id: vendor:legacy-crm
+          contract_ref: contract:legacy-crm:2026
+          current_terms:
+            service: crm
+            plan: team
+            seats: 25
+          contract_value:
+            amount: 50000
+            currency: USD
+          expiry: "2026-09-30"
+        usage_actuals:
+          periods:
+            - period: 2026-04
+              units_consumed: 240
+              spend: 4100
+            - period: 2026-05
+              units_consumed: 210
+              spend: 4050
+            - period: 2026-06
+              units_consumed: 190
+              spend: 4020
+          units_consumed: 640
+          cost_per_unit: 19.02
+        renewal_offer:
+          amount:
+            amount: 65000
+            currency: USD
+          currency: USD
+          terms:
+            term_months: 12
+            price_increase_pct: 30
+          expiry: "2026-09-15"
+        procurement_policy:
+          min_usage_units: 1000
+          max_renewal_pct: 10
+          approval_threshold:
+            amount: 40000
+            currency: USD
+      expect:
+        status: needs_agent
+
+runners:
+  decide:
+    default: true
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data source holding renewal decision state; production bindings should point at the operator's vendor ledger.
+      store_id:
+        type: string
+        required: false
+        description: Optional deterministic local fixture store id.
+      vendor_contract:
+        type: json
+        required: true
+        description: vendor_contract{vendor_id,contract_ref,current_terms,contract_value,expiry}.
+      usage_actuals:
+        type: json
+        required: true
+        description: usage_actuals{periods,units_consumed,cost_per_unit}.
+      renewal_offer:
+        type: json
+        required: true
+        description: renewal_offer{amount,currency,terms,expiry}.
+      procurement_policy:
+        type: json
+        required: true
+        description: procurement_policy{min_usage_units,max_renewal_pct,approval_threshold}.
+    graph:
+      name: renewal-decision
+      steps:
+        - id: read-vendor
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: vendor_renewals
+            aggregate_id: "$input.vendor_contract.vendor_id"
+        - id: judge-renewal
+          label: decide renew, renegotiate, or cancel
+          run:
+            type: agent-task
+            agent: procurement
+            task: renewal-decision
+            outputs:
+              decision_packet: object
+          instructions: >
+            Decide whether to renew, renegotiate, or cancel. Match the vendor_id
+            in the renewal offer to vendor_contract.vendor_id, ground usage in
+            usage_actuals only, and apply procurement_policy.max_renewal_pct to
+            vendor_contract.contract_value. Emit a bounded AttenuationRequest
+            ceiling only when action is renew and the amount is at or beneath
+            the cap. Never mint authority, move money, or send a vendor notice.
+            Include data_store.append_event with expected_version and a stable
+            idempotency_key so the next graph step can CAS append the decision.
+          allowed_tools:
+            - fs.read
+          scopes:
+            - procurement:renewal:review
+          inputs:
+            vendor_contract: "$input.vendor_contract"
+            usage_actuals: "$input.usage_actuals"
+            renewal_offer: "$input.renewal_offer"
+            procurement_policy: "$input.procurement_policy"
+          context:
+            vendor_projection: read-vendor.data_operation_result.data.projection
+          artifacts:
+            named_emits:
+              renewal_decision_packet: decision_packet
+            packets:
+              renewal_decision_packet: runx.renewal.decision.v1
+        - id: append-decision
+          tool: data.source
+          scopes:
+            - runx:data:append
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: vendor_renewals
+            aggregate_id: "$input.vendor_contract.vendor_id"
+          context:
+            expected_version: judge-renewal.decision_packet.data_store.append_event.expected_version
+            idempotency_key: judge-renewal.decision_packet.data_store.append_event.idempotency_key
+            event: judge-renewal.decision_packet.data_store.append_event.event

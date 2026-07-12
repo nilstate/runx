@@ -1,0 +1,59 @@
+{
+  "data_source_ref": "tenant://renewal-decision/vendor-ledger",
+  "store_id": "renewal-decision-dogfood-v1",
+  "vendor_contract": {
+    "vendor_id": "vendor:legacy-crm",
+    "contract_ref": "contract:legacy-crm:2026",
+    "current_terms": {
+      "service": "crm",
+      "plan": "team",
+      "seats": 25
+    },
+    "contract_value": {
+      "amount": 50000,
+      "currency": "USD"
+    },
+    "expiry": "2026-09-30"
+  },
+  "usage_actuals": {
+    "periods": [
+      {
+        "period": "2026-04",
+        "units_consumed": 240,
+        "spend": 4100
+      },
+      {
+        "period": "2026-05",
+        "units_consumed": 210,
+        "spend": 4050
+      },
+      {
+        "period": "2026-06",
+        "units_consumed": 190,
+        "spend": 4020
+      }
+    ],
+    "units_consumed": 640,
+    "cost_per_unit": 19.02
+  },
+  "renewal_offer": {
+    "amount": {
+      "amount": 65000,
+      "currency": "USD"
+    },
+    "currency": "USD",
+    "terms": {
+      "term_months": 12,
+      "price_increase_pct": 30
+    },
+    "expiry": "2026-09-15"
+  },
+  "procurement_policy": {
+    "min_usage_units": 1000,
+    "max_renewal_pct": 10,
+    "approval_threshold": {
+      "amount": 40000,
+      "currency": "USD"
+    }
+  }
+}

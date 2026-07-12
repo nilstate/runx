@@ -1,0 +1,61 @@
+{
+  "data_source_ref": "tenant://renewal-decision/vendor-ledger",
+  "store_id": "renewal-decision-dogfood-v1",
+  "vendor_contract": {
+    "vendor_id": "vendor:acme-observability",
+    "contract_ref": "contract:acme-observability:2026",
+    "current_terms": {
+      "service": "observability platform",
+      "plan": "business",
+      "seats": 42,
+      "renewal_notice_days": 30
+    },
+    "contract_value": {
+      "amount": 100000,
+      "currency": "USD"
+    },
+    "expiry": "2026-08-31"
+  },
+  "usage_actuals": {
+    "periods": [
+      {
+        "period": "2026-04",
+        "units_consumed": 1180,
+        "spend": 9200
+      },
+      {
+        "period": "2026-05",
+        "units_consumed": 1240,
+        "spend": 9450
+      },
+      {
+        "period": "2026-06",
+        "units_consumed": 1275,
+        "spend": 9500
+      }
+    ],
+    "units_consumed": 3695,
+    "cost_per_unit": 7.62
+  },
+  "renewal_offer": {
+    "amount": {
+      "amount": 112000,
+      "currency": "USD"
+    },
+    "currency": "USD",
+    "terms": {
+      "term_months": 12,
+      "price_increase_pct": 12,
+      "support_tier": "business"
+    },
+    "expiry": "2026-08-15"
+  },
+  "procurement_policy": {
+    "min_usage_units": 3000,
+    "max_renewal_pct": 15,
+    "approval_threshold": {
+      "amount": 100000,
+      "currency": "USD"
+    }
+  }
+}
