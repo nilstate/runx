@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Issue To PR Flow - runx</title><meta name="description" content="`issue-to-pr` is the generic runx lane for turning one bounded source thread into one governed draft pull request. It is not a Slack bot, Sentry handler, or repo-specific triage policy."/><meta name="generator" content="Sourcey 3.6.5"/><link rel="canonical" href="https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/issue-to-pr.html"/><meta property="og:title" content="Issue To PR Flow - runx"/><meta property="og:description" content="`issue-to-pr` is the generic runx lane for turning one bounded source thread into one governed draft pull request. It is not a Slack bot, Sentry handler, or repo-specific triage policy."/><meta property="og:type" content="website"/><meta property="og:site_name" content="runx"/><meta property="og:url" content="https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/issue-to-pr.html"/><meta property="og:image" content="https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/_og/documentation/docs/issue-to-pr.png"/><meta property="og:image:width" content="1200"/><meta property="og:image:height" content="630"/><meta property="og:image:type" content="image/png"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Issue To PR Flow - runx"/><meta name="twitter:description" content="`issue-to-pr` is the generic runx lane for turning one bounded source thread into one governed draft pull request. It is not a Slack bot, Sentry handler, or repo-specific triage policy."/><meta name="twitter:image" content="https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/_og/documentation/docs/issue-to-pr.png"/><meta name="sourcey-search" content="../../search-index.json"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap"/><style>
+    :root {
+      --color-primary: 99 102 241;
+      --color-primary-light: 129 140 248;
+      --color-primary-dark: 79 70 229;
+      --color-primary-ink: 79 70 229;
+      --color-background-light: 255 255 255;
+      --color-background-dark: 11 12 16;
+      --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', Menlo, monospace;
+      --sidebar-width: 18rem;
+      --toc-width: 19rem;
+      --content-max-width: 44rem;
+      --header-height: 7.5rem;
+    }
+    html { scroll-padding-top: var(--header-height); }
+    @media (min-width: 1024px) {
+      :root { --header-height: 4rem; }
+    }
+    body { margin: 0; background: rgb(var(--color-background-light)); }
+    .dark body { background: rgb(var(--color-background-dark)); }
+  </style><script>(function(){var t=localStorage.getItem('sourcey-theme');if(t==='dark')document.documentElement.classList.add('dark')})()</script><link rel="stylesheet" href="../../sourcey.css"/></head><body id="sourcey"><div id="page" class="relative antialiased text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]"><div id="navbar" class="z-30 fixed lg:sticky top-0 w-full"><div class="absolute w-full h-full flex-none border-b border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-300)/0.06)] bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))]"></div><div class="max-w-[92rem] mx-auto relative"><div class="relative"><div class="flex items-center lg:px-12 h-16 min-w-0 mx-4 lg:mx-0"><div class="h-full relative flex-1 flex items-center gap-x-4 min-w-0 border-b border-[rgb(var(--color-gray-500)/0.08)] dark:border-[rgb(var(--color-gray-300)/0.08)]"><div class="flex-1 flex items-center gap-x-4"><a href="../../documentation/readme.html" class="select-none inline-block"><span class="text-sm font-semibold text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))]">runx</span></a></div><div class="relative hidden lg:flex items-center flex-1 z-20 gap-2"><button id="search-open" type="button" class="group flex pointer-events-auto rounded-lg w-full items-center text-sm leading-6 h-9 pl-3.5 pr-3 text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))] ring-1 ring-[rgb(var(--color-gray-400)/0.3)] hover:ring-[rgb(var(--color-gray-600)/0.3)] dark:ring-[rgb(var(--color-gray-600)/0.3)] dark:hover:ring-[rgb(var(--color-gray-500)/0.3)] justify-between truncate gap-2 min-w-[43px] cursor-pointer bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))] dark:brightness-110 dark:hover:brightness-125"><div class="flex items-center gap-2 min-w-[42px]"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="min-w-4 flex-none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><div class="truncate min-w-0">Type <kbd>/</kbd> to search</div></div></button></div><div class="flex-1 relative hidden lg:flex items-center ml-auto justify-end space-x-4"><nav class="text-sm"><ul class="flex space-x-6 items-center"></ul></nav><button id="theme-toggle" type="button" aria-label="Toggle theme" class="p-2 flex items-center justify-center cursor-pointer text-[rgb(var(--color-gray-400))] hover:text-[rgb(var(--color-gray-600))] dark:text-[rgb(var(--color-gray-500))] dark:hover:text-[rgb(var(--color-gray-300))]"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" class="h-4 w-4 block dark:hidden"><g stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.11V2"></path><path d="M12.87 3.13L12.24 3.76"></path><path d="M14.89 8H14"></path><path d="M12.87 12.87L12.24 12.24"></path><path d="M8 14.89V14"></path><path d="M3.13 12.87L3.76 12.24"></path><path d="M1.11 8H2"></path><path d="M3.13 3.13L3.76 3.76"></path><circle cx="8" cy="8" r="3.78"></circle></g></svg><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 hidden dark:block"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></button></div><div class="flex lg:hidden items-center gap-3"><button id="search-open-mobile" type="button" aria-label="Search" class="text-[rgb(var(--color-gray-500))] w-8 h-8 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="min-w-4 flex-none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></button><button type="button" data-drawer-slide="right" aria-label="Open menu" class="text-[rgb(var(--color-gray-500))] w-8 h-8 flex items-center justify-center hover:text-[rgb(var(--color-gray-600))]"><svg class="h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"></path></svg></button></div></div></div></div><div class="flex lg:hidden items-center h-14 px-5 text-sm overflow-hidden"><div class="flex items-center min-w-0 space-x-3 leading-6 whitespace-nowrap"><span class="font-semibold text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))] truncate min-w-0">Issue To PR Flow</span></div></div></div></div><span class="fixed inset-0 bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))] -z-10 pointer-events-none"></span><div class="max-w-[92rem] mx-auto relative px-4 lg:px-8"><div id="sidebar" class="z-20 hidden lg:block fixed bottom-0 right-auto w-[18rem]" style="top: var(--header-height)"><div class="absolute inset-0 z-10 overflow-auto pr-8 pb-10" data-sourcey-sidebar-scroll="true" data-sourcey-sidebar-tab="documentation"><div class="relative text-sm leading-6"><div class="sticky top-0 h-8 z-10 bg-gradient-to-b from-[rgb(var(--color-background-light))] dark:from-[rgb(var(--color-background-dark))]"></div><nav id="nav" role="navigation"><div class><h5 class="nav-group-label">Start Here</h5><ul class="space-y-px"><li><a href="../../documentation/readme.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">or: curl -fsSL https://runx.ai/install | sh</span></a></li><li><a href="../../documentation/docs/getting-started.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Getting Started</span></a></li><li><a href="../../documentation/docs/agent-skills.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Agent Skills: runx Inside Claude and Codex</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Operate</h5><ul class="space-y-px"><li><a href="../../documentation/docs/operator-skills.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Operator Skills</span></a></li><li><a href="../../documentation/docs/issue-to-pr.html" class="nav-link active"><span class="flex-1 break-words [word-break:break-word]">Issue To PR Flow</span></a></li><li><a href="../../documentation/docs/publishing.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Publishing a skill to the runx registry</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Reference</h5><ul class="space-y-px"><li><a href="../../documentation/docs/how-we-test.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">How We Test</span></a></li><li><a href="../../documentation/docs/reference.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">runx reference</span></a></li></ul></div></nav></div></div></div><dialog id="mobile-nav" class="mobile-nav-dialog"><nav class="pt-5 pb-3 px-4 flex-1 overflow-y-auto"><div class><h5 class="nav-group-label">Start Here</h5><ul class="space-y-px"><li><a href="../../documentation/readme.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">or: curl -fsSL https://runx.ai/install | sh</span></a></li><li><a href="../../documentation/docs/getting-started.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Getting Started</span></a></li><li><a href="../../documentation/docs/agent-skills.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Agent Skills: runx Inside Claude and Codex</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Operate</h5><ul class="space-y-px"><li><a href="../../documentation/docs/operator-skills.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Operator Skills</span></a></li><li><a href="../../documentation/docs/issue-to-pr.html" class="nav-link active"><span class="flex-1 break-words [word-break:break-word]">Issue To PR Flow</span></a></li><li><a href="../../documentation/docs/publishing.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Publishing a skill to the runx registry</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Reference</h5><ul class="space-y-px"><li><a href="../../documentation/docs/how-we-test.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">How We Test</span></a></li><li><a href="../../documentation/docs/reference.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">runx reference</span></a></li></ul></div></nav></dialog><main id="docs" class="pt-[8.5rem] lg:pt-10"><div class="flex flex-row-reverse gap-12 box-border w-full"><aside id="toc" class="hidden xl:flex self-start sticky xl:flex-col max-w-[28rem] z-[21]" style="height: calc(100vh - var(--header-height) - 2.5rem); top: calc(var(--header-height) + 2.5rem)"><div class="z-10 hidden xl:flex box-border max-h-full pl-10 w-[19rem]"><div class="text-[rgb(var(--color-gray-600))] text-sm leading-6 w-[16.5rem] overflow-y-auto space-y-2 pb-4 -mt-10 pt-10"><h5 class="font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] flex items-center gap-2"><svg class="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>On this page</h5><nav><ul><li><a href="#ownership-boundary" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Ownership Boundary</a></li><li><a href="#reviewer-context" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Reviewer Context</a></li><li><a href="#naming" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Naming</a></li><li><a href="#security-shape" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Security Shape</a></li><li><a href="#pr-review-and-fix-up-lanes" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">PR Review And Fix-Up Lanes</a></li><li><a href="#live-operations-preflight" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Live Operations Preflight</a></li><li><a href="#fixtures" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Fixtures</a></li><li><a href="#aster-live-handoff" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Aster Live Handoff</a></li></ul></nav></div></div></aside><div class="relative grow box-border flex-col w-full mx-auto px-1 min-w-0 lg:pl-[23.7rem] lg:-ml-12 xl:w-[calc(100%-28rem)]" id="content-area"><header class="relative leading-none"><div class="mt-0.5 space-y-2.5"><div class="h-5 text-[rgb(var(--color-primary-ink))] dark:text-[rgb(var(--color-primary-light))] text-sm font-semibold">Operate</div><div class="flex flex-col sm:flex-row items-start sm:items-center relative gap-2 min-w-0"><h1 class="text-2xl sm:text-3xl text-[rgb(var(--color-gray-900))] tracking-tight dark:text-[rgb(var(--color-gray-200))] font-bold" style="overflow-wrap: anywhere">Issue To PR Flow</h1></div></div><div class="page-description mt-2 text-lg prose prose-gray dark:prose-invert" style="overflow-wrap: anywhere"><span><code>issue-to-pr</code> is the generic runx lane for turning one bounded source thread into one governed draft pull request. It is not a Slack bot, Sentry handler, or repo-specific triage policy.</span></div></header><div class="prose prose-gray dark:prose-invert relative mt-8 mb-14 max-w-none"><p><code>issue-to-pr</code> is the generic runx lane for turning one bounded source thread
+into one governed draft pull request. It is not a Slack bot, Sentry handler, or
+repo-specific triage policy.</p>
+<p>The lane exists to make the engineering story reviewable:</p>
+<ol>
+<li>Intake source: the original issue, chat thread, alert, or local harness_context.</li>
+<li>Triage decision: why a PR is justified, or why the lane should stop.</li>
+<li>scafld spec: the code-change contract and declared validation.</li>
+<li>Build evidence: what changed and which checks ran.</li>
+<li>Review result: adversarial findings and remaining risk.</li>
+<li>Draft PR: linked, refreshed, and ready for a human reviewer.</li>
+<li>Human merge gate: the generated PR is never auto-merged by this lane.</li>
+<li>Final outcome: merged, closed, or superseded state posted back to the source
+thread when the provider can be observed.</li>
+</ol>
+<h2 id="ownership-boundary">Ownership Boundary</h2>
+<p>runx owns reusable machinery:</p>
+<ul>
+<li>source-command normalization at the adapter edge, including provider-neutral
+source locators, thread locators, dedupe keys, target repo hints, and
+chat-safe command responses</li>
+<li>normalized source threads</li>
+<li>provider-neutral evidence bundles</li>
+<li>lifecycle story helpers</li>
+<li>outbox entries and publication metadata</li>
+<li>receipt evidence</li>
+<li>scafld command boundaries</li>
+<li>provider adapters such as GitHub issue comments and pull requests</li>
+<li>idempotent update behavior for retries</li>
+<li>the <code>runx.operational_policy.v1</code> schema for sources, target repos, runners,
+owner routes, dedupe, closure/proof publication, source-thread publishing, and automation
+permissions</li>
+<li>sealed receipts for post-merge observation, verification, final
+source-thread update, and source-issue closure policy</li>
+</ul>
+<p>Consuming repos own product policy:</p>
+<ul>
+<li>which Slack channels, Sentry alerts, GitHub issues, or support tools can start
+a lane</li>
+<li>how source messages are filtered to avoid non-issues</li>
+<li>which repo receives the work</li>
+<li>who is assigned for human review</li>
+<li>whether GitHub Projects, labels, or milestones are used</li>
+<li>deployment and live bot credentials</li>
+</ul>
+<p>That split keeps <code>issue-to-pr</code> reusable. A service repo can normalize Slack,
+Sentry, GitHub, support, or local sources into a <code>runx.thread.v1</code> source and a
+redacted artifact bundle with verification evidence, but runx core should not
+know the consuming product's channel, label, project, or owner map.</p>
+<p>For Slack/Sentry/GitHub command entrypoints, adapters should normalize source
+commands locally into the shared source-event and operational-policy packets.
+The resulting <code>source_event</code> feeds <code>issue-intake</code>, while the policy request
+feeds the Rust-owned policy gate before outbox packaging or provider adapter
+work begins. A blocked or unsupported response from this layer should be posted
+back to the originating thread by the adapter; it is never permission to post a
+new root message or to create a PR.</p>
+<p>Before PR packaging, callers may pass a <code>runx.operational_policy.v1</code> packet plus
+<code>source_id</code>, <code>target_repo</code>, <code>runner_id</code>, and source-thread locator. The
+<code>outbox.build_pull_request</code> boundary calls <code>admitOperationalPolicyRequest</code>
+before it emits a draft PR packet. Denied policy admission stops packaging and
+reports stable finding codes such as <code>unknown_target_repo</code>, <code>unknown_runner</code>,
+<code>runner_unavailable</code>, <code>source_action_not_allowed</code>, or
+<code>source_thread_locator_required</code>.</p>
+<p>Allowed admission is projected into the draft PR packet and pull-request outbox
+metadata as a redacted summary: policy id, source id, target repo, runner id,
+owner route id, owner count, dedupe strategy, outcome close mode, and human
+merge gate requirement. Raw source locators stay out of public PR and admin
+readback surfaces.</p>
+<h2 id="reviewer-context">Reviewer Context</h2>
+<p>The source issue and PR should be comprehensive without becoming an event log.
+Use durable gate summaries, not every internal transition. The canonical lane
+publishes the draft PR, then updates the source thread with a <code>human_gate</code>
+story and, when observed later, a stable <code>final_outcome</code> story so reviewers do
+not have to reconstruct state from receipts.</p>
+<p>Good public story sections include:</p>
+<ul>
+<li>source summary and relevant evidence</li>
+<li>hydration status when adapter context was needed</li>
+<li>triage decision and why build is justified</li>
+<li>scoped files or surfaces</li>
+<li>validation commands and results</li>
+<li>review verdict and actionable findings</li>
+<li>PR link and human merge instruction</li>
+<li>final merged or closed outcome</li>
+</ul>
+<p>The core renderer emits provider-neutral markdown/text only. Adapters translate
+that public story into GitHub comments, Slack blocks, support notes, or other
+provider surfaces, and keep provider ids, channel ids, button layouts, and raw
+payloads outside runx core. <code>proposal_kind</code> may change labels such as "Dev
+escalation proposed", but the stored milestone id remains one of the canonical
+v1 ids from <code>docs/thread-story-contract.md</code>.</p>
+<p>Do not publish:</p>
+<ul>
+<li>raw local absolute paths</li>
+<li>secret values or provider tokens</li>
+<li>full command dumps when a concise result is enough</li>
+<li>duplicate status comments for retry attempts</li>
+<li>provider-specific policy that belongs in the consuming repo</li>
+</ul>
+<h2 id="naming">Naming</h2>
+<p>The graph may still use low-level runner contracts internally. Human-facing
+docs, labels, and comments should describe those boundaries as agent-mediated
+authoring, review, or decision steps. Public runner and schema identifiers must
+cut over cleanly with every call site updated in the same change.</p>
+<h2 id="security-shape">Security Shape</h2>
+<p>The lane fails closed when source context, scafld state, provider auth, branch,
+or review evidence is missing. The generated PR remains draft/reviewable, and a
+human controls the merge. Post-merge behavior is observation and source-thread
+update, not automatic merge.</p>
+<p>Source-thread publishing is part of the security boundary. Public milestone
+entries carry <code>metadata.source_thread.required=true</code>,
+<code>publish_mode=reply</code>, and <code>missing_behavior=fail_closed</code>. A publisher that
+cannot recover the original thread must stop rather than posting a new root
+message in a busy issue channel.</p>
+<p>Retries must reuse the same outbox entry, issue comment, branch, and PR when
+possible. Duplicates are a correctness bug because the source thread is the
+control surface.</p>
+<p>Pull-request outbox entries carry <code>metadata.dedupe.strategy</code>,
+<code>metadata.dedupe.key</code>, and <code>metadata.dedupe.result</code> so provider pushers and
+admin surfaces can tell whether a retry created or reused the PR path.</p>
+<h2 id="pr-review-and-fix-up-lanes">PR Review And Fix-Up Lanes</h2>
+<p><code>issue-to-pr</code> creates or refreshes the draft PR and publishes the <code>human_gate</code>
+story. Adjacent PR work should stay as separate lanes over the same harness_context
+instead of being hidden inside merge authority:</p>
+<ul>
+<li><code>pr-review</code> reads the source thread, evidence bundle, scafld state, PR diff,
+checks, and human review comments, then publishes one concise review packet.</li>
+<li><code>pr-fix-up</code> may apply bounded changes only when the review packet names
+actionable findings and the source harness_context remains inside the approved
+scope.</li>
+<li><code>merge-assist</code> observes merge readiness, checks, deployment, and verification
+contracts, then posts a final recommendation or outcome. It does not click
+merge.</li>
+</ul>
+<p>Those lanes share the same thread/outbox/harness_context contracts:</p>
+<ul>
+<li>input: <code>runx.thread.v1</code>, optional artifact refs and verification evidence, the draft PR
+outbox entry, and current provider observations</li>
+<li>output: updated canonical story milestone, review or fix-up receipt, and an idempotent
+source-thread or PR comment</li>
+<li>gate: human merge stays outside runx mutation authority</li>
+</ul>
+<p>If a hosted operator wants auto-merge someday, that is a new policy surface with
+separate repo allowlists, branch protections, checks, audit events, and
+rollback contracts. It is not part of this lane.</p>
+<h2 id="live-operations-preflight">Live Operations Preflight</h2>
+<p>Use the live preflight before running against a real GitHub issue:</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#953800;--shiki-dark:#DCDCAA">pnpm</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> live:issue-to-pr</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --allow-repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --issue</span><span style="--shiki-light:#0550AE;--shiki-dark:#B5CEA8"> 123</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --workspace</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> /path/to/repo</span></span></code></pre></div>
+</div><p>The preflight is read-only. It verifies that the workspace is a scafld repo,
+that the target repo is explicitly allowlisted for proving-ground mutation,
+that the workspace is on the intended issue branch, that the selected scafld
+binary can run in that workspace, that <code>--runx-bin</code>, <code>RUNX_BIN</code>, a local
+<code>crates/target/{debug,release}/runx</code>, or <code>runx</code> on <code>PATH</code> points at an
+executable native CLI, and that provider publication has explicit token env
+available to the sandbox. It returns JSON with blocked checks and the exact
+dogfood command to run next.</p>
+<p>Live create/observe requires an explicit proving-ground repo allowlist. Pass
+<code>--allow-repo owner/repo</code> or set
+<code>RUNX_LIVE_ISSUE_TO_PR_ALLOWED_REPOS=owner/repo</code>. Multiple repos may be
+comma-separated, but keep the list intentionally small; this harness is for
+known proving-ground repos, not arbitrary customer or product repositories.</p>
+<p>The provider-push tool does not receive ambient <code>gh</code> keychain state. Export an
+explicit <code>RUNX_GITHUB_TOKEN</code>, <code>GH_TOKEN</code>, or <code>GITHUB_TOKEN</code> for create mode and
+terminal observe mode. For local dogfood, <code>RUNX_GITHUB_TOKEN="$(gh auth token)"</code>
+is sufficient when the active GitHub CLI account has repo access.</p>
+<p><code>pnpm live:issue-to-pr</code> without a configured target is also read-only: it emits
+<code>status: "skipped"</code> and names the missing <code>repo</code>, <code>issue</code>, and <code>workspace</code>
+inputs. Configure those with flags or <code>RUNX_LIVE_ISSUE_TO_PR_REPO</code>,
+<code>RUNX_LIVE_ISSUE_TO_PR_ISSUE</code>, <code>RUNX_LIVE_ISSUE_TO_PR_WORKSPACE</code>, and
+<code>RUNX_LIVE_ISSUE_TO_PR_ALLOWED_REPOS</code>.</p>
+<p>The harness modes are explicit:</p>
+<ul>
+<li><code>preflight</code>: local validation only, no provider mutation.</li>
+<li><code>create</code>: runs the governed lane and may create/update issue comments, branch,
+and PR.</li>
+<li><code>observe</code>: reads the source issue and PR after a human merge/close; it does
+not mutate code, and when the PR is terminal it upserts one source-thread
+outcome comment.</li>
+</ul>
+<p>If the workspace is clean and you want the live command to create or switch to
+the issue branch before mutation, pass <code>--prepare-branch</code>:</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#953800;--shiki-dark:#DCDCAA">pnpm</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> live:issue-to-pr</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --prepare-branch</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --allow-repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --issue</span><span style="--shiki-light:#0550AE;--shiki-dark:#B5CEA8"> 123</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --workspace</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> /path/to/repo</span></span></code></pre></div>
+</div><p>When the preflight is ready, run:</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#953800;--shiki-dark:#DCDCAA">pnpm</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> dogfood:github-issue-to-pr</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --mode</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> create</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --prepare-branch</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --allow-repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --issue</span><span style="--shiki-light:#0550AE;--shiki-dark:#B5CEA8"> 123</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --workspace</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> /path/to/repo</span></span></code></pre></div>
+</div><p>The dogfood command hydrates the GitHub issue thread, executes the governed
+lane through native <code>runx skill skills/issue-to-pr</code>, and passes explicit
+contracts for the hydrated thread, target workspace, branch, scafld binary,
+allowlisted operational policy, repo snapshot, and receipt directory. If the
+graph reaches an agent-mediated authoring boundary, create mode returns
+<code>status: "needs_agent"</code> with a <code>run_id</code>, sanitized request payload, and a
+continuation command. Resolve that request into an answers file, then resume
+the same native run:</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#953800;--shiki-dark:#DCDCAA">runx</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> resume</span><span style="--shiki-light:#CF222E;--shiki-dark:#D4D4D4"> &lt;</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">run-i</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">d</span><span style="--shiki-light:#CF222E;--shiki-dark:#D4D4D4">&gt;</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> answers.json</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --receipt-dir</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> /path/to/repo/.runx/receipts</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --json</span></span></code></pre></div>
+</div><p>When the graph seals, provider push runs through the <code>issue-to-pr-push-outbox</code>
+subskill on the Rust <code>thread-outbox-provider</code> front. The front supervises
+provider process execution, credential delivery, redaction, and sealed
+observation while preserving the graph output fields consumed by downstream
+story packaging. The dogfood command rehydrates the source thread and emits a
+machine-readable dossier with source issue URL, PR URL, branch, run id, receipt
+refs, source-thread publication refs, and the human merge gate without printing
+absolute local paths.</p>
+<p>After a human merges or closes the PR, observe the outcome:</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#953800;--shiki-dark:#DCDCAA">pnpm</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> dogfood:github-issue-to-pr</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --mode</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> observe</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --allow-repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --repo</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> owner/repo</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --issue</span><span style="--shiki-light:#0550AE;--shiki-dark:#B5CEA8"> 123</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> --workspace</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> /path/to/repo</span></span></code></pre></div>
+</div><p>Observe mode is intentionally narrow: it records <code>merged</code> or <code>closed</code> provider
+state back to the source issue with the PR URL, branch, scafld task id, and the
+<code>human_gate</code> statement. If the PR is still open, it returns
+<code>dogfood_pr_open_human_gate_pending</code> and does not post another comment.
+Terminal observe mode should seal provider state into a receipt before
+publishing, so wrappers can validate the verification result, human gate, close
+policy, and source-thread target from one proof-backed receipt projection.</p>
+<h2 id="fixtures">Fixtures</h2>
+<p>Use the checked-in thread fixtures when building repo-local wrappers:</p>
+<ul>
+<li><code>fixtures/threads/issue-to-pr-file-thread.json</code> shows a local file-backed
+harness_context for deterministic tests.</li>
+<li><code>fixtures/threads/issue-to-pr-github-thread.json</code> shows the normalized shape
+a GitHub issue adapter should produce.</li>
+<li><code>fixtures/issue-to-pr/dogfood-answers.json</code> is an empty caller-answer file
+for dogfood commands that should fail closed before real provider context is
+supplied.</li>
+</ul>
+<h2 id="aster-live-handoff">Aster Live Handoff</h2>
+<p>Aster should consume this as a runx proving-ground lane, not as OSS policy.</p>
+<p>Mapping:</p>
+<ul>
+<li>Aster <code>issue-triage</code> decides whether a public issue deserves reply, plan, or
+build.</li>
+<li>Aster <code>fix-pr</code> and <code>docs-pr</code> prepare repo-local policy: target repo, branch,
+authoring model, labels, and publication gate.</li>
+<li>The normalized source issue becomes the <code>thread</code> input for <code>issue-to-pr</code>.</li>
+<li>Hydrated provider context becomes artifact refs and verification evidence and should
+already be redacted by the adapter.</li>
+<li><code>issue-to-pr</code> owns scafld lifecycle, draft PR packaging, receipts, and generic
+GitHub thread updates.</li>
+<li>Aster keeps the rolling work-issue status comment and generated-PR policy.</li>
+</ul>
+<p>The live merge gate remains human. Aster may observe the merged PR and publish
+the final source-thread outcome, but it should not merge generated changes.</p>
+</div><nav class="mt-12 flex items-stretch justify-between gap-4"><a href="../../documentation/docs/operator-skills.html" class="group flex flex-col gap-1 px-4 py-3 rounded-lg border border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] hover:border-[rgb(var(--color-primary)/0.4)] dark:hover:border-[rgb(var(--color-primary-light)/0.3)] transition-colors no-underline"><span class="text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">← Previous</span><span class="text-sm font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] group-hover:text-[rgb(var(--color-primary-ink))] dark:group-hover:text-[rgb(var(--color-primary-light))] transition-colors">Operator Skills</span></a><a href="../../documentation/docs/publishing.html" class="group flex flex-col gap-1 px-4 py-3 rounded-lg border border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] hover:border-[rgb(var(--color-primary)/0.4)] dark:hover:border-[rgb(var(--color-primary-light)/0.3)] transition-colors no-underline text-right ml-auto"><span class="text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">Next →</span><span class="text-sm font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] group-hover:text-[rgb(var(--color-primary-ink))] dark:group-hover:text-[rgb(var(--color-primary-light))] transition-colors">Publishing a skill to the runx registry</span></a></nav><div class="mt-16 mb-8 flex items-center justify-between border-t border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] pt-6 text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]"><a href="https://sourcey.com" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 hover:text-[rgb(var(--color-gray-600))] dark:hover:text-[rgb(var(--color-gray-300))] transition-colors">Built with<img src="https://sourcey.com/sourcey-logo.png" alt="Sourcey" class="h-4 w-4"/></a><div class="flex items-center gap-4"><a href="https://github.com/runxhq/runx/edit/main/docs\issue-to-pr.md" target="_blank" rel="noopener noreferrer" class="hover:text-[rgb(var(--color-gray-600))] dark:hover:text-[rgb(var(--color-gray-300))] transition-colors flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"></path></svg>Edit this page</a></div></div></div></div></main></div><div id="search-dialog" role="dialog" aria-label="Search"><div class="search-dialog-inner"><div class="search-input-row"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="search-input-icon"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"></path></svg><input id="search-input" type="text" placeholder="Search docs..." autocomplete="off" spellcheck="false"/></div><div id="search-results"></div><div class="search-footer"><span class="search-footer-hint"><kbd>↑↓</kbd> navigate</span><span class="search-footer-hint"><kbd>↵</kbd> select</span><span class="search-footer-hint"><kbd>esc</kbd> close</span></div></div></div></div><script src="../../sourcey.js" defer></script></body></html>
