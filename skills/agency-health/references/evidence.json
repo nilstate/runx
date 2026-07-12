@@ -1,5 +1,6 @@
 {
   "schema": "agency-health.evidence.v1",
+  "summary": "Published agency-health as a read-only runx skill that folds a governed agency case stream into a degraded health verdict, grounded findings, and dispatch-by-name intervention lanes, with registry publish/read, clean install, harness, dogfood, receipt, and verification evidence recorded.",
   "publisher_owner": "zdfgu113",
   "package": "zdfgu113/agency-health@0.1.0",
   "package_name": "agency-health",
