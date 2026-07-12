@@ -1,0 +1,11 @@
+{
+  "data_source_ref": "registry:runx/data-store@0.1.2",
+  "store_id": "agency-ops-store",
+  "agency_ref": "agency:cap-pressed",
+  "period": "30d",
+  "health_baseline": {
+    "threshold_days_stuck": 3,
+    "cap_pressure_pct": 80,
+    "refusal_spike_rate": 0.15
+  }
+}

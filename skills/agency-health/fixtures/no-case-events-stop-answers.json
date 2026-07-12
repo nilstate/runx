@@ -1,0 +1,61 @@
+{
+  "agent_task.agency-health.output": {
+    "agency_health_packet": {
+      "schema": "runx.agency.health.v1",
+      "decision": "needs_more_evidence",
+      "agency_ref": "agency:empty-desk",
+      "period": "30d",
+      "reads": {
+        "domain_keyed_state_read": {
+          "ref": "registry:runx/data-store@0.1.2",
+          "operation": "read_projection",
+          "store_id": "agency-ops-store",
+          "key": "agency:empty-desk",
+          "folded_in_version_order": true,
+          "cases_folded": []
+        },
+        "cross_run_aggregate_read": {
+          "ref": "registry:runx/ledger@0.2.0",
+          "runner": "read",
+          "reference_form": "id_stub_only",
+          "reason": "The ledger projects to id-stubs only and can never be the domain-keyed state read. With no case events in the domain-keyed projection there is nothing for an audit-only aggregate to corroborate, so no ledger id-stub is cited.",
+          "id_stubs": []
+        }
+      },
+      "health_verdict": {
+        "status": "unknown",
+        "findings": []
+      },
+      "intervention_findings": [],
+      "refusals": [
+        {
+          "refused": "grade_health_findings",
+          "reason": "The domain-keyed read_projection for agency:empty-desk returned no readable case events over the 30d period. Grading seal_rate, stuck_case_count, cap_usage_pct, or escalation_backlog would mean inventing a turn state the sealed event order does not show, so no finding is graded and no intervention is emitted."
+        },
+        {
+          "refused": "emit_intervention_findings",
+          "reason": "An intervention must cite the case_id and the turn or ledger id-stub that grounds it. With an empty folded projection there is no grounding to cite."
+        }
+      ],
+      "needs_input": [
+        "A store_id and agency_ref whose read_projection returns case events for the period, or a wider period that covers the agency's actual activity."
+      ],
+      "observations": {
+        "decision": "needs_more_evidence",
+        "health_verdict_status": "unknown",
+        "graded_findings": [],
+        "intervention_target_lanes": [],
+        "domain_keyed_state_read": "registry:runx/data-store@0.1.2 read_projection",
+        "cross_run_aggregate_read": "registry:runx/ledger@0.2.0 read (id-stubs only)",
+        "read_only": true,
+        "emitted_ceilings": 0,
+        "emitted_effect_bounds": 0,
+        "refused_or_stop_reason": "No readable case events in the domain-keyed projection for the period; refused to grade any finding or emit any intervention rather than invent a turn state.",
+        "harness_cases": [
+          "concerning-agency-sealed",
+          "no-case-events-stop"
+        ]
+      }
+    }
+  }
+}
