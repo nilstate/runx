@@ -1,0 +1,195 @@
+{
+  "schema": "runx.revenue_leakage_auditor.evidence.v1",
+  "bounty": 108,
+  "summary": "Published revenue-leakage-auditor as a runx registry graph skill with a hosted publish gate pass, a public PR, raw X.yaml/SKILL.md/artifact URLs, and a sealed dogfood receipt from the published package. The skill compares one account-period of usage and billing, refuses excluded or discount-covered gaps, emits bounded AttenuationRequest ceilings only as data, and records review state through a per-account CAS append_event.",
+  "runx_cli_version": "runx-cli 0.6.19",
+  "skill": "revenue-leakage-auditor",
+  "owner": "dh0h",
+  "package_ref": "dh0h/revenue-leakage-auditor@sha-8534d7161607",
+  "public_url": "https://runx.ai/x/dh0h/revenue-leakage-auditor@sha-8534d7161607",
+  "canonical_public_url": "https://runx.ai/x/dh0h/revenue-leakage-auditor",
+  "source_url": "https://github.com/dh0h/runx/tree/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor",
+  "pr_url": "https://github.com/runxhq/runx/pull/279",
+  "x_yaml": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/SKILL.md",
+  "verification_json": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/artifacts/verification.json",
+  "evidence_json": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/artifacts/evidence.json",
+  "report": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/artifacts/report.md",
+  "receipt_ref": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+  "registry": {
+    "url": "https://api.runx.ai",
+    "skill_id": "dh0h/revenue-leakage-auditor",
+    "version": "sha-8534d7161607",
+    "digest": "sha256:1607612f9c533a5a028d826c5f13fc42bd96847b519ec2f5b61f787ee45d04e7",
+    "profile_digest": "sha256:113c38a350799b496aaa0225fa742d08b38b8ac2a7e177749586187e7e4c77e1",
+    "trust_tier": "community",
+    "install_command": "runx add dh0h/revenue-leakage-auditor@sha-8534d7161607 --registry https://api.runx.ai",
+    "run_command": "runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 --registry https://api.runx.ai"
+  },
+  "harness": {
+    "local_status": "passed",
+    "local_receipt_id": "sha256:2680ac5201f0f76b2f72da6c51015e1d4c66e3033a10594df928797e46d4e6e1",
+    "local_receipt_verified": true,
+    "hosted_registry_status": "passed as the publish gate",
+    "cases": [
+      {
+        "name": "revenue-leakage-auditor-underbilling-ceiling",
+        "expected_status": "sealed",
+        "purpose": "happy path emits a bounded AttenuationRequest ceiling as data and appends a per-account CAS reconciliation event"
+      },
+      {
+        "name": "revenue-leakage-auditor-stop-needs-agent",
+        "expected_status": "needs_agent",
+        "purpose": "stop path omits caller answers so no ceiling, mint, settlement, or append event is emitted"
+      }
+    ]
+  },
+  "dogfood": {
+    "status": "sealed",
+    "run_id": "run_audit_c7fadde7d95f",
+    "receipt_id": "sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+    "receipt_verified": true,
+    "registry_trust_state": "trusted",
+    "store_id": "revenue-leakage-dogfood-v1",
+    "read_projection": {
+      "operation": "read_projection",
+      "aggregate_id": "account:atlas-team",
+      "resource": "account_reconciliations",
+      "version": 0
+    },
+    "append_event": {
+      "operation": "append_event",
+      "aggregate_id": "account:atlas-team",
+      "resource": "account_reconciliations",
+      "before_version": 0,
+      "after_version": 1,
+      "idempotency_key": "revenue-leakage:account:atlas-team:2026-06:detected",
+      "event_ref": "account_reconciliations:account:atlas-team:1"
+    }
+  },
+  "decision_observations": {
+    "leakage_found": true,
+    "reason": "account:atlas-team used USD 15000 in 2026-06, was billed USD 10000, and the 50% under-billing gap exceeds the 10% threshold with no exclusion or known discount.",
+    "account_id": "account:atlas-team",
+    "period": "2026-06",
+    "usage_amount": {
+      "amount": 15000,
+      "currency": "USD"
+    },
+    "billed_amount": {
+      "amount": 10000,
+      "currency": "USD"
+    },
+    "under_billed_amount": {
+      "amount": 5000,
+      "currency": "USD"
+    },
+    "under_billed_pct": 50,
+    "threshold_pct": 10,
+    "usage_evidence_ref": "usage:account:atlas-team:2026-06",
+    "billing_evidence_ref": "billing:account:atlas-team:2026-06",
+    "bounded_ceiling": {
+      "schema": "runx.attenuation_request.v1",
+      "form": "data",
+      "amount": {
+        "amount": 5000,
+        "currency": "USD"
+      },
+      "counterparty": "account:atlas-team",
+      "scopes": [
+        "spend.reserve",
+        "spend.settle",
+        "receipt.seal"
+      ],
+      "idempotency_key": "revenue-leakage:account:atlas-team:2026-06:recover",
+      "downstream_runner": "registry:runx/spend@0.1.1",
+      "clamp": {
+        "max_amount": {
+          "amount": 6000,
+          "currency": "USD"
+        },
+        "result": "within_parent_bounds"
+      }
+    },
+    "escalation": {
+      "required": true,
+      "lane": "human_approval",
+      "reason": "Finance approval is required before a downstream C3 runner consumes the adjustment ceiling."
+    }
+  },
+  "policy_refusals": [
+    {
+      "condition": "excluded_account",
+      "behavior": "accounts listed in discount_policy.excluded_accounts are refused before any ceiling is considered"
+    },
+    {
+      "condition": "known_discount",
+      "behavior": "gaps covered by discount_policy.known_discounts are treated as no_change, not leakage"
+    },
+    {
+      "condition": "incomplete_evidence",
+      "behavior": "missing or contradictory usage and billing evidence escalates to human_approval / needs_agent instead of a ceiling"
+    }
+  ],
+  "observations": [
+    {
+      "name": "runx_cli_version",
+      "value": "runx-cli 0.6.19",
+      "evidence": "All local harness, publish, install, dogfood, and verify commands were run with runx-cli 0.6.19."
+    },
+    {
+      "name": "hosted_registry_package",
+      "value": "dh0h/revenue-leakage-auditor@sha-8534d7161607",
+      "evidence": "Hosted registry publish returned status=published with digest sha256:1607612f9c533a5a028d826c5f13fc42bd96847b519ec2f5b61f787ee45d04e7."
+    },
+    {
+      "name": "harness_shape",
+      "value": "one sealed leakage case and one needs_agent stop case",
+      "evidence": "Local harness passed both inline cases; hosted registry publish gate also passed after the stop case was changed to needs_agent."
+    },
+    {
+      "name": "dogfood_receipt",
+      "value": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+      "evidence": "Published-package dogfood run sealed and receipt verification reported a valid 4-receipt tree with no findings."
+    },
+    {
+      "name": "leakage_verdict",
+      "value": "account:atlas-team under-billed by USD 5000",
+      "evidence": "Dogfood decision compared USD 15000 usage against USD 10000 billed for 2026-06, producing a 50% gap over the 10% threshold."
+    },
+    {
+      "name": "bounded_ceiling",
+      "value": "USD 5000 ceiling for account:atlas-team",
+      "evidence": "The leakage decision emitted a runx.attenuation_request.v1 data object with spend.reserve, spend.settle, and receipt.seal scopes, clamped below the USD 6000 parent bound."
+    },
+    {
+      "name": "data_store_handoff",
+      "value": "read_projection plus CAS append_event keyed by account_id",
+      "evidence": "Dogfood read projection saw version 0; append_event committed account_reconciliations:account:atlas-team:1 with idempotency key revenue-leakage:account:atlas-team:2026-06:detected."
+    },
+    {
+      "name": "stop_path_safety",
+      "value": "needs_agent stop case",
+      "evidence": "The second inline harness case omits caller answers and expects needs_agent, so no ceiling, mint, settlement, or append event is emitted."
+    },
+    {
+      "name": "authority_boundary",
+      "value": "judgment only",
+      "evidence": "The skill emits data only, performs no money movement, mints no grant, and names the downstream C3 spend/refund accepting runner plus human approval lane before ceiling consumption."
+    }
+  ],
+  "safety_checks": {
+    "operational_proposal_emitted": false,
+    "mint_performed_by_skill": false,
+    "money_moved": false,
+    "settlement_performed": false,
+    "stop_case_ceiling_emitted": false,
+    "excluded_account_ceiling_emitted": false,
+    "known_discount_ceiling_emitted": false
+  },
+  "notes": [
+    "The graph executes read_projection and append_event through data.source with the bundled data-store provider adapter catalog so hosted harness runs do not depend on external services.",
+    "The bounded ceiling is carried only as DATA; downstream spend/refund authority remains owned by the accepting runner and human approval lane.",
+    "The public PR contains SKILL.md, X.yaml, fixtures, bundled data-store tool manifests/runners, and these artifact files for review."
+  ]
+}

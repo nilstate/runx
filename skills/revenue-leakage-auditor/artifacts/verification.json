@@ -1,0 +1,81 @@
+{
+  "schema": "runx.revenue_leakage_auditor.verification.v1",
+  "verified_at": "2026-07-12T05:53:32Z",
+  "cli": {
+    "version": "runx-cli 0.6.19",
+    "meets_minimum": true,
+    "minimum_required": "0.6.14"
+  },
+  "package": {
+    "skill_id": "dh0h/revenue-leakage-auditor",
+    "name": "revenue-leakage-auditor",
+    "version": "sha-8534d7161607",
+    "digest": "sha256:1607612f9c533a5a028d826c5f13fc42bd96847b519ec2f5b61f787ee45d04e7",
+    "profile_digest": "sha256:113c38a350799b496aaa0225fa742d08b38b8ac2a7e177749586187e7e4c77e1",
+    "public_url": "https://runx.ai/x/dh0h/revenue-leakage-auditor@sha-8534d7161607"
+  },
+  "checks": [
+    {
+      "name": "local harness",
+      "command": "runx harness skills/revenue-leakage-auditor --receipt-dir /tmp/runx-revenue-leakage-local-receipts-v2 --json",
+      "status": "passed",
+      "case_count": 2,
+      "case_names": [
+        "revenue-leakage-auditor-underbilling-ceiling",
+        "revenue-leakage-auditor-stop-needs-agent"
+      ],
+      "sealed_receipt_id": "sha256:2680ac5201f0f76b2f72da6c51015e1d4c66e3033a10594df928797e46d4e6e1"
+    },
+    {
+      "name": "local receipt verify",
+      "command": "runx verify sha256:2680ac5201f0f76b2f72da6c51015e1d4c66e3033a10594df928797e46d4e6e1 --receipt-dir /tmp/runx-revenue-leakage-local-receipts-v2 --allow-local-development-signatures --json",
+      "status": "passed",
+      "valid": true,
+      "receipt_count": 4,
+      "signature_mode": "local-development"
+    },
+    {
+      "name": "hosted registry publish gate",
+      "command": "runx registry publish skills/revenue-leakage-auditor --registry https://api.runx.ai --profile skills/revenue-leakage-auditor/X.yaml --json",
+      "status": "published",
+      "hosted_harness_status": "passed"
+    },
+    {
+      "name": "registry read",
+      "command": "runx registry read dh0h/revenue-leakage-auditor --version sha-8534d7161607 --registry https://api.runx.ai --json",
+      "status": "passed",
+      "trust_tier": "community",
+      "runner_names": [
+        "audit"
+      ]
+    },
+    {
+      "name": "registry install",
+      "command": "runx add dh0h/revenue-leakage-auditor@sha-8534d7161607 --registry https://api.runx.ai --to /tmp/runx-revenue-leakage-install-check --json",
+      "status": "installed"
+    },
+    {
+      "name": "published package dogfood start",
+      "command": "runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 --registry https://api.runx.ai ... --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json",
+      "status": "needs_agent",
+      "run_id": "run_audit_c7fadde7d95f",
+      "registry_trust_state": "trusted"
+    },
+    {
+      "name": "published package dogfood resume",
+      "command": "runx resume run_audit_c7fadde7d95f skills/revenue-leakage-auditor/fixtures/leakage-answers.json --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json",
+      "status": "sealed",
+      "run_id": "run_audit_c7fadde7d95f",
+      "receipt_id": "sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+      "receipt_ref": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09"
+    },
+    {
+      "name": "published receipt verify",
+      "command": "runx verify sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09 --receipt-dir /tmp/runx-revenue-leakage-published-receipts --allow-local-development-signatures --json",
+      "status": "passed",
+      "valid": true,
+      "receipt_count": 4,
+      "signature_mode": "local-development"
+    }
+  ]
+}
