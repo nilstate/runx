@@ -1,0 +1,6 @@
+{
+  "data_source_ref": "registry:runx/data-store@0.1.2",
+  "store_id": "agency-ops-store",
+  "agency_ref": "agency:empty-desk",
+  "period": "30d"
+}

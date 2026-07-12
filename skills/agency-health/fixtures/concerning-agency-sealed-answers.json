@@ -1,0 +1,206 @@
+{
+  "agent_task.agency-health.output": {
+    "agency_health_packet": {
+      "schema": "runx.agency.health.v1",
+      "decision": "ready",
+      "agency_ref": "agency:acme-support",
+      "period": "30d",
+      "reads": {
+        "domain_keyed_state_read": {
+          "ref": "registry:runx/data-store@0.1.2",
+          "operation": "read_projection",
+          "store_id": "agency-ops-store",
+          "key": "agency:acme-support",
+          "folded_in_version_order": true,
+          "cases_folded": [
+            {
+              "case_id": "case:acme-support:1042",
+              "turns": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "latest_version": 4
+            },
+            {
+              "case_id": "case:acme-support:1055",
+              "turns": [
+                1,
+                2
+              ],
+              "latest_version": 2
+            },
+            {
+              "case_id": "case:acme-support:1061",
+              "turns": [
+                1,
+                2,
+                3
+              ],
+              "latest_version": 3
+            }
+          ]
+        },
+        "cross_run_aggregate_read": {
+          "ref": "registry:runx/ledger@0.2.0",
+          "runner": "read",
+          "reference_form": "id_stub_only",
+          "reason": "The ledger's runners project to id-stubs only, so it can never serve as the domain-keyed state read; it is an audit-only cross-run aggregate. The domain-keyed read is the data-store read_projection above.",
+          "id_stubs": [
+            "runx:receipt:sha256:9f21c7a4",
+            "runx:receipt:sha256:2ab30de1",
+            "runx:receipt:sha256:77c9be05"
+          ]
+        }
+      },
+      "health_verdict": {
+        "status": "degraded",
+        "findings": [
+          {
+            "metric": "seal_rate",
+            "value": "0.71",
+            "norm": "Refusal spike norm health_baseline.refusal_spike_rate 0.15: an implied refusal rate at or below 0.15 is healthy, so a seal rate at or above 0.85 is the norm.",
+            "assessment": "warning",
+            "grounding": {
+              "folded_from": "domain_keyed_state_read",
+              "case_ids": [
+                "case:acme-support:1042",
+                "case:acme-support:1055",
+                "case:acme-support:1061"
+              ],
+              "ledger_id_stubs": [
+                "runx:receipt:sha256:9f21c7a4"
+              ]
+            },
+            "detail": "24 of 34 folded turns sealed; the implied refusal rate 0.29 is above the 0.15 refusal_spike_rate norm."
+          },
+          {
+            "metric": "stuck_case_count",
+            "value": "2",
+            "norm": "health_baseline.threshold_days_stuck 3: a case whose latest folded turn has not advanced for more than 3 days is stuck. The norm is zero stuck cases.",
+            "assessment": "warning",
+            "grounding": {
+              "folded_from": "domain_keyed_state_read",
+              "case_ids": [
+                "case:acme-support:1042",
+                "case:acme-support:1061"
+              ],
+              "turns": [
+                {
+                  "case_id": "case:acme-support:1042",
+                  "turn": 4
+                },
+                {
+                  "case_id": "case:acme-support:1061",
+                  "turn": 3
+                }
+              ]
+            },
+            "detail": "case:acme-support:1042 has not advanced past turn 4 in 9 days and case:acme-support:1061 has not advanced past turn 3 in 5 days; both exceed the 3-day threshold."
+          },
+          {
+            "metric": "cap_usage_pct",
+            "value": "93",
+            "norm": "health_baseline.cap_pressure_pct 80: sustained cap usage above 80 percent of the agency charter's granted cap is cap pressure.",
+            "assessment": "critical",
+            "grounding": {
+              "folded_from": "domain_keyed_state_read",
+              "case_ids": [
+                "case:acme-support:1055"
+              ],
+              "ledger_id_stubs": [
+                "runx:receipt:sha256:2ab30de1"
+              ]
+            },
+            "detail": "Folded spend against the agency charter cap is at 93 percent, above the 80 percent cap_pressure_pct norm. The remedy widens a cap, so it escalates to the human ops lane rather than routing as a routine tighten."
+          },
+          {
+            "metric": "escalation_backlog",
+            "value": "3",
+            "norm": "An escalation is expected to be picked up within the same period it is raised, so the norm is an empty backlog at period close.",
+            "assessment": "warning",
+            "grounding": {
+              "folded_from": "domain_keyed_state_read",
+              "case_ids": [
+                "case:acme-support:1042",
+                "case:acme-support:1061"
+              ],
+              "ledger_id_stubs": [
+                "runx:receipt:sha256:77c9be05"
+              ]
+            },
+            "detail": "3 escalations raised in the folded projection are still unclaimed at period close; the oldest is 9 days old."
+          }
+        ]
+      },
+      "intervention_findings": [
+        {
+          "finding": "Two cases are stuck past the 3-day threshold with no advancing turn, and the implied refusal rate 0.29 is nearly double the 0.15 norm.",
+          "target_lane": "improve-skill",
+          "reason": "Stuck turns concentrated behind repeated refusals are a skill-behavior defect, which is the improve-skill lane's subject.",
+          "grounding": {
+            "case_id": "case:acme-support:1042",
+            "turn": 4,
+            "ledger_id_stub": "runx:receipt:sha256:9f21c7a4"
+          },
+          "ceiling": null,
+          "effect_bound": null,
+          "consumed_by": "Nothing here. A downstream driver or operator must issue a separate improve-skill run to act on this finding."
+        },
+        {
+          "finding": "Cap usage is at 93 percent of the agency charter cap, above the 80 percent norm, and the plausible remedy widens the cap.",
+          "target_lane": "human_ops",
+          "reason": "A cap-widening remedy widens authority and this finding is graded critical, so it escalates to the human ops lane instead of routing as a routine tighten.",
+          "grounding": {
+            "case_id": "case:acme-support:1055",
+            "turn": 2,
+            "ledger_id_stub": "runx:receipt:sha256:2ab30de1"
+          },
+          "ceiling": null,
+          "effect_bound": null,
+          "consumed_by": "Nothing here. The human ops lane decides; this skill only reports."
+        },
+        {
+          "finding": "3 escalations are unclaimed at period close, the oldest 9 days old, so the routing policy is not draining the backlog.",
+          "target_lane": "policy-author",
+          "reason": "An escalation backlog is a routing-policy defect, which is the policy-author lane's subject. No cap or authority is widened by re-routing, so it does not escalate to human ops.",
+          "grounding": {
+            "case_id": "case:acme-support:1061",
+            "turn": 3,
+            "ledger_id_stub": "runx:receipt:sha256:77c9be05"
+          },
+          "ceiling": null,
+          "effect_bound": null,
+          "consumed_by": "Nothing here. A separate policy-author run must be issued to change routing."
+        }
+      ],
+      "refusals": [],
+      "observations": {
+        "decision": "ready",
+        "health_verdict_status": "degraded",
+        "graded_findings": [
+          "seal_rate",
+          "stuck_case_count",
+          "cap_usage_pct",
+          "escalation_backlog"
+        ],
+        "intervention_target_lanes": [
+          "improve-skill",
+          "human_ops",
+          "policy-author"
+        ],
+        "domain_keyed_state_read": "registry:runx/data-store@0.1.2 read_projection",
+        "cross_run_aggregate_read": "registry:runx/ledger@0.2.0 read (id-stubs only)",
+        "read_only": true,
+        "emitted_ceilings": 0,
+        "emitted_effect_bounds": 0,
+        "refused_or_stop_reason": null,
+        "harness_cases": [
+          "concerning-agency-sealed",
+          "no-case-events-stop"
+        ]
+      }
+    }
+  }
+}

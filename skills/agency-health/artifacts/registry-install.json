@@ -1,0 +1,42 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "install",
+    "source": "remote",
+    "ref": "fablerlabs/agency-health@sha-599c8cab4e9c",
+    "install": {
+      "status": "installed",
+      "destination": "/home/agent/business/work/f106/cleaninstall/skills/fablerlabs/agency-health/sha-599c8cab4e9c/SKILL.md",
+      "skill_name": "agency-health",
+      "source": "runx-registry",
+      "source_label": "runx registry",
+      "skill_id": "fablerlabs/agency-health",
+      "version": "sha-599c8cab4e9c",
+      "digest": "sha256:2e3febbc8723a4b60729caeea738f6805aac7fbf5414324da7e823fe6940fa8f",
+      "profile_digest": "sha256:869b9279ed764dff0b187b48c0f3be3310fc0db584a5cd32b800e776501f86ef",
+      "profile_state_path": "/home/agent/business/work/f106/cleaninstall/skills/fablerlabs/agency-health/sha-599c8cab4e9c/.runx/profile.json",
+      "runner_names": [
+        "assess"
+      ],
+      "trust_tier": "community"
+    },
+    "receipt_metadata": {
+      "destination": "/home/agent/business/work/f106/cleaninstall/skills/fablerlabs/agency-health/sha-599c8cab4e9c/SKILL.md",
+      "digest": "sha256:2e3febbc8723a4b60729caeea738f6805aac7fbf5414324da7e823fe6940fa8f",
+      "install_count": 1,
+      "profile_digest": "sha256:869b9279ed764dff0b187b48c0f3be3310fc0db584a5cd32b800e776501f86ef",
+      "publisher": {
+        "display_name": "Fabler Labs",
+        "handle": "fablerlabs",
+        "id": "user_8d9407b3a8e0c1c2c9e8c9fe",
+        "kind": "user"
+      },
+      "ref": "fablerlabs/agency-health@sha-599c8cab4e9c",
+      "skill_id": "fablerlabs/agency-health",
+      "source_label": "runx registry",
+      "status": "installed",
+      "trust_tier": "community",
+      "version": "sha-599c8cab4e9c"
+    }
+  }
+}

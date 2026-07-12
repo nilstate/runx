@@ -1,0 +1,32 @@
+{
+  "_note": "Two publish calls were made with runx-cli 0.7.0. The FIRST published the package; a SECOND identical call is a content-addressed no-op that the CLI surfaces as a failure with publish=unchanged. Both responses are recorded verbatim below. The authoritative live proof of the published package is artifacts/registry-read.json (a fresh remote read that resolves version, digest, and markdown) and the public listing at https://runx.ai/x/fablerlabs/agency-health.",
+  "_publish_command": "runx registry publish ./skills/agency-health/SKILL.md --registry https://api.runx.ai --json",
+  "first_publish_response": {
+    "status": "success",
+    "registry": {
+      "action": "publish",
+      "publish": {
+        "target": "hosted",
+        "status": "published",
+        "skill_id": "fablerlabs/agency-health",
+        "owner": "fablerlabs",
+        "name": "agency-health",
+        "version": "sha-599c8cab4e9c",
+        "digest": "2e3febbc8723a4b60729caeea738f6805aac7fbf5414324da7e823fe6940fa8f",
+        "profile_digest": "869b9279ed764dff0b187b48c0f3be3310fc0db584a5cd32b800e776501f86ef",
+        "trust_tier": "community",
+        "install_command": "runx add fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai",
+        "run_command": "runx skill fablerlabs/agency-health@sha-599c8cab4e9c --registry https://api.runx.ai",
+        "public_url": "https://runx.ai/x/fablerlabs/agency-health"
+      }
+    }
+  },
+  "second_identical_publish_response": {
+    "status": "failure",
+    "error": {
+      "message": "remote registry publish returned unsuccessful status: envelope=success, publish=unchanged",
+      "code": "registry_error"
+    }
+  },
+  "_hosted_harness": "The hosted registry harness is the publish gate itself. An earlier publish attempt of this same package carrying ONLY the two contract-required sealed cases was REJECTED by the hosted harness with [skill_harness_incomplete]: 'Publish harness must include a stop/error case such as needs_agent, policy_denied, failure, or escalated.' Publish succeeded only after the third case (cap-widening-escalates-human-ops, expect needs_agent) was added. Publish success is therefore direct evidence the hosted harness is green."
+}
