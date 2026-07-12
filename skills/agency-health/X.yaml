@@ -55,7 +55,7 @@ harness:
       expect:
         status: sealed
     - name: agency-health-ledger-blocked
-      runner: health
+      runner: health_neg
       env:
         RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
@@ -157,7 +157,7 @@ runners:
         type: json
         required: false
     graph:
-      name: agency-health
+      name: agency-health-neg
       steps:
         - id: read
           run:
@@ -179,8 +179,6 @@ runners:
           run:
             type: cli-tool
             command: node
-            env:
-              AGENCY_HEALTH_DENY: "1"
             args:
               - /root/workspace/runx/skills/agency-health/tools/agency-health.mjs
           inputs:
