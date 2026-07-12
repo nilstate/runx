@@ -1,0 +1,97 @@
+skill: purchase-approval
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: context
+
+emits:
+  - name: approval_packet
+    packet: runx.purchase.approval.v1
+
+harness:
+  cases:
+    - name: purchase-approval-approve
+      runner: approve
+      inputs:
+        request: { request_id: po-1, amount: 1200, currency: USD, vendor: v-endpoint, purpose: api, requested_scopes: [software] }
+        budget: { remaining: 5000 }
+      caller:
+        answers:
+          agent_task.purchase-approval.output:
+            approval_packet:
+              decision: approve_in_full
+      expect:
+        status: sealed
+    - name: purchase-approval-scopedown
+      runner: approve
+      inputs:
+        request: { request_id: po-2, amount: 3500, currency: USD, vendor: v-endpoint, purpose: hw, requested_scopes: [hardware] }
+        budget: { remaining: 5000 }
+      caller:
+        answers:
+          agent_task.purchase-approval.output:
+            approval_packet:
+              decision: scope_down
+              attenuation_request: { amount: 3000 }
+      expect:
+        status: sealed
+    - name: purchase-approval-deny
+      runner: approve
+      inputs:
+        request: { request_id: po-3, amount: 9000, currency: USD, vendor: v-bad, purpose: x, requested_scopes: [software] }
+        budget: { remaining: 500 }
+        policy: { vendor_deny: [v-bad] }
+      caller:
+        answers:
+          agent_task.purchase-approval.output:
+            approval_packet:
+              decision: deny
+      expect:
+        status: sealed
+
+runners:
+  approve:
+    default: true
+    type: graph
+    inputs:
+      policy_ref:
+        type: string
+        required: false
+        description: Registry-pinned procurement policy ref (omitted uses default).
+      budget_ref:
+        type: string
+        required: false
+        description: Registry-pinned budget balance ref (omitted uses inputs.budget).
+      request:
+        type: json
+        required: true
+        description: The purchase request to decide.
+      policy:
+        type: json
+        required: false
+        description: Inline policy override (harness seeds it).
+      budget:
+        type: json
+        required: false
+        description: Inline budget override (harness seeds it).
+    graph:
+      name: purchase-approval
+      steps:
+        - id: decide
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - /root/workspace/runx/skills/purchase-approval/tools/purchase-approval.mjs
+          inputs:
+            request: "$input.request"
+            policy: "$input.policy"
+            budget: "$input.budget"
+          artifacts:
+            named_emits:
+              approval_packet: agent_task.purchase-approval.output.approval_packet
+            packets:
+              approval_packet: runx.purchase.approval.v1
