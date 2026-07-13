@@ -1,6 +1,8 @@
 ---
 name: csat-recovery
 description: Decide a bounded recovery play for a CSAT detractor without sending a message or moving money.
+links:
+  source: https://github.com/runxhq/runx/pull/308
 runx:
   category: support
 ---
