@@ -1,0 +1,13 @@
+name: no-case-events-stop
+kind: skill
+target: ..
+runner: assess
+inputs:
+  data_source_ref: local://agency-health/empty
+  store_id: agency-health-empty-v1
+  agency_ref: agency:customer-success`n  receipt_stubs:`n    - receipt_id: rcpt_agency_health_fixture`n      skill_ref: runx/agency`n      status: sealed`n      created_at: "2026-07-12T00:00:00Z"
+  case_id: case-missing-1
+expect:
+  status: sealed
+metadata:
+  source: skills-fixture

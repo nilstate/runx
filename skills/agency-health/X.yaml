@@ -1,0 +1,148 @@
+skill: agency-health
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: canonical
+
+runx:
+  mutating: false
+  scopes:
+    - runx:data:read
+  policy:
+    reads:
+      - domain-keyed agency case projection through data-store.read_projection
+      - receipt-id stubs through ledger.read
+    disallows:
+      - raw receipt body reads
+      - invented caps, thresholds, or turn state
+
+harness:
+  cases:
+    - name: concerning-agency-sealed
+      runner: assess
+      inputs:
+        data_source_ref: local://agency-health/concerning
+        store_id: agency-health-concerning-v1
+        agency_ref: agency:customer-success
+        case_id: case-stuck-17
+        period: 7d
+        receipt_stubs:
+          - receipt_id: rcpt_agency_health_fixture_001
+            skill_ref: runx/agency
+            status: sealed
+            created_at: "2026-07-12T00:00:00Z"
+        health_baseline:
+          threshold_days_stuck: 3
+          cap_pressure_pct: 80
+          refusal_spike_rate: 0.25
+        fixture_projection:
+          events:
+            - event:
+                type: opened
+                payload: { agency_ref: agency:customer-success, limits: { max_turns: 10 } }
+            - event:
+                type: turn
+                payload: { turn: 9, decision: dispatch, status: working, age_days: 6 }
+            - event:
+                type: refusal
+                payload: { reason: cap exceeded }
+      caller:
+        answers:
+          agent_task.agency-health.output:
+            decision: ready
+            health_verdict:
+              status: degraded
+      expect:
+        status: sealed
+    - name: no-case-events-stop
+      runner: assess
+      inputs:
+        data_source_ref: local://agency-health/empty
+        store_id: agency-health-empty-v1
+        agency_ref: agency:customer-success
+        case_id: case-missing-1
+        receipt_stubs:
+          - receipt_id: rcpt_agency_health_fixture_002
+            skill_ref: runx/agency
+            status: sealed
+            created_at: "2026-07-12T00:00:00Z"
+      caller:
+        answers:
+          agent_task.agency-health.output:
+            decision: needs_more_evidence
+            health_verdict:
+              status: unknown
+      expect:
+        status: sealed
+
+runners:
+  assess:
+    default: true
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Domain-keyed data source containing agency case state.
+      store_id:
+        type: string
+        required: false
+        description: Fixture-only deterministic local data-store id.
+      agency_ref:
+        type: string
+        required: true
+        description: Stable agency identity used to bind the assessment.
+      case_id:
+        type: string
+        required: false
+        description: Optional agency case aggregate id; omit only for a bounded agency aggregate projection.
+      period:
+        type: string
+        required: false
+        description: Optional bounded reporting period such as 7d or 30d.
+      health_baseline:
+        type: json
+        required: false
+        description: "Optional explicit thresholds: threshold_days_stuck, cap_pressure_pct, refusal_spike_rate."
+      receipt_stubs:
+        type: json
+        required: false
+        description: "Optional receipt-id stubs for cross-run aggregation; receipt bodies are never accepted."
+      fixture_projection:
+        type: json
+        required: false
+        description: Harness-only seeded projection. Production decisions use the read_projection result.
+    graph:
+      name: agency-health-assess
+      steps:
+        - id: read_case
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: agency_cases
+            aggregate_id: "$input.case_id"
+        - id: read_receipt_stubs
+          skill: ../ledger
+          runner: read
+          inputs:
+            question: "Read bounded agency-health receipt-id stubs only."
+            receipts: "$input.receipt_stubs"
+        - id: assess
+          skill: ./graph/assess
+          inputs:
+            agency_ref: "$input.agency_ref"
+            case_id: "$input.case_id"
+            period: "$input.period"
+            health_baseline: "$input.health_baseline"
+            fixture_projection: "$input.fixture_projection"
+          context:
+            projection: read_case.data_operation_result.data
+            receipt_stubs: read_receipt_stubs.ledger_answer_packet.data.matched_receipts
+          artifacts:
+            wrap_as: agency_health_packet
+            packet: runx.agency.health.v1

@@ -1,0 +1,28 @@
+skill: agency-health-assess
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: public
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/agency-health
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: string
+      health_verdict: object
+      intervention_findings: array
+    inputs:
+      agency_ref: { type: string, required: true }
+      case_id: { type: string, required: false }
+      period: { type: string, required: false }
+      health_baseline: { type: json, required: false }
+      fixture_projection: { type: json, required: false }
+      projection: { type: json, required: false }
+      receipt_stubs: { type: json, required: false }
