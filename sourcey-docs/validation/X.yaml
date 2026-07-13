@@ -1,0 +1,24 @@
+skill: sourcey-artifact-validation
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    artifacts:
+      named_emits:
+        validation: validation
+    inputs:
+      repo_root:
+        type: string
+        required: true
+        description: Absolute path to the checked-out runx repository.
