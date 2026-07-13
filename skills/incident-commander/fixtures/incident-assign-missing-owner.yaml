@@ -1,0 +1,21 @@
+name: incident-assign-missing-owner
+kind: skill
+target: ..
+runner: advance
+inputs:
+  case_id: inc-sev3-search-2026-07-13
+  driver_id: driver-secondary
+  incident_objective: assign
+  case_state:
+    status: working
+    turn: 1
+    severity: SEV-3
+    scope: search-api
+    declared: true
+    named_owner: null
+  roster:
+    - { role: commander, principal: "incident:commander:sam", skill: ops-desk, scope: [incident.command] }
+    - { role: responder_lead, principal: "incident:responder:lee", skill: incident-response, scope: [incident.respond] }
+    - { role: comms_lead, principal: "incident:comms:pat", skill: slack-notify, scope: [incident.internal_post] }
+expect:
+  status: needs_agent

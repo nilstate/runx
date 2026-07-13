@@ -1,0 +1,30 @@
+skill: incident-commander-enforce
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/incident-commander
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args: [run.mjs]
+    outputs:
+      incident_turn: object
+    inputs:
+      case_id: { type: string, required: true }
+      driver_id: { type: string, required: true }
+      incident_objective: { type: string, required: true }
+      case_state: { type: json, required: true }
+      roster: { type: json, required: true }
+      approval: { type: json, required: false }
+      member_result: { type: json, required: false }
+      decision: { type: json, required: true }
+      proposed_turn: { type: json, required: false }
+      prior_turn: { type: json, required: false }

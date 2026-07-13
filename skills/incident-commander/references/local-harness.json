@@ -1,0 +1,31 @@
+{
+  "command": "RUNX_REGISTRY_DIR=.runx/local-registry runx harness ./skills/incident-commander --receipt-dir ./.runx/receipts-linux-pass-5 --json",
+  "runx_version": "runx-cli 0.7.0",
+  "platform": "x86_64-unknown-linux-musl under WSL2",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "incident-send-awaits-then-approves",
+    "incident-assign-missing-owner"
+  ],
+  "case_results": [
+    {
+      "name": "incident-send-awaits-then-approves",
+      "runtime_status": "sealed",
+      "behavior": "executed a deterministic non-executable awaiting_approval send stage, then validated that stage and advanced after approval.principal matched comms_lead, emitting the identical digest-bound send-as plan without sending"
+    },
+    {
+      "name": "incident-assign-missing-owner",
+      "runtime_status": "needs_agent",
+      "behavior": "caller.answers was omitted; ops-desk blocked before review or enforcement and no named run was emitted"
+    }
+  ],
+  "receipt_ids": [
+    "sha256:0ca83069b02915256822a8b090d0c6b2fc0887d21ec7fb0900bb5b500762170e"
+  ],
+  "graph_case_count": 2,
+  "dependency": "registry:runx/ops-desk@sha-662dfad394ad",
+  "note": "This is local pre-publish harness evidence, not the post-publish dogfood receipt. The ignored local registry binding exposes the pinned official advance contract; hosted execution resolves the signed official package."
+}

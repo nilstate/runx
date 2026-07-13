@@ -1,0 +1,46 @@
+skill: incident-commander-review
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/incident-commander
+
+runners:
+  default:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: incident-commander-review
+    outputs:
+      incident_turn: object
+    artifacts:
+      wrap_as: incident_review
+      packet: runx.incident.review.v1
+    instructions: >
+      Review one ops-desk incident decision against the folded case and fixed
+      roster, then propose exactly one incident_turn. The only objectives are
+      begin, assign, send, resolve, and postmortem. Never invent a roster member,
+      principal, approval, owner, audience, digest, receipt, or resolution fact.
+      A dispatch must match one roster role, its declared skill, and its scope
+      ceiling. Assign requires a named owner in case_state. A send remains
+      awaiting_approval unless approval.principal exactly matches the selected
+      roster entry. A permitted communication is only a named slack-notify or
+      send-as handoff carrying the existing channel, audience, and content_digest;
+      this graph never performs the send. Never mark communication delivered
+      without a linked receipt from that named lane. Resolve requires linked
+      resolution evidence. Return refused or needs_agent when these facts are
+      absent. Durable state, expected_version CAS, and the logical
+      case_id:turn:driver_id contention key remain owned by the agency spine.
+    inputs:
+      case_id: { type: string, required: true }
+      driver_id: { type: string, required: true }
+      incident_objective: { type: string, required: true }
+      case_state: { type: json, required: true }
+      roster: { type: json, required: true }
+      approval: { type: json, required: false }
+      member_result: { type: json, required: false }
+      decision: { type: json, required: true }

@@ -1,0 +1,125 @@
+{
+  "runner": "graph/enforce/run.mjs",
+  "status": "passed",
+  "cases": [
+    {
+      "name": "approved-send",
+      "expected_status": "advanced",
+      "actual_status": "advanced",
+      "named_run": true,
+      "executable": true
+    },
+    {
+      "name": "missing-approval",
+      "expected_status": "awaiting_approval",
+      "actual_status": "awaiting_approval",
+      "named_run": true,
+      "executable": false
+    },
+    {
+      "name": "mismatched-approval",
+      "expected_status": "awaiting_approval",
+      "actual_status": "awaiting_approval",
+      "named_run": true,
+      "executable": false
+    },
+    {
+      "name": "mismatched-prior-turn",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "send requires a roster-bound send-as or slack-notify handoff with channel, audience, and content digest"
+    },
+    {
+      "name": "tampered-dispatch",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "dispatch skill data-store does not match roster skill send-as"
+    },
+    {
+      "name": "empty-task",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "dispatch task must be a nonempty string"
+    },
+    {
+      "name": "unknown-consequence",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "dispatch consequence arbitrary_effect is not supported"
+    },
+    {
+      "name": "invalid-verification",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "dispatch verification must require runx.receipt.v1 and a nonempty readback"
+    },
+    {
+      "name": "malformed-scope",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "dispatch needed_scope must be a nonempty array of canonical scope strings"
+    },
+    {
+      "name": "unknown-decision",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "unsupported ops-desk decision execute"
+    },
+    {
+      "name": "delivered-no-receipt",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "communication cannot be marked delivered without a linked send receipt"
+    },
+    {
+      "name": "resolve-no-evidence",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "resolve requires linked resolution evidence"
+    },
+    {
+      "name": "failed-member-cannot-close",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "resolve requires linked resolution evidence"
+    },
+    {
+      "name": "folded-evidence-selected",
+      "expected_status": "resolved",
+      "actual_status": "resolved",
+      "named_run": false,
+      "reason": "validated folded resolution evidence was selected instead of an invalid member reference"
+    },
+    {
+      "name": "begin-cannot-resolve",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "objective begin cannot resolve the incident case"
+    },
+    {
+      "name": "assign-outsider-owner",
+      "expected_status": "needs_agent",
+      "actual_status": "needs_agent",
+      "named_run": false,
+      "reason": "assign requires a named roster owner in folded case_state"
+    },
+    {
+      "name": "assign-dispatch-mismatch",
+      "expected_status": "refused",
+      "actual_status": "refused",
+      "named_run": false,
+      "reason": "assign dispatch does not match the named roster owner"
+    }
+  ]
+}

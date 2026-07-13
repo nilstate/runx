@@ -1,0 +1,63 @@
+name: incident-send-awaits-then-approves
+kind: skill
+target: ..
+runner: advance
+inputs:
+  case_id: inc-sev2-checkout-2026-07-13
+  driver_id: driver-primary
+  incident_objective: send
+  case_state:
+    status: awaiting
+    turn: 4
+    severity: SEV-2
+    scope: checkout-api
+    declared: true
+    pending_escalation:
+      status: awaiting_approval
+      lane: human:incident-reviewer
+      proposed_handoff:
+        skill: send-as
+        runner: plan
+        principal: incident:comms:morgan
+        channel: email
+        audience: { list_ref: stakeholders:checkout-api, classification: incident-stakeholders }
+        content_digest: sha256:4e44f31f628799267f0957c554b8c47d90d2eabf41e5a84248941d28c45955ae
+    evidence_refs: [incident:declaration:inc-sev2-checkout-2026-07-13]
+  roster:
+    - { role: commander, principal: "incident:commander:alex", skill: ops-desk, scope: [incident.command] }
+    - { role: responder_lead, principal: "incident:responder:rio", skill: incident-response, scope: [incident.respond] }
+    - { role: comms_lead, principal: "incident:comms:morgan", skill: send-as, scope: [stakeholder.send] }
+  approval:
+    principal: incident:comms:morgan
+    reason: Approved the digest-bound status update.
+caller:
+  answers:
+    agent_task.ops-desk-advance.output:
+      decision: dispatch
+      reason: Approval permits the bounded send-as handoff.
+      dispatch:
+        member: comms_lead
+        skill: send-as
+        task: Plan the approved stakeholder status update.
+        needed_scope: [stakeholder.send]
+        consequence: stakeholder_send_handoff
+        verification: { expected_receipt: runx.receipt.v1, readback: Link the later send-as receipt. }
+    agent_task.incident-commander-review.output:
+      incident_turn:
+        status: advanced
+        case_id: inc-sev2-checkout-2026-07-13
+        turn: 5
+        dispatch: { member: comms_lead, skill: send-as, needed_scope: [stakeholder.send] }
+        escalation: null
+        named_run:
+          skill: send-as
+          runner: plan
+          data:
+            principal: incident:comms:morgan
+            channel: email
+            audience: { list_ref: stakeholders:checkout-api, classification: incident-stakeholders }
+            content_digest: sha256:4e44f31f628799267f0957c554b8c47d90d2eabf41e5a84248941d28c45955ae
+        reason: Approval matches comms_lead.
+expect:
+  status: sealed
+  receipt: { schema: runx.receipt.v1 }

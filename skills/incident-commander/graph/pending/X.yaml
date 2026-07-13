@@ -1,0 +1,23 @@
+skill: incident-commander-pending
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/incident-commander
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args: [run.mjs]
+    outputs:
+      incident_turn: object
+    inputs:
+      case_id: { type: string, required: true }
+      incident_objective: { type: string, required: true }
+      case_state: { type: json, required: true }

@@ -1,0 +1,60 @@
+name: incident-send-awaits-approval
+kind: skill
+target: ..
+runner: advance
+inputs:
+  case_id: inc-sev2-checkout-2026-07-13
+  driver_id: driver-primary
+  incident_objective: send
+  case_state:
+    status: working
+    turn: 3
+    severity: SEV-2
+    scope: checkout-api
+    declared: true
+    pending_escalation:
+      status: awaiting_approval
+      lane: human:incident-reviewer
+      proposed_handoff:
+        skill: send-as
+        runner: plan
+        principal: incident:comms:morgan
+        channel: email
+        audience: { list_ref: stakeholders:checkout-api, classification: incident-stakeholders }
+        content_digest: sha256:4e44f31f628799267f0957c554b8c47d90d2eabf41e5a84248941d28c45955ae
+  roster:
+    - { role: commander, principal: "incident:commander:alex", skill: ops-desk, scope: [incident.command] }
+    - { role: responder_lead, principal: "incident:responder:rio", skill: incident-response, scope: [incident.respond] }
+    - { role: comms_lead, principal: "incident:comms:morgan", skill: send-as, scope: [stakeholder.send] }
+caller:
+  answers:
+    agent_task.ops-desk-advance.output:
+      decision: escalate
+      reason: Stakeholder send requires roster-matched approval.
+      escalation:
+        to: human:incident-reviewer
+        trigger: stakeholder_send
+        ask: Approve the digest-bound stakeholder update.
+        approval_prompt: Approve the named send-as handoff for this audience and digest.
+    agent_task.incident-commander-review.output:
+      incident_turn:
+        status: awaiting_approval
+        case_id: inc-sev2-checkout-2026-07-13
+        turn: 4
+        dispatch: null
+        escalation:
+          lane: human:incident-reviewer
+          reason: missing roster-matched approval
+        named_run:
+          skill: send-as
+          runner: plan
+          executable: false
+          data:
+            principal: incident:comms:morgan
+            channel: email
+            audience: { list_ref: stakeholders:checkout-api, classification: incident-stakeholders }
+            content_digest: sha256:4e44f31f628799267f0957c554b8c47d90d2eabf41e5a84248941d28c45955ae
+        reason: Send remains non-actionable until approval matches comms_lead.
+expect:
+  status: sealed
+  receipt: { schema: runx.receipt.v1 }
