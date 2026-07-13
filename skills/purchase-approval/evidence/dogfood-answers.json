@@ -1,0 +1,19 @@
+{
+  "answers": {
+    "agent_task.purchase-approval.output": {
+      "decision": {
+        "approved": true,
+        "reason": "Vendor is approved and the USD 480 request is within the USD 1000 single-purchase cap, USD 2200 remaining budget, and USD 480 requested scope."
+      },
+      "attenuation_request": {
+        "amount": 480,
+        "currency": "USD",
+        "counterparty": "Acme Hosting",
+        "scopes": [
+          "purchase:hosting"
+        ]
+      },
+      "escalation": null
+    }
+  }
+}

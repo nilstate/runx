@@ -1,7 +1,8 @@
 ---
 name: purchase-approval
 description: Judge a proposed purchase against an explicit procurement policy and remaining budget, then emit a bounded approval ceiling only after human review.
-source: https://github.com/runxhq/runx/pull/307
+links:
+  source: https://github.com/runxhq/runx/pull/307
 runx:
   category: payments
 ---
