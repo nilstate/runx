@@ -1,21 +1,21 @@
 {
   "schema": "runx.verify_verdict.v1",
-  "receipt_id": "sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
+  "receipt_id": "sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
   "valid": true,
   "digest": {
     "status": "valid",
-    "expected": "sha256:54f839a45ef1950e00e9fce3c76f3e0146886a5b3835bad04ea151f3ab908cda",
-    "actual": "sha256:54f839a45ef1950e00e9fce3c76f3e0146886a5b3835bad04ea151f3ab908cda"
+    "expected": "sha256:f5b99c3c06662befeeec6b195dbec637d07a8b8b117f49550a06cd2de41ec1b0",
+    "actual": "sha256:f5b99c3c06662befeeec6b195dbec637d07a8b8b117f49550a06cd2de41ec1b0"
   },
   "content_address": {
     "status": "valid",
-    "expected": "sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
-    "actual": "sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc"
+    "expected": "sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
+    "actual": "sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534"
   },
   "signature": {
-    "mode": "local-development",
+    "mode": "production",
     "status": "valid",
-    "kid": "runtime-skeleton"
+    "kid": "fablerlabs-agency-health-dogfood"
   },
   "lineage": {
     "status": "unverified",

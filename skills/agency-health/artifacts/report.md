@@ -138,31 +138,34 @@ runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://a
   --input data_source_ref=registry:runx/data-store@0.1.2 --input store_id=agency-ops-store \
   --input agency_ref=agency:acme-support --input period=30d \
   --input-json health_baseline='{"threshold_days_stuck":3,"cap_pressure_pct":80,"refusal_spike_rate":0.15}'
-runx resume <run-id> fixtures/concerning-agency-sealed-answers.json --json
-runx verify --receipt <receipt.json> --allow-local-development-signatures --json
+runx resume run_agent_task-agency-health-output fixtures/concerning-agency-sealed-answers.json --json
+RUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood \
+RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= \
+  runx verify --receipt <receipt.json> --json
 ```
 
 The clean-install run ledger records `resume_skill_ref` pointing into the
 registry-resolved cache at `fablerlabs/agency-health/sha-d4d7ffe272cb`, with
 `selected_runner: assess` — direct proof the registry package at this version is what ran.
-The public PR includes `dogfood-prepare.json`, `dogfood-start.json`,
-`dogfood-resume.json`, and `dogfood-run-ledger.jsonl`, so this provenance does not rely on
-an unpublished local ledger or on the receipt's harness-shaped subject alone.
-The run started at `2026-07-12T18:11:21.339Z` and sealed at `2026-07-12T18:11:33.961Z`
-(`disposition: closed`, `reason_code: agent_act_closed`). The run id is per-run and is not
-carried inside the content-addressed receipt, so it is shown as `<run-id>`; a reviewer
-re-running gets their own. The sealed receipt id is the stable, checkable artifact.
+The public PR includes `dogfood-run-ledger.jsonl`, the final receipt, and its independent
+verification verdict, so this provenance does not rely on an unpublished local ledger or
+on the receipt's harness-shaped subject alone. The run started at
+`2026-07-13T03:09:01.675Z` and sealed at `2026-07-13T03:09:08.430Z`
+(`disposition: closed`, `reason_code: agent_act_closed`).
 
-`receipt_ref`: `runx:receipt:sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc`
+`receipt_ref`: `runx:receipt:sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534`
 
 `runx verify` returned **`valid: true`** with zero findings: digest `valid`, content address
-`valid`, signature `valid` in `local-development` mode (kid `runtime-skeleton`), lineage
-`unverified` because a single receipt cannot prove a receipt tree. The raw verdict is
-`artifacts/dogfood-verify.json`.
+`valid`, and Ed25519 signature `valid` in `production` mode under kid
+`fablerlabs-agency-health-dogfood`. The receipt honestly identifies its issuer as `ci`, not
+as the hosted notary. The public verification key is
+`yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY=`; the private seed is not published.
+Lineage is `unverified` because a single receipt cannot prove a receipt tree. The raw
+verdict is `artifacts/dogfood-verify.json`.
 
 The separate hosted receipt-notary endpoint does not authorize the purpose-scoped publish
 credential (it returns `Unauthorized`), so **no hosted notarization is claimed.** The signed
-receipt and its verification verdict are published in this PR at
+production-signed CI receipt, its public verification key, and its verdict are published at
 `artifacts/dogfood-receipt.json` and `artifacts/dogfood-verify.json` so any reviewer can
 re-verify them independently.
 
@@ -171,7 +174,9 @@ re-verify them independently.
 ```
 runx add fablerlabs/agency-health@sha-d4d7ffe272cb --registry https://api.runx.ai
 runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai --json
-runx verify --receipt <receipt.json> --allow-local-development-signatures --json
+RUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood \
+RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= \
+  runx verify --receipt <receipt.json> --json
 ```
 
 Supply the typed inputs `data_source_ref`, `store_id`, `agency_ref` and the optional
@@ -180,4 +185,5 @@ fixture `fixtures/concerning-agency-sealed-answers.json` to reproduce the sealed
 
 **No private context is required.** Every input, answer fixture, receipt, and verdict needed
 to reproduce this run is public in this PR. No private token, no private store, and no
-operator-only link is needed to install, run, or verify. No secrets appear in any artifact.
+operator-only link is needed to install, run, or verify the published receipt. Producing a
+new production signature requires a new private seed; that seed is not part of this packet.

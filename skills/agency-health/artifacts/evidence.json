@@ -41,7 +41,7 @@
     "skill_md": "https://raw.githubusercontent.com/fablerlabs/runx/e83ffee89933a48833dfb23f804d3052c6ee8d95/skills/agency-health/SKILL.md",
     "evidence_json": "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/evidence.json",
     "verification_json": "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/verification.json",
-    "receipt_ref": "runx:receipt:sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
+    "receipt_ref": "runx:receipt:sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
     "receipt_url": "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-receipt.json",
     "report": "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/report.md",
     "_ref_note": "Source, X.yaml, and SKILL.md are pinned to immutable commit e83ffee89933a48833dfb23f804d3052c6ee8d95. Evidence artifacts are referenced on the PR branch because a commit cannot embed its own hash. Delivery refs are pinned to the later evidence commit after it exists."
@@ -316,40 +316,40 @@
       "input_fixture": "fixtures/concerning-agency-sealed-input.json",
       "answer_fixture": "fixtures/concerning-agency-sealed-answers.json"
     },
-    "command": "runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai <typed inputs> --json  # prepare exact context\nrunx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai <same typed inputs> --approve-operator-context sha256:0336538f408c60ca4110b1a942a9683c57dc98befce0a9c88551937ff651e65f --json\nrunx resume run_agent_task-agency-health-output fixtures/concerning-agency-sealed-answers.json --json\nrunx verify --receipt artifacts/dogfood-receipt.json --allow-local-development-signatures --json",
-    "command_note": "The first command prepared an exact operator-context digest; the second explicitly approved that unchanged digest and paused at the agent-task boundary. The public dogfood-start, dogfood-resume, and run-ledger artifacts prove the registry-resolved package and selected runner before the final receipt sealed.",
-    "run_started_at": "2026-07-12T18:11:21.339Z",
-    "sealed_at": "2026-07-12T18:11:33.961Z",
+    "command": "RUNX_RECEIPT_SIGN_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<secret> RUNX_RECEIPT_SIGN_ISSUER_TYPE=ci runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai <typed inputs> --json  # prepare exact context\nRUNX_RECEIPT_SIGN_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<secret> RUNX_RECEIPT_SIGN_ISSUER_TYPE=ci runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai <same typed inputs> --approve-operator-context sha256:8b1965d246a07c6965fcf52c09890cc21c993d98875a785ca175f0fa082a9e8a --json\nRUNX_RECEIPT_SIGN_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<secret> RUNX_RECEIPT_SIGN_ISSUER_TYPE=ci runx resume run_agent_task-agency-health-output fixtures/concerning-agency-sealed-answers.json --json\nRUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= runx verify --receipt artifacts/dogfood-receipt.json --json",
+    "command_note": "The first command prepared an exact operator-context digest; the second explicitly approved that unchanged digest and paused at the agent-task boundary. The run ledger proves the registry-resolved package and selected runner; the final public receipt proves the CI-issued production signature. The signing seed is secret and is not published.",
+    "run_started_at": "2026-07-13T03:09:01.675Z",
+    "sealed_at": "2026-07-13T03:09:08.430Z",
     "runner": "assess",
     "step_id": "agent_task.agency-health.output",
-    "receipt_id": "sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
-    "receipt_ref": "runx:receipt:sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
+    "receipt_id": "sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
+    "receipt_ref": "runx:receipt:sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
     "receipt_url": "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-receipt.json",
     "receipt_seal": {
       "schema": "runx.receipt.v1",
       "disposition": "closed",
       "reason_code": "agent_act_closed",
       "canonicalization": "runx.receipt.c14n.v1",
-      "digest": "sha256:54f839a45ef1950e00e9fce3c76f3e0146886a5b3835bad04ea151f3ab908cda"
+      "digest": "sha256:f5b99c3c06662befeeec6b195dbec637d07a8b8b117f49550a06cd2de41ec1b0"
     },
-    "verify_command": "runx verify --receipt <dogfood-receipt.json> --allow-local-development-signatures --json",
+    "verify_command": "RUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= runx verify --receipt artifacts/dogfood-receipt.json --json",
     "verify_verdict": {
       "schema": "runx.verify_verdict.v1",
-      "receipt_id": "sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
+      "receipt_id": "sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
       "valid": true,
       "digest": "valid",
       "content_address": "valid",
       "signature_status": "valid",
-      "signature_mode": "local-development",
-      "signature_kid": "runtime-skeleton",
+      "signature_mode": "production",
+      "signature_kid": "fablerlabs-agency-health-dogfood",
       "lineage": "unverified",
       "findings": [],
-      "verdict_note": "runx verify returned valid: true with zero findings. Digest and content address both check out. The receipt is signed by the runtime's local-development key, so the local-development signature policy must be allowed explicitly; lineage is reported unverified because a single receipt cannot prove a receipt tree. The raw verdict is artifacts/dogfood-verify.json."
+      "verdict_note": "runx verify returned valid: true with zero findings. Digest, content address, and the CI-issued Ed25519 production signature all validate under the public verification key documented in the command; lineage remains unverified because a single receipt cannot prove a receipt tree."
     },
     "public_notary_publish": {
       "attempted": true,
-      "status": "not_claimed",
-      "note": "The purpose-scoped registry publish credential does not authorize the separate hosted receipt-notary endpoint (it returns Unauthorized). No hosted notarization is claimed; the signed receipt and its verification verdict are published in the public PR at artifacts/dogfood-receipt.json and artifacts/dogfood-verify.json so any reviewer can re-verify them."
+      "status": "not_required",
+      "note": "No hosted-notary success is claimed. The exact production-signed CI receipt, public Ed25519 verification key, and valid runx verdict are published in the PR so any reviewer can independently verify them."
     },
     "harness_cases": [
       {
@@ -369,10 +369,9 @@
       }
     ],
     "provenance_files": [
-      "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-prepare.json",
-      "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-start.json",
-      "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-resume.json",
-      "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-run-ledger.jsonl"
+      "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-run-ledger.jsonl",
+      "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-receipt.json",
+      "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-verify.json"
     ]
   },
   "handoff_seam": {
@@ -393,11 +392,11 @@
   "how_a_new_user_installs_runs_and_verifies": {
     "install": "runx add fablerlabs/agency-health@sha-d4d7ffe272cb --registry https://api.runx.ai",
     "run": "runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai --json with the typed inputs data_source_ref, store_id, agency_ref and optional period, case_id, health_baseline; supply the assess output at the agent-task boundary (the public fixture fixtures/concerning-agency-sealed-answers.json reproduces the sealed case).",
-    "verify": "runx verify --receipt <receipt.json> --allow-local-development-signatures --json",
+    "verify": "RUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= runx verify --receipt artifacts/dogfood-receipt.json --json",
     "private_context_required": false,
-    "private_context_note": "Every input, answer fixture, receipt, and verdict needed to reproduce the run is public in the PR. No private token, no private store, and no operator-only link is required to install, run, or verify."
+    "private_context_note": "Every input, answer fixture, receipt, public verification key, and verdict needed to install the skill or verify the published run is public in the PR. Producing a new production signature requires a new private seed; that seed is not published."
   },
-  "summary": "Published, harnessed, installed, dogfooded, and verified the exact agency-health runx skill under fablerlabs at version sha-d4d7ffe272cb. The skill assembles a read-only health bundle for one running agency: it folds the domain-keyed data-store read_projection (registry:runx/data-store@0.1.2, C2) over the agency case in version order, corroborates it against the audit-only ledger read runner (registry:runx/ledger@0.2.0, C7) by receipt id-stub only, grades seal_rate, stuck_case_count, cap_usage_pct, and escalation_backlog against named norms, and seals a health_verdict plus typed intervention findings that name their target lane and cite the case_id and turn or ledger id-stub that grounds them. It is read-only: no ceiling, no effect bound, no rail run, no money, no access. The local harness passed three cases with zero assertion errors, the hosted registry harness passed at publish, a clean runx add installed the published version, and a post-publish dogfood of the registry package sealed receipt sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc, which runx verify reports valid with zero findings.",
+  "summary": "Published, harnessed, installed, dogfooded, and verified the exact agency-health runx skill under fablerlabs at version sha-d4d7ffe272cb. The skill assembles a read-only health bundle for one running agency: it folds the domain-keyed data-store read_projection (registry:runx/data-store@0.1.2, C2) over the agency case in version order, corroborates it against the audit-only ledger read runner (registry:runx/ledger@0.2.0, C7) by receipt id-stub only, grades seal_rate, stuck_case_count, cap_usage_pct, and escalation_backlog against named norms, and seals a health_verdict plus typed intervention findings that name their target lane and cite the case_id and turn or ledger id-stub that grounds them. It is read-only: no ceiling, no effect bound, no rail run, no money, no access. The local harness passed three cases with zero assertion errors, the hosted registry harness passed at publish, a clean runx add installed the published version, and a post-publish dogfood of the registry package sealed receipt sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534, whose digest, content address, and CI-issued Ed25519 production signature runx verify reports valid with zero findings.",
   "observations": [
     {
       "name": "runx_cli_version",
@@ -471,13 +470,13 @@
     },
     {
       "name": "post_publish_dogfood_and_receipt",
-      "value": "runx:receipt:sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
-      "evidence": "The exact registry package fablerlabs/agency-health@sha-d4d7ffe272cb was run from a clean install directory (not the source tree, not a harness fixture seal) and sealed at 2026-07-12T18:11:33.961Z with disposition closed and reason_code agent_act_closed. The clean-install run ledger records resume_skill_ref pointing at the registry-resolved sha-d4d7ffe272cb package with selected_runner assess and step agent_task.agency-health.output. The full signed receipt is artifacts/dogfood-receipt.json."
+      "value": "runx:receipt:sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
+      "evidence": "The exact registry package fablerlabs/agency-health@sha-d4d7ffe272cb was run from the registry cache (not the source tree and not a harness fixture seal) and sealed at 2026-07-13T03:09:08.430Z with disposition closed and reason_code agent_act_closed. The run ledger records resume_skill_ref pointing at the registry-resolved sha-d4d7ffe272cb package with selected_runner assess. The full CI-issued Ed25519 receipt is artifacts/dogfood-receipt.json."
     },
     {
       "name": "runx_verify_verdict",
       "value": "valid: true; zero findings",
-      "evidence": "artifacts/dogfood-verify.json (runx.verify_verdict.v1) for receipt sha256:bfc96893...: valid true, digest valid, content_address valid, signature valid under kid runtime-skeleton in local-development mode, lineage unverified (a single receipt cannot prove a receipt tree), findings []. The local-development signature policy is stated openly rather than claimed as a hosted notarization; the hosted receipt-notary endpoint does not accept the purpose-scoped publish credential, so the signed receipt and this verdict are published in the PR for anyone to re-verify."
+      "evidence": "artifacts/dogfood-verify.json validates receipt sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534: valid true, digest valid, content_address valid, production Ed25519 signature valid under kid fablerlabs-agency-health-dogfood, findings []. The public verification key is yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY=; no hosted-notary success is claimed."
     },
     {
       "name": "public_pr_and_source_revision",
@@ -487,7 +486,10 @@
     {
       "name": "new_user_flow_without_private_context",
       "value": "runx add -> runx skill -> supply the assess answer -> runx verify",
-      "evidence": "runx add fablerlabs/agency-health@sha-d4d7ffe272cb --registry https://api.runx.ai; runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai --json with data_source_ref, store_id, agency_ref (+ optional period, case_id, health_baseline); reproduce the sealed case with the public fixtures/concerning-agency-sealed-answers.json; runx verify --receipt <receipt.json> --allow-local-development-signatures --json. No private token, store, or operator-only link is required at any step."
+      "evidence": "runx add fablerlabs/agency-health@sha-d4d7ffe272cb --registry https://api.runx.ai; runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai --json with the typed public fixtures; verify the published receipt with RUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= runx verify --receipt artifacts/dogfood-receipt.json --json. No private token, store, or operator-only link is required to install or verify; producing a new signature requires a new private seed."
     }
-  ]
+  ],
+  "reproducibility": {
+    "verify": "RUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= runx verify --receipt artifacts/dogfood-receipt.json --json"
+  }
 }

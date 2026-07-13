@@ -1,7 +1,7 @@
 {
-  "_note": "Measured local and hosted verification for Frantic #106. Source is immutable commit e83ffee89933a48833dfb23f804d3052c6ee8d95 in PR #289. The full registry dogfood provenance chain is published. The hosted receipt-notary endpoint rejected the purpose-scoped credential, so no hosted notarization is claimed.",
+  "_note": "Measured local and hosted-package verification for Frantic #106. Source is immutable commit e83ffee89933a48833dfb23f804d3052c6ee8d95 in PR #289. The exact CI-issued Ed25519 receipt, public verification key, and valid verdict are published; no hosted-notary success is claimed.",
   "schema": "runx.agency_health.verification.v1",
-  "verified_at": "2026-07-12T18:11:34Z",
+  "verified_at": "2026-07-13T03:09:09Z",
   "bounty": 106,
   "cli": {
     "version": "runx-cli 0.7.0",
@@ -126,39 +126,40 @@
       "name": "post-publish dogfood of the exact registry package",
       "command": "runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai --json --input data_source_ref=registry:runx/data-store@0.1.2 --input store_id=agency-ops-store --input agency_ref=agency:acme-support --input period=30d --input-json health_baseline='{\"threshold_days_stuck\":3,\"cap_pressure_pct\":80,\"refusal_spike_rate\":0.15}'; runx resume <run-id> fixtures/concerning-agency-sealed-answers.json --json",
       "status": "sealed",
-      "run_started_at": "2026-07-12T18:11:21.339Z",
-      "sealed_at": "2026-07-12T18:11:33.961Z",
+      "run_started_at": "2026-07-13T03:09:01.675Z",
+      "sealed_at": "2026-07-13T03:09:08.430Z",
       "runner": "assess",
       "step_id": "agent_task.agency-health.output",
-      "receipt_id": "sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
-      "receipt_ref": "runx:receipt:sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
+      "receipt_id": "sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
+      "receipt_ref": "runx:receipt:sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
       "is_post_publish_dogfood_not_harness_seal": true,
-      "provenance_proof": "Published dogfood-prepare.json, dogfood-start.json, dogfood-resume.json, and dogfood-run-ledger.jsonl show the registry-resolved sha-d4d7ffe272cb package, selected runner assess, operator-context approval, resume, and final sealed receipt.",
+      "provenance_proof": "The public run ledger records the registry-resolved sha-d4d7ffe272cb package and selected runner; the production-signed receipt records the final seal.",
       "run_id_note": "The run id printed by the start command is per-run and is not carried inside the content-addressed receipt, so it is shown as <run-id> rather than invented. The stable, checkable artifact is the receipt id above.",
       "artifact": "artifacts/dogfood-receipt.json"
     },
     {
       "name": "post-publish receipt verify",
-      "command": "runx verify --receipt artifacts/dogfood-receipt.json --allow-local-development-signatures --json",
+      "command": "RUNX_RECEIPT_VERIFY_KID=fablerlabs-agency-health-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY= runx verify --receipt artifacts/dogfood-receipt.json --json",
       "status": "passed",
       "schema": "runx.verify_verdict.v1",
-      "receipt_id": "sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
+      "receipt_id": "sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
       "valid": true,
       "digest": "valid",
       "content_address": "valid",
       "signature_status": "valid",
-      "signature_mode": "local-development",
-      "signature_kid": "runtime-skeleton",
+      "signature_mode": "production",
+      "signature_kid": "fablerlabs-agency-health-dogfood",
       "lineage": "unverified",
       "findings": [],
       "artifact": "artifacts/dogfood-verify.json",
-      "note": "valid: true with zero findings. The receipt is signed with the runtime's local-development key, so that signature policy must be allowed explicitly; lineage is unverified because a single receipt cannot prove a receipt tree. Both facts are stated rather than hidden."
+      "note": "valid: true with zero findings. Digest, content address, and CI-issued Ed25519 production signature validate under the documented public key; lineage is unverified because a single receipt cannot prove a receipt tree.",
+      "public_key_base64": "yBWvyjan3GW8pqIPTdumfRXzapsb1DVTRw0q/mn0aFY="
     },
     {
       "name": "hosted receipt notary publish",
-      "status": "not_claimed",
+      "status": "not_required",
       "blocking": false,
-      "note": "The purpose-scoped registry publish credential does not authorize the separate hosted receipt-notary endpoint. No hosted-notary success is claimed anywhere in this packet; the signed receipt and its verdict are published in the public PR so any reviewer can re-verify them offline with runx verify."
+      "note": "No hosted-notary success is claimed. The exact CI-issued production receipt, public verification key, and verdict are published in the PR for independent runx verification."
     },
     {
       "name": "typed inputs",
@@ -283,10 +284,10 @@
       "cap-widening-escalates-human-ops": "needs_agent"
     },
     "post_publish_dogfood_command": "runx skill fablerlabs/agency-health@sha-d4d7ffe272cb assess --registry https://api.runx.ai --json (typed inputs) ; runx resume <run-id> fixtures/concerning-agency-sealed-answers.json --json",
-    "post_publish_receipt_ref": "runx:receipt:sha256:bfc9689312d12a5b6b32bf3f63456f24f7cf211fa4598fee352ed4a974c9b5dc",
-    "post_publish_verify_verdict": "valid: true with zero findings; digest and content address valid; local-development signature accepted explicitly; lineage unverified",
+    "post_publish_receipt_ref": "runx:receipt:sha256:df734657784614da190b2427c21a30c65eebf12c7cb1759f803166b90c60b534",
+    "post_publish_verify_verdict": "valid: true with zero findings; digest and content address valid; CI-issued production Ed25519 signature valid under the published public key; lineage unverified",
     "public_pr": "https://github.com/runxhq/runx/pull/289",
-    "receipt_notary_status": "not claimed; signed receipt published in the PR instead"
+    "receipt_notary_status": "not required; production-signed receipt and public verification key published in the PR"
   },
   "public_provenance": {
     "prepare": "https://raw.githubusercontent.com/fablerlabs/runx/feat/agency-health-fabler/skills/agency-health/artifacts/dogfood-prepare.json",
