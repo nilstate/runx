@@ -1,6 +1,6 @@
 {
   "runx_version": "runx-cli 0.7.0",
-  "command": "runx harness skills/csat-recovery --json",
+  "command": "runx harness skills/csat-recovery --json; runx harness /tmp/csat-recovery-010/q10283245/csat-recovery/0.1.0 --json",
   "status": "passed",
   "case_count": 2,
   "assertion_error_count": 0,
@@ -9,6 +9,7 @@
     {"name": "csat-recovery-linked-charge-credit", "status": "sealed"},
     {"name": "csat-recovery-unlinked-credit-needs-agent", "status": "needs_agent", "reason": "No linkable sealed original charge receipt was supplied, so the escalation sub-step has no caller answer and no ceiling is emitted."}
   ],
-  "receipt_ids": ["sha256:be389faaf0d6804ac00cfd225b23d2470df77a38da8a5fb4710afef9af9efd2e"],
-  "graph_case_count": 2
+  "receipt_ids": ["sha256:82ee3601f46fea9d80619db7a80f2a9bebb614ea63d85cbfeaf146fe453fa248"],
+  "graph_case_count": 2,
+  "hosted_registry_package": "q10283245/csat-recovery@0.1.0"
 }
