@@ -1,172 +1,108 @@
 ---
 name: agency-health
-description: Assess one agency case for stall risk, cap pressure, and governance drift by reading its projection and the cross-run receipt ledger.
+description: Grade one agency case over a bounded period by folding its projection state and receipt-stub ledger aggregates into a typed health bundle.
 runx:
   category: ops
 ---
 
 # Agency Health
 
-Assess whether one agency case is healthy enough to continue, and route any
-intervention to the right lane.
+`agency-health` is a read-only operator skill for grading one running agency
+case over a bounded period. It reads domain-keyed case state through
+`data-store read_projection`, reads cross-run aggregate signals through `ledger`
+by receipt id-stub only, and returns a typed health bundle plus typed
+intervention findings.
 
-An agency case is not just its latest turn. Health depends on the current case
-projection, the recent sealed/refused receipt pattern around that case, and the
-governance lanes available to correct drift. This skill reads the case through
-`data-store read_projection`, reads recent receipt history through `ledger`,
-and emits one read-only health report. It never appends events, widens
-authority, or edits policy itself.
+## Purpose
 
-## What this skill does
-
-`agency-health` reads one domain-keyed agency projection and one bounded
-ledger slice, then grades the case on three axes:
-
-- progress health: is the case moving, stalled, or burning turns without
-  outcome
-- cap health: is the case approaching or exceeding its turn/spend envelope
-- governance health: do recent receipts show refusal drift, repeated retries,
-  or other signals that should be routed to a named lane
-
-The output is a single `agency_health_report` with a decision, graded findings,
-and zero or more intervention findings. Intervention findings are routing
-proposals only:
-
-- `improve-skill` for repeated dispatch/tooling failure inside the case
-- `policy-author` for cap sizing or policy drift that should be tightened in
-  writing
-- `human-ops` for critical findings or any authority/cap widening discussion
-
-The ledger input stays receipt-stub only. This skill may consume matched
-receipt ids, status, skill refs, and timestamps, plus the ledger chain verdict.
-It must not request or emit receipt bodies.
-
-## When to use this skill
-
-- An operator wants to know whether an agency case is still healthy enough to
-  continue.
-- A case appears stuck and you need to separate case-state drift from
-  cross-run receipt drift.
-- A grant owner wants an evidence-backed answer before widening caps or
-  changing policy.
-
-## When not to use this skill
-
-- To advance the case or dispatch the next member. Use `agency`.
-- To rewrite a failing skill directly. Use `improve-skill`.
-- To author or tighten policy text. Use `policy-author`.
-- To inspect one specific receipt for over-reach. Use `receipt-auditor`.
-- To mutate state, append events, or widen authority. This skill is read-only.
-
-## Procedure
-
-1. Read the case projection through `data-store read_projection`.
-2. Read a bounded ledger slice through `ledger`, using only receipt stubs and
-   optional chain verification.
-3. For replay or harness work, a caller may provide `projection_snapshot` as a
-   sanitized stand-in when durable state is unavailable. Treat the live
-   `data-store read_projection` result as the primary source when it is
-   populated.
-4. If there is no readable case state and no usable case events in the ledger,
-   stop with `needs_more_evidence`. Do not grade a case from absence alone.
-5. Grade progress health:
-   - `healthy` when turns are advancing toward a bounded outcome
-   - `degraded` when progress is stalled, retries cluster, or the case is near
-     its cap
-   - `critical` when the case is effectively stuck, caps are exhausted, or the
-     ledger shows severe governance drift
-6. Emit graded findings only when there is enough evidence to support them.
-   Every finding must cite `data-store.read_projection`, `ledger.read`, or both.
-7. Emit intervention findings only when a named downstream lane is justified.
-   Route cap or authority widening discussions, and all critical findings, to
-   `human-ops`.
-8. Return one sealed `agency_health_report`.
-
-## Edge cases and stop conditions
-
-- **No readable case state:** return `needs_more_evidence`.
-- **Projection exists but carries no progress/cap signal:** return
-  `needs_more_evidence` unless the ledger alone clearly establishes health.
-- **Ledger slice is empty:** do not fabricate a clean history; mark that gap in
-  `needs_input` or stop for evidence.
-- **Case is stalled but still inside caps:** return `ready` with
-  `health_verdict.status: degraded` and route the stall to `improve-skill`.
-- **Cap or authority widening would be required to continue safely:** do not
-  recommend widening directly. Route to `human-ops`, and to `policy-author`
-  only if the written cap/policy itself appears mis-sized.
-- **Critical signal with conflicting evidence:** keep the report read-only and
-  route to `human-ops`.
-
-## Output schema
-
-```yaml
-agency_health_report:
-  decision: ready | needs_more_evidence | needs_agent | refused
-  case_ref: string
-  objective: string
-  health_verdict:
-    status: healthy | degraded | critical | needs_more_evidence
-    summary: string
-    basis:
-      progress: on_track | stalled | unknown
-      cap_pressure: low | elevated | critical | unknown
-      receipt_signal: normal | warning | critical | unknown
-  ordered_tool_calls:
-    - tool: string
-      purpose: string
-      requires_confirmation: boolean
-  findings:
-    - id: string
-      grade: critical | warning | info
-      dimension: progress | spend | authority | receipts | evidence
-      summary: string
-      evidence_refs: [string]
-  intervention_findings:
-    - id: string
-      target_lane: improve-skill | policy-author | human-ops
-      trigger: string
-      action: string
-      reason: string
-  blockers: [string]
-  needs_input: [string]
-  success_checkpoint:
-    milestone: string
-    description: string
-```
-
-`decision: ready` means the case was assessable, not that it is healthy. A
-case can be `ready` with `health_verdict.status: degraded` or `critical` if the
-evidence is sufficient.
-
-## Worked example
-
-The case projection shows 9 turns used out of a 10-turn cap, 3 consecutive
-no-progress turns, and spend reserved at 92% of the limit. The ledger slice
-shows recent sealed turns plus one refusal caused by cap pressure. The report
-returns `decision: ready` and `health_verdict.status: degraded`. Findings cite
-the stalled turn pattern and elevated cap pressure. Intervention findings route
-dispatch stall remediation to `improve-skill` and cap sizing review to
-`policy-author`, with `human-ops` named as the escalation lane if widening the
-cap is under consideration.
-
-If both the projection and ledger are effectively unreadable, the report stops
-at `needs_more_evidence`, emits no graded findings, and proposes no
-intervention.
+Use this skill when an operator needs to know whether one agency is healthy
+enough to continue without widening caps or authority. It does not append
+events, widen authority, route money, or issue follow-up runs. It only grades
+the folded case and names the next lane when intervention is warranted.
 
 ## Inputs
 
-- `data_source_ref` (required for live reads): logical data source holding the
-  case projection.
-- `resource` (required): projection or event resource to read.
-- `aggregate_id` (required): agency case id.
-- `objective` (required): the health question being answered.
-- `ledger_question` (optional): bounded ledger question for the cross-run read.
-- `ledger_filter` (optional): ledger filter passed through to `ledger`.
-- `proof` (optional): optional ledger verification request, for example
-  `{ "verify_chain": true }`.
-- `projection_snapshot` (optional): sanitized replay projection for harness or
-  controlled evaluation when durable state is unavailable.
-- `receipts` (optional): explicit receipt stubs for replay or controlled
-  evaluation.
-- `health_focus` (optional): operator emphasis such as `progress-first`,
-  `cap-pressure`, or `governance-drift`.
+- `data_source_ref`: logical source for the case projection read.
+- `store_id`: binding or fixture store used for the projection fold.
+- `agency_ref`: the agency stream ref being graded.
+- `period` (optional): bounded window with `from` and `to`.
+- `case_id` (optional): concrete case id when the agency groups more than one
+  case.
+- `health_baseline` (optional):
+  - `threshold_days_stuck`
+  - `cap_pressure_pct`
+  - `refusal_spike_rate`
+
+## Output
+
+`agency_health_report` returns:
+
+- `decision`: `ready`, `needs_more_evidence`, or `needs_human`
+- `agency_ref`
+- `case_id`
+- `period`
+- `health_verdict`
+  - `status`
+  - `findings[]`
+- `intervention_findings[]`
+- `refused_reason` when the case cannot be graded safely
+
+Each `health_verdict.findings[]` entry ties a folded metric to a named norm.
+This skill grades these metrics by name:
+
+- `seal_rate`
+- `stuck_case_count`
+- `cap_usage_pct`
+- `escalation_backlog`
+
+Each `intervention_findings[]` entry names a `target_lane` and cites the
+grounding `case_id` and turn or ledger id-stub.
+
+## Lane rules
+
+- `improve-skill`: dispatch/tooling failure inside the case
+- `policy-author`: written baseline or cap thresholds need tightening
+- `human-ops`: any critical finding, cap widening, or authority widening path
+
+This is dispatch-by-naming only. The report grants no access, carries no
+ceiling, and is consumed only when a downstream driver or operator issues a
+separate governed run.
+
+## Refusals
+
+This skill refuses to:
+
+- grade a signal not grounded in the folded case projection or a ledger
+  aggregate referenced only by id-stub
+- invent a cap or threshold it cannot read from the supplied baseline or case
+  context
+- invent a turn state the folded event order does not support
+
+If no readable case events exist over the requested period, it returns
+`decision: needs_more_evidence`, grades no findings, and emits no intervention.
+
+## Harness contract
+
+The package ships two inline harness cases:
+
+- `concerning-agency-sealed`
+  - sealed result
+  - `decision: ready`
+  - `health_verdict.status: degraded`
+  - graded findings present
+  - typed intervention findings present
+- `no-case-events-stop`
+  - sealed result
+  - `decision: needs_more_evidence`
+  - no findings graded
+  - no intervention emitted
+
+## Operator reading
+
+Interpretation is intentionally narrow:
+
+- `decision: ready` means the case is assessable, not healthy
+- `status: degraded` means continued work is possible but intervention is
+  warranted
+- `needs_more_evidence` means the folded case and ledger aggregate are too thin
+  to grade honestly

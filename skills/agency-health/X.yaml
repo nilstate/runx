@@ -1,5 +1,5 @@
 skill: agency-health
-version: "0.1.0"
+version: "0.2.0"
 
 catalog:
   kind: skill
@@ -9,124 +9,105 @@ catalog:
 
 harness:
   cases:
-    - name: agency-health-flags-stall-and-cap-pressure
+    - name: concerning-agency-sealed
       inputs:
-        case_ref: case-stuck-1
-        objective: Assess whether this agency case is healthy enough to continue.
-        health_focus: progress-first
-        projection_snapshot:
-          case_id: case-stuck-1
-          agency_ref: agency://support
-          state: open
-          mandate: Recover delivery throughput without widening authority by default.
-          turn_summary:
-            total_turns: 9
-            max_turns: 10
-            consecutive_no_progress_turns: 3
-            last_progress_at: "2026-07-13T08:00:00Z"
-          spend_summary:
-            currency: usd
-            reserved_minor: 4600
-            limit_minor: 5000
-          roster:
-            - role: planner
-              skill: runx/agency
-            - role: operator
-              skill: runx/ops-desk
-        ledger_answer:
-          ledger_answer:
-            decision: answered
-            question: Has case-stuck-1 become unhealthy from repeated stalled turns or cap pressure?
-            query:
-              principal: ""
-              skill_ref: runx/agency
-              status:
-                - sealed
-                - refused
-              time_range:
-                from: "2026-07-12T00:00:00Z"
-                to: "2026-07-13T12:00:00Z"
-          matched_receipts:
-            - receipt_id: rcpt_case_stuck_01
-              skill_ref: runx/agency
-              status: sealed
-              created_at: "2026-07-13T08:10:00Z"
-            - receipt_id: rcpt_case_stuck_02
-              skill_ref: runx/agency
-              status: sealed
-              created_at: "2026-07-13T08:45:00Z"
-            - receipt_id: rcpt_case_stuck_03
-              skill_ref: runx/agency
-              status: refused
-              created_at: "2026-07-13T09:05:00Z"
-          chain_verification:
-            checked: true
-            intact: null
-            breaks: []
-          summary: 3 receipts matched the resolved query; the chain is unverified because verify keys were not available.
+        data_source_ref: local://agency-state
+        store_id: fixture-agency-health
+        agency_ref: agency://support/growth
+        case_id: case-stuck-1
+        period:
+          from: "2026-07-12T00:00:00Z"
+          to: "2026-07-13T12:00:00Z"
+        health_baseline:
+          threshold_days_stuck: 2
+          cap_pressure_pct: 85
+          refusal_spike_rate: 0.2
       caller:
         answers:
           agent_task.agency-health.output:
             agency_health_report:
               decision: ready
-              case_ref: case-stuck-1
-              objective: Assess whether this agency case is healthy enough to continue.
+              agency_ref: agency://support/growth
+              case_id: case-stuck-1
+              period:
+                from: "2026-07-12T00:00:00Z"
+                to: "2026-07-13T12:00:00Z"
               health_verdict:
                 status: degraded
-                summary: The case is still assessable, but it is stalled near both its turn and spend caps.
-                basis:
-                  progress: stalled
-                  cap_pressure: elevated
-                  receipt_signal: warning
-              ordered_tool_calls:
-                - tool: data-store.read_projection
-                  purpose: Read the current agency case projection before grading health.
-                  requires_confirmation: false
-                - tool: ledger.read
-                  purpose: Read a bounded receipt-stub history slice for stalled-turn and cap-pressure evidence.
-                  requires_confirmation: false
-              findings:
-                - id: agency.progress.stalled_turns
-                  grade: warning
-                  dimension: progress
-                  summary: Three consecutive no-progress turns indicate the case is stuck rather than converging.
-                  evidence_refs:
-                    - data-store.read_projection
-                    - ledger.read
-                - id: agency.cap.turn_budget_near_limit
-                  grade: warning
-                  dimension: spend
-                  summary: The case has consumed 9 of 10 turns and is close to exhausting its bounded turn budget.
-                  evidence_refs:
-                    - data-store.read_projection
-                - id: agency.cap.spend_pressure
-                  grade: warning
-                  dimension: spend
-                  summary: Reserved spend is already 4600 of 5000 minor units, so there is little room for further retries.
-                  evidence_refs:
-                    - data-store.read_projection
-                    - ledger.read
+                findings:
+                  - name: seal_rate
+                    assessment: weak
+                    norm: ">= 0.90 over the requested period"
+                    metric:
+                      value: 0.67
+                      unit: ratio
+                    grounding:
+                      case_id: case-stuck-1
+                      turn_numbers:
+                        - 27
+                        - 28
+                        - 29
+                      ledger_id_stubs:
+                        - rcpt_case_stuck_01
+                        - rcpt_case_stuck_02
+                        - rcpt_case_stuck_03
+                  - name: stuck_case_count
+                    assessment: elevated
+                    norm: "<= 1 consecutive stuck turn window"
+                    metric:
+                      value: 3
+                      unit: turns
+                    grounding:
+                      case_id: case-stuck-1
+                      turn_numbers:
+                        - 27
+                        - 28
+                        - 29
+                      ledger_id_stubs:
+                        - rcpt_case_stuck_01
+                  - name: cap_usage_pct
+                    assessment: elevated
+                    norm: "< 85%"
+                    metric:
+                      value: 92
+                      unit: percent
+                    grounding:
+                      case_id: case-stuck-1
+                      turn_numbers:
+                        - 29
+                      ledger_id_stubs:
+                        - rcpt_case_stuck_03
+                  - name: escalation_backlog
+                    assessment: warning
+                    norm: "0 pending critical escalations"
+                    metric:
+                      value: 1
+                      unit: items
+                    grounding:
+                      case_id: case-stuck-1
+                      turn_numbers:
+                        - 29
+                      ledger_id_stubs:
+                        - rcpt_case_stuck_03
               intervention_findings:
-                - id: agency.intervention.dispatch_stall
-                  target_lane: improve-skill
-                  trigger: repeated stalled turns without recent progress
-                  action: Review the dispatch path and add a bounded fix for the member flow that is failing to advance the case.
-                  reason: The case looks operationally stuck, not evidence-empty.
-                - id: agency.intervention.cap_review
-                  target_lane: policy-author
-                  trigger: turn and spend caps are both under pressure while the case remains unresolved
-                  action: Review whether the written case caps are correctly sized for this mandate before future runs hit repeated cap refusals.
-                  reason: This is a policy-sizing question, not a live authority widening decision.
-                - id: agency.intervention.escalate_widening
-                  target_lane: human-ops
-                  trigger: continuing the case may require cap or authority widening
-                  action: Escalate any widening request to human ops instead of widening in-band.
-                  reason: Cap and authority widening must remain a human decision.
-              blockers: []
-              needs_input: []
-              success_checkpoint:
-                milestone: health_report_delivered
-                description: The case was graded from projection plus ledger evidence and routed to named intervention lanes.
+                - target_lane: improve-skill
+                  reason: Dispatch is burning turns without advancing the case.
+                  grounding:
+                    case_id: case-stuck-1
+                    turn_number: 29
+                    ledger_id_stub: rcpt_case_stuck_03
+                - target_lane: policy-author
+                  reason: The baseline thresholds and caps need tightening for this mandate.
+                  grounding:
+                    case_id: case-stuck-1
+                    turn_number: 29
+                    ledger_id_stub: rcpt_case_stuck_03
+                - target_lane: human-ops
+                  reason: Cap pressure is high enough that any widening or critical remedy must escalate.
+                  grounding:
+                    case_id: case-stuck-1
+                    turn_number: 29
+                    ledger_id_stub: rcpt_case_stuck_03
       expect:
         status: sealed
         receipt:
@@ -134,97 +115,40 @@ harness:
           state: sealed
           disposition: closed
 
-    - name: agency-health-stops-without-readable-case-evidence
+    - name: no-case-events-stop
       inputs:
-        case_ref: case-empty-1
-        objective: Decide whether this case is healthy enough to continue.
-        projection_snapshot: {}
-        ledger_answer:
-          ledger_answer:
-            decision: needs_more_evidence
-            question: What does the ledger say about case-empty-1?
-            query:
-              principal: ""
-              skill_ref: runx/agency
-              status:
-                - sealed
-              time_range:
-                from: ""
-                to: ""
-          matched_receipts: []
-          chain_verification:
-            checked: false
-            intact: null
-            breaks: []
-          summary: No receipts matched the resolved query against runx/agency; the gap is the query, not a confirmed zero.
+        data_source_ref: local://agency-state
+        store_id: fixture-agency-health
+        agency_ref: agency://support/empty
+        case_id: case-empty-1
+        period:
+          from: "2026-07-12T00:00:00Z"
+          to: "2026-07-13T12:00:00Z"
+        health_baseline:
+          threshold_days_stuck: 2
+          cap_pressure_pct: 85
+          refusal_spike_rate: 0.2
       caller:
         answers:
           agent_task.agency-health.output:
             agency_health_report:
               decision: needs_more_evidence
-              case_ref: case-empty-1
-              objective: Decide whether this case is healthy enough to continue.
+              agency_ref: agency://support/empty
+              case_id: case-empty-1
+              period:
+                from: "2026-07-12T00:00:00Z"
+                to: "2026-07-13T12:00:00Z"
               health_verdict:
                 status: needs_more_evidence
-                summary: There is no readable case state or usable receipt history for this case yet.
-                basis:
-                  progress: unknown
-                  cap_pressure: unknown
-                  receipt_signal: unknown
-              ordered_tool_calls:
-                - tool: data-store.read_projection
-                  purpose: Attempt to read the agency case projection.
-                  requires_confirmation: false
-                - tool: ledger.read
-                  purpose: Attempt to read a bounded receipt-stub history slice for the case.
-                  requires_confirmation: false
-              findings: []
+                findings: []
               intervention_findings: []
-              blockers: []
-              needs_input:
-                - Provide a readable case projection or a sanitized replay snapshot.
-                - Provide receipt-stub history for the case if you want cross-run health signals.
-              success_checkpoint:
-                milestone: awaiting_case_evidence
-                description: The report stopped for evidence instead of grading an unreadable case.
+              refused_reason: No readable case events or grounded ledger aggregates were available for this agency over the requested period.
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
           state: sealed
           disposition: closed
-
-    - name: agency-health-needs-agent-without-grounded-answer
-      inputs:
-        case_ref: case-needs-agent-1
-        objective: Assess this case for agency health.
-        projection_snapshot:
-          case_id: case-needs-agent-1
-          state: open
-        ledger_answer:
-          ledger_answer:
-            decision: answered
-            question: What does the ledger say about case-needs-agent-1?
-            query:
-              principal: ""
-              skill_ref: runx/agency
-              status:
-                - sealed
-              time_range:
-                from: ""
-                to: ""
-          matched_receipts:
-            - receipt_id: rcpt_case_needs_agent_01
-              skill_ref: runx/agency
-              status: sealed
-              created_at: "2026-07-13T06:00:00Z"
-          chain_verification:
-            checked: false
-            intact: null
-            breaks: []
-          summary: 1 receipt matched the resolved query; chain verification was not requested.
-      expect:
-        status: needs_agent
 
 runners:
   analyze:
@@ -238,23 +162,27 @@ runners:
       wrap_as: agency_health_report_packet
       packet: runx.agency_health_report.v1
     inputs:
-      case_ref:
+      data_source_ref:
         type: string
         required: true
-        description: Agency case id being assessed.
-      objective:
+        description: Stable logical ref for the domain-keyed state source.
+      store_id:
         type: string
         required: true
-        description: Health question to answer.
-      health_focus:
+        description: Store binding used for the folded projection read.
+      agency_ref:
+        type: string
+        required: true
+        description: Agency stream ref to fold across the requested period.
+      period:
+        type: json
+        required: false
+        description: Optional bounded time window with from/to timestamps.
+      case_id:
         type: string
         required: false
-        description: Optional operator emphasis such as progress-first or governance-drift.
-      projection_snapshot:
+        description: Optional concrete case id when the agency groups more than one case.
+      health_baseline:
         type: json
         required: false
-        description: Sanitized case projection or replay snapshot to assess.
-      ledger_answer:
-        type: json
-        required: false
-        description: Bounded ledger result with receipt stubs and chain-verification status.
+        description: Optional baseline thresholds for stuck days, cap pressure, and refusal spike rate.
