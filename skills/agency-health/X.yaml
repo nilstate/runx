@@ -150,6 +150,18 @@ harness:
           state: sealed
           disposition: closed
 
+    - name: agency-health-needs-agent
+      inputs:
+        data_source_ref: local://agency-state
+        store_id: fixture-agency-health
+        agency_ref: agency://support/pending
+        case_id: case-needs-agent-1
+        period:
+          from: "2026-07-12T00:00:00Z"
+          to: "2026-07-13T12:00:00Z"
+      expect:
+        status: needs_agent
+
 runners:
   analyze:
     default: true
