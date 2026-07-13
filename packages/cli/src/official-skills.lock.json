@@ -98,6 +98,13 @@
     "catalog_role": "canonical"
   },
   {
+    "skill_id": "runx/exact-cve-audit",
+    "version": "sha-bce4476cee8b",
+    "digest": "bf49029b9e20629aed3f8e29dae50fc8e2b2f402e2edb9c1fba2fc6767cb583a",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/github-sync",
     "version": "sha-e685e9e8b5c6",
     "digest": "6981adc877736f05a41d764b3e42d479d87de3bc2d69a65992dff457b635bd9a",
