@@ -1,0 +1,11 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:35e8871d999fd0f5ba21fe9e5b14feb3e4783f2e9d5d53d21fa7b09de0c25f6e",
+  "valid": true,
+  "digest": {"status": "valid", "expected": "sha256:10c18dfeb4b5ad5051974a775096377a8ca738f8c550adc2bcf3b477c92a053a", "actual": "sha256:10c18dfeb4b5ad5051974a775096377a8ca738f8c550adc2bcf3b477c92a053a"},
+  "content_address": {"status": "valid", "expected": "sha256:35e8871d999fd0f5ba21fe9e5b14feb3e4783f2e9d5d53d21fa7b09de0c25f6e", "actual": "sha256:35e8871d999fd0f5ba21fe9e5b14feb3e4783f2e9d5d53d21fa7b09de0c25f6e"},
+  "signature": {"mode": "production", "status": "valid", "kid": "csat-recovery-dogfood", "public_key_base64": "O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik="},
+  "lineage": {"status": "unverified", "message": "Single-receipt verification validates the root receipt; child references remain in receipt.json."},
+  "findings": [],
+  "command": "RUNX_RECEIPT_VERIFY_KID=csat-recovery-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik= runx verify --receipt skills/csat-recovery/evidence/receipt.json --json"
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "runx.skill_delivery.evidence.v1",
+  "summary": "Published and dogfooded csat-recovery@0.1.0: both harness cases pass and a post-publish run sealed a verified 1200-minor-unit USD linked-charge recovery ceiling without refunding or sending.",
+  "runx_version": "runx-cli 0.7.0",
+  "publisher_owner": "q10283245",
+  "package_name": "csat-recovery",
+  "version": "0.1.0",
+  "registry_ref": "q10283245/csat-recovery@0.1.0",
+  "digests": {"package": "sha256:2bc32eb944eebd7cbc0a7013bbe4f1ed6c385fc523734cc2c5acc90f90ef3db2", "profile": "sha256:7b331c4dd081f055914dc56fb2a4bd397c399048a604c981bfe8257edd941f8c"},
+  "source_revision": "fa9eb38511c8425abef95e62eaf5054d4d3cf6bf",
+  "public_url": "https://runx.ai/x/q10283245/csat-recovery@0.1.0",
+  "pr_url": "https://github.com/runxhq/runx/pull/308",
+  "source_url": "https://github.com/q10283245/runx/tree/fa9eb38511c8425abef95e62eaf5054d4d3cf6bf/skills/csat-recovery",
+  "x_yaml": "https://raw.githubusercontent.com/q10283245/runx/fa9eb38511c8425abef95e62eaf5054d4d3cf6bf/skills/csat-recovery/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/q10283245/runx/fa9eb38511c8425abef95e62eaf5054d4d3cf6bf/skills/csat-recovery/SKILL.md",
+  "publish": {"method": "GitHub-authenticated runx hosted registry", "command": "runx registry publish ./skills/csat-recovery/SKILL.md --profile ./skills/csat-recovery/X.yaml --registry https://api.runx.ai --version 0.1.0 --json"},
+  "install_command": "runx add q10283245/csat-recovery@0.1.0 --registry https://api.runx.ai",
+  "hosted_harness": {"status": "passed", "case_count": 2, "receipt_id": "sha256:82ee3601f46fea9d80619db7a80f2a9bebb614ea63d85cbfeaf146fe453fa248"},
+  "dogfood": {
+    "package": "q10283245/csat-recovery@0.1.0",
+    "input": {"detractor_signal": {"score": 1, "reason": "Duplicate charge", "timestamp": "2026-07-13T03:00:00Z"}, "customer_context": {"id": "customer-redacted-dogfood", "ltv": 3200, "timezone": "Asia/Shanghai"}, "recovery_policy": {"monthly_credit_limit": 5000, "plays": ["apology", "credit", "escalate"]}, "recovery_request": {"amount_minor": 1200, "currency": "USD", "counterparty": "customer-redacted-dogfood", "scopes": ["credit:billing-error"]}, "charge_receipt": {"original_receipt_ref": "runx:receipt:sha256:dogfood-original-charge", "amount_minor": 2400, "remaining_refundable_minor": 1800}, "prior_recovery_ref": "projection:customer-redacted-dogfood:monthly:800"},
+    "command": "runx skill q10283245/csat-recovery@0.1.0 --registry https://api.runx.ai --input-json <typed-inputs> --skip-operator-context --receipt-dir /tmp/csat-dogfood-010 --json; runx resume run_csat-recovery_bc94dd6a8b6d skills/csat-recovery/evidence/dogfood-answers.json --receipt-dir /tmp/csat-dogfood-010 --json",
+    "receipt_ref": "runx:receipt:sha256:35e8871d999fd0f5ba21fe9e5b14feb3e4783f2e9d5d53d21fa7b09de0c25f6e",
+    "verify_verdict": "valid: true; digest valid; content address valid; production Ed25519 signature valid",
+    "harness_cases": [{"name": "csat-recovery-linked-charge-credit", "status": "sealed"}, {"name": "csat-recovery-unlinked-credit-needs-agent", "status": "refused", "runtime_status": "needs_agent"}]
+  },
+  "observations": [
+    "Exact CLI version: runx-cli 0.7.0.",
+    "Publisher q10283245 published exact package csat-recovery version 0.1.0.",
+    "Chosen play was credit because a duplicate charge was grounded in a linked sealed charge and all requested bounds were satisfied.",
+    "Credit ceiling was 1200 minor units USD for customer-redacted-dogfood, linked to runx:receipt:sha256:dogfood-original-charge, scoped only to credit:billing-error.",
+    "The send plan content digest was sha256:dogfood-credit-apology-v1 and is naming data, not a live send.",
+    "Remaining monthly credit after the decision was 3000 minor units.",
+    "The refused fixture lacked a linkable sealed original charge, emitted no money ceiling, and blocked at the unanswered escalation sub-step.",
+    "Harness cases were csat-recovery-linked-charge-credit and csat-recovery-unlinked-credit-needs-agent.",
+    "Post-publish receipt id was sha256:35e8871d999fd0f5ba21fe9e5b14feb3e4783f2e9d5d53d21fa7b09de0c25f6e and verification was valid."
+  ]
+}
