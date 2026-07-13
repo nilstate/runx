@@ -123,7 +123,6 @@ Skills that model, charge, pay, or refund through payment providers. The `mock-*
 | `nitrosend/` | Govern Nitrosend campaign, flow, transactional, audience, and send operations. |
 | `dispute-respond/` | Prepare a governed dispute response artifact from a linked case. |
 | `support-triage-reply/` | Classify a bounded support request and choose the safe next path. |
-| `governed-data-plane/` | Govern data that flows between trust domains through a sealed data-plane. |
 
 ## Weather & External Data
 
