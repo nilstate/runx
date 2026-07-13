@@ -1,0 +1,57 @@
+{
+  "schema": "runx.skill_delivery.evidence.v1",
+  "summary": "Published and dogfooded purchase-approval@0.1.0: the hosted package installs, both harness cases pass, and a post-publish run sealed a verified bounded 480 USD approval ceiling without moving money.",
+  "runx_version": "runx-cli 0.7.0",
+  "publisher_owner": "q10283245",
+  "package_name": "purchase-approval",
+  "version": "0.1.0",
+  "registry_ref": "q10283245/purchase-approval@0.1.0",
+  "digests": {
+    "package": "sha256:2247e2087c17350f7afe62fca17066321ee1f9fbace37346e66ac72a6dbdbd68",
+    "profile": "sha256:c5a674e6bceb1ebfc78458be9fc6f9d7be50557dd4d92430480f47dbc8f71327"
+  },
+  "source_revision": "1d5bff5e5865650aec2eba950e20ed36bc1443a9",
+  "public_url": "https://runx.ai/x/q10283245/purchase-approval@0.1.0",
+  "pr_url": "https://github.com/runxhq/runx/pull/307",
+  "source_url": "https://github.com/q10283245/runx/tree/1d5bff5e5865650aec2eba950e20ed36bc1443a9/skills/purchase-approval",
+  "x_yaml": "https://raw.githubusercontent.com/q10283245/runx/1d5bff5e5865650aec2eba950e20ed36bc1443a9/skills/purchase-approval/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/q10283245/runx/1d5bff5e5865650aec2eba950e20ed36bc1443a9/skills/purchase-approval/SKILL.md",
+  "publish": {
+    "method": "GitHub-authenticated runx hosted registry",
+    "command": "runx registry publish ./skills/purchase-approval/SKILL.md --profile ./skills/purchase-approval/X.yaml --registry https://api.runx.ai --version 0.1.0 --json"
+  },
+  "install_command": "runx add q10283245/purchase-approval@0.1.0 --registry https://api.runx.ai",
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "receipt_id": "sha256:ecb668506bce38d18a754a6bb1c02c981e8e149da9656a8a037edce17c328e64"
+  },
+  "dogfood": {
+    "package": "q10283245/purchase-approval@0.1.0",
+    "input": {
+      "purchase_request": {"amount": 480, "currency": "USD", "vendor": "Acme Hosting", "purpose": "Annual staging infrastructure renewal"},
+      "procurement_policy": {"approved_vendors": ["Acme Hosting", "Example Office Supply"], "max_single_purchase": 1000, "requires_approval_above": 250},
+      "current_budget_balance": 2200,
+      "requested_scope": {"amount": 480, "currency": "USD", "counterparty": "Acme Hosting", "scopes": ["purchase:hosting"]}
+    },
+    "command": "runx skill q10283245/purchase-approval@0.1.0 --registry https://api.runx.ai --input-json <typed-inputs> --skip-operator-context --receipt-dir /tmp/purchase-dogfood-010 --json; runx resume run_purchase-approval_27327fd554b8 skills/purchase-approval/evidence/dogfood-answers.json --receipt-dir /tmp/purchase-dogfood-010 --json",
+    "receipt_ref": "runx:receipt:sha256:3d3eced86dc12c493310ec6544d5b07100e6d68f28c0381f0355f2904910dd8a",
+    "verify_command": "RUNX_RECEIPT_VERIFY_KID=purchase-approval-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik= runx verify --receipt skills/purchase-approval/evidence/receipt.json --json",
+    "verify_verdict": "valid: true; digest valid; content address valid; production Ed25519 signature valid",
+    "harness_cases": [
+      {"name": "purchase-approval-in-policy-within-budget", "status": "sealed"},
+      {"name": "purchase-approval-over-budget-needs-human", "status": "refused", "runtime_status": "needs_agent"}
+    ]
+  },
+  "observations": [
+    "Exact CLI version: runx-cli 0.7.0.",
+    "Publisher q10283245 published exact package purchase-approval version 0.1.0.",
+    "Local harness and clean installed-package harness each passed purchase-approval-in-policy-within-budget and purchase-approval-over-budget-needs-human.",
+    "Approval decision was true because the approved vendor and USD 480 amount remained within the USD 1000 cap, USD 2200 balance, and USD 480 requested scope.",
+    "The emitted AttenuationRequest ceiling was 480 USD for Acme Hosting with only purchase:hosting scope.",
+    "The refused fixture requested USD 2800 against a USD 1500 cap and USD 1200 remaining budget; it omitted caller answers, blocked at needs_agent, and emitted no ceiling.",
+    "Post-publish receipt id: sha256:3d3eced86dc12c493310ec6544d5b07100e6d68f28c0381f0355f2904910dd8a.",
+    "Verification verdict was valid for digest, content address, and Ed25519 signature.",
+    "A downstream C3 runner may attenuate the approved ceiling but cannot widen it; denial or missing approval leaves nothing consumable."
+  ]
+}

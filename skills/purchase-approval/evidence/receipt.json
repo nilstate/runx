@@ -1,0 +1,17 @@
+{
+  "schema": "runx.receipt.v1",
+  "id": "sha256:3d3eced86dc12c493310ec6544d5b07100e6d68f28c0381f0355f2904910dd8a",
+  "created_at": "2026-07-13T02:43:35.449Z",
+  "canonicalization": "runx.receipt.c14n.v1",
+  "issuer": {"type": "hosted", "kid": "purchase-approval-dogfood", "public_key_sha256": "sha256:139e3940e64b5491722088d9a0d741628fc826e09475d341a780acde3c4b8070"},
+  "signature": {"alg": "Ed25519", "value": "base64:XOAggTc2qmgd3htwW99j1OOJeGNOsCTe2zCyrb6Q9ZWPfgM3xJXsH1vTQi-FLPjPoLDl5e4sDmlWZFm96uLRBw"},
+  "digest": "sha256:2cdf71210ce768700f880be96654624378b4de359a734d6778535cf27d64782f",
+  "idempotency": {"intent_key": "sha256:purchase-approval-graph-intent", "trigger_fingerprint": "sha256:purchase-approval-graph-trigger", "content_hash": "sha256:purchase-approval-graph-content"},
+  "subject": {"kind": "graph", "ref": {"type": "harness", "uri": "hrn_purchase-approval_graph"}, "commitments": []},
+  "authority": {"actor_ref": {"type": "principal", "uri": "runx:principal:local_runtime"}, "grant_refs": [], "scope_refs": [], "authority_proof_refs": [], "attenuation": {"parent_authority_ref": null, "subset_proof": null}, "terms": [], "enforcement": {"profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e", "redaction_refs": [], "setup_refs": [], "teardown_refs": []}},
+  "signals": [],
+  "decisions": [],
+  "acts": [],
+  "seal": {"disposition": "closed", "reason_code": "graph_closed", "summary": "graph purchase-approval completed", "closed_at": "2026-07-13T02:43:35.449Z", "last_observed_at": "2026-07-13T02:43:35.449Z", "criteria": []},
+  "lineage": {"children": [{"type": "receipt", "uri": "runx:receipt:sha256:b3910732c6bb59c5547fb4265415702e1da3f77412ad6ed875344396c5701005", "locator": "sha256:9707e13cbab3e16617326c78c57712c87f12019cca98266dcdbd7d9e916d2205"}, {"type": "receipt", "uri": "runx:receipt:sha256:d5975f9225c215437f6275164f3a815a58595298653a51366c326a1750d82a9a", "locator": "sha256:cd30a0e633dd824d504cdded3b7f888ac53732e99ba44fcfe814d26a67fcb502"}], "sync": []}
+}

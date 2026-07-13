@@ -1,6 +1,6 @@
 {
   "runx_version": "runx-cli 0.7.0",
-  "command": "runx harness skills/purchase-approval --json",
+  "command": "runx harness skills/purchase-approval --json; runx harness /tmp/purchase-approval-010/q10283245/purchase-approval/0.1.0 --json",
   "status": "passed",
   "case_count": 2,
   "assertion_error_count": 0,
@@ -21,8 +21,8 @@
     }
   ],
   "receipt_ids": [
-    "sha256:b3146a05bfa63b37cef54d9f131de6e36565812374eef0c25d66beaa24bd7936"
+    "sha256:ecb668506bce38d18a754a6bb1c02c981e8e149da9656a8a037edce17c328e64"
   ],
+  "hosted_registry_package": "q10283245/purchase-approval@0.1.0",
   "graph_case_count": 2
 }
-
