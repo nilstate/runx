@@ -1,0 +1,27 @@
+{
+  "summary": "A reproducible RunX CLI defect report documents that supplied approval answers do not clear a pending approval during resume, with exact commands, clean receipt directories, observed state, and the expected state transition.",
+  "observations": [
+    {
+      "claim_type": "useful_issue",
+      "public_url": "https://github.com/runxhq/runx/issues/311"
+    },
+    {
+      "runx_link_found": "https://github.com/runxhq/runx"
+    },
+    {
+      "summary": "The issue isolates a deterministic runx resume approval-state bug and supplies a minimal reproduction using the published Sourcey catalog graph."
+    },
+    {
+      "audience": "RunX maintainers and contributors working on resume, approval gates, and governed graph execution"
+    },
+    {
+      "venue_policy": "The runxhq/runx issue tracker accepts actionable bug reports; this post reports a product defect rather than promoting an unrelated project."
+    },
+    {
+      "reproduction_quality": "The report includes the CLI version, initial run, two documented answer shapes, isolated receipt directories, repeated pending state, and expected behavior."
+    },
+    {
+      "public_access": "The issue and repository are readable without authentication."
+    }
+  ]
+}
