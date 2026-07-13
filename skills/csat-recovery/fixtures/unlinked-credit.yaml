@@ -1,0 +1,4 @@
+case: csat-recovery-unlinked-credit-needs-agent
+expected_status: needs_agent
+expected_reason: Missing linkable sealed original charge receipt.
+expected_credit_ceiling: absent

@@ -1,0 +1,109 @@
+skill: csat-recovery
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: csat-recovery-linked-charge-credit
+      inputs:
+        detractor_signal: {score: 1, reason: Duplicate charge, timestamp: "2026-07-13T00:00:00Z"}
+        customer_context: {id: customer-redacted-17, ltv: 3200, timezone: Asia/Shanghai}
+        recovery_policy:
+          monthly_credit_limit: 5000
+          plays: [apology, credit, escalate]
+          message_templates: {credit_apology: csat-credit-apology-v1}
+        recovery_request: {amount_minor: 1200, currency: USD, counterparty: customer-redacted-17, scopes: [credit:billing-error]}
+        charge_receipt: {original_receipt_ref: "runx:receipt:sha256:originalcharge", amount_minor: 2400, remaining_refundable_minor: 1800}
+        prior_recovery_ref: "projection:customer-redacted-17:monthly:800"
+      caller:
+        answers:
+          agent_task.csat-recovery.output:
+            recovery_decision:
+              chosen_play: credit
+              reason: Duplicate charge is grounded in a linked sealed charge and the request is within refundable and monthly bounds.
+              credit_ceiling: {amount_minor: 1200, currency: USD, counterparty: customer-redacted-17, original_receipt_ref: "runx:receipt:sha256:originalcharge", scopes: [credit:billing-error]}
+              send_plan: {principal: support-operator, audience: customer-redacted-17, content_template_id: csat-credit-apology-v1, content_digest: "sha256:credit-apology-redacted-v1"}
+              escalation: null
+            remaining_monthly_credit: 3000
+          agent_task.csat-recovery-escalation.output:
+            escalation_decision: {required: false, reason: All credit bounds are grounded and satisfied.}
+        approvals:
+          csat-recovery.human-review: true
+      expect:
+        status: sealed
+        receipt: {schema: runx.receipt.v1}
+
+    - name: csat-recovery-unlinked-credit-needs-agent
+      inputs:
+        detractor_signal: {score: 1, reason: Billing error, timestamp: "2026-07-13T00:00:00Z"}
+        customer_context: {id: customer-redacted-22, ltv: 900, timezone: UTC}
+        recovery_policy:
+          monthly_credit_limit: 2000
+          plays: [apology, credit, escalate]
+          message_templates: {apology: csat-apology-v1}
+        recovery_request: {amount_minor: 900, currency: USD, counterparty: customer-redacted-22, scopes: [credit:billing-error]}
+        charge_receipt: null
+      caller:
+        answers:
+          agent_task.csat-recovery.output:
+            recovery_decision:
+              chosen_play: escalate
+              reason: A credit was requested but no linkable sealed original charge receipt was supplied; no ceiling may be emitted.
+              send_plan: {principal: support-operator, audience: customer-redacted-22, content_template_id: csat-apology-v1, content_digest: "sha256:apology-redacted-v1"}
+              escalation: {lane: human-approval, reason: Missing original charge receipt.}
+            remaining_monthly_credit: 2000
+      expect:
+        status: needs_agent
+
+runners:
+  csat-recovery:
+    default: true
+    type: graph
+    inputs:
+      detractor_signal: {type: object, required: true, description: "CSAT score, reason, and timestamp."}
+      customer_context: {type: object, required: true, description: "Customer id, LTV, and timezone."}
+      recovery_policy: {type: object, required: true, description: "Monthly credit limit, allowed plays, and message templates."}
+      recovery_request: {type: object, required: true, description: "Requested amount_minor, currency, counterparty, and scopes."}
+      charge_receipt: {type: object, required: false, description: "Linked sealed original charge; required for a credit play."}
+      prior_recovery_ref: {type: string, required: false, description: "Projection reference for prior monthly recoveries."}
+    graph:
+      name: csat-recovery
+      steps:
+        - id: evaluate-recovery
+          run:
+            type: agent-task
+            agent: reviewer
+            task: csat-recovery
+            outputs: {recovery_decision: object, remaining_monthly_credit: number}
+          inputs:
+            detractor_signal: "$input.detractor_signal"
+            customer_context: "$input.customer_context"
+            recovery_policy: "$input.recovery_policy"
+            recovery_request: "$input.recovery_request"
+            charge_receipt: "$input.charge_receipt"
+            prior_recovery_ref: "$input.prior_recovery_ref"
+          artifacts: {wrap_as: recovery_packet, packet: runx.csat.recovery.v1}
+        - id: escalation
+          run:
+            type: agent-task
+            agent: reviewer
+            task: csat-recovery-escalation
+            outputs: {escalation_decision: object}
+          context:
+            recovery_decision: evaluate-recovery.recovery_packet.data.recovery_decision
+            remaining_monthly_credit: evaluate-recovery.recovery_packet.data.remaining_monthly_credit
+          artifacts: {wrap_as: escalation_packet}
+        - id: human-review
+          run: {type: approval}
+          inputs:
+            gate_id: csat-recovery.human-review
+            reason: Confirm the bounded recovery decision before any downstream credit or send driver consumes it.
+          context:
+            recovery_decision: evaluate-recovery.recovery_packet.data.recovery_decision
+            escalation_decision: escalation.escalation_packet.data.escalation_decision
+          artifacts: {wrap_as: approval_decision, packet: runx.approval.decision.v1}

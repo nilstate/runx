@@ -1,0 +1,6 @@
+case: csat-recovery-linked-charge-credit
+expected_status: sealed
+expected_play: credit
+expected_credit_ceiling_minor: 1200
+expected_currency: USD
+expected_original_receipt_ref: runx:receipt:sha256:originalcharge
