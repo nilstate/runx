@@ -1,5 +1,5 @@
 {
-  "command": "runx harness ./skills/incident-commander --receipt-dir ./.runx/receipts-linux-pass-8 --json",
+  "command": "runx harness ./skills/incident-commander --receipt-dir ./.runx/receipts-linux-pass-9 --json",
   "runx_version": "runx-cli 0.7.0",
   "platform": "x86_64-unknown-linux-musl under WSL2",
   "status": "passed",
@@ -23,7 +23,7 @@
     }
   ],
   "receipt_ids": [
-    "sha256:9d649f63769aa37fea5d20253d0d0899513db154212d7b46d53fe18087cf00f4"
+    "sha256:72608c09d411abc9fa6e2ce8c0060f2c9ac16d536afc654577c7190c8f5b1525"
   ],
   "graph_case_count": 2,
   "dependency": "package-local ops-desk-advance binding; no external runtime dependency",
