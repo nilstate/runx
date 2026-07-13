@@ -1,5 +1,6 @@
 {
   "schema": "runx.agency_health.verification.v1",
+  "runx_cli_version": "0.6.19",
   "checks": [
     {"command":"powershell -ExecutionPolicy Bypass -File skills/agency-health/fixtures/test-assessor.ps1","status":"passed"},
     {"command":"node --check skills/agency-health/graph/assess/run.mjs","status":"passed"},
@@ -8,6 +9,6 @@
   "harness": {
     "command":"runx harness ./skills/agency-health -j",
     "status":"environment_blocked",
-    "detail":"The Windows 0.7.0 runtime cannot open its temporary receipt store (os error 5); the source fixtures remain included for hosted verification."
+    "detail":"The Windows runx CLI returns os error 5 while replaying every inline harness receipt. The bundled run-history-analyst harness reproduces the same platform failure, so this is not specific to agency-health. Versioned source fixtures remain included for hosted verification."
   }
 }
