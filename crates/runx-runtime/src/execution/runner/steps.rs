@@ -1439,6 +1439,12 @@ where
     // the same way lets a seeded graph run drive an approval gate to a decision.
     let request_id = gate.id.to_string();
     let resolution = resolve_step_approval(step, host, request_id, gate.clone())?;
+    if matches!(&resolution, ApprovalResolution::Pending { .. }) {
+        return Err(RuntimeError::GraphBlocked {
+            step_id: step.id.clone(),
+            reason: format!("approval gate {} requires resolution", gate.id),
+        });
+    }
     let outputs = approval_outputs(step, &gate, &resolution)?;
     let stdout = serde_json::to_string(&outputs)
         .map_err(|source| RuntimeError::json("serializing approval run output", source))?;

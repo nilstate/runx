@@ -1695,6 +1695,65 @@ fn native_graph_skill_run_requires_declared_graph_inputs() -> Result<(), Box<dyn
     Ok(())
 }
 
+#[test]
+fn native_graph_skill_pauses_and_resumes_approval_gate() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let skill_dir = write_graph_approval_skill(temp.path())?;
+    let receipt_dir = temp.path().join("receipts");
+
+    let pending = run_skill(SkillRunRequest {
+        skill_path: skill_dir.clone(),
+        receipt_dir: Some(receipt_dir.clone()),
+        run_id: None,
+        answers_path: None,
+        inputs: BTreeMap::new(),
+        env: BTreeMap::new(),
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+    let pending_output = object(&pending.output, "pending graph approval result")?;
+    assert_eq!(string_field(pending_output, "status"), Some("needs_agent"));
+    let run_id = string_field(pending_output, "run_id")
+        .ok_or("pending graph approval result missing run_id")?
+        .to_owned();
+    let requests = array_field(pending_output, "requests").ok_or("missing approval requests")?;
+    let request = object(&requests[0], "approval request")?;
+    assert_eq!(string_field(request, "id"), Some("graph-approval.approve"));
+
+    let answers_path = temp.path().join("approval-answers.json");
+    fs::write(
+        &answers_path,
+        serde_json::json!({
+            "answers": {
+                "graph-approval.approve": true
+            }
+        })
+        .to_string(),
+    )?;
+    let resumed = run_skill(SkillRunRequest {
+        skill_path: skill_dir,
+        receipt_dir: Some(receipt_dir),
+        run_id: Some(run_id),
+        answers_path: Some(answers_path),
+        inputs: BTreeMap::new(),
+        env: BTreeMap::new(),
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+
+    let output = object(&resumed.output, "resumed graph approval result")?;
+    assert_eq!(string_field(output, "status"), Some("sealed"));
+    let payload = object_field(output, "payload").ok_or("missing payload")?;
+    let step_outputs = object_field(payload, "step_outputs").ok_or("missing step outputs")?;
+    let approve = object_field(step_outputs, "approve").ok_or("missing approval step")?;
+    let decision = object_field(approve, "approval_decision").ok_or("missing decision")?;
+    let data = object_field(decision, "data").ok_or("missing decision data")?;
+    assert_eq!(data.get("approved"), Some(&JsonValue::Bool(true)));
+    assert_eq!(string_field(data, "status"), Some("approved"));
+
+    Ok(())
+}
+
 #[cfg(feature = "catalog")]
 #[test]
 fn native_graph_skill_run_uses_canonical_tool_root() -> Result<(), Box<dyn std::error::Error>> {
@@ -2743,6 +2802,38 @@ runners:
           inputs:
             gate_id: graph-required-input.approve
             reason: approve the graph
+"#,
+    )?;
+    Ok(skill_dir)
+}
+
+fn write_graph_approval_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = root.join("graph-approval");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: graph-approval\n---\n# Graph Approval\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"
+skill: graph-approval
+runners:
+  graph:
+    default: true
+    type: graph
+    graph:
+      name: graph-approval
+      steps:
+        - id: approve
+          run:
+            type: approval
+          inputs:
+            gate_id: graph-approval.approve
+            reason: approve the graph
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
 "#,
     )?;
     Ok(skill_dir)

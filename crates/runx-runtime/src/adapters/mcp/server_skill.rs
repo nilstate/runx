@@ -222,7 +222,22 @@ fn execute_mcp_server_graph(
         },
     );
     let mut host = McpServerHost::default();
-    let checkpoint = runtime.run_graph_until_steps_with_host(&graph_dir, &graph, 1, &mut host)?;
+    let checkpoint = match runtime.run_graph_until_steps_with_host(&graph_dir, &graph, 1, &mut host)
+    {
+        Ok(checkpoint) => checkpoint,
+        Err(RuntimeError::GraphBlocked { .. }) if !host.requests.is_empty() => {
+            let request = host.requests[0].clone();
+            return Ok(mcp_tool_result_from_host_result(
+                McpHostRunResult::NeedsAgent {
+                    skill_name: execution.skill.name.clone(),
+                    run_id: run_id.to_owned(),
+                    request_count: 1,
+                    runx: needs_agent_runx(&execution.skill.name, run_id, &[request])?,
+                },
+            ));
+        }
+        Err(error) => return Err(error),
+    };
     if let Some(request) = host.requests.first().cloned() {
         return Ok(mcp_tool_result_from_host_result(
             McpHostRunResult::NeedsAgent {
