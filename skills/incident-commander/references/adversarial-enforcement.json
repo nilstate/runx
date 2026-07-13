@@ -1,5 +1,5 @@
 {
-  "runner": "graph/enforce/RUN.mjs",
+  "runner": "graph/enforce/RUNNER/run.mjs",
   "status": "passed",
   "cases": [
     {
