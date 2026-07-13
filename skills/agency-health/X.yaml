@@ -194,6 +194,38 @@ harness:
           state: sealed
           disposition: closed
 
+    - name: agency-health-needs-agent-without-grounded-answer
+      inputs:
+        case_ref: case-needs-agent-1
+        objective: Assess this case for agency health.
+        projection_snapshot:
+          case_id: case-needs-agent-1
+          state: open
+        ledger_answer:
+          ledger_answer:
+            decision: answered
+            question: What does the ledger say about case-needs-agent-1?
+            query:
+              principal: ""
+              skill_ref: runx/agency
+              status:
+                - sealed
+              time_range:
+                from: ""
+                to: ""
+          matched_receipts:
+            - receipt_id: rcpt_case_needs_agent_01
+              skill_ref: runx/agency
+              status: sealed
+              created_at: "2026-07-13T06:00:00Z"
+          chain_verification:
+            checked: false
+            intact: null
+            breaks: []
+          summary: 1 receipt matched the resolved query; chain verification was not requested.
+      expect:
+        status: needs_agent
+
 runners:
   analyze:
     default: true
