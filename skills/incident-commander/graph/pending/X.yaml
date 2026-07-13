@@ -14,7 +14,7 @@ runners:
     default: true
     type: cli-tool
     command: node
-    args: [run.mjs]
+    args: [RUN.mjs]
     outputs:
       incident_turn: object
     inputs:
