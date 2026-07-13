@@ -1,0 +1,25 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:cb15eef4515c4f8b8c8d572213850d7ac137d5eafeea9ecfefe9443e3642c735",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:1509e531ab8b56b6cabca3801febf33296e0351eecf1b4dfcf0699363e5de7e3",
+    "actual": "sha256:1509e531ab8b56b6cabca3801febf33296e0351eecf1b4dfcf0699363e5de7e3"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:cb15eef4515c4f8b8c8d572213850d7ac137d5eafeea9ecfefe9443e3642c735",
+    "actual": "sha256:cb15eef4515c4f8b8c8d572213850d7ac137d5eafeea9ecfefe9443e3642c735"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "github-actions-sourcey-bounty-115"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
+}

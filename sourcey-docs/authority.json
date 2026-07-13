@@ -1,0 +1,12 @@
+{
+  "schema": "runx.public_verification_authority.v1",
+  "issuer_type": "ci",
+  "kid": "github-actions-sourcey-bounty-115",
+  "public_key_base64": "IYXNNlekmmGKcpiUeC1GoXuIRD7MijAiNLp8kIk4JaU=",
+  "public_key_sha256": "sha256:aab931e8ca4651c00ba6398a9486e10a3cec76789b916827fa937b1dec3de511",
+  "signing_seed_published": false,
+  "verify_env": {
+    "RUNX_RECEIPT_VERIFY_KID": "github-actions-sourcey-bounty-115",
+    "RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64": "IYXNNlekmmGKcpiUeC1GoXuIRD7MijAiNLp8kIk4JaU="
+  }
+}

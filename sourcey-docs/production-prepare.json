@@ -1,0 +1,6 @@
+{
+  "approval_flag": "--approve-operator-context sha256:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542",
+  "digest": "sha256:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542",
+  "schema": "runx.operator_context_approval.v1",
+  "status": "needs_operator_approval"
+}

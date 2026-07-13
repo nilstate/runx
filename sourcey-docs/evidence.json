@@ -10,11 +10,13 @@
     "runx_version": "runx-cli 0.7.0",
     "sourcey_version": "3.6.5",
     "sourcey_command": "sourcey build --config sourcey.config.ts --output sourcey-docs",
-    "sourcey_config": "https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey.config.ts"
+    "sourcey_config": "https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey.config.ts",
+    "production_verification": "sourcey-docs/production-verify.json",
+    "verification_authority": "sourcey-docs/authority.json"
   },
   "public_url": "https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/llms.txt",
   "pull_request": "https://github.com/runxhq/runx/pull/284",
-  "receipt_ref": "runx:receipt:sha256:c5ecd7100c021f7a877734c32a15ef28b0c01dd65f1772ed6855474df9c6ca8f",
+  "receipt_ref": "runx:receipt:sha256:cb15eef4515c4f8b8c8d572213850d7ac137d5eafeea9ecfefe9443e3642c735",
   "receipt_json": "https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/runx-receipt.json",
   "observations": [
     "runx --version returned exactly: runx-cli 0.7.0.",
@@ -26,6 +28,7 @@
     "Upstream PR https://github.com/runxhq/runx/pull/284 is opened against runxhq/runx and contains the generated artifact, config, and maintainer-facing rationale.",
     "The governed validation used runx receipt runx:receipt:sha256:c5ecd7100c021f7a877734c32a15ef28b0c01dd65f1772ed6855474df9c6ca8f; its public JSON is included with the artifact.",
     "Eight llms.txt entries map to generated pages backed by README.md and seven real files in docs/.",
-    "Five audited entries are Getting Started, Agent Skills, Operator Skills, Issue To PR Flow, and Publishing; each has a corresponding generated HTML target and source Markdown file."
+    "Five audited entries are Getting Started, Agent Skills, Operator Skills, Issue To PR Flow, and Publishing; each has a corresponding generated HTML target and source Markdown file.",
+    "The deterministic Sourcey validation checked all 8 llms.txt entries, 8 configured Markdown sources, and 8 generated HTML targets; runx verify returned valid=true with signature mode=production."
   ]
 }
