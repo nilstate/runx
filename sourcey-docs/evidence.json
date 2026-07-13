@@ -26,7 +26,6 @@
     "Sourcey reported a successful build of 8 pages and emitted llms.txt plus matching HTML pages under sourcey-docs/documentation.",
     "The generated llms.txt is publicly fetchable at https://raw.githubusercontent.com/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/llms.txt.",
     "Upstream PR https://github.com/runxhq/runx/pull/284 is opened against runxhq/runx and contains the generated artifact, config, and maintainer-facing rationale.",
-    "The governed validation used runx receipt runx:receipt:sha256:c5ecd7100c021f7a877734c32a15ef28b0c01dd65f1772ed6855474df9c6ca8f; its public JSON is included with the artifact.",
     "Eight llms.txt entries map to generated pages backed by README.md and seven real files in docs/.",
     "Five audited entries are Getting Started, Agent Skills, Operator Skills, Issue To PR Flow, and Publishing; each has a corresponding generated HTML target and source Markdown file.",
     "The deterministic Sourcey validation checked all 8 llms.txt entries, 8 configured Markdown sources, and 8 generated HTML targets; runx verify returned valid=true with signature mode=production."
