@@ -1,7 +1,7 @@
 ---
 name: purchase-approval
 description: Judge a proposed purchase against an explicit procurement policy and remaining budget, then emit a bounded approval ceiling only after human review.
-source: https://github.com/runxhq/runx/tree/main/skills/purchase-approval
+source: https://github.com/runxhq/runx/pull/307
 runx:
   category: payments
 ---
@@ -84,4 +84,3 @@ ceiling to the core spend/refund accepting runner. That runner can attenuate the
 ceiling further, but cannot widen it. If this skill denies the request or the
 human gate remains unresolved, there is no ceiling to consume and spending
 cannot fire.
-
