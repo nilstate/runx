@@ -1,8 +1,8 @@
 skill: agency-health
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
-  kind: graph
+  kind: skill
   audience: operator
   visibility: public
   role: canonical
@@ -22,66 +22,78 @@ runx:
 harness:
   cases:
     - name: concerning-agency-sealed
-      runner: assess
       inputs:
         data_source_ref: local://agency-health/concerning
         store_id: agency-health-concerning-v1
         agency_ref: agency:customer-success
         case_id: case-stuck-17
         period: 7d
-        receipt_stubs:
-          - receipt_id: rcpt_agency_health_fixture_001
-            skill_ref: runx/agency
-            status: sealed
-            created_at: "2026-07-12T00:00:00Z"
         health_baseline:
           threshold_days_stuck: 3
           cap_pressure_pct: 80
           refusal_spike_rate: 0.25
-        fixture_projection:
-          events:
-            - event:
-                type: opened
-                payload: { agency_ref: agency:customer-success, limits: { max_turns: 10 } }
-            - event:
-                type: turn
-                payload: { turn: 9, decision: dispatch, status: working, age_days: 6 }
-            - event:
-                type: refusal
-                payload: { reason: cap exceeded }
       caller:
         answers:
           agent_task.agency-health.output:
             decision: ready
             health_verdict:
               status: degraded
+              findings:
+                - metric: stuck_case_count
+                  value: 1
+                  grade: warning
+                - metric: cap_usage_pct
+                  value: 90
+                  grade: warning
+                - metric: refusal_spike
+                  value: "observed; denominator required"
+                  grade: warning
+            intervention_findings:
+              - lane: improve-skill
+                action: Inspect the blocked execution path and add a bounded recovery or harness case.
+                disposition: route
+              - lane: policy-author
+                action: Review the policy boundary behind the observed refusal.
+                disposition: route
+              - lane: human-ops
+                action: Cap or authority widening requires a human operator.
+                disposition: human_required
       expect:
         status: sealed
+        receipt:
+          schema: runx.receipt.v1
     - name: no-case-events-stop
-      runner: assess
       inputs:
         data_source_ref: local://agency-health/empty
         store_id: agency-health-empty-v1
         agency_ref: agency:customer-success
         case_id: case-missing-1
-        receipt_stubs:
-          - receipt_id: rcpt_agency_health_fixture_002
-            skill_ref: runx/agency
-            status: sealed
-            created_at: "2026-07-12T00:00:00Z"
       caller:
         answers:
           agent_task.agency-health.output:
             decision: needs_more_evidence
             health_verdict:
               status: unknown
+              findings: []
+            intervention_findings: []
       expect:
         status: sealed
+        receipt:
+          schema: runx.receipt.v1
 
 runners:
   assess:
     default: true
-    type: graph
+    type: agent-task
+    agent: analyst
+    task: agency-health
+    outputs:
+      decision: string
+      health_verdict: object
+      intervention_findings: array
+    artifacts:
+      wrap_as: agency_health_packet
+      packet: runx.agency.health.v1
     inputs:
       data_source_ref:
         type: string
@@ -98,7 +110,7 @@ runners:
       case_id:
         type: string
         required: false
-        description: Optional agency case aggregate id; omit only for a bounded agency aggregate projection.
+        description: Optional agency case aggregate id.
       period:
         type: string
         required: false
@@ -107,42 +119,19 @@ runners:
         type: json
         required: false
         description: "Optional explicit thresholds: threshold_days_stuck, cap_pressure_pct, refusal_spike_rate."
-      receipt_stubs:
-        type: json
-        required: false
-        description: "Optional receipt-id stubs for cross-run aggregation; receipt bodies are never accepted."
-      fixture_projection:
-        type: json
-        required: false
-        description: Harness-only seeded projection. Production decisions use the read_projection result.
-    graph:
-      name: agency-health-assess
-      steps:
-        - id: read_case
-          skill: ../data-store
-          runner: read_projection
-          inputs:
-            data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
-            resource: agency_cases
-            aggregate_id: "$input.case_id"
-        - id: read_receipt_stubs
-          skill: ../ledger
-          runner: read
-          inputs:
-            question: "Read bounded agency-health receipt-id stubs only."
-            receipts: "$input.receipt_stubs"
-        - id: assess
-          skill: ./graph/assess
-          inputs:
-            agency_ref: "$input.agency_ref"
-            case_id: "$input.case_id"
-            period: "$input.period"
-            health_baseline: "$input.health_baseline"
-            fixture_projection: "$input.fixture_projection"
-          context:
-            projection: read_case.data_operation_result.data
-            receipt_stubs: read_receipt_stubs.ledger_answer_packet.data.matched_receipts
-          artifacts:
-            wrap_as: agency_health_packet
-            packet: runx.agency.health.v1
+    instructions: |
+      First read the requested agency state only through data-store.read_projection,
+      keyed by data_source_ref, resource=agency_cases, and case_id. If cross-run
+      evidence is necessary, use ledger.read and project every row to receipt-id
+      stubs only: receipt_id, skill_ref, status, created_at. Never accept, infer,
+      or copy a receipt body.
+
+      Return exactly decision (ready|needs_more_evidence|needs_human),
+      health_verdict {status, findings[]}, and intervention_findings[]. Missing or
+      unreadable case events is a deterministic needs_more_evidence result with an
+      unknown verdict and empty findings/interventions. Only grade a stuck case,
+      cap pressure, refusal spike, seal rate, or escalation backlog when the
+      projection or explicit baseline proves it. Do not invent caps, thresholds,
+      turn state, denominators, or authority. Route policy ambiguity to
+      policy-author, repeated execution recovery to improve-skill, and cap or
+      authority widening or critical conditions to human-ops.

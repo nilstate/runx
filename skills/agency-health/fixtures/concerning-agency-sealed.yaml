@@ -7,21 +7,12 @@ inputs:
   store_id: agency-health-concerning-v1
   agency_ref: agency:customer-success
   case_id: case-stuck-17
-  receipt_stubs:
-    - receipt_id: rcpt_agency_health_fixture_001
-      skill_ref: runx/agency
-      status: sealed
-      created_at: "2026-07-12T00:00:00Z"
   health_baseline:
     threshold_days_stuck: 3
     cap_pressure_pct: 80
     refusal_spike_rate: 0.25
-  fixture_projection:
-    events:
-      - event: { type: opened, payload: { limits: { max_turns: 10 } } }
-      - event: { type: turn, payload: { turn: 9, age_days: 6 } }
-      - event: { type: refusal, payload: { reason: cap exceeded } }
 expect:
   status: sealed
 metadata:
   source: skills-fixture
+  proof: explicit baseline drives the degraded health result

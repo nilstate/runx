@@ -7,11 +7,10 @@ runx:
 
 # Agency Health
 
-Assess a running agency from durable case state, not narration. The runner first
-calls `data-store.read_projection` using the supplied domain-keyed
-`data_source_ref` and `case_id`. Cross-run evidence, when supplied, is read only
-through `ledger.read` and is reduced to receipt-id stubs. It never accepts or
-copies a receipt body.
+Assess a running agency from durable case state, not narration. The runner reads
+the case through `data-store.read_projection` with the supplied domain key. When
+cross-run evidence is necessary it reads only receipt-id stubs through
+`ledger.read`; it neither accepts nor copies receipt bodies.
 
 ## Inputs
 
@@ -22,18 +21,8 @@ copies a receipt body.
 
 ## Output
 
-The result is always shaped as:
-
-```json
-{
-  "decision": "ready | needs_more_evidence | needs_human",
-  "health_verdict": { "status": "healthy | degraded | critical | unknown", "findings": [] },
-  "intervention_findings": []
-}
-```
-
-A missing or unreadable case projection returns `needs_more_evidence`, an
-`unknown` verdict, and no findings or interventions. A degraded case may route
-policy ambiguity to `policy-author` or repeated execution failure to
-`improve-skill`. Cap/authority widening and critical conditions require human
-ops; this skill does not widen authority itself.
+The result always has `decision`, `health_verdict {status, findings[]}`, and
+`intervention_findings[]`. Missing case events produces sealed
+`needs_more_evidence` with no findings or interventions. Policy ambiguity routes
+to `policy-author`; execution recovery routes to `improve-skill`; cap/authority
+widening and critical conditions require human ops.
