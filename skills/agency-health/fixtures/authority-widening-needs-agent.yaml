@@ -1,0 +1,13 @@
+name: authority-widening-needs-agent
+kind: skill
+target: ..
+runner: assess
+inputs:
+  data_source_ref: local://agency-health/authority-gap
+  agency_ref: agency:customer-success
+  case_id: case-authority-gap
+expect:
+  status: needs_agent
+metadata:
+  source: skills-fixture
+  proof: authority widening is deferred to human ops
