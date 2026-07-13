@@ -1,5 +1,5 @@
 {
-  "command": "RUNX_REGISTRY_DIR=.runx/local-registry runx harness ./skills/incident-commander --receipt-dir ./.runx/receipts-linux-pass-5 --json",
+  "command": "runx harness ./skills/incident-commander --receipt-dir ./.runx/receipts-linux-pass-6 --json",
   "runx_version": "runx-cli 0.7.0",
   "platform": "x86_64-unknown-linux-musl under WSL2",
   "status": "passed",
@@ -23,9 +23,9 @@
     }
   ],
   "receipt_ids": [
-    "sha256:0ca83069b02915256822a8b090d0c6b2fc0887d21ec7fb0900bb5b500762170e"
+    "sha256:1011a2a521e87b1e2811d460be98f953d05e9ee0ab51a053c734a043ffca5323"
   ],
   "graph_case_count": 2,
-  "dependency": "registry:runx/ops-desk@sha-662dfad394ad",
-  "note": "This is local pre-publish harness evidence, not the post-publish dogfood receipt. The ignored local registry binding exposes the pinned official advance contract; hosted execution resolves the signed official package."
+  "dependency": "package-local ops-desk-advance binding; no external runtime dependency",
+  "note": "This is local pre-publish harness evidence, not the post-publish dogfood receipt."
 }

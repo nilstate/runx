@@ -21,8 +21,8 @@ executes that run.
 
 ## What this skill does
 
-- asks the pinned official `runx/ops-desk@sha-662dfad394ad` package for one
-  roster-constrained move;
+- asks a package-local binding of the pinned official `ops-desk` advance
+  contract for one roster-constrained move;
 - applies a reviewer act and deterministic enforcement to that move;
 - returns one typed, audit-friendly incident turn;
 - names a plan-only communication handoff while leaving execution to a separate
@@ -119,7 +119,9 @@ incident_turn:
 
 1. Receive a folded, declared incident state and its fixed roster from the
    agency driver.
-2. Ask the pinned official `ops-desk` advance runner for exactly one move.
+2. Ask the package-local `ops-desk-advance` binding for exactly one move. The
+   binding carries the official advance task and typed decision contract without
+   importing the agency loop or persistence graph.
 3. Review the move against the incident objective and existing evidence.
 4. Enforce roster role, principal, skill, scope, approval, handoff, owner, and
    receipt invariants deterministically.
@@ -180,13 +182,11 @@ After publication, install and run the immutable registry version, then verify
 the dogfood receipt:
 
 ```text
-runx add runx/ops-desk@sha-662dfad394ad --registry https://api.runx.ai
 runx add <owner>/incident-commander@0.1.0
 runx skill <owner>/incident-commander@0.1.0 --json
 runx verify --receipt <receipt.json> --json
 ```
 
-Runx intentionally does not fetch nested registry references during graph
-execution. A clean environment must therefore preload the pinned official
-`ops-desk` package into its configured `RUNX_REGISTRY_DIR`; hosted runx does the
-same before executing the package harness.
+The package is self-contained. Its internal `ops-desk-advance` binding is scoped
+to this graph and returns only the typed judgment; it does not vendor or compose
+the agency state loop, `data-store`, or any execution lane.

@@ -180,7 +180,7 @@ runners:
             wrap_as: incident_turn
             packet: runx.incident.turn.v1
         - id: decide
-          skill: registry:runx/ops-desk@sha-662dfad394ad
+          skill: ./graph/ops-desk
           runner: advance
           inputs:
             mandate: "$input.incident_objective"
