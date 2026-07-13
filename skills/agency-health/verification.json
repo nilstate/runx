@@ -1,0 +1,13 @@
+{
+  "schema": "runx.agency_health.verification.v1",
+  "checks": [
+    {"command":"powershell -ExecutionPolicy Bypass -File skills/agency-health/fixtures/test-assessor.ps1","status":"passed"},
+    {"command":"node --check skills/agency-health/graph/assess/run.mjs","status":"passed"},
+    {"command":"runx skill inspect ./skills/agency-health -j","status":"passed","version":"0.1.1"}
+  ],
+  "harness": {
+    "command":"runx harness ./skills/agency-health -j",
+    "status":"environment_blocked",
+    "detail":"The Windows 0.7.0 runtime cannot open its temporary receipt store (os error 5); the source fixtures remain included for hosted verification."
+  }
+}

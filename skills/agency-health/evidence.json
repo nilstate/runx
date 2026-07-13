@@ -1,0 +1,14 @@
+{
+  "schema": "runx.agency_health.evidence.v1",
+  "skill": "agency-health",
+  "version": "0.1.1",
+  "cases": [
+    {"name":"concerning-agency-sealed","expected":{"decision":"ready","health_status":"degraded"},"local_assessor":"passed"},
+    {"name":"no-case-events-stop","expected":{"decision":"needs_more_evidence","health_status":"unknown","findings":0,"interventions":0},"local_assessor":"passed"}
+  ],
+  "boundaries": [
+    "case state is read only through data-store.read_projection",
+    "cross-run evidence is constrained to ledger.read receipt-id stubs",
+    "missing projections do not create findings or interventions"
+  ]
+}
