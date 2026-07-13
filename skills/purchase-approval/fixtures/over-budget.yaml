@@ -1,0 +1,18 @@
+runner: purchase-approval
+inputs:
+  purchase_request:
+    amount: 2800
+    currency: USD
+    vendor: Acme Hosting
+    purpose: Unplanned production capacity expansion
+  procurement_policy:
+    approved_vendors: [Acme Hosting]
+    max_single_purchase: 1500
+    requires_approval_above: 500
+  current_budget_balance: 1200
+  requested_scope:
+    amount: 3000
+    currency: USD
+    counterparty: Acme Hosting
+    scopes: [purchase:hosting]
+

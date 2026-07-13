@@ -1,0 +1,28 @@
+{
+  "runx_version": "runx-cli 0.7.0",
+  "command": "runx harness skills/purchase-approval --json",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "purchase-approval-in-policy-within-budget",
+    "purchase-approval-over-budget-needs-human"
+  ],
+  "case_results": [
+    {
+      "name": "purchase-approval-in-policy-within-budget",
+      "status": "sealed"
+    },
+    {
+      "name": "purchase-approval-over-budget-needs-human",
+      "status": "needs_agent",
+      "reason": "The request exceeds both the declared single-purchase cap and the remaining budget; caller answers and human confirmation are intentionally omitted, so no ceiling is emitted."
+    }
+  ],
+  "receipt_ids": [
+    "sha256:b3146a05bfa63b37cef54d9f131de6e36565812374eef0c25d66beaa24bd7936"
+  ],
+  "graph_case_count": 2
+}
+

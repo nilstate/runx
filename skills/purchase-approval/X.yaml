@@ -1,0 +1,128 @@
+skill: purchase-approval
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: purchase-approval-in-policy-within-budget
+      inputs:
+        purchase_request:
+          amount: 480
+          currency: USD
+          vendor: Acme Hosting
+          purpose: Annual staging infrastructure renewal
+        procurement_policy:
+          approved_vendors:
+            - Acme Hosting
+            - Example Office Supply
+          max_single_purchase: 1000
+          requires_approval_above: 250
+        current_budget_balance: 2200
+        requested_scope:
+          amount: 480
+          currency: USD
+          counterparty: Acme Hosting
+          scopes:
+            - purchase:hosting
+      caller:
+        answers:
+          agent_task.purchase-approval.output:
+            decision:
+              approved: true
+              reason: Vendor is approved and the request is within the single-purchase cap, remaining budget, and requested scope.
+            attenuation_request:
+              amount: 480
+              currency: USD
+              counterparty: Acme Hosting
+              scopes:
+                - purchase:hosting
+            escalation: null
+        approvals:
+          purchase-approval.human-review: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: purchase-approval-over-budget-needs-human
+      inputs:
+        purchase_request:
+          amount: 2800
+          currency: USD
+          vendor: Acme Hosting
+          purpose: Unplanned production capacity expansion
+        procurement_policy:
+          approved_vendors:
+            - Acme Hosting
+          max_single_purchase: 1500
+          requires_approval_above: 500
+        current_budget_balance: 1200
+        requested_scope:
+          amount: 3000
+          currency: USD
+          counterparty: Acme Hosting
+          scopes:
+            - purchase:hosting
+      expect:
+        status: needs_agent
+
+runners:
+  purchase-approval:
+    default: true
+    type: graph
+    inputs:
+      purchase_request:
+        type: object
+        required: true
+        description: "Requested purchase with amount, currency, vendor, and purpose."
+      procurement_policy:
+        type: object
+        required: true
+        description: "Typed policy with approved_vendors, max_single_purchase, and requires_approval_above."
+      current_budget_balance:
+        type: number
+        required: true
+        description: "Remaining budget in the purchase request currency."
+      requested_scope:
+        type: object
+        required: true
+        description: "Budget-bounded requested authority scope that the emitted AttenuationRequest must not exceed."
+    graph:
+      name: purchase-approval
+      steps:
+        - id: evaluate-purchase
+          run:
+            type: agent-task
+            agent: reviewer
+            task: purchase-approval
+            outputs:
+              decision: object
+              attenuation_request: object
+              escalation: object
+          scopes:
+            - runx:purchase:review
+          artifacts:
+            wrap_as: purchase_decision
+          inputs:
+            purchase_request: "$input.purchase_request"
+            procurement_policy: "$input.procurement_policy"
+            current_budget_balance: "$input.current_budget_balance"
+            requested_scope: "$input.requested_scope"
+        - id: human-review
+          run:
+            type: approval
+          inputs:
+            gate_id: purchase-approval.human-review
+            reason: Confirm the purchase decision before any downstream driver can consume an approved ceiling.
+          context:
+            decision: evaluate-purchase.purchase_decision.data.decision
+            attenuation_request: evaluate-purchase.purchase_decision.data.attenuation_request
+            escalation: evaluate-purchase.purchase_decision.data.escalation
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1

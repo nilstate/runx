@@ -1,0 +1,18 @@
+runner: purchase-approval
+inputs:
+  purchase_request:
+    amount: 480
+    currency: USD
+    vendor: Acme Hosting
+    purpose: Annual staging infrastructure renewal
+  procurement_policy:
+    approved_vendors: [Acme Hosting]
+    max_single_purchase: 1000
+    requires_approval_above: 250
+  current_budget_balance: 2200
+  requested_scope:
+    amount: 480
+    currency: USD
+    counterparty: Acme Hosting
+    scopes: [purchase:hosting]
+
