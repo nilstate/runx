@@ -2,8 +2,19 @@
   "schema": "runx.agency_health.evidence.v1",
   "skill": "agency-health",
   "version": "0.1.1",
+  "runx_cli_version": "runx-cli 0.6.19",
+  "summary": "Agency-health was published from a versioned public skill package, verified through three sealed Linux harness cases, dogfooded from the hosted registry, and checked with a valid receipt verification result.",
   "published": "qq2401672073-hub/agency-health@sha-03f7a82373d0",
   "harness": {"status":"passed","case_count":3,"cases":["concerning-agency-sealed","no-case-events-stop","authority-widening-needs-agent"]},
   "dogfood": {"status":"sealed","receipt_ref":"runx:receipt:sha256:381a797f362574453c5c49469d2b819bd0a4133ccf479d6c8dc46acf7b78b8ea","verification_valid":true},
+  "observations": [
+    {"kind":"cli_version","value":"runx-cli 0.6.19"},
+    {"kind":"harness_case","value":"concerning-agency-sealed: sealed"},
+    {"kind":"harness_case","value":"no-case-events-stop: sealed"},
+    {"kind":"harness_case","value":"authority-widening-needs-agent: needs_agent"},
+    {"kind":"registry_publish","value":"qq2401672073-hub/agency-health@sha-03f7a82373d0"},
+    {"kind":"dogfood_receipt","value":"runx:receipt:sha256:381a797f362574453c5c49469d2b819bd0a4133ccf479d6c8dc46acf7b78b8ea"},
+    {"kind":"receipt_verify","value":"valid: true"}
+  ],
   "boundaries": ["case state is read only through data-store.read_projection","cross-run evidence is constrained to ledger.read receipt-id stubs","missing projections do not create findings or interventions"]
 }
