@@ -2,13 +2,8 @@
   "schema": "runx.agency_health.evidence.v1",
   "skill": "agency-health",
   "version": "0.1.1",
-  "cases": [
-    {"name":"concerning-agency-sealed","expected":{"decision":"ready","health_status":"degraded"},"local_assessor":"passed"},
-    {"name":"no-case-events-stop","expected":{"decision":"needs_more_evidence","health_status":"unknown","findings":0,"interventions":0},"local_assessor":"passed"}
-  ],
-  "boundaries": [
-    "case state is read only through data-store.read_projection",
-    "cross-run evidence is constrained to ledger.read receipt-id stubs",
-    "missing projections do not create findings or interventions"
-  ]
+  "published": "qq2401672073-hub/agency-health@sha-03f7a82373d0",
+  "harness": {"status":"passed","case_count":3,"cases":["concerning-agency-sealed","no-case-events-stop","authority-widening-needs-agent"]},
+  "dogfood": {"status":"sealed","receipt_ref":"runx:receipt:sha256:381a797f362574453c5c49469d2b819bd0a4133ccf479d6c8dc46acf7b78b8ea","verification_valid":true},
+  "boundaries": ["case state is read only through data-store.read_projection","cross-run evidence is constrained to ledger.read receipt-id stubs","missing projections do not create findings or interventions"]
 }
