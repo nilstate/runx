@@ -92,6 +92,10 @@
     "The append step executes after human review and has no conditional gate; it writes the emitted state_event with a stable idempotency key.",
     "The append compare-and-swap binds expected_version to the projection version returned by the real read.",
     "The published package readback proves aggregate customer-redacted-published, version 2, two monthly events, and recomputed monthly total 2000 after append.",
+    "Published linked-case decision: chosen_play=credit; reason=The durable July projection reports 800 prior minor units, so this linked 1200-unit credit stays within both the 1800 refundable balance and the 5000 monthly limit.",
+    "Published linked-case credit_ceiling: amount_minor=1200; currency=USD; counterparty=customer-redacted-published; original_receipt_ref=runx:receipt:sha256:published-original-charge; scopes=[credit:billing-error].",
+    "Published linked-case send_plan content_digest=sha256:published-credit-apology-v1; remaining_monthly_credit=3000 after the decision.",
+    "Harness case csat-recovery-linked-charge-credit sealed with the bounded credit decision; harness case csat-recovery-unlinked-credit-needs-agent refused at needs_agent because the original charge receipt was missing, so no grounded credit ceiling could be emitted.",
     "The public registry acquisition includes tools/data/local/manifest.json and tools/data/local/run.mjs, which implement the declared durable adapter rather than relying on an external assertion.",
     "The graph emits a bounded credit ceiling and naming-only send plan; it performs no refund, send, mint, reservation, or settlement."
   ]
