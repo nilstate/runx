@@ -14,7 +14,8 @@
 - The hosted registry publish gate passed and published version `sha-8534d7161607`.
 - Registry read and clean install both resolved the package with runner `audit`.
 - Published-package dogfood run sealed production-signed receipt `runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004`.
-- Plain receipt verification passed with the standard production verifier: `signature_mode: production`, 4-receipt tree, no findings.
+- The acceptance-form command `runx verify --receipt <receipt.json> --json` passed for the post-publish dogfood receipt with a valid digest, valid content address, `signature.mode: production`, and no findings; it used no verification bypass flag.
+- A separate receipt-tree verification also passed for the complete 4-receipt lineage with `signature_mode: production` and no findings.
 - Verification public key: `RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687`, `RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4=`.
 
 ## Domain Evidence

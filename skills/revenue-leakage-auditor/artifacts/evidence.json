@@ -98,11 +98,31 @@
     "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; RUNX_DATA_SOURCES configured for tenant://revenue-leakage/account-ledger; runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 audit --registry https://api.runx.ai --skip-operator-context -i data_source_ref=tenant://revenue-leakage/account-ledger -i store_id=revenue-leakage-prod-signed-dogfood-20260714 --input-json usage_records=<fixture.usage_records> --input-json billing_history=<fixture.billing_history> --input-json discount_policy=<fixture.discount_policy> --input-json charge_threshold_pct=<fixture.charge_threshold_pct> --input-json parent_adjustment_bounds=<fixture.parent_adjustment_bounds> --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json; runx resume run_audit_393a2c1cf87d skills/revenue-leakage-auditor/fixtures/leakage-answers.json --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
     "receipt_ref": "runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
     "verify_verdict": {
-      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004 --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
+      "schema": "runx.verify_verdict.v1",
+      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify --receipt /tmp/runx-revenue-leakage-prod-signed-receipts-20260714/sha256-518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004.json --json",
       "status": "passed",
+      "receipt_id": "sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
       "valid": true,
-      "receipt_count": 4,
       "signature_mode": "production",
+      "digest": {
+        "status": "valid",
+        "expected": "sha256:580d66125b581068a7d1ecb387ccb7b4ad6ebd2811eeef697258c3f0d7a7d79f",
+        "actual": "sha256:580d66125b581068a7d1ecb387ccb7b4ad6ebd2811eeef697258c3f0d7a7d79f"
+      },
+      "content_address": {
+        "status": "valid",
+        "expected": "sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
+        "actual": "sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004"
+      },
+      "signature": {
+        "mode": "production",
+        "status": "valid",
+        "kid": "dh0h-frantic-receipt-2026-07-14-e88f2687"
+      },
+      "lineage": {
+        "status": "unverified",
+        "message": "single receipt verification cannot prove receipt-tree lineage"
+      },
       "findings": []
     },
     "harness_cases": [
@@ -228,7 +248,7 @@
     {
       "name": "dogfood_receipt",
       "value": "runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
-      "evidence": "Published-package dogfood run sealed with hosted Ed25519 production signing; plain runx verify with the public verify key reported a valid 4-receipt tree with no findings."
+      "evidence": "Published-package dogfood run sealed with hosted Ed25519 production signing; the acceptance-form runx verify --receipt <receipt.json> --json command passed with signature mode production, valid digest and content address, and no findings. The separate receipt-tree check also passed for all 4 receipts."
     },
     {
       "name": "leakage_verdict",

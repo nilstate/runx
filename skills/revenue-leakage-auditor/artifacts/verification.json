@@ -1,6 +1,6 @@
 {
   "schema": "runx.revenue_leakage_auditor.verification.v1",
-  "verified_at": "2026-07-14T04:47:10Z",
+  "verified_at": "2026-07-14T05:09:20Z",
   "cli": {
     "version": "runx-cli 0.6.19",
     "meets_minimum": true,
@@ -77,7 +77,20 @@
       "receipt_ref": "runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004"
     },
     {
-      "name": "published receipt verify",
+      "name": "published receipt single-file verify",
+      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify --receipt /tmp/runx-revenue-leakage-prod-signed-receipts-20260714/sha256-518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004.json --json",
+      "status": "passed",
+      "receipt_id": "sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
+      "valid": true,
+      "digest_status": "valid",
+      "content_address_status": "valid",
+      "signature_mode": "production",
+      "signature_status": "valid",
+      "lineage_status": "unverified for single-file verification",
+      "findings": []
+    },
+    {
+      "name": "published receipt tree verify",
       "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004 --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
       "status": "passed",
       "valid": true,
