@@ -1,0 +1,37 @@
+case_id: inc-checkout-20260714
+driver_id: ryde-play-driver
+incident_objective: send
+case_state:
+  turn: 3
+  severity: sev2
+  source_alert:
+    ref: monitor:checkout:error-rate:2026-07-14T10:40Z
+    monitor: checkout-error-rate
+    status: firing
+  channel: "#incidents"
+  audience:
+    kind: incident-stakeholders
+    external: true
+    group: checkout-oncall-and-customer-success
+  content_digest: sha256:incident-update-checkout-20260714
+  send_class: stakeholder
+roster:
+  - role: commander
+    principal: user:alex
+    scope:
+      - incident.command
+  - role: responder_lead
+    principal: user:mei
+    scope:
+      - incident.assign
+  - role: comms_lead
+    principal: user:sam
+    scope:
+      - incident.comms
+      - governed-outbound.plan
+approval:
+  principal: user:sam
+  reason: comms lead approved the stakeholder status update.
+member_result:
+  outcome: sent
+  receipt_ref: runx:receipt:sha256:governed-outbound-demo-send

@@ -1,0 +1,210 @@
+skill: incident-commander
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: status-update-approval-then-delivered
+      inputs:
+        case_id: inc-checkout-20260714
+        driver_id: ryde-play-driver
+        incident_objective: send
+        case_state:
+          turn: 3
+          severity: sev2
+          source_alert:
+            ref: monitor:checkout:error-rate:2026-07-14T10:40Z
+            monitor: checkout-error-rate
+            status: firing
+          channel: "#incidents"
+          audience:
+            kind: incident-stakeholders
+            external: true
+            group: checkout-oncall-and-customer-success
+          content_digest: sha256:incident-update-checkout-20260714
+          send_class: stakeholder
+        roster:
+          - role: commander
+            principal: user:alex
+            scope:
+              - incident.command
+          - role: responder_lead
+            principal: user:mei
+            scope:
+              - incident.assign
+          - role: comms_lead
+            principal: user:sam
+            scope:
+              - incident.comms
+              - governed-outbound.plan
+        approval:
+          principal: user:sam
+          reason: comms lead approved the stakeholder status update.
+        member_result:
+          outcome: sent
+          receipt_ref: runx:receipt:sha256:governed-outbound-demo-send
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: assign-missing-roster-owner-needs-agent
+      runner: incident_review
+      inputs:
+        case_id: inc-checkout-20260714
+        driver_id: ryde-play-driver
+        incident_objective: assign
+        case_state:
+          turn: 4
+          severity: sev2
+          source_alert:
+            ref: monitor:checkout:error-rate:2026-07-14T10:40Z
+            monitor: checkout-error-rate
+            status: firing
+          assignment_task: own database failover validation
+        roster:
+          - role: commander
+            principal: user:alex
+            scope:
+              - incident.command
+          - role: comms_lead
+            principal: user:sam
+            scope:
+              - incident.comms
+      expect:
+        status: needs_agent
+
+runners:
+  commander:
+    default: true
+    type: graph
+    act:
+      form: review
+      purpose: Review a monitor-backed incident agency turn and record the bounded command decision.
+      legitimacy: Local operator supplied folded agency case state, source alert evidence, roster, approval, and member result for review.
+      reason_step: decide
+      reason_from: act_reason
+      decision_from: act_decision
+      target_from: act_target_ref
+    inputs:
+      case_id:
+        type: string
+        required: true
+        description: "Incident case id."
+      driver_id:
+        type: string
+        required: true
+        description: "Agency driver id for the turn."
+      incident_objective:
+        type: string
+        required: true
+        description: "One of begin, assign, send, resolve, or postmortem."
+      case_state:
+        type: object
+        required: true
+        description: "Folded agency case state, including source_alert from a monitor or alert."
+      roster:
+        type: object
+        required: true
+        description: "Fixed incident roster carried from the agency turn."
+      approval:
+        type: object
+        required: false
+        description: "Optional roster principal approval."
+      member_result:
+        type: object
+        required: false
+        description: "Optional downstream lane result, including receipt_ref."
+    graph:
+      name: incident-commander
+      steps:
+        - id: decide
+          label: decide incident command turn
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - run.mjs
+            outputs:
+              act_decision: string
+              act_reason: string
+              act_target_ref: string
+              incident_turn: object
+          inputs:
+            case_id: "$input.case_id"
+            driver_id: "$input.driver_id"
+            incident_objective: "$input.incident_objective"
+            case_state: "$input.case_state"
+            roster: "$input.roster"
+            approval: "$input.approval"
+            member_result: "$input.member_result"
+          artifacts:
+            wrap_as: incident_turn
+            packet: runx.incident_commander.turn.v1
+
+  incident_review:
+    type: agent-task
+    act:
+      form: review
+      purpose: Review a monitor-backed incident agency turn and record the bounded command decision.
+      legitimacy: Local operator supplied folded agency case state, source alert evidence, roster, approval, and member result for review.
+      reason_from: act_reason
+      decision_from: act_decision
+      target_from: act_target_ref
+    agent: reviewer
+    task: incident-commander
+    outputs:
+      act_decision: string
+      act_reason: string
+      act_target_ref: string
+      incident_turn: object
+    artifacts:
+      wrap_as: incident_turn
+      packet: runx.incident_commander.turn.v1
+    runx:
+      category: ops
+    instructions: >
+      Produce one incident_turn for the supplied case_id, driver_id,
+      incident_objective, folded case_state, roster, approval, and member_result.
+      Require case_state.source_alert to name a real monitor or alert event.
+      For send objectives, return awaiting_approval and name governed-outbound or
+      slack-notify unless approval.principal matches the roster and a
+      member_result.receipt_ref links the downstream send receipt. Only then may
+      status be delivered. For assign objectives, never invent an owner: if
+      case_state.assign_to or case_state.requested_owner is absent or not in the
+      roster, return needs_agent with named_run null. Never send messages, mint
+      authority, compose data-store, or mark resolution without linked evidence.
+    inputs:
+      case_id:
+        type: string
+        required: true
+        description: "Incident case id."
+      driver_id:
+        type: string
+        required: true
+        description: "Agency driver id for the turn."
+      incident_objective:
+        type: string
+        required: true
+        description: "One of begin, assign, send, resolve, or postmortem."
+      case_state:
+        type: object
+        required: true
+        description: "Folded agency case state, including source_alert from a monitor or alert."
+      roster:
+        type: object
+        required: true
+        description: "Fixed incident roster carried from the agency turn."
+      approval:
+        type: object
+        required: false
+        description: "Optional roster principal approval."
+      member_result:
+        type: object
+        required: false
+        description: "Optional downstream lane result, including receipt_ref."

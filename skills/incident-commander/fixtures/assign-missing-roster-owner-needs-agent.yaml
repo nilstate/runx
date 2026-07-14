@@ -1,0 +1,20 @@
+case_id: inc-checkout-20260714
+driver_id: ryde-play-driver
+incident_objective: assign
+case_state:
+  turn: 4
+  severity: sev2
+  source_alert:
+    ref: monitor:checkout:error-rate:2026-07-14T10:40Z
+    monitor: checkout-error-rate
+    status: firing
+  assignment_task: own database failover validation
+roster:
+  - role: commander
+    principal: user:alex
+    scope:
+      - incident.command
+  - role: comms_lead
+    principal: user:sam
+    scope:
+      - incident.comms

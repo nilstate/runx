@@ -1,0 +1,41 @@
+{
+  "schema": "runx.skill_harness_evidence.v1",
+  "skill": "incident-commander",
+  "runx_cli_version": "runx-cli 0.6.14",
+  "command": "RUNX_RECEIPT_SIGN_KID=<kid> RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<seed> RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted runx harness ./skills/incident-commander --json",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "receipt_ids": [
+    "sha256:ec5d57d85b1b89e47de2432b4fa869854f5f24e645dda09540de592b32a8dda1"
+  ],
+  "case_names": [
+    "status-update-approval-then-delivered",
+    "assign-missing-roster-owner-needs-agent"
+  ],
+  "coverage": {
+    "status-update-approval-then-delivered": [
+      "folded case_state carries monitor-backed source_alert",
+      "status update names governed-outbound for stakeholder send",
+      "named_run binds audience, channel, principal, content_digest, and source_alert_ref",
+      "approval principal matches the comms_lead roster entry",
+      "delivered status is allowed only because member_result.receipt_ref links the downstream governed send receipt",
+      "prior_awaiting_approval records the approval gate before delivery"
+    ],
+    "assign-missing-roster-owner-needs-agent": [
+      "folded case_state carries monitor-backed source_alert",
+      "assign objective lacks assign_to/requested_owner",
+      "agent-mediated review runner pauses with runx status needs_agent because caller.answers are omitted",
+      "named_run is null",
+      "no roster member is invented"
+    ]
+  },
+  "failure_lessons_applied": [
+    "post-publish dogfood receipt must be distinct from harness receipts",
+    "evidence_json.dogfood must include package, input, command, receipt_ref, verify_verdict, and harness_cases",
+    "human review rejected prior work for hand-fed state, so this skill requires source_alert monitor evidence in case_state",
+    "human review rejected prior work for non-executable send-as handoff, so stakeholder sends name governed-outbound and delivered status requires a linked send receipt"
+  ],
+  "note": "This file is committed with the skill package; status is replaced with captured local and hosted harness results in delivery evidence."
+}

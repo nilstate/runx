@@ -133,6 +133,13 @@
     "catalog_role": "context"
   },
   {
+    "skill_id": "runx/incident-commander",
+    "version": "sha-3bccff6ce22e",
+    "digest": "31da69e35ee841efd09e088361b1e6ae913f89f7d76dd89c2e3681e0b6dd6fee",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "runx/issue-intake",
     "version": "sha-15369469618b",
     "digest": "cc964980fe249ac3633e7b30c664648f0df9406a0254ede9bb0e3cbcdebdd603",

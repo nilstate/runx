@@ -106,6 +106,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "10e3aa69cb5fdca2202c881e3f18b7cc54b2b4b4ec9f625bec5d8335924d9b3e",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/incident-commander",
+        version: "sha-3bccff6ce22e",
+        digest: "31da69e35ee841efd09e088361b1e6ae913f89f7d76dd89c2e3681e0b6dd6fee",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/issue-intake",
         version: "sha-15369469618b",
         digest: "cc964980fe249ac3633e7b30c664648f0df9406a0254ede9bb0e3cbcdebdd603",
