@@ -1,0 +1,168 @@
+skill: overlay-open-skill-1
+version: "0.1.0"
+
+runx:
+  overlay:
+    wraps:
+      path: https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/webapp-testing/SKILL.md
+      version: sha256:51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2
+    pinned_digest: sha256:51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: pinned-approved-seals
+      runner: governed
+      inputs:
+        objective: Verify the local checkout flow under an exact origin and bounded browser-action budget.
+        resolved_digest: sha256:51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2
+        allowed_origin: http://127.0.0.1:4173
+        max_browser_actions: 12
+        interaction_mode: interactive
+      caller:
+        approvals:
+          overlay-open-skill-1.browser-session.approval: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: graph_closed
+
+    - name: digest-stale-refuses
+      runner: governed
+      inputs:
+        objective: Refuse changed browser-testing instructions before opening a browser session.
+        resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+        allowed_origin: http://127.0.0.1:4173
+        max_browser_actions: 1
+        interaction_mode: read_only
+      caller:
+        approvals:
+          overlay-open-skill-1.browser-session.approval: true
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+          reason_code: graph_blocked
+
+runners:
+  governed:
+    default: true
+    type: graph
+    inputs:
+      objective:
+        type: string
+        required: false
+        description: Browser-testing objective recorded in the sealed governance decision.
+      resolved_digest:
+        type: string
+        required: true
+        description: Recomputed sha256 digest of the immutable wrapped SKILL.md bytes.
+      allowed_origin:
+        type: string
+        required: true
+        description: One exact HTTP(S) origin the admitted browser session may reach.
+      max_browser_actions:
+        type: number
+        required: true
+        description: Positive upper bound on browser actions in the admitted session.
+      interaction_mode:
+        type: string
+        required: false
+        default: read_only
+        description: Either read_only or interactive; interactive admits browser.act after approval.
+    runx:
+      scopes:
+        - fs.read
+        - process.spawn
+        - browser.navigate
+        - browser.inspect
+        - browser.screenshot
+        - browser.console
+        - browser.act
+      allowed_tools:
+        - fs.read
+        - process.spawn
+        - browser.navigate
+        - browser.inspect
+        - browser.screenshot
+        - browser.console
+        - browser.act
+    graph:
+      name: overlay-open-skill-1
+      steps:
+        - id: admit
+          label: validate immutable instructions and caller attenuation
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - graph/admit/run.mjs
+            timeout_seconds: 30
+            outputs:
+              admission_check: object
+            sandbox:
+              profile: read-only
+              cwd_policy: skill-directory
+              network: false
+              writable_paths: []
+              require_enforcement: false
+          artifacts:
+            named_emits:
+              admission_check: admission_check
+
+        - id: approve-browser-session
+          label: approve the attenuated browser session
+          run:
+            type: approval
+          inputs:
+            gate_id: overlay-open-skill-1.browser-session.approval
+            reason: Approve the exact origin, interaction mode, and browser-action budget before the wrapped instructions are admitted.
+          context:
+            admission_check: admit.admission_check.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+
+        - id: finalize
+          label: seal the approved overlay governance decision
+          context:
+            admission_check: admit.admission_check.data
+            approval_decision: approve-browser-session.approval_decision.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - graph/finalize/run.mjs
+            timeout_seconds: 30
+            outputs:
+              governance_decision: object
+            sandbox:
+              profile: read-only
+              cwd_policy: skill-directory
+              network: false
+              writable_paths: []
+              require_enforcement: false
+          artifacts:
+            named_emits:
+              governance_decision: governance_decision
+      policy:
+        guards:
+          - step: approve-browser-session
+            field: admit.admission_check.data.decision
+            equals: ready_for_approval
+          - step: finalize
+            field: admit.admission_check.data.decision
+            equals: ready_for_approval
+          - step: finalize
+            field: approve-browser-session.approval_decision.data.approved
+            equals: true
