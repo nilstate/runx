@@ -38,5 +38,8 @@
         "reason": "All credit bounds are grounded and satisfied."
       }
     }
+  },
+  "approvals": {
+    "csat-recovery.human-review": true
   }
 }

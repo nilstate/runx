@@ -20,15 +20,24 @@
   },
   "subject": {
     "kind": "graph",
-    "ref": {"type": "harness", "uri": "hrn_csat-recovery-with-prior-fixture_graph"},
+    "ref": {
+      "type": "harness",
+      "uri": "hrn_csat-recovery-with-prior-fixture_graph"
+    },
     "commitments": []
   },
   "authority": {
-    "actor_ref": {"type": "principal", "uri": "runx:principal:local_runtime"},
+    "actor_ref": {
+      "type": "principal",
+      "uri": "runx:principal:local_runtime"
+    },
     "grant_refs": [],
     "scope_refs": [],
     "authority_proof_refs": [],
-    "attenuation": {"parent_authority_ref": null, "subset_proof": null},
+    "attenuation": {
+      "parent_authority_ref": null,
+      "subset_proof": null
+    },
     "terms": [],
     "enforcement": {
       "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",

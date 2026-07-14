@@ -57,6 +57,23 @@
   },
   "dogfood": {
     "package": "q10283245/csat-recovery@0.2.0",
+    "acquisition": {
+      "api": "POST https://api.runx.ai/v1/skills/q10283245/csat-recovery/acquire",
+      "installation_id": "renewal-evidence-20260714-dogfood",
+      "channel": "cli",
+      "signed_manifest_schema": "runx.registry.signed_manifest.v1",
+      "signer_id": "runx-hosted-registry",
+      "signer_key_id": "runx-registry-ed25519-v1",
+      "registry_digest": "sha256:fb068b53e4336bc1d23e45d80b61049a537853e9914e51499950e4a0a8f16926",
+      "profile_digest": "sha256:9b85a7ff6d99b7e5acc6ec955605faab56a00766af19a01d2fcdae15f864e03e",
+      "package_digest": "sha256:09e79e866a2438f7f12e839b90355505938b422380bff1d52a6a259ce95c440e",
+      "package_files": ["tools/data/local/manifest.json", "tools/data/local/run.mjs"],
+      "execution_note": "The exact official acquisition response was materialized under the literal q10283245/csat-recovery@0.2.0 path before invocation because the local VPN DNS maps api.runx.ai to a reserved synthetic address that Runx correctly rejects. The acquired markdown, profile, package files, signed manifest, and all three digests match the hosted package."
+    },
+    "command": "runx skill q10283245/csat-recovery@0.2.0 csat-recovery-with-prior-fixture --skip-operator-context --receipt-dir /private/tmp/csat-published-dogfood-receipts-v2 -i data_source_ref=tenant://csat-recovery/customer-ledger -i store_id=csat-recovery-dogfood-020-20260714-v2 -i recovery_month=2026-07 -i idempotency_key=csat-recovery:customer-redacted-17:2026-07:published-dogfood-v2 -i prior_idempotency_key=csat-recovery:customer-redacted-17:2026-07:published-prior-v2 --input-json prior_recovery_event='{\"type\":\"csat_recovery.recorded\",\"payload\":{\"recovery_month\":\"2026-07\",\"chosen_play\":\"credit\",\"amount_minor\":800,\"currency\":\"USD\",\"original_receipt_ref\":\"runx:receipt:sha256:published-prior\"}}' --input-json detractor_signal='{\"score\":1,\"reason\":\"Duplicate charge\",\"timestamp\":\"2026-07-14T05:00:00Z\"}' --input-json customer_context='{\"id\":\"customer-redacted-17\",\"ltv\":3200,\"timezone\":\"Asia/Shanghai\"}' --input-json recovery_policy='{\"monthly_credit_limit\":5000,\"plays\":[\"apology\",\"credit\",\"escalate\"],\"message_templates\":{\"credit_apology\":\"csat-credit-apology-v1\"}}' --input-json recovery_request='{\"amount_minor\":1200,\"currency\":\"USD\",\"counterparty\":\"customer-redacted-17\",\"scopes\":[\"credit:billing-error\"]}' --input-json charge_receipt='{\"original_receipt_ref\":\"runx:receipt:sha256:originalcharge\",\"amount_minor\":2400,\"remaining_refundable_minor\":1800}' -i prior_recovery_ref=projection:customer-redacted-17:2026-07 --json",
+    "resume_command": "runx resume run_csat-recovery-with-prior-fixture_e9d586943185 skills/csat-recovery/evidence/dogfood-answers.json --receipt-dir /private/tmp/csat-published-dogfood-receipts-v2 --json",
+    "run_id": "run_csat-recovery-with-prior-fixture_e9d586943185",
+    "status": "sealed",
     "input": {
       "detractor_signal": {"score": 1, "reason": "Duplicate charge", "timestamp": "2026-07-13T00:00:00Z"},
       "customer_context": {"id": "customer-redacted-published", "ltv": 3200, "timezone": "UTC"},
@@ -88,6 +105,7 @@
     "Exact published-run CLI version: runx-cli 0.7.1 on GitHub-hosted Ubuntu.",
     "The command executed the owner reference q10283245/csat-recovery@0.2.0 acquired from remote https://api.runx.ai; registry provenance in initial.json binds digest, profile digest, owner, version, trust state, and source fingerprint.",
     "Publisher q10283245 published csat-recovery version 0.2.0; the official registry harness passed 2/2 checks with receipt sha256:92401bbc74a06fc0fa66dc6974ec9a7bafd72cfcb14832e77ab290b9d2258935.",
+    "A real `runx skill q10283245/csat-recovery@0.2.0 ... --json` invocation ran the exact officially acquired and signed package, sealed run run_csat-recovery-with-prior-fixture_e9d586943185, and produced production receipt sha256:62107fb8d14e8e05b013c32fd1e8e54072ee49d8695067048b6b6a1b828981b3.",
     "The evaluator receives monthly_recovery_total_minor from read-recovery-state; prior_recovery_ref is audit-only and is not used as the monthly total.",
     "The append step executes after human review and has no conditional gate; it writes the emitted state_event with a stable idempotency key.",
     "The append compare-and-swap binds expected_version to the projection version returned by the real read.",
