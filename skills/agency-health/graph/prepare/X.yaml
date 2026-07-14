@@ -1,0 +1,35 @@
+skill: agency-health-prepare
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/agency-health
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      agency_ref:
+        type: string
+        required: true
+        description: Agency definition expected in the case.
+      case_id:
+        type: string
+        required: false
+        description: Optional agency case aggregate id.
+      period:
+        type: json
+        required: false
+        description: Optional ISO-8601 bounds as {from,to}.
+      health_baseline:
+        type: json
+        required: false
+        description: Optional declared health thresholds.

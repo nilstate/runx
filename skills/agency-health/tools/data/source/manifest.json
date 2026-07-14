@@ -1,0 +1,26 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "data.source",
+  "version": "0.1.0",
+  "description": "Operator-context contract for the runx virtual data.source router; execution is always dispatched to the configured concrete namespaced data adapter.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "inputs": {
+    "operation": { "type": "string", "required": true },
+    "data_source_ref": { "type": "string", "required": true },
+    "store_id": { "type": "string", "required": false },
+    "resource": { "type": "string", "required": true },
+    "aggregate_id": { "type": "string", "required": false },
+    "limit": { "type": "number", "required": false },
+    "after_version": { "type": "number", "required": false }
+  },
+  "scopes": ["runx:data:read"],
+  "runtime": {
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "toolkit_version": "0.1.4"
+}

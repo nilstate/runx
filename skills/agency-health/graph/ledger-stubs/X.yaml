@@ -1,0 +1,27 @@
+skill: agency-health-ledger-stubs
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/agency-health
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      events:
+        type: json
+        required: false
+        description: Ordered agency case events containing receipt id references.
+      period:
+        type: json
+        required: false
+        description: Normalized ledger period.

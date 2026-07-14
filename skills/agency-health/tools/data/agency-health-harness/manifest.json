@@ -1,0 +1,71 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "data.agency-health-harness",
+  "version": "0.1.0",
+  "description": "Read-only deterministic agency case adapter for the agency-health hosted harness.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "inputs": {
+    "operation": {
+      "type": "string",
+      "required": true,
+      "description": "Only read_projection and read_events are accepted."
+    },
+    "data_source_ref": {
+      "type": "string",
+      "required": true,
+      "description": "Must be local://agency-health/harness."
+    },
+    "data_source_binding": {
+      "type": "json",
+      "required": true,
+      "description": "Non-secret inline harness case rows injected by data.source."
+    },
+    "store_id": {
+      "type": "string",
+      "required": false,
+      "description": "Harness correlation id; no store is written."
+    },
+    "resource": {
+      "type": "string",
+      "required": true,
+      "description": "Must be agency_cases."
+    },
+    "aggregate_id": {
+      "type": "string",
+      "required": true,
+      "description": "Case key within the inline harness binding."
+    },
+    "limit": {
+      "type": "number",
+      "required": false,
+      "description": "Maximum read_events rows."
+    },
+    "after_version": {
+      "type": "number",
+      "required": false,
+      "description": "Optional ascending version cursor for read_events."
+    }
+  },
+  "scopes": ["runx:data:read"],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "data_operation_result": "runx.data.operation_result.v1"
+      },
+      "wrap_as": "data_operation_result"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "output": {
+    "packet": "runx.data.operation_result.v1",
+    "wrap_as": "data_operation_result"
+  },
+  "toolkit_version": "0.1.4"
+}
