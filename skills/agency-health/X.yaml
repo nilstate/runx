@@ -88,6 +88,7 @@ harness:
         agency_ref: health-dev
         store_id: health-dev
         period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+        health_baseline: { threshold_days_stuck: 5, cap_pressure_pct: 90, refusal_spike_rate: 0.2 }
       expect:
         status: sealed
     - name: agency-health-healthy
@@ -100,6 +101,7 @@ harness:
         agency_ref: health-dev
         store_id: health-dev
         period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+        health_baseline: { threshold_days_stuck: 5, cap_pressure_pct: 90, refusal_spike_rate: 0.2 }
       expect:
         status: sealed
     - name: no-case-events-stop
@@ -112,6 +114,7 @@ harness:
         agency_ref: health-dev
         store_id: health-dev
         period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+        health_baseline: { threshold_days_stuck: 5, cap_pressure_pct: 90, refusal_spike_rate: 0.2 }
       expect:
         status: sealed
     - name: agency-health-readonly-stop
