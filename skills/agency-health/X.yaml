@@ -27,7 +27,7 @@ harness:
       expect:
         status: sealed
         receipt:
-          schema: runx.agency.health.v1
+          schema: runx.receipt.v1
         contains:
           decision: ["ready", "needs_human"]
           health_verdict.status: ["degraded", "critical", "healthy"]
@@ -46,7 +46,7 @@ harness:
       expect:
         status: sealed
         receipt:
-          schema: runx.agency.health.v1
+          schema: runx.receipt.v1
         contains:
           decision: "needs_more_evidence"
           health_verdict.status: "degraded"
