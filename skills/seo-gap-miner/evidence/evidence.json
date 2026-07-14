@@ -1,0 +1,106 @@
+{
+  "schema": "runx.skill.delivery_evidence.v1",
+  "summary": "Published seo-gap-miner as a bounded, read-only review skill that grounds every ranked gap in supplied demand and page evidence, with a green hosted harness, clean registry install, and production-signed dogfood receipt.",
+  "package": {
+    "owner": "gebibd00-jpg",
+    "name": "seo-gap-miner",
+    "version": "sha-2227534793ca",
+    "registry_ref": "gebibd00-jpg/seo-gap-miner@sha-2227534793ca",
+    "public_url": "https://runx.ai/x/gebibd00-jpg/seo-gap-miner@sha-2227534793ca",
+    "publisher": "gebibd00-jpg",
+    "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/seo-gap-miner/SKILL.md --registry https://api.runx.ai"
+  },
+  "source": {
+    "pr_url": "https://github.com/runxhq/runx/pull/316",
+    "source_url": "https://github.com/gebibd00-jpg/runx/tree/agent/seo-gap-miner/skills/seo-gap-miner",
+    "x_yaml": "https://raw.githubusercontent.com/gebibd00-jpg/runx/agent/seo-gap-miner/skills/seo-gap-miner/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/gebibd00-jpg/runx/agent/seo-gap-miner/skills/seo-gap-miner/SKILL.md",
+    "verification_json": "https://raw.githubusercontent.com/gebibd00-jpg/runx/agent/seo-gap-miner/skills/seo-gap-miner/evidence/verification.json"
+  },
+  "runx_cli_version": "runx-cli 0.7.1",
+  "observations": [
+    "runx --version returned runx-cli 0.7.1, above the required 0.6.14 floor.",
+    "The registry publisher and public catalog owner are both gebibd00-jpg, and the exact package name is seo-gap-miner.",
+    "The hosted registry harness is green at 3/3 for grounded-content-gaps-sealed, thin-demand-needs-more-evidence, and missing-input-needs-agent.",
+    "The ready case returns two prioritized findings grounded in named demand signals and named weak pages, and drops the gambling term with the policy exclusion named.",
+    "The thin-demand case returns decision needs_more_evidence, zero findings, and the stop reason that no supplied term has both a named demand signal and source.",
+    "Every emitted finding names draft-content as a separate downstream dispatch target; the skill fetches no URL, runs no crawler, publishes nothing, and emits no proposal envelope.",
+    "A clean install succeeded with runx add gebibd00-jpg/seo-gap-miner@sha-2227534793ca --registry https://api.runx.ai.",
+    "The post-publish dogfood run returned decision ready and one high-priority gap grounded in the supplied Search Console fixture and the named weak governance page.",
+    "The dogfood receipt uses an Ed25519 hosted issuer and passes runx verify without --allow-local-development-signatures; the verdict is valid in production mode.",
+    "A new user can install the registry ref, run it with the three typed JSON inputs, then verify the saved receipt using the public verification key recorded in verification.json."
+  ],
+  "ready_case": {
+    "decision": "ready",
+    "top_gap_findings": [
+      {
+        "term": "ai agent governance checklist",
+        "demand_grounding": "Search Console shows 340 impressions and 19 clicks in the supplied 28-day export; fixture:gsc-2026-06.csv#row-12",
+        "page_verdict": "weak: https://example.dev/docs/governance lacks an actionable checklist",
+        "priority": "high",
+        "dispatch_target": "draft-content"
+      },
+      {
+        "term": "verify ai agent receipts",
+        "demand_grounding": "Search Console shows 210 impressions and 4 clicks in the supplied 28-day export; fixture:gsc-2026-06.csv#row-31",
+        "page_verdict": "weak: https://example.dev/blog/receipts lacks a verification walkthrough",
+        "priority": "medium",
+        "dispatch_target": "draft-content"
+      }
+    ],
+    "dropped_by_policy": [
+      {
+        "term": "best crypto casino",
+        "exclusion": "gambling",
+        "source": "fixture:gsc-2026-06.csv#row-44"
+      }
+    ]
+  },
+  "thin_case": {
+    "decision": "needs_more_evidence",
+    "gap_findings": [],
+    "stop_reason": "No supplied term has both a named demand signal and a source, so no priority order can be grounded."
+  },
+  "dogfood": {
+    "package": "gebibd00-jpg/seo-gap-miner@sha-2227534793ca",
+    "input": {
+      "site_inventory": {
+        "pages": [
+          {
+            "url": "https://example.dev/docs/governance",
+            "topic": "agent governance",
+            "coverage": "Concept overview without an actionable checklist."
+          }
+        ]
+      },
+      "demand_fixtures": {
+        "terms": [
+          {
+            "term": "ai agent governance checklist",
+            "demand_signal": "Supplied Search Console export shows 340 impressions and 19 clicks over 28 days.",
+            "source": "fixture:gsc-dogfood.json#term-1"
+          }
+        ]
+      },
+      "content_policy": {
+        "excluded_topics": ["gambling"],
+        "priority_themes": ["agent governance"]
+      }
+    },
+    "command": "runx skill gebibd00-jpg/seo-gap-miner@sha-2227534793ca --registry https://api.runx.ai --input-json site_inventory=<json> --input-json demand_fixtures=<json> --input-json content_policy=<json> --json; runx resume run_agent_task-seo-gap-miner-output answers.json --json",
+    "receipt_ref": "runx:receipt:sha256:cdd6fea7d80009e3751b83b11c6ff5897fd8bb177d9ff5ffa4b30c7309336670",
+    "receipt_url": "https://raw.githubusercontent.com/gebibd00-jpg/runx/agent/seo-gap-miner/skills/seo-gap-miner/evidence/dogfood-receipt.json",
+    "verify_verdict": {
+      "valid": true,
+      "signature_mode": "production",
+      "signature_status": "valid",
+      "kid": "gebibd00-jpg-runx-20260714",
+      "command": "runx verify --receipt dogfood-receipt.json --json"
+    },
+    "harness_cases": [
+      {"name": "grounded-content-gaps-sealed", "status": "sealed"},
+      {"name": "thin-demand-needs-more-evidence", "status": "sealed"},
+      {"name": "missing-input-needs-agent", "status": "needs_agent"}
+    ]
+  }
+}
