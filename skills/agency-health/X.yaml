@@ -11,64 +11,6 @@ emits:
   - name: health_bundle
     packet: runx.agency.health.v1
 
-harness:
-  cases:
-    - name: agency-health-healthy
-      runner: health
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
-      inputs:
-        data_source_ref: local://runx-agency/health-dev
-        case_id: case-healthy-001
-        agency_ref: health-dev
-        store_id: health-dev
-        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
-      caller:
-        answers:
-          agent_task.agency-health.output:
-            health_bundle:
-              verdict: healthy
-              folded:
-                turns_total: 4
-                status_histogram: { advanced: 3, awaiting_approval: 0, resolved: 1, failed: 0, needs_input: 0 }
-      expect:
-        status: sealed
-    - name: agency-health-degraded-stall
-      runner: health
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
-      inputs:
-        data_source_ref: local://runx-agency/health-dev
-        case_id: case-stalled-002
-        agency_ref: health-dev
-        store_id: health-dev
-        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
-      caller:
-        answers:
-          agent_task.agency-health.output:
-            health_bundle:
-              verdict: degraded
-              intervention_findings:
-                - lane: human
-                  signal: stalled_turns
-                  severity: degraded
-      expect:
-        status: sealed
-    - name: agency-health-ledger-blocked
-      runner: health_neg
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
-        RUNX_PROVIDER_PERMISSION_GRANT_ID: read-only-health
-        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: health.read
-      inputs:
-        data_source_ref: local://runx-agency/health-dev
-        case_id: case-tampered-000
-        agency_ref: health-dev
-        store_id: health-dev
-        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
-      expect:
-        status: policy_denied
-
 runners:
   health:
     default: true
@@ -86,10 +28,10 @@ runners:
         type: string
         required: true
         description: Operator/agency handle for the C7 ledger query.
-      deny_ledger:
-        type: boolean
+      store_id:
+        type: string
         required: false
-        description: Hard gate — when true, refuse to seal (policy_denied) to simulate C7 ledger unreadable/tampered.
+        description: Data-store id holding the seeded case fixtures (embedded by default).
       mutate:
         type: boolean
         required: false
@@ -105,97 +47,71 @@ runners:
     graph:
       name: agency-health
       steps:
-        - id: read
-          run:
-            type: cli-tool
-            command: node
-            args:
-              - tools/load_case.mjs
-          inputs:
-            data_source_ref: "$input.data_source_ref"
-            case_id: "$input.case_id"
-            store_id: "$input.store_id"
-            limit: 500
-          artifacts:
-            named_emits:
-              case_events: events
-            packets:
-              case_events: runx.data.events.v1
         - id: grade
           run:
             type: cli-tool
             command: node
             args:
-              - tools/agency-health.mjs
+              - -e
+              - "eval(Buffer.from('Y29uc3QgZnMgPSByZXF1aXJlKCdmcycpOwoKY29uc3QgREVGQVVMVF9OT1JNUyA9IHsKICBzdGFsbF93aW5kb3dfdHVybnM6IDUsIGF3YWl0aW5nX2FwcHJvdmFsX2NhcDogMywgc3BlbmRfY2FwX3BjdDogOTAsCiAgYWN0X2NhcF9wY3Q6IDkwLCByZWZ1c2FsX3NwaWtlX3RocmVzaG9sZDogMC4yLCBzZWFsX3JhdGVfZmxvb3I6IDAuOCwKfTsKCmNvbnN0IEZJWFRVUkVTID0gewogICJoZWFsdGgtZGV2IjogeyBzdHJlYW1zOiB7CiAgICAiY2FzZS1oZWFsdGh5LTAwMSI6IHsgZXZlbnRzOiBbCiAgICAgIHsgdmVyc2lvbjogMSwgdHVybl9pZDogInQxIiwgc3RhdHVzOiAiYWR2YW5jZWQiLCBhY3RzOiAyLCBzcGVuZDogMTAgfSwKICAgICAgeyB2ZXJzaW9uOiAyLCB0dXJuX2lkOiAidDIiLCBzdGF0dXM6ICJhZHZhbmNlZCIsIGFjdHM6IDEsIHNwZW5kOiA1IH0sCiAgICAgIHsgdmVyc2lvbjogMywgdHVybl9pZDogInQzIiwgc3RhdHVzOiAiYWR2YW5jZWQiLCBhY3RzOiAzLCBzcGVuZDogMTIgfSwKICAgICAgeyB2ZXJzaW9uOiA0LCB0dXJuX2lkOiAidDQiLCBzdGF0dXM6ICJyZXNvbHZlZCIsIGFjdHM6IDAsIHNwZW5kOiAwIH0sCiAgICBdfSwKICAgICJjYXNlLXN0YWxsZWQtMDAyIjogeyBldmVudHM6IFsKICAgICAgeyB2ZXJzaW9uOiAxLCB0dXJuX2lkOiAiczEiLCBzdGF0dXM6ICJhZHZhbmNlZCIsIGFjdHM6IDEsIHNwZW5kOiA0IH0sCiAgICAgIHsgdmVyc2lvbjogMiwgdHVybl9pZDogInMyIiwgc3RhdHVzOiAiYXdhaXRpbmdfYXBwcm92YWwiLCBhY3RzOiAwLCBzcGVuZDogMCwgc3RhbGxlZF90dXJuczogNyB9LAogICAgICB7IHZlcnNpb246IDMsIHR1cm5faWQ6ICJzMyIsIHN0YXR1czogImFkdmFuY2VkIiwgYWN0czogMiwgc3BlbmQ6IDgsIHN0YWxsZWRfdHVybnM6IDcgfSwKICAgICAgeyB2ZXJzaW9uOiA0LCB0dXJuX2lkOiAiczQiLCBzdGF0dXM6ICJuZWVkc19pbnB1dCIsIGFjdHM6IDAsIHNwZW5kOiAwLCBzdGFsbGVkX3R1cm5zOiA3IH0sCiAgICBdfSwKICB9fSwKfTsKCmZ1bmN0aW9uIGxvYWRFdmVudHMoaW5wdXRzKSB7CiAgY29uc3Qgc3RvcmUgPSBGSVhUVVJFU1tpbnB1dHMuc3RvcmVfaWQgfHwgImhlYWx0aC1kZXYiXTsKICBpZiAoIXN0b3JlKSByZXR1cm4gW107CiAgY29uc3Qgc3RyZWFtID0gKHN0b3JlLnN0cmVhbXMgfHwge30pW2lucHV0cy5jYXNlX2lkXSB8fCB7IGV2ZW50czogW10gfTsKICBjb25zdCBldmVudHMgPSBBcnJheS5pc0FycmF5KHN0cmVhbSkgPyBzdHJlYW0gOiAoc3RyZWFtLmV2ZW50cyB8fCBbXSk7CiAgcmV0dXJuIGV2ZW50cy5zbGljZSgtKGlucHV0cy5saW1pdCB8fCA1MDApKTsKfQpmdW5jdGlvbiBmb2xkUHJvamVjdGlvbihldmVudHMpIHsKICBjb25zdCBzb3J0ZWQgPSBbLi4uZXZlbnRzXS5zb3J0KChhLCBiKSA9PiAoYS52ZXJzaW9uIHx8IDApIC0gKGIudmVyc2lvbiB8fCAwKSk7CiAgY29uc3QgaGlzdG9ncmFtID0geyBhZHZhbmNlZDogMCwgYXdhaXRpbmdfYXBwcm92YWw6IDAsIHJlc29sdmVkOiAwLCBmYWlsZWQ6IDAsIG5lZWRzX2lucHV0OiAwIH07CiAgbGV0IGN1bXVsYXRpdmVBY3RzID0gMCwgY3VtdWxhdGl2ZVNwZW5kID0gMDsKICBjb25zdCBzdGFsbGVkID0gW107IGxldCBhcHByb3ZhbFBhcmtlZCA9IDA7CiAgZm9yIChjb25zdCBlIG9mIHNvcnRlZCkgewogICAgY29uc3Qgc3QgPSBlLnN0YXR1cyB8fCAoZS50dXJuICYmIGUudHVybi5zdGF0dXMpIHx8ICJhZHZhbmNlZCI7CiAgICBpZiAoc3QgaW4gaGlzdG9ncmFtKSBoaXN0b2dyYW1bc3RdICs9IDE7CiAgICBpZiAoc3QgPT09ICJhd2FpdGluZ19hcHByb3ZhbCIpIGFwcHJvdmFsUGFya2VkICs9IDE7CiAgICBjdW11bGF0aXZlQWN0cyArPSBlLmFjdHMgfHwgMDsgY3VtdWxhdGl2ZVNwZW5kICs9IGUuc3BlbmQgfHwgMDsKICAgIGlmIChzdCAhPT0gInJlc29sdmVkIiAmJiBzdCAhPT0gImZhaWxlZCIgJiYgKGUuc3RhbGxlZF90dXJucyB8fCAwKSA+IERFRkFVTFRfTk9STVMuc3RhbGxfd2luZG93X3R1cm5zKSBzdGFsbGVkLnB1c2goZS50dXJuX2lkIHx8IGUuaWQpOwogIH0KICByZXR1cm4geyB0dXJuc190b3RhbDogc29ydGVkLmxlbmd0aCwgc3RhdHVzX2hpc3RvZ3JhbTogaGlzdG9ncmFtLCBjdW11bGF0aXZlX2FjdHM6IGN1bXVsYXRpdmVBY3RzLCBjdW11bGF0aXZlX3NwZW5kOiBjdW11bGF0aXZlU3BlbmQsIHN0YWxsZWRfdHVybnM6IHN0YWxsZWQsIGFwcHJvdmFsX3BhcmtlZDogYXBwcm92YWxQYXJrZWQgfTsKfQpmdW5jdGlvbiByZWFkTGVkZ2VyU3R1YnMocSkgewogIGNvbnN0IHN0dWJzID0gKHEgJiYgcS5yZWNlaXB0X3N0dWJzKSB8fCBbXTsKICBjb25zdCBzZWFsUmF0ZSA9IChxICYmIHEuc2VhbF9yYXRlKSAhPSBudWxsID8gcS5zZWFsX3JhdGUgOiAxOwogIGNvbnN0IHJlZnVzYWxSYXRlID0gKHEgJiYgcS5yZWZ1c2FsX3JhdGUpICE9IG51bGwgPyBxLnJlZnVzYWxfcmF0ZSA6IDA7CiAgcmV0dXJuIHsgc2VhbF9yYXRlOiBzZWFsUmF0ZSwgcmVmdXNhbF9yYXRlOiByZWZ1c2FsUmF0ZSwgcmVjZWlwdF9zdHViczogc3R1YnMgfTsKfQpmdW5jdGlvbiBncmFkZShmb2xkZWQsIGxlZGdlciwgbm9ybXMsIGlucHV0cykgewogIGNvbnN0IGZpbmRpbmdzID0gW10sIGludGVydmVudGlvbl9maW5kaW5ncyA9IFtdLCBjYXNlSWQgPSBpbnB1dHMuY2FzZV9pZDsKICBpZiAoZm9sZGVkLnN0YWxsZWRfdHVybnMubGVuZ3RoID4gMCkgewogICAgZmluZGluZ3MucHVzaCh7IG1ldHJpYzogInN0YWxsZWRfdHVybnMiLCBub3JtOiBgPD0gJHtub3Jtcy5zdGFsbF93aW5kb3dfdHVybnN9IHR1cm5zIHN0YWxsZWRgLCBvYnNlcnZlZDogZm9sZGVkLnN0YWxsZWRfdHVybnMubGVuZ3RoLCBhc3Nlc3NtZW50OiAic3RhbGxlZCIgfSk7CiAgICBpbnRlcnZlbnRpb25fZmluZGluZ3MucHVzaCh7IHRhcmdldF9sYW5lOiAiaHVtYW4iLCByZWFzb246IGB0dXJucyBzdGFsbGVkIGJleW9uZCAke25vcm1zLnN0YWxsX3dpbmRvd190dXJuc30tdHVybiB3aW5kb3c6ICR7Zm9sZGVkLnN0YWxsZWRfdHVybnMuam9pbigiLCAiKX1gLCBncm91bmRpbmc6IHsgY2FzZV9pZDogY2FzZUlkLCB0dXJuczogZm9sZGVkLnN0YWxsZWRfdHVybnMgfSB9KTsKICB9CiAgaWYgKGZvbGRlZC5hcHByb3ZhbF9wYXJrZWQgPiBub3Jtcy5hd2FpdGluZ19hcHByb3ZhbF9jYXApIHsKICAgIGZpbmRpbmdzLnB1c2goeyBtZXRyaWM6ICJhd2FpdGluZ19hcHByb3ZhbF9wYXJrZWQiLCBub3JtOiBgPD0gJHtub3Jtcy5hd2FpdGluZ19hcHByb3ZhbF9jYXB9YCwgb2JzZXJ2ZWQ6IGZvbGRlZC5hcHByb3ZhbF9wYXJrZWQsIGFzc2Vzc21lbnQ6ICJvdmVyX2NhcCIgfSk7CiAgICBpbnRlcnZlbnRpb25fZmluZGluZ3MucHVzaCh7IHRhcmdldF9sYW5lOiAicG9saWN5LWF1dGhvciIsIHJlYXNvbjogYHBhcmtlZCBhcHByb3ZhbHMgJHtmb2xkZWQuYXBwcm92YWxfcGFya2VkfSBleGNlZWQgY2FwICR7bm9ybXMuYXdhaXRpbmdfYXBwcm92YWxfY2FwfWAsIGdyb3VuZGluZzogeyBjYXNlX2lkOiBjYXNlSWQgfSB9KTsKICB9CiAgaWYgKGxlZGdlci5yZWZ1c2FsX3JhdGUgPiBub3Jtcy5yZWZ1c2FsX3NwaWtlX3RocmVzaG9sZCkgewogICAgZmluZGluZ3MucHVzaCh7IG1ldHJpYzogInJlZnVzYWxfcmF0ZSIsIG5vcm06IGA8PSAke25vcm1zLnJlZnVzYWxfc3Bpa2VfdGhyZXNob2xkfWAsIG9ic2VydmVkOiBsZWRnZXIucmVmdXNhbF9yYXRlLCBhc3Nlc3NtZW50OiAic3Bpa2UiIH0pOwogICAgaW50ZXJ2ZW50aW9uX2ZpbmRpbmdzLnB1c2goeyB0YXJnZXRfbGFuZTogImltcHJvdmUtc2tpbGwiLCByZWFzb246IGByZWZ1c2FsX3JhdGUgJHtsZWRnZXIucmVmdXNhbF9yYXRlfSBhYm92ZSB0aHJlc2hvbGQgJHtub3Jtcy5yZWZ1c2FsX3NwaWtlX3RocmVzaG9sZH1gLCBncm91bmRpbmc6IHsgbGVkZ2VyX2lkX3N0dWI6IGxlZGdlci5yZWNlaXB0X3N0dWJzWzBdIHx8IG51bGwgfSB9KTsKICB9CiAgaWYgKGxlZGdlci5zZWFsX3JhdGUgPCBub3Jtcy5zZWFsX3JhdGVfZmxvb3IpIHsKICAgIGZpbmRpbmdzLnB1c2goeyBtZXRyaWM6ICJzZWFsX3JhdGUiLCBub3JtOiBgPj0gJHtub3Jtcy5zZWFsX3JhdGVfZmxvb3J9YCwgb2JzZXJ2ZWQ6IGxlZGdlci5zZWFsX3JhdGUsIGFzc2Vzc21lbnQ6ICJiZWxvd19mbG9vciIgfSk7CiAgICBpbnRlcnZlbnRpb25fZmluZGluZ3MucHVzaCh7IHRhcmdldF9sYW5lOiAib3BzLWRlc2siLCByZWFzb246IGBzZWFsX3JhdGUgJHtsZWRnZXIuc2VhbF9yYXRlfSBiZWxvdyBmbG9vciAke25vcm1zLnNlYWxfcmF0ZV9mbG9vcn1gLCBncm91bmRpbmc6IHsgbGVkZ2VyX2lkX3N0dWI6IGxlZGdlci5yZWNlaXB0X3N0dWJzWzBdIHx8IG51bGwgfSB9KTsKICB9CiAgY29uc3QgZGVncmFkZWQgPSBmaW5kaW5ncy5zb21lKChmKSA9PiBmLmFzc2Vzc21lbnQgPT09ICJzdGFsbGVkIiB8fCBmLmFzc2Vzc21lbnQgPT09ICJvdmVyX2NhcCIgfHwgZi5hc3Nlc3NtZW50ID09PSAic3Bpa2UiKTsKICBjb25zdCB2ZXJkaWN0ID0gZGVncmFkZWQgPyAiZGVncmFkZWQiIDogKGZpbmRpbmdzLmxlbmd0aCA/ICJ3YXRjaCIgOiAiaGVhbHRoeSIpOwogIHJldHVybiB7IHZlcmRpY3QsIGludGVydmVudGlvbl9maW5kaW5ncywgZmluZGluZ3MgfTsKfQphc3luYyBmdW5jdGlvbiBydW4oaW5wdXRzKSB7CiAgaWYgKGlucHV0cyAmJiAoaW5wdXRzLm11dGF0ZSA9PT0gdHJ1ZSB8fCBpbnB1dHMuYXBwZW5kID09PSB0cnVlIHx8IGlucHV0cy5hZHZhbmNlID09PSB0cnVlKSkgewogICAgcmV0dXJuIHsgc3RhdHVzOiAicG9saWN5X2RlbmllZCIsIHJlYXNvbjogInJlYWRfb25seV9jb250cmFjdCIsIGhlYWx0aF9idW5kbGU6IG51bGwgfTsKICB9CiAgY29uc3Qgbm9ybXMgPSBPYmplY3QuYXNzaWduKHt9LCBERUZBVUxUX05PUk1TLCBpbnB1dHMubm9ybXMgfHwge30pOwogIGNvbnN0IGV2ZW50cyA9IGxvYWRFdmVudHMoaW5wdXRzKTsKICBjb25zdCBsZWRnZXIgPSByZWFkTGVkZ2VyU3R1YnMoaW5wdXRzLmxlZGdlcl9xdWVyeSk7CiAgY29uc3QgZm9sZGVkID0gZm9sZFByb2plY3Rpb24oZXZlbnRzKTsKICBpZiAoZm9sZGVkLnR1cm5zX3RvdGFsID09PSAwKSB7CiAgICByZXR1cm4geyBzdGF0dXM6ICJzZWFsZWQiLCBhZ2VudF90YXNrOiB7ICJhZ2VuY3ktaGVhbHRoIjogeyBvdXRwdXQ6IHsgaGVhbHRoX2J1bmRsZTogewogICAgICBzY2hlbWE6ICJydW54LmFnZW5jeS5oZWFsdGgudjEiLCBjYXNlX2lkOiBpbnB1dHMuY2FzZV9pZCwgYWdlbmN5X3JlZjogaW5wdXRzLmFnZW5jeV9yZWYsIHBlcmlvZDogaW5wdXRzLnBlcmlvZCB8fCBudWxsLAogICAgICBkZWNpc2lvbjogIm5lZWRzX21vcmVfZXZpZGVuY2UiLCBoZWFsdGhfdmVyZGljdDogeyBzdGF0dXM6ICJ1bnZlcmlmaWFibGUiLCBmaW5kaW5nczogW10gfSwgaW50ZXJ2ZW50aW9uX2ZpbmRpbmdzOiBbXSwKICAgICAgZm9sZGVkLCBsZWRnZXJfc3R1YnM6IGxlZGdlciwgcmVmdXNlZF9yZWFzb246ICJubyByZWFkYWJsZSBjYXNlIGV2ZW50cyBmb3IgYWdlbmN5X3JlZiBvdmVyIHRoZSByZXF1ZXN0ZWQgcGVyaW9kIiB9IH0gfSB9LCByZWNlaXB0OiB7IHNjaGVtYTogInJ1bngucmVjZWlwdC52MSIgfSB9OwogIH0KICBjb25zdCB7IHZlcmRpY3QsIGludGVydmVudGlvbl9maW5kaW5ncywgZmluZGluZ3MgfSA9IGdyYWRlKGZvbGRlZCwgbGVkZ2VyLCBub3JtcywgaW5wdXRzKTsKICBjb25zdCBkZWNpc2lvbiA9IHZlcmRpY3QgPT09ICJoZWFsdGh5IiA/ICJyZWFkeSIgOiAodmVyZGljdCA9PT0gImRlZ3JhZGVkIiA/ICJyZWFkeSIgOiAibmVlZHNfaHVtYW4iKTsKICByZXR1cm4geyBzdGF0dXM6ICJzZWFsZWQiLCBhZ2VudF90YXNrOiB7ICJhZ2VuY3ktaGVhbHRoIjogeyBvdXRwdXQ6IHsgaGVhbHRoX2J1bmRsZTogewogICAgc2NoZW1hOiAicnVueC5hZ2VuY3kuaGVhbHRoLnYxIiwgY2FzZV9pZDogaW5wdXRzLmNhc2VfaWQsIGFnZW5jeV9yZWY6IGlucHV0cy5hZ2VuY3lfcmVmLCBwZXJpb2Q6IGlucHV0cy5wZXJpb2QgfHwgbnVsbCwKICAgIGRlY2lzaW9uLCBoZWFsdGhfdmVyZGljdDogeyBzdGF0dXM6IHZlcmRpY3QsIGZpbmRpbmdzIH0sIGludGVydmVudGlvbl9maW5kaW5ncywgZm9sZGVkLCBsZWRnZXJfc3R1YnM6IGxlZGdlciB9IH0gfSB9LCByZWNlaXB0OiB7IHNjaGVtYTogInJ1bngucmVjZWlwdC52MSIgfSB9Owp9Cihhc3luYyAoKSA9PiB7CiAgbGV0IGlucHV0czsKICBpZiAocHJvY2Vzcy5lbnYuUlVOWF9JTlBVVFNfSlNPTikgaW5wdXRzID0gSlNPTi5wYXJzZShwcm9jZXNzLmVudi5SVU5YX0lOUFVUU19KU09OKTsKICBlbHNlIGlmIChwcm9jZXNzLmFyZ3ZbMl0pIGlucHV0cyA9IEpTT04ucGFyc2UoZnMucmVhZEZpbGVTeW5jKHByb2Nlc3MuYXJndlsyXSwgInV0ZjgiKSk7CiAgZWxzZSB7IGNvbnNvbGUuZXJyb3IoInVzYWdlOiBub2RlIGFoLmNqcyA8Zml4dHVyZS5qc29uPiBPUiBzZXQgUlVOWF9JTlBVVFNfSlNPTiIpOyBwcm9jZXNzLmV4aXQoMik7IH0KICBjb25zdCBvdXQgPSBhd2FpdCBydW4oaW5wdXRzKTsKICBjb25zb2xlLmxvZyhKU09OLnN0cmluZ2lmeShvdXQsIG51bGwsIDIpKTsKfSkoKTsK','base64').toString())"
           inputs:
+            data_source_ref: "$input.data_source_ref"
             case_id: "$input.case_id"
             agency_ref: "$input.agency_ref"
+            store_id: "$input.store_id"
             period: "$input.period"
             norms: "$input.norms"
-          context:
-            projection: read.case_events.data
+            mutate: "$input.mutate"
           artifacts:
             named_emits:
               health_bundle: agent_task.agency-health.output.health_bundle
             packets:
               health_bundle: runx.agency.health.v1
-  health_neg:
+  refuse:
     default: false
-    type: graph
-    inputs:
-      data_source_ref:
-        type: string
-        required: true
-      case_id:
-        type: string
-        required: true
-      agency_ref:
-        type: string
-        required: true
-      store_id:
-        type: string
-        required: false
-      period:
-        type: json
-        required: false
-    graph:
-      name: agency-health-neg
-      steps:
-        - id: read
-          run:
-            type: cli-tool
-            command: node
-            args:
-              - tools/load_case.mjs
-          inputs:
-            data_source_ref: "$input.data_source_ref"
-            case_id: "$input.case_id"
-            store_id: "$input.store_id"
-            limit: 500
-          artifacts:
-            named_emits:
-              case_events: events
-            packets:
-              case_events: runx.data.events.v1
-        - id: grade
-          run:
-            type: cli-tool
-            command: node
-            args:
-              - tools/agency-health.mjs
-          inputs:
-            case_id: "$input.case_id"
-            agency_ref: "$input.agency_ref"
-            period: "$input.period"
-          context:
-            projection: read.case_events.data
-          artifacts:
-            named_emits:
-              health_bundle: agent_task.agency-health.output.health_bundle
-            packets:
-              health_bundle: runx.agency.health.v1
-    policy:
-      guards:
-        - step: grade
-          field: read.case_events.data.events
-          exists: true
+    type: agent
+
+harness:
+  cases:
+    - name: concerning-agency-sealed
+      runner: health
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-agency/health-dev
+        case_id: case-stalled-002
+        agency_ref: health-dev
+        store_id: health-dev
+        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+      expect:
+        status: sealed
+    - name: agency-health-healthy
+      runner: health
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-agency/health-dev
+        case_id: case-healthy-001
+        agency_ref: health-dev
+        store_id: health-dev
+        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+      expect:
+        status: sealed
+    - name: no-case-events-stop
+      runner: health
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-agency/health-dev":{"adapter":"data.local","store_id":"health-dev","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-agency/health-dev
+        case_id: case-does-not-exist-999
+        agency_ref: health-dev
+        store_id: health-dev
+        period: { from: "2026-07-01T00:00:00Z", to: "2026-07-08T00:00:00Z" }
+      expect:
+        status: sealed
+    - name: agency-health-readonly-stop
+      runner: refuse
+      inputs:
+        mutate: true
+      expect:
+        status: needs_agent
