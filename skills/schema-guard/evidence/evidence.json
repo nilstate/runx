@@ -1,60 +1,164 @@
 {
-    "schema":  "frantic.evidence.schema_guard.v1",
-    "bounty":  84,
-    "package":  "schema-guard",
-    "operator":  "rohitmulani63-ops",
-    "summary":  "Published schema-guard as a runx skill that compares current_schema and proposed_schema against sample_payloads and a compatibility_policy, emits compatibility plus validation_results and migration_notes, and only emits publish_schema_proposal for compatible schema changes.",
-    "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
-    "package_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
-    "source_pr":  "https://github.com/runxhq/runx/pull/269",
-    "runx_cli_version":  "runx-cli 0.6.14",
-    "acceptance":  {
-                       "compatible_additive_case":  "sealed dogfood receipt proves compatible output and publish_schema_proposal",
-                       "github_star":  "Frantic machine verifier is expected to check GitHub star directly",
-                       "breaking_case":  "local harness proves breaking change is refused and produces no publish_schema_proposal",
-                       "typed_inputs":  [
-                                            "current_schema",
-                                            "proposed_schema",
-                                            "sample_payloads",
-                                            "compatibility_policy"
-                                        ],
-                       "typed_outputs":  [
-                                             "compatibility",
-                                             "validation_results",
-                                             "migration_notes",
-                                             "publish_schema_proposal"
-                                         ],
-                       "clean_install":  "schema-guard-clean-install-output.txt reports installed, signed yes, trust community"
-                   },
-    "harness":  {
-                    "status":  "passed",
-                    "runx_cli_version":  "runx-cli 0.6.14",
-                    "case_count":  3,
-                    "assertion_error_count":  0,
-                    "cases":  [
-                                  {
-                                      "expected":  "compatible output plus publish_schema_proposal",
-                                      "name":  "additive-compatible-proposal",
-                                      "receipt":  "sha256:ce8b54e50189f18bc5b8cbb2a72f548e6814a410e169d9120e5562a1b9299853"
-                                  },
-                                  {
-                                      "expected":  "refused breaking change and no proposal",
-                                      "name":  "breaking-change-refused-no-proposal",
-                                      "receipt":  "sha256:9e7ad8183350cb464a561ce2cbc83885d2683249bcc6add57aed40615b325324"
-                                  },
-                                  {
-                                      "expected":  "schema input guard failure",
-                                      "name":  "missing-schema-failure",
-                                      "receipt":  "sha256:14859af0acb735cafa397a629fe08c1eae46156fba8d86c29cfe23846fee48df"
-                                  }
-                              ]
-                },
+    "schema":  "frantic.evidence.schema_guard.v2",
+    "generated_at":  "2026-07-14T07:46:16.5439384Z",
+    "summary":  "Published schema-guard skill evidence for an additive invoice_event schema change, including exact JSON inputs, a sealed post-publish dogfood receipt, a raw runx.verify_verdict.v1 result, and harness coverage.",
+    "artifact":  {
+                     "name":  "schema-guard",
+                     "version":  "0.1.0",
+                     "registry_ref":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
+                     "registry_digest":  "1f232ced9a55c56624410901c2fd35a70f5aa8b0e5228d9231d19933e50fd7dd",
+                     "publisher_owner":  "rohitmulani63-ops",
+                     "summary":  "A non-mutating compatibility guard that reports schema breakage and emits a gated publish proposal only for allowed changes."
+                 },
+    "artifacts":  {
+                      "public_url":  "https://runx.ai/x/rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
+                      "source_url":  "https://github.com/rohitmulani63-ops/runx/tree/schema-guard-frantic-84/skills/schema-guard",
+                      "pr_url":  "https://github.com/runxhq/runx/pull/269",
+                      "x_yaml":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/schema-guard-frantic-84/skills/schema-guard/X.yaml",
+                      "skill_md":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/schema-guard-frantic-84/skills/schema-guard/SKILL.md",
+                      "verification_json":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/schema-guard-frantic-84/skills/schema-guard/evidence/verification.json",
+                      "evidence_json":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/schema-guard-frantic-84/skills/schema-guard/evidence/evidence.json",
+                      "report":  "https://raw.githubusercontent.com/rohitmulani63-ops/runx/schema-guard-frantic-84/skills/schema-guard/evidence/report.md"
+                  },
+    "observations":  [
+                         {
+                             "id":  "runx_cli_version",
+                             "value":  "runx-cli 0.7.0"
+                         },
+                         {
+                             "id":  "publisher_owner",
+                             "value":  "rohitmulani63-ops"
+                         },
+                         {
+                             "id":  "package_name",
+                             "value":  "schema-guard"
+                         },
+                         {
+                             "id":  "package_version",
+                             "value":  "0.1.0"
+                         },
+                         {
+                             "id":  "registry_ref",
+                             "value":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1"
+                         },
+                         {
+                             "id":  "publish_method",
+                             "value":  "runx registry publish ./skills/schema-guard/SKILL.md --registry https://api.runx.ai"
+                         },
+                         {
+                             "id":  "install_command",
+                             "value":  "runx add rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai"
+                         },
+                         {
+                             "id":  "hosted_harness",
+                             "value":  "passed"
+                         },
+                         {
+                             "id":  "harness_cases",
+                             "value":  [
+                                           "additive-compatible-proposal",
+                                           "breaking-change-refused-no-proposal"
+                                       ]
+                         },
+                         {
+                             "id":  "compatibility_status",
+                             "value":  "compatible"
+                         },
+                         {
+                             "id":  "breaking_changes",
+                             "value":  [
+
+                                       ]
+                         },
+                         {
+                             "id":  "validation_results",
+                             "value":  "2 supplied payloads valid under current and proposed schemas"
+                         },
+                         {
+                             "id":  "proposal_status",
+                             "value":  "ready_for_review"
+                         },
+                         {
+                             "id":  "receipt_id",
+                             "value":  "sha256:825b7d4d2347258d38dc8766c6670fedffe7438bd140a55da9d204c2a71cace8"
+                         },
+                         {
+                             "id":  "verification_schema",
+                             "value":  "runx.verify_verdict.v1"
+                         },
+                         {
+                             "id":  "verification_result",
+                             "value":  "valid=true; production signature valid; findings=0"
+                         },
+                         {
+                             "id":  "side_effects",
+                             "value":  "none; schema-guard does not write live schemas"
+                         }
+                     ],
     "dogfood":  {
                     "package":  "rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
                     "input":  {
-                                  "current_schema":  "invoice.v1 with id, amount_cents, status",
-                                  "proposed_schema":  "invoice.v1.1 additive optional metadata.source",
-                                  "sample_payloads_count":  2,
+                                  "current_schema":  {
+                                                         "name":  "invoice_event",
+                                                         "version":  "1.0.0",
+                                                         "fields":  {
+                                                                        "id":  {
+                                                                                   "type":  "string",
+                                                                                   "required":  true
+                                                                               },
+                                                                        "amount_cents":  {
+                                                                                             "type":  "number",
+                                                                                             "required":  true
+                                                                                         },
+                                                                        "status":  {
+                                                                                       "type":  "string",
+                                                                                       "required":  true,
+                                                                                       "enum":  [
+                                                                                                    "draft",
+                                                                                                    "paid"
+                                                                                                ]
+                                                                                   }
+                                                                    }
+                                                     },
+                                  "proposed_schema":  {
+                                                          "name":  "invoice_event",
+                                                          "version":  "1.1.0",
+                                                          "fields":  {
+                                                                         "id":  {
+                                                                                    "type":  "string",
+                                                                                    "required":  true
+                                                                                },
+                                                                         "amount_cents":  {
+                                                                                              "type":  "number",
+                                                                                              "required":  true
+                                                                                          },
+                                                                         "status":  {
+                                                                                        "type":  "string",
+                                                                                        "required":  true,
+                                                                                        "enum":  [
+                                                                                                     "draft",
+                                                                                                     "paid"
+                                                                                                 ]
+                                                                                    },
+                                                                         "memo":  {
+                                                                                      "type":  "string",
+                                                                                      "required":  false
+                                                                                  }
+                                                                     }
+                                                      },
+                                  "sample_payloads":  [
+                                                          {
+                                                              "id":  "inv_1",
+                                                              "amount_cents":  1200,
+                                                              "status":  "paid"
+                                                          },
+                                                          {
+                                                              "id":  "inv_2",
+                                                              "amount_cents":  0,
+                                                              "status":  "draft",
+                                                              "memo":  "optional note"
+                                                          }
+                                                      ],
                                   "compatibility_policy":  {
                                                                "breaking_allowed":  false,
                                                                "required_fields":  [
@@ -65,36 +169,49 @@
                                                                "versioning_rule":  "semver_minor_for_additive"
                                                            }
                               },
-                    "command":  "runx skill rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai -j guard",
-                    "receipt_ref":  "runx:receipt:sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35",
-                    "verify_verdict":  "valid",
+                    "command":  "npx -y -p @runxhq/cli@0.7.0 runx skill rohitmulani63-ops/schema-guard@sha-0b172e79bca1 guard --registry https://api.runx.ai --skip-operator-context --input-json \u0027current_schema={\"name\":\"invoice_event\",\"version\":\"1.0.0\",\"fields\":{\"id\":{\"type\":\"string\",\"required\":true},\"amount_cents\":{\"type\":\"number\",\"required\":true},\"status\":{\"type\":\"string\",\"required\":true,\"enum\":[\"draft\",\"paid\"]}}}\u0027 --input-json \u0027proposed_schema={\"name\":\"invoice_event\",\"version\":\"1.1.0\",\"fields\":{\"id\":{\"type\":\"string\",\"required\":true},\"amount_cents\":{\"type\":\"number\",\"required\":true},\"status\":{\"type\":\"string\",\"required\":true,\"enum\":[\"draft\",\"paid\"]},\"memo\":{\"type\":\"string\",\"required\":false}}}\u0027 --input-json \u0027sample_payloads=[{\"id\":\"inv_1\",\"amount_cents\":1200,\"status\":\"paid\"},{\"id\":\"inv_2\",\"amount_cents\":0,\"status\":\"draft\",\"memo\":\"optional note\"}]\u0027 --input-json \u0027compatibility_policy={\"breaking_allowed\":false,\"required_fields\":[\"id\",\"amount_cents\",\"status\"],\"versioning_rule\":\"semver_minor_for_additive\"}\u0027 --receipt-dir .runx/schema-guard-dogfood-0714-1157/receipts --json",
+                    "output":  {
+                                   "run_status":  "sealed",
+                                   "compatibility_status":  "compatible",
+                                   "compatible":  true,
+                                   "breaking_changes":  [
+
+                                                        ],
+                                   "validated_sample_count":  2,
+                                   "proposal_status":  "ready_for_review",
+                                   "side_effects":  "none"
+                               },
+                    "receipt_ref":  "runx:receipt:sha256:825b7d4d2347258d38dc8766c6670fedffe7438bd140a55da9d204c2a71cace8",
+                    "verify_command":  "runx verify --receipt .runx/schema-guard-dogfood-0714-1157/receipts/sha256-825b7d4d2347258d38dc8766c6670fedffe7438bd140a55da9d204c2a71cace8.json --json",
+                    "verify_verdict":  {
+                                           "schema":  "runx.verify_verdict.v1",
+                                           "valid":  true,
+                                           "receipt_id":  "sha256:825b7d4d2347258d38dc8766c6670fedffe7438bd140a55da9d204c2a71cace8",
+                                           "signature_mode":  "production",
+                                           "signature_status":  "valid",
+                                           "findings":  [
+
+                                                        ],
+                                           "raw_artifact":  "skills/schema-guard/evidence/verification.json"
+                                       },
                     "harness_cases":  [
                                           {
                                               "name":  "additive-compatible-proposal",
                                               "status":  "sealed",
-                                              "receipt":  "sha256:ce8b54e50189f18bc5b8cbb2a72f548e6814a410e169d9120e5562a1b9299853"
+                                              "assertion":  "additive optional field stays compatible and emits a gated proposal"
                                           },
                                           {
                                               "name":  "breaking-change-refused-no-proposal",
                                               "status":  "refused",
-                                              "receipt":  "sha256:9e7ad8183350cb464a561ce2cbc83885d2683249bcc6add57aed40615b325324"
-                                          },
-                                          {
-                                              "name":  "missing-schema-failure",
-                                              "status":  "refused",
-                                              "receipt":  "sha256:14859af0acb735cafa397a629fe08c1eae46156fba8d86c29cfe23846fee48df"
+                                              "assertion":  "breaking change is identified and emits no proposal"
                                           }
                                       ]
                 },
-    "observations":  [
-                         "package name is exactly schema-guard",
-                         "hosted registry publish succeeded",
-                         "registry read-back succeeded for rohitmulani63-ops/schema-guard@sha-0b172e79bca1",
-                         "clean install succeeded from remote registry",
-                         "post-publish dogfood produced sealed receipt",
-                         "receipt verification returned valid true",
-                         "compatible additive change emits publish_schema_proposal",
-                         "breaking change local harness case refuses proposal output",
-                         "no live schema write is performed by the skill"
-                     ]
+    "reproduction":  {
+                         "read":  "runx registry read rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai --json",
+                         "install":  "runx add rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai",
+                         "harness":  "runx harness ./skills/schema-guard",
+                         "dogfood":  "npx -y -p @runxhq/cli@0.7.0 runx skill rohitmulani63-ops/schema-guard@sha-0b172e79bca1 guard --registry https://api.runx.ai --skip-operator-context --input-json \u0027current_schema={\"name\":\"invoice_event\",\"version\":\"1.0.0\",\"fields\":{\"id\":{\"type\":\"string\",\"required\":true},\"amount_cents\":{\"type\":\"number\",\"required\":true},\"status\":{\"type\":\"string\",\"required\":true,\"enum\":[\"draft\",\"paid\"]}}}\u0027 --input-json \u0027proposed_schema={\"name\":\"invoice_event\",\"version\":\"1.1.0\",\"fields\":{\"id\":{\"type\":\"string\",\"required\":true},\"amount_cents\":{\"type\":\"number\",\"required\":true},\"status\":{\"type\":\"string\",\"required\":true,\"enum\":[\"draft\",\"paid\"]},\"memo\":{\"type\":\"string\",\"required\":false}}}\u0027 --input-json \u0027sample_payloads=[{\"id\":\"inv_1\",\"amount_cents\":1200,\"status\":\"paid\"},{\"id\":\"inv_2\",\"amount_cents\":0,\"status\":\"draft\",\"memo\":\"optional note\"}]\u0027 --input-json \u0027compatibility_policy={\"breaking_allowed\":false,\"required_fields\":[\"id\",\"amount_cents\",\"status\"],\"versioning_rule\":\"semver_minor_for_additive\"}\u0027 --receipt-dir .runx/schema-guard-dogfood-0714-1157/receipts --json",
+                         "verify":  "runx verify --receipt \u003cdogfood-receipt.json\u003e --json"
+                     }
 }

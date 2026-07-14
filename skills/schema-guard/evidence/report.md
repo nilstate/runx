@@ -1,38 +1,89 @@
-# schema-guard Frantic #84 report
+# schema-guard delivery report
 
-## What shipped
-- Added the schema-guard runx package with typed schema compatibility inputs and guarded proposal output.
-- Runner: guard.
-- Hosted package: rohitmulani63-ops/schema-guard@sha-0b172e79bca1.
-- Public URL: https://runx.ai/x/rohitmulani63-ops/schema-guard@sha-0b172e79bca1.
-- PR: https://github.com/runxhq/runx/pull/269.
+## Summary
 
-## Acceptance coverage
-- current_schema, proposed_schema, sample_payloads[], and compatibility_policy are accepted as typed inputs.
-- compatibility, validation_results[], migration_notes[], and publish_schema_proposal are emitted as typed outputs.
-- Compatible additive changes produce compatibility.status = compatible and include publish_schema_proposal.
-- Breaking required-field changes are refused by the harness and do not emit publish_schema_proposal.
-- The skill never writes a live schema; it only emits a proposal object when the policy and sample evidence pass.
-- Clean install from the hosted registry succeeded and shows a signed community package.
+- Published package: `rohitmulani63-ops/schema-guard@sha-0b172e79bca1` (`SKILL.md` version `0.1.0`).
+- Registry digest: `1f232ced9a55c56624410901c2fd35a70f5aa8b0e5228d9231d19933e50fd7dd`.
+- Public package: https://runx.ai/x/rohitmulani63-ops/schema-guard@sha-0b172e79bca1
+- Review PR: https://github.com/runxhq/runx/pull/269
+- The package is non-mutating: it reports compatibility and emits a proposal for approval, but never writes a live schema.
 
-## Validation
-- runx-cli 0.6.14.
-- runx skill inspect ./skills/schema-guard -j passed.
-- Docker/Linux runx harness ./skills/schema-guard --json passed with three cases: additive-compatible-proposal, breaking-change-refused-no-proposal, and missing-schema-failure.
-- Hosted registry publish succeeded for rohitmulani63-ops/schema-guard@sha-0b172e79bca1.
-- Registry read-back succeeded for rohitmulani63-ops/schema-guard@sha-0b172e79bca1.
-- Clean install succeeded with runx add rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai.
-- Post-publish dogfood succeeded with sealed receipt runx:receipt:sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35.
-- runx verify sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35 --receipt-dir .runx/schema-guard-published-receipts --json returned valid true.
-- git diff --check, control/bidi scan, and touched-file secret-pattern scan passed.
+## Revision fixes
 
-## Dogfood receipt
-- Receipt ref: runx:receipt:sha256:a890a7ee6a952bd1d99620b10454accca778460f4441703facaff27f26c2ad35.
-- Dogfood input: additive invoice schema change with optional metadata.source, two sample payloads, required fields id, amount_cents, status, and semver_minor_for_additive policy.
-- Dogfood result: compatible, no breaking changes, validation results present, migration notes present, proposal present.
+- Replaced the hand-written verification checklist with the raw captured `runx.verify_verdict.v1` JSON from `runx verify --receipt ... --json`.
+- Recorded the actual dogfood input as four JSON values, not a prose paraphrase.
+- Recorded the exact dogfood command with all four `--input-json` arguments.
+- Removed the unrelated `support-desk` package from this PR so the diff is limited to `schema-guard`.
 
-## Why this is useful
-- It gives schema owners a deterministic compatibility gate before publishing schema changes.
-- It separates safe additive changes from breaking changes.
-- It explains failures through validation results and migration notes instead of only returning pass/fail.
-- It creates a proposal object only after evidence passes, which keeps the skill safe for review workflows.
+## Validation evidence
+
+- CLI: `runx-cli 0.7.0`, which satisfies the required `0.6.14` minimum.
+- Registry read resolved owner `rohitmulani63-ops`, package `schema-guard`, version `sha-0b172e79bca1`, and the published digest above.
+- Local harness covers `additive-compatible-proposal` and `breaking-change-refused-no-proposal`.
+- Hosted registry harness status is green.
+- Fresh post-publish dogfood status: `sealed`.
+- Fresh receipt: `runx:receipt:sha256:825b7d4d2347258d38dc8766c6670fedffe7438bd140a55da9d204c2a71cace8`.
+- Raw verifier result: schema `runx.verify_verdict.v1`, `valid: true`, production signature `valid`, and zero findings.
+- Two real sample payloads remained valid under both schema versions.
+- The optional `memo` field was classified as additive, with zero breaking changes.
+- The output emitted a gated `publish_schema_proposal` with status `ready_for_review`.
+
+## Exact dogfood input
+
+```json
+{
+  "current_schema": {
+    "name": "invoice_event",
+    "version": "1.0.0",
+    "fields": {
+      "id": {"type": "string", "required": true},
+      "amount_cents": {"type": "number", "required": true},
+      "status": {"type": "string", "required": true, "enum": ["draft", "paid"]}
+    }
+  },
+  "proposed_schema": {
+    "name": "invoice_event",
+    "version": "1.1.0",
+    "fields": {
+      "id": {"type": "string", "required": true},
+      "amount_cents": {"type": "number", "required": true},
+      "status": {"type": "string", "required": true, "enum": ["draft", "paid"]},
+      "memo": {"type": "string", "required": false}
+    }
+  },
+  "sample_payloads": [
+    {"id": "inv_1", "amount_cents": 1200, "status": "paid"},
+    {"id": "inv_2", "amount_cents": 0, "status": "draft", "memo": "optional note"}
+  ],
+  "compatibility_policy": {
+    "breaking_allowed": false,
+    "required_fields": ["id", "amount_cents", "status"],
+    "versioning_rule": "semver_minor_for_additive"
+  }
+}
+```
+
+## Exact dogfood command
+
+```bash
+npx -y -p @runxhq/cli@0.7.0 runx skill rohitmulani63-ops/schema-guard@sha-0b172e79bca1 guard \
+  --registry https://api.runx.ai \
+  --skip-operator-context \
+  --input-json 'current_schema={"name":"invoice_event","version":"1.0.0","fields":{"id":{"type":"string","required":true},"amount_cents":{"type":"number","required":true},"status":{"type":"string","required":true,"enum":["draft","paid"]}}}' \
+  --input-json 'proposed_schema={"name":"invoice_event","version":"1.1.0","fields":{"id":{"type":"string","required":true},"amount_cents":{"type":"number","required":true},"status":{"type":"string","required":true,"enum":["draft","paid"]},"memo":{"type":"string","required":false}}}' \
+  --input-json 'sample_payloads=[{"id":"inv_1","amount_cents":1200,"status":"paid"},{"id":"inv_2","amount_cents":0,"status":"draft","memo":"optional note"}]' \
+  --input-json 'compatibility_policy={"breaking_allowed":false,"required_fields":["id","amount_cents","status"],"versioning_rule":"semver_minor_for_additive"}' \
+  --receipt-dir .runx/schema-guard-dogfood-0714-1157/receipts \
+  --json
+```
+
+## Reproduce
+
+```bash
+runx registry read rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai --json
+runx add rohitmulani63-ops/schema-guard@sha-0b172e79bca1 --registry https://api.runx.ai
+runx harness ./skills/schema-guard
+runx verify --receipt .runx/schema-guard-dogfood-0714-1157/receipts/sha256-825b7d4d2347258d38dc8766c6670fedffe7438bd140a55da9d204c2a71cace8.json --json
+```
+
+The machine-readable evidence is in `skills/schema-guard/evidence/evidence.json`. The verifier output in `skills/schema-guard/evidence/verification.json` is the raw CLI verdict, not a rewritten summary.
