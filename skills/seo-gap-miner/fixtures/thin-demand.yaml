@@ -1,0 +1,20 @@
+name: thin-demand
+input:
+  site_inventory:
+    pages:
+      - url: https://example.dev/docs/receipts
+        topic: receipt verification
+        coverage: Full verification walkthrough.
+  demand_fixtures:
+    terms:
+      - term: agent audit templates
+        demand_signal: ""
+        source: ""
+  content_policy:
+    excluded_topics: []
+    priority_themes:
+      - agent governance
+expected:
+  decision: needs_more_evidence
+  gap_findings: []
+  stop_reason: No supplied term has both a named demand signal and a source.
