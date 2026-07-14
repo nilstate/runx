@@ -1,0 +1,20 @@
+name: digest-stale-refuses
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Attempt to use skill-creator under a stale upstream digest.
+  resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  allowed_output_prefix: /tmp
+  max_skills: "1"
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: overlay-open-skill-2
+  source_case: digest-stale-refuses
+  source: skills-fixture

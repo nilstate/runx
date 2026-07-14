@@ -1,0 +1,78 @@
+skill: overlay-open-skill-2
+version: "1.0.0"
+runx:
+  overlay:
+    wraps:
+      path: https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/skill-creator/SKILL.md
+      version: sha256:dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf
+    pinned_digest: sha256:dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+harness:
+  cases:
+    - name: pinned-digest-seals
+      runner: default
+      inputs:
+        objective: Create a skill for formatting Python docstrings under governed boundaries.
+        resolved_digest: sha256:dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf
+        allowed_output_prefix: /home/user/projects/skills
+        max_skills: "5"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: digest-stale-refuses
+      runner: default
+      inputs:
+        objective: Attempt to use skill-creator under a stale upstream digest.
+        resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+        allowed_output_prefix: /tmp
+        max_skills: "1"
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      objective:
+        type: string
+        required: false
+        description: Skill-creation intent recorded in the sealed receipt.
+      resolved_digest:
+        type: string
+        required: false
+        description: Recomputed sha256 digest of the immutable wrapped SKILL.md bytes.
+      allowed_output_prefix:
+        type: string
+        required: false
+        description: Directory prefix under which skill-creation is permitted (governance boundary).
+      max_skills:
+        type: string
+        required: false
+        description: Maximum number of skills the caller may create in this session (governance bound).
+    mutating: false
+    runx:
+      scopes:
+        - fs.read
+        - fs.write
+      allowed_tools:
+        - fs.read
+        - fs.write
+    outputs:
+      governance_decision: string
+      receipt: string

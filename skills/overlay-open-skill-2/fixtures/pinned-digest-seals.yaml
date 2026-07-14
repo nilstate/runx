@@ -1,0 +1,20 @@
+name: pinned-digest-seals
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Create a skill for formatting Python docstrings under governed boundaries.
+  resolved_digest: sha256:dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf
+  allowed_output_prefix: /home/user/projects/skills
+  max_skills: "5"
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: overlay-open-skill-2
+  source_case: pinned-digest-seals
+  source: skills-fixture
