@@ -54,7 +54,25 @@ harness:
           intervention_findings: "empty"
           refusals: "non-empty"
 
+    - name: source-handoff-needs-agent
+      runner: source-handoff
+      inputs: {}
+      expect:
+        status: needs_agent
+
 runners:
+  source-handoff:
+    type: agent-task
+    agent: operator
+    task: agency-health-source-handoff
+    outputs:
+      source_resolution: object
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: "The unresolved data-source reference that needs an operator-provided binding."
+
   evaluate:
     default: true
     type: cli-tool
