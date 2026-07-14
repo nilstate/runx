@@ -1,7 +1,7 @@
 export default {
   name: "runx",
   siteUrl: "https://raw.githubusercontent.com",
-  baseUrl: "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs",
+  baseUrl: "/runxhq/runx/refs/pull/284/head/sourcey-docs",
   repo: "https://github.com/runxhq/runx",
   editBranch: "main",
   prettyUrls: false,
