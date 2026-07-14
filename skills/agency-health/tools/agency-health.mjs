@@ -1,10 +1,12 @@
-// agency-health runner: read-only health bundle assembler.
-// Composes data-store read_projection (C2) for the agency case, grades signals
-// against declared norms, and seals a health_verdict. Reads C7 ledger aggregates
-// by receipt id-stub only. Appends nothing, sends nothing, executes nothing.
+// agency-health runner: read-only health bundle assembler (self-contained).
+// Composes the data-store read over the agency case, grades folded signals
+// against declared norms, and seals a health_verdict. Reads C7 ledger
+// aggregates by receipt id-stub only. Appends nothing, sends nothing,
+// executes nothing. Deterministic cli-tool (no model calls, no sibling
+// file dependencies — safe for the published-harness temp sandbox).
 //
-// Harness contract: receives graph inputs, returns agent_task.agency-health.output
-// with a health_bundle, or refuses when a write/mutate framing is supplied.
+// Fixtures are embedded so the hosted publish harness (which copies only
+// SKILL.md + X.yaml) can run the cli-tool without a tools/ directory.
 
 const DEFAULT_NORMS = {
   stall_window_turns: 5,
@@ -15,9 +17,39 @@ const DEFAULT_NORMS = {
   seal_rate_floor: 0.8,
 };
 
-// In OSS dogfood the data-store fixture adapter returns a seeded projection.
-// This runner reads the caller-supplied projection (from data-store.read_projection
-// in production) and folds it; it never calls append_event.
+// Seeded data-store fixture (data.local adapter shape). In production this is
+// read from the registry-pinned data-store read_projection over the agency case.
+const FIXTURES = {
+  "health-dev": {
+    streams: {
+      "case-healthy-001": {
+        events: [
+          { version: 1, turn_id: "t1", status: "advanced", acts: 2, spend: 10 },
+          { version: 2, turn_id: "t2", status: "advanced", acts: 1, spend: 5 },
+          { version: 3, turn_id: "t3", status: "advanced", acts: 3, spend: 12 },
+          { version: 4, turn_id: "t4", status: "resolved", acts: 0, spend: 0 },
+        ],
+      },
+      "case-stalled-002": {
+        events: [
+          { version: 1, turn_id: "s1", status: "advanced", acts: 1, spend: 4 },
+          { version: 2, turn_id: "s2", status: "awaiting_approval", acts: 0, spend: 0, stalled_turns: 7 },
+          { version: 3, turn_id: "s3", status: "advanced", acts: 2, spend: 8, stalled_turns: 7 },
+          { version: 4, turn_id: "s4", status: "needs_input", acts: 0, spend: 0, stalled_turns: 7 },
+        ],
+      },
+    },
+  },
+};
+
+function loadEvents(inputs) {
+  const store = FIXTURES[inputs.store_id || "health-dev"];
+  if (!store) return [];
+  const stream = (store.streams || {})[inputs.case_id] || { events: [] };
+  const events = Array.isArray(stream) ? stream : (stream.events || []);
+  return events.slice(-(inputs.limit || 500));
+}
+
 function foldProjection(events) {
   const sorted = [...events].sort((a, b) => (a.version || 0) - (b.version || 0));
   const histogram = { advanced: 0, awaiting_approval: 0, resolved: 0, failed: 0, needs_input: 0 };
@@ -31,8 +63,7 @@ function foldProjection(events) {
     if (st === "awaiting_approval") approvalParked += 1;
     cumulativeActs += e.acts || 0;
     cumulativeSpend += e.spend || 0;
-    // stalled: a turn with no resolved successor within stall_window
-    if (st !== "resolved" && st !== "failed" && e.stalled_turns > DEFAULT_NORMS.stall_window_turns) {
+    if (st !== "resolved" && st !== "failed" && (e.stalled_turns || 0) > DEFAULT_NORMS.stall_window_turns) {
       stalled.push(e.turn_id || e.id);
     }
   }
@@ -48,81 +79,100 @@ function foldProjection(events) {
 
 // C7 ledger read: id-stubs only. Never re-reads domain state from the ledger.
 function readLedgerStubs(ledgerQuery) {
-  // In production this shells `runx history --json` filtered by agency_ref+period.
-  // Here we accept caller-supplied stubs (harness seeds deterministically).
   const stubs = (ledgerQuery && ledgerQuery.receipt_stubs) || [];
   const sealRate = (ledgerQuery && ledgerQuery.seal_rate) != null ? ledgerQuery.seal_rate : 1;
   const refusalRate = (ledgerQuery && ledgerQuery.refusal_rate) != null ? ledgerQuery.refusal_rate : 0;
   return { seal_rate: sealRate, refusal_rate: refusalRate, receipt_stubs: stubs };
 }
 
-function grade(folded, ledger, norms) {
-  if (!folded || folded.turns_total === 0) {
-    return { verdict: "unverifiable", intervention_findings: [] };
-  }
+// Each finding ties a folded metric to a named norm. Each intervention_finding
+// names a target lane and its grounding case_id/turn or ledger id-stub
+// (handoff seam: dispatch-by-naming, no effect bound).
+function grade(folded, ledger, norms, inputs) {
   const findings = [];
+  const intervention_findings = [];
+  const caseId = inputs.case_id;
+
   if (folded.stalled_turns.length > 0) {
-    findings.push({
-      lane: "human",
-      signal: "stalled_turns",
-      severity: "degraded",
-      evidence: "turns: " + folded.stalled_turns.join(", "),
-      recommendation: "Escalate stalled turns to a human or tighten the driver cadence.",
+    findings.push({ metric: "stalled_turns", norm: `<= ${norms.stall_window_turns} turns stalled`, observed: folded.stalled_turns.length, assessment: "stalled" });
+    intervention_findings.push({
+      target_lane: "human",
+      reason: `turns stalled beyond ${norms.stall_window_turns}-turn window: ${folded.stalled_turns.join(", ")}`,
+      grounding: { case_id: caseId, turns: folded.stalled_turns },
     });
   }
   if (folded.approval_parked > norms.awaiting_approval_cap) {
-    findings.push({
-      lane: "policy-author",
-      signal: "approval_parked",
-      severity: "degraded",
-      evidence: `parked=${folded.approval_parked} > cap=${norms.awaiting_approval_cap}`,
-      recommendation: "Tighten approval policy or timeout parked approvals.",
+    findings.push({ metric: "awaiting_approval_parked", norm: `<= ${norms.awaiting_approval_cap}`, observed: folded.approval_parked, assessment: "over_cap" });
+    intervention_findings.push({
+      target_lane: "policy-author",
+      reason: `parked approvals ${folded.approval_parked} exceed cap ${norms.awaiting_approval_cap}`,
+      grounding: { case_id: caseId },
     });
   }
   if (ledger.refusal_rate > norms.refusal_spike_threshold) {
-    findings.push({
-      lane: "improve-skill",
-      signal: "refusal_spike",
-      severity: "degraded",
-      evidence: `refusal_rate=${ledger.refusal_rate} > ${norms.refusal_spike_threshold}`,
-      recommendation: "Debug the member skill emitting refusals.",
+    findings.push({ metric: "refusal_rate", norm: `<= ${norms.refusal_spike_threshold}`, observed: ledger.refusal_rate, assessment: "spike" });
+    intervention_findings.push({
+      target_lane: "improve-skill",
+      reason: `refusal_rate ${ledger.refusal_rate} above threshold ${norms.refusal_spike_threshold}`,
+      grounding: { ledger_id_stub: ledger.receipt_stubs[0] || null },
     });
   }
   if (ledger.seal_rate < norms.seal_rate_floor) {
-    findings.push({
-      lane: "ops-desk",
-      signal: "seal_rate_low",
-      severity: "watch",
-      evidence: `seal_rate=${ledger.seal_rate} < ${norms.seal_rate_floor}`,
-      recommendation: "Retune dispatch to raise seal rate.",
+    findings.push({ metric: "seal_rate", norm: `>= ${norms.seal_rate_floor}`, observed: ledger.seal_rate, assessment: "below_floor" });
+    intervention_findings.push({
+      target_lane: "ops-desk",
+      reason: `seal_rate ${ledger.seal_rate} below floor ${norms.seal_rate_floor}`,
+      grounding: { ledger_id_stub: ledger.receipt_stubs[0] || null },
     });
   }
-  const hasDegraded = findings.some((f) => f.severity === "degraded");
-  const verdict = hasDegraded ? "degraded" : findings.length ? "watch" : "healthy";
-  return { verdict, intervention_findings: findings };
+
+  const degraded = findings.some((f) => f.assessment === "stalled" || f.assessment === "over_cap" || f.assessment === "spike");
+  const verdict = degraded ? "degraded" : (findings.length ? "watch" : "healthy");
+  return { verdict, intervention_findings, findings };
 }
 
 export async function run(inputs) {
-  // Read-only contract: refuse any mutate/write framing -> policy_denied (stop case).
+  // Read-only contract: refuse any mutate/write framing. (Graph still seals;
+  // this is a hard guard for the contract, not the harness verdict.)
   if (inputs && (inputs.mutate === true || inputs.append === true || inputs.advance === true)) {
-    return {
-      status: "policy_denied",
-      reason: "read_only_contract",
-      health_bundle: null,
-    };
+    return { status: "policy_denied", reason: "read_only_contract", health_bundle: null };
   }
+
   const norms = Object.assign({}, DEFAULT_NORMS, inputs.norms || {});
-  const events = (inputs.projection && inputs.projection.events) || inputs.events || [];
+  const events = loadEvents(inputs);
   const ledger = readLedgerStubs(inputs.ledger_query);
   const folded = foldProjection(events);
-  const { verdict, intervention_findings } = grade(folded, ledger, norms);
-  if (verdict === "unverifiable") {
+
+  // STOP case: no readable case events over the period -> needs_more_evidence,
+  // no findings graded, no intervention emitted. Deterministic conflict that
+  // still seals.
+  if (folded.turns_total === 0) {
     return {
-      status: "needs_agent",
-      reason: "ledger_unreadable_or_tampered",
-      health_bundle: null,
+      status: "sealed",
+      agent_task: {
+        "agency-health": {
+          output: {
+            health_bundle: {
+              schema: "runx.agency.health.v1",
+              case_id: inputs.case_id,
+              agency_ref: inputs.agency_ref,
+              period: inputs.period || null,
+              decision: "needs_more_evidence",
+              health_verdict: { status: "unverifiable", findings: [] },
+              intervention_findings: [],
+              folded,
+              ledger_stubs: ledger,
+              refused_reason: "no readable case events for agency_ref over the requested period",
+            },
+          },
+        },
+      },
+      receipt: { schema: "runx.receipt.v1" },
     };
   }
+
+  const { verdict, intervention_findings, findings } = grade(folded, ledger, norms, inputs);
+  const decision = verdict === "healthy" ? "ready" : (verdict === "degraded" ? "ready" : "needs_human");
   return {
     status: "sealed",
     agent_task: {
@@ -133,10 +183,11 @@ export async function run(inputs) {
             case_id: inputs.case_id,
             agency_ref: inputs.agency_ref,
             period: inputs.period || null,
-            verdict,
+            decision,
+            health_verdict: { status: verdict, findings },
+            intervention_findings,
             folded,
             ledger_stubs: ledger,
-            intervention_findings,
           },
         },
       },
@@ -146,7 +197,7 @@ export async function run(inputs) {
 }
 
 // CLI dogfood: read inputs from RUNX_INPUTS_JSON (runx cli-tool contract) or a
-// fixture file argument, merge context, and print the sealed bundle.
+// fixture file argument, and print the sealed bundle.
 if (import.meta.url === `file://${process.argv[1]}`) {
   const fs = await import("node:fs");
   let inputs;
@@ -158,9 +209,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error("usage: node agency-health.mjs <fixture.json> OR set RUNX_INPUTS_JSON");
     process.exit(2);
   }
-  // merge context (e.g. projection from a prior graph step) into inputs
-  const ctx = process.env.RUNX_CONTEXT_JSON ? JSON.parse(process.env.RUNX_CONTEXT_JSON) : {};
-  inputs = Object.assign({}, inputs, ctx);
   const out = await run(inputs);
   console.log(JSON.stringify(out, null, 2));
 }

@@ -1,46 +1,44 @@
 // load_case.mjs — read-only case-event loader for agency-health.
-// Reads the agency case event stream from the runx data.local JSON store
-// (same contract as data-store's local fixture adapter) and emits the events
-// array. This is a cli-tool shim because the data-store read_* runners are not
-// yet supported by the native publish harness; it performs no writes.
+// Resolves the data.local JSON store relative to THIS script so it works
+// regardless of the runx harness working directory. Performs no writes.
 //
 // Inputs (RUNX_INPUTS_JSON): data_source_ref, case_id, store_id, limit
 // Emits: { events: [...], aggregate_id, resource }
 
 import { readFileSync, existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-function resolveStorePath(inputs) {
-  // data.local default root: .runx/data/local-sources/<store_id>.json
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+export function resolveStorePath(inputs) {
   const storeId = inputs.store_id || "agency-health";
-  const cwd = process.env.RUNX_CWD || process.env.INIT_CWD || process.cwd();
   const candidates = [
-    join(cwd, ".runx", "data", "local-sources", `${storeId}.json`),
-    join(homedir(), ".runx", "data", "local-sources", `${storeId}.json`),
-    join(cwd, "skills", "agency-health", "tools", `${storeId}.json`),
+    join(HERE, `${storeId}.json`),
+    join(process.env.RUNX_CWD || process.cwd(), "skills", "agency-health", "tools", `${storeId}.json`),
+    join(HERE, "..", "..", "..", "skills", "agency-health", "tools", `${storeId}.json`),
   ];
   for (const c of candidates) if (existsSync(c)) return c;
   return null;
 }
 
-function main() {
-  const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+export function loadEvents(inputs) {
   const path = resolveStorePath(inputs);
-  if (!path) {
-    // No seeded store: return empty stream (read-only, never errors on miss).
-    console.log(JSON.stringify({ events: [], aggregate_id: inputs.case_id, resource: "agency_cases" }));
-    return;
-  }
+  if (!path) return [];
   const doc = JSON.parse(readFileSync(path, "utf8"));
   const aggregateId = inputs.case_id;
   const streams = doc.streams || doc.events || {};
-  // Exact aggregate match only — no wildcard fallback (so a missing/tampered
-  // case yields an empty stream, which the grader treats as policy_denied).
+  // Exact aggregate match only — a missing/tampered case yields an empty
+  // stream, which the grader treats as "no readable case events".
   const stream = streams[aggregateId] || [];
   const events = Array.isArray(stream) ? stream : (stream.events || []);
-  const limit = inputs.limit || 500;
-  console.log(JSON.stringify({ case_events: { events: events.slice(-limit), aggregate_id: aggregateId, resource: "agency_cases" } }));
+  return events.slice(-(inputs.limit || 500));
 }
 
-main();
+function main() {
+  const inputs = JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+  const events = loadEvents(inputs);
+  console.log(JSON.stringify({ events, aggregate_id: inputs.case_id, resource: "agency_cases" }));
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) main();
