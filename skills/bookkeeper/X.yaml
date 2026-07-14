@@ -86,7 +86,7 @@ harness:
       expect:
         status: sealed
         receipt:
-          schema: runx.bookkeeping.v1
+          schema: runx.receipt.v1
         contains:
           decision: ["ready", "needs_human"]
           reconciliation.matched: 4
