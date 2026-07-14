@@ -1,15 +1,32 @@
 {
   "runx_version": "runx-cli 0.7.0",
-  "command": "runx harness skills/csat-recovery --json; runx harness /tmp/csat-recovery-010/q10283245/csat-recovery/0.1.0 --json",
-  "status": "passed",
-  "case_count": 2,
-  "assertion_error_count": 0,
-  "case_names": ["csat-recovery-linked-charge-credit", "csat-recovery-unlinked-credit-needs-agent"],
-  "case_results": [
-    {"name": "csat-recovery-linked-charge-credit", "status": "sealed"},
-    {"name": "csat-recovery-unlinked-credit-needs-agent", "status": "needs_agent", "reason": "No linkable sealed original charge receipt was supplied, so the escalation sub-step has no caller answer and no ceiling is emitted."}
-  ],
-  "receipt_ids": ["sha256:82ee3601f46fea9d80619db7a80f2a9bebb614ea63d85cbfeaf146fe453fa248"],
-  "graph_case_count": 2,
-  "hosted_registry_package": "q10283245/csat-recovery@0.1.0"
+  "hosted_registry_package": "q10283245/csat-recovery@0.2.0",
+  "hosted_registry_digest": "sha256:fb068b53e4336bc1d23e45d80b61049a537853e9914e51499950e4a0a8f16926",
+  "hosted_registry_run": {
+    "source": "runx-registry",
+    "timestamp": "2026-07-14T04:42:33.347Z",
+    "status": "passed",
+    "case_count": 2,
+    "checks_passed": 2,
+    "checks_failed": 0,
+    "receipt_ids": ["sha256:92401bbc74a06fc0fa66dc6974ec9a7bafd72cfcb14832e77ab290b9d2258935"]
+  },
+  "production_signed_source_harness": {
+    "command": "runx harness skills/csat-recovery --receipt-dir /tmp/csat-recovery-harness-012-20260714-1250 --json",
+    "status": "passed",
+    "case_count": 2,
+    "assertion_error_count": 0,
+    "receipt_id": "sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
+    "signature_mode": "production",
+    "case_results": [
+      {"name": "csat-recovery-linked-charge-credit", "status": "sealed"},
+      {"name": "csat-recovery-unlinked-credit-needs-agent", "status": "needs_agent"}
+    ]
+  },
+  "durable_state_assertions": {
+    "seed_committed": {"aggregate_id": "customer-redacted-17", "before_version": 0, "after_version": 1},
+    "projection_before_decision": {"version": 1, "monthly_recovery_total_minor": 800},
+    "append_committed": {"expected_version": 1, "before_version": 1, "after_version": 2},
+    "projection_after_append": {"version": 2, "monthly_recovery_total_minor": 2000, "monthly_recovery_event_count": 2}
+  }
 }

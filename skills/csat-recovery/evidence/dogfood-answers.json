@@ -3,28 +3,39 @@
     "agent_task.csat-recovery.output": {
       "recovery_decision": {
         "chosen_play": "credit",
-        "reason": "The duplicate-charge detractor is grounded in a linked sealed charge; USD 12.00 is within both the USD 18.00 refundable balance and the USD 42.00 remaining monthly recovery balance.",
+        "reason": "The stored July projection reports 800 prior minor units; this linked 1200-unit credit stays within both the 1800 refundable balance and the 5000 monthly limit.",
         "credit_ceiling": {
           "amount_minor": 1200,
           "currency": "USD",
-          "counterparty": "customer-redacted-dogfood",
-          "original_receipt_ref": "runx:receipt:sha256:dogfood-original-charge",
+          "counterparty": "customer-redacted-17",
+          "original_receipt_ref": "runx:receipt:sha256:originalcharge",
           "scopes": ["credit:billing-error"]
         },
         "send_plan": {
           "principal": "support-operator",
-          "audience": "customer-redacted-dogfood",
+          "audience": "customer-redacted-17",
           "content_template_id": "csat-credit-apology-v1",
-          "content_digest": "sha256:dogfood-credit-apology-v1"
+          "content_digest": "sha256:credit-apology-redacted-v1"
         },
         "escalation": null
       },
-      "remaining_monthly_credit": 3000
+      "remaining_monthly_credit": 3000,
+      "state_event": {
+        "type": "csat_recovery.recorded",
+        "payload": {
+          "recovery_month": "2026-07",
+          "chosen_play": "credit",
+          "amount_minor": 1200,
+          "currency": "USD",
+          "original_receipt_ref": "runx:receipt:sha256:originalcharge",
+          "content_digest": "sha256:credit-apology-redacted-v1"
+        }
+      }
     },
     "agent_task.csat-recovery-escalation.output": {
       "escalation_decision": {
         "required": false,
-        "reason": "The customer, policy, charge link, refundable balance, currency, and requested scope are explicit and within bounds."
+        "reason": "All credit bounds are grounded and satisfied."
       }
     }
   }
