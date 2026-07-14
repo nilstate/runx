@@ -1,0 +1,158 @@
+skill: seo-gap-miner
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: grounded-content-gaps-sealed
+      inputs:
+        site_inventory:
+          pages:
+            - url: https://example.dev/docs/governance
+              topic: agent governance
+              coverage: Explains policy boundaries and approvals, but not how to verify receipts.
+            - url: https://example.dev/blog/receipts
+              topic: receipt verification
+              coverage: Mentions receipts briefly without an installable verification walkthrough.
+        demand_fixtures:
+          terms:
+            - term: ai agent governance checklist
+              demand_signal: Search Console shows 340 impressions and 19 clicks in the supplied 28-day export.
+              source: fixture:gsc-2026-06.csv#row-12
+            - term: verify ai agent receipts
+              demand_signal: Search Console shows 210 impressions and 4 clicks in the supplied 28-day export.
+              source: fixture:gsc-2026-06.csv#row-31
+            - term: best crypto casino
+              demand_signal: Search Console shows 900 impressions in the supplied 28-day export.
+              source: fixture:gsc-2026-06.csv#row-44
+        content_policy:
+          excluded_topics:
+            - gambling
+          priority_themes:
+            - agent governance
+            - receipt verification
+      caller:
+        answers:
+          agent_task.seo-gap-miner.output:
+            decision: ready
+            gap_findings:
+              - term: ai agent governance checklist
+                demand_grounding:
+                  signal: Search Console shows 340 impressions and 19 clicks in the supplied 28-day export.
+                  source: fixture:gsc-2026-06.csv#row-12
+                page_verdict:
+                  status: weak
+                  page_url: https://example.dev/docs/governance
+                  reason: The page explains governance concepts but has no actionable checklist.
+                priority:
+                  level: high
+                  reason: The term has a named demand signal, matches a priority theme, and maps to a specific weak page.
+                dispatch_target: draft-content
+              - term: verify ai agent receipts
+                demand_grounding:
+                  signal: Search Console shows 210 impressions and 4 clicks in the supplied 28-day export.
+                  source: fixture:gsc-2026-06.csv#row-31
+                page_verdict:
+                  status: weak
+                  page_url: https://example.dev/blog/receipts
+                  reason: The existing page mentions receipts but does not teach verification.
+                priority:
+                  level: medium
+                  reason: The term is grounded and policy-aligned, but its supplied demand signal is weaker than the top finding.
+                dispatch_target: draft-content
+            dropped_by_policy:
+              - term: best crypto casino
+                exclusion: gambling
+                source: fixture:gsc-2026-06.csv#row-44
+            stop_reason: null
+            review_act:
+              intent: Review supplied demand against the supplied site inventory and content policy.
+              form: review
+              closure: closed
+            evidence_summary:
+              harness_case: grounded-content-gaps-sealed
+              receipt_id: receipt:harness:seo-gap-miner:grounded-content-gaps-sealed
+              observations:
+                - Two policy-aligned demand terms map to named weak pages.
+                - One demand term is dropped because the content policy excludes gambling.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: thin-demand-needs-more-evidence
+      inputs:
+        site_inventory:
+          pages:
+            - url: https://example.dev/docs/receipts
+              topic: receipt verification
+              coverage: Full verification walkthrough.
+        demand_fixtures:
+          terms:
+            - term: agent audit templates
+              demand_signal: ""
+              source: ""
+        content_policy:
+          excluded_topics: []
+          priority_themes:
+            - agent governance
+      caller:
+        answers:
+          agent_task.seo-gap-miner.output:
+            decision: needs_more_evidence
+            gap_findings: []
+            dropped_by_policy: []
+            stop_reason: No supplied term has both a named demand signal and a source, so no priority order can be grounded.
+            review_act:
+              intent: Review supplied demand against the supplied site inventory and content policy.
+              form: review
+              closure: closed
+            evidence_summary:
+              harness_case: thin-demand-needs-more-evidence
+              receipt_id: receipt:harness:seo-gap-miner:thin-demand-needs-more-evidence
+              observations:
+                - The only demand term lacks both a signal and a source.
+                - No finding is emitted and no demand value is invented.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  mine:
+    default: true
+    type: agent-task
+    agent: researcher
+    task: seo-gap-miner
+    outputs:
+      decision: string
+      gap_findings: array
+      dropped_by_policy: array
+      stop_reason: string
+      review_act: object
+      evidence_summary: object
+    artifacts:
+      wrap_as: seo_gap_review_packet
+      packet: runx.seo_gap.review.v1
+    inputs:
+      site_inventory:
+        type: json
+        required: true
+        description: "pages[] with url, topic, and coverage. This is supplied evidence; the skill fetches no URLs."
+      demand_fixtures:
+        type: json
+        required: true
+        description: "terms[] with term, demand_signal, and source. Missing signals are never inferred."
+      content_policy:
+        type: json
+        required: true
+        description: "excluded_topics and priority_themes used to drop prohibited gaps and grade supported ones."
