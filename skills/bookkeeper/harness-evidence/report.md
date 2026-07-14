@@ -8,7 +8,7 @@ Prepared for Frantic bounty #89, claim `b74c07e5-b354-464a-a041-3f410c0718fa`.
 
 ## Public artifacts
 
-- `public_url`: https://runx.ai/x/wilber123451-design/bookkeeper
+- `public_url`: https://runx.ai/x/wilber123451-design/bookkeeper@sha-cf1d6144ae69
 - `pr_url`: https://github.com/runxhq/runx/pull/326
 - `source_url`: https://github.com/wilber123451-design/runx/tree/frantic-bookkeeper-0.1.0/skills/bookkeeper
 - `x_yaml`: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/X.yaml
