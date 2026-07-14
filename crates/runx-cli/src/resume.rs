@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -137,7 +136,7 @@ pub fn run_native_resume(plan: ResumePlan) -> ExitCode {
         registry: None,
         expected_digest: None,
         json: plan.json,
-        inputs: BTreeMap::new(),
+        inputs: pending.inputs.clone(),
         local_credential: None,
     };
     crate::skill::run_native_skill(skill_plan)

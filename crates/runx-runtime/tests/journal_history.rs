@@ -316,6 +316,7 @@ fn history_merges_paused_ledgers_and_checkpoints() -> Result<(), Box<dyn std::er
             started_at: Some("2026-04-28T00:30:00Z".to_owned()),
             resume_skill_ref: None,
             selected_runner: Some("agent-task".to_owned()),
+            inputs: Default::default(),
             step_ids: vec!["plan".to_owned()],
             step_labels: vec!["plan work".to_owned()],
         }],

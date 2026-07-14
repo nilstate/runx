@@ -296,6 +296,7 @@ fn write_paused_graph_checkpoint(input: PausedGraphCheckpoint<'_>) -> Result<(),
         started_at: Some(crate::time::now_iso8601()),
         resume_skill_ref: Some(input.request.skill_path.to_string_lossy().into_owned()),
         selected_runner: Some(input.runner.name.clone()),
+        inputs: input.request.inputs.clone().into_iter().collect(),
         step_ids: vec![input.request_id.to_owned()],
         step_labels: vec![input.request_id.to_owned()],
     };
