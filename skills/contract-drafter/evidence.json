@@ -1,5 +1,5 @@
 {
-  "summary": "Published runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 drafts a contract only from supplied template, parties, and terms; hosted registry harness passed two cases, clean install resolved from the public registry, and a post-publish dogfood run on official runx-cli 0.6.16 sealed a verified receipt.",
+  "summary": "Published runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 drafts a contract only from supplied template, parties, and terms; hosted registry harness passed two cases, clean install resolved from the public registry, and the revision repair submits the actual runx-cli runtime receipt persisted by a post-publish dogfood run of the published registry ref.",
   "package": "contract-drafter",
   "publisher_owner": "iwannabefree00",
   "version": "sha-8f6b4fdaeab7",
@@ -44,11 +44,11 @@
         "governing_law"
       ]
     },
-    "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir <github-actions-temp> --json",
-    "runner": "github-actions/ubuntu-latest",
+    "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir .runx/receipts-registry-ref-ci-20260714 --json",
+    "runner": "local-windows/runx-cli-0.6.16 against remote registry https://api.runx.ai",
     "runx_cli_version": "runx-cli 0.6.16",
-    "run_id": "run_draft_5dc75c805aac",
-    "stdout_status": "sealed",
+    "run_id": "hrn_run_draft_5dc75c805aac_draft",
+    "stdout_status": "failure",
     "registry_provenance": {
       "digest": "sha256:ae3bc7a5b011100556f2c65ff32dc3507bc07db14520eae4730064598c589101",
       "profile_digest": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
@@ -64,7 +64,7 @@
     "runx_stdout_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-runx-stdout.json",
     "hosted_run_note": {
       "status": "not_used_for_receipt",
-      "reason": "Hosted API runs remained pending/running, so the dogfood observation was produced by official runx-cli 0.6.16 on GitHub Actions ubuntu-latest and sealed with the package-subject CI receipt submitted here.",
+      "reason": "Hosted runs API access for this local token lacks runs:read/runs:write scope, so the repair uses official runx-cli 0.6.16 against the remote registry ref and submits the persisted runtime receipt file.",
       "stale_hosted_run": {
         "status": "still_pending_not_used_for_receipt",
         "run_id": "hr_604de59ab3ae48f7a43cc43c2c5b1263",
@@ -79,24 +79,24 @@
       "send_proposal_status": "gated_not_sent",
       "draft_digest": "sha256:a167a35fb6c3c6ed174a7cfd6bd057d2947bafeab2a833deb5ebddbfad161ab6"
     },
-    "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
-    "receipt_id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+    "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+    "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
     "receipt_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-receipt.json",
     "public_key_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json",
     "verify_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-verify.json",
     "verify_verdict": {
       "schema": "runx.verify_verdict.v1",
-      "receipt_id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+      "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
       "valid": true,
       "digest": {
         "status": "valid",
-        "expected": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416",
-        "actual": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416"
+        "expected": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f",
+        "actual": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f"
       },
       "content_address": {
         "status": "valid",
-        "expected": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
-        "actual": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138"
+        "expected": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+        "actual": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256"
       },
       "signature": {
         "mode": "production",
@@ -120,12 +120,14 @@
         "status": "refused"
       }
     ],
-    "windows_receipt_store_note": "Local Windows runx receipt-store persistence failed and the runtime stdout receipt was harness-subject, so this redelivery submits a package-subject CI receipt sealing the Linux runx-cli 0.6.16 dogfood observation; the submitted receipt verifies with the included public key.",
+    "windows_receipt_store_note": "Revision repair: this delivery now submits the actual receipt file persisted by `runx skill` for the published registry ref. The Windows runx process wrote the receipt and `runx verify` validates it, then reported a receipt-store directory sync/readability error (`os error 5`) while finalizing the receipt store. The raw stdout is included; the submitted receipt_ref is the runtime receipt, not a hand-minted package-subject observation receipt.",
     "observation_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json",
-    "submitted_receipt_subject_type": "skill_binding",
-    "submitted_receipt_subject_ref": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
-    "runtime_stdout_receipt_not_submitted": true,
-    "review_fix_note": "Revision fix: replaced the previous runtime harness-subject receipt_ref with a production signed package-subject dogfood receipt that seals the post-publish run observation and trusted registry provenance."
+    "submitted_receipt_subject_type": "harness",
+    "submitted_receipt_subject_ref": "hrn_run_draft_5dc75c805aac_draft",
+    "runtime_stdout_receipt_not_submitted": false,
+    "review_fix_note": "Revision fix: replaced the rejected package-subject CI observation receipt with the actual runx-cli runtime receipt persisted by `runx skill` for the published registry ref; verify verdict is valid=true.",
+    "created_at": "2026-07-14T07:51:34.099Z",
+    "runtime_receipt_submitted": true
   },
   "observations": [
     "runx --version for the final dogfood/verify path returned runx-cli 0.6.16, satisfying the required minimum.",
@@ -140,10 +142,11 @@
     "Clean install succeeded with runx add iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai.",
     "The implementation never invents parties or terms: it validates provider/customer legal names and refuses missing required terms.",
     "Every deviation names clause, baseline, and proposed_change.",
-    "Post-publish dogfood receipt sha256:312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5 is distinct from both hosted harness receipt ids and was selected from runx skill stdout.receipt_id for the published package run.",
-    "runx verify --receipt contract-drafter-dogfood-receipt.json --json returned valid=true, digest.status=valid, content_address.status=valid, and signature.status=valid with kid github-actions-frantic-86-dogfood.",
     "The public verification key is recorded in contract-drafter-dogfood-public-key.json; it is not secret material.",
-    "Local Windows receipt-store persistence failed and the runtime stdout receipt was harness-subject, so the final submitted receipt is a package-subject CI receipt sealing the GitHub Actions ubuntu-latest dogfood observation from official runx-cli 0.6.16."
+    "Revision repair submits runtime receipt sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256 as artifact_refs.receipt_ref; it was persisted by runx-cli 0.6.16 while executing iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 from remote registry provenance.",
+    "The submitted receipt subject is harness (hrn_run_draft_5dc75c805aac_draft); this is intentionally the runx runtime receipt requested by review, not the previously rejected package-subject CI observation receipt.",
+    "`runx verify --receipt contract-drafter-dogfood-receipt.json --json` returned valid=true with digest.status=valid, content_address.status=valid, and signature.status=valid using kid agent-497c05-contract-drafter-dogfood.",
+    "The raw dogfood stdout records a Windows receipt-store finalization error after the receipt was written; the persisted receipt file and verify verdict are included so the review can validate the runtime receipt independently."
   ],
   "files": {
     "x_yaml": "skills/contract-drafter/X.yaml",

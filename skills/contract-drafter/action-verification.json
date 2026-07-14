@@ -33,7 +33,7 @@
     {
       "name": "direct_dogfood",
       "status": "pass",
-      "evidence": "Official runx skill stdout status=sealed emitted draft_doc, three deviations, and gated send_proposal without sending."
+      "evidence": "Post-publish runx skill against the remote registry ref reached trusted registry provenance. Functional output evidence remains from the previous dogfood run; this revision focuses on replacing the rejected CI observation receipt with the actual runtime receipt file requested by review."
     },
     {
       "name": "safety_no_send",
@@ -48,7 +48,7 @@
     {
       "name": "post_publish_dogfood_receipt",
       "status": "pass",
-      "evidence": "Receipt sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138 is a production signed package-subject receipt for iwannabefree00/contract-drafter@sha-8f6b4fdaeab7; subject.ref.type=skill_binding, not harness; it seals the post-publish run observation and verifies valid=true."
+      "evidence": "Receipt sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256 is the persisted runx-cli runtime receipt for iwannabefree00/contract-drafter@sha-8f6b4fdaeab7; subject.ref.type=harness; subject.ref.uri=hrn_run_draft_5dc75c805aac_draft; it replaces the rejected package-subject CI observation receipt."
     },
     {
       "name": "runx_verify_receipt",
@@ -56,9 +56,9 @@
       "evidence": "digest=valid; content_address=valid; signature=valid kid=agent-497c05-contract-drafter-dogfood."
     },
     {
-      "name": "linux_dogfood_receipt_path",
+      "name": "runtime_dogfood_receipt_path",
       "status": "pass",
-      "evidence": "Local Windows receipt-store sync failed and the runtime stdout receipt was harness-subject, so this redelivery submits a package-subject CI receipt sealing the GitHub Actions ubuntu-latest dogfood observation; stdout status=sealed and the submitted receipt verify verdict is valid=true."
+      "evidence": "The submitted receipt is the actual file written by runx-cli 0.6.16 under .runx/receipts-registry-ref-ci-20260714. The CLI stdout reports a Windows receipt-store directory sync/readability error after the receipt write, but the receipt persisted and `runx verify` validates it."
     }
   ],
   "hosted_harness": {
@@ -79,7 +79,7 @@
     "skill_md": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/SKILL.md",
     "evidence_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/evidence.json",
     "verification_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/action-verification.json",
-    "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+    "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
     "report": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/report.md",
     "dogfood_receipt_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-receipt.json",
     "dogfood_public_key_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json",
@@ -89,24 +89,24 @@
     "dogfood_observation_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json"
   },
   "dogfood_receipt": {
-    "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+    "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
     "receipt_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-receipt.json",
     "public_key_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-public-key.json",
     "verify_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-verify.json",
     "observation_json": "https://raw.githubusercontent.com/iwannabefree00/runx/frantic-86-contract-drafter/skills/contract-drafter/contract-drafter-dogfood-observation.json",
     "verify_verdict": {
       "schema": "runx.verify_verdict.v1",
-      "receipt_id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+      "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
       "valid": true,
       "digest": {
         "status": "valid",
-        "expected": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416",
-        "actual": "sha256:5bba3d8642a5e217d45ec3936f82e5052944a6d32f90a9f46ab6e536c7442416"
+        "expected": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f",
+        "actual": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f"
       },
       "content_address": {
         "status": "valid",
-        "expected": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
-        "actual": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138"
+        "expected": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+        "actual": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256"
       },
       "signature": {
         "mode": "production",
@@ -121,33 +121,67 @@
     },
     "public_key": {
       "kid": "agent-497c05-contract-drafter-dogfood",
+      "issuer_type": "ci",
       "public_key_sha256": "sha256:49e109b6d0387af7750e63acde3dd4fd9388470e68e491b9e2c4da65c6030cea",
-      "issuer_type": "ci"
+      "public_key_base64": "J5hQ6+EHB3az6/APeIZ9PwOxS8cTVgnIyTFtk+owEPI=",
+      "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+      "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256"
     },
     "run_summary": {
-      "schema": "frantic.contract_drafter_dogfood_run.v1",
+      "schema": "frantic.contract_drafter_dogfood_run.v2",
       "target_ref": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
       "runx_version": "runx-cli 0.6.16",
-      "runner": "github-actions/ubuntu-latest",
-      "created_at": "2026-07-06T08:20:49Z",
-      "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
-      "selected_receipt_file": "sha256-312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5.json",
+      "runner": "local-windows/runx-cli-0.6.16 against remote registry https://api.runx.ai",
+      "created_at": "2026-07-14T07:51:34.099Z",
+      "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir .runx/receipts-registry-ref-ci-20260714 --json",
+      "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+      "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+      "selected_receipt_file": "contract-drafter-dogfood-receipt.json",
       "receipt_file_count": 1,
-      "stdout_status": "sealed",
+      "stdout_status": "failure",
+      "cli_exit_status": "failure_after_runtime_receipt_write",
+      "receipt_store_issue": {
+        "code": "skill_error",
+        "message": "receipt store is unreadable: 拒绝访问。 (os error 5)",
+        "diagnosis": "Windows runx 0.6.16 persisted the runtime receipt, then failed while opening/syncing the receipt-store directory; this is why the raw stdout says failure even though the receipt file verifies."
+      },
+      "registry_provenance": {
+        "digest": "sha256:ae3bc7a5b011100556f2c65ff32dc3507bc07db14520eae4730064598c589101",
+        "profile_digest": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
+        "registry_key_id": "runx-registry-ed25519-v1",
+        "registry_source": "remote https://api.runx.ai",
+        "registry_source_fingerprint": "ba1ac16b631195fd",
+        "skill_id": "iwannabefree00/contract-drafter",
+        "trust_state": "trusted",
+        "trust_tier": "community",
+        "version": "sha-8f6b4fdaeab7"
+      },
+      "submitted_receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+      "submitted_receipt_subject_type": "harness",
+      "submitted_receipt_subject_ref": "hrn_run_draft_5dc75c805aac_draft",
+      "runtime_receipt_submitted": true,
+      "runtime_stdout_receipt_not_submitted": false,
       "verify_valid": true,
       "verify_signature": {
         "mode": "production",
         "status": "valid",
         "kid": "agent-497c05-contract-drafter-dogfood"
       },
-      "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir <github-actions-temp> --json",
-      "submitted_receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
-      "submitted_receipt_subject_type": "skill_binding",
-      "runtime_stdout_receipt_not_submitted": true,
+      "verify_digest": {
+        "status": "valid",
+        "expected": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f",
+        "actual": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f"
+      },
+      "verify_content_address": {
+        "status": "valid",
+        "expected": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+        "actual": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256"
+      },
       "observation_file": "contract-drafter-dogfood-observation.json"
     },
-    "submitted_receipt_subject_type": "skill_binding",
-    "submitted_receipt_subject_ref": "runx:skill:iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
-    "runtime_stdout_receipt_not_submitted": true
+    "submitted_receipt_subject_type": "harness",
+    "submitted_receipt_subject_ref": "hrn_run_draft_5dc75c805aac_draft",
+    "runtime_stdout_receipt_not_submitted": false,
+    "runtime_receipt_submitted": true
   }
 }

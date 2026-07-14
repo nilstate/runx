@@ -1,23 +1,52 @@
 {
-  "schema": "frantic.contract_drafter_dogfood_run.v1",
+  "schema": "frantic.contract_drafter_dogfood_run.v2",
   "target_ref": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
   "runx_version": "runx-cli 0.6.16",
-  "runner": "github-actions/ubuntu-latest",
-  "created_at": "2026-07-06T08:20:49Z",
-  "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
+  "runner": "local-windows/runx-cli-0.6.16 against remote registry https://api.runx.ai",
+  "created_at": "2026-07-14T07:51:34.099Z",
+  "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir .runx/receipts-registry-ref-ci-20260714 --json",
+  "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+  "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
   "selected_receipt_file": "contract-drafter-dogfood-receipt.json",
-  "runtime_stdout_receipt_file": "sha256-312cc8fcd7ed0c822ac74e9dc76a77a8e4f87ea3b3e9f381c520c5e8529c92d5.json",
   "receipt_file_count": 1,
-  "stdout_status": "sealed",
+  "stdout_status": "failure",
+  "cli_exit_status": "failure_after_runtime_receipt_write",
+  "receipt_store_issue": {
+    "code": "skill_error",
+    "message": "receipt store is unreadable: 拒绝访问。 (os error 5)",
+    "diagnosis": "Windows runx 0.6.16 persisted the runtime receipt, then failed while opening/syncing the receipt-store directory; this is why the raw stdout says failure even though the receipt file verifies."
+  },
+  "registry_provenance": {
+    "digest": "sha256:ae3bc7a5b011100556f2c65ff32dc3507bc07db14520eae4730064598c589101",
+    "profile_digest": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "iwannabefree00/contract-drafter",
+    "trust_state": "trusted",
+    "trust_tier": "community",
+    "version": "sha-8f6b4fdaeab7"
+  },
+  "submitted_receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+  "submitted_receipt_subject_type": "harness",
+  "submitted_receipt_subject_ref": "hrn_run_draft_5dc75c805aac_draft",
+  "runtime_receipt_submitted": true,
+  "runtime_stdout_receipt_not_submitted": false,
   "verify_valid": true,
   "verify_signature": {
     "mode": "production",
     "status": "valid",
     "kid": "agent-497c05-contract-drafter-dogfood"
   },
-  "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir <github-actions-temp> --json",
-  "submitted_receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
-  "submitted_receipt_subject_type": "skill_binding",
-  "runtime_stdout_receipt_not_submitted": true,
+  "verify_digest": {
+    "status": "valid",
+    "expected": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f",
+    "actual": "sha256:6227fbb4c8ea44863ddf11296058e1449c93734797f01d79ed87da92ee7c9c6f"
+  },
+  "verify_content_address": {
+    "status": "valid",
+    "expected": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+    "actual": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256"
+  },
   "observation_file": "contract-drafter-dogfood-observation.json"
 }

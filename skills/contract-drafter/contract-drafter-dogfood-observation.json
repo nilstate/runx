@@ -1,15 +1,15 @@
 {
-  "schema": "frantic.contract_drafter_postpublish_observation.v2",
+  "schema": "frantic.contract_drafter_postpublish_observation.v3",
   "package": "iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
   "public_url": "https://runx.ai/x/iwannabefree00/contract-drafter@sha-8f6b4fdaeab7",
   "source_url": "https://github.com/iwannabefree00/runx/tree/frantic-86-contract-drafter/skills/contract-drafter",
-  "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir <github-actions-temp> --json",
-  "runner": "github-actions/ubuntu-latest",
+  "command": "runx skill iwannabefree00/contract-drafter@sha-8f6b4fdaeab7 --registry https://api.runx.ai --input-json template=<json> --input-json parties=<json> --input-json terms=<json> --receipt-dir .runx/receipts-registry-ref-ci-20260714 --json",
+  "runner": "local-windows/runx-cli-0.6.16 against remote registry https://api.runx.ai",
   "runx_version": "runx-cli 0.6.16",
-  "created_at": "2026-07-06T08:20:49Z",
-  "run_id": "run_draft_5dc75c805aac",
-  "stdout_status": "sealed",
-  "execution_exit_code": 0,
+  "created_at": "2026-07-14T07:51:34.099Z",
+  "run_id": "hrn_run_draft_5dc75c805aac_draft",
+  "stdout_status": "failure",
+  "execution_exit_code": 1,
   "registry_provenance": {
     "digest": "sha256:ae3bc7a5b011100556f2c65ff32dc3507bc07db14520eae4730064598c589101",
     "profile_digest": "sha256:2b73e41fc060d520eaa33f51ae7d48f6441d92f14e9be9a1d46d080cf3d5c598",
@@ -76,8 +76,21 @@
     }
   },
   "receipt_boundary": {
-    "submitted_receipt_is": "operator_ci_package_subject_receipt_for_this_postpublish_run",
-    "runtime_stdout_receipt_is_not_submitted": true,
-    "reason": "runx CLI stdout included a runtime harness-subject receipt; this observation excludes that runtime receipt and the submitted receipt seals the published package run output and trusted registry provenance."
-  }
+    "submitted_receipt_is": "runx_cli_runtime_receipt_persisted_by_postpublish_skill_run",
+    "runtime_stdout_receipt_not_submitted": false,
+    "prior_package_subject_ci_receipt_replaced": true,
+    "reason": "Human review rejected the prior package-subject CI receipt as not the run receipt. This revision submits the runx-cli persisted runtime receipt file for the published registry ref."
+  },
+  "runtime_receipt": {
+    "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+    "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+    "subject_type": "harness",
+    "subject_ref": "hrn_run_draft_5dc75c805aac_draft",
+    "issuer_kid": "agent-497c05-contract-drafter-dogfood",
+    "verify_valid": true,
+    "verify_signature_status": "valid",
+    "verify_content_address_status": "valid"
+  },
+  "receipt_store_note": "Revision repair: this delivery now submits the actual receipt file persisted by `runx skill` for the published registry ref. The Windows runx process wrote the receipt and `runx verify` validates it, then reported a receipt-store directory sync/readability error (`os error 5`) while finalizing the receipt store. The raw stdout is included; the submitted receipt_ref is the runtime receipt, not a hand-minted package-subject observation receipt.",
+  "skill_output_source_note": "The functional dogfood output assertions remain from the prior post-publish evidence; this revision specifically replaces the delivery receipt_ref with the runx-cli runtime receipt requested by review."
 }

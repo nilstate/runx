@@ -3,6 +3,6 @@
   "issuer_type": "ci",
   "public_key_sha256": "sha256:49e109b6d0387af7750e63acde3dd4fd9388470e68e491b9e2c4da65c6030cea",
   "public_key_base64": "J5hQ6+EHB3az6/APeIZ9PwOxS8cTVgnIyTFtk+owEPI=",
-  "receipt_id": "sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138",
-  "receipt_ref": "runx:receipt:sha256:409430701f145af1473f0a68d1f0c5255be3be557e774a7d96b23f4e1f4b8138"
+  "receipt_id": "sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256",
+  "receipt_ref": "runx:receipt:sha256:7dbd1986789598b8bb49fdd83c3fff2d9dfebc3bc91243aebbf3dc061013e256"
 }
