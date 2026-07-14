@@ -90,5 +90,6 @@
   "payment_readiness": {
     "ready_to_submit_to_frantic": true,
     "missing_before_submission": []
-  }
+  },
+  "summary": "Bookkeeper runx skill delivery for Frantic bounty #89: public registry listing, PR source, raw X.yaml/SKILL.md, evidence, verification, report, and a valid dogfood receipt are all provided for reviewer validation."
 }
