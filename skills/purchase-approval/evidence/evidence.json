@@ -1,6 +1,6 @@
 {
   "schema": "runx.skill_delivery.evidence.v1",
-  "summary": "Published purchase-approval@0.2.0 reads an authoritative cost-center budget projection, records an approved ceiling with compare-and-set, and consumes the same bounded authority through an embedded mock-charge receipt-before-forward graph. The hosted registry reran both harness cases successfully; a separately signed full dogfood run proved budget version 1 to 2, balance 2200 to 1720, mock verification, sealing, and modeled forwarding without moving money.",
+  "summary": "Published purchase-approval@0.2.0 reads an authoritative cost-center budget projection, records an approved ceiling with compare-and-set, and consumes the same bounded authority through an embedded mock-charge receipt-before-forward graph. The hosted registry reran both harness cases successfully; GitHub Actions then acquired the public owner/version reference and produced a verified full dogfood receipt proving budget version 1 to 2, balance 2200 to 1720, mock verification, sealing, and modeled forwarding without moving money.",
   "runx_version": "runx-cli 0.7.1",
   "publisher_owner": "q10283245",
   "package_name": "purchase-approval",
@@ -10,12 +10,12 @@
     "package": "sha256:68d7540b7bc3e141e75c6043f9025afce30dc5322b801dea4c20a2c94e25e6e0",
     "profile": "sha256:98b7724ee7b368a8e50162879a39446ace0a516401010810d3cdff33b92c611b"
   },
-  "source_revision": "purchase-approval-v0.2.0-evidence",
+  "source_revision": "purchase-approval-v0.2.0-registry-evidence",
   "public_url": "https://runx.ai/x/q10283245/purchase-approval@0.2.0",
   "pr_url": "https://github.com/runxhq/runx/pull/307",
-  "source_url": "https://github.com/q10283245/runx/tree/purchase-approval-v0.2.0-evidence/skills/purchase-approval",
-  "x_yaml": "https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/X.yaml",
-  "skill_md": "https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/SKILL.md",
+  "source_url": "https://github.com/q10283245/runx/tree/purchase-approval-v0.2.0-registry-evidence/skills/purchase-approval",
+  "x_yaml": "https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-registry-evidence/skills/purchase-approval/X.yaml",
+  "skill_md": "https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-registry-evidence/skills/purchase-approval/SKILL.md",
   "publish": {
     "status": "published",
     "method": "GitHub-authenticated Runx hosted registry",
@@ -39,21 +39,37 @@
       {"name": "purchase-approval-over-budget-blocks-charge", "expected_status": "needs_agent"}
     ]
   },
-  "signed_full_dogfood": {
-    "scope": "Post-publish full execution from the source profile; the hosted registry harness above independently binds the published package digests and reruns the same two cases.",
+  "dogfood": {
+    "package": "q10283245/purchase-approval@0.2.0",
+    "scope": "GitHub Actions acquired and executed the public owner/version reference directly from https://api.runx.ai after publish.",
     "runner": "purchase-approval-with-budget-fixture",
-    "run_id": "run_purchase-approval-with-budget-fixture_440d9d8019b4",
-    "receipt_ref": "runx:receipt:sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79",
+    "workflow_url": "https://github.com/q10283245/runx/actions/runs/29310978965",
+    "run_id": "run_purchase-approval-with-budget-fixture_95e7681d2a14",
+    "input": {
+      "data_source_ref": "tenant://purchase-approval/budgets",
+      "budget_period": "2026-07",
+      "cost_center": "engineering-platform-registry-dogfood",
+      "purchase_request": {"amount": 480, "currency": "USD", "vendor": "Acme Hosting", "purpose": "Annual staging infrastructure renewal"},
+      "procurement_policy": {"approved_vendors": ["Acme Hosting", "Example Office Supply"], "max_single_purchase": 1000, "requires_approval_above": 250},
+      "requested_scope": {"amount": 480, "currency": "USD", "counterparty": "Acme Hosting", "scopes": ["purchase:hosting"]},
+      "authoritative_budget_fixture": {"opened_budget": 2200, "version_before_purchase": 1}
+    },
+    "command": "runx skill q10283245/purchase-approval@0.2.0 purchase-approval-with-budget-fixture --registry https://api.runx.ai --skip-operator-context --receipt-dir $receipts --json [typed --input-json flags recorded in workflow]; runx resume run_purchase-approval-with-budget-fixture_95e7681d2a14 $RUNNER_TEMP/answers.json --receipt-dir $receipts --json; runx verify --receipt $receipt_file --json",
+    "receipt_ref": "runx:receipt:sha256:65deaf244813e08fa5071ecae3ad5fdbc22916782c2316cd12276edf4a12bcbc",
     "verify_verdict": "valid: true; digest valid; content address valid; production Ed25519 signature valid",
+    "harness_cases": [
+      {"name": "purchase-approval-budgeted-mock-charge", "status": "sealed"},
+      {"name": "purchase-approval-over-budget-blocks-charge", "status": "needs_agent", "expected": "refused before approval, append, or charge"}
+    ],
     "budget_projection": {
-      "cost_center": "engineering-platform-dogfood",
+      "cost_center": "engineering-platform-registry-dogfood",
       "currency": "USD",
       "before_version": 1,
       "after_version": 2,
       "opened_budget": 2200,
       "committed_spend": 480,
       "remaining_balance": 1720,
-      "event_ref": "budget_events:engineering-platform-dogfood:2"
+      "event_ref": "budget_events:engineering-platform-registry-dogfood:2"
     },
     "decision": {
       "approved": true,
@@ -82,11 +98,11 @@
     "Publisher q10283245 published exact package purchase-approval version 0.2.0 with package digest sha256:68d7540b7bc3e141e75c6043f9025afce30dc5322b801dea4c20a2c94e25e6e0 and profile digest sha256:98b7724ee7b368a8e50162879a39446ace0a516401010810d3cdff33b92c611b.",
     "The caller no longer supplies current_budget_balance; read_projection keyed by cost_center and budget_period is authoritative.",
     "The approved case read version 1 with 2200 USD remaining, emitted an exact 480 USD AttenuationRequest for Acme Hosting and purchase:hosting, and appended purchase.committed with expected_version 1.",
-    "The CAS append committed version 1 to 2 at budget_events:engineering-platform-dogfood:2; readback reported 480 committed and 1720 remaining.",
+    "The CAS append committed version 1 to 2 at budget_events:engineering-platform-registry-dogfood:2; readback reported 480 committed and 1720 remaining.",
     "Only after human confirmation and the CAS append did embedded mock-charge run price, challenge, verify, seal, and forward under the same parent payment authority.",
     "The mock rail verified the mock settlement family and sealed receipt:charge:mock:acme-hosting-2026-07; it contacted no provider and moved no money.",
     "The over-budget case requests 2800 USD against a 1500 USD cap and 1200 USD stored balance, stops at needs_agent, and never reaches budget append or charge.",
     "Runx hosted registry harness run runx-harness:q10283245/purchase-approval:0.2.0 independently reran both published-package cases and passed 2 of 2 with receipt sha256:cbe0ccceca1e767f24e7ec5e74acf28b4a970bdb09b417859a71d4f6574ba6bf.",
-    "Signed full dogfood receipt sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79 passed digest, content-address, and production Ed25519 signature verification."
+    "GitHub Actions run 29310978965 installed and invoked q10283245/purchase-approval@0.2.0 from the public registry, and its full dogfood receipt sha256:65deaf244813e08fa5071ecae3ad5fdbc22916782c2316cd12276edf4a12bcbc passed digest, content-address, and production Ed25519 signature verification."
   ]
 }

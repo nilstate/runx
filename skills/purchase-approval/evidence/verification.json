@@ -1,25 +1,27 @@
 {
   "schema": "runx.verify_verdict.v1",
-  "receipt_id": "sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79",
+  "receipt_id": "sha256:65deaf244813e08fa5071ecae3ad5fdbc22916782c2316cd12276edf4a12bcbc",
   "valid": true,
   "digest": {
     "status": "valid",
-    "expected": "sha256:2bdb90faa058e4d3206cc9b8764c03bf5577ab9b2df41297fe7acccd618b4b27",
-    "actual": "sha256:2bdb90faa058e4d3206cc9b8764c03bf5577ab9b2df41297fe7acccd618b4b27"
+    "expected": "sha256:3fd659688c191713fb1acd1fee89fa8d18e17d8b5449c5e922bbc0ad18ebb697",
+    "actual": "sha256:3fd659688c191713fb1acd1fee89fa8d18e17d8b5449c5e922bbc0ad18ebb697"
   },
   "content_address": {
     "status": "valid",
-    "expected": "sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79",
-    "actual": "sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79"
+    "expected": "sha256:65deaf244813e08fa5071ecae3ad5fdbc22916782c2316cd12276edf4a12bcbc",
+    "actual": "sha256:65deaf244813e08fa5071ecae3ad5fdbc22916782c2316cd12276edf4a12bcbc"
   },
   "signature": {
     "mode": "production",
     "status": "valid",
-    "kid": "purchase-approval-dogfood-020"
+    "kid": "purchase-approval-registry-dogfood-020",
+    "public_key_base64": "gQe/9WmM2EDUGjSNC5zwy5YENMy5oDCPa2fF0bnuzmk="
   },
   "lineage": {
     "status": "unverified",
     "message": "Single-receipt verification validates the root receipt; child references remain recorded in receipt.json."
   },
-  "findings": []
+  "findings": [],
+  "workflow_url": "https://github.com/q10283245/runx/actions/runs/29310978965"
 }

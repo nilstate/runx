@@ -1,27 +1,16 @@
 {
-  "runx_version": "runx-cli 0.7.1",
-  "local": {
-    "command": "runx harness skills/purchase-approval --json",
-    "status": "passed",
-    "case_count": 2,
-    "assertion_error_count": 0,
-    "receipt_id": "sha256:0bf8d3855e512ff4e44bcfb8ebf2d2a296e94ae4b389b0eeeadc3781a3d2ff94"
-  },
-  "hosted_registry": {
-    "url": "https://api.runx.ai/v1/skills/q10283245/purchase-approval%400.2.0/harness",
-    "status": "passed",
-    "source": "runx-registry",
-    "run_id": "runx-harness:q10283245/purchase-approval:0.2.0",
-    "package_version": "0.2.0",
-    "package_digest": "68d7540b7bc3e141e75c6043f9025afce30dc5322b801dea4c20a2c94e25e6e0",
-    "profile_digest": "98b7724ee7b368a8e50162879a39446ace0a516401010810d3cdff33b92c611b",
-    "case_count": 2,
-    "checks_passed": 2,
-    "checks_failed": 0,
-    "receipt_id": "sha256:cbe0ccceca1e767f24e7ec5e74acf28b4a970bdb09b417859a71d4f6574ba6bf"
-  },
-  "case_results": [
-    {"name": "purchase-approval-budgeted-mock-charge", "status": "sealed"},
-    {"name": "purchase-approval-over-budget-blocks-charge", "status": "needs_agent"}
-  ]
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "purchase-approval-budgeted-mock-charge",
+    "purchase-approval-over-budget-blocks-charge"
+  ],
+  "receipt_ids": [
+    "sha256:35bee58ba2641576dc72d155ed78c1b680bc5c40ba9c7b4eba4a9e36d37f3ceb"
+  ],
+  "graph_case_count": 2,
+  "source": "GitHub Actions clean install of q10283245/purchase-approval@0.2.0",
+  "workflow_url": "https://github.com/q10283245/runx/actions/runs/29310978965"
 }
