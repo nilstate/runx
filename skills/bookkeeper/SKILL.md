@@ -107,7 +107,7 @@ to invent a GL account that is not in the chart.
 ```yaml
 bookkeeping:
   schema: runx.bookkeeping.v1
-  decision: ready | needs_more_evidence | needs_human
+  decision: ready | needs_review | needs_more_evidence | needs_human
   categorized:
     - transaction_id: string
       account_code: string
@@ -165,7 +165,7 @@ bookkeeping:
   anomalies[], reconciliation, and observation counts.
 - Never reorder transactions; preserve the input `id` order in
   `categorized[]`.
-- Stop cleanly with `needs_more_evidence` or `needs_human`; never fake a
+- Stop cleanly with `needs_review`, `needs_more_evidence`, or `needs_human`; never fake a
   `ready` decision.
 
 ## Worked example

@@ -135,20 +135,39 @@ harness:
       expect:
         status: sealed
         contains:
-          decision: "needs_more_evidence"
+          decision: "needs_review"
           observations.categorized_count: 1
           observations.unmatched_count: 1
           observations.needs_review_count: 1
           reconciliation.unmatched: 1
           reconciliation.matched: 1
 
+    - name: missing-review-binding-needs-agent
+      runner: review-handoff
+      inputs: {}
+      expect:
+        status: needs_agent
+
 runners:
+  review-handoff:
+    type: agent-task
+    agent: operator
+    task: bookkeeper-review-handoff
+    outputs:
+      review_resolution: object
+    inputs:
+      review_case_ref:
+        type: string
+        required: true
+        description: "Reference to the ambiguous transaction batch requiring operator review."
+
   evaluate:
     default: true
     type: cli-tool
     command: node
     args:
       - run.mjs
+    input_mode: stdin
     outputs:
       decision: string
       categorized: array

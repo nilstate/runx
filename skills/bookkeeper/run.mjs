@@ -451,9 +451,9 @@ if (allRefusals.some((r) => r.when === "chart_missing_account")) {
   needsReviewCount > 0 &&
   needsReviewCount / transactions.length >= 0.5
 ) {
-  // majority of the batch needs human attention; route to review rather than
-  // a partial ready.
-  decision = "needs_more_evidence";
+  // A materially ambiguous batch is explicitly refused for bookkeeping and
+  // routed to review instead of being presented as partially ready.
+  decision = "needs_review";
 }
 
 const observations = {
