@@ -19,8 +19,10 @@ Inputs are `detractor_signal{score,reason,timestamp}`,
 `customer_context{id,ltv,timezone}`,
 `recovery_policy{monthly_credit_limit,plays,message_templates}`,
 `recovery_request{amount_minor,currency,counterparty,scopes}`, optional
-`prior_recovery_ref`, and `charge_receipt{original_receipt_ref,amount_minor,
-remaining_refundable_minor}` whenever credit is considered.
+`prior_recovery_ref`, `recovery_month`, `data_source_ref`, `store_id`, a stable
+`idempotency_key`, and `charge_receipt{original_receipt_ref,amount_minor,
+remaining_refundable_minor}` whenever credit is considered. The audit-only
+`prior_recovery_ref` never supplies the numeric monthly total.
 
 Output is `recovery_decision{chosen_play,reason,credit_ceiling,send_plan,
 escalation}` plus `remaining_monthly_credit`. `credit_ceiling` is present only
@@ -47,11 +49,20 @@ from the selected policy template and bounded customer context.
 
 ## Durable state seam
 
-A production binding composes `registry:runx/data-store@0.1.2` with a pinned
-`store_id`. Before judgment it calls `read_projection` keyed by customer id to
-obtain prior recoveries and the monthly total. After a confirmed decision, an
-ungated `append_event(idempotency_key, expected_version)` records the decision.
-The data-store binding is domain state; the audit ledger is referenced only by
+The graph composes the `registry:runx/data-store@0.1.2` operation contract and
+ships the `data.local` development adapter used by its public harness. Before
+judgment, `read-recovery-state` performs `read_projection` against
+`recovery_events`, keyed by `customer_context.id` and filtered by
+`recovery_month`. The projection exposes its stream `version` and the folded
+`monthly_recovery_total_minor`; the reviewer must deduct that stored total from
+the policy limit and must not infer a number from `prior_recovery_ref`.
+
+After the decision and explicit human confirmation, `append-recovery-event`
+performs an ungated CAS `append_event`: `expected_version` comes directly from
+the earlier projection, the caller supplies a stable `idempotency_key`, and the
+recorded event comes from the grounded decision packet. A final readback proves
+the aggregate version and folded monthly total. A conflict stops rather than
+overwriting a concurrent recovery. The audit ledger is referenced only by
 receipt id-stub and is never used as a customer-keyed state read.
 
 ## Downstream handoff

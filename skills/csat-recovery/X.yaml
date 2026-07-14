@@ -1,5 +1,5 @@
 skill: csat-recovery
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: graph
@@ -10,7 +10,23 @@ catalog:
 harness:
   cases:
     - name: csat-recovery-linked-charge-credit
+      runner: csat-recovery-with-prior-fixture
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://csat-recovery/customer-ledger":{"adapter":"data.local","resources":{"recovery_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
+        data_source_ref: tenant://csat-recovery/customer-ledger
+        store_id: csat-recovery-harness-linked-v011
+        recovery_month: "2026-07"
+        idempotency_key: csat-recovery:customer-redacted-17:2026-07:linked-charge-v1
+        prior_idempotency_key: csat-recovery:customer-redacted-17:2026-07:prior-v1
+        prior_recovery_event:
+          type: csat_recovery.recorded
+          payload:
+            recovery_month: "2026-07"
+            chosen_play: credit
+            amount_minor: 800
+            currency: USD
+            original_receipt_ref: runx:receipt:sha256:prior-recovery
         detractor_signal: {score: 1, reason: Duplicate charge, timestamp: "2026-07-13T00:00:00Z"}
         customer_context: {id: customer-redacted-17, ltv: 3200, timezone: Asia/Shanghai}
         recovery_policy:
@@ -19,17 +35,26 @@ harness:
           message_templates: {credit_apology: csat-credit-apology-v1}
         recovery_request: {amount_minor: 1200, currency: USD, counterparty: customer-redacted-17, scopes: [credit:billing-error]}
         charge_receipt: {original_receipt_ref: "runx:receipt:sha256:originalcharge", amount_minor: 2400, remaining_refundable_minor: 1800}
-        prior_recovery_ref: "projection:customer-redacted-17:monthly:800"
+        prior_recovery_ref: projection:customer-redacted-17:2026-07
       caller:
         answers:
           agent_task.csat-recovery.output:
             recovery_decision:
               chosen_play: credit
-              reason: Duplicate charge is grounded in a linked sealed charge and the request is within refundable and monthly bounds.
+              reason: The stored July projection reports 800 prior minor units; this linked 1200-unit credit stays within both the 1800 refundable balance and the 5000 monthly limit.
               credit_ceiling: {amount_minor: 1200, currency: USD, counterparty: customer-redacted-17, original_receipt_ref: "runx:receipt:sha256:originalcharge", scopes: [credit:billing-error]}
               send_plan: {principal: support-operator, audience: customer-redacted-17, content_template_id: csat-credit-apology-v1, content_digest: "sha256:credit-apology-redacted-v1"}
               escalation: null
             remaining_monthly_credit: 3000
+            state_event:
+              type: csat_recovery.recorded
+              payload:
+                recovery_month: "2026-07"
+                chosen_play: credit
+                amount_minor: 1200
+                currency: USD
+                original_receipt_ref: "runx:receipt:sha256:originalcharge"
+                content_digest: "sha256:credit-apology-redacted-v1"
           agent_task.csat-recovery-escalation.output:
             escalation_decision: {required: false, reason: All credit bounds are grounded and satisfied.}
         approvals:
@@ -39,7 +64,13 @@ harness:
         receipt: {schema: runx.receipt.v1}
 
     - name: csat-recovery-unlinked-credit-needs-agent
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://csat-recovery/customer-ledger":{"adapter":"data.local","resources":{"recovery_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
+        data_source_ref: tenant://csat-recovery/customer-ledger
+        store_id: csat-recovery-harness-unlinked-v011
+        recovery_month: "2026-07"
+        idempotency_key: csat-recovery:customer-redacted-22:2026-07:unlinked-v1
         detractor_signal: {score: 1, reason: Billing error, timestamp: "2026-07-13T00:00:00Z"}
         customer_context: {id: customer-redacted-22, ltv: 900, timezone: UTC}
         recovery_policy:
@@ -57,6 +88,7 @@ harness:
               send_plan: {principal: support-operator, audience: customer-redacted-22, content_template_id: csat-apology-v1, content_digest: "sha256:apology-redacted-v1"}
               escalation: {lane: human-approval, reason: Missing original charge receipt.}
             remaining_monthly_credit: 2000
+            state_event: null
       expect:
         status: needs_agent
 
@@ -65,21 +97,41 @@ runners:
     default: true
     type: graph
     inputs:
+      data_source_ref: {type: string, required: true, description: "Logical customer recovery event source."}
+      store_id: {type: string, required: false, description: "Pinned local fixture store id; production providers may ignore it."}
+      recovery_month: {type: string, required: true, description: "UTC accounting month in YYYY-MM form."}
+      idempotency_key: {type: string, required: true, description: "Stable retry key for the confirmed recovery decision."}
       detractor_signal: {type: object, required: true, description: "CSAT score, reason, and timestamp."}
       customer_context: {type: object, required: true, description: "Customer id, LTV, and timezone."}
       recovery_policy: {type: object, required: true, description: "Monthly credit limit, allowed plays, and message templates."}
       recovery_request: {type: object, required: true, description: "Requested amount_minor, currency, counterparty, and scopes."}
       charge_receipt: {type: object, required: false, description: "Linked sealed original charge; required for a credit play."}
-      prior_recovery_ref: {type: string, required: false, description: "Projection reference for prior monthly recoveries."}
+      prior_recovery_ref: {type: string, required: false, description: "Optional audit reference; the customer-keyed data projection remains authoritative."}
     graph:
       name: csat-recovery
       steps:
+        - id: read-recovery-state
+          tool: data.source
+          scopes: [runx:data:read]
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: recovery_events
+            aggregate_id: "$input.customer_context.id"
+            recovery_month: "$input.recovery_month"
         - id: evaluate-recovery
           run:
             type: agent-task
             agent: reviewer
             task: csat-recovery
-            outputs: {recovery_decision: object, remaining_monthly_credit: number}
+            outputs: {recovery_decision: object, remaining_monthly_credit: number, state_event: object}
+          instructions: >
+            Treat recovery_projection as authoritative durable state. Deduct its
+            monthly_recovery_total_minor from recovery_policy.monthly_credit_limit
+            before considering the new request. Never use prior_recovery_ref as a
+            numeric total. Emit state_event only for a grounded decision that can
+            be recorded after human confirmation.
           inputs:
             detractor_signal: "$input.detractor_signal"
             customer_context: "$input.customer_context"
@@ -87,6 +139,9 @@ runners:
             recovery_request: "$input.recovery_request"
             charge_receipt: "$input.charge_receipt"
             prior_recovery_ref: "$input.prior_recovery_ref"
+            recovery_month: "$input.recovery_month"
+          context:
+            recovery_projection: read-recovery-state.data_operation_result.data.projection
           artifacts: {wrap_as: recovery_packet, packet: runx.csat.recovery.v1}
         - id: escalation
           run:
@@ -97,13 +152,82 @@ runners:
           context:
             recovery_decision: evaluate-recovery.recovery_packet.data.recovery_decision
             remaining_monthly_credit: evaluate-recovery.recovery_packet.data.remaining_monthly_credit
+            recovery_projection: read-recovery-state.data_operation_result.data.projection
           artifacts: {wrap_as: escalation_packet}
         - id: human-review
           run: {type: approval}
           inputs:
             gate_id: csat-recovery.human-review
-            reason: Confirm the bounded recovery decision before any downstream credit or send driver consumes it.
+            reason: Confirm the bounded recovery decision before recording it or allowing downstream consumption.
           context:
             recovery_decision: evaluate-recovery.recovery_packet.data.recovery_decision
             escalation_decision: escalation.escalation_packet.data.escalation_decision
           artifacts: {wrap_as: approval_decision, packet: runx.approval.decision.v1}
+        - id: append-recovery-event
+          tool: data.source
+          scopes: [runx:data:append]
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: recovery_events
+            aggregate_id: "$input.customer_context.id"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            expected_version: read-recovery-state.data_operation_result.data.projection.version
+            event: evaluate-recovery.recovery_packet.data.state_event
+        - id: readback
+          tool: data.source
+          scopes: [runx:data:read]
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: recovery_events
+            aggregate_id: "$input.customer_context.id"
+            recovery_month: "$input.recovery_month"
+
+  csat-recovery-with-prior-fixture:
+    type: graph
+    inputs:
+      data_source_ref: {type: string, required: true}
+      store_id: {type: string, required: true}
+      recovery_month: {type: string, required: true}
+      idempotency_key: {type: string, required: true}
+      prior_idempotency_key: {type: string, required: true}
+      prior_recovery_event: {type: object, required: true}
+      detractor_signal: {type: object, required: true}
+      customer_context: {type: object, required: true}
+      recovery_policy: {type: object, required: true}
+      recovery_request: {type: object, required: true}
+      charge_receipt: {type: object, required: false}
+      prior_recovery_ref: {type: string, required: false}
+    graph:
+      name: csat-recovery-with-prior-fixture
+      steps:
+        - id: seed-prior-recovery
+          tool: data.source
+          scopes: [runx:data:append]
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: recovery_events
+            aggregate_id: "$input.customer_context.id"
+            expected_version: 0
+            idempotency_key: "$input.prior_idempotency_key"
+            event: "$input.prior_recovery_event"
+        - id: decide
+          skill: .
+          runner: csat-recovery
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            recovery_month: "$input.recovery_month"
+            idempotency_key: "$input.idempotency_key"
+            detractor_signal: "$input.detractor_signal"
+            customer_context: "$input.customer_context"
+            recovery_policy: "$input.recovery_policy"
+            recovery_request: "$input.recovery_request"
+            charge_receipt: "$input.charge_receipt"
+            prior_recovery_ref: "$input.prior_recovery_ref"
