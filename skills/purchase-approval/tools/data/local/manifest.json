@@ -1,0 +1,23 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "data.local",
+  "version": "0.1.0",
+  "description": "Local budget event-store adapter for purchase-approval dogfood and harness runs.",
+  "source": {"type": "cli-tool", "command": "node", "args": ["./run.mjs"]},
+  "inputs": {
+    "operation": {"type": "string", "required": true},
+    "data_source_ref": {"type": "string", "required": true},
+    "store_id": {"type": "string", "required": false},
+    "resource": {"type": "string", "required": true},
+    "aggregate_id": {"type": "string", "required": true},
+    "budget_period": {"type": "string", "required": false},
+    "expected_version": {"type": "number", "required": false},
+    "idempotency_key": {"type": "string", "required": false},
+    "event": {"type": "json", "required": false}
+  },
+  "scopes": ["runx:data:read", "runx:data:append"],
+  "runx": {"artifacts": {"named_emits": {"data_operation_result": "runx.data.operation_result.v1"}, "wrap_as": "data_operation_result"}},
+  "runtime": {"command": "node", "args": ["./run.mjs"]},
+  "output": {"packet": "runx.data.operation_result.v1", "wrap_as": "data_operation_result"},
+  "toolkit_version": "0.1.4"
+}

@@ -1,5 +1,5 @@
 skill: purchase-approval
-version: "0.1.0"
+version: "0.2.0"
 
 catalog:
   kind: graph
@@ -9,65 +9,84 @@ catalog:
 
 harness:
   cases:
-    - name: purchase-approval-in-policy-within-budget
+    - name: purchase-approval-budgeted-mock-charge
+      runner: purchase-approval-with-budget-fixture
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://purchase-approval/budgets":{"adapter":"data.local","resources":{"budget_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
-        purchase_request:
-          amount: 480
-          currency: USD
-          vendor: Acme Hosting
-          purpose: Annual staging infrastructure renewal
+        data_source_ref: "tenant://purchase-approval/budgets"
+        store_id: purchase-approval-budgeted-v020
+        budget_period: "2026-07"
+        cost_center: engineering-platform
+        budget_seed_idempotency_key: "budget:engineering-platform:2026-07:open"
+        budget_seed_event:
+          type: budget.opened
+          payload: {budget_period: "2026-07", currency: USD, amount: 2200}
+        idempotency_key: "purchase:engineering-platform:2026-07:acme-hosting"
+        purchase_request: {amount: 480, currency: USD, vendor: Acme Hosting, purpose: Annual staging infrastructure renewal}
         procurement_policy:
-          approved_vendors:
-            - Acme Hosting
-            - Example Office Supply
+          approved_vendors: [Acme Hosting, Example Office Supply]
           max_single_purchase: 1000
           requires_approval_above: 250
-        current_budget_balance: 2200
-        requested_scope:
-          amount: 480
-          currency: USD
-          counterparty: Acme Hosting
-          scopes:
-            - purchase:hosting
+        requested_scope: {amount: 480, currency: USD, counterparty: Acme Hosting, scopes: ["purchase:hosting"]}
+        mcp_tool_call: {tool: hosting.renew, arguments: {environment: staging}}
+        provider_policy: {price_minor: 480, currency: USD, accepted_settlement_families: [mock], counterparty: Acme Hosting}
+        returned_credential: {family: mock, credential_ref: "credential:mock:acme-hosting-2026-07"}
+        verify_capability_ref: "capability:charge-verify:acme-hosting-2026-07"
+        charge_idempotency_seed: acme-hosting-2026-07
       caller:
         answers:
           agent_task.purchase-approval.output:
-            decision:
-              approved: true
-              reason: Vendor is approved and the request is within the single-purchase cap, remaining budget, and requested scope.
-            attenuation_request:
-              amount: 480
-              currency: USD
-              counterparty: Acme Hosting
-              scopes:
-                - purchase:hosting
+            decision: {approved: true, reason: The approved vendor request is within the 1000 single-purchase cap, the stored 2200 remaining budget, and the exact requested scope.}
+            attenuation_request: {amount: 480, currency: USD, counterparty: Acme Hosting, scopes: ["purchase:hosting"]}
+            budget_event:
+              type: purchase.committed
+              payload: {budget_period: "2026-07", amount: 480, currency: USD, vendor: Acme Hosting, purpose: Annual staging infrastructure renewal}
             escalation: null
+          agent_task.charge-price.output:
+            charge_price: {price_id: charge_price_acme_2026_07, amount_minor: 480, currency: USD, settlement_families: [mock]}
+            requested_payment_authority: {authority_ref: "authority:payment:purchase-approval-acme-2026-07"}
+          agent_task.charge-challenge.output:
+            effect_required_signal: {signal_type: effect_required, challenge_id: charge_challenge_acme_2026_07}
+            charge_challenge: {challenge_id: charge_challenge_acme_2026_07, receipt_before_forward_required: true}
+            idempotency: {key: "charge:acme-hosting-2026-07"}
+            accepted_settlement_families: [mock]
+          agent_task.charge-verify.output:
+            verification_result: {status: verified, settlement_family: mock}
+            settlement_proof: {proof_ref: "receipt-proof:mock-charge:acme-hosting-2026-07", idempotency_key: "charge:acme-hosting-2026-07"}
+            sealed_receipt_ref: "receipt:charge:mock:acme-hosting-2026-07"
+            redactions: [credential_material]
+            recovery_hint: {status: sealed}
+          agent_task.seal.output: {sealed: true, receipt_ref: "receipt:charge:mock:acme-hosting-2026-07"}
+          agent_task.forward.output: {forwarded: true, result_ref: "result:hosting-renewal:staging"}
         approvals:
           purchase-approval.human-review: true
       expect:
         status: sealed
-        receipt:
-          schema: runx.receipt.v1
+        receipt: {schema: runx.receipt.v1}
 
-    - name: purchase-approval-over-budget-needs-human
+    - name: purchase-approval-over-budget-blocks-charge
+      runner: purchase-approval-with-budget-fixture
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://purchase-approval/budgets":{"adapter":"data.local","resources":{"budget_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
-        purchase_request:
-          amount: 2800
-          currency: USD
-          vendor: Acme Hosting
-          purpose: Unplanned production capacity expansion
-        procurement_policy:
-          approved_vendors:
-            - Acme Hosting
-          max_single_purchase: 1500
-          requires_approval_above: 500
-        current_budget_balance: 1200
-        requested_scope:
-          amount: 3000
-          currency: USD
-          counterparty: Acme Hosting
-          scopes:
-            - purchase:hosting
+        data_source_ref: "tenant://purchase-approval/budgets"
+        store_id: purchase-approval-denied-v020
+        budget_period: "2026-07"
+        cost_center: engineering-platform-denied
+        budget_seed_idempotency_key: "budget:engineering-platform-denied:2026-07:open"
+        budget_seed_event:
+          type: budget.opened
+          payload: {budget_period: "2026-07", currency: USD, amount: 1200}
+        idempotency_key: "purchase:engineering-platform-denied:2026-07:capacity"
+        purchase_request: {amount: 2800, currency: USD, vendor: Acme Hosting, purpose: Unplanned production capacity expansion}
+        procurement_policy: {approved_vendors: [Acme Hosting], max_single_purchase: 1500, requires_approval_above: 500}
+        requested_scope: {amount: 3000, currency: USD, counterparty: Acme Hosting, scopes: ["purchase:hosting"]}
+        mcp_tool_call: {tool: hosting.expand, arguments: {environment: production}}
+        provider_policy: {price_minor: 2800, currency: USD, accepted_settlement_families: [mock], counterparty: Acme Hosting}
+        returned_credential: {family: mock, credential_ref: "credential:mock:blocked"}
+        verify_capability_ref: "capability:charge-verify:blocked"
+        charge_idempotency_seed: blocked
       expect:
         status: needs_agent
 
@@ -76,53 +95,145 @@ runners:
     default: true
     type: graph
     inputs:
-      purchase_request:
-        type: object
-        required: true
-        description: "Requested purchase with amount, currency, vendor, and purpose."
-      procurement_policy:
-        type: object
-        required: true
-        description: "Typed policy with approved_vendors, max_single_purchase, and requires_approval_above."
-      current_budget_balance:
-        type: number
-        required: true
-        description: "Remaining budget in the purchase request currency."
-      requested_scope:
-        type: object
-        required: true
-        description: "Budget-bounded requested authority scope that the emitted AttenuationRequest must not exceed."
+      data_source_ref: {type: string, required: true, description: "Logical budget event source."}
+      store_id: {type: string, required: false, description: "Pinned local fixture store id; production providers may ignore it."}
+      budget_period: {type: string, required: true, description: "Accounting period in YYYY-MM form."}
+      cost_center: {type: string, required: true, description: "Customer-owned cost-center key for the budget projection."}
+      idempotency_key: {type: string, required: true, description: "Stable retry key for the approved budget commit."}
+      purchase_request: {type: object, required: true, description: "Requested purchase with amount, currency, vendor, and purpose."}
+      procurement_policy: {type: object, required: true, description: "Approved vendors, single-purchase cap, and approval threshold."}
+      requested_scope: {type: object, required: true, description: "Maximum authority that may be consumed by the charge rail."}
+      mcp_tool_call: {type: object, required: true, description: "Mock provider operation gated by the approved purchase."}
+      provider_policy: {type: object, required: true, description: "Mock provider price and settlement policy; price must equal the approved request."}
+      returned_credential: {type: object, required: true, description: "Non-secret mock credential reference."}
+      verify_capability_ref: {type: string, required: true, description: "Single-use mock verification capability reference."}
+      charge_idempotency_seed: {type: string, required: true, description: "Stable mock charge idempotency seed."}
     graph:
       name: purchase-approval
       steps:
+        - id: read-budget
+          tool: data.source
+          scopes: ["runx:data:read"]
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: budget_events
+            aggregate_id: "$input.cost_center"
+            budget_period: "$input.budget_period"
         - id: evaluate-purchase
           run:
             type: agent-task
             agent: reviewer
             task: purchase-approval
-            outputs:
-              decision: object
-              attenuation_request: object
-              escalation: object
-          scopes:
-            - runx:purchase:review
-          artifacts:
-            wrap_as: purchase_decision
+            outputs: {decision: object, attenuation_request: object, budget_event: object, escalation: object}
+          instructions: >
+            Treat budget_projection as authoritative. Never accept a caller-supplied
+            balance. Approve only when the request, policy, requested scope, stored
+            remaining budget, and mock provider price/counterparty/currency all agree.
+            Emit attenuation_request and budget_event only for an approved decision.
           inputs:
             purchase_request: "$input.purchase_request"
             procurement_policy: "$input.procurement_policy"
-            current_budget_balance: "$input.current_budget_balance"
             requested_scope: "$input.requested_scope"
+            provider_policy: "$input.provider_policy"
+            budget_period: "$input.budget_period"
+            cost_center: "$input.cost_center"
+          context:
+            budget_projection: read-budget.data_operation_result.data.projection
+          artifacts: {wrap_as: purchase_decision, packet: runx.purchase.approval.v1}
         - id: human-review
-          run:
-            type: approval
+          run: {type: approval}
           inputs:
             gate_id: purchase-approval.human-review
-            reason: Confirm the purchase decision before any downstream driver can consume an approved ceiling.
+            reason: Confirm the grounded purchase decision before budget commit or mock charge.
           context:
             decision: evaluate-purchase.purchase_decision.data.decision
             attenuation_request: evaluate-purchase.purchase_decision.data.attenuation_request
-            escalation: evaluate-purchase.purchase_decision.data.escalation
-          artifacts:
-            wrap_as: approval_decision
-            packet: runx.approval.decision.v1
+            budget_projection: read-budget.data_operation_result.data.projection
+          artifacts: {wrap_as: approval_decision, packet: runx.approval.decision.v1}
+        - id: append-budget-event
+          tool: data.source
+          scopes: ["runx:data:append"]
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: budget_events
+            aggregate_id: "$input.cost_center"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            expected_version: read-budget.data_operation_result.data.projection.version
+            event: evaluate-purchase.purchase_decision.data.budget_event
+        - id: charge
+          skill: ../mock-charge
+          runner: mock
+          inputs:
+            mcp_tool_call: "$input.mcp_tool_call"
+            provider_policy: "$input.provider_policy"
+            returned_credential: "$input.returned_credential"
+            verify_capability_ref: "$input.verify_capability_ref"
+            idempotency_seed: "$input.charge_idempotency_seed"
+          context:
+            parent_payment_authority: evaluate-purchase.purchase_decision.data.attenuation_request
+        - id: readback
+          tool: data.source
+          scopes: ["runx:data:read"]
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: budget_events
+            aggregate_id: "$input.cost_center"
+            budget_period: "$input.budget_period"
+
+  purchase-approval-with-budget-fixture:
+    type: graph
+    inputs:
+      data_source_ref: {type: string, required: true}
+      store_id: {type: string, required: true}
+      budget_period: {type: string, required: true}
+      cost_center: {type: string, required: true}
+      budget_seed_idempotency_key: {type: string, required: true}
+      budget_seed_event: {type: object, required: true}
+      idempotency_key: {type: string, required: true}
+      purchase_request: {type: object, required: true}
+      procurement_policy: {type: object, required: true}
+      requested_scope: {type: object, required: true}
+      mcp_tool_call: {type: object, required: true}
+      provider_policy: {type: object, required: true}
+      returned_credential: {type: object, required: true}
+      verify_capability_ref: {type: string, required: true}
+      charge_idempotency_seed: {type: string, required: true}
+    graph:
+      name: purchase-approval-with-budget-fixture
+      steps:
+        - id: seed-budget
+          tool: data.source
+          scopes: ["runx:data:append"]
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: budget_events
+            aggregate_id: "$input.cost_center"
+            expected_version: 0
+            idempotency_key: "$input.budget_seed_idempotency_key"
+            event: "$input.budget_seed_event"
+        - id: approve-and-charge
+          skill: .
+          runner: purchase-approval
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            budget_period: "$input.budget_period"
+            cost_center: "$input.cost_center"
+            idempotency_key: "$input.idempotency_key"
+            purchase_request: "$input.purchase_request"
+            procurement_policy: "$input.procurement_policy"
+            requested_scope: "$input.requested_scope"
+            mcp_tool_call: "$input.mcp_tool_call"
+            provider_policy: "$input.provider_policy"
+            returned_credential: "$input.returned_credential"
+            verify_capability_ref: "$input.verify_capability_ref"
+            charge_idempotency_seed: "$input.charge_idempotency_seed"
