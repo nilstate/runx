@@ -1,0 +1,26 @@
+{
+  "name": "ambiguous-batch",
+  "description": "Deterministic fixtures for the ambiguous batch needs-review case. Inputs include one transaction whose memo ('team plan upgrade') ties across SaaS Subscriptions and Contractor Fees on the keyword 'plan' (forced needs_review), and one transaction that matches cleanly to Hosting but whose payee is unknown (triggers unknown_payee anomaly).",
+  "transactions": [
+    {"id": "tx-101", "date": "2026-07-05", "amount": -200.00, "currency": "USD", "payee": "Vendor Co", "memo": "team plan upgrade"},
+    {"id": "tx-102", "date": "2026-07-06", "amount": -150.00, "currency": "USD", "payee": "BetaWeb LLC", "memo": "monthly hosting"}
+  ],
+  "chart_of_accounts": [
+    {"code": "1010", "name": "Checking", "type": "asset", "sub": "cash_equivalent", "keywords": ["deposit", "retainer"]},
+    {"code": "6010", "name": "Hosting", "type": "expense", "keywords": ["hosting", "compute"]},
+    {"code": "6020", "name": "SaaS Subscriptions", "type": "expense", "keywords": ["plan", "saas"]},
+    {"code": "6030", "name": "Contractor Fees", "type": "expense", "keywords": ["plan", "contractor"]}
+  ],
+  "period": {"since": "2026-07-05", "until": "2026-07-06"},
+  "expected": {
+    "decision": "needs_more_evidence",
+    "matched": 1,
+    "unmatched": 1,
+    "needs_review_count": 1,
+    "anomaly_kinds": ["unknown_payee"],
+    "categorization": {
+      "tx-101": {"account_code": null, "reason": "needs_review", "kind": "keyword_tie"},
+      "tx-102": {"account_code": "6010", "reason": "keyword_match", "kind": "unknown_payee_anomaly"}
+    }
+  }
+}

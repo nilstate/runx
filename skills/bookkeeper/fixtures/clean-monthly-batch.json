@@ -1,0 +1,33 @@
+{
+  "name": "clean-monthly-batch",
+  "description": "Deterministic fixtures for the clean monthly batch sealed case. Inputs are a representative July batch with one explicit-suggested host charge, one GitHub team plan, one Stripe contractor invoice routed by vendor memory, and one Customer Co retainer deposit. Outputs are reproducible across runs.",
+  "transactions": [
+    {"id": "tx-001", "date": "2026-07-01", "amount": -120.00, "currency": "USD", "payee": "AWS", "memo": "monthly hosting", "suggested_account": "6010"},
+    {"id": "tx-002", "date": "2026-07-02", "amount": -49.00, "currency": "USD", "payee": "GitHub", "memo": "team plan", "suggested_account": "6020"},
+    {"id": "tx-003", "date": "2026-07-03", "amount": -2500.00, "currency": "USD", "payee": "Stripe", "memo": "contractor invoice #1042"},
+    {"id": "tx-004", "date": "2026-07-04", "amount": 5000.00, "currency": "USD", "payee": "Customer Co", "memo": "july retainer", "suggested_account": "4010"}
+  ],
+  "chart_of_accounts": [
+    {"code": "1010", "name": "Checking", "type": "asset", "sub": "cash_equivalent", "keywords": ["deposit", "retainer", "wire"]},
+    {"code": "4010", "name": "Service Revenue", "type": "revenue", "keywords": ["retainer", "invoice paid", "subscription"]},
+    {"code": "6010", "name": "Hosting", "type": "expense", "keywords": ["hosting", "aws", "gcp", "azure", "compute"]},
+    {"code": "6020", "name": "SaaS Subscriptions", "type": "expense", "keywords": ["github", "gitlab", "saas", "subscription", "plan"]},
+    {"code": "6030", "name": "Contractor Fees", "type": "expense", "keywords": ["contractor", "freelance", "1099"]}
+  ],
+  "prior_period": {
+    "vendor_map": {"Stripe": "6030", "GitHub": "6020", "AWS": "6010", "Customer Co": "4010"},
+    "vendor_median_amount": {"Stripe": 2400.00, "GitHub": 49.00, "AWS": 120.00, "Customer Co": 5000.00},
+    "period": {"since": "2026-06-01", "until": "2026-06-30"},
+    "booked_fingerprints": ["github|2026-06-02|49.00", "aws|2026-06-01|120.00"],
+    "opening_balances": {"1010": 12000.00}
+  },
+  "period": {"since": "2026-07-01", "until": "2026-07-31"},
+  "expected": {
+    "decision": "ready",
+    "matched": 4,
+    "unmatched": 0,
+    "anomaly_count": 0,
+    "needs_review_count": 0,
+    "closing_balance": 12000.00
+  }
+}
