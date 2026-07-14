@@ -76,6 +76,7 @@ runners:
   evaluate:
     default: true
     type: cli-tool
+    input_mode: stdin
     command: node
     args:
       - run.mjs

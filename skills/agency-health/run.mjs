@@ -19,8 +19,28 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 function readInputs() {
+  // Precedence per runx runtime contract: RUNX_INPUTS_PATH (spill file written
+  // by the harness) → RUNX_INPUTS_JSON (serialized env) → stdin. Without this
+  // precedence, harness cases and `runx skill --input-json` invocations both
+  // arrive empty even when the runner successfully serializes the case inputs.
+  if (process.env.RUNX_INPUTS_PATH) {
+    try {
+      return JSON.parse(fs.readFileSync(process.env.RUNX_INPUTS_PATH, "utf8"));
+    } catch (err) {
+      fail("RUNX_INPUTS_PATH could not be parsed", { parse_error: String(err), path: process.env.RUNX_INPUTS_PATH });
+    }
+  }
+  if (process.env.RUNX_INPUTS_JSON) {
+    try {
+      return JSON.parse(process.env.RUNX_INPUTS_JSON);
+    } catch (err) {
+      fail("RUNX_INPUTS_JSON could not be parsed", { parse_error: String(err) });
+    }
+  }
   const raw = fs.readFileSync(0, "utf8").trim();
-  if (!raw) return {};
+  if (!raw) {
+    return {};
+  }
   try {
     return JSON.parse(raw);
   } catch (err) {
