@@ -1,0 +1,17 @@
+{
+  "schema": "runx.skill_overlay.upstream_provenance.v1",
+  "upstream_skill": "webapp-testing",
+  "repository": "https://github.com/anthropics/skills",
+  "path": "skills/webapp-testing/SKILL.md",
+  "pinned_commit": "9d2f1ae187231d8199c64b5b762e1bdf2244733d",
+  "immutable_url": "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/webapp-testing/SKILL.md",
+  "digest": "sha256:51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2",
+  "license": "Apache-2.0",
+  "license_url": "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/webapp-testing/LICENSE.txt",
+  "actively_maintained_evidence": {
+    "default_branch": "main",
+    "repository_pushed_at": "2026-07-13T22:31:37Z"
+  },
+  "wrapped_content_copied": false,
+  "digest_method": "sha256 over exact immutable_url response bytes"
+}
