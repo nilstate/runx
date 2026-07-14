@@ -127,6 +127,11 @@ harness:
           state: sealed
           disposition: closed
 
+    - name: missing-input-needs-agent
+      inputs: {}
+      expect:
+        status: needs_agent
+
 runners:
   mine:
     default: true
