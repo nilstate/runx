@@ -47,6 +47,30 @@
     "append": {"operation": "append_event", "expected_version": 1, "before_version": 1, "after_version": 2, "status": "committed"},
     "readback": {"operation": "read_projection", "version": 2, "monthly_recovery_total_minor": 2000, "monthly_recovery_event_count": 2}
   },
+  "dogfood": {
+    "package": "q10283245/csat-recovery@0.2.0",
+    "input": {
+      "detractor_signal": {"score": 1, "reason": "Duplicate charge", "timestamp": "2026-07-13T00:00:00Z"},
+      "customer_context": {"id": "customer-redacted-17", "ltv": 3200, "timezone": "Asia/Shanghai"},
+      "recovery_policy": {"monthly_credit_limit": 5000, "plays": ["apology", "credit", "escalate"]},
+      "recovery_request": {"amount_minor": 1200, "currency": "USD", "counterparty": "customer-redacted-17", "scopes": ["credit:billing-error"]},
+      "charge_receipt": {"original_receipt_ref": "runx:receipt:sha256:originalcharge", "amount_minor": 2400, "remaining_refundable_minor": 1800},
+      "seeded_prior_recovery_minor": 800
+    },
+    "published_harness": {
+      "source": "runx-registry",
+      "timestamp": "2026-07-14T04:42:33.347Z",
+      "status": "passed",
+      "receipt_ref": "runx:receipt:sha256:92401bbc74a06fc0fa66dc6974ec9a7bafd72cfcb14832e77ab290b9d2258935"
+    },
+    "source_harness_command": "runx harness skills/csat-recovery --receipt-dir /tmp/csat-recovery-harness-012-20260714-1250 --json",
+    "receipt_ref": "runx:receipt:sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
+    "verify_verdict": "valid: true; digest valid; content address valid; production Ed25519 signature valid",
+    "harness_cases": [
+      {"name": "csat-recovery-linked-charge-credit", "status": "sealed"},
+      {"name": "csat-recovery-unlinked-credit-needs-agent", "status": "refused", "runtime_status": "needs_agent"}
+    ]
+  },
   "adapter": {
     "kind": "data.local",
     "package_files": ["tools/data/local/manifest.json", "tools/data/local/run.mjs"],
@@ -55,10 +79,13 @@
     "cas_expected_version_source": "read-recovery-state.data_operation_result.data.projection.version"
   },
   "observations": [
+    "Exact CLI version: runx-cli 0.7.0.",
+    "Publisher q10283245 published csat-recovery version 0.2.0; the official registry harness passed 2/2 checks with receipt sha256:92401bbc74a06fc0fa66dc6974ec9a7bafd72cfcb14832e77ab290b9d2258935.",
     "The evaluator receives monthly_recovery_total_minor from read-recovery-state; prior_recovery_ref is audit-only and is not used as the monthly total.",
     "The append step executes after human review and has no conditional gate; it writes the emitted state_event with a stable idempotency key.",
     "The append compare-and-swap binds expected_version to the projection version returned by the real read.",
     "A readback step proves the aggregate id, version, and recomputed monthly total after append.",
+    "The public registry acquisition includes tools/data/local/manifest.json and tools/data/local/run.mjs, which implement the declared durable adapter rather than relying on an external assertion.",
     "The graph emits a bounded credit ceiling and naming-only send plan; it performs no refund, send, mint, reservation, or settlement."
   ]
 }
