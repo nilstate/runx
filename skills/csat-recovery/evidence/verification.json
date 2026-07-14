@@ -1,19 +1,26 @@
 {
   "schema": "runx.verify_verdict.v1",
-  "receipt_id": "sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
+  "receipt_id": "sha256:62107fb8d14e8e05b013c32fd1e8e54072ee49d8695067048b6b6a1b828981b3",
   "valid": true,
   "digest": {
     "status": "valid",
-    "expected": "sha256:7d42b6c12ee1c65e10e79c8818ae6e3fdc15e34c9fed6fd57d6f1200ad4317c2",
-    "actual": "sha256:7d42b6c12ee1c65e10e79c8818ae6e3fdc15e34c9fed6fd57d6f1200ad4317c2"
+    "expected": "sha256:3971414aabc54a4e32a1778fdf202a893422e928d0cf43397e297f602fa4bd8b",
+    "actual": "sha256:3971414aabc54a4e32a1778fdf202a893422e928d0cf43397e297f602fa4bd8b"
   },
   "content_address": {
     "status": "valid",
-    "expected": "sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
-    "actual": "sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946"
+    "expected": "sha256:62107fb8d14e8e05b013c32fd1e8e54072ee49d8695067048b6b6a1b828981b3",
+    "actual": "sha256:62107fb8d14e8e05b013c32fd1e8e54072ee49d8695067048b6b6a1b828981b3"
   },
-  "signature": {"mode": "production", "status": "valid", "kid": "renewal-goal-runx-signing"},
-  "lineage": {"status": "unverified", "message": "Single-receipt verification validates the root; child references remain in receipt.json."},
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "renewal-goal-runx-signing"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "Single-receipt verification validates the root; child references remain in receipt.json."
+  },
   "findings": [],
   "command": "Load the public verification key from macOS Keychain service renewal-goal-runx-signing-public, then run runx verify --receipt skills/csat-recovery/evidence/receipt.json --json."
 }

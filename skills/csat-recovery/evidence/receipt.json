@@ -1,7 +1,7 @@
 {
   "schema": "runx.receipt.v1",
-  "id": "sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
-  "created_at": "2026-07-14T04:42:55.755Z",
+  "id": "sha256:62107fb8d14e8e05b013c32fd1e8e54072ee49d8695067048b6b6a1b828981b3",
+  "created_at": "2026-07-14T05:08:03.013Z",
   "canonicalization": "runx.receipt.c14n.v1",
   "issuer": {
     "type": "hosted",
@@ -10,9 +10,9 @@
   },
   "signature": {
     "alg": "Ed25519",
-    "value": "base64:U_aGoyJg3Y6KR3ZTTq4yly5F7IO077QxlU8nU_mXmS-TSTmM2RbYUQTOhS9TCoQU5ZxYUhFBY5TE6CEcZ__lCA"
+    "value": "base64:0OMxdnmAYw2rp8ruLe9DYJ6QVHnRSaw22Ayk7w0j7V586LTBLTedBI85Zm4R2GLAI9vVnH1AX9p7ywRHJ2F1BA"
   },
-  "digest": "sha256:7d42b6c12ee1c65e10e79c8818ae6e3fdc15e34c9fed6fd57d6f1200ad4317c2",
+  "digest": "sha256:3971414aabc54a4e32a1778fdf202a893422e928d0cf43397e297f602fa4bd8b",
   "idempotency": {
     "intent_key": "sha256:csat-recovery-with-prior-fixture-graph-intent",
     "trigger_fingerprint": "sha256:csat-recovery-with-prior-fixture-graph-trigger",
@@ -20,15 +20,24 @@
   },
   "subject": {
     "kind": "graph",
-    "ref": {"type": "harness", "uri": "hrn_csat-recovery-with-prior-fixture_graph"},
+    "ref": {
+      "type": "harness",
+      "uri": "hrn_csat-recovery-with-prior-fixture_graph"
+    },
     "commitments": []
   },
   "authority": {
-    "actor_ref": {"type": "principal", "uri": "runx:principal:local_runtime"},
+    "actor_ref": {
+      "type": "principal",
+      "uri": "runx:principal:local_runtime"
+    },
     "grant_refs": [],
     "scope_refs": [],
     "authority_proof_refs": [],
-    "attenuation": {"parent_authority_ref": null, "subset_proof": null},
+    "attenuation": {
+      "parent_authority_ref": null,
+      "subset_proof": null
+    },
     "terms": [],
     "enforcement": {
       "profile_hash": "sha256:635fdb0a7eef93911e3c6bd0b25b5e635edba32e0259133042b3a5f1fb19394e",
@@ -44,14 +53,22 @@
     "disposition": "closed",
     "reason_code": "graph_closed",
     "summary": "graph csat-recovery-with-prior-fixture completed",
-    "closed_at": "2026-07-14T04:42:55.755Z",
-    "last_observed_at": "2026-07-14T04:42:55.755Z",
+    "closed_at": "2026-07-14T05:08:03.013Z",
+    "last_observed_at": "2026-07-14T05:08:03.013Z",
     "criteria": []
   },
   "lineage": {
     "children": [
-      {"type": "receipt", "uri": "runx:receipt:sha256:c899e54f8267b3de1bb01790b0b4c556a4a6f969d57c8859048b0516860e79f3", "locator": "sha256:31d0bb2dc2970fb3222706d00d3765c8bbbbf6001d633f847627be832e799a7d"},
-      {"type": "receipt", "uri": "runx:receipt:sha256:824edefd3dc181e4e9ac64a21caf0e0a451a302c1b1ebe0750e2afbe749b67a6", "locator": "sha256:d2b935faea1bb028e540b7726b049023e656ee080054d4af43ff365c3400338a"}
+      {
+        "type": "receipt",
+        "uri": "runx:receipt:sha256:b932ac2e199a2a2ce17629e0370e0dddc0b7c83ffc6c5dc1eac3bbf8fb479b62",
+        "locator": "sha256:a7172a31ece1a997ec69790586b9299eae73350b074ab293c72c984e654ee8e4"
+      },
+      {
+        "type": "receipt",
+        "uri": "runx:receipt:sha256:b21757531110d7839023f88e737fb3eb7f8d23b7fa6b06a424dd5e0a7ad330e8",
+        "locator": "sha256:d6a86bc901138f79cfc6b849475dd130d0ea17622777aa93b512eae4081e63b9"
+      }
     ],
     "sync": []
   }
