@@ -10,6 +10,7 @@ catalog:
 harness:
   cases:
     - name: critical-signal-rollback
+      runner: agent_review
       inputs:
         deploy_signal:
           severity: critical
@@ -38,7 +39,9 @@ harness:
       caller:
         answers:
           agent_task.rollback-judge.output:
+            act_decision: approve
             act_reason: action=rollback reason=error_rate_critical target=2026.07.12.2
+            act_target_ref: runx:release:checkout@2026.07.12.2
             decision:
               action: rollback
               reason: error_rate_critical
@@ -76,6 +79,7 @@ harness:
           schema: runx.receipt.v1
 
     - name: signal-contradictory-block
+      runner: agent_review
       inputs:
         deploy_signal:
           severity: critical
@@ -106,49 +110,15 @@ harness:
 runners:
   judge:
     default: true
-    type: agent-task
+    type: graph
     act:
       form: review
       purpose: Judge a supplied deploy signal and record a bounded rollback or escalation decision.
       legitimacy: Local operator supplied deploy evidence for review; release owns any downstream consequence.
+      reason_step: decide
       reason_from: act_reason
       decision_from: act_decision
       target_from: act_target_ref
-    agent: reviewer
-    task: rollback-judge
-    outputs:
-      act_reason: string
-      decision: object
-      escalation: object
-      release_publish_approval: object
-      review_record: object
-    artifacts:
-      wrap_as: rollback_decision_packet
-      packet: runx.rollback_judge.decision.v1
-    runx:
-      category: ops
-    instructions: >
-      Produce exactly one review decision from the supplied deploy_signal,
-      current_version, prior_version, and forward_fix_evidence. Do not deploy,
-      roll back, publish, call providers, mint authority, or create a universal
-      proposal envelope. If deploy_signal is critical/failing and prior_version
-      is supplied, return decision.action rollback, reason error_rate_critical
-      when the signal kind/evidence shows an error-rate critical incident, and
-      set decision.version_target from prior_version only. Also set act_reason
-      to a concise audit string that includes the decision action, reason, and
-      target version, for example "action=rollback reason=error_rate_critical
-      target=2026.07.12.2". Seed
-      release_publish_approval with gate_id release.publish.approval,
-      approved true, and the same reason; name release as the downstream skill
-      that owns the actual consequence. If the signal is contradictory, thin,
-      nonfailing, lacks evidence, lacks prior_version for rollback, or lacks
-      tested forward-fix evidence for roll-forward, return a hold decision with
-      escalation.required true, name the missing evidence, set
-      release_publish_approval.approved false, and do not invent targets,
-      tests, signoff, or authority. For a hold or escalation, set act_reason to
-      include hold plus the refusal reason. review_record.form must be review
-      and must cite the supplied signal severity/kind plus the evidence fields
-      used.
     inputs:
       deploy_signal:
         type: object
@@ -169,8 +139,102 @@ runners:
       act_decision:
         type: string
         required: false
-        description: "Trusted receipt decision binding for the review act; use approve for sealed rollback approval and defer/escalate for stop cases."
+        description: "Trusted receipt decision binding for the review act; use approve for sealed rollback approval and defer for hold cases."
       act_target_ref:
         type: string
         required: false
         description: "Trusted receipt target reference for the judged release target, for example runx:release:<service>@<version>."
+    graph:
+      name: rollback-judge
+      steps:
+        - id: decide
+          label: judge deploy signal
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - run.mjs
+            outputs:
+              act_decision: string
+              act_reason: string
+              act_target_ref: string
+              decision: object
+              escalation: object
+              release_publish_approval: object
+              review_record: object
+          inputs:
+            deploy_signal: "$input.deploy_signal"
+            current_version: "$input.current_version"
+            prior_version: "$input.prior_version"
+            forward_fix_evidence: "$input.forward_fix_evidence"
+            act_decision: "$input.act_decision"
+            act_target_ref: "$input.act_target_ref"
+          artifacts:
+            wrap_as: rollback_decision_packet
+            packet: runx.rollback_judge.decision.v1
+
+  agent_review:
+    type: agent-task
+    act:
+      form: review
+      purpose: Judge a supplied deploy signal and record a bounded rollback or escalation decision.
+      legitimacy: Local operator supplied deploy evidence for review; release owns any downstream consequence.
+      reason_from: act_reason
+      decision_from: act_decision
+      target_from: act_target_ref
+    agent: reviewer
+    task: rollback-judge
+    outputs:
+      act_decision: string
+      act_reason: string
+      act_target_ref: string
+      decision: object
+      escalation: object
+      release_publish_approval: object
+      review_record: object
+    artifacts:
+      wrap_as: rollback_decision_packet
+      packet: runx.rollback_judge.decision.v1
+    runx:
+      category: ops
+    instructions: >
+      Produce exactly one review decision from the supplied deploy_signal,
+      current_version, prior_version, and forward_fix_evidence. Do not deploy,
+      roll back, publish, call providers, mint authority, or create a universal
+      proposal envelope. If deploy_signal is critical/failing and prior_version
+      is supplied, return decision.action rollback, reason error_rate_critical
+      when the signal kind/evidence shows an error-rate critical incident, and
+      set decision.version_target from prior_version only. Also set
+      act_decision to approve, act_target_ref to the judged release target
+      reference in the form runx:release:<service>@<version>, and act_reason to
+      a concise audit string that includes the decision action, reason, and
+      target version, for example "action=rollback reason=error_rate_critical
+      target=2026.07.12.2". Seed
+      release_publish_approval with gate_id release.publish.approval,
+      approved true, and the same reason; name release as the downstream skill
+      that owns the actual consequence. If the signal is contradictory, thin,
+      nonfailing, lacks evidence, lacks prior_version for rollback, or lacks
+      tested forward-fix evidence for roll-forward, return a hold decision with
+      escalation.required true, name the missing evidence, set
+      release_publish_approval.approved false, and do not invent targets,
+      tests, signoff, or authority. For a hold or escalation, set act_reason to
+      include hold plus the refusal reason, set act_decision to defer, and
+      leave act_target_ref empty. review_record.form must be review and must
+      cite the supplied signal severity/kind plus the evidence fields used.
+    inputs:
+      deploy_signal:
+        type: object
+        required: true
+        description: "Deploy signal with severity, kind, and caller-supplied evidence."
+      current_version:
+        type: object
+        required: true
+        description: "Currently deployed version metadata."
+      prior_version:
+        type: object
+        required: false
+        description: "Caller-supplied rollback target candidate."
+      forward_fix_evidence:
+        type: object
+        required: false
+        description: "Caller-supplied roll-forward fix evidence with test_runs and review_signoff."

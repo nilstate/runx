@@ -7,9 +7,10 @@ runx:
 
 # Rollback Judge
 
-Rollback Judge is a thin review skill for deploy incidents. It reads a supplied
-deploy signal, current version, prior version, and any forward-fix evidence,
-then emits one decision packet for a downstream release lane.
+Rollback Judge is a thin review skill for deploy incidents. Its default runner
+reads a supplied deploy signal, current version, prior version, and any
+forward-fix evidence, then emits one decision packet for a downstream release
+lane in one sealed run.
 
 The skill does not deploy, roll back, publish, mint authority, or call provider
 APIs. Its only job is to record a review decision from caller-supplied evidence
@@ -25,8 +26,8 @@ existing `release.publish.approval` gate.
 3. **Check roll-forward eligibility.** A roll-forward decision requires complete
    `forward_fix_evidence.test_runs` and `forward_fix_evidence.review_signoff`.
 4. **Emit a review packet.** The packet contains `decision`, `escalation`,
-   `release_publish_approval`, `review_record`, and an `act_reason` audit
-   summary that names the decision action, reason, and target.
+   `release_publish_approval`, `review_record`, and receipt binding fields that
+   name the decision, reason, and judged target recorded on the sealed receipt.
 5. **Hand off by naming.** The packet names the downstream `release` skill and
    the `release.publish.approval` gate. The release graph owns the actual
    publish, rollback, or deployment consequence.
@@ -48,8 +49,9 @@ existing `release.publish.approval` gate.
 - **No minted authority.** Approval data is an agent answer for
   `release.publish.approval`; it is not a deployment credential or capability.
 - **Receipt bindings are explicit.** The review act records `act_reason` as the
-  sealed reason summary, `act_decision` as the trusted decision binding, and
-  `act_target_ref` as the judged release target reference.
+  sealed reason summary, `act_decision` as the decision binding, and
+  `act_target_ref` as the judged release target reference. The default runner is
+  one-pass so these trusted bindings are present when the receipt is sealed.
 
 ## Decision Rules
 
@@ -67,7 +69,9 @@ existing `release.publish.approval` gate.
 ## Output Schema
 
 ```yaml
+act_decision: approve | defer
 act_reason: string
+act_target_ref: string
 decision:
   action: rollback | roll_forward | hold
   reason: string
@@ -102,6 +106,6 @@ review_record:
 - `prior_version` (optional): supplied candidate rollback target.
 - `forward_fix_evidence` (optional): supplied fix, test, and review evidence.
 - `act_decision` (optional): trusted receipt decision binding, usually
-  `approve` for a sealed rollback approval.
+  `approve` for a sealed rollback approval and `defer` for holds.
 - `act_target_ref` (optional): trusted receipt target reference, for example
   `runx:release:checkout@2026.07.12.2`.

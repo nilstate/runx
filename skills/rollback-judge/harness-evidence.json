@@ -13,15 +13,15 @@
   ],
   "coverage": {
     "critical-signal-rollback": [
-      "critical deploy signal yields rollback decision packet",
+      "agent_review harness runner seals a critical rollback review case",
       "release_publish_approval seeds gate_id release.publish.approval with approved=true",
       "reason is error_rate_critical",
       "version_target is copied from supplied prior_version",
-      "receipt act is declared with form review"
+      "receipt act is declared with form review and target binding input"
     ],
     "signal-contradictory-block": [
       "contradictory/thin signal omits caller.answers",
-      "judgment pauses with needs_agent",
+      "agent_review judgment pauses with needs_agent",
       "no decision is sealed and no release approval is seeded"
     ]
   },
