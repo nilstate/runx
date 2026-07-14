@@ -1,6 +1,6 @@
 {
   "schema": "runx.revenue_leakage_auditor.verification.v1",
-  "verified_at": "2026-07-12T05:53:32Z",
+  "verified_at": "2026-07-14T04:47:10Z",
   "cli": {
     "version": "runx-cli 0.6.19",
     "meets_minimum": true,
@@ -14,25 +14,32 @@
     "profile_digest": "sha256:113c38a350799b496aaa0225fa742d08b38b8ac2a7e177749586187e7e4c77e1",
     "public_url": "https://runx.ai/x/dh0h/revenue-leakage-auditor@sha-8534d7161607"
   },
+  "receipt_signing": {
+    "issuer_type": "hosted",
+    "kid": "dh0h-frantic-receipt-2026-07-14-e88f2687",
+    "public_key_sha256": "sha256:c9a6c5bd0f8cc0f48497a1c67141e4ae6839887993466dbfe4058109913848e4",
+    "verify_public_key_base64": "UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4="
+  },
   "checks": [
     {
       "name": "local harness",
-      "command": "runx harness skills/revenue-leakage-auditor --receipt-dir /tmp/runx-revenue-leakage-local-receipts-v2 --json",
+      "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; PATH includes node runtime; runx harness skills/revenue-leakage-auditor --receipt-dir /tmp/runx-revenue-leakage-prod-signed-local-receipts-20260714 --json",
       "status": "passed",
       "case_count": 2,
       "case_names": [
         "revenue-leakage-auditor-underbilling-ceiling",
         "revenue-leakage-auditor-stop-needs-agent"
       ],
-      "sealed_receipt_id": "sha256:2680ac5201f0f76b2f72da6c51015e1d4c66e3033a10594df928797e46d4e6e1"
+      "sealed_receipt_id": "sha256:0d01bcb0b5f256f7ce1735fc3763323e82102da696df3cc7a6f774c7656bfc70"
     },
     {
       "name": "local receipt verify",
-      "command": "runx verify sha256:2680ac5201f0f76b2f72da6c51015e1d4c66e3033a10594df928797e46d4e6e1 --receipt-dir /tmp/runx-revenue-leakage-local-receipts-v2 --allow-local-development-signatures --json",
+      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify sha256:0d01bcb0b5f256f7ce1735fc3763323e82102da696df3cc7a6f774c7656bfc70 --receipt-dir /tmp/runx-revenue-leakage-prod-signed-local-receipts-20260714 --json",
       "status": "passed",
       "valid": true,
       "receipt_count": 4,
-      "signature_mode": "local-development"
+      "signature_mode": "production",
+      "findings": []
     },
     {
       "name": "hosted registry publish gate",
@@ -56,26 +63,27 @@
     },
     {
       "name": "published package dogfood start",
-      "command": "runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 --registry https://api.runx.ai ... --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json",
+      "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; RUNX_DATA_SOURCES configured for tenant://revenue-leakage/account-ledger; runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 audit --registry https://api.runx.ai --skip-operator-context -i data_source_ref=tenant://revenue-leakage/account-ledger -i store_id=revenue-leakage-prod-signed-dogfood-20260714 --input-json usage_records=<fixture.usage_records> --input-json billing_history=<fixture.billing_history> --input-json discount_policy=<fixture.discount_policy> --input-json charge_threshold_pct=<fixture.charge_threshold_pct> --input-json parent_adjustment_bounds=<fixture.parent_adjustment_bounds> --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
       "status": "needs_agent",
-      "run_id": "run_audit_c7fadde7d95f",
+      "run_id": "run_audit_393a2c1cf87d",
       "registry_trust_state": "trusted"
     },
     {
       "name": "published package dogfood resume",
-      "command": "runx resume run_audit_c7fadde7d95f skills/revenue-leakage-auditor/fixtures/leakage-answers.json --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json",
+      "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; RUNX_DATA_SOURCES configured for tenant://revenue-leakage/account-ledger; runx resume run_audit_393a2c1cf87d skills/revenue-leakage-auditor/fixtures/leakage-answers.json --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
       "status": "sealed",
-      "run_id": "run_audit_c7fadde7d95f",
-      "receipt_id": "sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
-      "receipt_ref": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09"
+      "run_id": "run_audit_393a2c1cf87d",
+      "receipt_id": "sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
+      "receipt_ref": "runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004"
     },
     {
       "name": "published receipt verify",
-      "command": "runx verify sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09 --receipt-dir /tmp/runx-revenue-leakage-published-receipts --allow-local-development-signatures --json",
+      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004 --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
       "status": "passed",
       "valid": true,
       "receipt_count": 4,
-      "signature_mode": "local-development"
+      "signature_mode": "production",
+      "findings": []
     }
   ]
 }

@@ -15,7 +15,7 @@
   "verification_json": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/artifacts/verification.json",
   "evidence_json": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/artifacts/evidence.json",
   "report": "https://raw.githubusercontent.com/dh0h/runx/codex/revenue-leakage-auditor-108/skills/revenue-leakage-auditor/artifacts/report.md",
-  "receipt_ref": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+  "receipt_ref": "runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
   "registry": {
     "url": "https://api.runx.ai",
     "skill_id": "dh0h/revenue-leakage-auditor",
@@ -28,8 +28,9 @@
   },
   "harness": {
     "local_status": "passed",
-    "local_receipt_id": "sha256:2680ac5201f0f76b2f72da6c51015e1d4c66e3033a10594df928797e46d4e6e1",
+    "local_receipt_id": "sha256:0d01bcb0b5f256f7ce1735fc3763323e82102da696df3cc7a6f774c7656bfc70",
     "local_receipt_verified": true,
+    "local_receipt_signature_mode": "production",
     "hosted_registry_status": "passed as the publish gate",
     "cases": [
       {
@@ -48,7 +49,7 @@
     "package": "dh0h/revenue-leakage-auditor@sha-8534d7161607",
     "input": {
       "data_source_ref": "tenant://revenue-leakage/account-ledger",
-      "store_id": "revenue-leakage-dogfood-v1",
+      "store_id": "revenue-leakage-prod-signed-dogfood-20260714",
       "usage_records": {
         "account_id": "account:atlas-team",
         "usage_amount": 15000,
@@ -94,13 +95,14 @@
         "expires_at": "2026-07-31T00:00:00Z"
       }
     },
-    "command": "runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 --registry https://api.runx.ai skills/revenue-leakage-auditor/fixtures/leakage-input.json --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json; runx resume run_audit_c7fadde7d95f skills/revenue-leakage-auditor/fixtures/leakage-answers.json --receipt-dir /tmp/runx-revenue-leakage-published-receipts --json",
-    "receipt_ref": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+    "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; RUNX_DATA_SOURCES configured for tenant://revenue-leakage/account-ledger; runx skill dh0h/revenue-leakage-auditor@sha-8534d7161607 audit --registry https://api.runx.ai --skip-operator-context -i data_source_ref=tenant://revenue-leakage/account-ledger -i store_id=revenue-leakage-prod-signed-dogfood-20260714 --input-json usage_records=<fixture.usage_records> --input-json billing_history=<fixture.billing_history> --input-json discount_policy=<fixture.discount_policy> --input-json charge_threshold_pct=<fixture.charge_threshold_pct> --input-json parent_adjustment_bounds=<fixture.parent_adjustment_bounds> --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json; runx resume run_audit_393a2c1cf87d skills/revenue-leakage-auditor/fixtures/leakage-answers.json --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
+    "receipt_ref": "runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
     "verify_verdict": {
+      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004 --receipt-dir /tmp/runx-revenue-leakage-prod-signed-receipts-20260714 --json",
       "status": "passed",
       "valid": true,
       "receipt_count": 4,
-      "signature_mode": "local-development",
+      "signature_mode": "production",
       "findings": []
     },
     "harness_cases": [
@@ -116,11 +118,17 @@
       }
     ],
     "status": "sealed",
-    "run_id": "run_audit_c7fadde7d95f",
-    "receipt_id": "sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
+    "run_id": "run_audit_393a2c1cf87d",
+    "receipt_id": "sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
     "receipt_verified": true,
+    "receipt_signing": {
+      "issuer_type": "hosted",
+      "kid": "dh0h-frantic-receipt-2026-07-14-e88f2687",
+      "public_key_sha256": "sha256:c9a6c5bd0f8cc0f48497a1c67141e4ae6839887993466dbfe4058109913848e4",
+      "verify_public_key_base64": "UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4="
+    },
     "registry_trust_state": "trusted",
-    "store_id": "revenue-leakage-dogfood-v1",
+    "store_id": "revenue-leakage-prod-signed-dogfood-20260714",
     "read_projection": {
       "operation": "read_projection",
       "aggregate_id": "account:atlas-team",
@@ -219,8 +227,8 @@
     },
     {
       "name": "dogfood_receipt",
-      "value": "runx:receipt:sha256:437ae4345b69ed944fa17450924987b6acf8706240498754c613517939f9ce09",
-      "evidence": "Published-package dogfood run sealed and receipt verification reported a valid 4-receipt tree with no findings."
+      "value": "runx:receipt:sha256:518ed4ae4d885165101b57d2185361b3263bd05fa59c058c5abc75c12797e004",
+      "evidence": "Published-package dogfood run sealed with hosted Ed25519 production signing; plain runx verify with the public verify key reported a valid 4-receipt tree with no findings."
     },
     {
       "name": "leakage_verdict",
