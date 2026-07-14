@@ -16,8 +16,16 @@
   "requirements_observed": {
     "runx_cli_version": "runx-cli 0.7.1",
     "package_name_exact": "bookkeeper",
-    "typed_inputs": ["transactions", "chart_of_accounts", "prior_period"],
-    "typed_outputs": ["categorized", "anomalies", "reconciliation"],
+    "typed_inputs": [
+      "transactions",
+      "chart_of_accounts",
+      "prior_period"
+    ],
+    "typed_outputs": [
+      "categorized",
+      "anomalies",
+      "reconciliation"
+    ],
     "sealed_clean_case": true,
     "refused_ambiguous_case": true,
     "read_only": true,
@@ -28,94 +36,31 @@
     "runx_cli_version: runx-cli 0.7.1",
     "publisher_owner: wilber123451-design",
     "package_name: bookkeeper",
-    "version: 0.1.0",
-    "registry_ref: wilber123451-design/bookkeeper@0.1.0",
-    "public_url: pending until runx registry publish succeeds",
-    "pr_url: pending until GitHub authorization allows a public PR against runxhq/runx",
-    "source_url: pending until public PR/source commit exists",
-    "raw_x_yaml: pending until public PR head commit exists",
-    "raw_skill_md: pending until public PR head commit exists",
-    "verification_json: harness-evidence/verification.json locally valid, public URL pending",
-    "evidence_json: this file is locally valid, public URL pending",
-    "publish_method: runx login --provider github --for publish; runx registry publish ./skills/bookkeeper/SKILL.md --registry https://api.runx.ai",
-    "install_command: runx add wilber123451-design/bookkeeper@0.1.0 after publish",
-    "harness_cases: bookkeeper-clean-batch-seals sealed; bookkeeper-ambiguous-needs-review-refusal refused as expected",
-    "hosted_harness_status: pending registry publish",
-    "dogfood_command: local prepublish dogfood used direct runner; post-publish runx skill command pending",
-    "receipt_ref: runx:receipt:sha256:8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7",
-    "runx_verify_verdict: valid for copied local-development receipts with --allow-local-development-signatures",
-    "new_user_flow: after publish, install with runx add, run with runx skill, then verify receipt with runx verify --receipt <receipt.json> --json"
+    "declared_version: 0.1.0",
+    "registry_ref: wilber123451-design/bookkeeper@sha-cf1d6144ae69",
+    "public_url: https://runx.ai/x/wilber123451-design/bookkeeper",
+    "pr_url: https://github.com/runxhq/runx/pull/326",
+    "source_url: https://github.com/wilber123451-design/runx/tree/frantic-bookkeeper-0.1.0/skills/bookkeeper",
+    "raw_x_yaml: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/X.yaml",
+    "raw_skill_md: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/SKILL.md",
+    "verification_json: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/harness-evidence/verification.json",
+    "evidence_json: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/harness-evidence/evidence.json",
+    "publish_method: POST https://api.runx.ai/v1/index with repo_url=https://github.com/wilber123451-design/frantic-bookkeeper-runx ref=main",
+    "install_command: runx add wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai",
+    "harness_cases: bookkeeper-clean-batch-seals sealed; bookkeeper-ambiguous-needs-review-refusal refused as expected in local evidence",
+    "dogfood_command: runx skill wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai --json with explicit transactions/chart/prior-period JSON",
+    "receipt_ref: runx:receipt:sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+    "runx_verify_verdict: valid",
+    "new_user_flow: install with runx add, run with runx skill, then verify receipt with runx verify --receipt <receipt.json> --json"
   ],
   "dogfood": {
-    "package": "wilber123451-design/bookkeeper@0.1.0",
-    "input": {
-      "transactions": [
-        {
-          "id": "tx-1001",
-          "date": "2026-07-01",
-          "description": "Stripe payout ACME SaaS invoice 1042",
-          "amount": 1250,
-          "currency": "USD",
-          "counterparty": "Stripe"
-        },
-        {
-          "id": "tx-1002",
-          "date": "2026-07-02",
-          "description": "AWS cloud hosting July",
-          "amount": -184.32,
-          "currency": "USD",
-          "counterparty": "Amazon Web Services"
-        },
-        {
-          "id": "tx-1003",
-          "date": "2026-07-03",
-          "description": "GitHub Actions minutes",
-          "amount": -42.1,
-          "currency": "USD",
-          "counterparty": "GitHub"
-        }
-      ],
-      "chart_of_accounts": [
-        {
-          "code": "4000",
-          "name": "Software revenue",
-          "type": "income",
-          "keywords": ["stripe", "invoice", "saas"]
-        },
-        {
-          "code": "6100",
-          "name": "Cloud hosting",
-          "type": "expense",
-          "keywords": ["aws", "hosting", "cloud"]
-        },
-        {
-          "code": "6200",
-          "name": "Developer tooling",
-          "type": "expense",
-          "keywords": ["github", "actions", "ci"]
-        }
-      ],
-      "prior_period": {
-        "currency": "USD",
-        "average_transaction_amount": 300,
-        "total_income": 5000,
-        "total_expense": 1100,
-        "known_counterparties": ["Stripe", "Amazon Web Services", "GitHub"]
-      }
-    },
-    "command": "RUNX_INPUT_TRANSACTIONS=<transactions-json> RUNX_INPUT_CHART_OF_ACCOUNTS=<chart-json> RUNX_INPUT_PRIOR_PERIOD=<prior-period-json> node ./skills/bookkeeper/run.mjs",
-    "receipt_ref": "runx:receipt:sha256:8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7",
+    "package": "wilber123451-design/bookkeeper@sha-cf1d6144ae69",
+    "command": "runx skill wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai --approve-operator-context <digest> --input-json transactions=<transactions-json> --input-json chart_of_accounts=<chart-json> --input-json prior_period=<prior-json> --json",
+    "receipt_ref": "runx:receipt:sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+    "receipt_id": "sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
     "verify_verdict": "valid",
-    "harness_cases": [
-      {
-        "name": "bookkeeper-clean-batch-seals",
-        "status": "sealed"
-      },
-      {
-        "name": "bookkeeper-ambiguous-needs-review-refusal",
-        "status": "refused"
-      }
-    ]
+    "action_run": "https://github.com/wilber123451-design/runx/actions/runs/29354530033",
+    "output_artifact": "skills/bookkeeper/harness-evidence/dogfood-run.json"
   },
   "local_evidence_files": {
     "harness": "harness-evidence/local-harness.json",
@@ -128,21 +73,22 @@
     "dogfood": "sha256:8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7"
   },
   "public_publication": {
-    "registry_package": "wilber123451-design/bookkeeper@0.1.0",
-    "registry_status": "not_published_yet",
-    "registry_blocker": "runx login --provider github --for publish requires GitHub OAuth/GitHub CLI authorization; no usable GitHub CLI session is present.",
-    "source_url": null,
-    "pr_url": null,
-    "x_yaml_raw_url": null,
-    "skill_md_raw_url": null
+    "registry_package": "wilber123451-design/bookkeeper@sha-cf1d6144ae69",
+    "registry_status": "indexed",
+    "registry_publish_method": "runx URL-as-publish /v1/index",
+    "registry_source_repo": "https://github.com/wilber123451-design/frantic-bookkeeper-runx",
+    "registry_source_sha": "cf1d6144ae698751bc27ea91b4cabf7744d7a1f7",
+    "public_url": "https://runx.ai/x/wilber123451-design/bookkeeper",
+    "source_url": "https://github.com/wilber123451-design/runx/tree/frantic-bookkeeper-0.1.0/skills/bookkeeper",
+    "pr_url": "https://github.com/runxhq/runx/pull/326",
+    "x_yaml_raw_url": "https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/X.yaml",
+    "skill_md_raw_url": "https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/SKILL.md",
+    "evidence_json_url": "https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/harness-evidence/evidence.json",
+    "verification_json_url": "https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/harness-evidence/verification.json",
+    "report_url": "https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/harness-evidence/report.md"
   },
   "payment_readiness": {
-    "ready_to_submit_to_frantic": false,
-    "missing_before_submission": [
-      "public PR against runxhq/runx",
-      "raw public X.yaml URL from PR head commit",
-      "raw public SKILL.md URL from PR head commit",
-      "published registry package readable via runx registry read"
-    ]
+    "ready_to_submit_to_frantic": true,
+    "missing_before_submission": []
   }
 }

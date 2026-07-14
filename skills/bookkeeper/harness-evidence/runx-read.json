@@ -1,0 +1,64 @@
+{
+  "status": "success",
+  "registry": {
+    "action": "read",
+    "source": "remote",
+    "ref": "wilber123451-design/bookkeeper",
+    "skill": {
+      "skill_id": "wilber123451-design/bookkeeper",
+      "owner": "wilber123451-design",
+      "name": "bookkeeper",
+      "description": "Categorize transaction batches into an existing chart of accounts and emit read-only reconciliation evidence without mutating a ledger.",
+      "category": "code",
+      "version": "sha-cf1d6144ae69",
+      "digest": "402f6b4673306d47ae7092cc4b79ac38c53f0bdbbe18097ed35b19a0ff5884fb",
+      "markdown": "---\nname: bookkeeper\ndescription: Categorize transaction batches into an existing chart of accounts and emit read-only reconciliation evidence without mutating a ledger.\nsource:\n  type: cli-tool\n  command: node\n  args:\n    - run.mjs\n  timeout_seconds: 30\n  sandbox:\n    profile: readonly\n    cwd_policy: skill-directory\ninputs:\n  transactions:\n    type: json\n    required: true\n    description: Array of transaction lines with id, date, description, amount, currency, and optional counterparty.\n  chart_of_accounts:\n    type: json\n    required: true\n    description: Array of existing GL accounts. Each account needs code, name, type, and optional keywords.\n  prior_period:\n    type: json\n    required: true\n    description: Prior-period summary used only for anomaly comparison, never for mutation.\nrunx:\n  category: finance-ops\n  input_resolution:\n    required:\n      - transactions\n      - chart_of_accounts\n      - prior_period\n---\n\n# bookkeeper\n\n`bookkeeper` turns messy transaction batches into a read-only accounting\nartifact. It assigns each transaction to an existing GL account from the\nprovided `chart_of_accounts`, reports anomalies, and reconciles matched and\nunmatched totals. It never books entries to a live ledger and it never creates a\nnew GL account.\n\nUse this skill when an operator has exported transactions and wants a governed\nfirst-pass categorization packet that a human bookkeeper can inspect. The runner\nis deterministic and local: it reads only the supplied JSON inputs, performs\nkeyword and account-code matching, and emits a JSON artifact with confidence and\nreason for every categorized line.\n\n## Inputs\n\n- `transactions`: array of transaction objects with `id`, `date`,\n  `description`, `amount`, `currency`, and optional `counterparty`.\n- `chart_of_accounts`: array of existing accounts with `code`, `name`, `type`,\n  and optional `keywords`.\n- `prior_period`: object with optional `currency`, `average_transaction_amount`,\n  `total_income`, `total_expense`, and `known_counterparties`.\n\n## Output\n\nThe runner emits:\n\n- `categorized[]`: one entry per matched transaction, including `transaction_id`,\n  `account_code`, `account_name`, `confidence`, and `reason`.\n- `anomalies[]`: suspicious, oversized, unsupported-currency, duplicate, or\n  needs-review observations.\n- `reconciliation`: `{matched, unmatched}` totals and line counts.\n\n## Stop Conditions\n\nReturn `needs_review` and refuse automatic categorization when any transaction\ncannot be bound to an existing account with enough confidence. The packet names\nthe ambiguous transaction IDs and the available account universe so a human can\ndecide without the skill inventing a GL account.\n",
+      "profile_digest": "06e342c209e14e957c15946a67cbd87f11573166bf88dd7e018744400b5f9eee",
+      "runner_names": [
+        "default"
+      ],
+      "source_type": "cli-tool",
+      "trust_tier": "community",
+      "required_scopes": [],
+      "tags": [],
+      "publisher": {
+        "kind": "publisher",
+        "id": "wilber123451-design",
+        "handle": "wilber123451-design"
+      },
+      "attestations": [
+        {
+          "kind": "publisher",
+          "id": "publisher:wilber123451-design",
+          "status": "declared",
+          "summary": "wilber123451-design",
+          "issued_at": "2026-07-14T17:34:25.535Z",
+          "metadata": {
+            "publisher_handle": "wilber123451-design",
+            "publisher_id": "wilber123451-design",
+            "publisher_kind": "publisher",
+            "trust_tier": "community"
+          }
+        },
+        {
+          "kind": "source",
+          "id": "github_source",
+          "status": "verified",
+          "summary": "github:wilber123451-design/frantic-bookkeeper-runx@cf1d6144ae698751bc27ea91b4cabf7744d7a1f7",
+          "source": "https://github.com/wilber123451-design/frantic-bookkeeper-runx",
+          "issued_at": "2026-07-14T17:34:25.535Z",
+          "metadata": {
+            "event": "push",
+            "profile_path": "skills/bookkeeper/X.yaml",
+            "ref": "main",
+            "repo": "wilber123451-design/frantic-bookkeeper-runx",
+            "sha": "cf1d6144ae698751bc27ea91b4cabf7744d7a1f7",
+            "skill_path": "skills/bookkeeper/SKILL.md"
+          }
+        }
+      ],
+      "install_command": "runx add wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai",
+      "run_command": "runx skill wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai"
+    }
+  }
+}

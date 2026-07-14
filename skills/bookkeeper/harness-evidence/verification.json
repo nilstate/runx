@@ -1,50 +1,25 @@
 {
-  "schema": "runx.bookkeeper.verification_summary.v1",
-  "package": {
-    "name": "bookkeeper",
-    "version": "0.1.0"
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:ae4df640e607b1f4ec0865c8244e0e59ef08b7759cfa7b7373a767bb05fb5ba2",
+    "actual": "sha256:ae4df640e607b1f4ec0865c8244e0e59ef08b7759cfa7b7373a767bb05fb5ba2"
   },
-  "observed_at": "2026-07-14T16:35:00Z",
-  "verifications": [
-    {
-      "receipt_id": "sha256:ece5d1a1a3f6b83cb9932ac1f2d377449edd30c12bc52735373be15ee29c8862",
-      "command": "npx -y @runxhq/cli@0.7.1 verify --receipt ./skills/bookkeeper/harness-evidence/receipts/sha256-ece5d1a1a3f6b83cb9932ac1f2d377449edd30c12bc52735373be15ee29c8862.json --allow-local-development-signatures --json",
-      "valid": true,
-      "digest_status": "valid",
-      "content_address_status": "valid",
-      "signature": {
-        "mode": "local-development",
-        "status": "valid",
-        "kid": "runtime-skeleton"
-      },
-      "findings": []
-    },
-    {
-      "receipt_id": "sha256:e0ce558222fe553d1897728a4e51c669925462c778184f034f435d0ca4ed32fb",
-      "command": "npx -y @runxhq/cli@0.7.1 verify --receipt ./skills/bookkeeper/harness-evidence/receipts/sha256-e0ce558222fe553d1897728a4e51c669925462c778184f034f435d0ca4ed32fb.json --allow-local-development-signatures --json",
-      "valid": true,
-      "digest_status": "valid",
-      "content_address_status": "valid",
-      "signature": {
-        "mode": "local-development",
-        "status": "valid",
-        "kid": "runtime-skeleton"
-      },
-      "findings": []
-    },
-    {
-      "receipt_id": "sha256:8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7",
-      "command": "npx -y @runxhq/cli@0.7.1 verify --receipt ./skills/bookkeeper/harness-evidence/receipts/sha256-8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7.json --allow-local-development-signatures --json",
-      "valid": true,
-      "digest_status": "valid",
-      "content_address_status": "valid",
-      "signature": {
-        "mode": "local-development",
-        "status": "valid",
-        "kid": "runtime-skeleton"
-      },
-      "findings": []
-    }
-  ],
-  "lineage_note": "Single receipt verification reports lineage as unverified, which is expected for standalone local receipt checks."
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+    "actual": "sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7"
+  },
+  "signature": {
+    "mode": "local-development",
+    "status": "valid",
+    "kid": "runtime-skeleton"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
 }
