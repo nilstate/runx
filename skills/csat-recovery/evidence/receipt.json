@@ -1,18 +1,18 @@
 {
   "schema": "runx.receipt.v1",
-  "id": "sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
-  "created_at": "2026-07-14T04:42:55.755Z",
+  "id": "sha256:f0a4569362b90145558d1af52ff14004c790c07071e6a71ea6fe871bc39aa4e5",
+  "created_at": "2026-07-14T05:09:35.168Z",
   "canonicalization": "runx.receipt.c14n.v1",
   "issuer": {
     "type": "hosted",
-    "kid": "renewal-goal-runx-signing",
-    "public_key_sha256": "sha256:ad3eaa60b26580a93c54bad83b41247d3091b75d2163ff3e1fe7ef5425a3ca2c"
+    "kid": "csat-recovery-v020-published-dogfood",
+    "public_key_sha256": "sha256:9b1a42fe8f91bf9c7b652120268592cd0fee9c82d383458e6805676943e55906"
   },
   "signature": {
     "alg": "Ed25519",
-    "value": "base64:U_aGoyJg3Y6KR3ZTTq4yly5F7IO077QxlU8nU_mXmS-TSTmM2RbYUQTOhS9TCoQU5ZxYUhFBY5TE6CEcZ__lCA"
+    "value": "base64:g0Z2_H8XNhu8fUJEEkV6m9TGqWnMSSkjpYF4yJHGLJqYEKJ5rpxW1o1TcvQNngXV1cu5aP5N9gqrkXkjTe2OAA"
   },
-  "digest": "sha256:7d42b6c12ee1c65e10e79c8818ae6e3fdc15e34c9fed6fd57d6f1200ad4317c2",
+  "digest": "sha256:4b1a9b56ce9c19580ad00266ba6ada185303b20b91e706f97c206e8ddd5d1d64",
   "idempotency": {
     "intent_key": "sha256:csat-recovery-with-prior-fixture-graph-intent",
     "trigger_fingerprint": "sha256:csat-recovery-with-prior-fixture-graph-trigger",
@@ -44,14 +44,14 @@
     "disposition": "closed",
     "reason_code": "graph_closed",
     "summary": "graph csat-recovery-with-prior-fixture completed",
-    "closed_at": "2026-07-14T04:42:55.755Z",
-    "last_observed_at": "2026-07-14T04:42:55.755Z",
+    "closed_at": "2026-07-14T05:09:35.168Z",
+    "last_observed_at": "2026-07-14T05:09:35.168Z",
     "criteria": []
   },
   "lineage": {
     "children": [
-      {"type": "receipt", "uri": "runx:receipt:sha256:c899e54f8267b3de1bb01790b0b4c556a4a6f969d57c8859048b0516860e79f3", "locator": "sha256:31d0bb2dc2970fb3222706d00d3765c8bbbbf6001d633f847627be832e799a7d"},
-      {"type": "receipt", "uri": "runx:receipt:sha256:824edefd3dc181e4e9ac64a21caf0e0a451a302c1b1ebe0750e2afbe749b67a6", "locator": "sha256:d2b935faea1bb028e540b7726b049023e656ee080054d4af43ff365c3400338a"}
+      {"type": "receipt", "uri": "runx:receipt:sha256:d7f159f09b2799d0d9bdcbcdd0b0a8c39b81fbb957a27d6ca5b466e6530ec26c", "locator": "sha256:146ceec301bc42c8016418213c0f230eff37b389ebf10cf6a59ef36c06e338ec"},
+      {"type": "receipt", "uri": "runx:receipt:sha256:32b363eeddba3973f45556e150a2f51d1fee49a7e23f79e7293c6e0620f452e6", "locator": "sha256:3c0dc4fa374eeea599375fa30c98e50d9566feec1c1c4e5ea0e36acf3b619163"}
     ],
     "sync": []
   }

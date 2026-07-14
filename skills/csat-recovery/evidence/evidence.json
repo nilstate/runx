@@ -1,7 +1,7 @@
 {
   "schema": "runx.skill_delivery.evidence.v1",
-  "summary": "Published csat-recovery@0.2.0 now uses a real customer-keyed durable projection, an ungated compare-and-swap append, and a post-append readback. The official hosted registry harness passed both cases, while an independently production-signed source harness proved the prior 800-unit monthly aggregate advanced from version 1 to version 2 and read back as 2000 units.",
-  "runx_version": "runx-cli 0.7.0",
+  "summary": "The exact published owner reference q10283245/csat-recovery@0.2.0 was acquired from the remote RunX registry and executed on GitHub Actions with RunX 0.7.1. Its customer-keyed durable projection read 800 units at version 1, the approved compare-and-swap append advanced version 1 to 2, and the post-append readback recomputed 2000 units at version 2. The resulting production Ed25519 receipt verifies successfully.",
+  "runx_version": "runx-cli 0.7.1",
   "publisher_owner": "q10283245",
   "package_name": "csat-recovery",
   "version": "0.2.0",
@@ -11,12 +11,11 @@
     "package": "sha256:09e79e866a2438f7f12e839b90355505938b422380bff1d52a6a259ce95c440e",
     "profile": "sha256:9b85a7ff6d99b7e5acc6ec955605faab56a00766af19a01d2fcdae15f864e03e"
   },
-  "source_revision": "6c5be505906d601fe741a5e3164dc3b2c226c2ae",
+  "implementation_revision": "6c5be505906d601fe741a5e3164dc3b2c226c2ae",
+  "artifact_binding": "All submitted artifact URLs are pinned to one delivery commit; the implementation revision is retained separately for provenance.",
   "public_url": "https://runx.ai/x/q10283245/csat-recovery@0.2.0",
   "pr_url": "https://github.com/runxhq/runx/pull/308",
-  "source_url": "https://github.com/q10283245/runx/tree/6c5be505906d601fe741a5e3164dc3b2c226c2ae/skills/csat-recovery",
-  "x_yaml": "https://raw.githubusercontent.com/q10283245/runx/6c5be505906d601fe741a5e3164dc3b2c226c2ae/skills/csat-recovery/X.yaml",
-  "skill_md": "https://raw.githubusercontent.com/q10283245/runx/6c5be505906d601fe741a5e3164dc3b2c226c2ae/skills/csat-recovery/SKILL.md",
+  "source_url": "https://github.com/runxhq/runx/pull/308/files",
   "publish": {
     "method": "GitHub-authenticated Runx hosted registry",
     "install_command": "runx add q10283245/csat-recovery@0.2.0 --registry https://api.runx.ai --digest fb068b53e4336bc1d23e45d80b61049a537853e9914e51499950e4a0a8f16926"
@@ -34,15 +33,24 @@
       {"name": "csat-recovery-unlinked-credit-needs-agent", "status": "needs_agent"}
     ]
   },
-  "durable_state_proof": {
-    "production_receipt_ref": "runx:receipt:sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
+  "published_owner_ref_run": {
+    "command": "runx skill q10283245/csat-recovery@0.2.0 csat-recovery-with-prior-fixture --registry https://api.runx.ai [bounded inputs] --skip-operator-context --receipt-dir dogfood-artifact/receipts --json",
+    "ci_run": "https://github.com/q10283245/runx/actions/runs/29307786898",
+    "registry_source": "remote https://api.runx.ai",
+    "registry_trust_state": "trusted",
+    "registry_trust_tier": "community",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "status": "sealed",
+    "run_id": "run_csat-recovery-with-prior-fixture_93b6da3026b8",
+    "production_receipt_ref": "runx:receipt:sha256:f0a4569362b90145558d1af52ff14004c790c07071e6a71ea6fe871bc39aa4e5",
     "verify_verdict": "valid: true; digest valid; content address valid; production Ed25519 signature valid",
     "data_source_ref": "tenant://csat-recovery/customer-ledger",
     "resource": "recovery_events",
-    "aggregate_id": "customer-redacted-17",
+    "aggregate_id": "customer-redacted-published",
     "recovery_month": "2026-07",
     "seed": {"operation": "append_event", "before_version": 0, "after_version": 1, "amount_minor": 800},
     "pre_decision_projection": {"operation": "read_projection", "version": 1, "monthly_recovery_total_minor": 800},
+    "human_gate": {"gate_id": "csat-recovery.human-review", "approved": true, "status": "approved"},
     "decision": {"chosen_play": "credit", "new_amount_minor": 1200, "remaining_monthly_credit": 3000},
     "append": {"operation": "append_event", "expected_version": 1, "before_version": 1, "after_version": 2, "status": "committed"},
     "readback": {"operation": "read_projection", "version": 2, "monthly_recovery_total_minor": 2000, "monthly_recovery_event_count": 2}
@@ -51,10 +59,10 @@
     "package": "q10283245/csat-recovery@0.2.0",
     "input": {
       "detractor_signal": {"score": 1, "reason": "Duplicate charge", "timestamp": "2026-07-13T00:00:00Z"},
-      "customer_context": {"id": "customer-redacted-17", "ltv": 3200, "timezone": "Asia/Shanghai"},
+      "customer_context": {"id": "customer-redacted-published", "ltv": 3200, "timezone": "UTC"},
       "recovery_policy": {"monthly_credit_limit": 5000, "plays": ["apology", "credit", "escalate"]},
-      "recovery_request": {"amount_minor": 1200, "currency": "USD", "counterparty": "customer-redacted-17", "scopes": ["credit:billing-error"]},
-      "charge_receipt": {"original_receipt_ref": "runx:receipt:sha256:originalcharge", "amount_minor": 2400, "remaining_refundable_minor": 1800},
+      "recovery_request": {"amount_minor": 1200, "currency": "USD", "counterparty": "customer-redacted-published", "scopes": ["credit:billing-error"]},
+      "charge_receipt": {"original_receipt_ref": "runx:receipt:sha256:published-original-charge", "amount_minor": 2400, "remaining_refundable_minor": 1800},
       "seeded_prior_recovery_minor": 800
     },
     "published_harness": {
@@ -63,13 +71,11 @@
       "status": "passed",
       "receipt_ref": "runx:receipt:sha256:92401bbc74a06fc0fa66dc6974ec9a7bafd72cfcb14832e77ab290b9d2258935"
     },
-    "source_harness_command": "runx harness skills/csat-recovery --receipt-dir /tmp/csat-recovery-harness-012-20260714-1250 --json",
-    "receipt_ref": "runx:receipt:sha256:cfb79811028ffaba77ba12c95d8529beb0e72d7bb363ba0793195bc46f401946",
+    "published_run_command": "runx skill q10283245/csat-recovery@0.2.0 csat-recovery-with-prior-fixture --registry https://api.runx.ai [bounded inputs] --json",
+    "receipt_ref": "runx:receipt:sha256:f0a4569362b90145558d1af52ff14004c790c07071e6a71ea6fe871bc39aa4e5",
     "verify_verdict": "valid: true; digest valid; content address valid; production Ed25519 signature valid",
-    "harness_cases": [
-      {"name": "csat-recovery-linked-charge-credit", "status": "sealed"},
-      {"name": "csat-recovery-unlinked-credit-needs-agent", "status": "refused", "runtime_status": "needs_agent"}
-    ]
+    "published_run_status": "sealed",
+    "ci_run": "https://github.com/q10283245/runx/actions/runs/29307786898"
   },
   "adapter": {
     "kind": "data.local",
@@ -79,12 +85,13 @@
     "cas_expected_version_source": "read-recovery-state.data_operation_result.data.projection.version"
   },
   "observations": [
-    "Exact CLI version: runx-cli 0.7.0.",
+    "Exact published-run CLI version: runx-cli 0.7.1 on GitHub-hosted Ubuntu.",
+    "The command executed the owner reference q10283245/csat-recovery@0.2.0 acquired from remote https://api.runx.ai; registry provenance in initial.json binds digest, profile digest, owner, version, trust state, and source fingerprint.",
     "Publisher q10283245 published csat-recovery version 0.2.0; the official registry harness passed 2/2 checks with receipt sha256:92401bbc74a06fc0fa66dc6974ec9a7bafd72cfcb14832e77ab290b9d2258935.",
     "The evaluator receives monthly_recovery_total_minor from read-recovery-state; prior_recovery_ref is audit-only and is not used as the monthly total.",
     "The append step executes after human review and has no conditional gate; it writes the emitted state_event with a stable idempotency key.",
     "The append compare-and-swap binds expected_version to the projection version returned by the real read.",
-    "A readback step proves the aggregate id, version, and recomputed monthly total after append.",
+    "The published package readback proves aggregate customer-redacted-published, version 2, two monthly events, and recomputed monthly total 2000 after append.",
     "The public registry acquisition includes tools/data/local/manifest.json and tools/data/local/run.mjs, which implement the declared durable adapter rather than relying on an external assertion.",
     "The graph emits a bounded credit ceiling and naming-only send plan; it performs no refund, send, mint, reservation, or settlement."
   ]

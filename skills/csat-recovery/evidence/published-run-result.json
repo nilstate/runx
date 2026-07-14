@@ -1,0 +1,65 @@
+{
+  "schema": "runx.skill.published_dogfood.v1",
+  "command": "runx skill q10283245/csat-recovery@0.2.0 csat-recovery-with-prior-fixture --registry https://api.runx.ai [bounded inputs] --skip-operator-context --receipt-dir dogfood-artifact/receipts --json",
+  "ci_run": "https://github.com/q10283245/runx/actions/runs/29307786898",
+  "registry_provenance": {
+    "registry_source": "remote https://api.runx.ai",
+    "registry_source_fingerprint": "ba1ac16b631195fd",
+    "skill_id": "q10283245/csat-recovery",
+    "version": "0.2.0",
+    "digest": "sha256:fb068b53e4336bc1d23e45d80b61049a537853e9914e51499950e4a0a8f16926",
+    "profile_digest": "sha256:9b85a7ff6d99b7e5acc6ec955605faab56a00766af19a01d2fcdae15f864e03e",
+    "registry_key_id": "runx-registry-ed25519-v1",
+    "trust_state": "trusted",
+    "trust_tier": "community"
+  },
+  "run_id": "run_csat-recovery-with-prior-fixture_93b6da3026b8",
+  "status": "sealed",
+  "receipt_ref": "runx:receipt:sha256:f0a4569362b90145558d1af52ff14004c790c07071e6a71ea6fe871bc39aa4e5",
+  "durable_operations": {
+    "read_projection": {
+      "data_source_ref": "tenant://csat-recovery/customer-ledger",
+      "provider": "local-json-event-store",
+      "aggregate_id": "customer-redacted-published",
+      "version": 1,
+      "monthly_recovery_total_minor": 800,
+      "monthly_recovery_event_count": 1,
+      "status": "read"
+    },
+    "human_review": {
+      "gate_id": "csat-recovery.human-review",
+      "approved": true,
+      "status": "approved"
+    },
+    "append_event": {
+      "data_source_ref": "tenant://csat-recovery/customer-ledger",
+      "provider": "local-json-event-store",
+      "aggregate_id": "customer-redacted-published",
+      "idempotency_key": "csat-recovery:published:decision",
+      "expected_version": 1,
+      "before_version": 1,
+      "after_version": 2,
+      "event_ref": "recovery_events:customer-redacted-published:2",
+      "event_digest": "sha256:2c9ea8232a3d573f305133327e584cbac947b421ceb55fb69428d56eeca223c2",
+      "status": "committed"
+    },
+    "readback": {
+      "data_source_ref": "tenant://csat-recovery/customer-ledger",
+      "provider": "local-json-event-store",
+      "aggregate_id": "customer-redacted-published",
+      "version": 2,
+      "monthly_recovery_total_minor": 2000,
+      "monthly_recovery_event_count": 2,
+      "status": "read"
+    }
+  },
+  "verification": {
+    "valid": true,
+    "digest": "valid",
+    "content_address": "valid",
+    "signature": "valid",
+    "signature_mode": "production",
+    "kid": "csat-recovery-v020-published-dogfood",
+    "findings": []
+  }
+}
