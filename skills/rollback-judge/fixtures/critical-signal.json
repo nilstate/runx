@@ -25,5 +25,7 @@
   "forward_fix_evidence": {
     "test_runs": [],
     "review_signoff": null
-  }
+  },
+  "act_decision": "approve",
+  "act_target_ref": "runx:release:checkout@2026.07.12.2"
 }

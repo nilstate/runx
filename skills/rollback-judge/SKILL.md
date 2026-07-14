@@ -25,7 +25,8 @@ existing `release.publish.approval` gate.
 3. **Check roll-forward eligibility.** A roll-forward decision requires complete
    `forward_fix_evidence.test_runs` and `forward_fix_evidence.review_signoff`.
 4. **Emit a review packet.** The packet contains `decision`, `escalation`,
-   `release_publish_approval`, and `review_record`.
+   `release_publish_approval`, `review_record`, and an `act_reason` audit
+   summary that names the decision action, reason, and target.
 5. **Hand off by naming.** The packet names the downstream `release` skill and
    the `release.publish.approval` gate. The release graph owns the actual
    publish, rollback, or deployment consequence.
@@ -46,6 +47,9 @@ existing `release.publish.approval` gate.
   over supplied evidence, not a general action proposal or authority grant.
 - **No minted authority.** Approval data is an agent answer for
   `release.publish.approval`; it is not a deployment credential or capability.
+- **Receipt bindings are explicit.** The review act records `act_reason` as the
+  sealed reason summary, `act_decision` as the trusted decision binding, and
+  `act_target_ref` as the judged release target reference.
 
 ## Decision Rules
 
@@ -63,6 +67,7 @@ existing `release.publish.approval` gate.
 ## Output Schema
 
 ```yaml
+act_reason: string
 decision:
   action: rollback | roll_forward | hold
   reason: string
@@ -96,3 +101,7 @@ review_record:
 - `current_version` (required): current deployed version metadata.
 - `prior_version` (optional): supplied candidate rollback target.
 - `forward_fix_evidence` (optional): supplied fix, test, and review evidence.
+- `act_decision` (optional): trusted receipt decision binding, usually
+  `approve` for a sealed rollback approval.
+- `act_target_ref` (optional): trusted receipt target reference, for example
+  `runx:release:checkout@2026.07.12.2`.

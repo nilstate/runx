@@ -33,9 +33,12 @@ harness:
         forward_fix_evidence:
           test_runs: []
           review_signoff: null
+        act_decision: approve
+        act_target_ref: runx:release:checkout@2026.07.12.2
       caller:
         answers:
           agent_task.rollback-judge.output:
+            act_reason: action=rollback reason=error_rate_critical target=2026.07.12.2
             decision:
               action: rollback
               reason: error_rate_critical
@@ -108,9 +111,13 @@ runners:
       form: review
       purpose: Judge a supplied deploy signal and record a bounded rollback or escalation decision.
       legitimacy: Local operator supplied deploy evidence for review; release owns any downstream consequence.
+      reason_from: act_reason
+      decision_from: act_decision
+      target_from: act_target_ref
     agent: reviewer
     task: rollback-judge
     outputs:
+      act_reason: string
       decision: object
       escalation: object
       release_publish_approval: object
@@ -127,7 +134,10 @@ runners:
       proposal envelope. If deploy_signal is critical/failing and prior_version
       is supplied, return decision.action rollback, reason error_rate_critical
       when the signal kind/evidence shows an error-rate critical incident, and
-      set decision.version_target from prior_version only. Seed
+      set decision.version_target from prior_version only. Also set act_reason
+      to a concise audit string that includes the decision action, reason, and
+      target version, for example "action=rollback reason=error_rate_critical
+      target=2026.07.12.2". Seed
       release_publish_approval with gate_id release.publish.approval,
       approved true, and the same reason; name release as the downstream skill
       that owns the actual consequence. If the signal is contradictory, thin,
@@ -135,8 +145,10 @@ runners:
       tested forward-fix evidence for roll-forward, return a hold decision with
       escalation.required true, name the missing evidence, set
       release_publish_approval.approved false, and do not invent targets,
-      tests, signoff, or authority. review_record.form must be review and must
-      cite the supplied signal severity/kind plus the evidence fields used.
+      tests, signoff, or authority. For a hold or escalation, set act_reason to
+      include hold plus the refusal reason. review_record.form must be review
+      and must cite the supplied signal severity/kind plus the evidence fields
+      used.
     inputs:
       deploy_signal:
         type: object
@@ -154,3 +166,11 @@ runners:
         type: object
         required: false
         description: "Caller-supplied roll-forward fix evidence with test_runs and review_signoff."
+      act_decision:
+        type: string
+        required: false
+        description: "Trusted receipt decision binding for the review act; use approve for sealed rollback approval and defer/escalate for stop cases."
+      act_target_ref:
+        type: string
+        required: false
+        description: "Trusted receipt target reference for the judged release target, for example runx:release:<service>@<version>."

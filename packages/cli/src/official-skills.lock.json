@@ -358,8 +358,8 @@
   },
   {
     "skill_id": "runx/rollback-judge",
-    "version": "sha-512a4941d6f7",
-    "digest": "b8a7ab5dd095c4f194cb652520c6cf2d70f3b59ce19c4812813345d2fe4578f3",
+    "version": "sha-192dcb6814c8",
+    "digest": "9d9e9ba0bd9d8adb6cb585d022ddeda374eb39def9cf6c6806e8062a3ead2db2",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
