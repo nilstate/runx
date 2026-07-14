@@ -8,8 +8,8 @@
   },
   {
     "skill_id": "runx/agency-health",
-    "version": "sha-f3e984c512ef",
-    "digest": "4b0546970eb00982e12381a00f9498f167ed058e31883f685782f0a2d71f0991",
+    "version": "sha-10048e00ab72",
+    "digest": "5d864215ce7c9010a027d33271ec281f880454a2cf39ffbd5a140149554fe99f",
     "catalog_visibility": "public",
     "catalog_role": "context"
   },

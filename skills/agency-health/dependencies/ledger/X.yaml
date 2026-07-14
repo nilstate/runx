@@ -1,0 +1,39 @@
+skill: ledger
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/agency-health
+
+runners:
+  read:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      ledger_answer: object
+      matched_receipts: array
+      chain_verification: object
+      summary: string
+    artifacts:
+      wrap_as: ledger_answer_packet
+      packet: runx.ledger_answer.v1
+    inputs:
+      question:
+        type: string
+        required: false
+      filter:
+        type: json
+        required: false
+      proof:
+        type: json
+        required: false
+      receipts:
+        type: json
+        required: false

@@ -1,0 +1,92 @@
+skill: data-store
+version: "0.2.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/agency-health
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+  deny:
+    - raw_sql_from_model
+    - unrestricted_export
+    - secret_material
+
+emits:
+  - name: data_operation_result
+    packet: runx.data.operation_result.v1
+
+runners:
+  read_events:
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+      store_id:
+        type: string
+        required: false
+      resource:
+        type: string
+        required: true
+      aggregate_id:
+        type: string
+        required: true
+      limit:
+        type: number
+        required: false
+        default: 50
+      after_version:
+        type: number
+        required: false
+    graph:
+      name: data-store-read-events
+      steps:
+        - id: read
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_events
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+            limit: "$input.limit"
+            after_version: "$input.after_version"
+
+  read_projection:
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+      store_id:
+        type: string
+        required: false
+      resource:
+        type: string
+        required: true
+      aggregate_id:
+        type: string
+        required: true
+    graph:
+      name: data-store-read-projection
+      steps:
+        - id: read
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_projection
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"

@@ -12,6 +12,12 @@ domain-keyed `data-store.read_projection` and `data-store.read_events` reads wit
 the cross-run `ledger.read` runner, folds the agency case in version order, and
 seals one health verdict plus grounded intervention findings.
 
+For isolated registry installs, the package vendors the exact read-only C2/C7
+runner surfaces pinned by the source commit: `runx/data-store@sha-ca3a75ec5f21`
+and `runx/ledger@sha-3e6341beba7f`. The package-local copies preserve the
+upstream runner names and execution logic; they add no replacement metrics or
+caller-authored answers.
+
 It is a read-only diagnostic lane. It appends nothing, dispatches nothing,
 moves no money, grants no access, and consumes no effect. An intervention names
 the separate lane an operator or driver may run next; it is never that run.
