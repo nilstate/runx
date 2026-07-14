@@ -1,0 +1,7 @@
+{
+  "status": "failure",
+  "error": {
+    "message": "remote registry publish returned unsuccessful status: envelope=success, publish=unchanged",
+    "code": "registry_error"
+  }
+}

@@ -3,7 +3,7 @@
   "registry": {
     "action": "read",
     "source": "remote",
-    "ref": "wilber123451-design/bookkeeper",
+    "ref": "wilber123451-design/bookkeeper@sha-c58adbf5a9b8",
     "skill": {
       "skill_id": "wilber123451-design/bookkeeper",
       "owner": "wilber123451-design",

@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-07-14T17:37:44.848Z",
+    "closed_at": "2026-07-14T18:03:52.231Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool default completed"
@@ -304,22 +304,22 @@
         "artifact_refs": [
           {
             "label": "approved operator context",
-            "locator": "sha256:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906",
+            "locator": "sha256:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6",
             "provider": "runx",
             "type": "artifact",
-            "uri": "runx:artifact:operator_context:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+            "uri": "runx:artifact:operator_context:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
           },
           {
             "label": "operator context approval",
             "locator": "actor=runner;mode=explicit_digest",
-            "observed_at": "2026-07-14T17:37:44.816Z",
+            "observed_at": "2026-07-14T18:03:52.196Z",
             "provider": "runx",
             "type": "decision",
-            "uri": "runx:decision:operator_context_approval:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+            "uri": "runx:decision:operator_context_approval:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
           }
         ],
         "closure": {
-          "closed_at": "2026-07-14T17:37:44.848Z",
+          "closed_at": "2026-07-14T18:03:52.231Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -330,18 +330,18 @@
             "evidence_refs": [
               {
                 "label": "approved operator context",
-                "locator": "sha256:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906",
+                "locator": "sha256:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6",
                 "provider": "runx",
                 "type": "artifact",
-                "uri": "runx:artifact:operator_context:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+                "uri": "runx:artifact:operator_context:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
               },
               {
                 "label": "operator context approval",
                 "locator": "actor=runner;mode=explicit_digest",
-                "observed_at": "2026-07-14T17:37:44.816Z",
+                "observed_at": "2026-07-14T18:03:52.196Z",
                 "provider": "runx",
                 "type": "decision",
-                "uri": "runx:decision:operator_context_approval:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+                "uri": "runx:decision:operator_context_approval:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
               }
             ],
             "status": "verified",
@@ -350,10 +350,10 @@
               {
                 "label": "operator context approval",
                 "locator": "actor=runner;mode=explicit_digest",
-                "observed_at": "2026-07-14T17:37:44.816Z",
+                "observed_at": "2026-07-14T18:03:52.196Z",
                 "provider": "runx",
                 "type": "decision",
-                "uri": "runx:decision:operator_context_approval:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+                "uri": "runx:decision:operator_context_approval:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
               }
             ]
           }
@@ -399,24 +399,24 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-07-14T17:37:44.848Z",
+    "created_at": "2026-07-14T18:03:52.231Z",
     "decisions": [
       {
         "artifact_refs": [
           {
             "label": "approved operator context",
-            "locator": "sha256:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906",
+            "locator": "sha256:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6",
             "provider": "runx",
             "type": "artifact",
-            "uri": "runx:artifact:operator_context:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+            "uri": "runx:artifact:operator_context:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
           },
           {
             "label": "operator context approval",
             "locator": "actor=runner;mode=explicit_digest",
-            "observed_at": "2026-07-14T17:37:44.816Z",
+            "observed_at": "2026-07-14T18:03:52.196Z",
             "provider": "runx",
             "type": "decision",
-            "uri": "runx:decision:operator_context_approval:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+            "uri": "runx:decision:operator_context_approval:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
           }
         ],
         "choice": "open",
@@ -443,8 +443,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:ae4df640e607b1f4ec0865c8244e0e59ef08b7759cfa7b7373a767bb05fb5ba2",
-    "id": "sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+    "digest": "sha256:cd8c37d16a058621b8fef0e4cbb9bdd260bf6c5a2f80d37d5de8e329e3fc0090",
+    "id": "sha256:73343913e3fdc417560e34b6e66390197ba876d8bc03cc222397f44dd6192489",
     "idempotency": {
       "content_hash": "sha256:run_default_d8bc85d11eeb-default-content",
       "intent_key": "sha256:run_default_d8bc85d11eeb-default-intent",
@@ -461,25 +461,25 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-07-14T17:37:44.848Z",
+      "closed_at": "2026-07-14T18:03:52.231Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
           "evidence_refs": [
             {
               "label": "approved operator context",
-              "locator": "sha256:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906",
+              "locator": "sha256:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6",
               "provider": "runx",
               "type": "artifact",
-              "uri": "runx:artifact:operator_context:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+              "uri": "runx:artifact:operator_context:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
             },
             {
               "label": "operator context approval",
               "locator": "actor=runner;mode=explicit_digest",
-              "observed_at": "2026-07-14T17:37:44.816Z",
+              "observed_at": "2026-07-14T18:03:52.196Z",
               "provider": "runx",
               "type": "decision",
-              "uri": "runx:decision:operator_context_approval:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+              "uri": "runx:decision:operator_context_approval:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
             }
           ],
           "status": "verified",
@@ -488,23 +488,23 @@
             {
               "label": "operator context approval",
               "locator": "actor=runner;mode=explicit_digest",
-              "observed_at": "2026-07-14T17:37:44.816Z",
+              "observed_at": "2026-07-14T18:03:52.196Z",
               "provider": "runx",
               "type": "decision",
-              "uri": "runx:decision:operator_context_approval:64a4f24c492df975fbf4d406c66271c38e708e79ee3335f9fad1c9521dbf9906"
+              "uri": "runx:decision:operator_context_approval:36b0b693bd7d5ca4a41626e4ffdcf32fcd6f2b3261f7cee244d56209f33760b6"
             }
           ]
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-07-14T17:37:44.848Z",
+      "last_observed_at": "2026-07-14T18:03:52.231Z",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "sig:sha256:ae4df640e607b1f4ec0865c8244e0e59ef08b7759cfa7b7373a767bb05fb5ba2"
+      "value": "sig:sha256:cd8c37d16a058621b8fef0e4cbb9bdd260bf6c5a2f80d37d5de8e329e3fc0090"
     },
     "subject": {
       "commitments": [],
@@ -515,9 +515,9 @@
       }
     }
   },
-  "receipt_id": "sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+  "receipt_id": "sha256:73343913e3fdc417560e34b6e66390197ba876d8bc03cc222397f44dd6192489",
   "registry_provenance": {
-    "digest": "sha256:402f6b4673306d47ae7092cc4b79ac38c53f0bdbbe18097ed35b19a0ff5884fb",
+    "digest": "sha256:ca5eb4c969880d2553491a0fdd8e0765e40d02b8ac3341a1e51c4d9588e2eb2a",
     "profile_digest": "sha256:06e342c209e14e957c15946a67cbd87f11573166bf88dd7e018744400b5f9eee",
     "registry_key_id": "runx-registry-ed25519-v1",
     "registry_source": "remote https://api.runx.ai",
@@ -525,7 +525,7 @@
     "skill_id": "wilber123451-design/bookkeeper",
     "trust_state": "trusted",
     "trust_tier": "community",
-    "version": "sha-cf1d6144ae69"
+    "version": "sha-c58adbf5a9b8"
   },
   "run_id": "run_default_d8bc85d11eeb",
   "schema": "runx.skill_run.v1",

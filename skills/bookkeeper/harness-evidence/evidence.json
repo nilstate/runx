@@ -30,36 +30,111 @@
     "refused_ambiguous_case": true,
     "read_only": true,
     "ledger_mutation_performed": false,
-    "invented_accounts": false
+    "invented_accounts": false,
+    "categorized_count": 3,
+    "anomaly_count": 1,
+    "reconciliation_totals": {
+      "matched": {
+        "count": 3,
+        "total": 1023.58
+      },
+      "unmatched": {
+        "count": 0,
+        "total": 0
+      }
+    },
+    "needs_review_reason": "not_applicable_for_clean_dogfood_case_decision_ready; ambiguous harness case tx-2001 refuses automatic categorization because no existing account keyword/code meets confidence threshold, so the skill returns needs_review instead of inventing a GL account.",
+    "hosted_harness": {
+      "status": "passed",
+      "declared_case_count": 2,
+      "checks_passed": 2,
+      "checks_failed": 0,
+      "evidence_url": "https://api.runx.ai/v1/skills/wilber123451-design/bookkeeper/harness"
+    }
   },
   "observations": [
     "runx_cli_version: runx-cli 0.7.1",
     "publisher_owner: wilber123451-design",
     "package_name: bookkeeper",
     "declared_version: 0.1.0",
-    "registry_ref: wilber123451-design/bookkeeper@sha-cf1d6144ae69",
-    "public_url: https://runx.ai/x/wilber123451-design/bookkeeper@sha-cf1d6144ae69",
+    "registry_ref: wilber123451-design/bookkeeper@sha-c58adbf5a9b8",
+    "public_url: https://runx.ai/x/wilber123451-design/bookkeeper@sha-c58adbf5a9b8",
     "pr_url: https://github.com/runxhq/runx/pull/326",
     "source_url: https://github.com/wilber123451-design/runx/tree/frantic-bookkeeper-0.1.0/skills/bookkeeper",
     "raw_x_yaml: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/X.yaml",
     "raw_skill_md: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/SKILL.md",
     "verification_json: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/harness-evidence/verification.json",
     "evidence_json: https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/harness-evidence/evidence.json",
-    "publish_method: POST https://api.runx.ai/v1/index with repo_url=https://github.com/wilber123451-design/frantic-bookkeeper-runx ref=main",
-    "install_command: runx add wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai",
-    "harness_cases: bookkeeper-clean-batch-seals sealed; bookkeeper-ambiguous-needs-review-refusal refused as expected in local evidence",
-    "dogfood_command: runx skill wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai --json with explicit transactions/chart/prior-period JSON",
-    "receipt_ref: runx:receipt:sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+    "publish_method: runx registry publish ./skills/bookkeeper --registry https://api.runx.ai from wilber123451-design/runx branch frantic-bookkeeper-0.1.0",
+    "hosted_harness_status: passed with 2 declared cases, 2 checks passed, 0 checks failed",
+    "install_command: runx add wilber123451-design/bookkeeper@sha-c58adbf5a9b8 --registry https://api.runx.ai",
+    "harness_cases: bookkeeper-clean-batch-seals sealed; bookkeeper-ambiguous-needs-review-refusal refused as expected",
+    "dogfood_command: runx skill wilber123451-design/bookkeeper@sha-c58adbf5a9b8 --registry https://api.runx.ai --json with explicit transactions/chart/prior-period JSON",
+    "categorized_count: 3",
+    "anomaly_count: 1",
+    "reconciliation_totals: matched.count=3, matched.total=1023.58, unmatched.count=0, unmatched.total=0",
+    "needs_review_reason: not_applicable_for_clean_dogfood_case_decision_ready; ambiguous harness case tx-2001 refuses automatic categorization because no existing account keyword/code meets confidence threshold, so the skill returns needs_review instead of inventing a GL account.",
+    "receipt_ref: runx:receipt:sha256:73343913e3fdc417560e34b6e66390197ba876d8bc03cc222397f44dd6192489",
     "runx_verify_verdict: valid",
     "new_user_flow: install with runx add, run with runx skill, then verify receipt with runx verify --receipt <receipt.json> --json"
   ],
   "dogfood": {
-    "package": "wilber123451-design/bookkeeper@sha-cf1d6144ae69",
-    "command": "runx skill wilber123451-design/bookkeeper@sha-cf1d6144ae69 --registry https://api.runx.ai --approve-operator-context <digest> --input-json transactions=<transactions-json> --input-json chart_of_accounts=<chart-json> --input-json prior_period=<prior-json> --json",
-    "receipt_ref": "runx:receipt:sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
-    "receipt_id": "sha256:c943d3e7b9f8e9f793a415de467bbe0d069b6549c1666f3a96fa6d72e02540e7",
+    "package": "wilber123451-design/bookkeeper@sha-c58adbf5a9b8",
+    "input": {
+      "fixture": "skills/bookkeeper/fixtures/clean-input.json",
+      "transactions_count": 3,
+      "transaction_ids": [
+        "tx-1001",
+        "tx-1002",
+        "tx-1003"
+      ],
+      "chart_account_codes": [
+        "4000",
+        "6100",
+        "6200"
+      ],
+      "prior_period": {
+        "currency": "USD",
+        "average_transaction_amount": 300,
+        "total_income": 5000,
+        "total_expense": 1100,
+        "known_counterparties": [
+          "Stripe",
+          "Amazon Web Services",
+          "GitHub"
+        ]
+      }
+    },
+    "command": "runx skill wilber123451-design/bookkeeper@sha-c58adbf5a9b8 --registry https://api.runx.ai --approve-operator-context <digest> --input-json transactions=<transactions-json> --input-json chart_of_accounts=<chart-json> --input-json prior_period=<prior-json> --json",
+    "receipt_ref": "runx:receipt:sha256:73343913e3fdc417560e34b6e66390197ba876d8bc03cc222397f44dd6192489",
+    "receipt_id": "sha256:73343913e3fdc417560e34b6e66390197ba876d8bc03cc222397f44dd6192489",
     "verify_verdict": "valid",
-    "action_run": "https://github.com/wilber123451-design/runx/actions/runs/29354530033",
+    "harness_cases": [
+      {
+        "name": "bookkeeper-clean-batch-seals",
+        "expected_status": "sealed",
+        "observed_status": "sealed",
+        "categorized_count": 3,
+        "anomaly_count": 1,
+        "reconciliation": {
+          "matched": {
+            "count": 3,
+            "total": 1023.58
+          },
+          "unmatched": {
+            "count": 0,
+            "total": 0
+          }
+        }
+      },
+      {
+        "name": "bookkeeper-ambiguous-needs-review-refusal",
+        "expected_status": "needs_review_refusal",
+        "observed_status": "refused_without_ledger_mutation",
+        "needs_review_reason": "not_applicable_for_clean_dogfood_case_decision_ready; ambiguous harness case tx-2001 refuses automatic categorization because no existing account keyword/code meets confidence threshold, so the skill returns needs_review instead of inventing a GL account."
+      }
+    ],
+    "action_run": "https://github.com/wilber123451-design/runx/actions/runs/29356308790",
     "output_artifact": "skills/bookkeeper/harness-evidence/dogfood-run.json"
   },
   "local_evidence_files": {
@@ -70,15 +145,18 @@
   "receipts": {
     "clean_case": "sha256:ece5d1a1a3f6b83cb9932ac1f2d377449edd30c12bc52735373be15ee29c8862",
     "ambiguous_refusal_case": "sha256:e0ce558222fe553d1897728a4e51c669925462c778184f034f435d0ca4ed32fb",
-    "dogfood": "sha256:8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7"
+    "dogfood": "sha256:73343913e3fdc417560e34b6e66390197ba876d8bc03cc222397f44dd6192489"
   },
   "public_publication": {
-    "registry_package": "wilber123451-design/bookkeeper@sha-cf1d6144ae69",
-    "registry_status": "indexed",
-    "registry_publish_method": "runx URL-as-publish /v1/index",
-    "registry_source_repo": "https://github.com/wilber123451-design/frantic-bookkeeper-runx",
-    "registry_source_sha": "cf1d6144ae698751bc27ea91b4cabf7744d7a1f7",
-    "public_url": "https://runx.ai/x/wilber123451-design/bookkeeper@sha-cf1d6144ae69",
+    "registry_package": "wilber123451-design/bookkeeper@sha-c58adbf5a9b8",
+    "registry_status": "published",
+    "registry_publish_method": "runx registry publish ./skills/bookkeeper --registry https://api.runx.ai",
+    "registry_source_repo": "https://github.com/wilber123451-design/runx",
+    "registry_source_ref": "frantic-bookkeeper-0.1.0",
+    "registry_source_sha": "PR_HEAD_COMMIT_AT_DELIVERY",
+    "hosted_harness_url": "https://api.runx.ai/v1/skills/wilber123451-design/bookkeeper/harness",
+    "hosted_harness_status": "passed",
+    "public_url": "https://runx.ai/x/wilber123451-design/bookkeeper@sha-c58adbf5a9b8",
     "source_url": "https://github.com/wilber123451-design/runx/tree/frantic-bookkeeper-0.1.0/skills/bookkeeper",
     "pr_url": "https://github.com/runxhq/runx/pull/326",
     "x_yaml_raw_url": "https://raw.githubusercontent.com/wilber123451-design/runx/frantic-bookkeeper-0.1.0/skills/bookkeeper/X.yaml",
@@ -91,5 +169,5 @@
     "ready_to_submit_to_frantic": true,
     "missing_before_submission": []
   },
-  "summary": "Bookkeeper runx skill delivery for Frantic bounty #89: public registry listing, PR source, raw X.yaml/SKILL.md, evidence, verification, report, and a valid dogfood receipt are all provided for reviewer validation."
+  "summary": "Bookkeeper runx skill delivery for Frantic bounty #89: the public registry skill, hosted RunX harness, PR source, raw X.yaml/SKILL.md, structured evidence, verification, report, dogfood input, output counts, reconciliation totals, needs_review refusal reason, and valid dogfood receipt are provided for reviewer validation."
 }
