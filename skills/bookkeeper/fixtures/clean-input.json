@@ -1,0 +1,55 @@
+{
+  "transactions": [
+    {
+      "id": "tx-1001",
+      "date": "2026-07-01",
+      "description": "Stripe payout ACME SaaS invoice 1042",
+      "amount": 1250.0,
+      "currency": "USD",
+      "counterparty": "Stripe"
+    },
+    {
+      "id": "tx-1002",
+      "date": "2026-07-02",
+      "description": "AWS cloud hosting July",
+      "amount": -184.32,
+      "currency": "USD",
+      "counterparty": "Amazon Web Services"
+    },
+    {
+      "id": "tx-1003",
+      "date": "2026-07-03",
+      "description": "GitHub Actions minutes",
+      "amount": -42.1,
+      "currency": "USD",
+      "counterparty": "GitHub"
+    }
+  ],
+  "chart_of_accounts": [
+    {
+      "code": "4000",
+      "name": "Software revenue",
+      "type": "income",
+      "keywords": ["stripe", "invoice", "saas"]
+    },
+    {
+      "code": "6100",
+      "name": "Cloud hosting",
+      "type": "expense",
+      "keywords": ["aws", "hosting", "cloud"]
+    },
+    {
+      "code": "6200",
+      "name": "Developer tooling",
+      "type": "expense",
+      "keywords": ["github", "actions", "ci"]
+    }
+  ],
+  "prior_period": {
+    "currency": "USD",
+    "average_transaction_amount": 300,
+    "total_income": 5000,
+    "total_expense": 1100,
+    "known_counterparties": ["Stripe", "Amazon Web Services", "GitHub"]
+  }
+}

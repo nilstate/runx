@@ -1,0 +1,33 @@
+{
+  "transactions": [
+    {
+      "id": "tx-2001",
+      "date": "2026-07-04",
+      "description": "Transfer memo 8842",
+      "amount": -75.0,
+      "currency": "USD",
+      "counterparty": "Unknown"
+    }
+  ],
+  "chart_of_accounts": [
+    {
+      "code": "6100",
+      "name": "Cloud hosting",
+      "type": "expense",
+      "keywords": ["aws", "hosting"]
+    },
+    {
+      "code": "6200",
+      "name": "Developer tooling",
+      "type": "expense",
+      "keywords": ["github", "ci"]
+    }
+  ],
+  "prior_period": {
+    "currency": "USD",
+    "average_transaction_amount": 100,
+    "total_income": 2000,
+    "total_expense": 800,
+    "known_counterparties": ["Stripe"]
+  }
+}

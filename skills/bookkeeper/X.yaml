@@ -1,0 +1,144 @@
+skill: bookkeeper
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+  runtime_path: local
+
+emits:
+  - name: bookkeeper_result
+    packet: runx.bookkeeper.result.v1
+
+harness:
+  cases:
+    - name: bookkeeper-clean-batch-seals
+      runner: default
+      inputs:
+        transactions:
+          - id: tx-1001
+            date: "2026-07-01"
+            description: Stripe payout ACME SaaS invoice 1042
+            amount: 1250.00
+            currency: USD
+            counterparty: Stripe
+          - id: tx-1002
+            date: "2026-07-02"
+            description: AWS cloud hosting July
+            amount: -184.32
+            currency: USD
+            counterparty: Amazon Web Services
+          - id: tx-1003
+            date: "2026-07-03"
+            description: GitHub Actions minutes
+            amount: -42.10
+            currency: USD
+            counterparty: GitHub
+        chart_of_accounts:
+          - code: "4000"
+            name: Software revenue
+            type: income
+            keywords:
+              - stripe
+              - invoice
+              - saas
+          - code: "6100"
+            name: Cloud hosting
+            type: expense
+            keywords:
+              - aws
+              - hosting
+              - cloud
+          - code: "6200"
+            name: Developer tooling
+            type: expense
+            keywords:
+              - github
+              - actions
+              - ci
+        prior_period:
+          currency: USD
+          average_transaction_amount: 300
+          total_income: 5000
+          total_expense: 1100
+          known_counterparties:
+            - Stripe
+            - Amazon Web Services
+            - GitHub
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: bookkeeper-ambiguous-needs-review-refusal
+      runner: default
+      inputs:
+        transactions:
+          - id: tx-2001
+            date: "2026-07-04"
+            description: Transfer memo 8842
+            amount: -75.00
+            currency: USD
+            counterparty: Unknown
+        chart_of_accounts:
+          - code: "6100"
+            name: Cloud hosting
+            type: expense
+            keywords:
+              - aws
+              - hosting
+          - code: "6200"
+            name: Developer tooling
+            type: expense
+            keywords:
+              - github
+              - ci
+        prior_period:
+          currency: USD
+          average_transaction_amount: 100
+          total_income: 2000
+          total_expense: 800
+          known_counterparties:
+            - Stripe
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_failed
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      transactions:
+        type: json
+        required: true
+        description: Transaction array to categorize.
+      chart_of_accounts:
+        type: json
+        required: true
+        description: Existing GL account array.
+      prior_period:
+        type: json
+        required: true
+        description: Prior-period summary for anomaly checks.
+    outputs:
+      categorized:
+        type: json
+        description: Array of matched transaction lines with account_code, account_name, confidence, and reason.
+      anomalies:
+        type: json
+        description: Array of duplicate, outlier, currency, counterparty, and needs_review observations.
+      reconciliation:
+        type: json
+        description: Read-only matched/unmatched counts, totals, transaction ids, and unresolved transactions.

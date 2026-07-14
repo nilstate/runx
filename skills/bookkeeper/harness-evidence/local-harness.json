@@ -1,0 +1,72 @@
+{
+  "schema": "runx.bookkeeper.local_harness_evidence.v1",
+  "package": {
+    "name": "bookkeeper",
+    "version": "0.1.0"
+  },
+  "observed_at": "2026-07-14T16:35:00Z",
+  "runx_cli": {
+    "command": "npx -y @runxhq/cli@0.7.1 --version",
+    "observed_version": "runx-cli 0.7.1",
+    "meets_requirement": true
+  },
+  "direct_runner_checks": [
+    {
+      "name": "clean batch",
+      "command": "node ./skills/bookkeeper/run.mjs with fixtures/clean-input.json as RUNX_INPUT_*",
+      "exit_code": 0,
+      "observed_status": "categorized",
+      "matched_count": 3,
+      "unmatched_count": 0,
+      "matched_total": 1023.58,
+      "control_checks": {
+        "read_only": true,
+        "ledger_mutation_performed": false,
+        "invented_accounts": false
+      }
+    },
+    {
+      "name": "ambiguous batch refusal",
+      "command": "node ./skills/bookkeeper/run.mjs with fixtures/ambiguous-input.json as RUNX_INPUT_*",
+      "exit_code": 64,
+      "observed_status": "needs_review",
+      "matched_count": 0,
+      "unmatched_count": 1,
+      "unmatched_total": -75,
+      "refusal_reason": "no existing GL account matched with enough confidence",
+      "control_checks": {
+        "read_only": true,
+        "ledger_mutation_performed": false,
+        "invented_accounts": false
+      }
+    }
+  ],
+  "runx_harness_receipts": [
+    {
+      "case": "bookkeeper-clean-batch-seals",
+      "receipt_file": "harness-evidence/receipts/sha256-ece5d1a1a3f6b83cb9932ac1f2d377449edd30c12bc52735373be15ee29c8862.json",
+      "receipt_id": "sha256:ece5d1a1a3f6b83cb9932ac1f2d377449edd30c12bc52735373be15ee29c8862",
+      "digest": "sha256:78b61fe5a283a79416c660b105c08e9c328a061886bc6d7f0d7c411b97488a1e",
+      "seal_disposition": "closed",
+      "reason_code": "process_closed"
+    },
+    {
+      "case": "bookkeeper-ambiguous-needs-review-refusal",
+      "receipt_file": "harness-evidence/receipts/sha256-e0ce558222fe553d1897728a4e51c669925462c778184f034f435d0ca4ed32fb.json",
+      "receipt_id": "sha256:e0ce558222fe553d1897728a4e51c669925462c778184f034f435d0ca4ed32fb",
+      "digest": "sha256:2b6cb9087a7a359623c860c120024433a6779900f67c87cf087f9fe41e14b0c9",
+      "seal_disposition": "failed",
+      "reason_code": "process_failed",
+      "expected_failure": true
+    }
+  ],
+  "dogfood_receipt": {
+    "command": "npx -y @runxhq/cli@0.7.1 skill ./skills/bookkeeper --json --approve-operator-context sha256:69571d86ac1bf57dad0db57fb97aafa54a5e7d5d7ed823bbab2092d2fb7759c7",
+    "receipt_file": "harness-evidence/receipts/sha256-8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7.json",
+    "receipt_id": "sha256:8ba26fccbd4d92c04c173a81a4bdf349d8707d6440c15fbf765f962067e469c7",
+    "digest": "sha256:b1027d03ac3604ccbba930709b9d94cd1f11a168839d1fe5fc3cc21565895b7d",
+    "seal_disposition": "closed",
+    "reason_code": "process_closed"
+  },
+  "windows_note": "runx wrote receipts, then the CLI returned 'receipt store is unreadable: Acceso denegado. (os error 5)' on this Windows host. Each receipt was verified independently with runx verify --allow-local-development-signatures."
+}
