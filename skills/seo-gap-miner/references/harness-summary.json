@@ -1,0 +1,17 @@
+{
+  "runx_version": "runx-cli 0.7.1",
+  "command": "runx harness ./skills/seo-gap-miner --receipt-dir /tmp/seo-gap-receipts-final",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "grounded-content-gaps-sealed",
+    "thin-demand-needs-more-evidence"
+  ],
+  "receipt_ids": [
+    "sha256:0cd80ca6203e9ffb6e8558380b1c5f449db5e3ba7614345fbb68a53918bf41e8",
+    "sha256:21257e3058936939662f8560a583be753d976e1ef23b46b772b44b03157e10f9"
+  ],
+  "graph_case_count": 0
+}
