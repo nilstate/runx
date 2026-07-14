@@ -166,8 +166,8 @@ runners:
             expected_version: read-budget.data_operation_result.data.projection.version
             event: evaluate-purchase.purchase_decision.data.budget_event
         - id: charge
-          skill: ../mock-charge
-          runner: mock
+          skill: .
+          runner: mock-charge
           inputs:
             mcp_tool_call: "$input.mcp_tool_call"
             provider_policy: "$input.provider_policy"
@@ -237,3 +237,96 @@ runners:
             returned_credential: "$input.returned_credential"
             verify_capability_ref: "$input.verify_capability_ref"
             charge_idempotency_seed: "$input.charge_idempotency_seed"
+
+  mock-charge:
+    type: graph
+    inputs:
+      mcp_tool_call: {type: object, required: true}
+      provider_policy: {type: object, required: true}
+      returned_credential: {type: object, required: true}
+      parent_payment_authority: {type: object, required: true}
+      verify_capability_ref: {type: string, required: true}
+      idempotency_seed: {type: string, required: true}
+    graph:
+      name: purchase-approval-mock-charge
+      steps:
+        - id: price
+          run:
+            type: agent-task
+            agent: reviewer
+            task: charge-price
+            outputs: {charge_price: object, requested_payment_authority: object}
+          instructions: >
+            Price exactly the requested mock operation. The amount, currency,
+            counterparty, and settlement family must remain within
+            parent_payment_authority and provider_policy.
+          inputs:
+            mcp_tool_call: "$input.mcp_tool_call"
+            provider_policy: "$input.provider_policy"
+            parent_payment_authority: "$input.parent_payment_authority"
+            idempotency_seed: "$input.idempotency_seed"
+          artifacts: {wrap_as: charge_price_packet, packet: runx.payment.charge_price.v1}
+        - id: challenge
+          run:
+            type: agent-task
+            agent: reviewer
+            task: charge-challenge
+            outputs: {effect_required_signal: object, charge_challenge: object, idempotency: object, accepted_settlement_families: array}
+          inputs:
+            provider_policy: "$input.provider_policy"
+            idempotency_seed: "$input.idempotency_seed"
+          context:
+            charge_price_packet: price.charge_price_packet.data
+          artifacts: {wrap_as: charge_challenge_packet, packet: runx.payment.charge_challenge.v1}
+        - id: verify
+          run:
+            type: agent-task
+            agent: reviewer
+            task: charge-verify
+            outputs: {verification_result: object, settlement_proof: object, sealed_receipt_ref: string, redactions: array, recovery_hint: object}
+          mutation: true
+          idempotency_key: purchase-approval-mock-charge-verify
+          inputs:
+            returned_credential: "$input.returned_credential"
+            verify_capability_ref: "$input.verify_capability_ref"
+            settlement_family: mock
+          context:
+            charge_price_packet: price.charge_price_packet.data
+            charge_challenge_packet: challenge.charge_challenge_packet.data
+            priced_payment_authority: price.charge_price_packet.data.requested_payment_authority
+            idempotency: challenge.charge_challenge_packet.data.idempotency
+          artifacts: {wrap_as: charge_verification_packet, packet: runx.payment.charge_verification.v1}
+        - id: seal
+          run:
+            type: agent-task
+            agent: operator
+            task: seal
+            outputs: {sealed: boolean, receipt_ref: string}
+          context:
+            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
+            settlement_proof: verify.charge_verification_packet.data.settlement_proof
+          artifacts: {wrap_as: charge_seal, packet: runx.payment.charge_seal.v1}
+        - id: forward
+          run:
+            type: agent-task
+            agent: operator
+            task: forward
+            outputs: {forwarded: boolean, result_ref: string}
+          inputs:
+            operation: "$input.mcp_tool_call"
+          context:
+            sealed_receipt_ref: seal.charge_seal.data.receipt_ref
+          artifacts: {wrap_as: forwarded_result}
+      policy:
+        guards:
+          - step: forward
+            field: seal.charge_seal.data.sealed
+            equals: true
+    runx:
+      payment_authority:
+        direction: provider_charge
+        phase: graph
+        resource_family: effect
+        settlement_family: mock
+        receipt_before_forward_required: true
+        runtime_forwarding_enabled: false
