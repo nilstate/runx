@@ -1,0 +1,292 @@
+[
+  {
+    "version": 1,
+    "at": "2026-06-01T00:00:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 1 advanced cleanly"
+  },
+  {
+    "version": 2,
+    "at": "2026-06-01T03:36:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 2 advanced cleanly"
+  },
+  {
+    "version": 3,
+    "at": "2026-06-01T07:12:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 3 advanced cleanly"
+  },
+  {
+    "version": 4,
+    "at": "2026-06-01T10:48:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 4 advanced cleanly"
+  },
+  {
+    "version": 5,
+    "at": "2026-06-01T14:24:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 5 advanced cleanly"
+  },
+  {
+    "version": 6,
+    "at": "2026-06-01T18:00:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 6 advanced cleanly"
+  },
+  {
+    "version": 7,
+    "at": "2026-06-01T21:36:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 7 advanced cleanly"
+  },
+  {
+    "version": 8,
+    "at": "2026-06-02T01:12:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 8 advanced cleanly"
+  },
+  {
+    "version": 9,
+    "at": "2026-06-02T04:48:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 9 advanced cleanly"
+  },
+  {
+    "version": 10,
+    "at": "2026-06-02T08:24:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 10 advanced cleanly"
+  },
+  {
+    "version": 11,
+    "at": "2026-06-02T12:00:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 11 advanced cleanly"
+  },
+  {
+    "version": 12,
+    "at": "2026-06-02T15:36:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 12 advanced cleanly"
+  },
+  {
+    "version": 13,
+    "at": "2026-06-02T19:12:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 13 advanced cleanly"
+  },
+  {
+    "version": 14,
+    "at": "2026-06-02T22:48:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 14 advanced cleanly"
+  },
+  {
+    "version": 15,
+    "at": "2026-06-03T02:24:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 15 advanced cleanly"
+  },
+  {
+    "version": 16,
+    "at": "2026-06-03T06:00:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 16 advanced cleanly"
+  },
+  {
+    "version": 17,
+    "at": "2026-06-03T09:36:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 17 advanced cleanly"
+  },
+  {
+    "version": 18,
+    "at": "2026-06-03T13:12:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 18 advanced cleanly"
+  },
+  {
+    "version": 19,
+    "at": "2026-06-03T16:48:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 19 advanced cleanly"
+  },
+  {
+    "version": 20,
+    "at": "2026-06-03T20:24:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 20 advanced cleanly"
+  },
+  {
+    "version": 21,
+    "at": "2026-06-04T00:00:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 21 advanced cleanly"
+  },
+  {
+    "version": 22,
+    "at": "2026-06-04T03:36:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 22 advanced cleanly"
+  },
+  {
+    "version": 23,
+    "at": "2026-06-04T07:12:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 23 advanced cleanly"
+  },
+  {
+    "version": 24,
+    "at": "2026-06-04T10:48:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 24 advanced cleanly"
+  },
+  {
+    "version": 25,
+    "at": "2026-06-04T14:24:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 25 advanced cleanly"
+  },
+  {
+    "version": 26,
+    "at": "2026-06-04T18:00:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 26 advanced cleanly"
+  },
+  {
+    "version": 27,
+    "at": "2026-06-04T21:36:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 27 advanced cleanly"
+  },
+  {
+    "version": 28,
+    "at": "2026-06-05T01:12:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 28 advanced cleanly"
+  },
+  {
+    "version": 29,
+    "at": "2026-06-05T04:48:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 29 advanced cleanly"
+  },
+  {
+    "version": 30,
+    "at": "2026-06-05T08:24:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 30 advanced cleanly"
+  },
+  {
+    "version": 31,
+    "at": "2026-06-05T12:00:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 31 advanced cleanly"
+  },
+  {
+    "version": 32,
+    "at": "2026-06-05T15:36:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 32 advanced cleanly"
+  },
+  {
+    "version": 33,
+    "at": "2026-06-05T19:12:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 33 advanced cleanly"
+  },
+  {
+    "version": 34,
+    "at": "2026-06-05T22:48:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 34 advanced cleanly"
+  },
+  {
+    "version": 35,
+    "at": "2026-06-06T02:24:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 35 advanced cleanly"
+  },
+  {
+    "version": 36,
+    "at": "2026-06-06T06:00:00Z",
+    "status": "advanced",
+    "member": "member-3",
+    "summary": "turn 36 advanced cleanly"
+  },
+  {
+    "version": 37,
+    "at": "2026-06-06T09:36:00Z",
+    "status": "advanced",
+    "member": "member-1",
+    "summary": "turn 37 advanced cleanly"
+  },
+  {
+    "version": 38,
+    "at": "2026-06-06T13:12:00Z",
+    "status": "advanced",
+    "member": "member-2",
+    "summary": "turn 38 advanced cleanly"
+  },
+  {
+    "version": 39,
+    "at": "2026-06-06T12:00:00Z",
+    "status": "awaiting_approval",
+    "summary": "parked: awaiting human ops review on critical cap widening"
+  },
+  {
+    "version": 40,
+    "at": "2026-07-10T14:05:34.448448Z",
+    "status": "awaiting_approval",
+    "summary": "parked: stuck on member_result refusal spike"
+  },
+  {
+    "version": 41,
+    "at": "2026-06-07T00:00:00Z",
+    "status": "refused",
+    "summary": "turn 41 refused: missing grounded evidence"
+  },
+  {
+    "version": 42,
+    "at": "2026-06-08T00:00:00Z",
+    "status": "refused",
+    "summary": "turn 42 refused: missing grounded evidence"
+  }
+]

@@ -1,0 +1,101 @@
+skill: agency-health
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: concerning-agency-sealed
+      inputs:
+        data_source_ref: "ds:agency-fixtures"
+        store_id: "store-a"
+        agency_ref: "agency-007"
+        case_id: "case-001"
+        period:
+          since: "2026-06-01T00:00:00Z"
+          until: "2026-07-08T00:00:00Z"
+        health_baseline:
+          threshold_days_stuck: 3
+          cap_pressure_pct: 80
+          refusal_spike_rate: 0.10
+        ledger_id_stubs:
+          - "ledger-stub-001"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.agency.health.v1
+        contains:
+          decision: ["ready", "needs_human"]
+          health_verdict.status: ["degraded", "critical", "healthy"]
+          findings: "non-empty"
+          intervention_findings: "non-empty-or-empty"
+
+    - name: no-case-events-stop
+      inputs:
+        data_source_ref: "ds:agency-fixtures"
+        store_id: "store-a"
+        agency_ref: "agency-008"
+        case_id: "case-empty"
+        period:
+          since: "2026-06-01T00:00:00Z"
+          until: "2026-07-08T00:00:00Z"
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.agency.health.v1
+        contains:
+          decision: "needs_more_evidence"
+          health_verdict.status: "degraded"
+          findings: "empty"
+          intervention_findings: "empty"
+          refusals: "non-empty"
+
+runners:
+  evaluate:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      decision: string
+      health_verdict: object
+      intervention_findings: array
+      refusals: array
+      receipt_local: object
+    artifacts:
+      wrap_as: agency_health_packet
+      packet: runx.agency.health.v1
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: "Registry-pinned identifier of the hosted data-store whose runner is C2."
+      store_id:
+        type: string
+        required: true
+        description: "Store within the data-source that carries the agency case stream."
+      agency_ref:
+        type: string
+        required: true
+        description: "Agency whose case the skill folds."
+      case_id:
+        type: string
+        required: false
+        description: "Specific case within the agency; defaults to the agency's current case."
+      period:
+        type: object
+        required: false
+        description: "{ since, until } ISO timestamps bounding the case read."
+      health_baseline:
+        type: object
+        required: false
+        description: "Operator-supplied thresholds: threshold_days_stuck, cap_pressure_pct, refusal_spike_rate."
+      ledger_id_stubs:
+        type: array
+        required: false
+        description: "Receipt id-stubs to compose-read from the ledger read runner (C7) by id only."

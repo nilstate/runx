@@ -1,0 +1,18 @@
+{
+  "case_id": "case-001",
+  "agency_ref": "agency-007",
+  "mandate": "research-sourcey-publish",
+  "roster": [
+    "member-1",
+    "member-2",
+    "member-3"
+  ],
+  "limits": {
+    "max_acts": 50,
+    "max_spend": 1000
+  },
+  "cumulative": {
+    "acts": 41,
+    "spend": 820
+  }
+}

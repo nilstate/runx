@@ -1,0 +1,8 @@
+{
+  "receipt_ref": "runx:receipt:sha256:9b1f2c5d4e8a7b3c6f0d2e1a4b5c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c",
+  "verdict": "sealed",
+  "issuer": "hosted",
+  "kid": "runx-2026",
+  "kind": "agency_turn",
+  "summary": "one agency_turn sealed"
+}
