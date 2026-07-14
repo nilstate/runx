@@ -3,17 +3,67 @@
     "agent_task.purchase-approval.output": {
       "decision": {
         "approved": true,
-        "reason": "Vendor is approved and the USD 480 request is within the USD 1000 single-purchase cap, USD 2200 remaining budget, and USD 480 requested scope."
+        "reason": "The approved vendor request is within the 1000 USD single-purchase cap, the authoritative stored 2200 USD balance, the exact requested scope, and the matching mock provider price."
       },
       "attenuation_request": {
         "amount": 480,
         "currency": "USD",
         "counterparty": "Acme Hosting",
-        "scopes": [
-          "purchase:hosting"
-        ]
+        "scopes": ["purchase:hosting"]
+      },
+      "budget_event": {
+        "type": "purchase.committed",
+        "payload": {
+          "budget_period": "2026-07",
+          "amount": 480,
+          "currency": "USD",
+          "vendor": "Acme Hosting",
+          "purpose": "Annual staging infrastructure renewal"
+        }
       },
       "escalation": null
+    },
+    "purchase-approval.human-review": true,
+    "agent_task.charge-price.output": {
+      "charge_price": {
+        "price_id": "charge_price_acme_2026_07",
+        "amount_minor": 480,
+        "currency": "USD",
+        "settlement_families": ["mock"]
+      },
+      "requested_payment_authority": {
+        "authority_ref": "authority:payment:purchase-approval-acme-2026-07"
+      }
+    },
+    "agent_task.charge-challenge.output": {
+      "effect_required_signal": {
+        "signal_type": "effect_required",
+        "challenge_id": "charge_challenge_acme_2026_07"
+      },
+      "charge_challenge": {
+        "challenge_id": "charge_challenge_acme_2026_07",
+        "receipt_before_forward_required": true
+      },
+      "idempotency": {"key": "charge:acme-hosting-2026-07"},
+      "accepted_settlement_families": ["mock"]
+    },
+    "agent_task.charge-verify.output": {
+      "verification_result": {"status": "verified", "settlement_family": "mock"},
+      "settlement_proof": {
+        "proof_ref": "receipt-proof:mock-charge:acme-hosting-2026-07",
+        "idempotency_key": "charge:acme-hosting-2026-07"
+      },
+      "sealed_receipt_ref": "receipt:charge:mock:acme-hosting-2026-07",
+      "redactions": ["credential_material"],
+      "recovery_hint": {"status": "sealed"}
+    },
+    "agent_task.seal.output": {
+      "sealed": true,
+      "receipt_ref": "receipt:charge:mock:acme-hosting-2026-07"
+    },
+    "agent_task.forward.output": {
+      "forwarded": true,
+      "result_ref": "result:hosting-renewal:staging"
     }
   }
 }

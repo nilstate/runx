@@ -1,21 +1,37 @@
-# Purchase Approval Delivery Report
+# Purchase Approval 0.2.0 Delivery Report
 
-- Published `q10283245/purchase-approval@0.1.0` with `runx-cli 0.7.0`, above the required 0.6.14 floor, through the GitHub-authenticated hosted registry flow.
-- Public adoption page: <https://runx.ai/x/q10283245/purchase-approval@0.1.0>. Public review PR: <https://github.com/runxhq/runx/pull/307>.
-- Source revision `1d5bff5e5865650aec2eba950e20ed36bc1443a9` contains `X.yaml`, `SKILL.md`, fixtures, harness evidence, and the dogfood answer packet used to resume the governed run.
-- Local harness passed both inline cases before publish. A clean registry install passed, and replaying the installed `0.1.0` profile passed both cases after publish.
-- `purchase-approval-in-policy-within-budget` sealed with `decision.approved=true` and one bounded 480 USD ceiling for `Acme Hosting` and `purchase:hosting`.
-- `purchase-approval-over-budget-needs-human` stopped at `needs_agent` because 2,800 USD exceeded both the 1,500 USD single-purchase cap and 1,200 USD remaining budget. It intentionally omits caller answers and emits no ceiling.
-- The post-publish dogfood run used a real 480 USD hosting-renewal request against a 2,200 USD remaining budget. It sealed receipt `runx:receipt:sha256:3d3eced86dc12c493310ec6544d5b07100e6d68f28c0381f0355f2904910dd8a`.
-- `runx verify --receipt ... --json` returned `valid: true`, with valid digest, content address, and Ed25519 signature. The public verification packet includes the non-secret verification key.
-- The skill makes a bounded judgment only. It does not mint, reserve, settle, or move funds. A downstream C3 accepting runner may attenuate the emitted ceiling further but cannot widen it.
-- A new user can install with `runx add q10283245/purchase-approval@0.1.0 --registry https://api.runx.ai`, run it with typed JSON inputs using `runx skill q10283245/purchase-approval@0.1.0 --json`, resume any explicit agent/human request, then verify the emitted receipt with the documented public key.
+- Published `q10283245/purchase-approval@0.2.0` with `runx-cli 0.7.1` through the GitHub-authenticated hosted registry flow. Package digest: `68d7540b7bc3e141e75c6043f9025afce30dc5322b801dea4c20a2c94e25e6e0`; profile digest: `98b7724ee7b368a8e50162879a39446ace0a516401010810d3cdff33b92c611b`.
+- Public adoption page: <https://runx.ai/x/q10283245/purchase-approval@0.2.0>. Review PR: <https://github.com/runxhq/runx/pull/307>.
+- The authoritative source and all delivery evidence are pinned by the immutable `purchase-approval-v0.2.0-evidence` tag.
+
+## Operational correction
+
+The 0.1.0 graph accepted `current_budget_balance` as caller input and emitted a ceiling that no shipped rail consumed. Version 0.2.0 removes that input. It now reads `budget_events` through `data.source/read_projection`, keyed by `cost_center` and `budget_period`, and uses the returned balance and stream version as authority.
+
+After the decision and explicit human gate, the graph appends `purchase.committed` with `expected_version` taken from that read. Only a successful compare-and-set reaches the embedded `mock-charge` runner. That runner executes price, challenge, verification, seal, and modeled forward under the exact `AttenuationRequest` supplied as `parent_payment_authority`. The rail is deterministic and moves no money.
+
+## Published-package proof
+
+Runx's hosted registry reran the 0.2.0 harness from the published package material at `2026-07-14T06:00:18.344Z`. `purchase-approval-budgeted-mock-charge` sealed, while `purchase-approval-over-budget-blocks-charge` stopped at `needs_agent`. The hosted result passed 2/2 checks, failed 0, and bound receipt `runx:receipt:sha256:cbe0ccceca1e767f24e7ec5e74acf28b4a970bdb09b417859a71d4f6574ba6bf` to the published package and profile digests. Public evidence: <https://runx.ai/x/q10283245/purchase-approval@0.2.0#harness>.
+
+## Full signed dogfood observations
+
+The full post-publish source-profile run used a 480 USD Acme Hosting request, 1000 USD single-purchase cap, exact `purchase:hosting` scope, and authoritative 2200 USD cost-center projection at version 1.
+
+The decision approved the request for those exact bounds and emitted a 480 USD ceiling for Acme Hosting only. Human confirmation preceded all mutation. CAS then committed `budget_events:engineering-platform-dogfood:2`, advanced version 1 to 2, and readback showed `committed_spend=480` and `current_budget_balance=1720`.
+
+The embedded mock rail priced 480 USD, issued a receipt-before-forward challenge, verified the `mock` settlement family, sealed `receipt:charge:mock:acme-hosting-2026-07`, and modeled the hosting result forward. It used no wallet, provider secret, or real payment and moved no funds.
+
+Root receipt `runx:receipt:sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79` passed digest, content-address, and production Ed25519 signature verification. The verification packet intentionally records root verification only; child receipt refs remain in `receipt.json`.
+
+The negative fixture requests 2800 USD against a stored 1200 USD balance and 1500 USD cap. With no agent resolution, it stops at `needs_agent` before human approval, budget append, or mock charge. No ceiling is consumable and no spend path fires.
 
 ## Public artifacts
 
-- Registry metadata: `runx registry read q10283245/purchase-approval@0.1.0 --registry https://api.runx.ai --json`
-- Raw profile: <https://raw.githubusercontent.com/q10283245/runx/1d5bff5e5865650aec2eba950e20ed36bc1443a9/skills/purchase-approval/X.yaml>
-- Raw instructions: <https://raw.githubusercontent.com/q10283245/runx/1d5bff5e5865650aec2eba950e20ed36bc1443a9/skills/purchase-approval/SKILL.md>
-- Evidence packet: `skills/purchase-approval/evidence/evidence.json`
-- Verification packet: `skills/purchase-approval/evidence/verification.json`
-- Receipt: `skills/purchase-approval/evidence/receipt.json`
+- Source: <https://github.com/q10283245/runx/tree/purchase-approval-v0.2.0-evidence/skills/purchase-approval>
+- Raw profile: <https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/X.yaml>
+- Raw instructions: <https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/SKILL.md>
+- Evidence JSON: <https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/evidence/evidence.json>
+- Hosted harness packet: <https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/evidence/hosted-harness.json>
+- Verification packet: <https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/evidence/verification.json>
+- Receipt: <https://raw.githubusercontent.com/q10283245/runx/purchase-approval-v0.2.0-evidence/skills/purchase-approval/evidence/receipt.json>

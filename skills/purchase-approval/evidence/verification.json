@@ -1,11 +1,25 @@
 {
   "schema": "runx.verify_verdict.v1",
-  "receipt_id": "sha256:3d3eced86dc12c493310ec6544d5b07100e6d68f28c0381f0355f2904910dd8a",
+  "receipt_id": "sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79",
   "valid": true,
-  "digest": {"status": "valid", "expected": "sha256:2cdf71210ce768700f880be96654624378b4de359a734d6778535cf27d64782f", "actual": "sha256:2cdf71210ce768700f880be96654624378b4de359a734d6778535cf27d64782f"},
-  "content_address": {"status": "valid", "expected": "sha256:3d3eced86dc12c493310ec6544d5b07100e6d68f28c0381f0355f2904910dd8a", "actual": "sha256:3d3eced86dc12c493310ec6544d5b07100e6d68f28c0381f0355f2904910dd8a"},
-  "signature": {"mode": "production", "status": "valid", "kid": "purchase-approval-dogfood", "public_key_base64": "O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik="},
-  "lineage": {"status": "unverified", "message": "Single-receipt verification validates the root receipt; child receipt references remain recorded in receipt.json."},
-  "findings": [],
-  "command": "RUNX_RECEIPT_VERIFY_KID=purchase-approval-dogfood RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik= runx verify --receipt skills/purchase-approval/evidence/receipt.json --json"
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:2bdb90faa058e4d3206cc9b8764c03bf5577ab9b2df41297fe7acccd618b4b27",
+    "actual": "sha256:2bdb90faa058e4d3206cc9b8764c03bf5577ab9b2df41297fe7acccd618b4b27"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79",
+    "actual": "sha256:d0ec1b4efd873a38927bef4d368558c86dba54fb03cec1becb177423f911bb79"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "purchase-approval-dogfood-020"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "Single-receipt verification validates the root receipt; child references remain recorded in receipt.json."
+  },
+  "findings": []
 }

@@ -1,0 +1,21 @@
+{
+  "status": "success",
+  "skill_id": "q10283245/purchase-approval",
+  "source": "runx-registry",
+  "package_version": "0.2.0",
+  "package_digest": "68d7540b7bc3e141e75c6043f9025afce30dc5322b801dea4c20a2c94e25e6e0",
+  "profile_digest": "98b7724ee7b368a8e50162879a39446ace0a516401010810d3cdff33b92c611b",
+  "run_id": "runx-harness:q10283245/purchase-approval:0.2.0",
+  "timestamp": "2026-07-14T06:00:18.344Z",
+  "harness_status": "passed",
+  "checks_total": 2,
+  "checks_passed": 2,
+  "checks_failed": 0,
+  "case_names": [
+    "purchase-approval-budgeted-mock-charge",
+    "purchase-approval-over-budget-blocks-charge"
+  ],
+  "receipt_ref": "runx:receipt:sha256:cbe0ccceca1e767f24e7ec5e74acf28b4a970bdb09b417859a71d4f6574ba6bf",
+  "evidence_url": "https://runx.ai/x/q10283245/purchase-approval@0.2.0#harness",
+  "api_url": "https://api.runx.ai/v1/skills/q10283245/purchase-approval%400.2.0/harness"
+}
