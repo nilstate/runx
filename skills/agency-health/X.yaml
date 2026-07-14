@@ -1,0 +1,178 @@
+skill: agency-health
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: concerning-agency-sealed
+      runner: assess
+      env:
+        RUNX_TOOL_ROOTS: skills/agency-health/tools
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://agency-health/harness":{"adapter":"data.agency-health-harness","profile":"agency-health-harness-v1","cases":{"case-concerning-001":[{"committed_at":"2026-07-01T00:00:00Z","event":{"type":"opened","payload":{"agency_ref":"agency:revenue-ops","mandate":"Recover governed revenue opportunities","roster":[{"role":"operator","skill":"ops-desk","scope":["read"]}],"limits":{"max_turns":4,"spend":{"max_per_run":{"amount":50,"currency":"USD"}}}}}},{"committed_at":"2026-07-02T00:00:00Z","event":{"type":"turn","payload":{"turn":1,"decision":"dispatch","dispatch":{"member":"operator","skill":"ops-desk","task":"inspect claim"},"member_result":{"member":"operator","outcome":"sealed","status":"sealed","receipt_id":"rcpt_agency_turn_001","spend":{"amount":45,"currency":"USD"}}}}},{"committed_at":"2026-07-03T00:00:00Z","event":{"type":"turn","payload":{"turn":2,"decision":"escalate","escalation":{"ask":"Approve a narrower retry"},"member_result":{"member":"operator","outcome":"refused","status":"refused","receipt_id":"rcpt_agency_turn_002"}}}}]}}}}'
+      inputs:
+        data_source_ref: local://agency-health/harness
+        store_id: concerning-agency-sealed
+        agency_ref: agency:revenue-ops
+        case_id: case-concerning-001
+        period:
+          from: "2026-07-01T00:00:00Z"
+          to: "2026-07-09T00:00:00Z"
+        health_baseline:
+          threshold_days_stuck: 5
+          cap_pressure_pct: 80
+          refusal_spike_rate: 0.25
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - prepare
+          - read-projection
+          - read-events
+          - read-ledger
+          - project-ledger-stubs
+          - read-case-ledger
+          - grade
+    - name: no-case-events-stop
+      runner: assess
+      env:
+        RUNX_TOOL_ROOTS: skills/agency-health/tools
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://agency-health/harness":{"adapter":"data.agency-health-harness","profile":"agency-health-harness-v1","cases":{"case-concerning-001":[]}}}}'
+      inputs:
+        data_source_ref: local://agency-health/harness
+        store_id: no-case-events-stop
+        agency_ref: agency:missing
+        case_id: case-no-events-001
+        period:
+          from: "2026-07-01T00:00:00Z"
+          to: "2026-07-09T00:00:00Z"
+        health_baseline:
+          threshold_days_stuck: 5
+          cap_pressure_pct: 80
+          refusal_spike_rate: 0.25
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - prepare
+          - read-projection
+          - read-events
+          - read-ledger
+          - project-ledger-stubs
+          - read-case-ledger
+          - grade
+    - name: missing-agency-ref-needs-agent
+      runner: assess
+      inputs:
+        data_source_ref: local://agency-health/harness
+        store_id: missing-agency-ref-needs-agent
+      expect:
+        status: needs_agent
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  assess:
+    default: true
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Stable logical data source holding the agency case.
+      store_id:
+        type: string
+        required: false
+        description: Explicit local fixture store id; omit for durable SQLite.
+      agency_ref:
+        type: string
+        required: true
+        description: Agency definition expected in the opened case event.
+      period:
+        type: json
+        required: false
+        description: Optional ISO-8601 query bounds as {from,to}.
+      case_id:
+        type: string
+        required: false
+        description: Agency case aggregate id; defaults deterministically to agency_ref.
+      health_baseline:
+        type: json
+        required: false
+        description: Optional thresholds {threshold_days_stuck,cap_pressure_pct,refusal_spike_rate}.
+    graph:
+      name: agency-health-assess
+      steps:
+        - id: prepare
+          skill: ./graph/prepare
+          inputs:
+            agency_ref: "$input.agency_ref"
+            case_id: "$input.case_id"
+            period: "$input.period"
+            health_baseline: "$input.health_baseline"
+          artifacts:
+            wrap_as: query_plan
+            packet: runx.agency_health.query.v1
+        - id: read-projection
+          skill: ./dependencies/data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: agency_cases
+          context:
+            aggregate_id: prepare.query_plan.data.case_id
+        - id: read-events
+          skill: ./dependencies/data-store
+          runner: read_events
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: agency_cases
+            limit: 500
+          context:
+            aggregate_id: prepare.query_plan.data.case_id
+        - id: read-ledger
+          skill: ./dependencies/ledger
+          runner: read
+          context:
+            question: prepare.query_plan.data.ledger_question
+            filter: prepare.query_plan.data.ledger_filter
+            proof: prepare.query_plan.data.ledger_proof
+        - id: project-ledger-stubs
+          skill: ./graph/ledger-stubs
+          context:
+            events: read-events.data_operation_result.data.events
+            period: prepare.query_plan.data.period
+          artifacts:
+            wrap_as: ledger_seed
+            packet: runx.agency_health.ledger_seed.v1
+        - id: read-case-ledger
+          skill: ./dependencies/ledger
+          runner: read
+          context:
+            question: prepare.query_plan.data.ledger_question
+            filter: prepare.query_plan.data.ledger_filter
+            proof: prepare.query_plan.data.ledger_proof
+            receipts: project-ledger-stubs.ledger_seed.data.receipts
+        - id: grade
+          skill: ./graph/grade
+          inputs:
+            agency_ref: "$input.agency_ref"
+          context:
+            case_id: prepare.query_plan.data.case_id
+            period: prepare.query_plan.data.period
+            health_baseline: prepare.query_plan.data.health_baseline
+            projection: read-projection.data_operation_result.data.projection
+            events: read-events.data_operation_result.data.events
+            ledger: read-ledger.ledger_answer_packet.data
+            case_ledger: read-case-ledger.ledger_answer_packet.data
+          artifacts:
+            wrap_as: health_bundle
+            packet: runx.agency_health.v1

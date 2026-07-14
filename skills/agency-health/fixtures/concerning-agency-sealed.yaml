@@ -1,0 +1,31 @@
+name: concerning-agency-sealed
+kind: skill
+target: ..
+runner: assess
+env:
+  RUNX_TOOL_ROOTS: skills/agency-health/tools
+  RUNX_DATA_SOURCES: '{"data_sources":{"local://agency-health/harness":{"adapter":"data.agency-health-harness","profile":"agency-health-harness-v1","cases":{"case-concerning-001":[{"committed_at":"2026-07-01T00:00:00Z","event":{"type":"opened","payload":{"agency_ref":"agency:revenue-ops","mandate":"Recover governed revenue opportunities","roster":[{"role":"operator","skill":"ops-desk","scope":["read"]}],"limits":{"max_turns":4,"spend":{"max_per_run":{"amount":50,"currency":"USD"}}}}}},{"committed_at":"2026-07-02T00:00:00Z","event":{"type":"turn","payload":{"turn":1,"decision":"dispatch","dispatch":{"member":"operator","skill":"ops-desk","task":"inspect claim"},"member_result":{"member":"operator","outcome":"sealed","status":"sealed","receipt_id":"rcpt_agency_turn_001","spend":{"amount":45,"currency":"USD"}}}}},{"committed_at":"2026-07-03T00:00:00Z","event":{"type":"turn","payload":{"turn":2,"decision":"escalate","escalation":{"ask":"Approve a narrower retry"},"member_result":{"member":"operator","outcome":"refused","status":"refused","receipt_id":"rcpt_agency_turn_002"}}}}]}}}}'
+inputs:
+  data_source_ref: local://agency-health/harness
+  store_id: concerning-agency-sealed
+  agency_ref: agency:revenue-ops
+  case_id: case-concerning-001
+  period:
+    from: "2026-07-01T00:00:00Z"
+    to: "2026-07-09T00:00:00Z"
+  health_baseline:
+    threshold_days_stuck: 5
+    cap_pressure_pct: 80
+    refusal_spike_rate: 0.25
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - prepare
+    - read-projection
+    - read-events
+    - read-ledger
+    - project-ledger-stubs
+    - read-case-ledger
+    - grade

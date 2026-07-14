@@ -1,0 +1,51 @@
+skill: agency-health-grade
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: graph-stage
+  part_of:
+    - runx/agency-health
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      agency_ref:
+        type: string
+        required: true
+        description: Agency definition expected in the opened event.
+      case_id:
+        type: string
+        required: true
+        description: Resolved agency case aggregate id.
+      period:
+        type: json
+        required: false
+        description: Normalized ISO-8601 period.
+      health_baseline:
+        type: json
+        required: false
+        description: Normalized declared health thresholds.
+      projection:
+        type: json
+        required: false
+        description: data-store.read_projection output for the case.
+      events:
+        type: json
+        required: false
+        description: data-store.read_events rows for the same case.
+      ledger:
+        type: json
+        required: false
+        description: ledger.read packet containing id-stubs only.
+      case_ledger:
+        type: json
+        required: false
+        description: Second ledger.read packet over receipt id-stubs already cited by ordered case events.

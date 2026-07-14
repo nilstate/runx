@@ -16,6 +16,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "cc47b9574d8aeddc679dc08ca983702e7a75c576ce04fb5bc50b63c7541747c8",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/agency-health",
+        version: "sha-0228c0d35324",
+        digest: "069187b622c7bbdbd5fbcd1d4c216bf062d6341a384b64a2d27be854d435f086",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/brand-voice",
         version: "sha-79c56911c0ba",
         digest: "54bf1ed1013ebc91a5491fb86f15a1bda2e872ac073a12680c58278af0867528",

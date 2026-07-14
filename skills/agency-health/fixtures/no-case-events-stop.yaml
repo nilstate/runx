@@ -1,0 +1,31 @@
+name: no-case-events-stop
+kind: skill
+target: ..
+runner: assess
+env:
+  RUNX_TOOL_ROOTS: skills/agency-health/tools
+  RUNX_DATA_SOURCES: '{"data_sources":{"local://agency-health/harness":{"adapter":"data.agency-health-harness","profile":"agency-health-harness-v1","cases":{}}}}'
+inputs:
+  data_source_ref: local://agency-health/harness
+  store_id: no-case-events-stop
+  agency_ref: agency:missing
+  case_id: case-no-events-001
+  period:
+    from: "2026-07-01T00:00:00Z"
+    to: "2026-07-09T00:00:00Z"
+  health_baseline:
+    threshold_days_stuck: 5
+    cap_pressure_pct: 80
+    refusal_spike_rate: 0.25
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - prepare
+    - read-projection
+    - read-events
+    - read-ledger
+    - project-ledger-stubs
+    - read-case-ledger
+    - grade
