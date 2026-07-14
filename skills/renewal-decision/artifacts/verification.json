@@ -1,6 +1,6 @@
 {
   "schema": "runx.renewal_decision.verification.v1",
-  "verified_at": "2026-07-12T05:12:00Z",
+  "verified_at": "2026-07-14T04:52:01Z",
   "cli": {
     "version": "runx-cli 0.6.19",
     "meets_minimum": true,
@@ -14,25 +14,32 @@
     "profile_digest": "sha256:19bea0b549a57228406e92b823e0ddac486a4ddb42cdb609f2a44bffa6914c61",
     "public_url": "https://runx.ai/x/dh0h/renewal-decision@sha-23e7a258c30a"
   },
+  "receipt_signing": {
+    "issuer_type": "hosted",
+    "kid": "dh0h-frantic-receipt-2026-07-14-e88f2687",
+    "public_key_sha256": "sha256:c9a6c5bd0f8cc0f48497a1c67141e4ae6839887993466dbfe4058109913848e4",
+    "verify_public_key_base64": "UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4="
+  },
   "checks": [
     {
       "name": "local harness",
-      "command": "runx harness skills/renewal-decision -R /tmp/runx-renewal-local-receipts --json",
+      "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; PATH includes node runtime; runx harness skills/renewal-decision --receipt-dir /tmp/runx-renewal-prod-signed-local-receipts-20260714 --json",
       "status": "passed",
       "case_count": 2,
       "case_names": [
         "renewal-decision-renew-with-bounded-ceiling",
         "renewal-decision-stop-over-policy-cap"
       ],
-      "sealed_receipt_id": "sha256:d046a39157e2356743014c99a3d3ec0eab7c6bc72edd2f72a2c37886845916f1"
+      "sealed_receipt_id": "sha256:d20cd7770cc94859957778ab0e4aa63c67407ea224737952b1838cc980cb5fbb"
     },
     {
       "name": "local receipt verify",
-      "command": "runx verify sha256:d046a39157e2356743014c99a3d3ec0eab7c6bc72edd2f72a2c37886845916f1 --receipt-dir /tmp/runx-renewal-local-receipts --allow-local-development-signatures --json",
+      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify sha256:d20cd7770cc94859957778ab0e4aa63c67407ea224737952b1838cc980cb5fbb --receipt-dir /tmp/runx-renewal-prod-signed-local-receipts-20260714 --json",
       "status": "passed",
       "valid": true,
       "receipt_count": 4,
-      "signature_mode": "local-development"
+      "signature_mode": "production",
+      "findings": []
     },
     {
       "name": "hosted registry publish gate",
@@ -55,21 +62,28 @@
       "status": "installed"
     },
     {
-      "name": "published package dogfood",
-      "command": "runx skill dh0h/renewal-decision@sha-23e7a258c30a --registry https://api.runx.ai ...; runx resume run_decide_c0c09bd6582d answers.json --receipt-dir /tmp/runx-renewal-published-receipts-v3 --json",
-      "status": "sealed",
-      "run_id": "run_decide_c0c09bd6582d",
-      "receipt_id": "sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a",
-      "receipt_ref": "runx:receipt:sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a",
+      "name": "published package dogfood start",
+      "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; RUNX_DATA_SOURCES configured for tenant://renewal-decision/vendor-ledger; runx skill dh0h/renewal-decision@sha-23e7a258c30a decide --registry https://api.runx.ai -i data_source_ref=tenant://renewal-decision/vendor-ledger -i store_id=renewal-decision-prod-signed-dogfood-20260714 --input-json vendor_contract=<fixture.vendor_contract> --input-json usage_actuals=<fixture.usage_actuals> --input-json renewal_offer=<fixture.renewal_offer> --input-json procurement_policy=<fixture.procurement_policy> --receipt-dir /tmp/runx-renewal-prod-signed-receipts-20260714 --json",
+      "status": "needs_agent",
+      "run_id": "run_decide_a327d1171339",
       "registry_trust_state": "trusted"
     },
     {
+      "name": "published package dogfood resume",
+      "command": "RUNX_RECEIPT_SIGN_* configured with hosted Ed25519 signing material; RUNX_DATA_SOURCES configured for tenant://renewal-decision/vendor-ledger; runx resume run_decide_a327d1171339 /tmp/runx-renewal-prod-signed-answers-20260714.json --receipt-dir /tmp/runx-renewal-prod-signed-receipts-20260714 --json",
+      "status": "sealed",
+      "run_id": "run_decide_a327d1171339",
+      "receipt_id": "sha256:94d044d29550ccf178841133f5ad6f408e59fb1f7855754af066ca22d4a68639",
+      "receipt_ref": "runx:receipt:sha256:94d044d29550ccf178841133f5ad6f408e59fb1f7855754af066ca22d4a68639"
+    },
+    {
       "name": "published receipt verify",
-      "command": "runx verify sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a --receipt-dir /tmp/runx-renewal-published-receipts-v3 --allow-local-development-signatures --json",
+      "command": "RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687 RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4= runx verify sha256:94d044d29550ccf178841133f5ad6f408e59fb1f7855754af066ca22d4a68639 --receipt-dir /tmp/runx-renewal-prod-signed-receipts-20260714 --json",
       "status": "passed",
       "valid": true,
       "receipt_count": 4,
-      "signature_mode": "local-development"
+      "signature_mode": "production",
+      "findings": []
     }
   ]
 }

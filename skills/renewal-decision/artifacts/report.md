@@ -10,11 +10,12 @@
 ## Verification
 
 - `runx-cli 0.6.19` satisfies the `0.6.14+` requirement.
-- Local harness passed with exactly two cases: one sealed renew case and one `needs_agent` stop case.
+- Local harness passed with exactly two cases: one sealed renew case and one `needs_agent` stop case; its receipt verifies in production signature mode.
 - Hosted registry publish gate passed and published version `sha-23e7a258c30a`.
 - Registry read and install both resolved the package with runner `decide`.
-- Published-package dogfood run sealed receipt `runx:receipt:sha256:c430d1034f64321e98aaf568e0091bcee57d9328b65f1daf20efc0b938932e8a`.
-- Receipt verification passed with a 4-receipt tree and no findings.
+- Published-package dogfood run sealed production-signed receipt `runx:receipt:sha256:94d044d29550ccf178841133f5ad6f408e59fb1f7855754af066ca22d4a68639`.
+- Plain receipt verification passed with the standard production verifier: `signature_mode: production`, 4-receipt tree, no findings.
+- Verification public key: `RUNX_RECEIPT_VERIFY_KID=dh0h-frantic-receipt-2026-07-14-e88f2687`, `RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64=UojZI9lCxtz5KRlZmm1z2iNazzUIIct+9oZ0Ew8Brz4=`.
 
 ## Domain Evidence
 
