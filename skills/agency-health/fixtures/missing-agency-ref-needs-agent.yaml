@@ -1,0 +1,11 @@
+name: missing-agency-ref-needs-agent
+kind: skill
+target: ..
+runner: assess
+inputs:
+  data_source_ref: local://agency-health/harness
+  store_id: missing-agency-ref-needs-agent
+expect:
+  status: needs_agent
+  receipt:
+    schema: runx.receipt.v1

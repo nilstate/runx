@@ -22,6 +22,10 @@ It is a read-only diagnostic lane. It appends nothing, dispatches nothing,
 moves no money, grants no access, and consumes no effect. An intervention names
 the separate lane an operator or driver may run next; it is never that run.
 
+The inline harness keeps the two domain cases named by the public contract and
+adds one registry-admission boundary: omitting required `agency_ref` must stop
+as `needs_agent` before any read is attempted.
+
 ## When to use this skill
 
 - A running agency appears stuck, approval-heavy, refusal-prone, or close to a

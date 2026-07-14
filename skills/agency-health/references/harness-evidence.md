@@ -10,18 +10,23 @@ or findings from the caller.
 runx harness ./skills/agency-health --json
 ```
 
-The two named cases sealed successfully:
+The two contractual domain cases sealed successfully:
 
 - `concerning-agency-sealed`: `ready`, `degraded`, four health findings, and
   two grounded intervention findings. Top receipt:
-  `runx:receipt:sha256:0ebb7dedbb2d3ef67b6f217808252b7a765cbad0962e1fc51b71aa08a760bbc8`.
+  `runx:receipt:sha256:ac9dfc4b302158e1846322f5244c131ab04051386614e77e2e7a80d3fe91cd19`.
 - `no-case-events-stop`: `needs_more_evidence`, `unknown`, zero findings, and
   zero interventions. Top receipt:
-  `runx:receipt:sha256:ecfb3f093fb74bc9928d26f74c60dc1924de8d00e4f68b8ff7c353f23880b83b`.
+  `runx:receipt:sha256:40f80613549a80be5420087a344dfd60a8b6e32c784c555a1a41ff63909205c7`.
 
 Both runs executed the same graph stages: `prepare`, `read-projection`,
 `read-events`, `read-ledger`, `project-ledger-stubs`, `read-case-ledger`, and
 `grade`.
+
+The registry-admission boundary `missing-agency-ref-needs-agent` also passed:
+the runtime stopped as `needs_agent` before any graph read when the required
+agency identity was omitted. It is intentionally separate from the two domain
+cases above.
 
 ## Durable pre-publication dogfood
 

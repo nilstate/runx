@@ -67,6 +67,15 @@ harness:
           - project-ledger-stubs
           - read-case-ledger
           - grade
+    - name: missing-agency-ref-needs-agent
+      runner: assess
+      inputs:
+        data_source_ref: local://agency-health/harness
+        store_id: missing-agency-ref-needs-agent
+      expect:
+        status: needs_agent
+        receipt:
+          schema: runx.receipt.v1
 
 runners:
   assess:
