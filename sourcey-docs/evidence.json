@@ -16,7 +16,7 @@
   },
   "public_url": "https://raw.githubusercontent.com/runxhq/runx/refs/pull/284/head/sourcey-docs/llms.txt",
   "pull_request": "https://github.com/runxhq/runx/pull/284",
-  "receipt_ref": "runx:receipt:sha256:cb15eef4515c4f8b8c8d572213850d7ac137d5eafeea9ecfefe9443e3642c735",
+  "receipt_ref": "runx:receipt:sha256:699460984219da92e112dcc492537023f0241ffcf4e8a01188687cfa11c7ac96",
   "receipt_json": "https://raw.githubusercontent.com/runxhq/runx/refs/pull/284/head/sourcey-docs/runx-receipt.json",
   "observations": [
     "runx --version returned exactly: runx-cli 0.7.0.",
@@ -28,6 +28,7 @@
     "Upstream PR https://github.com/runxhq/runx/pull/284 is opened against runxhq/runx and contains the generated artifact, config, and maintainer-facing rationale.",
     "Eight llms.txt entries map to generated pages backed by README.md and seven real files in docs/.",
     "Five audited entries are Getting Started, Agent Skills, Operator Skills, Issue To PR Flow, and Publishing; each has a corresponding generated HTML target and source Markdown file.",
+    "The deterministic Sourcey validation checked all 8 llms.txt entries, 8 configured Markdown sources, and 8 generated HTML targets; runx verify returned valid=true with signature mode=production.",
     "The deterministic Sourcey validation checked all 8 llms.txt entries, 8 configured Markdown sources, and 8 generated HTML targets; runx verify returned valid=true with signature mode=production."
   ]
 }

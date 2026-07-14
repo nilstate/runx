@@ -6,7 +6,7 @@ runx turns expertise into portable agent infrastructure. A skill is a `SKILL.md`
 
 ### or: curl -fsSL https://runx.ai/install | sh
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/readme.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/readme.html`
 
 runx turns expertise into portable agent infrastructure. A skill is a `SKILL.md` published at a URL; agents can pull it into their own environment, compose it with other skills, and build chains of useful work without bespoke glue code.
 
@@ -14,7 +14,7 @@ runx force multiplier for AI agents Composable skill chains, governed authority,
 
 ### Getting Started
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/getting-started.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/getting-started.html`
 
 This walkthrough proves the local runx path with one small skill. It uses the checked-in `examples/hello-world` package so the commands stay tied to the repo.
 
@@ -22,7 +22,7 @@ This walkthrough proves the local runx path with one small skill. It uses the ch
 
 ### Agent Skills: runx Inside Claude and Codex
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/agent-skills.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/agent-skills.html`
 
 runx skills are governed by the runx runtime, not by a model following prose. `runx export` makes those governed skills available *inside* an agent such as Claude Code or Codex: each runx skill becomes a native agent skill whose only job is to call the runx binary. The agent brings the judgment; runx admits the authority, performs the act, and returns a signed receipt.
 
@@ -30,7 +30,7 @@ runx skills are governed by the runx runtime, not by a model following prose. ru
 
 ### Operator Skills
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/operator-skills.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/operator-skills.html`
 
 Operator skills are the agent-facing control layer for running a project, workspace, product, or account through runx. They are not a second CLI and not a second backend. They turn evidence into a bounded plan, name the existing governed lane that should execute, require the right approval, and verify the result.
 
@@ -38,7 +38,7 @@ Operator skills are the agent-facing control layer for running a project, worksp
 
 ### Issue To PR Flow
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/issue-to-pr.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/issue-to-pr.html`
 
 `issue-to-pr` is the generic runx lane for turning one bounded source thread into one governed draft pull request. It is not a Slack bot, Sentry handler, or repo-specific triage policy.
 
@@ -46,7 +46,7 @@ issue-to-pr is the generic runx lane for turning one bounded source thread into 
 
 ### Publishing a skill to the runx registry
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/publishing.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/publishing.html`
 
 A runx skill is portable on its own, but to make it discoverable and installable by others it has to be **published to a registry**. There are two registries, and they behave differently.
 
@@ -54,7 +54,7 @@ A runx skill is portable on its own, but to make it discoverable and installable
 
 ### How We Test
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/how-we-test.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/how-we-test.html`
 
 Runx has two local test lanes: a fast loop for package-adjacent work and a full workspace suite for release confidence.
 
@@ -62,7 +62,7 @@ Runx has two local test lanes: a fast loop for package-adjacent work and a full 
 
 ### runx reference
 
-Path: `/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/reference.html`
+Path: `/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/reference.html`
 
 Architecture and contributor reference for the runx OSS repo: the CLI surface, the trusted Rust local runtime, generated contracts, extension protocols, SDKs, harness, local receipts, registry, official skills, and packaging. For the overview and quickstart, start at the README.
 

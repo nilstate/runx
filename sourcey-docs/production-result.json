@@ -1,6 +1,6 @@
 {
   "closure": {
-    "closed_at": "2026-07-13T13:51:15.776Z",
+    "closed_at": "2026-07-14T10:02:16.833Z",
     "disposition": "closed",
     "reason_code": "process_closed",
     "summary": "cli-tool default completed"
@@ -11,14 +11,14 @@
       "validation": {
         "entry_count": 8,
         "generated_targets_checked": [
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/readme.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/getting-started.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/agent-skills.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/operator-skills.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/issue-to-pr.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/publishing.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/how-we-test.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/reference.html"
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/readme.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/getting-started.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/agent-skills.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/operator-skills.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/issue-to-pr.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/publishing.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/how-we-test.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/reference.html"
         ],
         "schema": "sourcey.artifact.validation.v1",
         "source_count": 8,
@@ -26,19 +26,19 @@
       }
     },
     "stderr": "",
-    "stdout": "{\"validation\":{\"schema\":\"sourcey.artifact.validation.v1\",\"status\":\"valid\",\"entry_count\":8,\"source_count\":8,\"generated_targets_checked\":[\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/readme.html\",\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/getting-started.html\",\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/agent-skills.html\",\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/operator-skills.html\",\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/issue-to-pr.html\",\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/publishing.html\",\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/how-we-test.html\",\"/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/reference.html\"]}}\n",
+    "stdout": "{\"validation\":{\"schema\":\"sourcey.artifact.validation.v1\",\"status\":\"valid\",\"entry_count\":8,\"source_count\":8,\"generated_targets_checked\":[\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/readme.html\",\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/getting-started.html\",\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/agent-skills.html\",\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/operator-skills.html\",\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/issue-to-pr.html\",\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/publishing.html\",\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/how-we-test.html\",\"/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/reference.html\"]}}\n",
     "structured_output": {
       "validation": {
         "entry_count": 8,
         "generated_targets_checked": [
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/readme.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/getting-started.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/agent-skills.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/operator-skills.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/issue-to-pr.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/publishing.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/how-we-test.html",
-          "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/reference.html"
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/readme.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/getting-started.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/agent-skills.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/operator-skills.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/issue-to-pr.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/publishing.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/how-we-test.html",
+          "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/reference.html"
         ],
         "schema": "sourcey.artifact.validation.v1",
         "source_count": 8,
@@ -50,14 +50,14 @@
     "validation": {
       "entry_count": 8,
       "generated_targets_checked": [
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/readme.html",
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/getting-started.html",
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/agent-skills.html",
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/operator-skills.html",
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/issue-to-pr.html",
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/publishing.html",
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/how-we-test.html",
-        "/6pt6brty57-star/runx/codex/sourcey-llms/sourcey-docs/documentation/docs/reference.html"
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/readme.html",
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/getting-started.html",
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/agent-skills.html",
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/operator-skills.html",
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/issue-to-pr.html",
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/publishing.html",
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/how-we-test.html",
+        "/runxhq/runx/refs/pull/284/head/sourcey-docs/documentation/docs/reference.html"
       ],
       "schema": "sourcey.artifact.validation.v1",
       "source_count": 8,
@@ -78,14 +78,14 @@
           {
             "label": "operator context approval",
             "locator": "actor=runner;mode=explicit_digest",
-            "observed_at": "2026-07-13T13:51:15.740Z",
+            "observed_at": "2026-07-14T10:02:16.802Z",
             "provider": "runx",
             "type": "decision",
             "uri": "runx:decision:operator_context_approval:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542"
           }
         ],
         "closure": {
-          "closed_at": "2026-07-13T13:51:15.776Z",
+          "closed_at": "2026-07-14T10:02:16.833Z",
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully"
@@ -104,7 +104,7 @@
               {
                 "label": "operator context approval",
                 "locator": "actor=runner;mode=explicit_digest",
-                "observed_at": "2026-07-13T13:51:15.740Z",
+                "observed_at": "2026-07-14T10:02:16.802Z",
                 "provider": "runx",
                 "type": "decision",
                 "uri": "runx:decision:operator_context_approval:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542"
@@ -116,7 +116,7 @@
               {
                 "label": "operator context approval",
                 "locator": "actor=runner;mode=explicit_digest",
-                "observed_at": "2026-07-13T13:51:15.740Z",
+                "observed_at": "2026-07-14T10:02:16.802Z",
                 "provider": "runx",
                 "type": "decision",
                 "uri": "runx:decision:operator_context_approval:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542"
@@ -165,7 +165,7 @@
       "terms": []
     },
     "canonicalization": "runx.receipt.c14n.v1",
-    "created_at": "2026-07-13T13:51:15.776Z",
+    "created_at": "2026-07-14T10:02:16.833Z",
     "decisions": [
       {
         "artifact_refs": [
@@ -179,7 +179,7 @@
           {
             "label": "operator context approval",
             "locator": "actor=runner;mode=explicit_digest",
-            "observed_at": "2026-07-13T13:51:15.740Z",
+            "observed_at": "2026-07-14T10:02:16.802Z",
             "provider": "runx",
             "type": "decision",
             "uri": "runx:decision:operator_context_approval:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542"
@@ -209,8 +209,8 @@
         "selected_harness_ref": null
       }
     ],
-    "digest": "sha256:1509e531ab8b56b6cabca3801febf33296e0351eecf1b4dfcf0699363e5de7e3",
-    "id": "sha256:cb15eef4515c4f8b8c8d572213850d7ac137d5eafeea9ecfefe9443e3642c735",
+    "digest": "sha256:914895d9cef57d087b5c6e87a38ddc0851e6eded94c71a048705ff9310dc53fc",
+    "id": "sha256:699460984219da92e112dcc492537023f0241ffcf4e8a01188687cfa11c7ac96",
     "idempotency": {
       "content_hash": "sha256:run_default_72ba9cefa94d-default-content",
       "intent_key": "sha256:run_default_72ba9cefa94d-default-intent",
@@ -218,7 +218,7 @@
     },
     "issuer": {
       "kid": "github-actions-sourcey-bounty-115",
-      "public_key_sha256": "sha256:aab931e8ca4651c00ba6398a9486e10a3cec76789b916827fa937b1dec3de511",
+      "public_key_sha256": "sha256:d5301dde67f361ceb458538093d838e6ae0d99249d67ff52d69fdd003ffaab37",
       "type": "ci"
     },
     "lineage": {
@@ -227,7 +227,7 @@
     },
     "schema": "runx.receipt.v1",
     "seal": {
-      "closed_at": "2026-07-13T13:51:15.776Z",
+      "closed_at": "2026-07-14T10:02:16.833Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -242,7 +242,7 @@
             {
               "label": "operator context approval",
               "locator": "actor=runner;mode=explicit_digest",
-              "observed_at": "2026-07-13T13:51:15.740Z",
+              "observed_at": "2026-07-14T10:02:16.802Z",
               "provider": "runx",
               "type": "decision",
               "uri": "runx:decision:operator_context_approval:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542"
@@ -254,7 +254,7 @@
             {
               "label": "operator context approval",
               "locator": "actor=runner;mode=explicit_digest",
-              "observed_at": "2026-07-13T13:51:15.740Z",
+              "observed_at": "2026-07-14T10:02:16.802Z",
               "provider": "runx",
               "type": "decision",
               "uri": "runx:decision:operator_context_approval:453760ae59d67bbecdf0c60cd9a1148e666dfdf4d68d00c2e25879e45da12542"
@@ -263,14 +263,14 @@
         }
       ],
       "disposition": "closed",
-      "last_observed_at": "2026-07-13T13:51:15.776Z",
+      "last_observed_at": "2026-07-14T10:02:16.833Z",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed"
     },
     "signals": [],
     "signature": {
       "alg": "Ed25519",
-      "value": "base64:qXiFXo9vhLxrP4cucQHMnbLT_YxYYJaBTPFQXCokifdEjFzOLgmwl1nWKQgSJsBkdAY5aXBvPCNH_FiNuZzNAQ"
+      "value": "base64:v6ko6CIGn04Huz661jfJ3s3Q6vyCRGesBaVteYmg9jfG8ygtKEx6PRRUwqLXrymJRv5eHChxCTa3oeTyV_AuBw"
     },
     "subject": {
       "commitments": [],
@@ -281,7 +281,7 @@
       }
     }
   },
-  "receipt_id": "sha256:cb15eef4515c4f8b8c8d572213850d7ac137d5eafeea9ecfefe9443e3642c735",
+  "receipt_id": "sha256:699460984219da92e112dcc492537023f0241ffcf4e8a01188687cfa11c7ac96",
   "run_id": "run_default_72ba9cefa94d",
   "schema": "runx.skill_run.v1",
   "skill_name": "sourcey-artifact-validation",
