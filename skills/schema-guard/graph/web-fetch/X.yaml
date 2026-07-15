@@ -39,6 +39,7 @@ runners:
             type: cli-tool
             command: node
             args:
+              - --disable-wasm-trap-handler
               - run.mjs
             timeout_seconds: 60
             outputs:
