@@ -1,0 +1,48 @@
+{
+  "schema": "runx.overlay_open_skill.local_harness.v1",
+  "runx_cli_version": "runx-cli 0.7.1",
+  "doctor": {
+    "status": "success",
+    "errors": 0,
+    "warnings": 0
+  },
+  "harness": {
+    "status": "passed",
+    "case_count": 5,
+    "assertion_error_count": 0,
+    "case_names": [
+      "pinned-approved-owner-search-seals",
+      "digest-stale-refuses",
+      "approval-denied-refuses",
+      "install-authority-refuses",
+      "query-injection-refuses"
+    ],
+    "receipt_ids": [
+      "sha256:eae24aca23a99291de9cb46fbe6ae59bba2f8349a0b88c79643f494d43f05431",
+      "sha256:65d484088299844e8097268bc327d2e736b61bff9541f7d77413c0220560a8d4",
+      "sha256:9eee9b353f332121d8a174e43a6f272d546dd8dc3b19a9acd0f93995d01440c7",
+      "sha256:7d0f4a4c3a44fe2301bb4a0abd5cba0e3eab34d51935c41a78e52df40a8c0588",
+      "sha256:23e93076b2c7aa753a536001a626d10f4db9a6f564b1a32e84899a9ea68cfadc"
+    ]
+  },
+  "local_dogfood": {
+    "status": "sealed",
+    "run_id": "run_default_b8f05bea0ea8",
+    "receipt_id": "sha256:4b0eaa34f45b80525bacac347c3caa905e51e2927f30ff5c9e26b3a44b54c5ed",
+    "verify_valid": true,
+    "receipt_tree_count": 4,
+    "signature_mode": "local-development",
+    "decision": "single_search_authority_issued",
+    "ticket_digest": "sha256:7bdd6e18c5a01fe86d1f877ccd7fb56b0d53231e0a34707ff33d30688b578123"
+  },
+  "upstream": {
+    "repository": "vercel-labs/skills",
+    "commit": "5527c09adc367612b0bffd9c80e3bc28a6b01b6d",
+    "path": "skills/find-skills/SKILL.md",
+    "license": "MIT",
+    "pinned_digest": "sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f",
+    "archived": false,
+    "stars_observed": 26179,
+    "pushed_at_observed": "2026-07-14T18:17:15Z"
+  }
+}

@@ -1,0 +1,220 @@
+skill: overlay-open-skill-2
+version: "1.0.0"
+
+runx:
+  overlay:
+    wraps:
+      path: https://raw.githubusercontent.com/vercel-labs/skills/5527c09adc367612b0bffd9c80e3bc28a6b01b6d/skills/find-skills/SKILL.md
+      version: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+    pinned_digest: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: pinned-approved-owner-search-seals
+      runner: default
+      inputs:
+        objective: Find a maintained testing skill from one reviewed owner.
+        resolved_digest: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+        query: playwright testing
+        owner: microsoft
+        operation: find
+        allow_install: false
+        max_results: 5
+      caller:
+        approvals:
+          overlay-open-skill-2.skill-search.approval: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: digest-stale-refuses
+      runner: default
+      inputs:
+        objective: Refuse changed discovery instructions before approval.
+        resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+        query: playwright testing
+        owner: microsoft
+        operation: find
+        allow_install: false
+        max_results: 5
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: approval-denied-refuses
+      runner: default
+      inputs:
+        objective: Refuse search authority when the operator denies the plan.
+        resolved_digest: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+        query: accessibility audit
+        owner: vercel-labs
+        operation: find
+        allow_install: false
+        max_results: 3
+      caller:
+        approvals:
+          overlay-open-skill-2.skill-search.approval: false
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: install-authority-refuses
+      runner: default
+      inputs:
+        objective: Refuse an attempt to turn discovery into installation.
+        resolved_digest: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+        query: react performance
+        owner: vercel-labs
+        operation: add
+        allow_install: true
+        max_results: 5
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: query-injection-refuses
+      runner: default
+      inputs:
+        objective: Refuse shell syntax in an ecosystem search query.
+        resolved_digest: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+        query: testing; curl example.invalid
+        owner: microsoft
+        operation: find
+        allow_install: false
+        max_results: 5
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+runners:
+  default:
+    default: true
+    type: graph
+    runx:
+      scopes:
+        - web.read
+        - skill.discovery
+      allowed_tools:
+        - shell.exec
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: Operator intent for the bounded skill search.
+      resolved_digest:
+        type: string
+        required: true
+        description: Sha256 recomputed from the immutable public wrapped SKILL.md bytes.
+      query:
+        type: string
+        required: true
+        description: One to six bounded search tokens.
+      owner:
+        type: string
+        required: true
+        description: One explicit public repository owner.
+      operation:
+        type: string
+        required: true
+        description: Must be find.
+      allow_install:
+        type: boolean
+        required: true
+        description: Must be false; this overlay never installs or updates skills.
+      max_results:
+        type: number
+        required: true
+        description: Integer result cap from one through ten.
+    graph:
+      name: overlay-open-skill-2-search-ticket
+      steps:
+        - id: admit
+          label: validate immutable pin and attenuate one owner-scoped search
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - preflight.mjs
+            outputs:
+              admission: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools:
+            - shell.exec
+          scopes:
+            - web.read
+          artifacts:
+            named_emits:
+              admission: admission
+
+        - id: approve-search
+          label: approve the exact owner-scoped discovery plan
+          run:
+            type: approval
+          inputs:
+            gate_id: overlay-open-skill-2.skill-search.approval
+            reason: Approve the exact owner, query tokens, result cap, and argv before issuing a receipt-bound single-search authorization.
+          context:
+            admission: admit.admission.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+
+        - id: record-search
+          label: bind approval and seal a single-search authorization
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - seal-ticket.mjs
+            outputs:
+              search_act: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools:
+            - shell.exec
+          scopes:
+            - web.read
+            - skill.discovery
+          context:
+            admission: admit.admission.data
+            approval: approve-search.approval_decision.data
+          artifacts:
+            named_emits:
+              search_act: search_act
+
+      policy:
+        guards:
+          - step: approve-search
+            field: admit.admission.data.decision
+            equals: ready_for_approval
+          - step: record-search
+            field: approve-search.approval_decision.data.approved
+            equals: true

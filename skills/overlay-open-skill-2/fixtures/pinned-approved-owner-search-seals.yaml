@@ -1,0 +1,24 @@
+name: pinned-approved-owner-search-seals
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Find a maintained testing skill from one reviewed owner.
+  resolved_digest: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+  query: playwright testing
+  owner: microsoft
+  operation: find
+  allow_install: false
+  max_results: 5
+caller:
+  approvals:
+    overlay-open-skill-2.skill-search.approval: true
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  source: overlay-open-skill-2
+  contract: approved-owner-scoped-search
