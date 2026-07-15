@@ -1,0 +1,42 @@
+{
+  "schema": "runx.agency.health.public-verification.v1",
+  "bounty_number": 106,
+  "source_commit": "1e6863727f0095b6fec28d6aad2aa2cd5b34ac9d",
+  "source_repository": "https://github.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh",
+  "scope": "Compose the registry-pinned data-store read_projection and ledger read at runtime over a live agency case; fixtures remain harness-only.",
+  "checks": [
+    {
+      "name": "node_syntax_check_run_mjs",
+      "status": "passed",
+      "target": "skills/agency-health/run.mjs"
+    },
+    {
+      "name": "yaml_manifest_parse",
+      "status": "passed",
+      "target": "skills/agency-health/X.yaml"
+    },
+    {
+      "name": "live_compose_critical",
+      "status": "passed",
+      "case_id": "case-health-live-001",
+      "decision": "needs_human",
+      "health_status": "critical",
+      "folded_turns": 7,
+      "findings_count": 4,
+      "intervention_findings_count": 2,
+      "sealed_digest": "aa2dabaaa6716cf61a4343f23c937fb37c54426018a51bbdcb6d23ac8fc911f0"
+    },
+    {
+      "name": "live_compose_healthy",
+      "status": "passed",
+      "case_id": "case-health-live-002",
+      "decision": "ready",
+      "health_status": "healthy",
+      "folded_turns": 10,
+      "findings_count": 3,
+      "intervention_findings_count": 0,
+      "sealed_digest": "201c9f1c06d6cbf6852d0a869cad55bfee7d822cf07279ec0f6a45d62f976a23"
+    }
+  ],
+  "result": "passed"
+}
