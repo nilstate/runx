@@ -1,0 +1,10 @@
+{
+  "_fixture": "statement-balance-mismatch-needs-review",
+  "transactions": [
+    {"id":"mismatch-001","date":"2026-07-05","description":"Stripe payout invoice 2001","amount_minor":50000,"currency":"USD","counterparty":"Stripe","source_ref":"fixture://bookkeeper/mismatch-statement#line-1"}
+  ],
+  "chart_of_accounts": [
+    {"code":"4000","name":"Software revenue","type":"income","match":{"direction":"inflow","description_contains":["stripe payout"],"counterparty_exact":["Stripe"]}}
+  ],
+  "prior_period": {"currency":"USD","opening_balance_minor":100000,"expected_ending_balance_minor":149999,"previous_transaction_ids":[],"known_counterparties":["Stripe"],"average_abs_amount_minor":50000}
+}

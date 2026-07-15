@@ -1,0 +1,47 @@
+{
+  "schema": "runx.bookkeeper.local_harness.v1",
+  "runx_cli_version": "runx-cli 0.7.1",
+  "doctor": {
+    "status": "success",
+    "errors": 0,
+    "warnings": 0
+  },
+  "harness": {
+    "status": "passed",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "case_names": [
+      "sourced-clean-batch-reconciles",
+      "ambiguous-account-binding-needs-review",
+      "statement-balance-mismatch-needs-review"
+    ],
+    "expected_statuses": [
+      "sealed",
+      "policy_denied",
+      "policy_denied"
+    ],
+    "receipt_ids": [
+      "sha256:3c174f0a4209a8613ae349137aa521482712fe128bb8649847b81a8d2ac21137",
+      "sha256:806cfb838370e7732930acee4283113c016cf87f672e2e25c5fe1387adc10c18",
+      "sha256:6fe0553dc73acea88375f0faa13bad798252785ae53c7eef60512b894206deef"
+    ]
+  },
+  "clean_case_readback": {
+    "categorized_count": 3,
+    "anomaly_count": 1,
+    "reconciliation_matched_count": 3,
+    "reconciliation_unmatched_count": 0,
+    "opening_balance_minor": 250000,
+    "net_movement_minor": 102358,
+    "calculated_ending_balance_minor": 352358,
+    "expected_ending_balance_minor": 352358,
+    "consumer_step": "reconcile-readonly",
+    "ledger_mutation_performed": false,
+    "invented_accounts": false
+  },
+  "refusal_readback": {
+    "ambiguous_reason": "ambiguous_existing_account_match",
+    "statement_mismatch_reason": "opening balance plus consumed transaction movement does not equal expected ending balance",
+    "final_artifact_emitted": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "_fixture": "sourced-clean-batch-reconciles",
+  "transactions": [
+    {"id":"stmt-2026-07-001","date":"2026-07-01","description":"Stripe payout invoice 1042","amount_minor":125000,"currency":"USD","counterparty":"Stripe","source_ref":"fixture://bookkeeper/clean-statement#line-1"},
+    {"id":"stmt-2026-07-002","date":"2026-07-02","description":"AWS cloud hosting July","amount_minor":-18432,"currency":"USD","counterparty":"Amazon Web Services","source_ref":"fixture://bookkeeper/clean-statement#line-2"},
+    {"id":"stmt-2026-07-003","date":"2026-07-03","description":"GitHub Actions usage","amount_minor":-4210,"currency":"USD","counterparty":"GitHub","source_ref":"fixture://bookkeeper/clean-statement#line-3"}
+  ],
+  "chart_of_accounts": [
+    {"code":"4000","name":"Software revenue","type":"income","match":{"direction":"inflow","description_contains":["stripe payout","invoice"],"counterparty_exact":["Stripe"]}},
+    {"code":"6100","name":"Cloud hosting","type":"expense","match":{"direction":"outflow","description_contains":["aws","cloud hosting"],"counterparty_exact":["Amazon Web Services"]}},
+    {"code":"6200","name":"Developer tooling","type":"expense","match":{"direction":"outflow","description_contains":["github actions"],"counterparty_exact":["GitHub"]}}
+  ],
+  "prior_period": {"currency":"USD","opening_balance_minor":250000,"expected_ending_balance_minor":352358,"previous_transaction_ids":["stmt-2026-06-099"],"known_counterparties":["Stripe","Amazon Web Services","GitHub"],"average_abs_amount_minor":30000}
+}

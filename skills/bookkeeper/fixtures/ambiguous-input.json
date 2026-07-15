@@ -1,0 +1,11 @@
+{
+  "_fixture": "ambiguous-account-binding-needs-review",
+  "transactions": [
+    {"id":"ambiguous-001","date":"2026-07-04","description":"Cloud platform services","amount_minor":-7500,"currency":"USD","counterparty":"Unknown Platform","source_ref":"fixture://bookkeeper/ambiguous-statement#line-1"}
+  ],
+  "chart_of_accounts": [
+    {"code":"6100","name":"Cloud hosting","type":"expense","match":{"direction":"outflow","description_contains":["cloud"]}},
+    {"code":"6200","name":"Developer tooling","type":"expense","match":{"direction":"outflow","description_contains":["cloud"]}}
+  ],
+  "prior_period": {"currency":"USD","opening_balance_minor":100000,"expected_ending_balance_minor":92500,"previous_transaction_ids":[],"known_counterparties":[],"average_abs_amount_minor":10000}
+}

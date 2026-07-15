@@ -1,0 +1,254 @@
+# Deterministic, read-only bookkeeping graph.
+skill: bookkeeper
+version: "1.0.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: sourced-clean-batch-reconciles
+      runner: default
+      inputs:
+        transactions:
+          - id: stmt-2026-07-001
+            date: "2026-07-01"
+            description: Stripe payout invoice 1042
+            amount_minor: 125000
+            currency: USD
+            counterparty: Stripe
+            source_ref: fixture://bookkeeper/clean-statement#line-1
+          - id: stmt-2026-07-002
+            date: "2026-07-02"
+            description: AWS cloud hosting July
+            amount_minor: -18432
+            currency: USD
+            counterparty: Amazon Web Services
+            source_ref: fixture://bookkeeper/clean-statement#line-2
+          - id: stmt-2026-07-003
+            date: "2026-07-03"
+            description: GitHub Actions usage
+            amount_minor: -4210
+            currency: USD
+            counterparty: GitHub
+            source_ref: fixture://bookkeeper/clean-statement#line-3
+        chart_of_accounts:
+          - code: "4000"
+            name: Software revenue
+            type: income
+            match:
+              direction: inflow
+              description_contains: [stripe payout, invoice]
+              counterparty_exact: [Stripe]
+          - code: "6100"
+            name: Cloud hosting
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [aws, cloud hosting]
+              counterparty_exact: [Amazon Web Services]
+          - code: "6200"
+            name: Developer tooling
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [github actions]
+              counterparty_exact: [GitHub]
+        prior_period:
+          currency: USD
+          opening_balance_minor: 250000
+          expected_ending_balance_minor: 352358
+          previous_transaction_ids: [stmt-2026-06-099]
+          known_counterparties: [Stripe, Amazon Web Services, GitHub]
+          average_abs_amount_minor: 30000
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: ambiguous-account-binding-needs-review
+      runner: default
+      inputs:
+        transactions:
+          - id: ambiguous-001
+            date: "2026-07-04"
+            description: Cloud platform services
+            amount_minor: -7500
+            currency: USD
+            counterparty: Unknown Platform
+            source_ref: fixture://bookkeeper/ambiguous-statement#line-1
+        chart_of_accounts:
+          - code: "6100"
+            name: Cloud hosting
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [cloud]
+          - code: "6200"
+            name: Developer tooling
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [cloud]
+        prior_period:
+          currency: USD
+          opening_balance_minor: 100000
+          expected_ending_balance_minor: 92500
+          previous_transaction_ids: []
+          known_counterparties: []
+          average_abs_amount_minor: 10000
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: statement-balance-mismatch-needs-review
+      runner: default
+      inputs:
+        transactions:
+          - id: mismatch-001
+            date: "2026-07-05"
+            description: Stripe payout invoice 2001
+            amount_minor: 50000
+            currency: USD
+            counterparty: Stripe
+            source_ref: fixture://bookkeeper/mismatch-statement#line-1
+        chart_of_accounts:
+          - code: "4000"
+            name: Software revenue
+            type: income
+            match:
+              direction: inflow
+              description_contains: [stripe payout]
+              counterparty_exact: [Stripe]
+        prior_period:
+          currency: USD
+          opening_balance_minor: 100000
+          expected_ending_balance_minor: 149999
+          previous_transaction_ids: []
+          known_counterparties: [Stripe]
+          average_abs_amount_minor: 50000
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+runners:
+  default:
+    default: true
+    type: graph
+    inputs:
+      transactions:
+        type: json
+        required: true
+        description: Sourced transaction lines using signed integer minor-unit amounts.
+      chart_of_accounts:
+        type: json
+        required: true
+        description: Existing GL accounts and their explicit deterministic match policies.
+      prior_period:
+        type: json
+        required: true
+        description: Prior-period statement controls and expected current ending balance.
+    graph:
+      name: bookkeeper-readonly-reconciliation
+      steps:
+        - id: admit-source
+          label: validate sourced lines and prepare unique existing-account bindings
+          run:
+            type: cli-tool
+            command: node
+            args: [admit-source.mjs]
+            outputs:
+              admission: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools: [shell.exec]
+          artifacts:
+            named_emits:
+              admission: admission
+
+        - id: categorize-lines
+          label: materialize account bindings against the admitted chart
+          run:
+            type: cli-tool
+            command: node
+            args: [categorize-lines.mjs]
+            outputs:
+              categorized_batch: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools: [shell.exec]
+          context:
+            admission: admit-source.admission.data
+          artifacts:
+            named_emits:
+              categorized_batch: categorized_batch
+
+        - id: reconcile-readonly
+          label: consume categorized lines and independently reconcile the statement
+          run:
+            type: cli-tool
+            command: node
+            args: [reconcile-readonly.mjs]
+            outputs:
+              reconciliation_packet: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools: [shell.exec]
+          context:
+            categorized_batch: categorize-lines.categorized_batch.data
+          artifacts:
+            named_emits:
+              reconciliation_packet: reconciliation_packet
+
+        - id: emit-readonly-artifact
+          label: emit typed read-only bookkeeping artifact after consumer verification
+          run:
+            type: cli-tool
+            command: node
+            args: [emit-readonly-artifact.mjs]
+            outputs:
+              bookkeeper_result: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools: [shell.exec]
+          context:
+            categorized_batch: categorize-lines.categorized_batch.data
+            reconciliation_packet: reconcile-readonly.reconciliation_packet.data
+          artifacts:
+            named_emits:
+              bookkeeper_result: bookkeeper_result
+
+      policy:
+        guards:
+          - step: categorize-lines
+            field: admit-source.admission.data.decision
+            equals: ready
+          - step: reconcile-readonly
+            field: categorize-lines.categorized_batch.data.decision
+            equals: categorized
+          - step: emit-readonly-artifact
+            field: reconcile-readonly.reconciliation_packet.data.decision
+            equals: reconciled
