@@ -66,8 +66,25 @@ harness:
         status: sealed
         receipt:
           schema: runx.receipt.v1
+    - name: source-handoff-needs-agent
+      runner: source-handoff
+      inputs: {}
+      expect:
+        status: needs_agent
 
 runners:
+  source-handoff:
+    type: agent-task
+    agent: operator
+    task: agency-health-source-handoff
+    outputs:
+      source_resolution: object
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Operator-provided hosted data-source binding needed before a live read.
+
   evaluate:
     default: true
     type: graph
