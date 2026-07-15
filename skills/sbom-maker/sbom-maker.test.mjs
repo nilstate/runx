@@ -1,4 +1,15 @@
 import assert from "node:assert/strict";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -6,7 +17,7 @@ import {
   fetchSource,
   finalizeStoredResult,
   normalizeSourceHandle,
-} from "./lib.mjs";
+} from "./runtime/run.mjs";
 
 const packageLock = {
   name: "fixture-app",
@@ -259,3 +270,69 @@ test("refuses to finalize a conflicted append", () => {
     /append did not commit/u,
   );
 });
+
+test("runs from the sidecars retained by registry publishing", () => {
+  const packageRoot = new URL(".", import.meta.url).pathname;
+  const stagedRoot = mkdtempSync(join(tmpdir(), "sbom-maker-published-"));
+
+  try {
+    for (const relative of registryPublishableFiles(packageRoot)) {
+      const destination = join(stagedRoot, relative);
+      mkdirSync(dirname(destination), { recursive: true });
+      cpSync(join(packageRoot, relative), destination);
+    }
+
+    const execution = spawnSync(process.execPath, ["run.mjs"], {
+      cwd: stagedRoot,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        RUNX_INPUTS_JSON: JSON.stringify({
+          source_handle: "fixture://supported-package-lock.json",
+          lockfile_type: "package-lock",
+          data_source_ref: "local://sbom-maker/harness",
+          store_id: "sbom-maker-publish-layout",
+        }),
+      },
+    });
+
+    assert.equal(execution.status, 0, execution.stderr);
+    const output = JSON.parse(execution.stdout);
+    assert.equal(output.sbom_result.sbom.metadata.component.name, "fixture-app");
+  } finally {
+    rmSync(stagedRoot, { recursive: true, force: true });
+  }
+});
+
+function registryPublishableFiles(root) {
+  const excludedDirectories = new Set([
+    ".git",
+    ".runx",
+    "assets",
+    "dist",
+    "fixtures",
+    "node_modules",
+    "src",
+    "target",
+  ]);
+  const nestedFileNames = new Set([
+    "SKILL.md",
+    "X.yaml",
+    "manifest.json",
+    "run.mjs",
+    "run.js",
+    "harness.mjs",
+    "harness.js",
+  ]);
+  const files = ["SKILL.md", "X.yaml", "run.mjs", "finalize.mjs"];
+
+  for (const entry of readdirSync(root, { recursive: true })) {
+    const relative = String(entry);
+    const segments = relative.split("/");
+    if (segments.some((segment) => excludedDirectories.has(segment))) continue;
+    if (!statSync(join(root, relative)).isFile()) continue;
+    if (segments.length > 1 && nestedFileNames.has(segments.at(-1))) files.push(relative);
+  }
+
+  return [...new Set(files)].sort();
+}

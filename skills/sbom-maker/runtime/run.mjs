@@ -72,7 +72,10 @@ export async function fetchSource(sourceHandle, options = {}) {
   const now = options.now ?? (() => new Date().toISOString());
 
   if (source.kind === "fixture") {
-    const fixtureUrl = new URL(`./fixtures/${source.fixtureName}`, import.meta.url);
+    const fixtureUrl = new URL(
+      `../harness-fixtures/${source.fixtureName}/manifest.json`,
+      import.meta.url,
+    );
     const bytes = await readFile(fileURLToPath(fixtureUrl));
     assertBounded(bytes.byteLength);
     return sourceRead({

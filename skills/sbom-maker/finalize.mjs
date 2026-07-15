@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 
-import { finalizeStoredResult } from "./lib.mjs";
+import { finalizeStoredResult } from "./runtime/run.mjs";
 
 try {
   const inputs = parseInputs();

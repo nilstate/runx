@@ -1,12 +1,12 @@
 {
   "schema": "runx.sbom-maker.harness_evidence.v1",
-  "recorded_at": "2026-07-15T10:50:58Z",
+  "recorded_at": "2026-07-15T11:25:57Z",
   "source_revision_base": "c69bff9dde07f305408013c9aefec7406702d12b",
   "runx_version": "runx-cli 0.7.1",
   "unit_tests": {
     "command": "node --test skills/sbom-maker/sbom-maker.test.mjs",
     "status": "passed",
-    "passed": 13,
+    "passed": 14,
     "failed": 0
   },
   "harness": {
@@ -19,13 +19,13 @@
       {
         "name": "supported-source-stored",
         "status": "sealed",
-        "receipt_id": "sha256:3d3c144de6ff510e72934a1e79c4a5a5c0198fa0978885a9b5c30556bb47d679"
+        "receipt_id": "sha256:e4fca22e49e060c6c880e72be025692e33ca05f73d9356bb42171484eb190abe"
       },
       {
         "name": "malformed-source-refused",
         "status": "refused",
         "runtime_status": "failure",
-        "receipt_id": "sha256:47472e413c3b51a834488929643b90ac8ab1f74f532d2f31caa9bd0f05c29a31",
+        "receipt_id": "sha256:d2fd0d096064f24f3a8b87bda4b33ca10a743fef3167242edfd20dc13ccf43d0",
         "reason": "lockfile has no dependency map with pinned components"
       }
     ]

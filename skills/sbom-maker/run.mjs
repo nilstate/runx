@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { buildSbomResult, fetchSource } from "./lib.mjs";
+import { buildSbomResult, fetchSource } from "./runtime/run.mjs";
 
 try {
   const inputs = parseInputs();
