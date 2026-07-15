@@ -28,18 +28,24 @@ assert(Array.isArray(refused.output.deviations) && refused.output.deviations.len
 assert(refused.output.send_proposal === null, "refusal emits no proposal");
 assert(refused.output.validation.errors.includes("terms.payment_terms is required"), "refusal identifies payment_terms");
 
+const strictRefusal = runFixture("missing-payment-term.json", ["--fail-on-refusal"]);
+assert(strictRefusal.status === 2, "refusal_check exits with a failure status");
+assert(strictRefusal.output.draft_doc === null, "refusal_check emits no draft");
+assert(strictRefusal.output.send_proposal === null, "refusal_check emits no proposal");
+
 process.stdout.write(`${JSON.stringify({
   ok: true,
   cases: [
     { name: "complete-draft", status: "passed", draft_ref: complete.output.draft_ref, deviations: complete.output.deviations.length },
     { name: "missing-payment-term", status: "passed", refusal: "terms.payment_terms is required" },
-    { name: "deterministic-repeat", status: "passed" }
+    { name: "deterministic-repeat", status: "passed" },
+    { name: "strict-refusal", status: "passed" }
   ]
 }, null, 2)}\n`);
 
-function runFixture(name) {
+function runFixture(name, args = []) {
   const input = JSON.parse(readFileSync(join(here, "fixtures", name), "utf8"));
-  const result = spawnSync(process.execPath, [join(here, "run.mjs")], {
+  const result = spawnSync(process.execPath, [join(here, "run.mjs"), ...args], {
     env: { ...process.env, RUNX_INPUTS_JSON: JSON.stringify(input) },
     encoding: "utf8",
   });

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const inputs = readInputs();
+const failOnRefusal = process.argv.includes("--fail-on-refusal");
 let packet;
 
 try {
@@ -13,6 +14,7 @@ try {
   if (validation.errors.length > 0) {
     packet = refusalPacket({ template, validation });
     emit(packet);
+    if (failOnRefusal) process.exitCode = 2;
   } else {
     packet = draftPacket({ template, parties, terms, validation });
     emit(packet);
@@ -28,6 +30,7 @@ try {
     },
   });
   emit(packet);
+  if (failOnRefusal) process.exitCode = 2;
 }
 
 function validate({ template, parties, terms }) {

@@ -75,7 +75,9 @@ The run refuses closed and emits `draft_doc: null`, `deviations: []`, and
 - any required downstream `terms.send` field is missing.
 
 Refusal output identifies every missing or invalid field and seals that refusal
-for review. It is evidence of a blocked run, not a partial draft.
+for review in the default graph. The package also exposes `refusal_check` for
+harness and policy validation; it emits the same refusal packet and exits with
+a failure status. Neither path creates a partial draft.
 
 ## Send-As Boundary
 
@@ -96,8 +98,8 @@ Required sequence:
 
 - `complete-template-produces-gated-draft` seals a draft with four visible
   deviations and a not-approved `runx/send-as` handoff.
-- `missing-required-term-refuses-without-proposal` omits `payment_terms`, seals
-  a refusal, and emits neither a draft nor a proposal.
+- `missing-required-term-refuses-without-proposal` runs `refusal_check`, omits
+  `payment_terms`, returns failure, and emits neither a draft nor a proposal.
 
 The fixtures use synthetic parties and nonbinding review data so the public
 package contains no private contract or personal information. Production users

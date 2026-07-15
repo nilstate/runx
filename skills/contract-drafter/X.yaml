@@ -85,6 +85,7 @@ harness:
           schema: runx.receipt.v1
 
     - name: missing-required-term-refuses-without-proposal
+      runner: refusal_check
       inputs:
         template:
           template_id: public-services-review-v1
@@ -147,7 +148,7 @@ harness:
             operator_context: Draft only; human approval and provider preflight remain required.
             subject_or_title: Review the services agreement draft
       expect:
-        status: sealed
+        status: failure
         receipt:
           schema: runx.receipt.v1
 
@@ -202,3 +203,34 @@ runners:
           artifacts:
             wrap_as: contract_draft_packet
             packet: runx.contract_draft.v1
+
+  refusal_check:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+      - --fail-on-refusal
+    inputs:
+      template:
+        type: object
+        required: true
+        description: "Template to validate without permitting a partial draft."
+      parties:
+        type: object
+        required: true
+        description: "Explicit parties to validate."
+      terms:
+        type: object
+        required: true
+        description: "Explicit terms to validate."
+    outputs:
+      act_decision: string
+      act_reason: string
+      draft_ref: string
+      draft_doc: object
+      deviations: array
+      send_proposal: object
+      validation: object
+    artifacts:
+      wrap_as: contract_draft_refusal
+      packet: runx.contract_draft.v1

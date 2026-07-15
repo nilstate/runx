@@ -1,6 +1,6 @@
 {
   "schema": "runx.contract_drafter.harness_evidence.v1",
-  "recorded_at": "2026-07-15T09:24:50Z",
+  "recorded_at": "2026-07-15T09:28:26Z",
   "runx_version": "runx-cli 0.6.14",
   "command": "RUNX_RECEIPT_SIGN_KID=<ephemeral-kid> RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<ephemeral-seed> RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted runx harness ./skills/contract-drafter -R <temporary-receipt-dir>",
   "status": "passed",
@@ -10,7 +10,7 @@
     {
       "name": "complete-template-produces-gated-draft",
       "status": "sealed",
-      "receipt_id": "sha256:50f0dd6210ad9868200018646a8c20f39630ded6616a7edaa602af617a11758a",
+      "receipt_id": "sha256:3be2a91b05065fb537b56c2064a004b89a77f273062d14403badb4bca4b7231e",
       "act": {
         "form": "review",
         "summary": "draft_ready template=public-services-review-v1 deviations=4 downstream=runx/send-as status=not_sent",
@@ -19,13 +19,10 @@
     },
     {
       "name": "missing-required-term-refuses-without-proposal",
-      "status": "sealed",
-      "receipt_id": "sha256:6f24de093ae8cd7dc83fabad5430498c31d6c2a42c733df32b1c59dfc41600ff",
-      "act": {
-        "form": "review",
-        "summary": "refused missing_or_invalid_input count=2",
-        "artifact_refs": []
-      }
+      "runner": "refusal_check",
+      "status": "failure",
+      "receipt_id": "sha256:313681ba75823112b4e7f9527abd7eb1c7863d4b369f55bb88f7e288ae6440e1",
+      "result": "refused missing_or_invalid_input with draft_doc=null, deviations=[], and send_proposal=null"
     }
   ],
   "deterministic_tests": {
@@ -35,7 +32,8 @@
       "complete fixture emits draft_doc, four grounded deviations, and a gated runx/send-as proposal",
       "proposal is not pre-approved and the runner performs no send",
       "repeat execution is byte-for-byte deterministic",
-      "missing payment_terms emits no draft and no proposal"
+      "missing payment_terms emits no draft and no proposal",
+      "refusal_check returns a failure status for hosted stop-case verification"
     ]
   },
   "private_key_persisted": false
