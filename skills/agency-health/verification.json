@@ -2,6 +2,11 @@
   "schema": "runx.agency.health.public-verification.v2",
   "bounty_number": 106,
   "source_commit": "d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357",
+  "source_urls": {
+    "run_mjs": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/run.mjs",
+    "x_yaml": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/SKILL.md"
+  },
   "package": "jdjioe5-cpu/agency-health@sha-a329ceb74be3",
   "checks": [
     {"name": "runx_version", "status": "passed", "actual": "runx-cli 0.6.14"},

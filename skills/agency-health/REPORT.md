@@ -2,6 +2,8 @@
 
 The revision is published as `jdjioe5-cpu/agency-health@sha-a329ceb74be3` and proposed upstream in [runxhq/runx#332](https://github.com/runxhq/runx/pull/332).
 
+The single source snapshot for `run.mjs`, `X.yaml`, and `SKILL.md` is commit `d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357`. The verification and evidence documents below bind their source observations to that same commit.
+
 Production now composes four bounded steps:
 
 1. `registry:runx/data-store@sha-58e31b665e57` → `read_projection`, keyed by the live agency case.
@@ -15,6 +17,9 @@ RunX `0.6.14` passed the three-case local harness and the hosted registry publis
 
 - Official listing: `https://runx.ai/x/jdjioe5-cpu/agency-health@sha-a329ceb74be3`.
 - Upstream change: `https://github.com/runxhq/runx/pull/332`.
+- Source snapshot: `https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/run.mjs`.
+- X manifest: `https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/X.yaml`.
+- Skill instructions: `https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/SKILL.md`.
 - CLI and harness: `runx-cli 0.6.14`, three cases, zero assertion errors, hosted publish harness passed.
 - Clean install: `runx add jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai` succeeded.
 - Live data read: case `case-health-postpublish-20260715T081222Z`, projection version 8, eight ordered events folded.
