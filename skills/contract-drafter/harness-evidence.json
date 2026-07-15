@@ -1,0 +1,42 @@
+{
+  "schema": "runx.contract_drafter.harness_evidence.v1",
+  "recorded_at": "2026-07-15T09:24:50Z",
+  "runx_version": "runx-cli 0.6.14",
+  "command": "RUNX_RECEIPT_SIGN_KID=<ephemeral-kid> RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<ephemeral-seed> RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted runx harness ./skills/contract-drafter -R <temporary-receipt-dir>",
+  "status": "passed",
+  "case_count": 2,
+  "assertion_error_count": 0,
+  "case_results": [
+    {
+      "name": "complete-template-produces-gated-draft",
+      "status": "sealed",
+      "receipt_id": "sha256:50f0dd6210ad9868200018646a8c20f39630ded6616a7edaa602af617a11758a",
+      "act": {
+        "form": "review",
+        "summary": "draft_ready template=public-services-review-v1 deviations=4 downstream=runx/send-as status=not_sent",
+        "artifact_ref": "runx:contract-draft:2baa881685f5ed47"
+      }
+    },
+    {
+      "name": "missing-required-term-refuses-without-proposal",
+      "status": "sealed",
+      "receipt_id": "sha256:6f24de093ae8cd7dc83fabad5430498c31d6c2a42c733df32b1c59dfc41600ff",
+      "act": {
+        "form": "review",
+        "summary": "refused missing_or_invalid_input count=2",
+        "artifact_refs": []
+      }
+    }
+  ],
+  "deterministic_tests": {
+    "command": "node skills/contract-drafter/test.mjs",
+    "status": "passed",
+    "checks": [
+      "complete fixture emits draft_doc, four grounded deviations, and a gated runx/send-as proposal",
+      "proposal is not pre-approved and the runner performs no send",
+      "repeat execution is byte-for-byte deterministic",
+      "missing payment_terms emits no draft and no proposal"
+    ]
+  },
+  "private_key_persisted": false
+}

@@ -1,0 +1,204 @@
+skill: contract-drafter
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+harness:
+  cases:
+    - name: complete-template-produces-gated-draft
+      inputs:
+        template:
+          template_id: public-services-review-v1
+          title: Services Agreement Review Draft
+          source_ref: repo:skills/contract-drafter/fixtures/complete-draft.json
+          required_party_roles:
+            - provider
+            - customer
+          required_terms:
+            - effective_date
+            - services
+            - fees
+            - payment_terms
+            - liability_cap
+            - governing_law
+            - confidentiality_period
+          baseline:
+            payment_terms: Net 30
+            liability_cap: Fees paid in the prior 12 months
+            governing_law: California
+            confidentiality_period: 3 years
+          term_clauses:
+            payment_terms: fees
+            liability_cap: liability
+            governing_law: governing-law
+            confidentiality_period: confidentiality
+          clauses:
+            - id: parties
+              title: Parties and Effective Date
+              body_template: "{{parties.provider.legal_name}} and {{parties.customer.legal_name}} enter this agreement effective {{terms.effective_date}}."
+            - id: services
+              title: Services
+              body_template: "{{parties.provider.legal_name}} will provide {{terms.services}}."
+            - id: fees
+              title: Fees and Payment
+              body_template: "{{parties.customer.legal_name}} will pay {{terms.fees}} under {{terms.payment_terms}} payment terms."
+            - id: liability
+              title: Limitation of Liability
+              body_template: "The aggregate liability cap is {{terms.liability_cap}}."
+            - id: confidentiality
+              title: Confidentiality
+              body_template: "Confidentiality obligations survive for {{terms.confidentiality_period}}."
+            - id: governing-law
+              title: Governing Law
+              body_template: "The agreement is governed by {{terms.governing_law}}."
+        parties:
+          provider:
+            legal_name: Northstar Example Services LLC
+            role: provider
+          customer:
+            legal_name: Harbor Example Studio Inc.
+            role: customer
+        terms:
+          effective_date: "2026-07-15"
+          services: Monthly release engineering review and incident-readiness support
+          fees: USD 8,000 per month
+          payment_terms: Net 45
+          liability_cap: USD 80,000 aggregate
+          governing_law: Delaware
+          confidentiality_period: 2 years
+          send:
+            objective: Prepare the review draft for a separate governed send-as planning run.
+            principal: account:contract-review-demo
+            audience:
+              type: repository_review
+              ref: RYDE-PLAY/frantic-86-contract-drafter
+            consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
+            operator_context: Draft only; human approval and provider preflight remain required.
+            subject_or_title: Review the services agreement draft
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: missing-required-term-refuses-without-proposal
+      inputs:
+        template:
+          template_id: public-services-review-v1
+          title: Services Agreement Review Draft
+          source_ref: repo:skills/contract-drafter/fixtures/missing-payment-term.json
+          required_party_roles:
+            - provider
+            - customer
+          required_terms:
+            - effective_date
+            - services
+            - fees
+            - payment_terms
+            - liability_cap
+            - governing_law
+          baseline:
+            payment_terms: Net 30
+            liability_cap: Fees paid in the prior 12 months
+            governing_law: California
+          term_clauses:
+            payment_terms: fees
+            liability_cap: liability
+            governing_law: governing-law
+          clauses:
+            - id: parties
+              title: Parties and Effective Date
+              body_template: "{{parties.provider.legal_name}} and {{parties.customer.legal_name}} enter this agreement effective {{terms.effective_date}}."
+            - id: services
+              title: Services
+              body_template: "{{parties.provider.legal_name}} will provide {{terms.services}}."
+            - id: fees
+              title: Fees and Payment
+              body_template: "{{parties.customer.legal_name}} will pay {{terms.fees}} under {{terms.payment_terms}} payment terms."
+            - id: liability
+              title: Limitation of Liability
+              body_template: "The aggregate liability cap is {{terms.liability_cap}}."
+            - id: governing-law
+              title: Governing Law
+              body_template: "The agreement is governed by {{terms.governing_law}}."
+        parties:
+          provider:
+            legal_name: Northstar Example Services LLC
+            role: provider
+          customer:
+            legal_name: Harbor Example Studio Inc.
+            role: customer
+        terms:
+          effective_date: "2026-07-15"
+          services: Monthly release engineering review and incident-readiness support
+          fees: USD 8,000 per month
+          liability_cap: USD 80,000 aggregate
+          governing_law: Delaware
+          send:
+            objective: Prepare the review draft for a separate governed send-as planning run.
+            principal: account:contract-review-demo
+            audience:
+              type: repository_review
+              ref: RYDE-PLAY/frantic-86-contract-drafter
+            consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
+            operator_context: Draft only; human approval and provider preflight remain required.
+            subject_or_title: Review the services agreement draft
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+runners:
+  draft:
+    default: true
+    type: graph
+    act:
+      form: review
+      purpose: Assemble a contract review draft from explicit source fields and record every template departure without sending it.
+      legitimacy: The operator supplied the template, parties, terms, and downstream review context; send-as retains separate authority.
+      reason_step: assemble
+      reason_from: act_reason
+      effect_step: assemble
+      effect_from: draft_ref
+      effect_type: artifact
+    inputs:
+      template:
+        type: object
+        required: true
+        description: "Template with source_ref, required fields, explicit clause bodies, baseline values, and clause mappings."
+      parties:
+        type: object
+        required: true
+        description: "Explicit parties keyed by the roles declared in template.required_party_roles."
+      terms:
+        type: object
+        required: true
+        description: "Explicit deal terms plus the send-as planning inputs under terms.send."
+    graph:
+      name: contract-drafter
+      steps:
+        - id: assemble
+          label: validate sources and assemble review draft
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - run.mjs
+            outputs:
+              act_decision: string
+              act_reason: string
+              draft_ref: string
+              draft_doc: object
+              deviations: array
+              send_proposal: object
+              validation: object
+          inputs:
+            template: "$input.template"
+            parties: "$input.parties"
+            terms: "$input.terms"
+          artifacts:
+            wrap_as: contract_draft_packet
+            packet: runx.contract_draft.v1
