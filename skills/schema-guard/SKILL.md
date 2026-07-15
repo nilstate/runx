@@ -34,7 +34,11 @@ the same aggregate back. The default runner is the graph runner named
    `evaluate.registry_event`; the readback uses the identical
    `registry_ref`, `registry_store_id`, `schema_registry_versions` resource,
    and `schema_id` aggregate. Together the committed append result and stored
-   readback are the real `publish_result`, not an inert publication proposal.
+   readback are the evidence used for publication, not an inert proposal.
+4. **Project — `project-result`:** a terminal CLI-tool step accepts only the
+   declared evaluator, append, and readback evidence. It verifies the event,
+   verdict, source, stored-event, and readback digest/version bindings, removes
+   provider evidence, and emits the four public contract fields.
 
 ## Supported schema subset
 
@@ -75,7 +79,7 @@ Such input is unsupported rather than approximated.
   `evaluate`, then the append guard seals a `policy_denied` graph receipt.
   Neither `append-version` nor `readback` executes.
 - An unreachable source fails during evaluation of the incomplete fetch
-  evidence. No append or readback executes.
+  evidence. No append, readback, or result projection executes.
 - Version conflicts and idempotency conflicts surface from `data-store`; the
   graph does not retry with altered authority, version, event, or retry key.
 - Source and registry coordinates are explicit inputs. The graph cannot widen
@@ -97,7 +101,7 @@ Such input is unsupported rather than approximated.
 | `expected_version` | number | yes | Non-negative integer required by optimistic concurrency. |
 | `idempotency_key` | string | yes | Non-empty stable key for this exact append event. |
 
-## Outputs
+## Outputs and graph JSON paths
 
 - `compatibility: object` — `compatible`, ordered `breaking_changes`, sample
   coverage state, and deterministic `verdict_digest`.
@@ -106,9 +110,20 @@ Such input is unsupported rather than approximated.
 - `migration_notes: array` — deterministic notes grounded in detected additive
   or breaking paths.
 - `publish_result: object` — present on the compatible sealed path as the graph
-  evidence joining `append-version.data_operation_result` and
-  `readback.data_operation_result`. It proves a committed append and the stored
+  evidence joining sanitized append and readback results. Its direct
+  `event_digest`, `stored_event_digest`, `verdict_digest`, and `source_digest`
+  fields bind the evaluated event and source to the committed event and stored
   projection/version. Refused and failed paths have no publish result.
+
+The root `runx skill ... --json` response remains the runtime graph envelope;
+it does **not** invent these names as root JSON fields. Read the typed terminal
+contract at `payload.step_outputs.project-result.<output-name>.data`, for
+example `payload.step_outputs.project-result.publish_result.data`. When this
+graph is used as a nested graph step, the current runtime adopts the terminal
+step contract, so callers consume `<outer-step>.<output-name>.data` without a
+nested `step_outputs` hop. The runner output declaration and `project-result`
+output declaration are identical: exactly `compatibility`,
+`validation_results`, `migration_notes`, and `publish_result`.
 
 The internal `registry_event` is consumed by `append-version`; it is not an
 alternative inert output. Its `compatibility_digest` equals
@@ -153,33 +168,42 @@ runs select isolated deterministic fixture stores. Production deployments bind
 
 ## Verification and harness cases
 
-Run the evaluator tests and all package fixtures:
+Use tested `runx-cli` **0.7.2 or newer**. The bounty floor is 0.6.14, but this
+package consumes current canonical terminal-step contract behavior; the
+known-failing `@runxhq/cli@0.6.19` path is unsupported.
+
+Run the evaluator/projector tests and all package fixtures:
 
 ```bash
 node --test skills/schema-guard/tests/*.test.mjs
 runx harness ./skills/schema-guard --json
 ```
 
-On Windows, if native package harness discovery returns OS error 5, run the
-same command in Linux with Node 22 and `@runxhq/cli@0.6.19`, mounting the
-repository at `/repo`.
+The reviewed Linux harness uses Node 22 Bookworm and the cached current binary
+at `/target/debug/runx`, with `runx-schema-cargo-target:/target`. Put a wrapper
+first on `PATH` that executes `node --disable-wasm-trap-handler`; do not use
+`NODE_OPTIONS`.
 
-The three standalone harness cases use unique local stores:
+Harness discovery yields five cases: two hosted inline cases plus three
+standalone fixtures. The fixtures use unique local stores:
 
 1. `additive-compatible-recorded` reads the immutable raw GitHub schema, adds
    optional `memo`, and must seal exactly `fetch-current`, `evaluate`,
-   `append-version`, and `readback`.
+   `append-version`, `readback`, and `project-result`.
 2. `breaking-change-refused` reads the same immutable URL, changes
    `/properties/status/type` from `string` to `number`, and must be
    `policy_denied` after only `fetch-current` and `evaluate`.
 3. `unreachable-source-refused` reads an allowlisted missing immutable path,
-   fails, and must execute neither append nor readback.
+   fails, and must execute neither append, readback, nor projection. It remains
+   standalone so the real unreachable URL is fetched; there is no hosted
+   missing-input surrogate.
 
 For the compatible receipt, inspect both the graph step list and receipt acts:
-they must contain the source fetch, the `APPEND` operation, and the readback
-`READ` operation. For both refusal receipts, search the full receipt JSON for
-`append-version`, `append_event`, and the fixture store id; no append act or
-committed event may exist.
+they must contain fetch, evaluate, append, readback, and project. Breaking
+receipts contain only fetch/evaluate. The standalone unreachable receipt must
+show the real URL failure and no append. Search refusal receipt JSON for
+`append-version`, `append_event`, `readback`, and `project-result`; no such act
+or committed event may exist.
 
 ## Security boundaries
 
@@ -188,5 +212,5 @@ evaluator has no network or registry authority. The registry write is an
 append-only declared data-source operation with optimistic concurrency and an
 idempotency key; model-authored raw queries are not supported. The readback is
 bounded to the same resource and aggregate. Credentials, headers, cookies,
-tokens, signing seeds, and unrestricted response bodies are never copied into
-the registry event or evaluator output.
+tokens, signing seeds, provider evidence, and unrestricted response bodies are
+never copied into the terminal projection.

@@ -8,8 +8,8 @@ catalog:
   role: canonical
 
 # The standalone fixtures under fixtures/ are the reviewable source cases.
-# Inline cases keep package-level harness discovery compatible with runx-cli
-# 0.6.19, whose directory harness command does not discover conventional files.
+# Hosted inline coverage is limited to the required compatible and breaking
+# cases. The complete unreachable-source case remains a standalone fixture.
 harness:
   cases:
     - name: additive-compatible-recorded
@@ -57,6 +57,7 @@ harness:
           - evaluate
           - append-version
           - readback
+          - project-result
 
     - name: breaking-change-refused
       inputs:
@@ -90,48 +91,6 @@ harness:
         idempotency_key: invoice:breaking-status-number:2245327:v1
       expect:
         status: policy_denied
-        receipt:
-          schema: runx.receipt.v1
-        steps:
-          - fetch-current
-          - evaluate
-
-    - name: unreachable-source-refused
-      inputs:
-        source_url: https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/missing-invoice.schema.json
-        source_allowlist:
-          - raw.githubusercontent.com
-        proposed_schema:
-          $id: https://schemas.example.invalid/invoice/v1
-          type: object
-          required:
-            - id
-            - status
-          properties:
-            id:
-              type: string
-            status:
-              type: string
-              enum:
-                - draft
-                - paid
-            memo:
-              type: string
-        sample_payloads:
-          - id: inv-1003
-            status: paid
-        compatibility_policy:
-          breaking_allowed: false
-          required_fields:
-            - id
-            - status
-          versioning_rule: semver_minor_for_additive
-        registry_ref: local://schema-guard/task3-unreachable
-        schema_id: invoice
-        expected_version: 0
-        idempotency_key: invoice:unreachable-source:2245327:v1
-      expect:
-        status: failure
         receipt:
           schema: runx.receipt.v1
         steps:
@@ -255,8 +214,33 @@ runners:
             store_id: "$input.registry_store_id"
             resource: schema_registry_versions
             aggregate_id: "$input.schema_id"
+
+        - id: project-result
+          label: project the terminal governed result contract
+          context:
+            compatibility: evaluate.compatibility.data
+            validation_results: evaluate.validation_results.data
+            migration_notes: evaluate.migration_notes.data
+            registry_event: evaluate.registry_event.data
+            append_result: append-version.data_operation_result.data
+            readback_result: readback.data_operation_result.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - project.mjs
+            timeout_seconds: 30
+            outputs:
+              compatibility: object
+              validation_results: array
+              migration_notes: array
+              publish_result: object
           artifacts:
-            wrap_as: publish_result
+            named_emits:
+              compatibility: compatibility
+              validation_results: validation_results
+              migration_notes: migration_notes
+              publish_result: publish_result
 
       policy:
         guards:

@@ -45,9 +45,10 @@ expect:
     - evaluate
     - append-version
     - readback
+    - project-result
 metadata:
   public_skill: schema-guard
   source_case: additive-compatible-recorded
   source: skills-fixture
   runner_kind: graph
-  graph_shape: fetch_evaluate_append_readback
+  graph_shape: fetch_evaluate_append_readback_project
