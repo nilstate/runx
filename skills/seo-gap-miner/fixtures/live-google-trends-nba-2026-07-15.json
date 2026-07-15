@@ -1,0 +1,47 @@
+{
+  "provenance": {
+    "retrieved_at": "2026-07-15T05:03:14Z",
+    "demand_export_url": "https://trends.google.com/trending/rss?geo=US",
+    "demand_export_sha256": "sha256:b496e44dd108dbedcf065694c5152bf2e586161e55ab301a60bd6f12d7a9dff3",
+    "site_pages_retrieved_at": "2026-07-15T05:03:14Z",
+    "notes": "The Google Trends Trending Now RSS is an official public export. Page coverage is bounded to public title and description text observed at the named NBA URLs."
+  },
+  "inputs": {
+    "site_ref": "https://www.nba.com/",
+    "site_inventory": {
+      "pages": [
+        {
+          "url": "https://www.nba.com/watch/video/cameron-carr-scores-18-in-lakers-summer-league-win",
+          "topic": "Cameron Carr scores 18 in Lakers Summer League win",
+          "coverage": "A single player highlight video whose public description repeats the title; it lacks a player profile, statistics, and roster context."
+        },
+        {
+          "url": "https://www.nba.com/lakers/",
+          "topic": "Home of the Los Angeles Lakers",
+          "coverage": "The public description says this is a hub for everything Lake Show; it does not identify a Summer League schedule, roster, results page, or tournament overview."
+        }
+      ]
+    },
+    "demand_fixtures": {
+      "terms": [
+        {
+          "term": "cameron carr",
+          "demand_signal": "Google Trends US Trending Now RSS reported approximate traffic of 500+ at Tue, 14 Jul 2026 21:10:00 -0700.",
+          "source": "https://trends.google.com/trending/rss?geo=US#item-cameron-carr"
+        },
+        {
+          "term": "lakers summer league",
+          "demand_signal": "Google Trends US Trending Now RSS reported approximate traffic of 500+ at Tue, 14 Jul 2026 20:30:00 -0700.",
+          "source": "https://trends.google.com/trending/rss?geo=US#item-lakers-summer-league"
+        }
+      ]
+    },
+    "content_policy": {
+      "excluded_topics": [],
+      "priority_themes": [
+        "Cameron Carr",
+        "Lakers Summer League"
+      ]
+    }
+  }
+}

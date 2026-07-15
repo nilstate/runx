@@ -1,85 +1,42 @@
 skill: seo-gap-miner
-version: "0.1.0"
+version: "0.2.0"
 
 catalog:
   kind: skill
   audience: public
   visibility: public
-  role: context
+  role: canonical
 
 harness:
   cases:
     - name: grounded-content-gaps-sealed
       inputs:
+        site_ref: https://example.dev/
         site_inventory:
           pages:
             - url: https://example.dev/docs/governance
               topic: agent governance
-              coverage: Explains policy boundaries and approvals, but not how to verify receipts.
+              coverage: Explains policy boundaries and approvals, but lacks an actionable checklist.
             - url: https://example.dev/blog/receipts
               topic: receipt verification
-              coverage: Mentions receipts briefly without an installable verification walkthrough.
+              coverage: Brief receipt overview without an installable verification walkthrough.
         demand_fixtures:
           terms:
             - term: ai agent governance checklist
-              demand_signal: Search Console shows 340 impressions and 19 clicks in the supplied 28-day export.
+              demand_signal: Search Console export reports 340 impressions and 19 clicks over 28 days.
               source: fixture:gsc-2026-06.csv#row-12
             - term: verify ai agent receipts
-              demand_signal: Search Console shows 210 impressions and 4 clicks in the supplied 28-day export.
+              demand_signal: Search Console export reports 210 impressions and 4 clicks over 28 days.
               source: fixture:gsc-2026-06.csv#row-31
             - term: best crypto casino
-              demand_signal: Search Console shows 900 impressions in the supplied 28-day export.
+              demand_signal: Search Console export reports 900 impressions over 28 days.
               source: fixture:gsc-2026-06.csv#row-44
         content_policy:
           excluded_topics:
-            - gambling
+            - crypto casino
           priority_themes:
             - agent governance
             - receipt verification
-      caller:
-        answers:
-          agent_task.seo-gap-miner.output:
-            decision: ready
-            gap_findings:
-              - term: ai agent governance checklist
-                demand_grounding:
-                  signal: Search Console shows 340 impressions and 19 clicks in the supplied 28-day export.
-                  source: fixture:gsc-2026-06.csv#row-12
-                page_verdict:
-                  status: weak
-                  page_url: https://example.dev/docs/governance
-                  reason: The page explains governance concepts but has no actionable checklist.
-                priority:
-                  level: high
-                  reason: The term has a named demand signal, matches a priority theme, and maps to a specific weak page.
-                dispatch_target: draft-content
-              - term: verify ai agent receipts
-                demand_grounding:
-                  signal: Search Console shows 210 impressions and 4 clicks in the supplied 28-day export.
-                  source: fixture:gsc-2026-06.csv#row-31
-                page_verdict:
-                  status: weak
-                  page_url: https://example.dev/blog/receipts
-                  reason: The existing page mentions receipts but does not teach verification.
-                priority:
-                  level: medium
-                  reason: The term is grounded and policy-aligned, but its supplied demand signal is weaker than the top finding.
-                dispatch_target: draft-content
-            dropped_by_policy:
-              - term: best crypto casino
-                exclusion: gambling
-                source: fixture:gsc-2026-06.csv#row-44
-            stop_reason: null
-            review_act:
-              intent: Review supplied demand against the supplied site inventory and content policy.
-              form: review
-              closure: closed
-            evidence_summary:
-              harness_case: grounded-content-gaps-sealed
-              receipt_id: receipt:harness:seo-gap-miner:grounded-content-gaps-sealed
-              observations:
-                - Two policy-aligned demand terms map to named weak pages.
-                - One demand term is dropped because the content policy excludes gambling.
       expect:
         status: sealed
         receipt:
@@ -89,6 +46,7 @@ harness:
 
     - name: thin-demand-needs-more-evidence
       inputs:
+        site_ref: https://example.dev/
         site_inventory:
           pages:
             - url: https://example.dev/docs/receipts
@@ -103,23 +61,6 @@ harness:
           excluded_topics: []
           priority_themes:
             - agent governance
-      caller:
-        answers:
-          agent_task.seo-gap-miner.output:
-            decision: needs_more_evidence
-            gap_findings: []
-            dropped_by_policy: []
-            stop_reason: No supplied term has both a named demand signal and a source, so no priority order can be grounded.
-            review_act:
-              intent: Review supplied demand against the supplied site inventory and content policy.
-              form: review
-              closure: closed
-            evidence_summary:
-              harness_case: thin-demand-needs-more-evidence
-              receipt_id: receipt:harness:seo-gap-miner:thin-demand-needs-more-evidence
-              observations:
-                - The only demand term lacks both a signal and a source.
-                - No finding is emitted and no demand value is invented.
       expect:
         status: sealed
         receipt:
@@ -135,29 +76,54 @@ harness:
 runners:
   mine:
     default: true
-    type: agent-task
-    agent: researcher
-    task: seo-gap-miner
-    outputs:
-      decision: string
-      gap_findings: array
-      dropped_by_policy: array
-      stop_reason: string
-      review_act: object
-      evidence_summary: object
-    artifacts:
-      wrap_as: seo_gap_review_packet
-      packet: runx.seo_gap.review.v1
+    type: graph
+    act:
+      form: review
+      purpose: Review supplied search demand against a supplied site inventory and content policy.
+      legitimacy: The operator supplied public evidence for a bounded, read-only content-gap review.
+      target_from: site_ref
+      reason_step: analyze
+      reason_from: review_reason
     inputs:
+      site_ref:
+        type: string
+        required: true
+        description: "Public URL identifying the reviewed site or bounded site section."
       site_inventory:
         type: json
         required: true
-        description: "pages[] with url, topic, and coverage. This is supplied evidence; the skill fetches no URLs."
+        description: "pages[] with public url, topic, and observed coverage. This is supplied evidence; the skill fetches no URLs."
       demand_fixtures:
         type: json
         required: true
-        description: "terms[] with term, demand_signal, and source. Missing signals are never inferred."
+        description: "terms[] with term, demand_signal, and public source. Missing signals are never inferred."
       content_policy:
         type: json
         required: true
         description: "excluded_topics and priority_themes used to drop prohibited gaps and grade supported ones."
+    graph:
+      name: seo-gap-miner
+      steps:
+        - id: analyze
+          run:
+            type: cli-tool
+            command: /usr/bin/env
+            args:
+              - node
+              - run.mjs
+            outputs:
+              decision: string
+              gap_findings: array
+              covered_terms: array
+              dropped_by_policy: array
+              stop_reason: string
+              review_reason: string
+              evidence_summary: object
+          inputs:
+            site_ref: "{{site_ref}}"
+            site_inventory: "{{site_inventory}}"
+            demand_fixtures: "{{demand_fixtures}}"
+            content_policy: "{{content_policy}}"
+          artifacts:
+            wrap_as: seo_gap_review_packet
+            packet: runx.seo_gap.review.v1

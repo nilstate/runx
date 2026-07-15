@@ -1,13 +1,15 @@
 ---
 name: seo-gap-miner
-description: Review a supplied site-page inventory, supplied search-demand fixtures, and a content policy to identify grounded missing or weak pages and route the best gaps to draft-content without crawling, fetching, or inventing demand.
+description: Deterministically review a supplied site-page inventory, supplied search-demand fixtures, and a content policy to identify grounded missing or weak pages and route the best gaps to draft-content without crawling, fetching, or inventing demand.
 runx:
   category: content
 ---
 
 # SEO Gap Miner
 
-Turn bounded page and demand evidence into a prioritized content-gap review.
+Turn bounded page and demand evidence into a reproducible, prioritized
+content-gap review. The packaged runner performs the comparison and emits the
+result in the initial run; callers do not author or resume the judgment.
 
 This skill judges whether supplied search demand is answered by supplied pages.
 It does not crawl a site, query a search provider, estimate traffic, or publish
@@ -22,7 +24,8 @@ downstream lane an operator or driver may issue.
 3. Maps each remaining term to a supplied page or records that no page exists.
 4. Judges the mapped page as `missing` or `weak` using only the supplied
    inventory and coverage text.
-5. Prioritizes grounded findings and names `draft-content` as the dispatch
+5. Prioritizes comparable, numerically grounded findings and names
+   `runx/draft-content` as the dispatch
    target.
 6. Stops at `needs_more_evidence` when the fixtures cannot support an honest
    priority order.
@@ -37,7 +40,7 @@ downstream lane an operator or driver may issue.
   conversion, query wording, pages, or page contents.
 - **Policy before priority.** A term matching an excluded topic is recorded in
   `dropped_by_policy` with the named exclusion and is never ranked.
-- **Dispatch by naming.** A finding names `draft-content`; this review neither
+- **Dispatch by naming.** A finding names `runx/draft-content`; this review neither
   invokes that skill nor emits a proposal or publishing envelope.
 - **Separate governed run.** A downstream operator or driver decides whether
   to issue the named drafting run.
@@ -45,6 +48,7 @@ downstream lane an operator or driver may issue.
 ## Inputs
 
 ```yaml
+site_ref: https://example.com/
 site_inventory:
   pages:
     - url: string
@@ -60,8 +64,9 @@ content_policy:
   priority_themes: [string]
 ```
 
-All three objects are required. The arrays may be empty, but empty or
-unattributable evidence leads to `needs_more_evidence`, not a speculative plan.
+`site_ref` and all three objects are required. The inventory and demand arrays
+must be non-empty. Empty or unattributable evidence leads to
+`needs_more_evidence` or input refusal, not a speculative plan.
 
 ## Review procedure
 
@@ -105,8 +110,9 @@ unattributable evidence leads to `needs_more_evidence`, not a speculative plan.
      ungrounded ranking.
 
 6. **Close the review.**
-   - Set `review_act.form` to `review` and `closure` to `closed`.
-   - Give every finding `dispatch_target: draft-content`.
+   - The runner declares the receipt act as `form: review`; the runtime, not
+     caller output, seals that domain act.
+   - Give every finding `dispatch_target: runx/draft-content`.
    - Include the harness or run receipt id in `evidence_summary` when one is
      available.
 
@@ -126,16 +132,20 @@ gap_findings:
     priority:
       level: high | medium | low
       reason: string
-    dispatch_target: draft-content
+    dispatch_target: runx/draft-content
+covered_terms:
+  - term: string
+    demand_grounding:
+      signal: string
+      source: string
+    page_url: string
+    reason: string
 dropped_by_policy:
   - term: string
     exclusion: string
     source: string
 stop_reason: string | null
-review_act:
-  intent: string
-  form: review
-  closure: closed
+review_reason: string
 evidence_summary:
   harness_case: string | null
   receipt_id: string | null
@@ -164,7 +174,7 @@ Given a supplied governance page whose coverage says it explains concepts but
 lacks a checklist, and a supplied Search Console row for “ai agent governance
 checklist,” the result may mark that named page `weak`. The finding repeats the
 fixture's signal and source, explains the missing checklist, assigns a grounded
-priority, and names `draft-content` as the downstream lane.
+priority, and names `runx/draft-content` as the downstream lane.
 
 Given only “agent audit templates” with empty signal and source fields, the
 result is `needs_more_evidence`, `gap_findings` is empty, and `stop_reason`
