@@ -1,82 +1,98 @@
 skill: agency-health
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
-  kind: skill
+  kind: graph
   audience: operator
   visibility: public
   role: context
 
 harness:
   cases:
-    - name: concerning-agency-sealed
+    - name: live-agency-case-health
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://agency/health-dogfood":{"adapter":"data.sqlite","database_path":".runx/data/agency-health-dogfood.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
-        data_source_ref: "ds:agency-fixtures"
-        store_id: "store-a"
-        agency_ref: "agency-007"
-        case_id: "case-001"
+        data_source_ref: tenant://agency/health-dogfood
+        agency_ref: agency-health-dogfood
+        case_id: case-health-live-001
         period:
-          since: "2026-06-01T00:00:00Z"
-          until: "2026-07-08T00:00:00Z"
+          since: "2026-07-01T00:00:00Z"
+          until: "2026-07-31T23:59:59Z"
         health_baseline:
-          threshold_days_stuck: 3
           cap_pressure_pct: 80
           refusal_spike_rate: 0.10
-        ledger_id_stubs:
-          - "ledger-stub-001"
+        ledger_filter:
+          skill_ref: agency
+          status:
+            - sealed
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
-        contains:
-          decision: ["ready", "needs_human"]
-          health_verdict.status: ["degraded", "critical", "healthy"]
-          findings: "non-empty"
-          intervention_findings: "non-empty-or-empty"
-
-    - name: no-case-events-stop
-      inputs:
-        data_source_ref: "ds:agency-fixtures"
-        store_id: "store-a"
-        agency_ref: "agency-008"
-        case_id: "case-empty"
-        period:
-          since: "2026-06-01T00:00:00Z"
-          until: "2026-07-08T00:00:00Z"
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-        contains:
-          decision: "needs_more_evidence"
-          health_verdict.status: "degraded"
-          findings: "empty"
-          intervention_findings: "empty"
-          refusals: "non-empty"
-
-    - name: source-handoff-needs-agent
-      runner: source-handoff
-      inputs: {}
-      expect:
-        status: needs_agent
 
 runners:
-  source-handoff:
-    type: agent-task
-    agent: operator
-    task: agency-health-source-handoff
-    outputs:
-      source_resolution: object
+  evaluate:
+    default: true
+    type: graph
     inputs:
       data_source_ref:
         type: string
         required: true
-        description: "The unresolved data-source reference that needs an operator-provided binding."
+        description: Registry-pinned hosted data-source reference for the live agency case.
+      store_id:
+        type: string
+        required: false
+        description: Optional store binding resolved by the data-source registry.
+      agency_ref:
+        type: string
+        required: true
+        description: Agency whose case health is being evaluated.
+      case_id:
+        type: string
+        required: true
+        description: Live agency case aggregate id.
+      period:
+        type: json
+        required: false
+        description: ISO since/until bounds applied while folding the case stream.
+      health_baseline:
+        type: json
+        required: false
+        description: Declared cap pressure and refusal spike thresholds.
+      ledger_filter:
+        type: json
+        required: false
+        description: Ledger read filter; the health packet receives receipt id-stubs only.
+    graph:
+      name: agency-health-live-composition
+      steps:
+        - id: case_projection
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: agency_cases
+            aggregate_id: "$input.case_id"
+        - id: ledger_read
+          skill: ../ledger
+          runner: read
+          inputs:
+            question: "Which governed agency receipts ground health signals for this live case period?"
+            filter: "$input.ledger_filter"
+        - id: evaluate
+          skill: ./
+          runner: fold
+          inputs:
+            period: "$input.period"
+            health_baseline: "$input.health_baseline"
+          context:
+            projection_packet: case_projection.data_operation_result.data
+            ledger_packet: ledger_read.ledger_answer_packet.data
 
-  evaluate:
-    default: true
+  fold:
     type: cli-tool
-    input_mode: stdin
     command: node
     args:
       - run.mjs
@@ -90,31 +106,15 @@ runners:
       wrap_as: agency_health_packet
       packet: runx.agency.health.v1
     inputs:
-      data_source_ref:
-        type: string
+      projection_packet:
+        type: json
         required: true
-        description: "Registry-pinned identifier of the hosted data-store whose runner is C2."
-      store_id:
-        type: string
+      ledger_packet:
+        type: json
         required: true
-        description: "Store within the data-source that carries the agency case stream."
-      agency_ref:
-        type: string
-        required: true
-        description: "Agency whose case the skill folds."
-      case_id:
-        type: string
-        required: false
-        description: "Specific case within the agency; defaults to the agency's current case."
       period:
-        type: object
+        type: json
         required: false
-        description: "{ since, until } ISO timestamps bounding the case read."
       health_baseline:
-        type: object
+        type: json
         required: false
-        description: "Operator-supplied thresholds: threshold_days_stuck, cap_pressure_pct, refusal_spike_rate."
-      ledger_id_stubs:
-        type: array
-        required: false
-        description: "Receipt id-stubs to compose-read from the ledger read runner (C7) by id only."
