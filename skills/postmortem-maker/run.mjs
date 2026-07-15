@@ -82,13 +82,16 @@ if (readError || !incident) {
 
   const summary = buildSummary(incident, rootCause, impact);
 
+  const renderedTimeline = facts.concat(hypotheses).map((e) => ({
+    timestamp: e.timestamp,
+    event: e.event,
+    evidence_ref: e.evidence_ref,
+    certainty: e.certainty,
+  }));
+
   postmortem = {
     summary,
-    timeline: facts.concat(hypotheses).map((e) => ({
-      timestamp: e.timestamp,
-      event: e.event,
-      evidence_ref: e.evidence_ref,
-    })),
+    timeline: renderedTimeline,
     impact,
     root_cause: rootCause,
     status: isPublishable ? "publishable" : "needs_review",
@@ -113,6 +116,7 @@ if (readError || !incident) {
       blockers: [],
       evidence_refs: [`source:${sourceEvidence}`],
       success_checkpoint: "postmortem_published",
+      note: "sealed send_plan equivalent to the send-as plan runner for the approved postmortem",
     };
   }
 
@@ -136,12 +140,15 @@ const result = {
     source_evidence: sourceEvidence,
     validation: {
       source_readable: !readError,
+      source_handle: sourceHandle,
+      source_kind: sourceKind(sourceHandle),
       timeline_entries: postmortem.timeline.length,
       fact_count: postmortem.timeline.filter((e) => e.certainty === "fact").length,
       hypothesis_count: postmortem.timeline.filter((e) => e.certainty === "hypothesis").length,
       unknown_count: unknowns.length,
       root_cause_status: postmortem.root_cause.status,
       publishable: postmortem.status === "publishable",
+      publish_result_executed: !!publishResult,
     },
   },
 };
@@ -239,6 +246,12 @@ function readIncident(handle) {
 function extractIdFromUrl(url) {
   const parts = url.replace(/\/+$/, "").split("/");
   return parts[parts.length - 1] || "unknown";
+}
+
+function sourceKind(handle) {
+  if (handle.startsWith("http://") || handle.startsWith("https://")) return "web-fetch";
+  if (handle.startsWith("local://") || handle.startsWith("tenant://")) return "data-store";
+  return "inline-fixture";
 }
 
 function extractTimeline(incident, sourceRef) {
@@ -485,12 +498,15 @@ function renderReport(result) {
   lines.push("## Validation");
   lines.push("");
   lines.push(`- Source readable: ${d.validation.source_readable ? "yes" : "no"}`);
+  lines.push(`- Source kind: ${d.validation.source_kind}`);
+  lines.push(`- Source handle: ${d.validation.source_handle}`);
   lines.push(`- Timeline entries: ${d.validation.timeline_entries}`);
   lines.push(`- Facts: ${d.validation.fact_count}`);
   lines.push(`- Hypotheses: ${d.validation.hypothesis_count}`);
   lines.push(`- Unknowns: ${d.validation.unknown_count}`);
   lines.push(`- Root cause: ${d.validation.root_cause_status}`);
   lines.push(`- Publishable: ${d.validation.publishable ? "yes" : "no"}`);
+  lines.push(`- Publish result executed: ${d.validation.publish_result_executed ? "yes" : "no"}`);
   lines.push("");
 
   lines.push("## Reproducibility Controls");

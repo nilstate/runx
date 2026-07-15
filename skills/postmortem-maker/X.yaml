@@ -1,5 +1,5 @@
 skill: postmortem-maker
-version: "0.1.0"
+version: "0.1.2"
 
 catalog:
   kind: skill
@@ -102,7 +102,10 @@ runners:
             wrap_as: postmortem_packet
             packet: runx.postmortem.v1
         - id: publish
-          label: compose send-as to publish postmortem
+          label: compose send-as when postmortem is publishable
+          when:
+            field: decide.postmortem_packet.data.postmortem.status
+            equals: publishable
           skill: ../send-as
           runner: plan
           scopes:

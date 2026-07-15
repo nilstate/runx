@@ -91,6 +91,7 @@ postmortem:
     - timestamp: string
       event: string
       evidence_ref: string
+      certainty: fact|hypothesis
   impact:
     severity: string
     affected_services: [string]
@@ -143,8 +144,7 @@ Given an incident with a clear deployment correlation:
 }
 ```
 
-The skill fetches the issue, extracts the timeline (deploy at T,
-error spike at T+2m, rollback at T+15m), identifies the root cause
-(a bad config push), produces action items (add config validation,
-improve rollback automation), and composes send-as to publish the
-postmortem summary.
+The skill fetches the issue, extracts the available timeline facts,
+marks the root cause as known, suspected, or unknown based on the
+evidence, produces action items, and composes a send-as style
+publish_result with approval gates for the postmortem summary.
