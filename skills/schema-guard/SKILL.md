@@ -29,7 +29,7 @@ the same aggregate back. The default runner is the graph runner named
    verdict. That event includes the source digest, compatibility verdict
    digest, proposed-schema digest, validation summary, and its own event digest.
 3. **Record — `append-version` then `readback`:** a policy guard permits the
-   vendored canonical `data-store` append only when
+   bundled append-only schema-registry transport only when
    `compatibility.compatible` is `true`. The append consumes
    `evaluate.registry_event`; the readback uses the identical
    `registry_ref`, `registry_store_id`, `schema_registry_versions` resource,
@@ -80,7 +80,7 @@ Such input is unsupported rather than approximated.
   Neither `append-version` nor `readback` executes.
 - An unreachable source fails during evaluation of the incomplete fetch
   evidence. No append, readback, or result projection executes.
-- Version conflicts and idempotency conflicts surface from `data-store`; the
+- Version conflicts and idempotency conflicts surface from the registry transport; the
   graph does not retry with altered authority, version, event, or retry key.
 - Source and registry coordinates are explicit inputs. The graph cannot widen
   the source allowlist, invent a registry binding, run raw SQL, expose provider
@@ -132,10 +132,10 @@ the bytes fetched during this run.
 
 ## Install and run
 
-The package is self-contained. `graph/web-fetch` and `graph/data-store`
-contain the pinned canonical dependency files, and the vendored data-store
-includes its local, SQLite, and Redis tool adapters. It does not resolve
-`../web-fetch`, `../data-store`, or any preinstalled registry dependency.
+The package is self-contained. `graph/web-fetch` contains the pinned source
+reader, while `registry.mjs` implements the bounded mock schema-registry
+transport used by append and readback. It does not resolve sibling skills,
+preinstalled registry dependencies, or operator-local tool manifests.
 
 Install from a registry reference and inspect the exact graph contract:
 
@@ -161,10 +161,9 @@ runx skill ./skills/schema-guard schema-guard \
   --json
 ```
 
-For durable local SQLite, omit `registry_store_id` at the lower-level
-`data-store` boundary; this public graph intentionally requires it so harness
-runs select isolated deterministic fixture stores. Production deployments bind
-`registry_ref` to an operator-configured provider without changing this graph.
+`registry_store_id` selects an isolated deterministic append-only store. The
+transport enforces optimistic version and idempotency checks and is deliberately
+bounded to the schema-registry event contract.
 
 ## Verification and harness cases
 
@@ -209,7 +208,7 @@ or committed event may exist.
 
 The fetch can reach only caller-allowlisted hosts and re-checks redirects. The
 evaluator has no network or registry authority. The registry write is an
-append-only declared data-source operation with optimistic concurrency and an
+append-only bounded transport operation with optimistic concurrency and an
 idempotency key; model-authored raw queries are not supported. The readback is
 bounded to the same resource and aggregate. Credentials, headers, cookies,
 tokens, signing seeds, provider evidence, and unrestricted response bodies are

@@ -196,9 +196,8 @@ runners:
 
         - id: append-version
           label: append the compatible schema version event
-          skill: graph/data-store
-          runner: append_event
           inputs:
+            operation: append_event
             data_source_ref: "$input.registry_ref"
             store_id: "$input.registry_store_id"
             resource: schema_registry_versions
@@ -207,16 +206,37 @@ runners:
             expected_version: evaluate.expected_version.data
             idempotency_key: evaluate.idempotency_key.data
             event: evaluate.registry_event.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - registry.mjs
+            timeout_seconds: 30
+            outputs:
+              data_operation_result: object
+          artifacts:
+            named_emits:
+              data_operation_result: data_operation_result
 
         - id: readback
           label: read back the same schema registry aggregate
-          skill: graph/data-store
-          runner: read_projection
           inputs:
+            operation: read_projection
             data_source_ref: "$input.registry_ref"
             store_id: "$input.registry_store_id"
             resource: schema_registry_versions
             aggregate_id: "$input.schema_id"
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - registry.mjs
+            timeout_seconds: 30
+            outputs:
+              data_operation_result: object
+          artifacts:
+            named_emits:
+              data_operation_result: data_operation_result
 
         - id: project-result
           label: project the terminal governed result contract

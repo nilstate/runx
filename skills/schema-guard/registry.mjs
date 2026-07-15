@@ -22,7 +22,7 @@ if (operation === "append_event") {
   throw new Error("operation must be append_event, read_events, read_projection, or list_stream_heads");
 }
 
-process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ data_operation_result: result })}\n`);
 
 function readInputs() {
   const raw = process.env.RUNX_INPUTS_PATH
