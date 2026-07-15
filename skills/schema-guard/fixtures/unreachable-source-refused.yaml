@@ -1,0 +1,67 @@
+name: unreachable-source-refused
+kind: skill
+target: ..
+inputs:
+  source_url: https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/missing-invoice.schema.json
+  source_allowlist:
+    - raw.githubusercontent.com
+  proposed_schema:
+    $id: https://schemas.example.invalid/invoice/v1
+    type: object
+    required:
+      - id
+      - status
+    properties:
+      id:
+        type: string
+      status:
+        type: string
+        enum:
+          - draft
+          - paid
+      memo:
+        type: string
+  sample_payloads:
+    - id: inv-1003
+      status: paid
+  compatibility_policy:
+    breaking_allowed: false
+    required_fields:
+      - id
+      - status
+    versioning_rule: semver_minor_for_additive
+  registry_ref: local://schema-guard/task3-unreachable
+  registry_store_id: schema-guard-task3-unreachable-2245327-v1
+  schema_id: invoice
+  expected_version: 0
+  idempotency_key: invoice:unreachable-source:2245327:v1
+caller:
+  answers:
+    agent_task.schema-guard-fetch.output:
+      fetch_result:
+        decision: provider_error
+        final_url: ""
+        status: 0
+    agent_task.schema-guard-evaluate.output:
+      compatibility:
+        compatible: false
+        failure:
+          code: source_evidence_unavailable
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - fetch-current
+    - evaluate
+metadata:
+  public_skill: schema-guard
+  source_case: unreachable-source-refused
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: fixture_replay
+  graph_replay_steps:
+    - step_id: fetch-current
+      task: schema-guard-fetch
+    - step_id: evaluate
+      task: schema-guard-evaluate

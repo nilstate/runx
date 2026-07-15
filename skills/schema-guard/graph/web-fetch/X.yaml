@@ -1,0 +1,58 @@
+skill: web-fetch
+version: "0.2.1"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  web-fetch:
+    default: true
+    type: graph
+    inputs:
+      url:
+        type: string
+        required: true
+        description: "Single HTTP(S) URL to fetch; its host and every redirect host must match the allowlist."
+      allowlist:
+        type: json
+        required: true
+        description: "Permitted exact hosts or leading-wildcard host patterns such as *.example.com."
+      extract:
+        type: string
+        required: false
+        default: text
+        description: "Extraction mode: text, metadata, or links. Defaults to text."
+      max_bytes:
+        type: number
+        required: false
+        default: 1000000
+        description: "Positive cap on response bytes read; a clipped read is flagged truncated."
+    graph:
+      name: web-fetch
+      steps:
+        - id: fetch
+          label: fetch one allowlisted web source
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - run.mjs
+            timeout_seconds: 60
+            outputs:
+              fetch_result: object
+            sandbox:
+              profile: network
+              cwd_policy: skill-directory
+              network: true
+              writable_paths: []
+              require_enforcement: false
+          scopes:
+            - net:allowlist
+          artifacts:
+            named_emits:
+              fetch_result: fetch_result
+            packets:
+              fetch_result: runx.fetch.v1

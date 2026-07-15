@@ -1,0 +1,265 @@
+skill: schema-guard
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+# The standalone fixtures under fixtures/ are the reviewable source cases.
+# Inline cases keep package-level harness discovery compatible with runx-cli
+# 0.6.19, whose directory harness command does not discover conventional files.
+harness:
+  cases:
+    - name: additive-compatible-recorded
+      inputs:
+        source_url: https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/current-invoice.schema.json
+        source_allowlist:
+          - raw.githubusercontent.com
+        proposed_schema:
+          $id: https://schemas.example.invalid/invoice/v1
+          type: object
+          required:
+            - id
+            - status
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum:
+                - draft
+                - paid
+            memo:
+              type: string
+        sample_payloads:
+          - id: inv-1001
+            status: draft
+            memo: Optional customer note
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - id
+            - status
+          versioning_rule: semver_minor_for_additive
+        registry_ref: local://schema-guard/task3-compatible
+        registry_store_id: schema-guard-task3-compatible-2245327-v1
+        schema_id: invoice
+        expected_version: 0
+        idempotency_key: invoice:additive-memo:2245327:v1
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - fetch-current
+          - evaluate
+          - append-version
+          - readback
+
+    - name: breaking-change-refused
+      inputs:
+        source_url: https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/current-invoice.schema.json
+        source_allowlist:
+          - raw.githubusercontent.com
+        proposed_schema:
+          $id: https://schemas.example.invalid/invoice/v1
+          type: object
+          required:
+            - id
+            - status
+          properties:
+            id:
+              type: string
+            status:
+              type: number
+        sample_payloads:
+          - id: inv-1002
+            status: 1
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - id
+            - status
+          versioning_rule: semver_minor_for_additive
+        registry_ref: local://schema-guard/task3-breaking
+        registry_store_id: schema-guard-task3-breaking-2245327-v1
+        schema_id: invoice
+        expected_version: 0
+        idempotency_key: invoice:breaking-status-number:2245327:v1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - fetch-current
+          - evaluate
+
+    - name: unreachable-source-refused
+      inputs:
+        source_url: https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/missing-invoice.schema.json
+        source_allowlist:
+          - raw.githubusercontent.com
+        proposed_schema:
+          $id: https://schemas.example.invalid/invoice/v1
+          type: object
+          required:
+            - id
+            - status
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum:
+                - draft
+                - paid
+            memo:
+              type: string
+        sample_payloads:
+          - id: inv-1003
+            status: paid
+        compatibility_policy:
+          breaking_allowed: false
+          required_fields:
+            - id
+            - status
+          versioning_rule: semver_minor_for_additive
+        registry_ref: local://schema-guard/task3-unreachable
+        schema_id: invoice
+        expected_version: 0
+        idempotency_key: invoice:unreachable-source:2245327:v1
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - fetch-current
+          - evaluate
+
+runners:
+  schema-guard:
+    default: true
+    type: graph
+    outputs:
+      compatibility: object
+      validation_results: array
+      migration_notes: array
+      publish_result: object
+    inputs:
+      source_url:
+        type: string
+        required: true
+        description: Immutable HTTP(S) URL of the current JSON Schema or supported OpenAPI component schema.
+      source_allowlist:
+        type: json
+        required: true
+        description: Exact hosts or leading-wildcard hosts permitted for the source read and every redirect.
+      proposed_schema:
+        type: json
+        required: true
+        description: Proposed next object-shaped schema in the supported deterministic subset.
+      sample_payloads:
+        type: json
+        required: true
+        description: Array of representative payloads validated against the proposed schema; an empty array is reported as no supplied coverage.
+      compatibility_policy:
+        type: json
+        required: true
+        description: Policy containing breaking_allowed, required_fields, and versioning_rule.
+      registry_ref:
+        type: string
+        required: true
+        description: Logical data-source reference for the schema registry transport.
+      registry_store_id:
+        type: string
+        required: true
+        description: Deterministic fixture store id for the bundled local adapter.
+      schema_id:
+        type: string
+        required: true
+        description: Registry aggregate id whose versions are append-only.
+      expected_version:
+        type: number
+        required: true
+        description: Non-negative current registry stream version required before append.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for this exact schema-version event.
+    graph:
+      name: schema-guard
+      steps:
+        - id: fetch-current
+          label: read the current schema from an allowlisted immutable source
+          skill: graph/web-fetch
+          runner: web-fetch
+          inputs:
+            url: "$input.source_url"
+            allowlist: "$input.source_allowlist"
+            extract: text
+
+        - id: evaluate
+          label: judge compatibility and construct the registry event
+          inputs:
+            proposed_schema: "$input.proposed_schema"
+            sample_payloads: "$input.sample_payloads"
+            compatibility_policy: "$input.compatibility_policy"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            fetch_result: fetch-current.fetch_result.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - run.mjs
+            timeout_seconds: 30
+            outputs:
+              compatibility: object
+              validation_results: array
+              migration_notes: array
+              registry_event: object
+              expected_version: number
+              idempotency_key: string
+          artifacts:
+            named_emits:
+              compatibility: compatibility
+              validation_results: validation_results
+              migration_notes: migration_notes
+              registry_event: registry_event
+              expected_version: expected_version
+              idempotency_key: idempotency_key
+
+        - id: append-version
+          label: append the compatible schema version event
+          skill: graph/data-store
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.registry_ref"
+            store_id: "$input.registry_store_id"
+            resource: schema_registry_versions
+            aggregate_id: "$input.schema_id"
+          context:
+            expected_version: evaluate.expected_version.data
+            idempotency_key: evaluate.idempotency_key.data
+            event: evaluate.registry_event.data
+
+        - id: readback
+          label: read back the same schema registry aggregate
+          skill: graph/data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.registry_ref"
+            store_id: "$input.registry_store_id"
+            resource: schema_registry_versions
+            aggregate_id: "$input.schema_id"
+          artifacts:
+            wrap_as: publish_result
+
+      policy:
+        guards:
+          - step: append-version
+            field: evaluate.compatibility.data.compatible
+            equals: true

@@ -1,0 +1,65 @@
+name: breaking-change-refused
+kind: skill
+target: ..
+inputs:
+  source_url: https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/current-invoice.schema.json
+  source_allowlist:
+    - raw.githubusercontent.com
+  proposed_schema:
+    $id: https://schemas.example.invalid/invoice/v1
+    type: object
+    required:
+      - id
+      - status
+    properties:
+      id:
+        type: string
+      status:
+        type: number
+  sample_payloads:
+    - id: inv-1002
+      status: 1
+  compatibility_policy:
+    breaking_allowed: false
+    required_fields:
+      - id
+      - status
+    versioning_rule: semver_minor_for_additive
+  registry_ref: local://schema-guard/task3-breaking
+  registry_store_id: schema-guard-task3-breaking-2245327-v1
+  schema_id: invoice
+  expected_version: 0
+  idempotency_key: invoice:breaking-status-number:2245327:v1
+caller:
+  answers:
+    agent_task.schema-guard-fetch.output:
+      fetch_result:
+        decision: ready
+        final_url: https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/current-invoice.schema.json
+        status: 200
+    agent_task.schema-guard-evaluate.output:
+      compatibility:
+        compatible: false
+        breaking_changes:
+          - path: /properties/status/type
+            old_contract: string
+            new_contract: number
+            policy_rule: property_type_must_not_change
+expect:
+  status: policy_denied
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - fetch-current
+    - evaluate
+metadata:
+  public_skill: schema-guard
+  source_case: breaking-change-refused
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: fixture_replay
+  graph_replay_steps:
+    - step_id: fetch-current
+      task: schema-guard-fetch
+    - step_id: evaluate
+      task: schema-guard-evaluate
