@@ -68,7 +68,7 @@ runners:
       name: agency-health-live-composition
       steps:
         - id: case_projection
-          skill: ../data-store
+          skill: registry:runx/data-store@sha-58e31b665e57
           runner: read_projection
           inputs:
             data_source_ref: "$input.data_source_ref"
@@ -76,7 +76,7 @@ runners:
             resource: agency_cases
             aggregate_id: "$input.case_id"
         - id: ledger_read
-          skill: ../ledger
+          skill: registry:runx/ledger@sha-b8559fc898e7
           runner: read
           inputs:
             question: "Which governed agency receipts ground health signals for this live case period?"
