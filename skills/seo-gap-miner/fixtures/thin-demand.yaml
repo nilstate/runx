@@ -1,5 +1,6 @@
 name: thin-demand
 input:
+  site_ref: https://example.dev/
   site_inventory:
     pages:
       - url: https://example.dev/docs/receipts
@@ -17,4 +18,4 @@ input:
 expected:
   decision: needs_more_evidence
   gap_findings: []
-  stop_reason: No supplied term has both a named demand signal and a source.
+  stop_reason: No supplied demand term has a non-empty term, named demand signal, and public source.

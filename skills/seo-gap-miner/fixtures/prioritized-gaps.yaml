@@ -1,27 +1,28 @@
 name: prioritized-gaps
 input:
+  site_ref: https://example.dev/
   site_inventory:
     pages:
       - url: https://example.dev/docs/governance
         topic: agent governance
-        coverage: Explains policy boundaries and approvals, but not how to verify receipts.
+        coverage: Explains policy boundaries and approvals, but lacks an actionable checklist.
       - url: https://example.dev/blog/receipts
         topic: receipt verification
-        coverage: Mentions receipts briefly without an installable verification walkthrough.
+        coverage: Brief receipt overview without an installable verification walkthrough.
   demand_fixtures:
     terms:
       - term: ai agent governance checklist
-        demand_signal: Search Console shows 340 impressions and 19 clicks in the supplied 28-day export.
+        demand_signal: Search Console export reports 340 impressions and 19 clicks over 28 days.
         source: fixture:gsc-2026-06.csv#row-12
       - term: verify ai agent receipts
-        demand_signal: Search Console shows 210 impressions and 4 clicks in the supplied 28-day export.
+        demand_signal: Search Console export reports 210 impressions and 4 clicks over 28 days.
         source: fixture:gsc-2026-06.csv#row-31
       - term: best crypto casino
-        demand_signal: Search Console shows 900 impressions in the supplied 28-day export.
+        demand_signal: Search Console export reports 900 impressions over 28 days.
         source: fixture:gsc-2026-06.csv#row-44
   content_policy:
     excluded_topics:
-      - gambling
+      - crypto casino
     priority_themes:
       - agent governance
       - receipt verification
@@ -32,4 +33,4 @@ expected:
     - verify ai agent receipts
   dropped_terms:
     - best crypto casino
-  dispatch_target: draft-content
+  dispatch_target: runx/draft-content

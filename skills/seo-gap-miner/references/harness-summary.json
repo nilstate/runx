@@ -1,6 +1,6 @@
 {
   "runx_version": "runx-cli 0.7.1",
-  "command": "runx harness ./skills/seo-gap-miner --receipt-dir /tmp/seo-gap-receipts-v2",
+  "command": "runx harness ./skills/seo-gap-miner --receipt-dir /tmp/seo-gap-receipts-v4 --json",
   "status": "passed",
   "case_count": 3,
   "assertion_error_count": 0,
@@ -11,8 +11,8 @@
     "missing-input-needs-agent"
   ],
   "receipt_ids": [
-    "sha256:0c58258f73a14b89cdf5d72a867efdb0f935d223d181346f3f98e5c80fbdcdcd",
-    "sha256:a674546a720a9305e5fc5caba58a52c2c3c07d587b75a2b1645257343346569f"
+    "sha256:a8c6761a22caa7a59e8a7292b7a3acd90123023b2b5e790937cdba38f08cff30",
+    "sha256:f742667448e61efa42f3cb3259ad96b7ceac0033032af079806190005f8bb549"
   ],
-  "graph_case_count": 0
+  "graph_case_count": 3
 }

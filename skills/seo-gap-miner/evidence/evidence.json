@@ -1,0 +1,82 @@
+{
+  "schema": "runx.skill.delivery_evidence.v1",
+  "summary": "seo-gap-miner 0.2.0 performs its grounded review during the initial governed run, records a review act, and was dogfooded against public Google Trends and NBA evidence.",
+  "package": {
+    "owner": "gebibd00-jpg",
+    "name": "seo-gap-miner",
+    "version": "0.2.0",
+    "registry_ref": "gebibd00-jpg/seo-gap-miner@0.2.0",
+    "public_url": "https://runx.ai/x/gebibd00-jpg/seo-gap-miner@0.2.0",
+    "digest": "sha256:d1abfbe4d6fc8f3d9a030b05ccdca2b5a4f7d3b2c884ea8c8465ca93d46b2411",
+    "profile_digest": "sha256:aeda48f3871c27a466258ba32cd9306ac3efdf1ff804ac90f68273031be8df9e",
+    "publish_method": "runx login --provider github --for publish; runx registry publish ./skills/seo-gap-miner --registry https://api.runx.ai --version 0.2.0"
+  },
+  "source": {
+    "pr_url": "https://github.com/runxhq/runx/pull/316",
+    "source_commit": "e41508c9b5d79c61fc0b7f52e1c5b067c750bd2c",
+    "source_url": "https://github.com/gebibd00-jpg/runx/tree/e41508c9b5d79c61fc0b7f52e1c5b067c750bd2c/skills/seo-gap-miner",
+    "x_yaml": "https://raw.githubusercontent.com/gebibd00-jpg/runx/e41508c9b5d79c61fc0b7f52e1c5b067c750bd2c/skills/seo-gap-miner/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/gebibd00-jpg/runx/e41508c9b5d79c61fc0b7f52e1c5b067c750bd2c/skills/seo-gap-miner/SKILL.md",
+    "runner": "https://raw.githubusercontent.com/gebibd00-jpg/runx/e41508c9b5d79c61fc0b7f52e1c5b067c750bd2c/skills/seo-gap-miner/run.mjs",
+    "dogfood_input": "https://raw.githubusercontent.com/gebibd00-jpg/runx/e41508c9b5d79c61fc0b7f52e1c5b067c750bd2c/skills/seo-gap-miner/fixtures/live-google-trends-nba-2026-07-15.json"
+  },
+  "runx_cli_version": "runx-cli 0.7.1",
+  "observations": [
+    "The registry publish succeeded only after hosted runx reconstructed the package and reran its publish harness.",
+    "A clean registry install resolved version 0.2.0 with the expected package and profile digests.",
+    "The local harness passed 3/3: grounded-content-gaps-sealed, thin-demand-needs-more-evidence, and missing-input-needs-agent.",
+    "No caller answers or runx resume step are present; run.mjs performs the judgment in the analyze graph step.",
+    "The top-level graph declares form review, and the post-publish dogfood receipt contains act_turn with form review and a closed seal.",
+    "Every emitted finding names runx/draft-content as the downstream lane.",
+    "The real dogfood input records the official Google Trends US Trending Now RSS URL, retrieval timestamp, RSS SHA-256, and public NBA page URLs.",
+    "Google Trends reported approximate traffic of 500+ for both Cameron Carr and Lakers Summer League; the runner returned two weak-page findings grounded in the bounded NBA inventory.",
+    "Plain runx verify succeeded in production mode with valid digest, content address, and Ed25519 signature."
+  ],
+  "dogfood": {
+    "package": "gebibd00-jpg/seo-gap-miner@0.2.0",
+    "input_ref": "https://raw.githubusercontent.com/gebibd00-jpg/runx/e41508c9b5d79c61fc0b7f52e1c5b067c750bd2c/skills/seo-gap-miner/fixtures/live-google-trends-nba-2026-07-15.json",
+    "command": "runx skill gebibd00-jpg/seo-gap-miner@0.2.0 --registry https://api.runx.ai -i site_ref=https://www.nba.com/ --input-json site_inventory=<json> --input-json demand_fixtures=<json> --input-json content_policy=<json> --json",
+    "decision": "ready",
+    "top_gap_findings": [
+      {
+        "term": "cameron carr",
+        "demand_grounding": "Google Trends US Trending Now RSS approximate traffic 500+",
+        "page_verdict": "weak: the named NBA page is a single highlight without player profile, statistics, or roster context",
+        "dispatch_target": "runx/draft-content"
+      },
+      {
+        "term": "lakers summer league",
+        "demand_grounding": "Google Trends US Trending Now RSS approximate traffic 500+",
+        "page_verdict": "weak: the named Lakers hub does not identify a Summer League schedule, roster, results page, or tournament overview",
+        "dispatch_target": "runx/draft-content"
+      }
+    ],
+    "receipt_ref": "runx:receipt:sha256:e57fb1c2422c231106f73ddbd31ce3eef15f40c2b7837cbd762513273f96ee3d",
+    "receipt_url": "https://raw.githubusercontent.com/gebibd00-jpg/runx/agent/seo-gap-miner/skills/seo-gap-miner/evidence/dogfood-receipt.json",
+    "verify_verdict": {
+      "schema": "runx.verify_verdict.v1",
+      "valid": true,
+      "digest_status": "valid",
+      "content_address_status": "valid",
+      "signature_mode": "production",
+      "signature_status": "valid",
+      "kid": "gebibd00-jpg-runx-20260714",
+      "findings": []
+    }
+  },
+  "harness": {
+    "local_status": "passed",
+    "hosted_publish_status": "published",
+    "case_count": 3,
+    "assertion_error_count": 0,
+    "cases": [
+      {"name": "grounded-content-gaps-sealed", "status": "sealed"},
+      {"name": "thin-demand-needs-more-evidence", "status": "sealed"},
+      {"name": "missing-input-needs-agent", "status": "needs_agent"}
+    ],
+    "local_receipt_ids": [
+      "sha256:a8c6761a22caa7a59e8a7292b7a3acd90123023b2b5e790937cdba38f08cff30",
+      "sha256:f742667448e61efa42f3cb3259ad96b7ceac0033032af079806190005f8bb549"
+    ]
+  }
+}
