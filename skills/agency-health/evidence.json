@@ -1,56 +1,47 @@
 {
   "schema": "runx.agency.health.public-evidence.v2",
   "bounty_number": 106,
-  "observations": {
-    "runx_cli_version": "runx-cli 0.6.14",
-    "publisher_owner": "jdjioe5-cpu",
-    "package_name": "agency-health",
-    "version": "sha-a329ceb74be3",
-    "registry_ref": "jdjioe5-cpu/agency-health@sha-a329ceb74be3",
-    "public_url": "https://runx.ai/x/jdjioe5-cpu/agency-health@sha-a329ceb74be3",
-    "pr_url": "https://github.com/runxhq/runx/pull/332",
-    "source_commit": "d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357",
-    "source_url": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/run.mjs",
-    "x_yaml": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/X.yaml",
-    "skill_md": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/SKILL.md",
-    "verification_json": "skills/agency-health/verification.json in the same public PR branch",
-    "report": "skills/agency-health/REPORT.md in the same public PR branch",
-    "publish_method": "runx registry publish ./skills/agency-health/SKILL.md --registry https://api.runx.ai",
-    "install_command": "runx add jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai",
-    "hosted_harness_status": "passed",
-    "harness_cases": [
-      {"name": "concerning-agency-sealed", "status": "sealed"},
-      {"name": "no-case-events-stop", "status": "sealed"},
-      {"name": "source-handoff-needs-agent", "status": "needs_agent"}
-    ],
-    "dogfood": {
-      "package": "jdjioe5-cpu/agency-health@sha-a329ceb74be3",
+  "summary": "Published agency-health now performs registry-pinned live projection and ordered event reads, consults the audit-only ledger by receipt id-stub, folds a real eight-event case, emits grounded findings, and produces a production-signed post-publish receipt that verifies valid.",
+  "observations": [
+    {"name": "runx_cli_version", "value": "runx-cli 0.6.14"},
+    {"name": "publisher_and_package", "owner": "jdjioe5-cpu", "package": "agency-health", "version": "sha-a329ceb74be3"},
+    {"name": "registry_listing", "public_url": "https://runx.ai/x/jdjioe5-cpu/agency-health@sha-a329ceb74be3", "hosted_harness_status": "passed"},
+    {"name": "upstream_change", "pr_url": "https://github.com/runxhq/runx/pull/332", "source_commit": "d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357"},
+    {"name": "raw_x_yaml", "url": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/X.yaml"},
+    {"name": "raw_skill_md", "url": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/SKILL.md"},
+    {"name": "source_url", "url": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/run.mjs"},
+    {"name": "harness_cases", "cases": [{"name": "concerning-agency-sealed", "status": "sealed"}, {"name": "no-case-events-stop", "status": "sealed"}, {"name": "source-handoff-needs-agent", "status": "needs_agent"}]},
+    {"name": "live_projection", "case_id": "case-health-postpublish-20260715T081222Z", "projection_version": 8, "folded_turns": 8},
+    {"name": "health_result", "decision": "needs_human", "health_verdict_status": "critical", "findings_count": 5, "intervention_findings_count": 4},
+    {"name": "ledger_read", "receipt_id_stub_count": 7, "body_access": false},
+    {"name": "receipt_verification", "receipt_ref": "runx:receipt:sha256:c8bb8bda2f1badd7f51d329bf61d5ed8261c01227e88c1fd2f4c10217c96e53b", "valid": true, "signature_mode": "production", "signature_status": "valid"},
+    {"name": "no_case_events_refusal", "decision": "needs_more_evidence", "reason": "no readable agency case events over the period", "findings_count": 0, "intervention_findings_count": 0}
+  ],
+  "dogfood": {
+    "package": "jdjioe5-cpu/agency-health@sha-a329ceb74be3",
+    "input": {
+      "data_source_ref": "tenant://agency/health-dogfood",
+      "agency_ref": "agency-health-dogfood",
       "case_id": "case-health-postpublish-20260715T081222Z",
-      "input": {
-        "data_source_ref": "tenant://agency/health-dogfood",
-        "agency_ref": "agency-health-dogfood",
-        "case_id": "case-health-postpublish-20260715T081222Z",
-        "ledger_filter": {"skill_ref": "hrn_agency-health-live-composition_graph", "status": ["closed"]}
-      },
-      "command": "runx skill jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai ... --json",
-      "receipt_ref": "runx:receipt:sha256:c8bb8bda2f1badd7f51d329bf61d5ed8261c01227e88c1fd2f4c10217c96e53b",
-      "verify_verdict": "valid",
-      "projection_version": 8,
-      "folded_turns": 8,
-      "ledger_receipt_stub_count": 7
+      "ledger_filter": {"skill_ref": "hrn_agency-health-live-composition_graph", "status": ["closed"]}
     },
-    "decision": "needs_human",
-    "health_verdict_status": "critical",
-    "graded_findings": [
-      {"metric": "seal_rate", "assessment": "critical", "value": 0.5},
-      {"metric": "stuck_case_count", "assessment": "concerning", "value": 1},
-      {"metric": "cap_usage_pct", "assessment": "concerning", "value": 85},
-      {"metric": "escalation_backlog", "assessment": "healthy", "value": 2},
-      {"metric": "refusal_spike_rate", "assessment": "concerning", "value": 0.125}
-    ],
-    "intervention_target_lanes": ["human-ops", "policy-author", "improve-skill"],
-    "no_case_events_refusal": "no readable agency case events over the period"
+    "command": "runx skill jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai ... --json",
+    "receipt_ref": "runx:receipt:sha256:c8bb8bda2f1badd7f51d329bf61d5ed8261c01227e88c1fd2f4c10217c96e53b",
+    "verify_verdict": "valid",
+    "harness_cases": ["concerning-agency-sealed:sealed", "no-case-events-stop:sealed", "source-handoff-needs-agent:needs_agent"]
   },
+  "commands": {
+    "publish": "runx registry publish ./skills/agency-health/SKILL.md --registry https://api.runx.ai",
+    "install": "runx add jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai"
+  },
+  "graded_findings": [
+    {"metric": "seal_rate", "assessment": "critical", "value": 0.5},
+    {"metric": "stuck_case_count", "assessment": "concerning", "value": 1},
+    {"metric": "cap_usage_pct", "assessment": "concerning", "value": 85},
+    {"metric": "escalation_backlog", "assessment": "healthy", "value": 2},
+    {"metric": "refusal_spike_rate", "assessment": "concerning", "value": 0.125}
+  ],
+  "intervention_target_lanes": ["human-ops", "policy-author", "improve-skill"],
   "graph": {
     "case_projection": {"skill": "registry:runx/data-store@sha-58e31b665e57", "runner": "read_projection"},
     "case_events": {"skill": "registry:runx/data-store@sha-58e31b665e57", "runner": "read_events"},
