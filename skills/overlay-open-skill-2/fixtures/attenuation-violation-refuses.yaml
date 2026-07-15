@@ -1,0 +1,21 @@
+name: attenuation-violation-refuses
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Refuse a write path outside the allowed_output_prefix envelope.
+  output_path: /etc/passwd
+  nested_skill_calls: 0
+  resolved_digest: sha256:cfdaae2defa524d9f2fb8573bb0e4961c99e2237d48666d9007e0ef5d210cbbf
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: overlay-open-skill-2
+  source_case: attenuation-violation-refuses
+  source: skills-fixture
+  runner_kind: cli-tool

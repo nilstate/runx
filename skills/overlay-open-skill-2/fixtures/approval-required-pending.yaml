@@ -1,0 +1,22 @@
+name: approval-required-pending
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Apply pinned bug-triage guidance that touches network and credential surfaces.
+  output_path: ./.runx/bug-triage/case-credential.md
+  nested_skill_calls: 0
+  resolved_digest: sha256:cfdaae2defa524d9f2fb8573bb0e4961c99e2237d48666d9007e0ef5d210cbbf
+  wrapped_guidance_preview: Verify whether the issue describes a security bug requiring network egress or credential rotation.
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: process_closed
+metadata:
+  public_skill: overlay-open-skill-2
+  source_case: approval-required-pending
+  source: skills-fixture
+  runner_kind: cli-tool

@@ -1,0 +1,21 @@
+name: digest-stale-refuses
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Refuse changed wrapped instructions before triage review.
+  output_path: ./.runx/bug-triage/case-stale.md
+  nested_skill_calls: 0
+  resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: failed
+    reason_code: process_failed
+metadata:
+  public_skill: overlay-open-skill-2
+  source_case: digest-stale-refuses
+  source: skills-fixture
+  runner_kind: cli-tool

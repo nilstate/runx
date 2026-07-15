@@ -1,0 +1,126 @@
+skill: overlay-open-skill-2
+version: "0.2.0"
+runx:
+  overlay:
+    wraps:
+      path: https://raw.githubusercontent.com/openai/codex/main/.codex/skills/codex-bug/SKILL.md
+      version: sha256:cfdaae2defa524d9f2fb8573bb0e4961c99e2237d48666d9007e0ef5d210cbbf
+    pinned_digest: sha256:cfdaae2defa524d9f2fb8573bb0e4961c99e2237d48666d9007e0ef5d210cbbf
+    attenuation:
+      allowed_output_prefix: ./.runx/bug-triage/
+      max_skills: 1
+    approval:
+      gate_keywords:
+        - security
+        - compliance
+        - network
+        - credential
+        - secret
+        - publish
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: pinned-digest-seals
+      runner: default
+      inputs:
+        objective: Admit pinned bug-triage guidance into the read-only attenuation envelope.
+        output_path: ./.runx/bug-triage/case-001.md
+        nested_skill_calls: 0
+        resolved_digest: sha256:cfdaae2defa524d9f2fb8573bb0e4961c99e2237d48666d9007e0ef5d210cbbf
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+          reason_code: process_closed
+    - name: digest-stale-refuses
+      runner: default
+      inputs:
+        objective: Refuse changed wrapped instructions before triage review.
+        output_path: ./.runx/bug-triage/case-stale.md
+        nested_skill_calls: 0
+        resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+    - name: attenuation-violation-refuses
+      runner: default
+      inputs:
+        objective: Refuse a write path outside the allowed_output_prefix envelope.
+        output_path: /etc/passwd
+        nested_skill_calls: 0
+        resolved_digest: sha256:cfdaae2defa524d9f2fb8573bb0e4961c99e2237d48666d9007e0ef5d210cbbf
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+          reason_code: process_failed
+    - name: approval-required-pending
+      runner: default
+      inputs:
+        objective: 'Apply pinned bug-triage guidance that touches network and credential surfaces.'
+        output_path: ./.runx/bug-triage/case-credential.md
+        nested_skill_calls: 0
+        resolved_digest: sha256:cfdaae2defa524d9f2fb8573bb0e4961c99e2237d48666d9007e0ef5d210cbbf
+        wrapped_guidance_preview: 'Verify whether the issue describes a security bug requiring network egress or credential rotation.'
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: pending_approval
+          reason_code: process_pending_approval
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    mutating: false
+    runx:
+      scopes:
+        - repo.read
+      allowed_tools:
+        - shell.exec
+        - fs.read
+    inputs:
+      objective:
+        type: string
+        required: false
+        description: Bug-triage review intent recorded in the sealed receipt without granting authority.
+      output_path:
+        type: string
+        required: false
+        description: Recomputed path the wrapped guidance intends to write; must satisfy allowed_output_prefix.
+      nested_skill_calls:
+        type: integer
+        required: false
+        description: Number of nested skill invocations the wrapped guidance intends to issue; must be <= max_skills.
+      approval_token:
+        type: string
+        required: false
+        description: Token returned by a prior pending_approval receipt; clears the gate on the next invocation.
+      wrapped_guidance_preview:
+        type: string
+        required: false
+        description: Short preview of the resolved wrapped guidance used to evaluate the approval gate.
+      resolved_digest:
+        type: string
+        required: false
+        description: Override of the resolved sha256 digest for harness replay of the stale-refuse case.
