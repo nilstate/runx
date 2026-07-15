@@ -1,55 +1,61 @@
 {
-  "schema": "runx.agency.health.public-evidence.v1",
+  "schema": "runx.agency.health.public-evidence.v2",
   "bounty_number": 106,
-  "source_commit": "1e6863727f0095b6fec28d6aad2aa2cd5b34ac9d",
-  "graph": {
-    "case_projection": {
-      "skill": "../data-store",
-      "runner": "read_projection",
-      "aggregate_id_input": "$input.case_id"
+  "observations": {
+    "runx_cli_version": "runx-cli 0.6.14",
+    "publisher_owner": "jdjioe5-cpu",
+    "package_name": "agency-health",
+    "version": "sha-a329ceb74be3",
+    "registry_ref": "jdjioe5-cpu/agency-health@sha-a329ceb74be3",
+    "public_url": "https://runx.ai/x/jdjioe5-cpu/agency-health@sha-a329ceb74be3",
+    "pr_url": "https://github.com/runxhq/runx/pull/332",
+    "source_commit": "d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357",
+    "source_url": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/run.mjs",
+    "x_yaml": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/X.yaml",
+    "skill_md": "https://raw.githubusercontent.com/jdjioe5-cpu/jdjioe5-cpu-runx-fresh/d5d88ce1397bbc2e75b0d9c9bc8a4b72ab342357/skills/agency-health/SKILL.md",
+    "verification_json": "skills/agency-health/verification.json in the same public PR branch",
+    "report": "skills/agency-health/REPORT.md in the same public PR branch",
+    "publish_method": "runx registry publish ./skills/agency-health/SKILL.md --registry https://api.runx.ai",
+    "install_command": "runx add jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai",
+    "hosted_harness_status": "passed",
+    "harness_cases": [
+      {"name": "concerning-agency-sealed", "status": "sealed"},
+      {"name": "no-case-events-stop", "status": "sealed"},
+      {"name": "source-handoff-needs-agent", "status": "needs_agent"}
+    ],
+    "dogfood": {
+      "package": "jdjioe5-cpu/agency-health@sha-a329ceb74be3",
+      "case_id": "case-health-postpublish-20260715T081222Z",
+      "input": {
+        "data_source_ref": "tenant://agency/health-dogfood",
+        "agency_ref": "agency-health-dogfood",
+        "case_id": "case-health-postpublish-20260715T081222Z",
+        "ledger_filter": {"skill_ref": "hrn_agency-health-live-composition_graph", "status": ["closed"]}
+      },
+      "command": "runx skill jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai ... --json",
+      "receipt_ref": "runx:receipt:sha256:c8bb8bda2f1badd7f51d329bf61d5ed8261c01227e88c1fd2f4c10217c96e53b",
+      "verify_verdict": "valid",
+      "projection_version": 8,
+      "folded_turns": 8,
+      "ledger_receipt_stub_count": 7
     },
-    "ledger_read": {
-      "skill": "../ledger",
-      "runner": "read",
-      "filter_input": "$input.ledger_filter"
-    },
-    "evaluate": {
-      "skill": "./",
-      "runner": "fold",
-      "projection_packet": "case_projection.data_operation_result.data",
-      "ledger_packet": "ledger_read.ledger_answer_packet.data"
-    }
+    "decision": "needs_human",
+    "health_verdict_status": "critical",
+    "graded_findings": [
+      {"metric": "seal_rate", "assessment": "critical", "value": 0.5},
+      {"metric": "stuck_case_count", "assessment": "concerning", "value": 1},
+      {"metric": "cap_usage_pct", "assessment": "concerning", "value": 85},
+      {"metric": "escalation_backlog", "assessment": "healthy", "value": 2},
+      {"metric": "refusal_spike_rate", "assessment": "concerning", "value": 0.125}
+    ],
+    "intervention_target_lanes": ["human-ops", "policy-author", "improve-skill"],
+    "no_case_events_refusal": "no readable agency case events over the period"
   },
-  "receipts": [
-    {
-      "case_id": "case-health-live-001",
-      "schema": "runx.agency.health.v1",
-      "decision": "needs_human",
-      "health_status": "critical",
-      "projection_version": 7,
-      "folded_turns": 7,
-      "graded_findings": 4,
-      "intervention_findings": 2,
-      "ledger_receipt_stubs": [
-        "sha256:4c20fe44d2",
-        "sha256:f149008c01"
-      ],
-      "sealed_digest": "aa2dabaaa6716cf61a4343f23c937fb37c54426018a51bbdcb6d23ac8fc911f0"
-    },
-    {
-      "case_id": "case-health-live-002",
-      "schema": "runx.agency.health.v1",
-      "decision": "ready",
-      "health_status": "healthy",
-      "projection_version": 10,
-      "folded_turns": 10,
-      "graded_findings": 3,
-      "intervention_findings": 0,
-      "ledger_receipt_stubs": [
-        "sha256:healthy001"
-      ],
-      "sealed_digest": "201c9f1c06d6cbf6852d0a869cad55bfee7d822cf07279ec0f6a45d62f976a23"
-    }
-  ],
-  "fixture_boundary": "The production fold runner reads only graph-provided projection_packet and ledger_packet. Checked-in fixtures are not read by run.mjs."
+  "graph": {
+    "case_projection": {"skill": "registry:runx/data-store@sha-58e31b665e57", "runner": "read_projection"},
+    "case_events": {"skill": "registry:runx/data-store@sha-58e31b665e57", "runner": "read_events"},
+    "ledger_read": {"skill": "registry:runx/ledger@sha-b8559fc898e7", "runner": "read"},
+    "evaluate": {"skill": "./", "runner": "fold"}
+  },
+  "fixture_boundary": "Production reads only graph-provided read_projection, ordered read_events, and ledger packets. Inline fixture packets are confined to harness cases."
 }

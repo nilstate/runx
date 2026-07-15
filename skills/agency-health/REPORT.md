@@ -1,18 +1,20 @@
-# Agency Health revision evidence
+# Agency Health — Frantic #106 revision report
 
-This revision replaces fixture-file reads in the production runner with a three-step runtime graph:
+The revision is published as `jdjioe5-cpu/agency-health@sha-a329ceb74be3` and proposed upstream in [runxhq/runx#332](https://github.com/runxhq/runx/pull/332).
 
-1. `../data-store` → `read_projection`, keyed by the live agency case aggregate ID.
-2. `../ledger` → `read`, producing governed receipt ID stubs.
-3. `./` → `fold`, consuming the two graph outputs as `projection_packet` and `ledger_packet`.
+Production now composes four bounded steps:
 
-The production `run.mjs` no longer resolves or reads fixture files. Fixtures remain limited to harness setup.
+1. `registry:runx/data-store@sha-58e31b665e57` → `read_projection`, keyed by the live agency case.
+2. The same pinned data-store → `read_events`, used to fold the ordered event bodies and checked against the projection identity, version, and digest chain.
+3. `registry:runx/ledger@sha-b8559fc898e7` → `read`, exposing receipt ID stubs only.
+4. The local `fold` runner grades the case and emits read-only intervention findings.
 
-## Verification
+RunX `0.6.14` passed the three-case local harness and the hosted registry publish harness. A clean install of the published version succeeded. The post-publish dogfood run wrote and read a live eight-event case (`case-health-postpublish-20260715T081222Z`), folded projection version 8, referenced seven ledger ID stubs, and produced `needs_human / critical` with five graded findings and four interventions across `human-ops`, `policy-author`, and `improve-skill`.
 
-- Source commit: `1e6863727f0095b6fec28d6aad2aa2cd5b34ac9d`.
-- Node syntax and YAML manifest checks passed.
-- Live case `case-health-live-001` folded 7 turns, produced 4 graded findings and 2 intervention findings, and sealed as `aa2dabaaa6716cf61a4343f23c937fb37c54426018a51bbdcb6d23ac8fc911f0`.
-- Live case `case-health-live-002` folded 10 turns, produced 3 healthy graded findings and no interventions, and sealed as `201c9f1c06d6cbf6852d0a869cad55bfee7d822cf07279ec0f6a45d62f976a23`.
+The resulting production-signed receipt is `runx:receipt:sha256:c8bb8bda2f1badd7f51d329bf61d5ed8261c01227e88c1fd2f4c10217c96e53b`; `runx verify` returned `valid=true` with a valid production signature. Inline packets remain harness-only; the production runner reads no fixture files.
 
-The accompanying `verification.json` and `evidence.json` provide machine-readable validation and graph/receipt evidence.
+Install with:
+
+```text
+runx add jdjioe5-cpu/agency-health@sha-a329ceb74be3 --registry https://api.runx.ai
+```
