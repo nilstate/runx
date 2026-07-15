@@ -1,9 +1,6 @@
 ---
 name: contract-drafter
-version: 0.1.0
 description: Assemble a reviewable contract draft from an explicit template, parties, and terms while exposing every baseline departure and preparing a gated send-as handoff.
-source:
-  type: graph
 runx:
   category: business-ops
   tags:
