@@ -30,6 +30,16 @@ accepted compatible version through a consumed schema-registry effect.
 
 ## Chosen Architecture
 
+### Registry packaging boundary
+
+The registry publisher packages only files beneath the `schema-guard` package
+root. It does not bundle sibling `../web-fetch` or `../data-store` skills, and
+nested graph steps have no automatic dependency installation. The published
+package therefore vendors pinned copies of the canonical skills under
+`graph/web-fetch/` and `graph/data-store/`, and references those package-local
+paths. This keeps the installed read/judge/record loop self-contained instead
+of relying on repository layout or a pre-populated local registry.
+
 `schema-guard` is a composed graph with three bounded stages:
 
 1. **Source read** invokes the canonical `web-fetch` skill against a caller
@@ -136,4 +146,3 @@ evidence, report, and dogfood receipt must all name the same source revision.
   retry with a widened authority or altered expected version.
 - Publish or hosted-harness failures stop delivery; no Frantic packet is sent
   until all required public URLs and hosted checks are green.
-

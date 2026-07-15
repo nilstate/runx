@@ -17,6 +17,9 @@
 - Breaking, malformed, and unreachable inputs execute no registry append.
 - Receipt issuer type is `hosted`; local-development and runtime-skeleton receipts are forbidden delivery evidence.
 - All public URLs, package metadata, evidence, report, receipt, and PR files identify one commit and one registry version.
+- Registry packages do not include sibling skills. Vendor pinned canonical
+  `web-fetch` and `data-store` packages inside `skills/schema-guard/graph/` and
+  reference those package-local paths so a clean install remains executable.
 
 ---
 
@@ -202,6 +205,8 @@ git commit -s -m "feat(schema-guard): add governed evaluator runner"
 - Create: `skills/schema-guard/fixtures/breaking-change-refused.yaml`
 - Create: `skills/schema-guard/fixtures/unreachable-source-refused.yaml`
 - Create: `skills/schema-guard/fixtures/current-invoice.schema.json`
+- Create: `skills/schema-guard/graph/web-fetch/**` from the canonical pinned package
+- Create: `skills/schema-guard/graph/data-store/**` from the canonical pinned package
 
 **Interfaces:**
 - Consumes the public inputs documented by the design.
@@ -229,7 +234,7 @@ and these ordered steps:
 ```yaml
 steps:
   - id: fetch-current
-    skill: ../web-fetch
+    skill: graph/web-fetch
     runner: web-fetch
     inputs:
       url: "$input.source_url"
@@ -250,7 +255,7 @@ steps:
     context:
       fetch_result: fetch-current.fetch_result.data
   - id: append-version
-    skill: ../data-store
+    skill: graph/data-store
     runner: append_event
     inputs:
       data_source_ref: "$input.registry_ref"
@@ -262,7 +267,7 @@ steps:
       idempotency_key: evaluate.idempotency_key.data
       event: evaluate.registry_event.data
   - id: readback
-    skill: ../data-store
+    skill: graph/data-store
     runner: read_projection
     inputs:
       data_source_ref: "$input.registry_ref"
