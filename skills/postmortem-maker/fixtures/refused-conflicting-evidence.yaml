@@ -1,0 +1,20 @@
+name: refused-conflicting-evidence
+kind: skill
+target: ..
+runner: decide
+inputs:
+  source_handle: '{"id":"incident-empty","severity":"unknown","affected_services":[],"duration_minutes":0,"timeline":[],"root_cause":{"status":"unknown","description":"No incident data available.","evidence_ref":null}}'
+  postmortem_policy:
+    publish_threshold: when_publishable
+    require_root_cause: true
+    max_unknowns: 3
+  output_dir: evidence
+expect:
+  status: failure
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: postmortem-maker
+  source_case: refused-conflicting-evidence
+  source: skills-fixture
+  runner_kind: cli-tool

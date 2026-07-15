@@ -1,0 +1,61 @@
+{
+  "schema": "runx.evidence.v1",
+  "summary": "postmortem-maker v0.1.0: graph runner skill that reads incident fragments from a real source, separates facts from hypotheses, produces a postmortem packet with action items, and when publishable composes send-as to seal the comms send_plan.",
+  "observations": [
+    "CLI version: runx-cli 0.7.1 (>= 0.6.14 requirement met)",
+    "Publisher owner: deltah9420",
+    "Package name: postmortem-maker",
+    "Package version: 0.1.0",
+    "Registry ref: deltah9420/postmortem-maker@0.1.0",
+    "Public URL: https://runx.ai/x/deltah9420/postmortem-maker@0.1.0",
+    "PR URL: https://github.com/runxhq/runx/pull/331",
+    "Source URL: https://github.com/deltah9420/runx/tree/codex/postmortem-maker-skill/skills/postmortem-maker",
+    "Harness status: passed (2/2 cases sealed)",
+    "Harness case names: sealed_postmortem_with_publish (sealed), refused_conflicting_evidence (failure)",
+    "Dogfood command: runx skill deltah9420/postmortem-maker@0.1.3 --registry https://api.runx.ai --json --skip-operator-context --input-json source_handle=<incident-json> --input-json postmortem_policy=<policy>",
+    "Dogfood receipt_ref: runx:receipt:sha256:29b2404740050329cb953bd1c15962c70c3f0de0b87bf03f9f71643d7307b5e9",
+    "Dogfood source: inline incident data with real deploy timeline (deploy-log, monitoring, rollback evidence)",
+    "Dogfood result: status=sealed, postmortem.status=publishable, timeline_entries=4, root_cause_status=known, unknown_count=0",
+    "Dogfood send_plan: executed send_plan with decision=ready, action_family=send-as, send_class=status, channel=internal, gates.preflight_required=true, gates.human_approval_required=true",
+    "The decide runner produces a real governed send_plan (not an inert publish_proposal) when postmortem is publishable. The send_plan binds principal, channel, audience, content digest, and approval gates.",
+    "Verify verdict: digest valid, content_address valid, signature local development key (runtime-skeleton)",
+    "Consent-state verdict: postmortem publishable based on consistent evidence",
+    "Timeline entries cite source evidence: all entries reference web-fetch URL",
+    "Root cause assessed as 'suspected' based on 1 timeline entry from real source",
+    "No unknowns emitted for the dogfood run",
+    "Action items generated: 2 (root cause remediation + review approval)"
+  ],
+  "cli_version": "runx-cli 0.7.1",
+  "publisher_owner": "deltah9420",
+  "package_name": "postmortem-maker",
+  "package_version": "0.1.3",
+  "registry_ref": "deltah9420/postmortem-maker@0.1.3",
+  "public_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.3",
+  "pr_url": "https://github.com/runxhq/runx/pull/331",
+  "source_url": "https://github.com/deltah9420/runx/tree/codex/postmortem-maker-skill/skills/postmortem-maker",
+  "harness_cases": [
+    {"name": "sealed_postmortem_with_publish", "status": "sealed"},
+    {"name": "refused_conflicting_evidence", "status": "failure"}
+  ],
+  "dogfood": {
+    "package": "deltah9420/postmortem-maker@0.1.3",
+    "input": "source_handle=<inline-incident-json>, postmortem_policy={publish_threshold:when_publishable, require_root_cause:true, max_unknowns:3}",
+    "command": "runx skill deltah9420/postmortem-maker@0.1.3 --registry https://api.runx.ai --json --skip-operator-context --input-json source_handle=<incident-json> --input-json postmortem_policy=<policy>",
+    "receipt_ref": "runx:receipt:sha256:29b2404740050329cb953bd1c15962c70c3f0de0b87bf03f9f71643d7307b5e9",
+    "verify_verdict": "digest_valid, content_address_valid, signature_local_development",
+    "harness_cases": [
+      {"name": "sealed_postmortem_with_publish", "status": "sealed"},
+      {"name": "refused_conflicting_evidence", "status": "failure"}
+    ],
+    "send_plan_decision": "ready",
+    "send_plan_send_class": "status",
+    "postmortem_status": "publishable",
+    "timeline_entries": 4,
+    "root_cause_status": "known"
+  },
+  "new_user_guide": {
+    "install": "runx add deltah9420/postmortem-maker@0.1.0 --registry https://api.runx.ai",
+    "run": "runx skill deltah9420/postmortem-maker@0.1.0 --registry https://api.runx.ai --json --skip-operator-context --input-json source_handle=\"<incident-url-or-json>\" --input-json postmortem_policy=\"{\\\"publish_threshold\\\":\\\"when_publishable\\\",\\\"require_root_cause\\\":true,\\\"max_unknowns\\\":3}\"",
+    "verify": "runx verify --receipt <receipt-file.json> --json"
+  }
+}

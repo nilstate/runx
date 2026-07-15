@@ -1,0 +1,20 @@
+name: sealed-postmortem-with-publish
+kind: skill
+target: ..
+runner: decide
+inputs:
+  source_handle: '{"id":"incident-001","title":"Payments API outage after config deploy","severity":"critical","affected_services":["payments-api","checkout"],"duration_minutes":18,"users_affected":4200,"created_at":"2026-07-10T14:00:00Z","timeline":[{"timestamp":"2026-07-10T13:45:00Z","event":"Config change deployed to payments-api: increased timeout from 5s to 30s","certainty":"fact","evidence_ref":"deploy-log:deploy-7891"},{"timestamp":"2026-07-10T13:47:00Z","event":"Error rate spike: 5xx errors jumped from 0.1% to 12%","certainty":"fact","evidence_ref":"monitoring:dashboard-payments"},{"timestamp":"2026-07-10T13:52:00Z","event":"On-call engineer paged, began investigation","certainty":"fact","evidence_ref":"pagerduty:incident-2026-07-10-001"},{"timestamp":"2026-07-10T13:58:00Z","event":"Root cause identified: timeout config caused connection pool exhaustion","certainty":"fact","evidence_ref":"runbook:payments-api:timeout-config"},{"timestamp":"2026-07-10T14:03:00Z","event":"Config rolled back to previous value","certainty":"fact","evidence_ref":"deploy-log:deploy-7892"},{"timestamp":"2026-07-10T14:05:00Z","event":"Error rate returned to baseline","certainty":"fact","evidence_ref":"monitoring:dashboard-payments"}],"root_cause":{"status":"known","description":"Timeout config change caused connection pool exhaustion in payments-api","evidence_ref":"deploy-log:deploy-7891"},"action_items":[{"description":"Add connection pool monitoring alert","owner":"platform-team","deadline":"2026-07-17","evidence_ref":"monitoring:dashboard-payments"},{"description":"Require staging validation for timeout config changes","owner":"payments-team","deadline":"2026-07-24","evidence_ref":"runbook:payments-api:timeout-config"}]}'
+  postmortem_policy:
+    publish_threshold: when_publishable
+    require_root_cause: true
+    max_unknowns: 3
+  output_dir: evidence
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: postmortem-maker
+  source_case: sealed-postmortem-with-publish
+  source: skills-fixture
+  runner_kind: cli-tool

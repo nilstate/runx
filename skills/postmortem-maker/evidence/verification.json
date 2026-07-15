@@ -1,0 +1,12 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "valid": true,
+  "verification_method": "local_harness_and_dogfood",
+  "harness_receipt_id": "sha256:2dbd0d24b8e4dad38eb67dd92a2a5606419f98eec66d6b6b5a698b5e88ea2ffe",
+  "dogfood_receipt_ref": "runx:receipt:sha256:29b2404740050329cb953bd1c15962c70c3f0de0b87bf03f9f71643d7307b5e9",
+  "harness_cases": [
+    {"name": "sealed_postmortem_with_publish", "status": "sealed"},
+    {"name": "refused_conflicting_evidence", "status": "failure"}
+  ],
+  "notes": "Receipt signed with local development key (RUNX_RECEIPT_SIGN_KID=harness-dev). Digest and content address verified. Signature uses Ed25519 with local skeleton issuer."
+}

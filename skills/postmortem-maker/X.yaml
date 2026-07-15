@@ -1,0 +1,168 @@
+skill: postmortem-maker
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+    scopes:
+      - incident.read
+      - incident.triage
+    policy:
+      reads:
+        - incident record
+        - postmortem policy
+      calls: []
+      writes:
+        - evidence.json
+        - report.md
+      disallows:
+        - live incident modification
+        - live comms dispatch
+    inputs:
+      source_handle:
+        type: string
+        required: true
+        description: >
+          Incident source: a URL to web-fetch, or a data-store
+          read_projection reference.
+      postmortem_policy:
+        type: object
+        required: true
+        description: >
+          Policy with publish_threshold, require_root_cause, max_unknowns.
+    outputs:
+      postmortem: object
+      unknowns: array
+      action_items: array
+      publish_result: object
+
+  postmortem-maker:
+    type: graph
+    inputs:
+      source_handle:
+        type: string
+        required: true
+        description: >
+          Incident source: a URL to fetch (web-fetch), or a data-store
+          read_projection reference. The graph reads the incident record
+          from this handle at run time.
+      postmortem_policy:
+        type: object
+        required: true
+        description: >
+          Policy object with publish_threshold (string: always/when_publishable/never),
+          require_root_cause (boolean), and max_unknowns (number).
+      data_source_ref:
+        type: string
+        required: true
+        description: Logical data source used to persist the postmortem.
+      resource:
+        type: string
+        required: true
+        description: Declared event resource for postmortem events.
+      aggregate_id:
+        type: string
+        required: true
+        description: Incident stream key.
+      expected_version:
+        type: number
+        required: true
+        description: Current stream version required before append.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for this postmortem event.
+    outputs:
+      postmortem: object
+      unknowns: array
+      action_items: array
+      publish_result: object
+    graph:
+      name: postmortem-maker
+      steps:
+        - id: decide
+          label: read incident and produce postmortem decision
+          skill: .
+          runner: decide
+          inputs:
+            source_handle: "$input.source_handle"
+            postmortem_policy: "$input.postmortem_policy"
+          artifacts:
+            wrap_as: postmortem_packet
+            packet: runx.postmortem.v1
+        - id: publish
+          label: compose send-as to publish postmortem
+          skill: ../send-as
+          runner: plan
+          scopes:
+            - runx:net:allowlist
+          inputs:
+            objective: Publish the approved postmortem summary and action items to the configured comms channel.
+            principal: "incident:postmortem-maker"
+          context:
+            content_ref: decide.postmortem_packet.data
+        - id: persist
+          label: append postmortem event to the incident stream
+          skill: ../data-store
+          runner: append_event
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.postmortem_packet.data
+        - id: readback
+          label: read back the incident projection
+          skill: ../data-store
+          runner: read_projection
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+
+harness:
+  cases:
+    - name: sealed_postmortem_with_publish
+      description: >
+        Consistent incident evidence with clear timeline, known root cause,
+        and no conflicting data. Produces a postmortem with status=publishable,
+        timeline entries, root_cause, action_items, and a sealed send_plan
+        from the publish step.
+      inputs:
+        source_handle: '{"id":"incident-001","title":"Payments API outage after config deploy","severity":"critical","affected_services":["payments-api","checkout"],"duration_minutes":18,"users_affected":4200,"created_at":"2026-07-10T14:00:00Z","timeline":[{"timestamp":"2026-07-10T13:45:00Z","event":"Config change deployed to payments-api: increased timeout from 5s to 30s","certainty":"fact","evidence_ref":"deploy-log:deploy-7891"},{"timestamp":"2026-07-10T13:47:00Z","event":"Error rate spike: 5xx errors jumped from 0.1% to 12%","certainty":"fact","evidence_ref":"monitoring:dashboard-payments"},{"timestamp":"2026-07-10T13:52:00Z","event":"On-call engineer paged, began investigation","certainty":"fact","evidence_ref":"pagerduty:incident-2026-07-10-001"},{"timestamp":"2026-07-10T13:58:00Z","event":"Root cause identified: timeout config caused connection pool exhaustion","certainty":"fact","evidence_ref":"runbook:payments-api:timeout-config"},{"timestamp":"2026-07-10T14:03:00Z","event":"Config rolled back to previous value","certainty":"fact","evidence_ref":"deploy-log:deploy-7892"},{"timestamp":"2026-07-10T14:05:00Z","event":"Error rate returned to baseline","certainty":"fact","evidence_ref":"monitoring:dashboard-payments"}],"root_cause":{"status":"known","description":"Timeout config change caused connection pool exhaustion in payments-api","evidence_ref":"deploy-log:deploy-7891"},"action_items":[{"description":"Add connection pool monitoring alert","owner":"platform-team","deadline":"2026-07-17","evidence_ref":"monitoring:dashboard-payments"},{"description":"Require staging validation for timeout config changes","owner":"payments-team","deadline":"2026-07-24","evidence_ref":"runbook:payments-api:timeout-config"}]}'
+        postmortem_policy:
+          publish_threshold: when_publishable
+          require_root_cause: true
+          max_unknowns: 3
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: refused_conflicting_evidence
+      description: >
+        Empty incident data with no timeline and unknown root cause.
+        Produces unknowns and a refused postmortem.
+      inputs:
+        source_handle: '{"id":"incident-empty","severity":"unknown","affected_services":[],"duration_minutes":0,"timeline":[],"root_cause":{"status":"unknown","description":"No incident data available.","evidence_ref":null}}'
+        postmortem_policy:
+          publish_threshold: when_publishable
+          require_root_cause: true
+          max_unknowns: 3
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
