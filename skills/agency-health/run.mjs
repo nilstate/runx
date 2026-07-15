@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 
 const inputs = readInputs();
 const projectionPacket = requiredObject(inputs, "projection_packet");
+const eventPacket = requiredObject(inputs, "event_packet");
 const ledgerPacket = requiredObject(inputs, "ledger_packet");
 const period = optional(inputs, "period", null);
 const baseline = optional(inputs, "health_baseline", {});
@@ -19,7 +20,42 @@ if (projection.operation !== "read_projection" || projection.status !== "read") 
   process.exit(0);
 }
 
-const rows = projection.rows ?? projection.events ?? [];
+const eventRead = eventPacket.data_operation_result?.data ?? eventPacket;
+if (eventRead.operation !== "read_events" || eventRead.status !== "read") {
+  seal({
+    decision: "needs_more_evidence",
+    health_verdict: { status: "degraded", findings: [] },
+    intervention_findings: [],
+    refusals: [{ when: "events_unreadable", reason: "data-store read_events did not return an ordered case stream" }],
+  });
+  process.exit(0);
+}
+
+const projectedVersion = Number(projection.after_version ?? projection.projection?.version ?? 0);
+const eventVersion = Number(eventRead.after_version ?? 0);
+if (projection.aggregate_id !== eventRead.aggregate_id || projectedVersion !== eventVersion) {
+  seal({
+    decision: "needs_more_evidence",
+    health_verdict: { status: "degraded", findings: [] },
+    intervention_findings: [],
+    refusals: [{ when: "projection_event_mismatch", reason: "read_projection and read_events disagree on case identity or version" }],
+  });
+  process.exit(0);
+}
+
+const rows = eventRead.rows ?? eventRead.events ?? [];
+const projectedDigests = projection.projection?.event_digests;
+const eventDigests = rows.map((row) => row.event_digest).filter(Boolean);
+if (Array.isArray(projectedDigests) && projectedDigests.length > 0
+    && JSON.stringify(projectedDigests) !== JSON.stringify(eventDigests)) {
+  seal({
+    decision: "needs_more_evidence",
+    health_verdict: { status: "degraded", findings: [] },
+    intervention_findings: [],
+    refusals: [{ when: "projection_digest_mismatch", reason: "ordered case events do not match the projection digest chain" }],
+  });
+  process.exit(0);
+}
 const folded = rows
   .map(normalizeEvent)
   .filter(Boolean)
@@ -87,7 +123,7 @@ function normalizeEvent(record) {
   return {
     ...payload,
     version,
-    at: record.committed_at ?? payload.at ?? payload.observed_at,
+    at: payload.at ?? payload.observed_at ?? record.committed_at,
     status: payload.status ?? payload.decision ?? payload.outcome ?? event.type,
   };
 }

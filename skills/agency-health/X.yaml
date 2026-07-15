@@ -17,15 +17,17 @@ harness:
           status: read
           aggregate_id: case-health-harness-concerning
           after_version: 8
-          charter:
-            limits:
-              max_acts: 20
-              max_spend: 1000
-            cumulative:
-              acts: 17
-              spend: 720
+          projection:
+            aggregate_id: case-health-harness-concerning
+            version: 8
+            event_count: 8
+        event_packet:
+          operation: read_events
+          status: read
+          aggregate_id: case-health-harness-concerning
+          after_version: 8
           rows:
-            - {version: 1, committed_at: "2026-07-01T08:00:00Z", event: {payload: {status: advanced}}}
+            - {version: 1, committed_at: "2026-07-01T08:00:00Z", event: {payload: {type: opened, status: advanced, charter: {limits: {max_acts: 20, max_spend: 1000}, cumulative: {acts: 17, spend: 720}}}}}
             - {version: 2, committed_at: "2026-07-01T09:00:00Z", event: {payload: {status: advanced}}}
             - {version: 3, committed_at: "2026-07-01T10:00:00Z", event: {payload: {status: awaiting_approval}}}
             - {version: 4, committed_at: "2026-07-02T09:00:00Z", event: {payload: {status: advanced}}}
@@ -53,6 +55,15 @@ harness:
       inputs:
         projection_packet:
           operation: read_projection
+          status: read
+          aggregate_id: case-health-harness-empty
+          after_version: 0
+          projection:
+            aggregate_id: case-health-harness-empty
+            version: 0
+            event_count: 0
+        event_packet:
+          operation: read_events
           status: read
           aggregate_id: case-health-harness-empty
           after_version: 0
@@ -134,6 +145,14 @@ runners:
           inputs:
             question: "Which governed agency receipts ground health signals for this live case period?"
             filter: "$input.ledger_filter"
+        - id: case_events
+          skill: registry:runx/data-store@sha-58e31b665e57
+          runner: read_events
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            resource: agency_cases
+            aggregate_id: "$input.case_id"
         - id: evaluate
           skill: ./
           runner: fold
@@ -142,6 +161,7 @@ runners:
             health_baseline: "$input.health_baseline"
           context:
             projection_packet: case_projection.data_operation_result.data
+            event_packet: case_events.data_operation_result.data
             ledger_packet: ledger_read.ledger_answer_packet.data
 
   fold:
@@ -160,6 +180,9 @@ runners:
       packet: runx.agency.health.v1
     inputs:
       projection_packet:
+        type: json
+        required: true
+      event_packet:
         type: json
         required: true
       ledger_packet:
