@@ -221,6 +221,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "e19bbe8dc5f3bf732dc265a1808819587e67759fdf3014d89bc9bf6629400b18",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/overlay-open-skill-1",
+        version: "sha-3a93e1ffea7c",
+        digest: "871bf2192651d0dbc45eafd93a2ad97054c6299139a9c2f00eb4a2630618a327",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/policy-author",
         version: "sha-a1f056d7c7f7",
         digest: "b3bbcbda2711d78c59c572d99206c3116347e9751506301ca40a52c75e85bc84",

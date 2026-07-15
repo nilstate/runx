@@ -1,0 +1,26 @@
+name: pinned-approved-one-worktree-seals
+kind: skill
+target: ..
+runner: default
+inputs:
+  objective: Create one isolated worktree for a bounded feature change.
+  resolved_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+  repo_root: /workspace/demo-repo
+  worktree_root: /workspace/demo-repo/.worktrees
+  worktree_path: /workspace/demo-repo/.worktrees/feature-safe-overlay
+  branch_name: feature/safe-overlay
+  start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mechanism: git_fallback
+  max_worktrees: 1
+caller:
+  approvals:
+    overlay-open-skill-1.worktree-create.approval: true
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  source: overlay-open-skill-1
+  contract: approved-one-worktree

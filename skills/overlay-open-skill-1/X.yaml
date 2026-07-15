@@ -1,0 +1,281 @@
+skill: overlay-open-skill-1
+version: "1.0.0"
+
+runx:
+  overlay:
+    wraps:
+      path: https://raw.githubusercontent.com/obra/superpowers/d884ae04edebef577e82ff7c4e143debd0bbec99/skills/using-git-worktrees/SKILL.md
+      version: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+    pinned_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: context
+
+harness:
+  cases:
+    - name: pinned-approved-one-worktree-seals
+      runner: default
+      inputs:
+        objective: Create one isolated worktree for a bounded feature change.
+        resolved_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+        repo_root: /workspace/demo-repo
+        worktree_root: /workspace/demo-repo/.worktrees
+        worktree_path: /workspace/demo-repo/.worktrees/feature-safe-overlay
+        branch_name: feature/safe-overlay
+        start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        mechanism: git_fallback
+        max_worktrees: 1
+      caller:
+        approvals:
+          overlay-open-skill-1.worktree-create.approval: true
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: digest-stale-refuses
+      runner: default
+      inputs:
+        objective: Refuse changed worktree instructions before approval.
+        resolved_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+        repo_root: /workspace/demo-repo
+        worktree_root: /workspace/demo-repo/.worktrees
+        worktree_path: /workspace/demo-repo/.worktrees/feature-stale
+        branch_name: feature/stale
+        start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        mechanism: git_fallback
+        max_worktrees: 1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: path-escape-refuses
+      runner: default
+      inputs:
+        objective: Refuse a worktree path outside the attenuated root.
+        resolved_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+        repo_root: /workspace/demo-repo
+        worktree_root: /workspace/demo-repo/.worktrees
+        worktree_path: /workspace/escaped-worktree
+        branch_name: feature/escape
+        start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        mechanism: git_fallback
+        max_worktrees: 1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: approval-denied-refuses
+      runner: default
+      inputs:
+        objective: Refuse ticket emission when the operator denies the exact plan.
+        resolved_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+        repo_root: /workspace/demo-repo
+        worktree_root: /workspace/demo-repo/.worktrees
+        worktree_path: /workspace/demo-repo/.worktrees/feature-denied
+        branch_name: feature/denied
+        start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        mechanism: git_fallback
+        max_worktrees: 1
+      caller:
+        approvals:
+          overlay-open-skill-1.worktree-create.approval: false
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: nested-worktree-root-refuses
+      runner: default
+      inputs:
+        objective: Refuse a nested directory merely named .worktrees.
+        resolved_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+        repo_root: /workspace/demo-repo
+        worktree_root: /workspace/demo-repo/nested/.worktrees
+        worktree_path: /workspace/demo-repo/nested/.worktrees/feature-nested
+        branch_name: feature/nested
+        start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        mechanism: git_fallback
+        max_worktrees: 1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: branch-lock-segment-refuses
+      runner: default
+      inputs:
+        objective: Refuse unsafe Git lock-like branch segments.
+        resolved_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+        repo_root: /workspace/demo-repo
+        worktree_root: /workspace/demo-repo/.worktrees
+        worktree_path: /workspace/demo-repo/.worktrees/feature-lock
+        branch_name: feature/release.lock/child
+        start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        mechanism: git_fallback
+        max_worktrees: 1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: unc-path-refuses
+      runner: default
+      inputs:
+        objective: Refuse a network namespace that contradicts local-only authority.
+        resolved_digest: sha256:e2c3ec142e52868a51af246c620cd76ab648dcf27d6900d47e6ffd07159a9794
+        repo_root: '\\server\share\repo'
+        worktree_root: '\\server\share\repo\.worktrees'
+        worktree_path: '\\server\share\repo\.worktrees\feature-unc'
+        branch_name: feature/unc
+        start_commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        mechanism: git_fallback
+        max_worktrees: 1
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+runners:
+  default:
+    default: true
+    type: graph
+    runx:
+      scopes:
+        - repo.read
+        - repo.worktree.create
+      allowed_tools:
+        - git.status
+        - git.diff_name_only
+        - shell.exec
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: Operator intent for the isolated worktree.
+      resolved_digest:
+        type: string
+        required: true
+        description: Sha256 recomputed by a trusted resolver from the immutable public wrapped SKILL.md bytes.
+      repo_root:
+        type: string
+        required: true
+        description: Absolute root of the normal Git checkout.
+      worktree_root:
+        type: string
+        required: true
+        description: Exact absolute <repo_root>/.worktrees directory.
+      worktree_path:
+        type: string
+        required: true
+        description: Absolute direct-child path for the new worktree.
+      branch_name:
+        type: string
+        required: true
+        description: Bounded feature/fix/chore/docs/test/refactor/codex branch.
+      start_commit:
+        type: string
+        required: true
+        description: Immutable 40- or 64-hex Git object id.
+      mechanism:
+        type: string
+        required: true
+        description: Must be git_fallback in this package version.
+      max_worktrees:
+        type: number
+        required: true
+        description: Must be exactly one.
+    graph:
+      name: overlay-open-skill-1-worktree-ticket
+      steps:
+        - id: admit
+          label: validate immutable pin and attenuate one worktree plan
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - preflight.mjs
+            outputs:
+              admission: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools:
+            - git.status
+            - git.diff_name_only
+          scopes:
+            - repo.read
+          artifacts:
+            named_emits:
+              admission: admission
+
+        - id: approve-create
+          label: approve the exact one-worktree execution plan
+          run:
+            type: approval
+          inputs:
+            gate_id: overlay-open-skill-1.worktree-create.approval
+            reason: Approve the exact repository, path, branch, start commit, and argv before issuing a receipt-bound single-effect worktree authorization.
+          context:
+            admission: admit.admission.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+
+        - id: record-act
+          label: bind approval and seal a single-effect worktree authorization
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - seal-ticket.mjs
+            outputs:
+              worktree_act: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools:
+            - git.status
+            - git.diff_name_only
+            - shell.exec
+          scopes:
+            - repo.read
+            - repo.worktree.create
+          context:
+            admission: admit.admission.data
+            approval: approve-create.approval_decision.data
+          artifacts:
+            named_emits:
+              worktree_act: worktree_act
+
+      policy:
+        guards:
+          - step: approve-create
+            field: admit.admission.data.decision
+            equals: ready_for_approval
+          - step: record-act
+            field: approve-create.approval_decision.data.approved
+            equals: true

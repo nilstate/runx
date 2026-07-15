@@ -1,0 +1,82 @@
+{
+  "schema": "runx.overlay.local_harness_evidence.v1",
+  "captured_at": "2026-07-15T01:01:16.092Z",
+  "environment": {
+    "os": "Linux under WSL2",
+    "runx_version": "runx-cli 0.7.1"
+  },
+  "command": "runx harness ./skills/overlay-open-skill-1 --json",
+  "status": "passed",
+  "case_count": 7,
+  "assertion_error_count": 0,
+  "graph_case_count": 7,
+  "local_publish_rehearsal": {
+    "status": "success",
+    "mode": "local-filesystem-registry",
+    "owner": "EthanYoQ",
+    "skill_id": "ethanyoq/overlay-open-skill-1",
+    "required_scopes": [
+      "repo.read",
+      "repo.worktree.create"
+    ]
+  },
+  "clean_install_rehearsal": {
+    "status": "sealed",
+    "mode": "local-filesystem-registry",
+    "initial_status": "needs_agent",
+    "approval_gate": "overlay-open-skill-1.worktree-create.approval",
+    "resume_status": "sealed",
+    "run_id": "run_default_f0a4fe928324",
+    "receipt_id": "sha256:606e007823cb35bd39034a5a80ee43ffe5d540d73891b6627b30d4826eb02b98",
+    "verification": {
+      "valid": true,
+      "signature_mode": "local-development",
+      "receipt_count": 4,
+      "findings": []
+    }
+  },
+  "cases": [
+    {
+      "name": "pinned-approved-one-worktree-seals",
+      "expected_status": "sealed",
+      "receipt_id": "sha256:e26289fb2b0c41439a1603673055bf32c240d1ef82954bbbe4cce54137169825"
+    },
+    {
+      "name": "digest-stale-refuses",
+      "expected_status": "policy_denied",
+      "receipt_id": "sha256:73b783459566886c249a00e59297cb3f7743965a759137c93b0150ace765ab17"
+    },
+    {
+      "name": "path-escape-refuses",
+      "expected_status": "policy_denied",
+      "receipt_id": "sha256:5fc9f397e37f2d182a1979442771f1eabb33fbd08cf7818598c804a7542405f1"
+    },
+    {
+      "name": "approval-denied-refuses",
+      "expected_status": "policy_denied",
+      "receipt_id": "sha256:fcb811eaede5e817a91ddc62ef1caa5e16608b4fdcd360085f666000561e47b4"
+    },
+    {
+      "name": "nested-worktree-root-refuses",
+      "expected_status": "policy_denied",
+      "receipt_id": "sha256:24c810bb26ee39e386b16c2241aa29f05ba42b24379ce103c133c07f78a01cef"
+    },
+    {
+      "name": "branch-lock-segment-refuses",
+      "expected_status": "policy_denied",
+      "receipt_id": "sha256:a5770a2270fb5a8a1a7d619e95d161f21cbb8efa14cb181cff129b56498de7e1"
+    },
+    {
+      "name": "unc-path-refuses",
+      "expected_status": "policy_denied",
+      "receipt_id": "sha256:b89058071d7b6096bc45325ba051d38e9c0c47d17804bec51b49fb0674b0ac23"
+    }
+  ],
+  "notes": [
+    "The positive case emits a receipt-bound single-effect authorization after the native approval key is recomputed and matched.",
+    "A clean installation was run through the native approval pause and resume flow, then its four-receipt tree verified without findings.",
+    "Dynamic registry version and package digests are intentionally excluded from this in-package file because embedding them would change the package digest; final published identifiers belong in external delivery evidence.",
+    "Refusal cases seal blocked graph receipts before any authorization is issued.",
+    "The package does not claim that the Git worktree command was executed."
+  ]
+}
