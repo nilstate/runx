@@ -123,5 +123,7 @@ runx skill <owner>/rollback-judge@<version> --registry https://api.runx.ai --jso
 ```
 
 The package includes `fixtures/critical-signal.json` with public, immutable run
-references. It also includes a contradictory case whose agent review stops with
-`needs_agent` and emits no decision or approval.
+references. Hosted harness replays expected answers tied to those references so
+it remains deterministic; the default `judge` runner used for dogfood performs
+the network reads. The contradictory case receives no answer, stops with
+`needs_agent`, and emits no decision or approval.

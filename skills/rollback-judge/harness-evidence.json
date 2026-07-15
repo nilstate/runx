@@ -12,18 +12,18 @@
     "signal-contradictory-block"
   ],
   "receipt_ids": [
-    "sha256:ba65997f69f274ce431602a756b42dda2d85299703614f6180ffb7e8db85c524"
+    "sha256:4c8e43ea3d6aeda08d63e66cf7f47d100f379013f70204acf9c0c2b461a99f97"
   ],
-  "graph_case_count": 1,
+  "graph_case_count": 0,
   "live_sources": {
     "failing_run": "https://github.com/RYDE-PLAY/frantic-102-rollback-judge/actions/runs/29393017505",
     "healthy_prior_run": "https://github.com/RYDE-PLAY/frantic-102-rollback-judge/actions/runs/29392993457"
   },
   "coverage": {
     "critical-signal-rollback": [
-      "default graph fetches the failing GitHub Actions monitor run during execution",
-      "commit-pinned current marker proves http_5xx_rate 18.4% exceeds 2%",
-      "separate successful run and marker prove prior version 2026.07.15.3 healthy at 0.4%",
+      "deterministic hosted fixture names the public failing GitHub Actions monitor run",
+      "fixture records the commit-pinned current marker where http_5xx_rate 18.4% exceeds 2%",
+      "fixture records the separate successful run proving prior version 2026.07.15.3 healthy at 0.4%",
       "release.publish.approval output is approved=true with reason error_rate_critical",
       "sealed review act targets the public failing run and records the derived rollback release ref"
     ],
@@ -33,5 +33,5 @@
       "no decision or approval is emitted"
     ]
   },
-  "note": "The signing seed is intentionally omitted. The critical harness case reads public monitor APIs and immutable commit markers rather than checked-in signal values."
+  "note": "The signing seed is intentionally omitted. Hosted harness uses deterministic answers tied to public immutable monitor runs; the default judge used for dogfood performs the live API and marker reads at execution time."
 }

@@ -10,7 +10,7 @@ catalog:
 harness:
   cases:
     - name: critical-signal-rollback
-      runner: judge
+      runner: agent_review
       inputs:
         deploy_signal:
           severity: critical
@@ -31,6 +31,69 @@ harness:
         forward_fix_evidence:
           test_runs: []
           review_signoff: null
+      caller:
+        answers:
+          agent_task.rollback-judge.output:
+            act_decision: approve
+            act_reason: action=rollback reason=error_rate_critical target=2026.07.15.3 source=github-actions:29393017505
+            act_target_ref: runx:release:rollback-judge-demo@2026.07.15.3
+            decision:
+              action: rollback
+              reason: error_rate_critical
+              version_target:
+                version: "2026.07.15.3"
+                digest: git:ab4d82d0f136bd4e5d3d9c7b2e1811e9a17005c9
+                source: prior_version.source_url
+                source_url: https://api.github.com/repos/RYDE-PLAY/frantic-102-rollback-judge/actions/runs/29392993457
+            escalation:
+              required: false
+              reason: null
+              missing_evidence: []
+            release_publish_approval:
+              gate_id: release.publish.approval
+              approved: true
+              reason: error_rate_critical
+              answer:
+                approved: true
+                reason: error_rate_critical
+              dispatch:
+                skill: release
+                answer_key: release.publish.approval
+            review_record:
+              form: review
+              signal:
+                severity: critical
+                kind: error_rate_spike
+              evidence_used:
+                - source_read.current
+                - source_read.prior
+              refused:
+                reason: null
+            source_read:
+              current:
+                run_id: 29393017505
+                run_url: https://github.com/RYDE-PLAY/frantic-102-rollback-judge/actions/runs/29393017505
+                conclusion: failure
+                head_sha: d118cae3bfbe30e1d65d021f8b3ae163166e6041
+                deployment_marker:
+                  version: "2026.07.15.4"
+                  health: degraded
+                  metric:
+                    name: http_5xx_rate
+                    observed_percent: 18.4
+                    threshold_percent: 2
+              prior:
+                run_id: 29392993457
+                run_url: https://github.com/RYDE-PLAY/frantic-102-rollback-judge/actions/runs/29392993457
+                conclusion: success
+                head_sha: ab4d82d0f136bd4e5d3d9c7b2e1811e9a17005c9
+                deployment_marker:
+                  version: "2026.07.15.3"
+                  health: healthy
+                  metric:
+                    name: http_5xx_rate
+                    observed_percent: 0.4
+                    threshold_percent: 2
       expect:
         status: sealed
         receipt:
