@@ -188,7 +188,6 @@ runners:
             forward_fix_evidence: "$input.forward_fix_evidence"
           artifacts:
             wrap_as: rollback_decision_packet
-            packet: runx.rollback_judge.decision.v1
 
   agent_review:
     type: agent-task
@@ -211,7 +210,6 @@ runners:
       source_read: object
     artifacts:
       wrap_as: rollback_decision_packet
-      packet: runx.rollback_judge.decision.v1
     runx:
       category: ops
     instructions: >
