@@ -18,13 +18,15 @@ const policy = {
   versioning_rule: "semver_minor_for_additive",
 };
 
+const sourceDigest = `sha256:${"a".repeat(64)}`;
+
 function evaluate(proposedSchema, samplePayloads = [{ id: "inv-1", status: "paid" }], overrides = {}) {
   return evaluateSchemaChange({
     currentSchema: current,
     proposedSchema,
     samplePayloads,
     policy: { ...policy, ...overrides },
-    source: { final_url: "https://example.test/invoice.json", content_digest: "sha256:source" },
+    source: { final_url: "https://example.test/invoice.json", content_digest: sourceDigest },
   });
 }
 
@@ -78,7 +80,7 @@ test("refuses changing an optional property to required", () => {
     proposedSchema: proposed,
     samplePayloads: [{ id: "inv-1", status: "paid", memo: "note" }],
     policy,
-    source: { final_url: "https://example.test/invoice.json", content_digest: "sha256:source" },
+    source: { final_url: "https://example.test/invoice.json", content_digest: sourceDigest },
   });
   assert.equal(result.compatibility.compatible, false);
   assert.deepEqual(result.compatibility.breaking_changes[0], {
@@ -359,12 +361,36 @@ test("requires a valid source before emitting a compatible registry event", () =
   const proposed = structuredClone(current);
   for (const [source, message] of [
     [undefined, /source.*object/i],
-    [{ final_url: "http://example.test/invoice.json", content_digest: "sha256:source" }, /final_url.*https/i],
+    [{ final_url: "http://example.test/invoice.json", content_digest: sourceDigest }, /final_url.*https/i],
     [{ final_url: "https://example.test/invoice.json", content_digest: "sha256:" }, /content_digest.*sha256/i],
   ]) {
     assert.throws(
       () => evaluateSchemaChange({ currentSchema: current, proposedSchema: proposed, samplePayloads: [], policy, source }),
       message,
+    );
+  }
+});
+
+test("rejects content digests that are not exactly sha256 plus 64 lowercase hex characters", () => {
+  const proposed = structuredClone(current);
+  for (const content_digest of [
+    "sha256:",
+    "sha256:source",
+    `sha256:${"a".repeat(63)}`,
+    `sha256:${"a".repeat(65)}`,
+    `sha256:${"g".repeat(64)}`,
+    `sha512:${"a".repeat(64)}`,
+    "not-a-digest",
+  ]) {
+    assert.throws(
+      () => evaluateSchemaChange({
+        currentSchema: current,
+        proposedSchema: proposed,
+        samplePayloads: [],
+        policy,
+        source: { final_url: "https://example.test/invoice.json", content_digest },
+      }),
+      /content_digest.*sha256/i,
     );
   }
 });
@@ -381,7 +407,7 @@ test("isolates emitted events from caller mutation and digests the final event c
   const proposed = structuredClone(current);
   const source = {
     final_url: "https://example.test/invoice.json",
-    content_digest: "sha256:source",
+    content_digest: sourceDigest,
     upstream: { revision: "first" },
   };
   const result = evaluateSchemaChange({

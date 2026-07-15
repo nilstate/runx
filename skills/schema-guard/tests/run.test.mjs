@@ -24,13 +24,15 @@ const policy = {
   versioning_rule: "semver_minor_for_additive",
 };
 
+const sourceDigest = `sha256:${"a".repeat(64)}`;
+
 function inputs(overrides = {}) {
   return {
     fetch_result: {
       decision: "ready",
       status: 200,
       final_url: "https://schemas.example.test/invoice.json",
-      content_digest: "sha256:source-content",
+      content_digest: sourceDigest,
       extracted: JSON.stringify(currentSchema),
       headers: { authorization: "Bearer fetch-secret" },
     },
@@ -97,7 +99,7 @@ test("emits the named compatible outputs from RUNX_INPUTS_JSON", () => {
   ]);
   assert.equal(output.compatibility.compatible, true);
   assert.equal(output.registry_event.source.final_url, "https://schemas.example.test/invoice.json");
-  assert.equal(output.registry_event.source.content_digest, "sha256:source-content");
+  assert.equal(output.registry_event.source.content_digest, sourceDigest);
   assert.equal(output.expected_version, 3);
   assert.equal(output.idempotency_key, "schema-guard-invoice-v2");
 });
@@ -141,6 +143,31 @@ test("fails closed for provider errors and non-2xx responses without a registry 
     assert.notEqual(result.status, 0);
     assert.equal(result.stdout, "");
     assert.doesNotMatch(result.stderr, /fetch-secret|input-token-secret|signer-seed-secret/);
+  }
+});
+
+test("fails closed for truncated fetched evidence before parsing or emitting an event", () => {
+  for (const fetch_result of [
+    {
+      ...inputs().fetch_result,
+      provenance: { fetched_at: "", redirects: [], bytes: 0, truncated: true },
+    },
+    {
+      ...inputs().fetch_result,
+      truncated: true,
+    },
+  ]) {
+    const result = run(inputs({ fetch_result }));
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, "");
+  }
+});
+
+test("fails closed for invalid fetched content digests", () => {
+  for (const content_digest of ["sha256:source-content", `sha256:${"b".repeat(63)}`, `sha256:${"g".repeat(64)}`]) {
+    const result = run(inputs({ fetch_result: { ...inputs().fetch_result, content_digest } }));
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, "");
   }
 });
 

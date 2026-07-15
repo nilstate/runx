@@ -24,6 +24,7 @@ const SUPPORTED_FORMATS = new Set([
 const SUPPORTED_SCHEMA_KEYWORDS = new Set(["enum", "format", "items", "properties", "required", "type"]);
 const SUPPORTED_ROOT_KEYWORDS = new Set([...SUPPORTED_SCHEMA_KEYWORDS, "$id"]);
 const SUPPORTED_VERSIONING_RULES = new Set(["semver_minor_for_additive"]);
+const SHA256_DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 function isPlainObject(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
@@ -148,7 +149,7 @@ function assertSource(source) {
     throw new TypeError("source.final_url must be an https URL");
   }
   if (url.protocol !== "https:") throw new TypeError("source.final_url must be an https URL");
-  if (typeof source.content_digest !== "string" || !/^sha256:.+$/i.test(source.content_digest)) {
+  if (typeof source.content_digest !== "string" || !SHA256_DIGEST_PATTERN.test(source.content_digest)) {
     throw new TypeError("source.content_digest must use sha256:<digest>");
   }
   return cloneJson(source);

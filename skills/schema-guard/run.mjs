@@ -1,10 +1,15 @@
 import fs from "node:fs";
 import { evaluateSchemaChange } from "./core.mjs";
 
+const SHA256_DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
+
 try {
   const inputs = readInputs();
   const fetchResult = objectValue(inputs.fetch_result, "fetch_result");
 
+  if (fetchResult.truncated === true || fetchResult.provenance?.truncated === true) {
+    throw new Error("fetch_result is truncated");
+  }
   if (fetchResult.decision !== "ready") {
     throw new Error("fetch_result.decision must be ready");
   }
@@ -14,8 +19,8 @@ try {
   if (typeof fetchResult.final_url !== "string" || fetchResult.final_url.length === 0) {
     throw new Error("fetch_result.final_url is required");
   }
-  if (typeof fetchResult.content_digest !== "string" || fetchResult.content_digest.length === 0) {
-    throw new Error("fetch_result.content_digest is required");
+  if (typeof fetchResult.content_digest !== "string" || !SHA256_DIGEST_PATTERN.test(fetchResult.content_digest)) {
+    throw new Error("fetch_result.content_digest must use sha256:<digest>");
   }
 
   const currentSchema = parseExtracted(fetchResult.extracted);
