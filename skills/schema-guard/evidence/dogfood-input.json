@@ -1,0 +1,49 @@
+{
+  "source_url": "https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/current-invoice.schema.json",
+  "source_allowlist": [
+    "raw.githubusercontent.com"
+  ],
+  "proposed_schema": {
+    "$id": "https://schemas.example.invalid/invoice/v1",
+    "type": "object",
+    "required": [
+      "id",
+      "status"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "draft",
+          "paid"
+        ],
+        "type": "string"
+      },
+      "memo": {
+        "type": "string"
+      }
+    }
+  },
+  "sample_payloads": [
+    {
+      "id": "inv-dogfood-20260715",
+      "status": "paid",
+      "memo": "post-publish governed run"
+    }
+  ],
+  "compatibility_policy": {
+    "breaking_allowed": false,
+    "required_fields": [
+      "id",
+      "status"
+    ],
+    "versioning_rule": "semver_minor_for_additive"
+  },
+  "registry_ref": "local://schema-guard/frantic-84-dogfood",
+  "registry_store_id": "schema-guard-frantic-84-dogfood-20260715-v1",
+  "schema_id": "invoice",
+  "expected_version": 0,
+  "idempotency_key": "frantic-84-schema-guard-dogfood-20260715-v1"
+}

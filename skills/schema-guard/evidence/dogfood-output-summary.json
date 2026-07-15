@@ -1,0 +1,98 @@
+{
+  "schema": "schema-guard.dogfood-output.v1",
+  "status": "sealed",
+  "run_id": "run_schema-guard_f58766dac96a",
+  "receipt_id": "sha256:af38d75f55e7d47caf4e373dfcb880bafb0d25a86c2462ecef66de161e5ecd57",
+  "graph_status": "Succeeded",
+  "steps": [
+    {
+      "step_id": "fetch-current",
+      "status": "success",
+      "receipt_id": "sha256:26ea5b83c5db66f9c6c31f6b72aedb73582575ad7eb6408da5187be3dbcdc6e4"
+    },
+    {
+      "step_id": "evaluate",
+      "status": "success",
+      "receipt_id": "sha256:38e20668621108e35b993ee2fe5f70f207e253f3b1c218dd6fa84869deceed1a"
+    },
+    {
+      "step_id": "append-version",
+      "status": "success",
+      "receipt_id": "sha256:17e3b60fb658bcaaf4c82645c62db990fb889d6d45094d0e45b4e72e90a0629c"
+    },
+    {
+      "step_id": "readback",
+      "status": "success",
+      "receipt_id": "sha256:70590ca60fa2853478edfa39de3772241bc74178517e1e678711d4d6691f4709"
+    },
+    {
+      "step_id": "project-result",
+      "status": "success",
+      "receipt_id": "sha256:7ab9946a3b7ac57d721a1741af17b25e3d1fcc894a4117d1c7dd480a24e7e167"
+    }
+  ],
+  "compatibility": {
+    "breaking_changes": [],
+    "compatible": true,
+    "sample_coverage": "supplied",
+    "sample_coverage_supplied": true,
+    "verdict_digest": "sha256:f05997ced8921f626c0d9d089905d87c1b9bcf09213437916f45453f636d75cf"
+  },
+  "validation_results": [
+    {
+      "errors": [],
+      "index": 0,
+      "valid": true
+    }
+  ],
+  "migration_notes": [
+    "Added optional property /properties/memo."
+  ],
+  "publish_result": {
+    "append": {
+      "after_version": 1,
+      "aggregate_id": "invoice",
+      "before_version": 0,
+      "data_source_ref": "local://schema-guard/frantic-84-dogfood",
+      "event_digest": "sha256:77d3a68935097d3f283f5be73f3e19defbe3e5261850c496025e30a0c5b07169",
+      "event_ref": "schema_registry_versions:invoice:1",
+      "idempotency_key": "frantic-84-schema-guard-dogfood-20260715-v1",
+      "operation": "append_event",
+      "projection_digest": "sha256:4a82a8d01890d6c405fdbc30e2c7c6b8e13c8f6d5c5ebccd6acf2fa28ce8c43f",
+      "provider": "local-json-event-store",
+      "resource": "schema_registry_versions",
+      "result_digest": "sha256:4bc601dd00a44dc23d63b01754737387178f35c74a8e9236988ffa3bce1d8dd9",
+      "schema": "runx.data.operation_result.v1",
+      "status": "committed"
+    },
+    "event_digest": "sha256:3fb19aebb53c7d258df2640ff84389959cb0a2c0b5331da91205abaf2183ccde",
+    "readback": {
+      "after_version": 1,
+      "aggregate_id": "invoice",
+      "before_version": 1,
+      "data_source_ref": "local://schema-guard/frantic-84-dogfood",
+      "operation": "read_projection",
+      "projection": {
+        "aggregate_id": "invoice",
+        "event_count": 1,
+        "event_digests": [
+          "sha256:77d3a68935097d3f283f5be73f3e19defbe3e5261850c496025e30a0c5b07169"
+        ],
+        "last_event_ref": "schema_registry_versions:invoice:1",
+        "last_event_type": "schema.version.recorded",
+        "resource": "schema_registry_versions",
+        "version": 1
+      },
+      "projection_digest": "sha256:7e362c33b6286d93b4e991ee2bd322f2a57d60329c13ff56ca5b9183dbf9957d",
+      "provider": "local-json-event-store",
+      "resource": "schema_registry_versions",
+      "result_digest": "sha256:7e362c33b6286d93b4e991ee2bd322f2a57d60329c13ff56ca5b9183dbf9957d",
+      "schema": "runx.data.operation_result.v1",
+      "status": "read"
+    },
+    "source_digest": "sha256:12afb28f78d480caf2aa7056f1fae44c08b2e30fb741b30368d18c939a26eebb",
+    "status": "published",
+    "stored_event_digest": "sha256:77d3a68935097d3f283f5be73f3e19defbe3e5261850c496025e30a0c5b07169",
+    "verdict_digest": "sha256:f05997ced8921f626c0d9d089905d87c1b9bcf09213437916f45453f636d75cf"
+  }
+}

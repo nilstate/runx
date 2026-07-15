@@ -1,0 +1,44 @@
+✔ accepts an additive optional property and emits a registry event (3.5419ms)
+✔ reports field path old contract new contract and rule for a type change (1.0196ms)
+✔ refuses deletion of a property and identifies the removed contract (0.3678ms)
+✔ refuses changing an optional property to required (0.2597ms)
+✔ refuses adding a required property even when supplied samples contain it unless policy allows breaking changes (0.3144ms)
+✔ refuses narrowing an enum (0.2203ms)
+✔ accepts widening an enum (0.5286ms)
+✔ refuses adding a format constraint to an existing property (0.2263ms)
+✔ rejects malformed schemas before producing a registry event (0.7154ms)
+✔ reports sample payload type, required, enum, and format errors (0.4085ms)
+✔ reports a missing declared required field in sample validation (0.144ms)
+✔ rejects calendar-invalid values for date format validation (0.1773ms)
+✔ marks empty samples as not supplied instead of inventing coverage (0.4478ms)
+✔ allows a configured breaking change but still records the exact violation (0.1815ms)
+✔ produces stable canonical JSON and verdict digests independent of object key order (0.2948ms)
+✔ reports a nested object property type change with its full JSON Pointer (0.1629ms)
+✔ reports a deleted nested object property with its full JSON Pointer (0.1403ms)
+✔ reports a nested optional property becoming required with its full JSON Pointer (0.1259ms)
+✔ rejects malformed nested required contracts and unsupported nested keywords (0.2217ms)
+✔ rejects policies that do not use the strict supported policy contract (0.2378ms)
+✔ requires a valid source before emitting a compatible registry event (0.3063ms)
+✔ rejects content digests that are not exactly sha256 plus 64 lowercase hex characters (0.3658ms)
+✔ does not require source when a breaking change produces no registry event (0.1143ms)
+✔ isolates emitted events from caller mutation and digests the final event content (0.2135ms)
+✔ projects exactly the governed terminal outputs and binds append to readback (83.6264ms)
+✔ fails closed on extra inputs and inconsistent append/readback evidence (259.3877ms)
+✔ emits the named compatible outputs from RUNX_INPUTS_JSON (98.656ms)
+✔ prefers RUNX_INPUTS_PATH over RUNX_INPUTS_JSON and accepts an object extracted schema (87.3704ms)
+✔ returns a successful governed refusal for a breaking proposal (88.5503ms)
+✔ fails closed for provider errors and non-2xx responses without a registry event (147.4117ms)
+✔ fails closed for truncated fetched evidence before parsing or emitting an event (152.8084ms)
+✔ fails closed for invalid fetched content digests (214.5356ms)
+✔ fails closed for malformed fetched JSON and missing inputs (167.9617ms)
+✔ emits validation results and no registry event when a sample is invalid (75.1453ms)
+✔ rejects invalid expected_version and idempotency_key without leaking secrets (304.7608ms)
+✔ never serializes environment, headers, tokens, or signer seeds (77.9019ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1571.3128

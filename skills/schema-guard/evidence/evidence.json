@@ -1,0 +1,203 @@
+{
+  "schema": "schema-guard.evidence.v1",
+  "summary": "Published schema-guard reads an immutable allowlisted schema, deterministically judges additive and breaking changes, appends only compatible versions, reads them back, and seals production-signed proof.",
+  "runx_cli_version": "runx-cli 0.7.2",
+  "package": {
+    "ref": "qq2401672073-hub/schema-guard@sha-e43e5c41e370",
+    "public_url": "https://runx.ai/x/qq2401672073-hub/schema-guard",
+    "digest": "bc052345fb138abcdddee122be7be7e4d9821a00d30f9c6a553e007eb86a2433",
+    "profile_digest": "b980b0a4d033140905f212e5b31fa127c48998baed9921d000123683c0c9c660",
+    "implementation_revision": "8b133e8c670c95b04e7f1fde47a32bd5ecc09501"
+  },
+  "dogfood": {
+    "package": "qq2401672073-hub/schema-guard@sha-e43e5c41e370",
+    "input": {
+      "source_url": "https://raw.githubusercontent.com/qq2401672073-hub/runx/224532774bdf6067757cac84d15656029e4327db/skills/schema-guard/fixtures/current-invoice.schema.json",
+      "source_allowlist": [
+        "raw.githubusercontent.com"
+      ],
+      "proposed_schema": {
+        "$id": "https://schemas.example.invalid/invoice/v1",
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "paid"
+            ],
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          }
+        }
+      },
+      "sample_payloads": [
+        {
+          "id": "inv-dogfood-20260715",
+          "status": "paid",
+          "memo": "post-publish governed run"
+        }
+      ],
+      "compatibility_policy": {
+        "breaking_allowed": false,
+        "required_fields": [
+          "id",
+          "status"
+        ],
+        "versioning_rule": "semver_minor_for_additive"
+      },
+      "registry_ref": "local://schema-guard/frantic-84-dogfood",
+      "registry_store_id": "schema-guard-frantic-84-dogfood-20260715-v1",
+      "schema_id": "invoice",
+      "expected_version": 0,
+      "idempotency_key": "frantic-84-schema-guard-dogfood-20260715-v1"
+    },
+    "command": "runx skill qq2401672073-hub/schema-guard@sha-e43e5c41e370 --registry https://api.runx.ai --input-json ... --approve-operator-context sha256:7d368af784c00e8733d515e441e3005b3c55adbd34500374fdfaefe0ce9d6714 --json",
+    "receipt_ref": "runx:receipt:sha256:af38d75f55e7d47caf4e373dfcb880bafb0d25a86c2462ecef66de161e5ecd57",
+    "verify_verdict": "valid",
+    "verification": {
+      "schema": "runx.verify_verdict.v1",
+      "receipt_id": "sha256:af38d75f55e7d47caf4e373dfcb880bafb0d25a86c2462ecef66de161e5ecd57",
+      "valid": true,
+      "digest": {
+        "status": "valid",
+        "expected": "sha256:e0b31285b565c884490e8b4877017b7488acb51d0710c1425de7908a6af52866",
+        "actual": "sha256:e0b31285b565c884490e8b4877017b7488acb51d0710c1425de7908a6af52866"
+      },
+      "content_address": {
+        "status": "valid",
+        "expected": "sha256:af38d75f55e7d47caf4e373dfcb880bafb0d25a86c2462ecef66de161e5ecd57",
+        "actual": "sha256:af38d75f55e7d47caf4e373dfcb880bafb0d25a86c2462ecef66de161e5ecd57"
+      },
+      "signature": {
+        "mode": "production",
+        "status": "valid",
+        "kid": "schema-guard-517192f7ae1fae78"
+      },
+      "lineage": {
+        "status": "unverified",
+        "message": "single receipt verification cannot prove receipt-tree lineage"
+      },
+      "findings": []
+    },
+    "harness_cases": [
+      {
+        "name": "additive-compatible-recorded",
+        "status": "sealed"
+      },
+      {
+        "name": "breaking-change-refused",
+        "status": "policy_denied"
+      },
+      {
+        "name": "unreachable-source-refused",
+        "status": "failure"
+      }
+    ],
+    "steps": [
+      {
+        "step_id": "fetch-current",
+        "status": "success",
+        "receipt_id": "sha256:26ea5b83c5db66f9c6c31f6b72aedb73582575ad7eb6408da5187be3dbcdc6e4"
+      },
+      {
+        "step_id": "evaluate",
+        "status": "success",
+        "receipt_id": "sha256:38e20668621108e35b993ee2fe5f70f207e253f3b1c218dd6fa84869deceed1a"
+      },
+      {
+        "step_id": "append-version",
+        "status": "success",
+        "receipt_id": "sha256:17e3b60fb658bcaaf4c82645c62db990fb889d6d45094d0e45b4e72e90a0629c"
+      },
+      {
+        "step_id": "readback",
+        "status": "success",
+        "receipt_id": "sha256:70590ca60fa2853478edfa39de3772241bc74178517e1e678711d4d6691f4709"
+      },
+      {
+        "step_id": "project-result",
+        "status": "success",
+        "receipt_id": "sha256:7ab9946a3b7ac57d721a1741af17b25e3d1fcc894a4117d1c7dd480a24e7e167"
+      }
+    ],
+    "publish_result": {
+      "append": {
+        "after_version": 1,
+        "aggregate_id": "invoice",
+        "before_version": 0,
+        "data_source_ref": "local://schema-guard/frantic-84-dogfood",
+        "event_digest": "sha256:77d3a68935097d3f283f5be73f3e19defbe3e5261850c496025e30a0c5b07169",
+        "event_ref": "schema_registry_versions:invoice:1",
+        "idempotency_key": "frantic-84-schema-guard-dogfood-20260715-v1",
+        "operation": "append_event",
+        "projection_digest": "sha256:4a82a8d01890d6c405fdbc30e2c7c6b8e13c8f6d5c5ebccd6acf2fa28ce8c43f",
+        "provider": "local-json-event-store",
+        "resource": "schema_registry_versions",
+        "result_digest": "sha256:4bc601dd00a44dc23d63b01754737387178f35c74a8e9236988ffa3bce1d8dd9",
+        "schema": "runx.data.operation_result.v1",
+        "status": "committed"
+      },
+      "event_digest": "sha256:3fb19aebb53c7d258df2640ff84389959cb0a2c0b5331da91205abaf2183ccde",
+      "readback": {
+        "after_version": 1,
+        "aggregate_id": "invoice",
+        "before_version": 1,
+        "data_source_ref": "local://schema-guard/frantic-84-dogfood",
+        "operation": "read_projection",
+        "projection": {
+          "aggregate_id": "invoice",
+          "event_count": 1,
+          "event_digests": [
+            "sha256:77d3a68935097d3f283f5be73f3e19defbe3e5261850c496025e30a0c5b07169"
+          ],
+          "last_event_ref": "schema_registry_versions:invoice:1",
+          "last_event_type": "schema.version.recorded",
+          "resource": "schema_registry_versions",
+          "version": 1
+        },
+        "projection_digest": "sha256:7e362c33b6286d93b4e991ee2bd322f2a57d60329c13ff56ca5b9183dbf9957d",
+        "provider": "local-json-event-store",
+        "resource": "schema_registry_versions",
+        "result_digest": "sha256:7e362c33b6286d93b4e991ee2bd322f2a57d60329c13ff56ca5b9183dbf9957d",
+        "schema": "runx.data.operation_result.v1",
+        "status": "read"
+      },
+      "source_digest": "sha256:12afb28f78d480caf2aa7056f1fae44c08b2e30fb741b30368d18c939a26eebb",
+      "status": "published",
+      "stored_event_digest": "sha256:77d3a68935097d3f283f5be73f3e19defbe3e5261850c496025e30a0c5b07169",
+      "verdict_digest": "sha256:f05997ced8921f626c0d9d089905d87c1b9bcf09213437916f45453f636d75cf"
+    }
+  },
+  "hosted_harness": {
+    "status": "passed",
+    "case_count": 2,
+    "checks_passed": 2,
+    "checks_failed": 0,
+    "evidence_url": "https://runx.ai/x/qq2401672073-hub/schema-guard@sha-e43e5c41e370#harness",
+    "receipt_ids": [
+      "sha256:6f0b3a593838cecea51c507b9f5744a53501018b1d21c98748b2153c1d618b0a",
+      "sha256:1b039a86e991a1aabe10554ca039a5bf50ebeac7335b02d38d253f0da8ab2c0b"
+    ]
+  },
+  "observations": [
+    "runx-cli 0.7.2 exceeds the bounty minimum of 0.6.14.",
+    "The immutable source read returned HTTP 200, 227 bytes, no redirects, no truncation, and sha256:12afb28f78d480caf2aa7056f1fae44c08b2e30fb741b30368d18c939a26eebb.",
+    "The additive proposal added only optional /properties/memo and produced compatible=true with one valid sample.",
+    "The compatible dogfood run executed fetch-current, evaluate, append-version, readback, and project-result in order.",
+    "The append committed version 1 and readback returned the same aggregate with event_count=1 and matching stored event digest.",
+    "The breaking harness case was policy_denied after fetch and evaluate, so append and readback were not executed.",
+    "The unreachable-source harness case failed closed and did not execute append, readback, or project-result.",
+    "Fresh local verification ran in production mode and returned valid=true with a valid Ed25519 signature.",
+    "The hosted registry harness endpoint reports passed with 2/2 declared cases and zero failed checks.",
+    "A clean registry read and clean install succeeded for qq2401672073-hub/schema-guard@sha-e43e5c41e370."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "case_count": 5,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "additive-compatible-recorded",
+    "breaking-change-refused",
+    "additive-compatible-recorded",
+    "breaking-change-refused",
+    "unreachable-source-refused"
+  ],
+  "receipt_ids": [
+    "sha256:1e49d70f81f24233f6b151cbf813e9b8198b6dcd61ee1b56b21fe815e8efd05c",
+    "sha256:36b2a8d5348e10800c5befacffe84e91888e40e5626ec2c7435a061aacfb143d",
+    "sha256:1b252c57c4bf9c772bbd1852732c4bce3533fa27b5e3ede3e17bf5634e0961d4",
+    "sha256:408b311aa6d395bfce8105c494478202d388d9bb168022da4a29c452cf68906b",
+    "sha256:339173f22473496344a851aa2faeea602e0f6c781576409b1cf2525effddd8cc"
+  ],
+  "graph_case_count": 2
+}
