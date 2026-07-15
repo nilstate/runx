@@ -1,0 +1,90 @@
+{
+  "transactions": [
+    {
+      "id": "dog-001",
+      "date": "2026-07-08",
+      "description": "Paddle payout subscription batch 775",
+      "amount_minor": 84500,
+      "currency": "USD",
+      "counterparty": "Paddle",
+      "source_ref": "https://gist.githubusercontent.com/lihonggangli123-cyber/0ca95bb6775c383dc60e1404f097ef50/raw/35a991df549c7cf927ec17be4d0c922904327f4c/bookkeeper-dogfood-source.json#transactions[0]"
+    },
+    {
+      "id": "dog-002",
+      "date": "2026-07-09",
+      "description": "DigitalOcean hosting July",
+      "amount_minor": -12900,
+      "currency": "USD",
+      "counterparty": "DigitalOcean",
+      "source_ref": "https://gist.githubusercontent.com/lihonggangli123-cyber/0ca95bb6775c383dc60e1404f097ef50/raw/35a991df549c7cf927ec17be4d0c922904327f4c/bookkeeper-dogfood-source.json#transactions[1]"
+    },
+    {
+      "id": "dog-003",
+      "date": "2026-07-10",
+      "description": "Linear collaboration subscription",
+      "amount_minor": -8000,
+      "currency": "USD",
+      "counterparty": "Linear",
+      "source_ref": "https://gist.githubusercontent.com/lihonggangli123-cyber/0ca95bb6775c383dc60e1404f097ef50/raw/35a991df549c7cf927ec17be4d0c922904327f4c/bookkeeper-dogfood-source.json#transactions[2]"
+    },
+    {
+      "id": "dog-004",
+      "date": "2026-07-11",
+      "description": "Bank interest credit",
+      "amount_minor": 123,
+      "currency": "USD",
+      "counterparty": "Example Bank",
+      "source_ref": "https://gist.githubusercontent.com/lihonggangli123-cyber/0ca95bb6775c383dc60e1404f097ef50/raw/35a991df549c7cf927ec17be4d0c922904327f4c/bookkeeper-dogfood-source.json#transactions[3]"
+    }
+  ],
+  "chart_of_accounts": [
+    {
+      "code": "4000",
+      "name": "Software revenue",
+      "type": "income",
+      "match": {
+        "direction": "inflow",
+        "description_contains": ["paddle payout"],
+        "counterparty_exact": ["Paddle"]
+      }
+    },
+    {
+      "code": "6100",
+      "name": "Infrastructure",
+      "type": "expense",
+      "match": {
+        "direction": "outflow",
+        "description_contains": ["digitalocean", "hosting"],
+        "counterparty_exact": ["DigitalOcean"]
+      }
+    },
+    {
+      "code": "6200",
+      "name": "Collaboration software",
+      "type": "expense",
+      "match": {
+        "direction": "outflow",
+        "description_contains": ["linear", "collaboration"],
+        "counterparty_exact": ["Linear"]
+      }
+    },
+    {
+      "code": "4200",
+      "name": "Interest income",
+      "type": "income",
+      "match": {
+        "direction": "inflow",
+        "description_contains": ["bank interest"],
+        "counterparty_exact": ["Example Bank"]
+      }
+    }
+  ],
+  "prior_period": {
+    "currency": "USD",
+    "opening_balance_minor": 500000,
+    "expected_ending_balance_minor": 563723,
+    "previous_transaction_ids": [],
+    "known_counterparties": ["Paddle", "DigitalOcean", "Linear"],
+    "average_abs_amount_minor": 20000
+  }
+}
