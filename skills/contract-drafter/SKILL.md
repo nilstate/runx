@@ -35,7 +35,8 @@ complete any provider-specific preflight under separate authority.
 - `terms` supplies every required deal value and a `send` object containing the
   exact downstream `send-as` planning inputs.
 
-Clause templates may interpolate only scalar `parties.*` and `terms.*` paths.
+Clause templates use `[[path]]` placeholders and may interpolate only scalar
+`parties.*` and `terms.*` paths.
 Every placeholder must resolve from the current run inputs. The runner does not
 fall back to a baseline, guess a missing value, or add a clause.
 

@@ -18,12 +18,12 @@
       "confidentiality_period": "confidentiality"
     },
     "clauses": [
-      {"id": "parties", "title": "Parties and Effective Date", "body_template": "{{parties.provider.legal_name}} and {{parties.customer.legal_name}} enter this agreement effective {{terms.effective_date}}."},
-      {"id": "services", "title": "Services", "body_template": "{{parties.provider.legal_name}} will provide {{terms.services}}."},
-      {"id": "fees", "title": "Fees and Payment", "body_template": "{{parties.customer.legal_name}} will pay {{terms.fees}} under {{terms.payment_terms}} payment terms."},
-      {"id": "liability", "title": "Limitation of Liability", "body_template": "The aggregate liability cap is {{terms.liability_cap}}."},
-      {"id": "confidentiality", "title": "Confidentiality", "body_template": "Confidentiality obligations survive for {{terms.confidentiality_period}}."},
-      {"id": "governing-law", "title": "Governing Law", "body_template": "The agreement is governed by {{terms.governing_law}}."}
+      {"id": "parties", "title": "Parties and Effective Date", "body_template": "[[parties.provider.legal_name]] and [[parties.customer.legal_name]] enter this agreement effective [[terms.effective_date]]."},
+      {"id": "services", "title": "Services", "body_template": "[[parties.provider.legal_name]] will provide [[terms.services]]."},
+      {"id": "fees", "title": "Fees and Payment", "body_template": "[[parties.customer.legal_name]] will pay [[terms.fees]] under [[terms.payment_terms]] payment terms."},
+      {"id": "liability", "title": "Limitation of Liability", "body_template": "The aggregate liability cap is [[terms.liability_cap]]."},
+      {"id": "confidentiality", "title": "Confidentiality", "body_template": "Confidentiality obligations survive for [[terms.confidentiality_period]]."},
+      {"id": "governing-law", "title": "Governing Law", "body_template": "The agreement is governed by [[terms.governing_law]]."}
     ]
   },
   "parties": {

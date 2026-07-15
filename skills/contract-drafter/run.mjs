@@ -274,13 +274,13 @@ function renderMarkdown(template, clauses, deviations, draftRef) {
 
 function placeholders(value) {
   const found = [];
-  const pattern = /\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g;
+  const pattern = /\[\[\s*([A-Za-z0-9_.-]+)\s*\]\]/g;
   for (const match of String(value || "").matchAll(pattern)) found.push(match[1]);
   return found;
 }
 
 function render(value, scope) {
-  return String(value).replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (_match, path) => display(getPath(scope, path)));
+  return String(value).replace(/\[\[\s*([A-Za-z0-9_.-]+)\s*\]\]/g, (_match, path) => display(getPath(scope, path)));
 }
 
 function getPath(value, path) {

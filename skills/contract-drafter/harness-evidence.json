@@ -1,6 +1,6 @@
 {
   "schema": "runx.contract_drafter.harness_evidence.v1",
-  "recorded_at": "2026-07-15T09:28:26Z",
+  "recorded_at": "2026-07-15T09:36:40Z",
   "runx_version": "runx-cli 0.6.14",
   "command": "RUNX_RECEIPT_SIGN_KID=<ephemeral-kid> RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<ephemeral-seed> RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted runx harness ./skills/contract-drafter -R <temporary-receipt-dir>",
   "status": "passed",
@@ -10,7 +10,7 @@
     {
       "name": "complete-template-produces-gated-draft",
       "status": "sealed",
-      "receipt_id": "sha256:3be2a91b05065fb537b56c2064a004b89a77f273062d14403badb4bca4b7231e",
+      "receipt_id": "sha256:25f595d4bd6244bcdd403b60a0cf94a06c11ef9ae35b9f00e147edd63129f862",
       "act": {
         "form": "review",
         "summary": "draft_ready template=public-services-review-v1 deviations=4 downstream=runx/send-as status=not_sent",
@@ -21,7 +21,7 @@
       "name": "missing-required-term-refuses-without-proposal",
       "runner": "refusal_check",
       "status": "failure",
-      "receipt_id": "sha256:313681ba75823112b4e7f9527abd7eb1c7863d4b369f55bb88f7e288ae6440e1",
+      "receipt_id": "sha256:1d9ac5f9fdea2590bb85c66b7151f7cfdea0ca21e6505fc0f79e075bc63f75cc",
       "result": "refused missing_or_invalid_input with draft_doc=null, deviations=[], and send_proposal=null"
     }
   ],

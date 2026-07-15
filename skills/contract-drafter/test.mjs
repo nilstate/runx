@@ -14,7 +14,7 @@ assert(complete.output.send_proposal?.consumer?.skill === "runx/send-as", "propo
 assert(complete.output.send_proposal?.consumer?.runner === "plan", "proposal names send-as plan runner");
 assert(complete.output.send_proposal?.gate?.approved === false, "proposal is not pre-approved");
 assert(complete.output.send_proposal?.no_send_performed === true, "runner performs no send");
-assert(!complete.output.draft_doc.markdown.includes("{{"), "all placeholders resolve");
+assert(!complete.output.draft_doc.markdown.includes("[["), "all placeholders resolve");
 
 const repeat = runFixture("complete-draft.json");
 assert(repeat.status === 0, "repeat fixture exits successfully");
