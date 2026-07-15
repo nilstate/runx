@@ -321,8 +321,10 @@ git commit -s -m "feat(schema-guard): compose source read and registry effect"
 - Create outside the repository: `C:/Users/ASUS/.codex/private/schema-guard-signer.json`
 
 **Interfaces:**
-- Produces a production Ed25519 signer seed/public key pair outside git.
-- Produces a dogfood receipt whose issuer type is `hosted` and whose signature verifies with the captured public key.
+- Produces a production Ed25519 signer seed/public key pair outside git for
+  local harness integrity checks only.
+- The final delivery receipt must come from a real post-publish hosted run and
+  must not contain `local_runtime` or `runtime-skeleton-enforcement` authority.
 
 - [ ] **Step 1: Generate signer material outside the repository**
 
@@ -360,6 +362,9 @@ variables. Save the exact returned JSON as `verification.json`. Assert:
 - signature mode is not `local-development`;
 - acts include the real web source read, registry append, and readback;
 - no signer seed or token appears in any tracked artifact.
+
+This local signed run is pre-publish validation, not the final hosted dogfood
+receipt.
 
 - [ ] **Step 5: Build evidence and report**
 
@@ -409,15 +414,25 @@ known red artifact.
 
 - [ ] **Step 4: Clean install and post-publish dogfood**
 
-In a fresh temporary directory run:
+In a fresh temporary directory install the package, then pass each top-level
+field in `dogfood-input.json` as a separate `--input-json key=<json>` argument:
 
 ```bash
 runx add qq2401672073-hub/schema-guard@0.1.0
-runx skill qq2401672073-hub/schema-guard@0.1.0 --input-json "$(cat skills/schema-guard/evidence/dogfood-input.json)" --json
+runx skill qq2401672073-hub/schema-guard@0.1.0 \
+  --input-json source_url='"https://..."' \
+  --input-json source_allowlist='["raw.githubusercontent.com"]' \
+  --input-json proposed_schema='{...}' \
+  --input-json sample_payloads='[...]' \
+  --input-json compatibility_policy='{...}' \
+  --json
 runx verify --receipt "$dogfoodReceipt" --json
 ```
 
-Replace pre-publish receipt evidence with this post-publish governed run.
+Submit the same complete input to the hosted run API, poll it to completion,
+fetch the platform receipt, and verify that receipt. Replace pre-publish local
+receipt evidence with this real post-publish hosted receipt and preserve the
+actual request/response capture without credentials.
 
 - [ ] **Step 5: Commit final immutable bindings**
 

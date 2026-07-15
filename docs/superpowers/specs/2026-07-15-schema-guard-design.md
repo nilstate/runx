@@ -119,7 +119,10 @@ The runx harness contains at least:
    emitted.
 
 Dogfood uses an immutable raw GitHub URL for a maintained public schema and a
-fresh local mock registry store. Verification checks the receipt signature,
+fresh mock registry store. The final receipt is fetched from a real
+post-publish hosted run; a locally self-signed receipt that merely declares
+`issuer.type=hosted` is insufficient if its authority still names
+`local_runtime` or `runtime-skeleton-enforcement`. Verification checks the receipt signature,
 issuer type, acts, source-read evidence, append effect, readback, output
 digests, and absence of secrets.
 
