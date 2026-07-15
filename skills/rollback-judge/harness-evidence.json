@@ -11,19 +11,27 @@
     "critical-signal-rollback",
     "signal-contradictory-block"
   ],
+  "receipt_ids": [
+    "sha256:ba65997f69f274ce431602a756b42dda2d85299703614f6180ffb7e8db85c524"
+  ],
+  "graph_case_count": 1,
+  "live_sources": {
+    "failing_run": "https://github.com/RYDE-PLAY/frantic-102-rollback-judge/actions/runs/29393017505",
+    "healthy_prior_run": "https://github.com/RYDE-PLAY/frantic-102-rollback-judge/actions/runs/29392993457"
+  },
   "coverage": {
     "critical-signal-rollback": [
-      "agent_review harness runner seals a critical rollback review case",
-      "release_publish_approval seeds gate_id release.publish.approval with approved=true",
-      "reason is error_rate_critical",
-      "version_target is copied from supplied prior_version",
-      "receipt act is declared with form review and target binding input"
+      "default graph fetches the failing GitHub Actions monitor run during execution",
+      "commit-pinned current marker proves http_5xx_rate 18.4% exceeds 2%",
+      "separate successful run and marker prove prior version 2026.07.15.3 healthy at 0.4%",
+      "release.publish.approval output is approved=true with reason error_rate_critical",
+      "sealed review act targets the public failing run and records the derived rollback release ref"
     ],
     "signal-contradictory-block": [
-      "contradictory/thin signal omits caller.answers",
-      "agent_review judgment pauses with needs_agent",
-      "no decision is sealed and no release approval is seeded"
+      "critical label points to a real successful monitor run",
+      "agent review receives no caller answer and returns needs_agent",
+      "no decision or approval is emitted"
     ]
   },
-  "note": "Private signing seed is intentionally omitted; public verification key and post-publish receipt verification are published in the bounty evidence artifacts."
+  "note": "The signing seed is intentionally omitted. The critical harness case reads public monitor APIs and immutable commit markers rather than checked-in signal values."
 }

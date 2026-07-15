@@ -1,14 +1,14 @@
 // rust-style-allow: large-file because the initial journal projection slice
 // keeps history filtering and receipt-backed rows together until CLI wiring
 // decides the permanent module boundary.
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::ErrorKind;
 use std::io::Write;
 use std::path::Path;
 
 use runx_contracts::schema::NonEmptyString;
-use runx_contracts::{ClosureDisposition, ExecutionEvent, JsonValue, Receipt, ReferenceType};
+use runx_contracts::{ClosureDisposition, ExecutionEvent, Receipt, ReferenceType};
 use runx_receipts::{
     ReceiptFindingCode, ReceiptProofContextProvider, signed_display_identity, verify_receipt_proof,
 };
@@ -59,7 +59,7 @@ pub struct HistoryFilter {
     pub limit: Option<usize>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalHistoryProjection {
     pub projector_id: String,
     pub store_label: String,
@@ -89,7 +89,7 @@ pub struct ReceiptVerificationProjection {
     pub status: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PausedRunSummary {
     pub id: String,
@@ -100,8 +100,6 @@ pub struct PausedRunSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resume_skill_ref: Option<String>,
     pub selected_runner: Option<String>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub inputs: BTreeMap<String, JsonValue>,
     pub step_ids: Vec<String>,
     pub step_labels: Vec<String>,
     pub ledger_verification: Option<LedgerVerificationProjection>,
@@ -114,7 +112,7 @@ pub struct LedgerVerificationProjection {
     pub reason: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PausedRunCheckpoint {
     pub id: String,
     pub name: String,
@@ -122,7 +120,6 @@ pub struct PausedRunCheckpoint {
     pub started_at: Option<String>,
     pub resume_skill_ref: Option<String>,
     pub selected_runner: Option<String>,
-    pub inputs: BTreeMap<String, JsonValue>,
     pub step_ids: Vec<String>,
     pub step_labels: Vec<String>,
 }
@@ -145,7 +142,6 @@ pub fn append_paused_run_checkpoint(
             detail: LedgerEventDetail {
                 resume_skill_ref: checkpoint.resume_skill_ref.clone(),
                 selected_runner: checkpoint.selected_runner.clone(),
-                inputs: checkpoint.inputs.clone(),
                 step_ids: checkpoint.step_ids.clone(),
                 step_labels: checkpoint.step_labels.clone(),
             },
@@ -757,7 +753,6 @@ fn paused_run_from_checkpoint(checkpoint: &PausedRunCheckpoint) -> PausedRunSumm
         started_at: checkpoint.started_at.clone(),
         resume_skill_ref: checkpoint.resume_skill_ref.clone(),
         selected_runner: checkpoint.selected_runner.clone(),
-        inputs: checkpoint.inputs.clone(),
         step_ids: checkpoint.step_ids.clone(),
         step_labels: checkpoint.step_labels.clone(),
         ledger_verification: None,
@@ -835,8 +830,6 @@ struct LedgerEventDetail {
     resume_skill_ref: Option<String>,
     #[serde(default)]
     selected_runner: Option<String>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    inputs: BTreeMap<String, JsonValue>,
     #[serde(default)]
     step_ids: Vec<String>,
     #[serde(default)]
@@ -859,7 +852,7 @@ struct LedgerEventProducer {
     runner: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct LedgerRunEvent {
     kind: String,
     created_at: Option<String>,
@@ -867,7 +860,6 @@ struct LedgerRunEvent {
     runner: Option<String>,
     resume_skill_ref: Option<String>,
     selected_runner: Option<String>,
-    inputs: BTreeMap<String, JsonValue>,
     step_ids: Vec<String>,
     step_labels: Vec<String>,
 }
@@ -887,7 +879,6 @@ fn ledger_event(value: LedgerLine) -> Option<LedgerRunEvent> {
         runner: producer.and_then(|value| value.runner),
         resume_skill_ref: entry.data.detail.resume_skill_ref,
         selected_runner: entry.data.detail.selected_runner,
-        inputs: entry.data.detail.inputs,
         step_ids: clean_string_array(entry.data.detail.step_ids),
         step_labels: clean_string_array(entry.data.detail.step_labels),
     })
@@ -925,7 +916,6 @@ fn paused_run_from_events(run_id: &str, events: &[LedgerRunEvent]) -> Option<Pau
                     .selected_runner
                     .clone()
                     .or_else(|| event.runner.clone()),
-                inputs: event.inputs.clone(),
                 step_ids: event.step_ids.clone(),
                 step_labels: event.step_labels.clone(),
                 ledger_verification: Some(LedgerVerificationProjection {
@@ -947,7 +937,6 @@ fn invalid_paused_run(run_id: &str, reason: String) -> PausedRunSummary {
         started_at: None,
         resume_skill_ref: None,
         selected_runner: None,
-        inputs: BTreeMap::new(),
         step_ids: Vec::new(),
         step_labels: Vec::new(),
         ledger_verification: Some(LedgerVerificationProjection {

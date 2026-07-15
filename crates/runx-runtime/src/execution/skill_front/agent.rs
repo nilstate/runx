@@ -8,6 +8,7 @@ use runx_contracts::{ClosureDisposition, JsonObject, JsonValue};
 
 use crate::RuntimeError;
 use crate::adapter::{InvocationStatus, SkillInvocation, SkillOutput};
+use crate::agent_contract::verified_agent_metadata_with_artifacts;
 use crate::agent_invocation::agent_act_invocation_id;
 use crate::execution::orchestrator::SkillRunRequest;
 use crate::journal::{PausedRunCheckpoint, append_paused_run_checkpoint};
@@ -60,17 +61,28 @@ pub(super) fn execute_agent_skill_run(
                     return Ok(JsonValue::Object(needs_agent_output(
                         &run_id,
                         &request_id,
-                        resolution_request,
+                        contract_json_value(&resolution_request)?,
                     )));
                 }
             },
         },
     };
+    let verification_metadata = verified_agent_metadata_with_artifacts(
+        &resolution_request,
+        &answer,
+        runner.artifacts.as_ref(),
+        None,
+        &invocation.skill_directory,
+        workspace.env(),
+    )?;
     let stdout = serde_json::to_string(&answer)
         .map_err(|error| SkillRunError::Invalid(format!("failed to serialize answer: {error}")))?;
     let disposition = answer_disposition(&answer)?;
     let receipt = match domain_act_frame(&invocation, &answer, governed_effect.as_ref()) {
-        Some(frame) => {
+        Some(mut frame) => {
+            frame.artifact_refs.extend(
+                crate::execution::prepared_skill::prepared_receipt_references(workspace.env()),
+            );
             let label = disposition.label();
             let created_at = crate::time::now_iso8601();
             let graph_name = identifier_segment(&run_id);
@@ -84,6 +96,7 @@ pub(super) fn execute_agent_skill_run(
                 reason_code: format!("agent_act_{label}"),
                 seal_summary: format!("agent act sealed ({label})"),
                 frame,
+                verification_metadata: verification_metadata.clone(),
                 signature_policy: receipts.signature_config().signature_policy(),
             })?
         }
@@ -93,6 +106,8 @@ pub(super) fn execute_agent_skill_run(
             &stdout,
             disposition,
             receipts.signature_config(),
+            workspace.env(),
+            verification_metadata.clone(),
         )?,
     };
     write_skill_receipt(request, workspace, receipts, &receipt)?;
@@ -100,7 +115,7 @@ pub(super) fn execute_agent_skill_run(
     Ok(JsonValue::Object(sealed_output(
         manifest,
         &run_id,
-        &agent_skill_output(stdout, &receipt),
+        &agent_skill_output(stdout, &receipt, verification_metadata),
         &answer,
         &receipt,
         contract_json_value(&receipt)?,
@@ -127,7 +142,6 @@ fn write_paused_agent_checkpoint(
         started_at: Some(crate::time::now_iso8601()),
         resume_skill_ref: Some(request.skill_path.to_string_lossy().into_owned()),
         selected_runner: Some(runner.name.clone()),
-        inputs: request.inputs.clone().into_iter().collect(),
         step_ids: vec![request_id.to_owned()],
         step_labels: vec![runner.name.clone()],
     };
@@ -236,7 +250,11 @@ fn agent_run_id(request: &SkillRunRequest, request_id: &str) -> Result<String, S
     }
 }
 
-fn agent_skill_output(stdout: String, receipt: &runx_contracts::Receipt) -> SkillOutput {
+fn agent_skill_output(
+    stdout: String,
+    receipt: &runx_contracts::Receipt,
+    verification_metadata: JsonObject,
+) -> SkillOutput {
     let succeeded = receipt.seal.disposition == ClosureDisposition::Closed;
     SkillOutput {
         status: if succeeded {
@@ -252,6 +270,6 @@ fn agent_skill_output(stdout: String, receipt: &runx_contracts::Receipt) -> Skil
         },
         exit_code: succeeded.then_some(0),
         duration_ms: 0,
-        metadata: JsonObject::new(),
+        metadata: verification_metadata,
     }
 }

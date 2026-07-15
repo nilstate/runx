@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -82,6 +83,8 @@ pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
     })
 }
 
+// rust-style-allow: long-function - resume reconstructs one guarded continuation
+// request and keeps its path, receipt, and output error handling in one transaction.
 pub fn run_native_resume(plan: ResumePlan) -> ExitCode {
     let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let env = crate::cli_io::env_map();
@@ -136,7 +139,11 @@ pub fn run_native_resume(plan: ResumePlan) -> ExitCode {
         registry: None,
         expected_digest: None,
         json: plan.json,
-        inputs: pending.inputs.clone(),
+        non_interactive: true,
+        skip_operator_context: true,
+        full_operator_context: false,
+        approve_operator_context: None,
+        inputs: BTreeMap::new(),
         local_credential: None,
     };
     crate::skill::run_native_skill(skill_plan)
