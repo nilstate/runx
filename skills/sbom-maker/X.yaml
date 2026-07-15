@@ -1,0 +1,194 @@
+skill: sbom-maker
+version: "1.0.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+
+policy:
+  allow:
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+
+harness:
+  cases:
+    - name: supported-source-stored
+      runner: default
+      inputs:
+        source_handle: fixture://supported-package-lock.json
+        lockfile_type: package-lock
+        data_source_ref: local://sbom-maker/harness
+        store_id: sbom-maker-supported-v2
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+        steps:
+          - generate
+          - append
+          - readback
+          - finalize
+    - name: malformed-source-refused
+      runner: validate
+      inputs:
+        source_handle: fixture://malformed-lockfile.json
+        lockfile_type: package-lock
+        data_source_ref: local://sbom-maker/harness
+        store_id: sbom-maker-malformed-v1
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: failure
+          disposition: closed
+
+runners:
+  validate:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    inputs:
+      source_handle:
+        type: string
+        required: true
+      lockfile_type:
+        type: string
+        required: true
+      data_source_ref:
+        type: string
+        required: false
+        default: local://sbom-maker/artifacts
+      store_id:
+        type: string
+        required: false
+    outputs:
+      sbom_result: object
+  default:
+    default: true
+    type: graph
+    inputs:
+      source_handle:
+        type: string
+        required: true
+        description: Immutable raw GitHub or GitHub Contents API lockfile URL, or a bundled fixture source during harness execution.
+      lockfile_type:
+        type: string
+        required: true
+        description: package-lock or npm-shrinkwrap.
+      data_source_ref:
+        type: string
+        required: false
+        default: local://sbom-maker/artifacts
+        description: Logical data source where the addressable SBOM event is appended.
+      store_id:
+        type: string
+        required: false
+        description: Optional deterministic local fixture store id.
+    outputs:
+      source_read: object
+      sbom: object
+      components: array
+      license_summary: object
+      license_risks: array
+      stored_artifact_ref: object
+    graph:
+      name: sbom-maker-fetch-build-store
+      steps:
+        - id: generate
+          label: fetch pinned lockfile and build grounded SBOM
+          inputs:
+            source_handle: "$input.source_handle"
+            lockfile_type: "$input.lockfile_type"
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - run.mjs
+            timeout_seconds: 150
+            outputs:
+              sbom_result: object
+            sandbox:
+              profile: network
+              cwd_policy: skill-directory
+              network: true
+              writable_paths: []
+              require_enforcement: false
+          scopes:
+            - net:allowlist
+          artifacts:
+            named_emits:
+              sbom_result: sbom_result
+            packets:
+              sbom_result: runx.sbom.result.v1
+        - id: append
+          label: append SBOM as an addressable project-version event
+          tool: data.source
+          scopes:
+            - runx:data:append
+          inputs:
+            operation: append_event
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+          context:
+            resource: generate.sbom_result.data.stored_artifact_ref.resource
+            aggregate_id: generate.sbom_result.data.stored_artifact_ref.aggregate_id
+            expected_version: generate.sbom_result.data.stored_artifact_ref.expected_version
+            idempotency_key: generate.sbom_result.data.stored_artifact_ref.idempotency_key
+            event: generate.sbom_result.data.storage_event
+        - id: readback
+          label: read stored SBOM event for downstream consumption
+          tool: data.source
+          scopes:
+            - runx:data:read
+          inputs:
+            operation: read_events
+            data_source_ref: "$input.data_source_ref"
+            store_id: "$input.store_id"
+            limit: 10
+          context:
+            resource: generate.sbom_result.data.stored_artifact_ref.resource
+            aggregate_id: generate.sbom_result.data.stored_artifact_ref.aggregate_id
+        - id: finalize
+          label: emit typed SBOM outputs only after verified readback
+          context:
+            generated: generate.sbom_result.data
+            append_result: append.data_operation_result.data
+            readback_result: readback.data_operation_result.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - finalize.mjs
+            outputs:
+              source_read: object
+              sbom: object
+              components: array
+              license_summary: object
+              license_risks: array
+              stored_artifact_ref: object
+          artifacts:
+            named_emits:
+              source_read: source_read
+              sbom: sbom
+              components: components
+              license_summary: license_summary
+              license_risks: license_risks
+              stored_artifact_ref: stored_artifact_ref
+            packets:
+              source_read: runx.source.read.v1
+              sbom: runx.sbom.cyclonedx.v1
+              components: runx.sbom.components.v1
+              license_summary: runx.sbom.license_summary.v1
+              license_risks: runx.sbom.license_risks.v1
+              stored_artifact_ref: runx.sbom.stored_artifact_ref.v1
