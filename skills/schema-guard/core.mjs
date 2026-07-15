@@ -21,38 +21,28 @@ const SUPPORTED_FORMATS = new Set([
   "uuid",
 ]);
 
+const SUPPORTED_SCHEMA_KEYWORDS = new Set(["enum", "format", "items", "properties", "required", "type"]);
+const SUPPORTED_ROOT_KEYWORDS = new Set([...SUPPORTED_SCHEMA_KEYWORDS, "$id"]);
+const SUPPORTED_VERSIONING_RULES = new Set(["semver_minor_for_additive"]);
+
 function isPlainObject(value) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
 }
 
 function canonicalize(value, path = "$") {
-  if (value === null || typeof value === "string" || typeof value === "boolean") {
-    return value;
-  }
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) {
-      throw new TypeError(`Cannot canonicalize non-finite number at ${path}`);
-    }
+    if (!Number.isFinite(value)) throw new TypeError(`Cannot canonicalize non-finite number at ${path}`);
     return Object.is(value, -0) ? 0 : value;
   }
-  if (Array.isArray(value)) {
-    return value.map((item, index) => canonicalize(item, `${path}/${index}`));
-  }
+  if (Array.isArray(value)) return value.map((item, index) => canonicalize(item, `${path}/${index}`));
   if (isPlainObject(value)) {
-    return Object.fromEntries(
-      Object.keys(value)
-        .sort()
-        .map((key) => {
-          if (value[key] === undefined) {
-            throw new TypeError(`Cannot canonicalize undefined value at ${path}/${key}`);
-          }
-          return [key, canonicalize(value[key], `${path}/${key}`)];
-        }),
-    );
+    return Object.fromEntries(Object.keys(value).sort().map((key) => {
+      if (value[key] === undefined) throw new TypeError(`Cannot canonicalize undefined value at ${path}/${key}`);
+      return [key, canonicalize(value[key], `${path}/${key}`)];
+    }));
   }
   throw new TypeError(`Cannot canonicalize value at ${path}`);
 }
@@ -65,46 +55,103 @@ export function sha256Json(value) {
   return `sha256:${createHash("sha256").update(canonicalJson(value), "utf8").digest("hex")}`;
 }
 
+function cloneJson(value) {
+  return JSON.parse(canonicalJson(value));
+}
+
 function pointerSegment(value) {
   return String(value).replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
-function assertObjectSchema(schema, label) {
-  if (!isPlainObject(schema) || schema.type !== "object") {
-    throw new TypeError(`${label} must be an object schema`);
-  }
-  if (schema.properties !== undefined && !isPlainObject(schema.properties)) {
-    throw new TypeError(`${label}.properties must be an object`);
-  }
-  if (schema.required !== undefined && (!Array.isArray(schema.required) || schema.required.some((field) => typeof field !== "string"))) {
-    throw new TypeError(`${label}.required must be an array of strings`);
-  }
-  for (const [name, propertySchema] of Object.entries(schema.properties ?? {})) {
-    assertPropertySchema(propertySchema, `${label}.properties.${name}`);
+function assertKnownKeywords(schema, label, root) {
+  const allowed = root ? SUPPORTED_ROOT_KEYWORDS : SUPPORTED_SCHEMA_KEYWORDS;
+  for (const keyword of Object.keys(schema)) {
+    if (!allowed.has(keyword)) throw new TypeError(`${label}.${keyword} is an unsupported keyword`);
   }
 }
 
-function assertPropertySchema(schema, label) {
-  if (!isPlainObject(schema) || typeof schema.type !== "string" || !SUPPORTED_TYPES.has(schema.type)) {
+function assertSchema(schema, label, { root = false } = {}) {
+  if (!isPlainObject(schema)) throw new TypeError(`${label} must be a schema object`);
+  assertKnownKeywords(schema, label, root);
+  if (typeof schema.type !== "string" || !SUPPORTED_TYPES.has(schema.type)) {
     throw new TypeError(`${label} has unsupported schema type`);
   }
-  if (schema.enum !== undefined && (!Array.isArray(schema.enum) || schema.enum.length === 0)) {
-    throw new TypeError(`${label}.enum must be a non-empty array`);
+  if (root && schema.type !== "object") throw new TypeError(`${label} must be an object schema`);
+  if (schema.$id !== undefined && (typeof schema.$id !== "string" || schema.$id.length === 0)) {
+    throw new TypeError(`${label}.$id must be a non-empty string`);
   }
-  if (schema.format !== undefined && (typeof schema.format !== "string" || !SUPPORTED_FORMATS.has(schema.format))) {
-    throw new TypeError(`${label}.format has unsupported format`);
+  if (schema.enum !== undefined) {
+    if (!Array.isArray(schema.enum) || schema.enum.length === 0) {
+      throw new TypeError(`${label}.enum must be a non-empty array`);
+    }
+    for (const value of schema.enum) {
+      canonicalJson(value);
+      if (!typeMatches(schema.type, value)) throw new TypeError(`${label}.enum values must match its type`);
+    }
   }
-  if (schema.type === "array" && schema.items !== undefined) {
-    assertPropertySchema(schema.items, `${label}.items`);
+  if (schema.format !== undefined) {
+    if (schema.type !== "string" || typeof schema.format !== "string" || !SUPPORTED_FORMATS.has(schema.format)) {
+      throw new TypeError(`${label}.format has unsupported format`);
+    }
   }
-  if (schema.type === "object" && schema.properties !== undefined) {
-    if (!isPlainObject(schema.properties)) {
-      throw new TypeError(`${label}.properties must be an object`);
+  if (schema.properties !== undefined) {
+    if (schema.type !== "object" || !isPlainObject(schema.properties)) {
+      throw new TypeError(`${label}.properties is only supported for object schemas`);
     }
     for (const [name, childSchema] of Object.entries(schema.properties)) {
-      assertPropertySchema(childSchema, `${label}.properties.${name}`);
+      assertSchema(childSchema, `${label}.properties.${name}`);
     }
   }
+  if (schema.required !== undefined) {
+    if (schema.type !== "object" || !Array.isArray(schema.required) || schema.required.some((field) => typeof field !== "string")) {
+      throw new TypeError(`${label}.required must be an array of strings for an object schema`);
+    }
+    if (new Set(schema.required).size !== schema.required.length) {
+      throw new TypeError(`${label}.required must not contain duplicates`);
+    }
+    for (const field of schema.required) {
+      if (!Object.hasOwn(schema.properties ?? {}, field)) {
+        throw new TypeError(`${label}.required field ${field} must name a declared property`);
+      }
+    }
+  }
+  if (schema.items !== undefined) {
+    if (schema.type !== "array") throw new TypeError(`${label}.items is only supported for array schemas`);
+    assertSchema(schema.items, `${label}.items`);
+  }
+}
+
+function assertObjectSchema(schema, label) {
+  assertSchema(schema, label, { root: true });
+}
+
+function assertPolicy(policy) {
+  if (!isPlainObject(policy)) throw new TypeError("policy must be an object");
+  if (typeof policy.breaking_allowed !== "boolean") {
+    throw new TypeError("policy.breaking_allowed must be a boolean");
+  }
+  if (!Array.isArray(policy.required_fields) || policy.required_fields.some((field) => typeof field !== "string")) {
+    throw new TypeError("policy.required_fields must be an array of strings");
+  }
+  if (typeof policy.versioning_rule !== "string" || policy.versioning_rule.length === 0 || !SUPPORTED_VERSIONING_RULES.has(policy.versioning_rule)) {
+    throw new TypeError("policy.versioning_rule must be a supported non-empty string");
+  }
+}
+
+function assertSource(source) {
+  if (!isPlainObject(source)) throw new TypeError("source must be an object when emitting a registry event");
+  if (typeof source.final_url !== "string") throw new TypeError("source.final_url must be an https URL");
+  let url;
+  try {
+    url = new URL(source.final_url);
+  } catch {
+    throw new TypeError("source.final_url must be an https URL");
+  }
+  if (url.protocol !== "https:") throw new TypeError("source.final_url must be an https URL");
+  if (typeof source.content_digest !== "string" || !/^sha256:.+$/i.test(source.content_digest)) {
+    throw new TypeError("source.content_digest must use sha256:<digest>");
+  }
+  return cloneJson(source);
 }
 
 function requiredSet(schema) {
@@ -113,7 +160,7 @@ function requiredSet(schema) {
 
 function contract(schema) {
   const result = { type: schema.type };
-  if (schema.enum !== undefined) result.enum = schema.enum;
+  if (schema.enum !== undefined) result.enum = cloneJson(schema.enum);
   if (schema.format !== undefined) result.format = schema.format;
   return result;
 }
@@ -131,79 +178,85 @@ function change(path, oldContract, newContract, policyRule) {
   return { path, old_contract: oldContract, new_contract: newContract, policy_rule: policyRule };
 }
 
-function comparePropertySchemas(name, oldSchema, newSchema, changes) {
-  const basePath = `/properties/${pointerSegment(name)}`;
-  if (oldSchema.type !== newSchema.type) {
-    changes.push(change(`${basePath}/type`, oldSchema.type, newSchema.type, "property_type_must_not_change"));
-    return;
-  }
-
+function compareConstraints(oldSchema, newSchema, path, changes) {
   if (oldSchema.enum !== undefined && newSchema.enum !== undefined) {
-    if (isSubset(newSchema.enum, oldSchema.enum) && !isSubset(oldSchema.enum, newSchema.enum)) {
-      changes.push(change(`${basePath}/enum`, oldSchema.enum, newSchema.enum, "enum_must_not_narrow"));
-    } else if (!isSubset(newSchema.enum, oldSchema.enum) && !isSubset(oldSchema.enum, newSchema.enum)) {
-      changes.push(change(`${basePath}/enum`, oldSchema.enum, newSchema.enum, "enum_must_not_narrow"));
+    if (!isSubset(oldSchema.enum, newSchema.enum)) {
+      changes.push(change(`${path}/enum`, cloneJson(oldSchema.enum), cloneJson(newSchema.enum), "enum_must_not_narrow"));
     }
   } else if (oldSchema.enum === undefined && newSchema.enum !== undefined) {
-    changes.push(change(`${basePath}/enum`, null, newSchema.enum, "enum_must_not_narrow"));
+    changes.push(change(`${path}/enum`, null, cloneJson(newSchema.enum), "enum_must_not_narrow"));
+  }
+  if (oldSchema.format !== newSchema.format && newSchema.format !== undefined) {
+    changes.push(change(`${path}/format`, oldSchema.format ?? null, newSchema.format, "format_must_not_become_stricter"));
+  }
+}
+
+function compareSchema(oldSchema, newSchema, path, changes, policy, enforcePolicyRequired = false) {
+  if (oldSchema.type !== newSchema.type) {
+    changes.push(change(`${path}/type`, oldSchema.type, newSchema.type, "property_type_must_not_change"));
+    return;
+  }
+  compareConstraints(oldSchema, newSchema, path, changes);
+
+  if (oldSchema.type === "object") {
+    const oldProperties = oldSchema.properties ?? {};
+    const newProperties = newSchema.properties ?? {};
+    const oldRequired = requiredSet(oldSchema);
+    const newRequired = requiredSet(newSchema);
+
+    for (const name of Object.keys(oldProperties)) {
+      if (!Object.hasOwn(newProperties, name)) {
+        changes.push(change(
+          `${path}/properties/${pointerSegment(name)}`,
+          contract(oldProperties[name]),
+          null,
+          "property_must_not_be_removed",
+        ));
+      }
+    }
+    for (const name of newRequired) {
+      if (!oldRequired.has(name)) {
+        changes.push(change(
+          `${path}/required/${pointerSegment(name)}`,
+          Object.hasOwn(oldProperties, name) ? "optional" : null,
+          "required",
+          Object.hasOwn(oldProperties, name)
+            ? "optional_property_must_not_become_required"
+            : "new_required_property_needs_explicit_transition",
+        ));
+      }
+    }
+    if (enforcePolicyRequired) {
+      for (const name of policy.required_fields) {
+        if (Object.hasOwn(newProperties, name) && !newRequired.has(name)) {
+          changes.push(change(
+            `${path}/required/${pointerSegment(name)}`,
+            oldRequired.has(name) ? "required" : "optional",
+            "optional",
+            "policy_required_field_must_remain_required",
+          ));
+        }
+      }
+    }
+    for (const name of Object.keys(oldProperties)) {
+      if (Object.hasOwn(newProperties, name)) {
+        compareSchema(oldProperties[name], newProperties[name], `${path}/properties/${pointerSegment(name)}`, changes, policy);
+      }
+    }
   }
 
-  if (oldSchema.format !== newSchema.format) {
-    if (oldSchema.format === undefined && newSchema.format !== undefined) {
-      changes.push(change(`${basePath}/format`, null, newSchema.format, "format_must_not_become_stricter"));
-    } else if (oldSchema.format !== undefined && newSchema.format !== undefined) {
-      changes.push(change(`${basePath}/format`, oldSchema.format, newSchema.format, "format_must_not_become_stricter"));
+  if (oldSchema.type === "array") {
+    if (oldSchema.items === undefined && newSchema.items !== undefined) {
+      changes.push(change(`${path}/items`, null, contract(newSchema.items), "array_items_must_not_become_more_restrictive"));
+    } else if (oldSchema.items !== undefined && newSchema.items !== undefined) {
+      compareSchema(oldSchema.items, newSchema.items, `${path}/items`, changes, policy);
     }
   }
 }
 
 function compareObjectSchemas(currentSchema, proposedSchema, policy) {
-  const currentProperties = currentSchema.properties ?? {};
-  const proposedProperties = proposedSchema.properties ?? {};
-  const currentRequired = requiredSet(currentSchema);
-  const proposedRequired = requiredSet(proposedSchema);
   const changes = [];
-
-  for (const name of Object.keys(currentProperties)) {
-    if (!(name in proposedProperties)) {
-      changes.push(change(
-        `/properties/${pointerSegment(name)}`,
-        contract(currentProperties[name]),
-        null,
-        "property_must_not_be_removed",
-      ));
-    }
-  }
-
-  for (const name of proposedRequired) {
-    if (!currentRequired.has(name)) {
-      changes.push(change(
-        `/required/${pointerSegment(name)}`,
-        name in currentProperties ? "optional" : null,
-        "required",
-        name in currentProperties
-          ? "optional_property_must_not_become_required"
-          : "new_required_property_needs_explicit_transition",
-      ));
-    }
-  }
-
-  for (const name of policy.required_fields ?? []) {
-    if (name in proposedProperties && !proposedRequired.has(name)) {
-      changes.push(change(
-        `/required/${pointerSegment(name)}`,
-        currentRequired.has(name) ? "required" : "optional",
-        "optional",
-        "policy_required_field_must_remain_required",
-      ));
-    }
-  }
-
-  for (const name of Object.keys(currentProperties)) {
-    if (name in proposedProperties) {
-      comparePropertySchemas(name, currentProperties[name], proposedProperties[name], changes);
-    }
-  }
+  compareSchema(currentSchema, proposedSchema, "", changes, policy, true);
   return changes;
 }
 
@@ -221,34 +274,31 @@ function typeMatches(type, value) {
 }
 
 function validFormat(format, value) {
-  if (typeof value !== "string") return true;
   switch (format) {
-    case "email":
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-    case "date":
-      {
-        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-        if (!match) return false;
-        const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-        return date.getUTCFullYear() === Number(match[1])
-          && date.getUTCMonth() === Number(match[2]) - 1
-          && date.getUTCDate() === Number(match[3]);
-      }
-    case "date-time":
-      return /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value));
-    case "time":
-      return /^\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/.test(value);
+    case "email": return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    case "date": {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+      if (!match) return false;
+      const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+      return date.getUTCFullYear() === Number(match[1])
+        && date.getUTCMonth() === Number(match[2]) - 1
+        && date.getUTCDate() === Number(match[3]);
+    }
+    case "date-time": return /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value));
+    case "time": return /^\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/.test(value);
     case "uri":
       try { return Boolean(new URL(value)); } catch { return false; }
-    case "uuid":
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-    case "ipv4":
-      return value.split(".").length === 4 && value.split(".").every((part) => /^(0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255);
-    case "hostname":
-      return /^(?=.{1,253}\.?$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?$/i.test(value);
-    default:
-      return false;
+    case "uuid": return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    case "ipv4": return value.split(".").length === 4 && value.split(".").every((part) => /^(0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255);
+    case "hostname": return /^(?=.{1,253}\.?$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?$/i.test(value);
+    default: return false;
   }
+}
+
+function orderedPropertyNames(schema) {
+  const required = schema.required ?? [];
+  const optional = Object.keys(schema.properties ?? {}).filter((name) => !required.includes(name)).sort();
+  return [...required, ...optional];
 }
 
 function validateValue(schema, value, path, errors) {
@@ -257,7 +307,7 @@ function validateValue(schema, value, path, errors) {
     return;
   }
   if (schema.enum !== undefined && !hasValue(schema.enum, value)) {
-    errors.push({ path, keyword: "enum", expected: schema.enum, actual: value });
+    errors.push({ path, keyword: "enum", expected: cloneJson(schema.enum), actual: value });
   }
   if (schema.format !== undefined && !validFormat(schema.format, value)) {
     errors.push({ path, keyword: "format", expected: schema.format, actual: value });
@@ -265,14 +315,13 @@ function validateValue(schema, value, path, errors) {
   if (schema.type === "array" && schema.items !== undefined) {
     value.forEach((item, index) => validateValue(schema.items, item, `${path}/${index}`, errors));
   }
-  if (schema.type === "object" && schema.properties !== undefined) {
-    const nestedRequired = new Set(schema.required ?? []);
-    for (const name of nestedRequired) {
+  if (schema.type === "object") {
+    for (const name of schema.required ?? []) {
       if (!Object.hasOwn(value, name)) {
         errors.push({ path: `${path}/${pointerSegment(name)}`, keyword: "required", expected: "present", actual: "missing" });
       }
     }
-    for (const name of Object.keys(schema.properties)) {
+    for (const name of orderedPropertyNames(schema)) {
       if (Object.hasOwn(value, name)) {
         validateValue(schema.properties[name], value[name], `${path}/${pointerSegment(name)}`, errors);
       }
@@ -280,28 +329,9 @@ function validateValue(schema, value, path, errors) {
   }
 }
 
-function orderedPropertyNames(schema) {
-  const required = schema.required ?? [];
-  const optional = Object.keys(schema.properties ?? {}).filter((name) => !required.includes(name)).sort();
-  return [...required.filter((name) => name in (schema.properties ?? {})), ...optional];
-}
-
 function validatePayload(schema, payload, index) {
   const errors = [];
-  if (!isPlainObject(payload)) {
-    errors.push({ path: "", keyword: "type", expected: "object", actual: Array.isArray(payload) ? "array" : typeof payload });
-  } else {
-    for (const name of schema.required ?? []) {
-      if (!Object.hasOwn(payload, name)) {
-        errors.push({ path: `/${pointerSegment(name)}`, keyword: "required", expected: "present", actual: "missing" });
-      }
-    }
-    for (const name of orderedPropertyNames(schema)) {
-      if (Object.hasOwn(payload, name)) {
-        validateValue(schema.properties?.[name], payload[name], `/${pointerSegment(name)}`, errors);
-      }
-    }
-  }
+  validateValue(schema, payload, "", errors);
   return { index, valid: errors.length === 0, errors };
 }
 
@@ -310,7 +340,7 @@ function migrationNotesFor(currentSchema, proposedSchema, breakingChanges) {
   const newProperties = proposedSchema.properties ?? {};
   const notes = [];
   for (const name of Object.keys(newProperties)) {
-    if (!(name in oldProperties) && !(proposedSchema.required ?? []).includes(name)) {
+    if (!Object.hasOwn(oldProperties, name) && !(proposedSchema.required ?? []).includes(name)) {
       notes.push(`Added optional property /properties/${pointerSegment(name)}.`);
     }
   }
@@ -334,7 +364,7 @@ function registryEvent({ proposedSchema, source, compatibility, validationResult
   const event = {
     type: "schema.version.recorded",
     schema_id: proposedSchema.$id ?? null,
-    source: source ?? {},
+    source,
     proposed_schema_digest: sha256Json(proposedSchema),
     compatibility_digest: compatibility.verdict_digest,
     validation_summary: {
@@ -344,28 +374,21 @@ function registryEvent({ proposedSchema, source, compatibility, validationResult
       sample_coverage_supplied: validationResults.length > 0,
     },
   };
-  return { ...event, event_digest: sha256Json(event) };
+  const stableEvent = cloneJson(event);
+  return { ...stableEvent, event_digest: sha256Json(stableEvent) };
 }
 
 export function evaluateSchemaChange({ currentSchema, proposedSchema, samplePayloads = [], policy, source }) {
   assertObjectSchema(currentSchema, "current_schema");
   assertObjectSchema(proposedSchema, "proposed_schema");
-  if (!Array.isArray(samplePayloads)) {
-    throw new TypeError("sample_payloads must be an array");
-  }
-  if (!isPlainObject(policy)) {
-    throw new TypeError("policy must be an object");
-  }
-  if (policy.required_fields !== undefined && (!Array.isArray(policy.required_fields) || policy.required_fields.some((field) => typeof field !== "string"))) {
-    throw new TypeError("policy.required_fields must be an array of strings");
-  }
+  if (!Array.isArray(samplePayloads)) throw new TypeError("sample_payloads must be an array");
+  assertPolicy(policy);
 
   const breakingChanges = compareObjectSchemas(currentSchema, proposedSchema, policy);
   const validationResults = samplePayloads.map((payload, index) => validatePayload(proposedSchema, payload, index));
   const samplesValid = validationResults.every((result) => result.valid);
-  const structurallyAllowed = breakingChanges.length === 0 || policy.breaking_allowed === true;
   const compatibilityBase = {
-    compatible: structurallyAllowed && samplesValid,
+    compatible: (breakingChanges.length === 0 || policy.breaking_allowed) && samplesValid,
     breaking_changes: breakingChanges,
     sample_coverage_supplied: samplePayloads.length > 0,
     sample_coverage: samplePayloads.length > 0 ? "supplied" : "not_supplied",
@@ -375,10 +398,13 @@ export function evaluateSchemaChange({ currentSchema, proposedSchema, samplePayl
     verdict_digest: sha256Json({ compatibility: compatibilityBase, validation_results: validationResults }),
   };
   const migrationNotes = migrationNotesFor(currentSchema, proposedSchema, breakingChanges);
+  const registryEventResult = compatibility.compatible
+    ? registryEvent({ proposedSchema, source: assertSource(source), compatibility, validationResults })
+    : null;
   return {
     compatibility,
     validation_results: validationResults,
     migration_notes: migrationNotes,
-    registry_event: compatibility.compatible ? registryEvent({ proposedSchema, source, compatibility, validationResults }) : null,
+    registry_event: registryEventResult,
   };
 }

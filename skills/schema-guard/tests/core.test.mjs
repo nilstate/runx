@@ -236,3 +236,167 @@ test("produces stable canonical JSON and verdict digests independent of object k
   assert.equal(first.compatibility.verdict_digest, second.compatibility.verdict_digest);
   assert.equal(first.registry_event.event_digest, second.registry_event.event_digest);
 });
+
+test("reports a nested object property type change with its full JSON Pointer", () => {
+  const currentNested = structuredClone(current);
+  currentNested.properties.customer = {
+    type: "object",
+    required: ["address"],
+    properties: {
+      address: {
+        type: "object",
+        required: ["postal_code"],
+        properties: { postal_code: { type: "string" } },
+      },
+    },
+  };
+  const proposed = structuredClone(currentNested);
+  proposed.properties.customer.properties.address.properties.postal_code = { type: "number" };
+
+  const result = evaluateSchemaChange({
+    currentSchema: currentNested,
+    proposedSchema: proposed,
+    samplePayloads: [],
+    policy,
+  });
+
+  assert.deepEqual(result.compatibility.breaking_changes, [{
+    path: "/properties/customer/properties/address/properties/postal_code/type",
+    old_contract: "string",
+    new_contract: "number",
+    policy_rule: "property_type_must_not_change",
+  }]);
+  assert.equal(result.registry_event, null);
+});
+
+test("reports a deleted nested object property with its full JSON Pointer", () => {
+  const currentNested = structuredClone(current);
+  currentNested.properties.customer = {
+    type: "object",
+    properties: { "line/one~primary": { type: "string" } },
+  };
+  const proposed = structuredClone(currentNested);
+  delete proposed.properties.customer.properties["line/one~primary"];
+
+  const result = evaluateSchemaChange({
+    currentSchema: currentNested,
+    proposedSchema: proposed,
+    samplePayloads: [],
+    policy,
+  });
+
+  assert.deepEqual(result.compatibility.breaking_changes, [{
+    path: "/properties/customer/properties/line~1one~0primary",
+    old_contract: { type: "string" },
+    new_contract: null,
+    policy_rule: "property_must_not_be_removed",
+  }]);
+});
+
+test("reports a nested optional property becoming required with its full JSON Pointer", () => {
+  const currentNested = structuredClone(current);
+  currentNested.properties.customer = {
+    type: "object",
+    properties: { nickname: { type: "string" } },
+  };
+  const proposed = structuredClone(currentNested);
+  proposed.properties.customer.required = ["nickname"];
+
+  const result = evaluateSchemaChange({
+    currentSchema: currentNested,
+    proposedSchema: proposed,
+    samplePayloads: [],
+    policy,
+  });
+
+  assert.deepEqual(result.compatibility.breaking_changes, [{
+    path: "/properties/customer/required/nickname",
+    old_contract: "optional",
+    new_contract: "required",
+    policy_rule: "optional_property_must_not_become_required",
+  }]);
+});
+
+test("rejects malformed nested required contracts and unsupported nested keywords", () => {
+  const malformedRequired = structuredClone(current);
+  malformedRequired.properties.customer = {
+    type: "object",
+    required: ["missing"],
+    properties: {},
+  };
+  assert.throws(
+    () => evaluate(malformedRequired),
+    /customer\.required.*declared property/i,
+  );
+
+  const unsupportedKeyword = structuredClone(current);
+  unsupportedKeyword.properties.customer = {
+    type: "object",
+    properties: { nickname: { type: "string", minLength: 1 } },
+  };
+  assert.throws(
+    () => evaluate(unsupportedKeyword),
+    /minLength.*unsupported keyword/i,
+  );
+});
+
+test("rejects policies that do not use the strict supported policy contract", () => {
+  const proposed = structuredClone(current);
+  for (const [invalidPolicy, message] of [
+    [{ ...policy, breaking_allowed: "false" }, /breaking_allowed.*boolean/i],
+    [{ ...policy, required_fields: ["id", 2] }, /required_fields.*array of strings/i],
+    [{ ...policy, versioning_rule: "" }, /versioning_rule.*supported/i],
+    [{ ...policy, versioning_rule: "unknown_rule" }, /versioning_rule.*supported/i],
+  ]) {
+    assert.throws(
+      () => evaluateSchemaChange({ currentSchema: current, proposedSchema: proposed, samplePayloads: [], policy: invalidPolicy }),
+      message,
+    );
+  }
+});
+
+test("requires a valid source before emitting a compatible registry event", () => {
+  const proposed = structuredClone(current);
+  for (const [source, message] of [
+    [undefined, /source.*object/i],
+    [{ final_url: "http://example.test/invoice.json", content_digest: "sha256:source" }, /final_url.*https/i],
+    [{ final_url: "https://example.test/invoice.json", content_digest: "sha256:" }, /content_digest.*sha256/i],
+  ]) {
+    assert.throws(
+      () => evaluateSchemaChange({ currentSchema: current, proposedSchema: proposed, samplePayloads: [], policy, source }),
+      message,
+    );
+  }
+});
+
+test("does not require source when a breaking change produces no registry event", () => {
+  const proposed = structuredClone(current);
+  proposed.properties.status = { type: "number" };
+  const result = evaluateSchemaChange({ currentSchema: current, proposedSchema: proposed, samplePayloads: [], policy });
+  assert.equal(result.compatibility.compatible, false);
+  assert.equal(result.registry_event, null);
+});
+
+test("isolates emitted events from caller mutation and digests the final event content", () => {
+  const proposed = structuredClone(current);
+  const source = {
+    final_url: "https://example.test/invoice.json",
+    content_digest: "sha256:source",
+    upstream: { revision: "first" },
+  };
+  const result = evaluateSchemaChange({
+    currentSchema: current,
+    proposedSchema: proposed,
+    samplePayloads: [{ id: "inv-1", status: "paid" }],
+    policy,
+    source,
+  });
+  const originalEvent = structuredClone(result.registry_event);
+
+  source.upstream.revision = "mutated";
+  source.final_url = "https://example.test/mutated.json";
+
+  assert.deepEqual(result.registry_event, originalEvent);
+  const { event_digest, ...eventContent } = result.registry_event;
+  assert.equal(event_digest, sha256Json(eventContent));
+});
