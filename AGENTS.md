@@ -117,6 +117,16 @@ Rust owns trusted local execution, receipt sealing, runtime policy, harness
 replay, MCP, payment gates, and sandbox planning. TypeScript packages may wrap
 or present those paths, but must not reintroduce local execution fallback logic.
 
+### Operator Ownership
+
+Reusable skills, end-user or domain-operator commands and UX, local host loops,
+and default local-state orchestration are OSS concerns. They must not be
+implemented in `runx/cloud`. Hosted connectors may custody credentials,
+resolve grants, and execute bounded provider API calls, but they do not own the
+operator or its state. If an operator surface is missing, add it here rather
+than extending a Cloud dogfood script. Runx-company deployment and
+control-plane administration are not domain-operator surfaces.
+
 ### Pure Kernel Boundaries
 
 Pure crates and packages stay pure. `runx-core`, `runx-contracts`,

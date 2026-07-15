@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/context/weather_forecast/v1.json",
+  "x-runx-packet-id": "runx.context.weather_forecast.v1",
+  "x-runx-generated-from": "skills/weather-forecast/X.yaml#root.runners.normalize",
+  "type": "object",
+  "required": [
+    "decision",
+    "forecast_packet",
+    "horizon",
+    "location",
+    "provider_evidence",
+    "receipt_notes",
+    "safety_notes",
+    "stop_conditions"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string"
+    },
+    "forecast_packet": {
+      "type": "object"
+    },
+    "horizon": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "provider_evidence": {
+      "type": "object"
+    },
+    "receipt_notes": {
+      "type": "object"
+    },
+    "safety_notes": {
+      "type": "array"
+    },
+    "stop_conditions": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

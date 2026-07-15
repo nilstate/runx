@@ -14,6 +14,7 @@ pub(crate) struct WorkspaceEnv {
 
 impl WorkspaceEnv {
     pub(crate) fn new(env: BTreeMap<String, String>, cwd: PathBuf) -> Self {
+        let cwd = crate::config::resolve_runx_workspace_base(&env, &cwd);
         Self { env, cwd }
     }
 
@@ -35,9 +36,9 @@ impl WorkspaceEnv {
             }
         }
         let cwd = self.cwd.to_string_lossy().into_owned();
-        env.entry(RUNX_CWD_ENV.to_owned())
-            .or_insert_with(|| cwd.clone());
-        env.entry(RUNX_PROJECT_DIR_ENV.to_owned()).or_insert(cwd);
+        env.insert(RUNX_CWD_ENV.to_owned(), cwd);
+        env.entry(RUNX_PROJECT_DIR_ENV.to_owned())
+            .or_insert_with(|| self.cwd.join(".runx").to_string_lossy().into_owned());
         merge_inferred_tool_roots(&mut env, skill_dir);
         env
     }

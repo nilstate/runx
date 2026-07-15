@@ -17,22 +17,12 @@ publication-ready payload with moderation notes and follow-up expectations.
 Do not post speculatively. If the evidence is weak or the tone is likely to be
 off, say so and block the post.
 
-## Quality Profile
-
-- Purpose: identify and package one credible Moltbook posting opportunity.
-- Audience: the Moltbook community and the operator accountable for the post.
-- Artifact contract: opportunity report, post outline or payload, moderation
-  notes, publish plan, and follow-up plan.
-- Evidence bar: ground the opportunity in visible community context, feed
-  snapshot, current project work, or operator intent. Do not manufacture a
-  reason to post.
-- Voice bar: native community post, not campaign copy, AI filler, or growth
-  bait.
-- Strategic bar: posting should advance trust, useful context, or a real
-  conversation. Visibility alone is not enough.
-- Stop conditions: return `not_worth_posting`, `needs_more_evidence`, or
-  `needs_review` when the signal is weak, tone is risky, or the post would feel
-  opportunistic.
+Ground the opportunity in visible community context, a feed snapshot, current
+project work, or explicit operator intent. Write like a useful community member,
+not a campaign, growth hack, or generic AI post. Visibility alone is not a
+reason to publish: return `not_worth_posting`, `needs_more_evidence`, or
+`needs_review` when the signal, relevance, or tone cannot support a credible
+conversation.
 
 ## Output
 

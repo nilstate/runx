@@ -121,9 +121,9 @@
     },
     {
       "path": "crates/runx-cli/src/connect.rs",
-      "decision": "delete-or-stub",
-      "removed": true,
-      "rationale": "Native runx connect brokerage command does not belong in OSS."
+      "decision": "rewrite-provider-neutral",
+      "removed": false,
+      "rationale": "The native client may call the generic grant and provider-operation contract; OAuth custody and provider brokerage remain private in Cloud."
     },
     {
       "path": "crates/runx-cli/src/main.rs",

@@ -34,6 +34,7 @@ use crate::adapter::{
 };
 #[cfg(feature = "catalog")]
 use crate::adapters::catalog::CatalogAdapter;
+use crate::agent_contract::verified_agent_metadata_with_artifacts;
 use crate::agent_invocation::{
     AgentActInvocationSourceType, agent_act_invocation_id, agent_act_resolution_request,
 };
@@ -492,6 +493,9 @@ where
             projection: &projection,
             created_at: &context.runtime.options.created_at,
             authority_grant_refs,
+            operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
+                &context.runtime.options.env,
+            ),
             closure: None,
         },
         context.runtime.options.signature_policy(),
@@ -656,6 +660,9 @@ fn run_replayed_effect_step(
             projection: &projection,
             created_at: replay.receipt_created_at(),
             authority_grant_refs,
+            operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
+                &runtime.options.env,
+            ),
             closure: None,
         },
         runtime.options.signature_policy(),
@@ -999,17 +1006,32 @@ fn cli_tool_args(step: &GraphStep, run: &JsonObject) -> Result<Vec<String>, Runt
 // step's output, projection, and sealed receipt. Both the inline `agent-task`
 // step and a referenced agent skill end here, so the agent-act seal lives in
 // one place.
-fn seal_agent_act_step<A>(
-    runtime: &Runtime<A>,
-    graph_name: &str,
-    step: &GraphStep,
+struct AgentActStepSeal<'a> {
+    graph_name: &'a str,
+    step: &'a GraphStep,
     attempt: u32,
     skill_name: String,
     response: ResolutionResponse,
-    extra_artifacts: Option<&SkillArtifactContract>,
+    extra_artifacts: Option<&'a SkillArtifactContract>,
+    verification_metadata: JsonObject,
+}
+
+fn seal_agent_act_step<A>(
+    runtime: &Runtime<A>,
+    request: AgentActStepSeal<'_>,
 ) -> Result<StepRun, RuntimeError> {
+    let AgentActStepSeal {
+        graph_name,
+        step,
+        attempt,
+        skill_name,
+        response,
+        extra_artifacts,
+        verification_metadata,
+    } = request;
     let disposition = agent_answer_disposition_value(step, &response.payload)?;
-    let output = agent_task_output(response, &disposition)?;
+    let mut output = agent_task_output(response, &disposition)?;
+    output.metadata.extend(verification_metadata);
     let projection = build_step_output_projection(step, &output, extra_artifacts)?;
     let disposition_label = disposition.label();
     let receipt = seal_step(
@@ -1021,6 +1043,9 @@ fn seal_agent_act_step<A>(
             projection: &projection,
             created_at: &runtime.options.created_at,
             authority_grant_refs: Vec::new(),
+            operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
+                &runtime.options.env,
+            ),
             closure: Some(StepSealClosure {
                 disposition,
                 reason_code: format!("agent_act_{disposition_label}"),
@@ -1077,6 +1102,7 @@ where
     let source_type = AgentActInvocationSourceType::AgentStep;
     let request_id = agent_act_invocation_id(&invocation, source_type);
     let request = agent_act_resolution_request(&invocation, source_type)?;
+    let verification_request = request.clone();
     host.report(ExecutionEvent::ResolutionRequested {
         message: format!("agent step '{}' requested resolution", step.id),
         data: Some(resolution_event_data(step, &request)?),
@@ -1087,15 +1113,26 @@ where
             reason: format!("agent act {request_id} requires resolution"),
         });
     };
+    let verification_metadata = verified_agent_metadata_with_artifacts(
+        &verification_request,
+        &response.payload,
+        None,
+        step.artifacts.as_ref(),
+        graph_dir,
+        &runtime.options.env,
+    )?;
     // Inline agent-task step: contract is the step's own `run.outputs` / `artifacts`.
     seal_agent_act_step(
         runtime,
-        graph_name,
-        step,
-        attempt,
-        "run:agent-task".to_owned(),
-        response,
-        None,
+        AgentActStepSeal {
+            graph_name,
+            step,
+            attempt,
+            skill_name: "run:agent-task".to_owned(),
+            response,
+            extra_artifacts: None,
+            verification_metadata,
+        },
     )
 }
 
@@ -1116,8 +1153,11 @@ where
         source_type,
         artifacts,
     } = agent_task;
+    let skill_directory = invocation.skill_directory.clone();
+    let invocation_env = invocation.env.clone();
     let request_id = agent_act_invocation_id(&invocation, source_type);
     let request = agent_act_resolution_request(&invocation, source_type)?;
+    let verification_request = request.clone();
     let response = resolve_agent_act(
         step,
         host,
@@ -1128,16 +1168,27 @@ where
             step.id, skill_name
         ),
     )?;
+    let verification_metadata = verified_agent_metadata_with_artifacts(
+        &verification_request,
+        &response.payload,
+        artifacts.as_ref(),
+        None,
+        &skill_directory,
+        &invocation_env,
+    )?;
     // Referenced agent-task sub-skill: expose the invoked runner's artifact
     // contract at the outer step.
     seal_agent_act_step(
         runtime,
-        graph_name,
-        step,
-        attempt,
-        skill_name,
-        response,
-        artifacts.as_ref(),
+        AgentActStepSeal {
+            graph_name,
+            step,
+            attempt,
+            skill_name,
+            response,
+            extra_artifacts: artifacts.as_ref(),
+            verification_metadata,
+        },
     )
 }
 
@@ -1295,6 +1346,9 @@ where
                 projection: &projection,
                 created_at: &runtime.options.created_at,
                 authority_grant_refs,
+                operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
+                    &runtime.options.env,
+                ),
                 closure: None,
             },
             runtime.options.signature_policy(),
@@ -1409,6 +1463,8 @@ fn agent_answer_disposition_value(
     })
 }
 
+// rust-style-allow: long-function because an approval step resolves, projects,
+// and seals one trust-boundary decision without exposing a partially built receipt.
 pub(super) fn run_approval_step<A>(
     runtime: &Runtime<A>,
     graph_name: &str,
@@ -1426,7 +1482,11 @@ where
     // fixture host already resolves approvals by gate_id; keying the request id
     // the same way lets a seeded graph run drive an approval gate to a decision.
     let request_id = gate.id.to_string();
-    let resolution = resolve_step_approval(step, host, request_id, gate.clone())?;
+    let resolution = completed_approval_resolution(
+        step,
+        &gate,
+        resolve_step_approval(step, host, request_id, gate.clone())?,
+    )?;
     let outputs = approval_outputs(step, &gate, &resolution)?;
     let stdout = serde_json::to_string(&outputs)
         .map_err(|source| RuntimeError::json("serializing approval run output", source))?;
@@ -1448,6 +1508,9 @@ where
             projection: &projection,
             created_at: &runtime.options.created_at,
             authority_grant_refs: Vec::new(),
+            operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
+                &runtime.options.env,
+            ),
             closure: None,
         },
         runtime.options.signature_policy(),
@@ -1464,6 +1527,20 @@ where
         receipt,
         admission_witness,
     })
+}
+
+fn completed_approval_resolution(
+    step: &GraphStep,
+    gate: &ApprovalGate,
+    resolution: ApprovalResolution,
+) -> Result<ApprovalResolution, RuntimeError> {
+    if matches!(resolution, ApprovalResolution::Pending { .. }) {
+        return Err(RuntimeError::GraphBlocked {
+            step_id: step.id.clone(),
+            reason: format!("approval gate '{}' is pending", gate.id),
+        });
+    }
+    Ok(resolution)
 }
 
 fn run_type_ref(step: &GraphStep) -> Result<&str, RuntimeError> {
@@ -1618,6 +1695,9 @@ where
             projection: &projection,
             created_at: &runtime.options.created_at,
             authority_grant_refs: Vec::new(),
+            operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
+                &runtime.options.env,
+            ),
             closure: None,
         },
         runtime.options.signature_policy(),

@@ -1,0 +1,52 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "twitter.act",
+  "version": "0.1.0",
+  "description": "Execute an approved, digest-bound twitter act plan against the X API with per-act provider evidence.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": ["./run.mjs"],
+    "sandbox": {
+      "profile": "network",
+      "cwd_policy": "skill-directory",
+      "network": true,
+      "writable_paths": [],
+      "require_enforcement": false,
+      "env_allowlist": ["TWITTER_USER_AUTH"]
+    }
+  },
+  "inputs": {
+    "plan_json": {
+      "type": "json",
+      "required": true,
+      "description": "The twitter.plan.v1 object whose acts will be executed."
+    },
+    "plan_digest": {
+      "type": "string",
+      "required": false,
+      "description": "Expected canonical digest of plan_json. A mismatch is a hard failure."
+    },
+    "already_executed_act_ids": {
+      "type": "json",
+      "required": false,
+      "description": "Act ids confirmed executed in a prior run; they are skipped, which makes re-execution after a rate-limit stop idempotent."
+    },
+    "max_acts": {
+      "type": "number",
+      "required": false,
+      "default": 50,
+      "description": "Per-execution cap on total acts."
+    }
+  },
+  "scopes": ["twitter:write"],
+  "runx": {
+    "artifacts": {
+      "named_emits": { "twitter_execution": "twitter.execution.v1" },
+      "wrap_as": "twitter_execution"
+    }
+  },
+  "runtime": { "command": "node", "args": ["./run.mjs"] },
+  "output": { "packet": "twitter.execution.v1", "wrap_as": "twitter_execution" },
+  "toolkit_version": "0.1.4"
+}

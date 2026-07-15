@@ -14,18 +14,18 @@ This skill is profile-only. It reports whether a prior refund attempt appears
 mutated, pending, declined, safely retryable, or escalated. It does not repair
 durable receipt state or issue another rail mutation.
 
-## Quality Profile
+Key every lookup and recommendation by both the original receipt reference and
+refund idempotency key. Return the supporting proof references with recovered
+or declined outcomes. If the rail lookup or proof is incomplete, return
+`escalated`; never turn ambiguity into success or recommend a fresh mutation.
 
-- Purpose: make ambiguous refund state visible before any repeated mutation.
-- Audience: operators, recovery reviewers, registry tooling, and future refund
-  runtime enforcement.
-- Artifact contract: `recovery_assessment`, `refund_lookup`, `proof_refs`,
-  `recommended_action`, and `open_questions`.
-- Evidence bar: every recommendation must be keyed by original receipt ref and
-  refund idempotency key.
-- Strategic bar: never hide ambiguous settlement state as success.
-- Stop conditions: return `escalated` when rail lookup or proof refs are
-  incomplete.
+## Output
+
+- `recovery_assessment`: recovered, pending, declined, retry-safe, or escalated.
+- `refund_lookup`: family lookup performed under the original idempotency key.
+- `proof_refs`: existing settlement and receipt evidence.
+- `recommended_action`: seal, wait, retry the same key, decline, or escalate.
+- `open_questions`: evidence still needed before a terminal action.
 
 ## Inputs
 

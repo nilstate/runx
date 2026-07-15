@@ -274,10 +274,7 @@ fn run_publish(
                 cwd,
                 true,
             )?;
-            let harness = package::run_publish_harness(
-                package.harness_path.as_deref(),
-                &package.harness_fixture_paths,
-            );
+            let harness = package::run_publish_harness(package.harness_path.as_deref());
             if let Some(temp_dir) = package.harness_temp_dir.as_ref() {
                 let _ignored = fs::remove_dir_all(temp_dir);
             }
@@ -313,10 +310,7 @@ fn run_publish(
                 cwd,
                 true,
             )?;
-            let harness = package::run_publish_harness(
-                package.harness_path.as_deref(),
-                &package.harness_fixture_paths,
-            );
+            let harness = package::run_publish_harness(package.harness_path.as_deref());
             if let Some(temp_dir) = package.harness_temp_dir.as_ref() {
                 let _ignored = fs::remove_dir_all(temp_dir);
             }

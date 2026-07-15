@@ -593,28 +593,39 @@ fn native_skill_run_uses_production_receipt_signing_env() -> Result<(), Box<dyn 
 }
 
 #[test]
-fn native_skill_run_rejects_missing_production_receipt_signing_env()
+fn native_skill_run_uses_local_development_without_production_receipt_signing_env()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let skill_dir = write_agent_task_skill(temp.path())?;
-    let error = LocalOrchestrator::default()
-        .run_skill(&SkillRunRequest {
-            skill_path: skill_dir,
-            receipt_dir: None,
-            run_id: None,
-            answers_path: None,
-            inputs: BTreeMap::new(),
-            env: BTreeMap::new(),
-            cwd: temp.path().to_path_buf(),
-            local_credential: None,
+    let answers_path = temp.path().join("answers.json");
+    fs::write(
+        &answers_path,
+        serde_json::json!({
+            "answers": {
+                "agent_task.issue-intake.output": {
+                    "intake_report": {
+                        "summary": "Docs bug is bounded."
+                    },
+                    "closure": {
+                        "disposition": "closed"
+                    }
+                }
+            }
         })
-        .err()
-        .ok_or("missing signing env unexpectedly succeeded")?;
-    assert!(
-        error
-            .to_string()
-            .contains("governed runtime receipt signing")
-    );
+        .to_string(),
+    )?;
+    let result = LocalOrchestrator::default().run_skill(&SkillRunRequest {
+        skill_path: skill_dir,
+        receipt_dir: None,
+        run_id: Some("local-development-signed-run".to_owned()),
+        answers_path: Some(answers_path),
+        inputs: BTreeMap::new(),
+        env: BTreeMap::new(),
+        cwd: temp.path().to_path_buf(),
+        local_credential: None,
+    })?;
+    assert_eq!(result.status, runx_runtime::RunStatus::Sealed);
+    assert_eq!(result.receipt_refs.len(), 1);
     Ok(())
 }
 
@@ -734,9 +745,6 @@ fn native_graph_skill_run_pauses_and_resumes_agent_task() -> Result<(), Box<dyn 
         serde_json::json!({
             "answers": {
                 "agent_task.graph-decide.output": {
-                    "approved": true,
-                    "proof_ref": "receipt-proof:evil:step-output",
-                    "receipt_id": "sha256:evil-step-output",
                     "result": {
                         "summary": "Graph fix authored."
                     },
@@ -762,9 +770,6 @@ fn native_graph_skill_run_pauses_and_resumes_agent_task() -> Result<(), Box<dyn 
     let output = object(&resumed.output, "resumed graph skill run result")?;
     assert_eq!(string_field(output, "status"), Some("sealed"));
     let payload = object_field(output, "payload").ok_or("missing payload")?;
-    assert!(!payload.contains_key("approved"));
-    assert!(!payload.contains_key("proof_ref"));
-    assert!(!payload.contains_key("receipt_id"));
     let decide_claim = step_claim(payload, "decide").ok_or("missing decide skill claim")?;
     let result = object_field(decide_claim, "result").ok_or("missing result")?;
     assert_eq!(string_field(result, "summary"), Some("Graph fix authored."));
@@ -777,9 +782,6 @@ fn native_graph_skill_run_pauses_and_resumes_agent_task() -> Result<(), Box<dyn 
         string_field(declared_result, "summary"),
         Some("Graph fix authored.")
     );
-    assert!(!decide.contains_key("approved"));
-    assert!(!decide.contains_key("proof_ref"));
-    assert!(!decide.contains_key("receipt_id"));
 
     Ok(())
 }
@@ -1701,6 +1703,71 @@ fn native_graph_skill_run_requires_declared_graph_inputs() -> Result<(), Box<dyn
     Ok(())
 }
 
+#[test]
+fn native_graph_skill_resume_applies_approval_before_completing_step()
+-> Result<(), Box<dyn std::error::Error>> {
+    for (case, answers) in [
+        (
+            "approvals-field",
+            serde_json::json!({
+                "approvals": { "approval-resume.approve": true }
+            }),
+        ),
+        (
+            "answers-field",
+            serde_json::json!({
+                "answers": { "approval-resume.approve": true }
+            }),
+        ),
+    ] {
+        let temp = tempdir()?;
+        let skill_dir = write_graph_approval_resume_skill(temp.path())?;
+        let receipt_dir = temp.path().join(format!("receipts-{case}"));
+        let answers_path = temp.path().join(format!("answers-{case}.json"));
+        fs::write(&answers_path, answers.to_string())?;
+
+        let pending = run_skill(SkillRunRequest {
+            skill_path: skill_dir.clone(),
+            receipt_dir: Some(receipt_dir.clone()),
+            run_id: None,
+            answers_path: None,
+            inputs: BTreeMap::new(),
+            env: BTreeMap::new(),
+            cwd: temp.path().to_path_buf(),
+            local_credential: None,
+        })?;
+        let pending_output = object(&pending.output, "pending approval result")?;
+        assert_eq!(string_field(pending_output, "status"), Some("needs_agent"));
+        let run_id = string_field(pending_output, "run_id")
+            .ok_or("pending approval result missing run_id")?
+            .to_owned();
+
+        let resumed = run_skill(SkillRunRequest {
+            skill_path: skill_dir,
+            receipt_dir: Some(receipt_dir),
+            run_id: Some(run_id),
+            answers_path: Some(answers_path),
+            inputs: BTreeMap::new(),
+            env: BTreeMap::new(),
+            cwd: temp.path().to_path_buf(),
+            local_credential: None,
+        })?;
+        let resumed_output = object(&resumed.output, "resumed approval result")?;
+        assert_eq!(string_field(resumed_output, "status"), Some("sealed"));
+        let payload = object_field(resumed_output, "payload").ok_or("missing payload")?;
+        let step_outputs = object_field(payload, "step_outputs").ok_or("missing step outputs")?;
+        let approval_output =
+            object_field(step_outputs, "approve").ok_or("missing approval output")?;
+        let approval_packet =
+            object_field(approval_output, "approval_decision").ok_or("missing approval packet")?;
+        let approval_data = object_field(approval_packet, "data").ok_or("missing approval data")?;
+        assert_eq!(approval_data.get("approved"), Some(&JsonValue::Bool(true)));
+        assert_eq!(string_field(approval_data, "status"), Some("approved"));
+    }
+
+    Ok(())
+}
+
 #[cfg(feature = "catalog")]
 #[test]
 fn native_graph_skill_run_uses_canonical_tool_root() -> Result<(), Box<dyn std::error::Error>> {
@@ -2287,6 +2354,15 @@ runners:
     task: issue-intake
     outputs:
       intake_report: object
+      claimed_proof:
+        type: object
+        required: false
+      verification:
+        type: object
+        required: false
+      signal:
+        type: object
+        required: false
     inputs:
       thread_title:
         type: string
@@ -2439,6 +2515,8 @@ source:
         r#"
 source:
   type: agent
+  outputs:
+    result: object
 "#
     };
     fs::write(
@@ -2749,6 +2827,38 @@ runners:
           inputs:
             gate_id: graph-required-input.approve
             reason: approve the graph
+"#,
+    )?;
+    Ok(skill_dir)
+}
+
+fn write_graph_approval_resume_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = root.join("approval-resume");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: approval-resume\n---\n# Approval Resume\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"
+skill: approval-resume
+runners:
+  graph:
+    default: true
+    type: graph
+    graph:
+      name: approval-resume
+      steps:
+        - id: approve
+          run:
+            type: approval
+          inputs:
+            gate_id: approval-resume.approve
+            reason: approve the test graph
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
 "#,
     )?;
     Ok(skill_dir)

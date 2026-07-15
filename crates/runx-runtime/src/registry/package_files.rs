@@ -76,3 +76,28 @@ pub(crate) fn validate_registry_package_file_path(path: &str) -> Result<(), Stri
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::registry_package_digest;
+    use crate::registry::types::RegistryPackageFile;
+
+    #[test]
+    fn package_digest_uses_locale_independent_path_ordering() {
+        let files = vec![
+            RegistryPackageFile {
+                path: "graph/plan/run.mjs".to_owned(),
+                content: "run\n".to_owned(),
+            },
+            RegistryPackageFile {
+                path: "graph/plan/X.yaml".to_owned(),
+                content: "graph\n".to_owned(),
+            },
+        ];
+
+        assert_eq!(
+            registry_package_digest(&files).as_deref(),
+            Some("c812b21fa4090ecab0ec657df6d4d8c22a0acce04e4cb98cc85a5cb29f02651b")
+        );
+    }
+}

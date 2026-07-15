@@ -55,23 +55,6 @@ designed.
 One failure, one fix. Propose the smallest change that addresses the root
 cause. Do not bundle unrelated improvements.
 
-## Quality Profile
-
-- Purpose: diagnose one receipt or harness result and decide whether a bounded
-  improvement is justified.
-- Audience: skill maintainers and downstream `write-harness` runs.
-- Artifact contract: verdict, failure summary, improvement proposals, and next
-  harness checks.
-- Evidence bar: root cause must trace to receipt fields, harness output,
-  status transitions, scope decisions, stderr, or schema mismatch. Symptoms are
-  not enough.
-- Voice bar: concise diagnostic language. No generic "improve robustness"
-  proposals without a named failure class and fix.
-- Strategic bar: one failure should strengthen a contract, fixture, boundary,
-  or parser in a way that prevents recurrence.
-- Stop conditions: return `pass` with no proposals for healthy suspension, and
-  return `blocked` when the evidence is insufficient to identify one bounded
-  fix.
 
 ## Output
 

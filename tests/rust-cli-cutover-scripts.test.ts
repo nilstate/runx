@@ -7,7 +7,14 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const workspaceRoot = process.cwd();
-const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+// Spawn the tsx binary directly: routing through `pnpm exec` adds ~0.5-1s of
+// launcher overhead to every invocation.
+const tsx = path.join(
+  workspaceRoot,
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "tsx.cmd" : "tsx",
+);
 
 describe("Rust CLI cutover scripts", () => {
   it("keeps the published native selector on unconditional digest verification", async () => {
@@ -256,7 +263,7 @@ describe("Rust CLI cutover scripts", () => {
 });
 
 function runTsx(script: string, args: readonly string[]) {
-  return spawnSync(pnpm, ["exec", "tsx", script, ...args], {
+  return spawnSync(tsx, [script, ...args], {
     cwd: workspaceRoot,
     encoding: "utf8",
     maxBuffer: 4 * 1024 * 1024,

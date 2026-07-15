@@ -20,7 +20,7 @@ approval gate and an audit append. The output is an unseal plan carrying an
 opaque handle. The secret value is never read into the plan, the receipt, or the
 agent's context.
 
-It governs explicit secret access with a TTL and approval; least-privilege-auditor
+It governs explicit secret access with a TTL and approval; least-privilege
 only analyzes scopes, it never touches secrets.
 
 ## When to use this skill
@@ -41,7 +41,7 @@ only analyzes scopes, it never touches secrets.
 - To grant standing or unbounded access. Every unseal is scoped to one secret
   for one TTL.
 - To review or narrow scopes that a subject already holds. Use
-  least-privilege-auditor for scope analysis against receipts.
+  least-privilege for scope analysis against receipts.
 - To rotate, store, or mint new secrets. That is a separate vault operation with
   its own gate.
 - To bypass the approval gate, widen the scope past the stated purpose, or

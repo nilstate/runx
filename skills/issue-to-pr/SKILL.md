@@ -57,29 +57,6 @@ reviewer to act. They must not publish raw local paths, secrets, full command
 dumps, or duplicate retry comments. User-facing labels should use plain terms
 such as spec authoring, fix authoring, review, and human merge gate.
 
-## Quality Profile
-
-- Purpose: turn one bounded thread-driven change into a visible, reviewable
-  draft PR through native scafld 2.4 surfaces.
-- Audience: maintainers reviewing the issue, spec, code change, native review,
-  handoff, and draft PR.
-- Artifact contract: markdown scafld spec, authored change bundle, build
-  result, review result, completed status, handoff markdown, draft PR packet,
-  story summary, outbox entry, and receipt trail.
-- Evidence bar: every spec objective, file impact, validation command, and PR
-  claim must trace to the thread, repo snapshot, scafld state, or actual
-  working-tree change.
-- Coverage bar: code-change PRs must include targeted test/spec scope and an
-  executable validation command, or stop with missing evidence before PR
-  publication. A production-code fix bundle must not be code-only.
-- Story bar: public source-thread and PR surfaces should show the signal,
-  decision, scoped change, validation, review verdict, PR link, human
-  merge gate, and final provider outcome when observed without becoming a raw
-  execution log.
-- Stop conditions: return `needs_agent` when authoring evidence is
-  missing; return a blocked fix bundle only when no concrete repo-relative
-  target is declared, a required existing file cannot be read, or the requested
-  behavior cannot be inferred without inventing requirements.
 
 ## Spec Authoring Contract
 

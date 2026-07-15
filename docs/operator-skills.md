@@ -22,6 +22,20 @@ interface. The operator skill supplies judgment and governance:
 - hand off to the existing command, workflow, API, or skill runner;
 - verify the outside world after execution.
 
+## State Ownership
+
+Operator and domain skill state is local unless the operator explicitly binds a
+hosted data source. Use the provider-neutral `data-store` skill with a stable
+logical ref. An unbound `local://...` ref resolves to durable SQLite under
+`.runx/data/local-sources/`; changing to Postgres, Redis, D1, or another hosted
+store is a binding change, not a skill rewrite.
+
+Runx Connect has a separate job: OAuth, credential custody, capability grants,
+and provider execution. A skill may read Slack, GitHub, or another provider
+through Connect while retaining its queue, cursor, dispositions, and other
+operator state locally. Do not add a hosted projection merely because the
+provider call is hosted.
+
 Do not reimplement CLI behavior inside a skill. If an operation is easier by
 shelling out directly, the skill should name that existing command or workflow
 as the deterministic execution step. If the command is awkward, fix the CLI.

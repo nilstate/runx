@@ -1,5 +1,5 @@
 skill: send-as
-version: "0.1.1"
+version: "0.1.3"
 catalog:
   kind: skill
   audience: public
@@ -15,6 +15,8 @@ runners:
       send_plan: object
     artifacts:
       named_emits:
+        send_plan: send_plan
+      packets:
         send_plan: runx.send_as.plan.v1
     runx:
       category: ops
@@ -22,7 +24,7 @@ runners:
       objective:
         type: string
         required: true
-        description: Bounded send or delivery objective.
+        description: Bounded send-planning or authorization objective; provider delivery is outside this runner.
       principal:
         type: string
         required: true

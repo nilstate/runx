@@ -546,6 +546,8 @@ jobs:
             echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Skipping winget publish because WINGET_TOKEN is not configured."
           fi
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.publish == 'true'
       - name: Download rendered manifests
         if: steps.gate.outputs.publish == 'true'
         uses: actions/download-artifact@v8

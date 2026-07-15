@@ -81,7 +81,7 @@ harness:
                 context_from: []
                 description: Gather the release-notes evidence pack.
               - id: draft
-                skill: ../draft-content
+                skill: ../ghostwrite
                 scopes:
                   - runx:content:draft
                 mutating: false
@@ -92,7 +92,7 @@ harness:
             required_skills:
               - name: research
                 exists: true
-              - name: draft-content
+              - name: ghostwrite
                 exists: true
             open_questions: []
           agent_task.prior-art.output:
@@ -104,8 +104,14 @@ harness:
             catalog_fit:
               adjacent_skills:
                 - release
-                - draft-content
+                - ghostwrite
               why_new: The current catalog lacks a dedicated release-notes skill that turns a bounded release diff into a governed review packet.
+            quality_bar:
+              audience: runx skill maintainers
+              artifact: A reviewable release-notes skill proposal.
+              evidence: Ground the design in the existing release skill contract.
+              stop_conditions:
+                - Stop if the proposal duplicates release publication authority.
             recommended_flow:
               - step: plan
                 rationale: Bound the release-notes scope before authoring.
@@ -128,7 +134,7 @@ harness:
             catalog_fit:
               adjacent_skills:
                 - release
-                - draft-content
+                - ghostwrite
               why_new: The release graph owns governed publishing, while this proposal adds a narrower first-party release-notes capability focused on reviewable notes generation.
             maintainer_decisions:
               - question: Should the first version stop at notes generation and review?
@@ -156,7 +162,7 @@ harness:
             acceptance_checks:
               - release-notes produces a reviewable draft from a bounded release diff
               - release-notes requires approval before packaging
-          agent_task.draft-content-draft.output:
+          agent_task.ghostwrite-draft.output:
             content_brief:
               angle: maintainer skill proposal
               audience: maintainers
@@ -172,7 +178,7 @@ harness:
               - confirm the proposal stays portable and repo-grounded
             distribution_notes:
               primary_channel: skill-proposal
-          agent_task.draft-content-package.output:
+          agent_task.ghostwrite-package.output:
             publish_packet:
               channel: skill-proposal
               headline: release-notes skill proposal
@@ -198,7 +204,7 @@ harness:
     - name: skill-lab-needs-objective
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
   skill-lab:
@@ -259,7 +265,7 @@ runners:
             decomposition: decompose.work_plan.data
             research: research.prior_art_report.data
         - id: draft-proposal
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: draft
           scopes:
             - runx:content:draft
@@ -280,7 +286,7 @@ runners:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
         - id: package-proposal
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: package
           scopes:
             - runx:content:package

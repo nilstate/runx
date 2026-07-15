@@ -6,6 +6,12 @@
   "properties": {
     "effect_family": { "type": "string", "minLength": 1 },
     "operation": { "type": "string", "minLength": 1 },
+    "expected_version": { "type": "integer", "minimum": 0 },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "event": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "actor_kid": { "type": "string" },
     "moderator_kid": { "type": "string" },
     "posting_id": { "type": "string" },

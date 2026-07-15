@@ -1,0 +1,37 @@
+name: execute-replay-skips
+kind: skill
+target: ..
+runner: execute
+inputs:
+  plan_json:
+    decision: ready
+    objective: Delete two zero-engagement posts.
+    principal: account:@example
+    acts:
+      - act_id: act-001
+        kind: delete_post
+        params: { post_id: "1001" }
+        consequence: live_mutation
+        rationale: Zero engagement, matches the prune criteria.
+      - act_id: act-002
+        kind: delete_post
+        params: { post_id: "1002" }
+        consequence: live_mutation
+        rationale: Zero engagement, matches the prune criteria.
+    gates:
+      human_approval_required: true
+      approval_ref: approval:granted
+  already_executed_act_ids:
+    - act-001
+    - act-002
+caller:
+  approvals:
+    twitter.execute.approval: true
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: twitter
+  source_case: execute-replay-skips
+  source: skills-fixture

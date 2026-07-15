@@ -29,6 +29,7 @@ caller:
       original_receipt_link:
         receipt_ref: receipt:charge:stripe:paid-search-001
       settlement_family: stripe
+      open_questions: []
     agent_task.refund-reserve.output:
       payment_decision:
         decision_id: decision_refund_demo_001
@@ -47,6 +48,7 @@ caller:
       approval:
         required: false
         status: not_required
+      open_questions: []
     agent_task.settlement.output:
       refund_closure:
         status: refunded

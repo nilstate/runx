@@ -46,6 +46,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-oss-checks-
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        # verify:fast builds the debug runx + fixture-oracle binaries; without this
+        # cache the whole dependency tree recompiles cold on every run.
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -82,6 +92,16 @@ jobs:
           key: ${{ runner.os }}-oss-checks-${{ hashFiles('pnpm-lock.yaml', 'package.json', 'tsconfig*.json', 'packages/**/tsconfig.json', 'packages/**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-oss-checks-
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        # test:heavy:graph builds the debug runx binary via test-workspace.mjs;
+        # without this cache the whole dependency tree recompiles cold on every run.
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -139,8 +159,8 @@ jobs:
           cargo fmt --all --check
           cargo clippy --workspace --all-targets --all-features -- -D warnings
           cargo nextest run --workspace --all-features --no-fail-fast
-          # nextest does not run doctests; keep this gated (currently zero doctests)
-          # so an added doctest cannot slip through uncovered.
+          # nextest does not run doctests; runx-contracts (fingerprint), runx-parser
+          # (yaml), and runx-sdk (command) carry doctests, so keep this gated.
           cargo test --workspace --all-features --doc
           cargo package -p runx-cli --list
 
@@ -149,7 +169,6 @@ jobs:
           node scripts/check-license-edges.mjs --check manifest-complete
           node scripts/check-license-edges.mjs --check identifiers
           cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node scripts/check-license-edges.mjs --check edges
-          cargo test --manifest-path crates/Cargo.toml -p runx-runtime --all-features --test integration -- license_boundary
 
       - name: Cargo policy
         run: cargo deny --manifest-path crates/Cargo.toml check bans licenses sources
@@ -189,6 +208,19 @@ jobs:
           RUNX="$GITHUB_WORKSPACE/crates/target/debug/runx"
           "$RUNX" new authoring-smoke --directory "$RUNNER_TEMP/authoring-smoke"
           "$RUNX" harness "$RUNNER_TEMP/authoring-smoke" --json
+      - name: Catalog harness sweep
+        # Gate every official skill's declared harness. Reds the build the moment
+        # a catalog case regresses, so a mis-authored fixture can never silently
+        # rot again. --require floors the passing count; any unallowed failure
+        # fails the gate. Add --allow <skill> only for a genuinely flaky case.
+        env:
+          RUNX_RECEIPT_SIGN_KID: ci-authoring-smoke
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          set -euo pipefail
+          node scripts/harness-sweep.mjs \
+            --runx-bin crates/target/debug/runx --no-build --require 79
 
   checks:
     runs-on: ubuntu-latest

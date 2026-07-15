@@ -27,7 +27,8 @@ existing local credential flags:
 ```bash
 RUNX_N8N_WEBHOOK_TOKEN=replace-me \
   runx skill ./examples/orchestrator-webhooks --json \
-  --credential orchestrator:bearer:RUNX_N8N_WEBHOOK_TOKEN:orchestrator.n8n.workflow.invoke \
+  --credential orchestrator:bearer:RUNX_N8N_WEBHOOK_TOKEN \
+  --credential-scope orchestrator.n8n.workflow.invoke \
   --secret-env RUNX_N8N_WEBHOOK_TOKEN \
   --event-id n8n-demo-001 \
   --source runx \

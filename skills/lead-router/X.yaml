@@ -18,6 +18,10 @@ harness:
             - visited pricing twice this week
         principal: account:growth-bot
         objective: Offer a deliverability review to a qualified mid-market lead.
+        provider_context:
+          name: example-email
+          account_ref: provider-account:growth
+          runtime_path: email.send
       caller:
         answers:
           agent_task.lead-qualify.output:
@@ -31,6 +35,10 @@ harness:
               principal:
                 type: account
                 ref: account:growth-bot
+              provider:
+                name: example-email
+                account_ref: provider-account:growth
+                runtime_path: email.send
               send_class: outreach
               channel: email
               audience:
@@ -39,11 +47,21 @@ harness:
                 requires_reconfirmation: false
               content:
                 draft_ref: draft:deliverability-review-offer
+                digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
                 subject_or_title: A quick deliverability review for your team
               gates:
                 preflight_required: true
                 human_approval_required: true
+                approval_ref: approval:pending
               blockers: []
+              provider_actions:
+                - email.send
+              evidence_refs:
+                - lead:acct_4821
+                - provider-context:example-email
+              success_checkpoint:
+                milestone: outreach_ready_for_approval
+                description: A provider-bound outreach plan is ready for preflight and explicit approval.
       expect:
         status: sealed
         receipt:
@@ -52,7 +70,7 @@ harness:
     - name: lead-router-needs-lead
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
   lead-router:
@@ -71,6 +89,10 @@ runners:
         type: string
         required: false
         description: "What the outreach should accomplish."
+      provider_context:
+        type: json
+        required: false
+        description: "Provider account and runtime path available for any planned outreach."
       operator_context:
         type: string
         required: false

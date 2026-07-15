@@ -26,24 +26,10 @@ governed remediation lane. Use `work-plan` for larger or multi-step
 work. Use `reply-only` when the right answer is guidance rather than mutation.
 Use `manual-review` when the report is ambiguous, risky, or missing key context.
 
-## Quality Profile
-
-- Purpose: convert a noisy inbound request into one explicit, governed next
-  lane or a clean stop.
-- Audience: the maintainer supervising the queue and the downstream lane that
-  must share the same parent change artifact.
-- Artifact contract: `intake_report`, `change_set`, and exactly one downstream
-  request shape when planning or build is justified.
-- Evidence bar: ground severity, category, and routing in the request text,
-  visible context, and product constraints. Missing context must appear in
-  `operator_notes`, not as invented certainty.
-- Voice bar: concise maintainer handoff. The suggested reply should sound like
-  the project owner, not a ticket macro.
-- Strategic bar: prefer the smallest lane that moves the issue forward while
-  preserving trust boundaries and visible review.
-- Stop conditions: use `hold`, `needs_human`, `manual-review`, or
-  `request_review` when the request is too broad, risky, under-specified, or
-  low-value for immediate work.
+Ground category, severity, and routing in the visible request and supplied
+product constraints. Put uncertainty in `operator_notes` instead of inventing
+confidence. The suggested reply should sound like the project owner and lead
+with the decision or next action, not read like a ticket macro.
 
 ## Output Contract
 
@@ -95,9 +81,10 @@ dedupe fingerprint, evidence references, and source-thread preview. This packet
 is the portable world-before-action state that `work-plan`, `issue-to-pr`,
 hosted queues, and source-thread projections preserve.
 
-Also emit `decision` when a next lane is selected. `decision` must follow
-`runx.decision.v1` and carry the accountable open, defer, decline, or monitor
-choice, the proposed intent, and the justification for the next harness action.
+Close the Runx turn after intake is complete with terminal `closure` control
+metadata: a disposition, stable reason code, and concise summary. Closure is
+receipt control state, not part of the issue-intake artifact, and must not
+pretend the recommended downstream lane has already executed.
 
 When an adapter has provider context beyond the visible thread text, attach it
 to `signal.evidence_refs` or a referenced artifact. Source adapters own

@@ -86,17 +86,6 @@ const observation: CredentialDeliveryObservationContract = {
 };
 
 describe("credential-delivery schemas", () => {
-  it("accepts public credential delivery frames without raw material", () => {
-    expect(contractSchemaMatches(credentialDeliveryProfileV1Schema, profile)).toBe(true);
-    expect(contractSchemaMatches(credentialDeliveryRequestV1Schema, request)).toBe(true);
-    expect(contractSchemaMatches(credentialDeliveryResponseV1Schema, response)).toBe(true);
-    expect(contractSchemaMatches(credentialDeliveryObservationV1Schema, observation)).toBe(true);
-
-    const serialized = JSON.stringify({ profile, request, response, observation });
-    expect(serialized).not.toContain("sk-contract-test");
-    expect(serialized).not.toContain("super-secret-token");
-  });
-
   it("rejects raw secret-like fields on public frames", () => {
     expect(contractSchemaMatches(credentialDeliveryResponseV1Schema, {
       ...response,

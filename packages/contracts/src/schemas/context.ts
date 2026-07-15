@@ -45,17 +45,6 @@ export const contextSchema = Type.Object(
 
 export type ContextContract = DeepReadonly<Static<typeof contextSchema>>;
 
-export const qualityProfileContextSchema = Type.Object(
-  {
-    source: Type.Literal("SKILL.md#quality-profile"),
-    sha256: Type.String({ minLength: 1 }),
-    content: Type.String(),
-  },
-  { additionalProperties: false },
-);
-
-export type QualityProfileContextContract = DeepReadonly<Static<typeof qualityProfileContextSchema>>;
-
 export const executionLocationSchema = Type.Object(
   {
     skill_directory: Type.String({ minLength: 1 }),
@@ -79,7 +68,6 @@ const agentContextEnvelopeTypeSchema = Type.Object(
     provenance: Type.Array(agentContextProvenanceSchema),
     context: Type.Optional(contextSchema),
     voice_profile: Type.Optional(contextDocumentSchema),
-    quality_profile: Type.Optional(qualityProfileContextSchema),
     execution_location: Type.Optional(executionLocationSchema),
     output: Type.Optional(outputSchema),
     trust_boundary: Type.String({ minLength: 1 }),

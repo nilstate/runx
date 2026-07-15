@@ -5,6 +5,8 @@ use runx_contracts::{
     ThreadOutboxProviderPush,
 };
 
+use crate::fixture_support::roundtrip;
+
 const FIXTURES: &[&str] = &[
     include_str!("../../../fixtures/contracts/thread-outbox-provider/fetch.json"),
     include_str!("../../../fixtures/contracts/thread-outbox-provider/manifest.json"),
@@ -107,16 +109,6 @@ fn assert_roundtrip(fixture: Fixture) -> Result<(), serde_json::Error> {
         FixtureKind::Observation => roundtrip::<ThreadOutboxProviderObservation>(fixture.expected),
         FixtureKind::Push => roundtrip::<ThreadOutboxProviderPush>(fixture.expected),
     }
-}
-
-fn roundtrip<T>(expected: serde_json::Value) -> Result<(), serde_json::Error>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    let parsed: T = serde_json::from_value(expected.clone())?;
-    let actual = serde_json::to_value(parsed)?;
-    assert_eq!(actual, expected);
-    Ok(())
 }
 
 fn remove_object_field(

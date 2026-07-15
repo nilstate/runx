@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/ledger_answer/v1.json",
+  "x-runx-packet-id": "runx.ledger_answer.v1",
+  "x-runx-generated-from": "skills/ledger/X.yaml#root.runners.ledger",
+  "type": "object",
+  "required": [
+    "chain_verification",
+    "ledger_answer",
+    "matched_receipts",
+    "summary"
+  ],
+  "properties": {
+    "chain_verification": {
+      "type": "object"
+    },
+    "ledger_answer": {
+      "type": "object"
+    },
+    "matched_receipts": {
+      "type": "array"
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

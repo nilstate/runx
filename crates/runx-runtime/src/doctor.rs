@@ -11,31 +11,14 @@ use runx_receipts::canonical_stable_json;
 use serde::Deserialize;
 
 use crate::RuntimeError;
-use crate::filesystem::{read_dir_sorted, read_to_string};
+use crate::filesystem::{find_files_named, read_dir_sorted, read_to_string};
 use crate::path_util::{count_yaml_files, lexical_normalize, project_path};
 use crate::tool_catalogs::build::hash_tool_source;
 
 // rust-style-allow: large-file - this first doctor slice keeps parity checks and builders together until follow-up diagnostics add natural module boundaries.
 
-const FILE_BUDGETS: &[DoctorFileBudget] = &[
-    DoctorFileBudget {
-        path: "packages/cli/src/index.ts",
-        max_lines: 1000,
-    },
-    DoctorFileBudget {
-        path: "packages/cli/src/commands/doctor.ts",
-        max_lines: 950,
-    },
-];
-
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DoctorOptions;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct DoctorFileBudget {
-    path: &'static str,
-    max_lines: u64,
-}
 
 #[derive(Deserialize)]
 struct ToolManifestProbe {
@@ -52,7 +35,6 @@ pub fn run_doctor(root: &Path, options: &DoctorOptions) -> Result<DoctorReport, 
     let root = lexical_normalize(root);
 
     let mut diagnostics = Vec::new();
-    diagnostics.extend(discover_file_budget_diagnostics(&root)?);
     diagnostics.extend(discover_cross_package_reach_in_diagnostics(&root)?);
     diagnostics.extend(discover_tool_diagnostics(&root)?);
     diagnostics.extend(discover_skill_diagnostics(&root)?);
@@ -75,52 +57,6 @@ pub fn run_doctor(root: &Path, options: &DoctorOptions) -> Result<DoctorReport, 
         summary,
         diagnostics,
     })
-}
-
-fn discover_file_budget_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, RuntimeError> {
-    let mut diagnostics = Vec::new();
-    for budget in FILE_BUDGETS {
-        let file_path = root.join(budget.path);
-        if !file_path.exists() {
-            continue;
-        }
-        let contents = read_to_string(&file_path)?;
-        let line_count = count_file_lines(&contents);
-        if line_count <= budget.max_lines {
-            continue;
-        }
-        let target = object([
-            ("kind", string_value("workspace")),
-            ("ref", string_value(budget.path)),
-        ]);
-        let location = DoctorLocation {
-            path: budget.path.to_owned(),
-            json_pointer: None,
-        };
-        let evidence = object([
-            ("line_count", number_value(line_count)),
-            ("max_lines", number_value(budget.max_lines)),
-        ]);
-        diagnostics.push(create_diagnostic(DiagnosticParts {
-            id: "runx.structure.file_budget.exceeded",
-            severity: DoctorDiagnosticSeverity::Error,
-            title: "File exceeded structural line budget",
-            message: format!(
-                "{} is {} lines, above the enforced budget of {}.",
-                budget.path, line_count, budget.max_lines
-            ),
-            target,
-            location,
-            evidence: Some(evidence),
-            repairs: vec![manual_repair(
-                "split_file_along_real_boundary",
-                DoctorRepairConfidence::Medium,
-                DoctorRepairRisk::Low,
-                false,
-            )],
-        })?);
-    }
-    Ok(diagnostics)
 }
 
 // rust-style-allow: long-function - cross-package reach-in parity mirrors the TypeScript scanner in one read-only pass.
@@ -401,8 +337,13 @@ fn discover_skill_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runt
             )?);
             continue;
         }
-        let fixture_count = count_yaml_files(&skill_dir.join("fixtures"))?;
-        let harness_case_count = inline_harness_case_count(&contents);
+        let coverage_root = skill_coverage_root(root, &profile_path);
+        let fixture_count = count_yaml_files(&coverage_root.join("fixtures"))?;
+        let mut harness_case_count = inline_harness_case_count(&contents);
+        let package_profile = coverage_root.join("X.yaml");
+        if package_profile != profile_path && package_profile.is_file() {
+            harness_case_count += inline_harness_case_count(&read_to_string(&package_profile)?);
+        }
         if fixture_count == 0 && harness_case_count == 0 {
             diagnostics.push(skill_fixture_missing_diagnostic(
                 root,
@@ -414,6 +355,23 @@ fn discover_skill_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runt
         }
     }
     Ok(diagnostics)
+}
+
+fn skill_coverage_root(root: &Path, profile_path: &Path) -> PathBuf {
+    let skills_root = root.join("skills");
+    let Ok(relative) = profile_path.strip_prefix(&skills_root) else {
+        return profile_path.parent().unwrap_or(root).to_path_buf();
+    };
+    let components = relative.components().collect::<Vec<_>>();
+    let Some(graph_index) = components
+        .iter()
+        .position(|component| component.as_os_str() == "graph")
+    else {
+        return profile_path.parent().unwrap_or(root).to_path_buf();
+    };
+    components[..graph_index]
+        .iter()
+        .fold(skills_root, |path, component| path.join(component))
 }
 
 /// Parse and validate a skill execution profile (X.yaml) the same way the
@@ -638,15 +596,7 @@ fn discover_skill_profile_paths(root: &Path) -> Result<Vec<PathBuf>, RuntimeErro
     if root_profile.exists() {
         paths.push(root_profile);
     }
-    for skill_entry in read_dir_sorted(&root.join("skills"))? {
-        if !skill_entry.is_dir {
-            continue;
-        }
-        let profile_path = skill_entry.path.join("X.yaml");
-        if profile_path.exists() {
-            paths.push(profile_path);
-        }
-    }
+    paths.extend(find_files_named(&root.join("skills"), "X.yaml")?);
     paths.sort();
     Ok(paths)
 }
@@ -708,14 +658,6 @@ fn extract_import_specifiers(contents: &str) -> Vec<String> {
         }
     }
     specifiers
-}
-
-fn count_file_lines(contents: &str) -> u64 {
-    if contents.is_empty() {
-        0
-    } else {
-        contents.bytes().filter(|byte| *byte == b'\n').count() as u64
-    }
 }
 
 fn workspace_package_name(root: &Path, file_path: &Path) -> Option<String> {

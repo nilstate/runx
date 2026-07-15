@@ -18,7 +18,13 @@ const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
 
 #[test]
 fn agent_task_invocation_id_and_envelope_shape() -> Result<(), Box<dyn std::error::Error>> {
-    let resolver = RecordingResolver::success(JsonValue::String("done".to_owned()), None);
+    let resolver = RecordingResolver::success(
+        JsonValue::Object(BTreeMap::from([(
+            "result".to_owned(),
+            JsonValue::String("done".to_owned()),
+        )])),
+        None,
+    );
     let mut env = BTreeMap::new();
     env.insert(
         "RUNX_TOOL_ROOTS".to_owned(),
@@ -34,7 +40,10 @@ fn agent_task_invocation_id_and_envelope_shape() -> Result<(), Box<dyn std::erro
                 runx_parser::SourceKind::AgentStep,
                 Some("assistant"),
                 Some("draft release notes"),
-                None,
+                Some(BTreeMap::from([(
+                    "result".to_owned(),
+                    JsonValue::String("string".to_owned()),
+                )])),
             ),
             JsonObject::new(),
         )
@@ -87,7 +96,81 @@ fn agent_task_invocation_id_and_envelope_shape() -> Result<(), Box<dyn std::erro
 }
 
 #[test]
-fn agent_plain_text_success() -> Result<(), Box<dyn std::error::Error>> {
+fn agent_task_injects_skill_instructions_and_resolved_profiles()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let skills_dir = temp.path().join("skills");
+    let skill_dir = skills_dir.join("fixture");
+    std::fs::create_dir_all(&skill_dir)?;
+    std::fs::write(
+        skill_dir.join("SKILL.md"),
+        r#"---
+name: fixture-profiled-agent
+description: Profile injection fixture.
+---
+# Fixture
+
+Write one direct operator response.
+"#,
+    )?;
+    std::fs::write(
+        skills_dir.join("VOICE.md"),
+        "# Voice\n\nUse direct, concrete language.\n",
+    )?;
+    let resolver = RecordingResolver::success(
+        JsonValue::Object(BTreeMap::from([(
+            "result".to_owned(),
+            JsonValue::String("done".to_owned()),
+        )])),
+        None,
+    );
+    let mut request = invocation(
+        runx_parser::SourceKind::AgentStep,
+        "fixture.profiled",
+        source(
+            runx_parser::SourceKind::AgentStep,
+            Some("assistant"),
+            Some("profiled"),
+            Some(BTreeMap::from([(
+                "result".to_owned(),
+                JsonValue::String("string".to_owned()),
+            )])),
+        ),
+        JsonObject::new(),
+    );
+    request.skill_directory = skill_dir;
+    request.env.insert(
+        "RUNX_CWD".to_owned(),
+        temp.path().to_string_lossy().into_owned(),
+    );
+
+    let output = AgentAdapter::agent_task(config(), &resolver).invoke(request)?;
+    let requests = resolver.requests.borrow();
+    let ResolutionRequest::AgentAct { invocation, .. } = &requests[0] else {
+        return Err(std::io::Error::other("missing agent_act request").into());
+    };
+    assert!(
+        invocation
+            .envelope
+            .instructions
+            .contains("Write one direct operator response.")
+    );
+    let voice = invocation
+        .envelope
+        .voice_profile
+        .as_ref()
+        .ok_or_else(|| std::io::Error::other("missing voice profile"))?;
+    assert_eq!(voice.path.as_ref(), "VOICE.md");
+    assert!(voice.content.contains("direct, concrete language"));
+    assert_eq!(
+        output.metadata.get("voice_profile"),
+        Some(&JsonValue::String(voice.sha256.as_ref().to_owned()))
+    );
+    Ok(())
+}
+
+#[test]
+fn agent_declared_text_field_success() -> Result<(), Box<dyn std::error::Error>> {
     let telemetry = AgentExecutionTelemetry {
         rounds: Some(2),
         tool_calls: Some(1),
@@ -100,7 +183,10 @@ fn agent_plain_text_success() -> Result<(), Box<dyn std::error::Error>> {
         }]),
     };
     let resolver = RecordingResolver::success(
-        JsonValue::String("plain final answer".to_owned()),
+        JsonValue::Object(BTreeMap::from([(
+            "summary".to_owned(),
+            JsonValue::String("plain final answer".to_owned()),
+        )])),
         Some(telemetry),
     );
 
@@ -111,13 +197,16 @@ fn agent_plain_text_success() -> Result<(), Box<dyn std::error::Error>> {
             runx_parser::SourceKind::Agent,
             Some("assistant"),
             Some("summarize"),
-            None,
+            Some(BTreeMap::from([(
+                "summary".to_owned(),
+                JsonValue::String("string".to_owned()),
+            )])),
         ),
         JsonObject::new(),
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Success);
-    assert_eq!(output.stdout, "plain final answer");
+    assert_eq!(output.stdout, r#"{"summary":"plain final answer"}"#);
     assert_eq!(output.stderr, "");
     assert_eq!(output.exit_code, Some(0));
     let agent_runner = object_field(&output.metadata, "agent_runner")?;
@@ -200,7 +289,10 @@ fn provider_error_failure_sanitizes_stderr_and_metadata() -> Result<(), Box<dyn 
             runx_parser::SourceKind::AgentStep,
             Some("assistant"),
             Some("fail"),
-            None,
+            Some(BTreeMap::from([(
+                "result".to_owned(),
+                JsonValue::String("string".to_owned()),
+            )])),
         ),
         JsonObject::new(),
     ))?;

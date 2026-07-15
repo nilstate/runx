@@ -1,0 +1,35 @@
+skill: audit-receipt
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+runners:
+  audit:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: audit-receipt
+    outputs:
+      receipt_audit: object
+    artifacts:
+      wrap_as: receipt_audit_packet
+      packet: runx.receipt_audit.v1
+    inputs:
+      receipt_id:
+        type: string
+        required: false
+        description: The receipt id to audit.
+      receipt_summary:
+        type: string
+        required: false
+        description: Sanitized receipt or its proof/acts summary when the full receipt is unavailable.
+      granted_scopes:
+        type: json
+        required: false
+        description: The authority the run was granted, when not derivable from the receipt alone.
+      objective:
+        type: string
+        required: false
+        description: Operator intent that focuses the audit.

@@ -1,0 +1,57 @@
+skill: issue-to-pr-push-outbox
+version: "0.1.1"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: internal
+  role: canonical
+
+runners:
+  push:
+    default: true
+    type: graph
+    mutating: true
+    inputs:
+      thread:
+        type: json
+        required: true
+        description: Portable thread carrying the provider adapter and canonical locator.
+      outbox_entry:
+        type: json
+        required: true
+        description: Digest-bound outbox entry to publish or update.
+      draft_pull_request:
+        type: json
+        required: false
+        description: Draft pull-request packet when publishing a pull_request entry.
+      fixture:
+        type: string
+        required: false
+        description: Optional fixture or workspace fallback used by local adapters.
+      workspace_path:
+        type: string
+        required: false
+        description: Repository workspace for provider operations that require git context.
+      next_status:
+        type: string
+        required: false
+        default: published
+        description: Outbox status recorded after a successful provider push.
+    graph:
+      name: issue-to-pr-push-outbox
+      steps:
+        - id: provider-push
+          label: push one digest-bound outbox entry
+          skill: ./provider
+          scopes:
+            - thread:push
+          mutation: true
+          idempotency_key: thread-outbox-provider-push
+          inputs:
+            thread: $input.thread
+            outbox_entry: $input.outbox_entry
+            draft_pull_request: $input.draft_pull_request
+            fixture: $input.fixture
+            workspace_path: $input.workspace_path
+            next_status: $input.next_status

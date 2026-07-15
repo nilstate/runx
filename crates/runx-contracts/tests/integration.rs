@@ -11,6 +11,7 @@ mod doctor_fixtures;
 mod example_external_fixture;
 mod execution_fixtures;
 mod external_adapter_fixtures;
+mod fixture_support;
 mod harness_spine_fixtures;
 mod host_protocol_fixtures;
 mod operational_policy;

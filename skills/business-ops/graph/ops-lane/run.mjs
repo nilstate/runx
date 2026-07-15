@@ -190,9 +190,9 @@ const laneDetails = {
     gate: gate(false, null, null),
     handoff: handoff({
       interfaceName: "skill",
-      laneRef: "receipt-auditor | run-history-analyst | ledger",
+      laneRef: "audit-receipt | run-history | ledger",
       runnerRef: "verify",
-      commandHint: "runx skill receipt-auditor ...",
+      commandHint: "runx skill audit-receipt ...",
     }),
     evidence: evidence(
       ["graph receipt", "child receipt refs", "provider readbacks"],

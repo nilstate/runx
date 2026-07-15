@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/ops_desk/dispatch_decision/v1.json",
+  "x-runx-packet-id": "runx.ops_desk.dispatch_decision.v1",
+  "x-runx-generated-from": "skills/ops-desk/X.yaml#root.runners.advance",
+  "type": "object",
+  "required": [
+    "decision",
+    "reason"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string"
+    },
+    "dispatch": {
+      "type": "object"
+    },
+    "escalation": {
+      "type": "object"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "resolution": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

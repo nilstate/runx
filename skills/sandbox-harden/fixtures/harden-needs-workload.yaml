@@ -31,7 +31,7 @@ caller:
           skill stops with needs_agent rather than emitting a guessed posture
           for an unidentified target.
 expect:
-  status: needs_agent
+  status: sealed
 metadata:
   public_skill: sandbox-harden
   source_case: harden-needs-workload

@@ -23,7 +23,7 @@ inputs:
     last_action: reviewer approved the published docs update; projection shows docs current.
   candidate_roster:
     - { role: researcher, skill: research, scope: [web.read] }
-    - { role: writer, skill: draft-content, scope: [docs.write] }
+    - { role: writer, skill: ghostwrite, scope: [docs.write] }
     - { role: reviewer, skill: review-skill, scope: [docs.read] }
   scope_ref: docs:site
   approval_context:

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/support/triage_reply/v1.json",
+  "x-runx-packet-id": "runx.support.triage_reply.v1",
+  "x-runx-generated-from": "skills/helpdesk/X.yaml#root.runners.triage",
+  "type": "object",
+  "required": [
+    "classification",
+    "confidence",
+    "draft_email",
+    "evidence",
+    "recommended_path",
+    "send_gate",
+    "severity"
+  ],
+  "properties": {
+    "classification": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "draft_email": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "recommended_path": {
+      "type": "string"
+    },
+    "send_gate": {
+      "type": "object"
+    },
+    "severity": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

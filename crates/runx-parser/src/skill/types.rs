@@ -281,14 +281,11 @@ pub struct SkillArtifactContract {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub named_emits: Option<BTreeMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub packets: Option<BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub wrap_as: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillQualityProfile {
-    pub heading: String,
-    pub content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub packet: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -353,9 +350,6 @@ pub struct ValidatedSkill {
     pub mutating: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub artifacts: Option<SkillArtifactContract>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub quality_profile: Option<SkillQualityProfile>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub allowed_tools: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execution: Option<ExecutionSemantics>,

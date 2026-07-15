@@ -128,7 +128,8 @@ fn codex_global_writes_shim_and_idempotent_permission_block()
     assert!(shim.contains("name: visible"));
     assert!(!shim.contains("allowed-tools"));
     assert!(shim.contains("--objective \"<objective>\""));
-    assert!(shim.contains("RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64"));
+    assert!(shim.contains("local-development receipt identity"));
+    assert!(shim.contains("complete signer tuple"));
     assert!(shim.contains("If runx returns `status` `needs_agent`"));
     assert!(shim.contains("request.invocation.envelope"));
     assert!(shim.contains("allowed_tools"));
@@ -162,6 +163,32 @@ fn codex_global_writes_shim_and_idempotent_permission_block()
             .count(),
         1
     );
+    Ok(())
+}
+
+#[test]
+fn exports_namespaced_repo_skills_with_codex_safe_names() -> Result<(), Box<dyn std::error::Error>>
+{
+    let fixture = ExportFixture::new("runx-export-namespaced")?;
+    fixture.write_namespaced_skill("acme", "triage")?;
+
+    let report = run_export_command(
+        &ExportPlan {
+            target: Target::Codex,
+            refs: Vec::new(),
+            project: false,
+            json: false,
+        },
+        &fixture.project,
+        &fixture.env,
+    )?;
+
+    assert_eq!(report.exported.len(), 1);
+    assert_eq!(report.exported[0].skill, "acme-triage");
+    let shim = fixture.read_home_file(".codex/skills/acme-triage/SKILL.md")?;
+    assert!(shim.contains("name: acme-triage"));
+    assert!(shim.contains("skill /"));
+    assert!(shim.contains("skills/acme/triage"));
     Ok(())
 }
 
@@ -215,6 +242,8 @@ fn exports_default_runner_inputs_when_skill_frontmatter_has_none()
     assert!(shim.contains("--principal \"<principal>\""));
     assert!(shim.contains("- objective (required) - Bounded send objective."));
     assert!(shim.contains("- provider_context (optional) - Provider readiness."));
+    assert!(shim.contains("A planning runner seals a plan, not the downstream external action"));
+    assert!(!shim.contains("Do not perform the work yourself"));
     Ok(())
 }
 
@@ -473,6 +502,29 @@ impl ExportFixture {
     fn write_skill_with_runner_inputs(&self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let dir = self.project.join("skills").join(name);
         Self::write_runner_input_skill_at(&dir, name)
+    }
+
+    fn write_namespaced_skill(
+        &self,
+        owner: &str,
+        name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let declared_name = format!("{owner}/{name}");
+        let dir = self.project.join("skills").join(owner).join(name);
+        fs::create_dir_all(&dir)?;
+        fs::write(
+            dir.join("SKILL.md"),
+            format!(
+                "---\nname: {declared_name}\ndescription: Export {declared_name} through runx.\ninputs:\n  objective:\n    type: string\n    required: true\n    description: Work to perform.\n---\n# {declared_name}\n"
+            ),
+        )?;
+        fs::write(
+            dir.join("X.yaml"),
+            format!(
+                "skill: {declared_name}\ncatalog:\n  kind: skill\n  audience: operator\n  visibility: public\n  role: canonical\nrunners:\n  default:\n    default: true\n    type: agent-task\n    agent: reviewer\n    task: {name}\n"
+            ),
+        )?;
+        Ok(())
     }
 
     fn write_official_skill_with_runner_inputs(

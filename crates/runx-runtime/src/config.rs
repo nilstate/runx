@@ -41,7 +41,11 @@ pub struct RunxAgentConfig {
 #[serde(deny_unknown_fields)]
 pub struct RunxPublicConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_base_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub api_token_ref: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub principal_id: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -146,15 +150,8 @@ pub fn resolve_path_from_user_input(
         return path.to_path_buf();
     }
     if prefer_existing {
-        for base in [
-            env.get("RUNX_CWD").map(PathBuf::from),
-            env.get("INIT_CWD").map(PathBuf::from),
-            find_runx_workspace_root(cwd),
-            Some(cwd.to_path_buf()),
-        ]
-        .into_iter()
-        .flatten()
-        {
+        let workspace = resolve_runx_workspace_base(env, cwd);
+        for base in [workspace, absolute_cwd(cwd)] {
             let candidate = base.join(path);
             if candidate.exists() {
                 return candidate;
@@ -441,16 +438,37 @@ fn random_config_secret_bytes() -> Result<[u8; 32], ConfigError> {
 
 pub fn resolve_runx_workspace_base(env: &BTreeMap<String, String>, cwd: &Path) -> PathBuf {
     env.get("RUNX_CWD")
-        .map(PathBuf::from)
-        .or_else(|| find_runx_workspace_root(cwd))
-        .or_else(|| env.get("INIT_CWD").map(PathBuf::from))
-        .unwrap_or_else(|| cwd.to_path_buf())
+        .map(|path| resolve_base_path(path, cwd))
+        .or_else(|| env.get("INIT_CWD").map(|path| resolve_base_path(path, cwd)))
+        .or_else(|| find_runx_workspace_root(&absolute_cwd(cwd)))
+        .unwrap_or_else(|| absolute_cwd(cwd))
+}
+
+fn resolve_base_path(path: &str, cwd: &Path) -> PathBuf {
+    let path = PathBuf::from(path);
+    if path.is_absolute() {
+        path
+    } else {
+        absolute_cwd(cwd).join(path)
+    }
+}
+
+fn absolute_cwd(cwd: &Path) -> PathBuf {
+    if cwd.is_absolute() {
+        cwd.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map(|current| current.join(cwd))
+            .unwrap_or_else(|_| cwd.to_path_buf())
+    }
 }
 
 fn find_runx_workspace_root(start: &Path) -> Option<PathBuf> {
     let mut current = start.to_path_buf();
     loop {
-        if current.join("pnpm-workspace.yaml").exists() {
+        if current.join("pnpm-workspace.yaml").exists()
+            || current.join(".runx").join("project.json").exists()
+        {
             return Some(current);
         }
         if !current.pop() {

@@ -17,14 +17,6 @@ export const workspaceAliases: readonly WorkspaceAlias[] = [
     replacement: workspacePath("packages/authoring/src/index.ts"),
   },
   {
-    find: /^@runxhq\/cli$/,
-    replacement: workspacePath("packages/cli/src/index.ts"),
-  },
-  {
-    find: /^@runxhq\/cli\/metadata$/,
-    replacement: workspacePath("packages/cli/src/metadata.ts"),
-  },
-  {
     find: /^@runxhq\/contracts$/,
     replacement: workspacePath("packages/contracts/src/index.ts"),
   },

@@ -57,17 +57,12 @@ pub(super) fn resolve_cwd_value(
 pub(super) fn workspace_cwd(
     env: &BTreeMap<String, String>,
 ) -> Result<Option<PathBuf>, RuntimeError> {
-    let Some(path) = env.get(RUNX_CWD_ENV).or_else(|| env.get(INIT_CWD_ENV)) else {
+    if !env.contains_key(RUNX_CWD_ENV) && !env.contains_key(INIT_CWD_ENV) {
         return Ok(None);
-    };
-    let path = PathBuf::from(path);
-    if path.is_absolute() {
-        Ok(Some(path))
-    } else {
-        std::env::current_dir()
-            .map(|cwd| Some(cwd.join(path)))
-            .map_err(|source| RuntimeError::io("resolving relative workspace cwd", source))
     }
+    let cwd = std::env::current_dir()
+        .map_err(|source| RuntimeError::io("resolving workspace cwd", source))?;
+    Ok(Some(crate::config::resolve_runx_workspace_base(env, &cwd)))
 }
 
 pub(super) fn resolve_path(base: &Path, path: &str) -> PathBuf {

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/nitrosend/flow/v1.json",
+  "x-runx-packet-id": "nitrosend.flow.v1",
+  "x-runx-generated-from": "skills/nitrosend/X.yaml#root.runners.build-flow",
+  "type": "object",
+  "required": [
+    "flow_plan"
+  ],
+  "properties": {
+    "flow_plan": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -83,19 +83,44 @@ impl RuntimeOptions {
         safe_default_env()
     }
 
-    pub fn from_env(mut env: BTreeMap<String, String>) -> Result<Self, RuntimeError> {
+    pub fn from_env(env: BTreeMap<String, String>) -> Result<Self, RuntimeError> {
         let receipt_services =
             ReceiptServices::from_env(&env).map_err(|error| RuntimeError::ReceiptInvalid {
                 message: error.to_string(),
             })?;
+        Ok(Self::from_env_and_signature(
+            env,
+            receipt_services.signature_config().clone(),
+        ))
+    }
+
+    pub fn from_env_or_local_development(
+        env: BTreeMap<String, String>,
+    ) -> Result<Self, RuntimeError> {
+        let receipt_services =
+            ReceiptServices::from_env_or_local_development(&env).map_err(|error| {
+                RuntimeError::ReceiptInvalid {
+                    message: error.to_string(),
+                }
+            })?;
+        Ok(Self::from_env_and_signature(
+            env,
+            receipt_services.signature_config().clone(),
+        ))
+    }
+
+    fn from_env_and_signature(
+        mut env: BTreeMap<String, String>,
+        receipt_signature: RuntimeReceiptSignatureConfig,
+    ) -> Self {
         strip_receipt_signing_env(&mut env);
-        Ok(Self {
+        Self {
             created_at: crate::time::now_iso8601(),
             env,
-            receipt_signature: receipt_services.signature_config().clone(),
+            receipt_signature,
             effects: RuntimeEffectRegistry::default(),
             credential_delivery: crate::credentials::CredentialDelivery::none(),
-        })
+        }
     }
 
     #[must_use]
@@ -611,23 +636,19 @@ mod tests {
     #[test]
     fn safe_default_env_preserves_local_operator_allowlisted_env() {
         let env = safe_default_env_from(|key| match key {
-            RUNX_LOCAL_ENV_ALLOWLIST_ENV => Some(
-                "NITROSEND_API_KEY,NITROSEND_ADMIN_API_KEY RUNX_RECEIPT_SIGN_SECRET bad-key"
-                    .to_owned(),
-            ),
-            "NITROSEND_API_KEY" => Some("nskey_live_test".to_owned()),
-            "NITROSEND_ADMIN_API_KEY" => Some("nskey_live_admin".to_owned()),
+            RUNX_LOCAL_ENV_ALLOWLIST_ENV => {
+                Some("ACME_API_KEY,ACME_ADMIN_API_KEY RUNX_RECEIPT_SIGN_SECRET bad-key".to_owned())
+            }
+            "ACME_API_KEY" => Some("acme_test".to_owned()),
+            "ACME_ADMIN_API_KEY" => Some("acme_admin".to_owned()),
             "RUNX_RECEIPT_SIGN_SECRET" => Some("secret".to_owned()),
             _ => None,
         });
 
+        assert_eq!(env.get("ACME_API_KEY"), Some(&"acme_test".to_owned()));
         assert_eq!(
-            env.get("NITROSEND_API_KEY"),
-            Some(&"nskey_live_test".to_owned())
-        );
-        assert_eq!(
-            env.get("NITROSEND_ADMIN_API_KEY"),
-            Some(&"nskey_live_admin".to_owned())
+            env.get("ACME_ADMIN_API_KEY"),
+            Some(&"acme_admin".to_owned())
         );
         assert!(!env.contains_key("RUNX_RECEIPT_SIGN_SECRET"));
         assert!(!env.contains_key("bad-key"));

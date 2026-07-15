@@ -14,23 +14,12 @@ and advisory drafting. It is not a license to run arbitrary destructive scans.
 Keep the output practical: what is affected, how serious it is, what to do
 next, and whether a public advisory is justified.
 
-## Quality Profile
-
-- Purpose: turn one bounded dependency or ecosystem risk surface into a
-  remediation and advisory decision.
-- Audience: maintainers, operators, and affected users who need clear risk and
-  next steps.
-- Artifact contract: inventory, advisories, remediation plan, operator summary,
-  advisory draft, maintainer summary, and disclosure checklist as appropriate.
-- Evidence bar: cite package data, versions, advisories, scan output, commits,
-  or public references. Separate confirmed exposure from possible risk.
-- Voice bar: calm security writing. No alarmism, no vague severity claims, and
-  no public advisory language unless disclosure evidence supports it.
-- Strategic bar: help the operator decide whether to patch, disclose, monitor,
-  escalate, or stop.
-- Stop conditions: return `needs_more_evidence`, `needs_human`, or
-  `do_not_publish_advisory` when exposure, affected versions, or disclosure
-  posture cannot be verified.
+Cite package data, versions, advisories, scan output, commits, or other concrete
+evidence for every exposure claim. Separate confirmed exposure from possible
+risk and write calmly: no vague severity, alarmism, or public disclosure claim
+without evidence and authorization. Return `needs_more_evidence`,
+`needs_human`, or `do_not_publish_advisory` when affected versions, exposure,
+remediation, or disclosure posture cannot be verified.
 
 ## Output
 

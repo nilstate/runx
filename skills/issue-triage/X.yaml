@@ -73,8 +73,6 @@ harness:
         receipt:
           schema: runx.receipt.v1
 runners:
-  agent:
-    type: agent
   discover:
     type: agent-task
     agent: researcher

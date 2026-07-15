@@ -1,0 +1,16 @@
+name: read-archive-audit
+kind: skill
+target: ..
+runner: read
+inputs:
+  query: posts
+  archive_file: fixtures/data/archive-tweets.js
+  max_items: 10
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: twitter
+  source_case: read-archive-audit
+  source: skills-fixture

@@ -1001,8 +1001,16 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0")?;
         let address = listener.local_addr()?;
         let server = std::thread::spawn(move || -> Result<(), std::io::Error> {
-            let (_stream, _) = listener.accept()?;
-            std::thread::sleep(Duration::from_millis(500));
+            // Stall without ever responding until the client's timeout fires
+            // and it drops the connection (read observes EOF or reset), rather
+            // than sleeping a fixed window longer than the timeout under test.
+            let (mut stream, _) = listener.accept()?;
+            let mut buffer = [0_u8; 1024];
+            while let Ok(read) = stream.read(&mut buffer) {
+                if read == 0 {
+                    break;
+                }
+            }
             Ok(())
         });
 

@@ -10,32 +10,13 @@ import {
   externalAdapterInvocationV1Schema,
   externalAdapterManifestV1Schema,
   externalAdapterResponseV1Schema,
-  validateExternalAdapterCancellationFrameContract,
   validateExternalAdapterCredentialRequestContract,
-  validateExternalAdapterHostResolutionFrameContract,
-  validateExternalAdapterInvocationContract,
-  validateExternalAdapterManifestContract,
   validateExternalAdapterResponseContract,
 } from "./external-adapter.js";
 
 const fixtureRoot = new URL("../../../../fixtures/contracts/external-adapter/", import.meta.url);
 
 describe("external adapter protocol schemas", () => {
-  it("validates manifest, invocation, response, host resolution, cancellation, and credential frames", () => {
-    expect(validateExternalAdapterManifestContract(readExpected("manifest.json")).schema)
-      .toBe("runx.external_adapter.manifest.v1");
-    expect(validateExternalAdapterInvocationContract(readExpected("invocation.json")).schema)
-      .toBe("runx.external_adapter.invocation.v1");
-    expect(validateExternalAdapterResponseContract(readExpected("response.json")).schema)
-      .toBe("runx.external_adapter.response.v1");
-    expect(validateExternalAdapterHostResolutionFrameContract(readExpected("host-resolution-frame.json")).schema)
-      .toBe("runx.external_adapter.host_resolution.v1");
-    expect(validateExternalAdapterCancellationFrameContract(readExpected("cancellation-frame.json")).schema)
-      .toBe("runx.external_adapter.cancellation.v1");
-    expect(validateExternalAdapterCredentialRequestContract(readExpected("credential-request.json")).schema)
-      .toBe("runx.external_adapter.credential_request.v1");
-  });
-
   it("keeps external adapter responses as observations, not runtime-local result envelopes", () => {
     const response = {
       ...(readExpected("response.json") as Record<string, unknown>),

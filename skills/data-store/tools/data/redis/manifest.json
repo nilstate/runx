@@ -1,7 +1,7 @@
 {
   "schema": "runx.tool.manifest.v1",
   "name": "data.redis",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Redis event-store adapter for the provider-agnostic runx data operation envelope.",
   "source": {
     "type": "cli-tool",
@@ -12,7 +12,7 @@
     "operation": {
       "type": "string",
       "required": true,
-      "description": "append_event, read_events, or read_projection."
+      "description": "append_event, read_events, read_projection, or list_stream_heads."
     },
     "data_source_ref": {
       "type": "string",
@@ -32,7 +32,7 @@
     "key_prefix": {
       "type": "string",
       "required": false,
-      "description": "Redis key prefix for direct harness use. Prefer data_source_binding.key_prefix."
+      "description": "Redis key prefix for direct harness use. Redis Cluster bindings must include one safe hash tag, such as runx:{tenant-operator}. Prefer data_source_binding.key_prefix."
     },
     "resource": {
       "type": "string",
@@ -41,8 +41,8 @@
     },
     "aggregate_id": {
       "type": "string",
-      "required": true,
-      "description": "Stream or partition key."
+      "required": false,
+      "description": "Stream or partition key. Omit for list_stream_heads."
     },
     "expected_version": {
       "type": "number",
@@ -59,11 +59,31 @@
       "required": false,
       "description": "Domain event or transition packet for append_event."
     },
+    "observed_at": {
+      "type": "string",
+      "required": false,
+      "description": "Caller-observed ISO-8601 commit ordering time."
+    },
     "limit": {
       "type": "number",
       "required": false,
       "default": 50,
       "description": "Maximum events returned by read_events."
+    },
+    "after_version": {
+      "type": "number",
+      "required": false,
+      "description": "Return ascending read_events strictly after this version; omit for the latest tail."
+    },
+    "event_types": {
+      "type": "json",
+      "required": false,
+      "description": "Optional array of exact latest event types for list_stream_heads."
+    },
+    "cursor": {
+      "type": "string",
+      "required": false,
+      "description": "Opaque list_stream_heads cursor."
     }
   },
   "scopes": ["runx:data:read", "runx:data:append"],

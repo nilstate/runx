@@ -222,19 +222,34 @@ fn execute_mcp_server_graph(
         },
     );
     let mut host = McpServerHost::default();
-    let checkpoint = runtime.run_graph_until_steps_with_host(&graph_dir, &graph, 1, &mut host)?;
-    if let Some(request) = host.requests.first().cloned() {
-        return Ok(mcp_tool_result_from_host_result(
-            McpHostRunResult::NeedsAgent {
-                skill_name: execution.skill.name.clone(),
-                run_id: run_id.to_owned(),
-                request_count: 1,
-                runx: needs_agent_runx(&execution.skill.name, run_id, &[request])?,
-            },
-        ));
+    let checkpoint = match runtime.run_graph_until_steps_with_host(&graph_dir, &graph, 1, &mut host)
+    {
+        Ok(checkpoint) => checkpoint,
+        Err(RuntimeError::GraphBlocked { .. }) if !host.requests.is_empty() => {
+            return pending_mcp_graph_result(run_id, &execution.skill.name, &host.requests[0]);
+        }
+        Err(error) => return Err(error),
+    };
+    if let Some(request) = host.requests.first() {
+        return pending_mcp_graph_result(run_id, &execution.skill.name, request);
     }
     let run = runtime.resume_graph_with_host(&graph_dir, graph, checkpoint, &mut host)?;
     graph_run_mcp_result(&execution.skill.name, run_id, run)
+}
+
+fn pending_mcp_graph_result(
+    run_id: &str,
+    skill_name: &str,
+    request: &ResolutionRequest,
+) -> Result<McpToolResult, RuntimeError> {
+    Ok(mcp_tool_result_from_host_result(
+        McpHostRunResult::NeedsAgent {
+            skill_name: skill_name.to_owned(),
+            run_id: run_id.to_owned(),
+            request_count: 1,
+            runx: needs_agent_runx(skill_name, run_id, std::slice::from_ref(request))?,
+        },
+    ))
 }
 
 fn graph_run_mcp_result(

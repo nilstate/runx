@@ -16,6 +16,14 @@ runners:
     command: node
     args:
       - run.mjs
+    outputs:
+      turn_event: object
+      expected_version: integer
+      idempotency_key: string
+      agency_turn: object
+    artifacts:
+      wrap_as: turn_plan
+      packet: runx.agency.turn.v1
     inputs:
       decision:
         type: json

@@ -55,9 +55,7 @@ fn parses_publish_plan() -> Result<(), String> {
 }
 
 #[test]
-// rust-style-allow: long-function - this regression asserts endpoint and token
-// precedence in one table-shaped flow so the cases stay visually adjacent.
-fn resolves_publish_endpoint_and_token_precedence() -> Result<(), Box<dyn std::error::Error>> {
+fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile_dir()?;
     let mut env = BTreeMap::new();
     env.insert("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string());
@@ -77,28 +75,28 @@ fn resolves_publish_endpoint_and_token_precedence() -> Result<(), Box<dyn std::e
         json: false,
     };
 
-    assert_eq!(
-        resolve_public_api_base_url(&plan, &env),
-        "https://plan.runx.test"
-    );
-    assert_eq!(
-        resolve_publish_token(&plan, &env, &temp)?.as_deref(),
-        Some("plan-token")
-    );
+    let explicit = crate::public_api::ApiEnvironment::resolve(
+        plan.api_base_url.as_deref(),
+        plan.token.as_deref(),
+        &env,
+        &temp,
+    )?;
+    assert_eq!(explicit.base_url(), "https://plan.runx.test");
+    assert_eq!(explicit.require_token()?, "plan-token");
 
     let env_plan = PublishPlan {
         token: None,
         api_base_url: None,
         ..plan
     };
-    assert_eq!(
-        resolve_public_api_base_url(&env_plan, &env),
-        "https://env.runx.test"
-    );
-    assert_eq!(
-        resolve_publish_token(&env_plan, &env, &temp)?.as_deref(),
-        Some("public-token")
-    );
+    let from_env = crate::public_api::ApiEnvironment::resolve(
+        env_plan.api_base_url.as_deref(),
+        env_plan.token.as_deref(),
+        &env,
+        &temp,
+    )?;
+    assert_eq!(from_env.base_url(), "https://env.runx.test");
+    assert_eq!(from_env.require_token()?, "public-token");
 
     let empty_token_plan = PublishPlan {
         receipt_path: PathBuf::from("receipt.json"),
@@ -107,16 +105,22 @@ fn resolves_publish_endpoint_and_token_precedence() -> Result<(), Box<dyn std::e
         allow_local_api: false,
         json: false,
     };
-    assert_eq!(
-        resolve_publish_token(&empty_token_plan, &env, &temp)?.as_deref(),
-        Some("public-token")
-    );
+    let blank_explicit = crate::public_api::ApiEnvironment::resolve(
+        empty_token_plan.api_base_url.as_deref(),
+        empty_token_plan.token.as_deref(),
+        &env,
+        &temp,
+    )?;
+    assert_eq!(blank_explicit.require_token()?, "public-token");
 
     env.insert("RUNX_PUBLIC_API_TOKEN".to_owned(), " ".to_owned());
-    assert!(
-        resolve_publish_token(&empty_token_plan, &env, &temp)?.is_none(),
-        "a blank public token with no stored login token resolves to no token"
-    );
+    let blank = crate::public_api::ApiEnvironment::resolve(
+        empty_token_plan.api_base_url.as_deref(),
+        empty_token_plan.token.as_deref(),
+        &env,
+        &temp,
+    )?;
+    assert!(blank.require_token().is_err());
 
     let empty_url_plan = PublishPlan {
         receipt_path: PathBuf::from("receipt.json"),
@@ -125,8 +129,18 @@ fn resolves_publish_endpoint_and_token_precedence() -> Result<(), Box<dyn std::e
         allow_local_api: false,
         json: false,
     };
+    let isolated_env = BTreeMap::from([(
+        "RUNX_HOME".to_owned(),
+        temp.join("isolated").to_string_lossy().into_owned(),
+    )]);
     assert_eq!(
-        resolve_public_api_base_url(&empty_url_plan, &BTreeMap::new()),
+        crate::public_api::ApiEnvironment::resolve(
+            empty_url_plan.api_base_url.as_deref(),
+            None,
+            &isolated_env,
+            &temp,
+        )?
+        .base_url(),
         "https://api.runx.ai"
     );
     Ok(())
@@ -144,18 +158,44 @@ fn resolves_stored_public_api_token_after_explicit_sources()
         &temp,
     )?;
     runx_runtime::write_runx_config_file(&temp.join("config.json"), &config)?;
-    let plan = PublishPlan {
-        receipt_path: PathBuf::from("receipt.json"),
-        api_base_url: None,
-        token: None,
-        allow_local_api: false,
-        json: false,
-    };
+    let environment = crate::public_api::ApiEnvironment::resolve(None, None, &env, &temp)?;
+    assert_eq!(environment.require_token()?, "stored-token");
 
-    assert_eq!(
-        resolve_publish_token(&plan, &env, &temp)?.as_deref(),
-        Some("stored-token")
-    );
+    let mismatched = crate::public_api::ApiEnvironment::resolve(
+        Some("https://other.runx.test"),
+        None,
+        &env,
+        &temp,
+    )?;
+    assert!(mismatched.require_token().is_err());
+    Ok(())
+}
+
+#[test]
+fn unauthenticated_environment_does_not_load_stored_credentials()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile_dir()?;
+    let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
+    runx_runtime::write_runx_config_file(
+        &temp.join("config.json"),
+        &runx_runtime::RunxConfigFile {
+            agent: None,
+            public: Some(runx_runtime::RunxPublicConfig {
+                api_base_url: Some("https://stored.runx.test".to_owned()),
+                api_token_ref: Some("missing-encrypted-token".to_owned()),
+                principal_id: Some("stored-principal".to_owned()),
+            }),
+        },
+    )?;
+
+    let environment = crate::public_api::ApiEnvironment::resolve_unauthenticated(
+        Some("https://login.runx.test/"),
+        &env,
+        &temp,
+    )?;
+
+    assert_eq!(environment.base_url(), "https://login.runx.test");
+    assert!(environment.require_token().is_err());
     Ok(())
 }
 
@@ -178,7 +218,10 @@ fn parses_and_resolves_local_api_override() -> Result<(), String> {
         json: false,
     };
     let mut env = BTreeMap::new();
-    env.insert("RUNX_PUBLISH_ALLOW_LOCAL_API".to_owned(), "true".to_owned());
+    env.insert(
+        "RUNX_PUBLIC_API_ALLOW_PRIVATE_NETWORK".to_owned(),
+        "true".to_owned(),
+    );
     assert!(allow_local_api(&plan, &env));
     Ok(())
 }

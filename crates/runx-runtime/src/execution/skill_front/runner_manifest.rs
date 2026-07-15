@@ -15,19 +15,21 @@ use runx_parser::{
 use sha2::{Digest, Sha256};
 
 use crate::RuntimeError;
-use crate::adapter::SkillInvocation;
 #[cfg(feature = "cli-tool")]
-use crate::adapter::{SkillAdapter, SkillOutput};
+use crate::adapter::SkillAdapter;
+use crate::adapter::SkillInvocation;
 #[cfg(feature = "cli-tool")]
 use crate::adapters::cli_tool::CliToolAdapter;
 use crate::execution::orchestrator::SkillRunRequest;
+#[cfg(feature = "cli-tool")]
+use crate::receipts::StepSealClosure;
 use crate::services::{ReceiptServices, WorkspaceEnv};
 #[cfg(feature = "cli-tool")]
 use runx_contracts::ClosureDisposition;
 
 const RUNX_HOSTED_CREDENTIAL_HANDLES_JSON_ENV: &str = "RUNX_HOSTED_CREDENTIAL_HANDLES_JSON";
 
-pub(super) fn resolve_skill_dir(path: &Path) -> Result<PathBuf, SkillRunError> {
+pub(crate) fn resolve_skill_dir(path: &Path) -> Result<PathBuf, SkillRunError> {
     if path.is_dir() {
         return Ok(path.to_path_buf());
     }
@@ -43,7 +45,7 @@ pub(super) fn resolve_skill_dir(path: &Path) -> Result<PathBuf, SkillRunError> {
     )))
 }
 
-pub(super) fn load_runner_manifest(skill_dir: &Path) -> Result<SkillRunnerManifest, SkillRunError> {
+pub(crate) fn load_runner_manifest(skill_dir: &Path) -> Result<SkillRunnerManifest, SkillRunError> {
     let manifest_path = skill_dir.join("X.yaml");
     let raw = fs::read_to_string(&manifest_path).map_err(|source| {
         RuntimeError::io(format!("reading {}", manifest_path.display()), source)
@@ -54,7 +56,7 @@ pub(super) fn load_runner_manifest(skill_dir: &Path) -> Result<SkillRunnerManife
         .map_err(Into::into)
 }
 
-pub(super) fn selected_runner<'a>(
+pub(crate) fn selected_runner<'a>(
     manifest: &'a SkillRunnerManifest,
     requested: Option<&str>,
 ) -> Result<&'a SkillRunnerDefinition, SkillRunError> {
@@ -167,7 +169,7 @@ pub(super) fn execute_cli_tool_skill_run(
     let credential_observation = invocation.credential_delivery.public_observation().cloned();
     let mut output = CliToolAdapter.invoke(invocation)?;
     if let Some(observation) = &credential_observation {
-        record_credential_observation(&mut output, observation)?;
+        output.record_credential_observation(observation)?;
     }
     let disposition = if output.succeeded() {
         ClosureDisposition::Closed
@@ -178,10 +180,13 @@ pub(super) fn execute_cli_tool_skill_run(
         &run_id,
         runner,
         &output,
-        disposition.clone(),
-        format!("process_{}", disposition.label()),
-        format!("cli-tool {} completed", runner.name),
+        StepSealClosure {
+            reason_code: format!("process_{}", disposition.label()),
+            summary: format!("cli-tool {} completed", runner.name),
+            disposition,
+        },
         receipts.signature_config(),
+        workspace.env(),
     )?;
     write_skill_receipt(request, workspace, receipts, &receipt)?;
     Ok(JsonValue::Object(sealed_output(
@@ -218,28 +223,6 @@ pub(super) fn write_skill_receipt(
     receipts
         .write_local_receipt(receipt, &receipt_path)
         .map_err(Into::into)
-}
-
-/// Record the non-secret credential-delivery observation on the skill output so
-/// the sealed receipt carries an auditable trace that a credential was
-/// provisioned for the run. The observation contains no secret material.
-#[cfg(feature = "cli-tool")]
-fn record_credential_observation(
-    output: &mut SkillOutput,
-    observation: &runx_contracts::CredentialDeliveryObservation,
-) -> Result<(), SkillRunError> {
-    let value: JsonValue = serde_json::to_value(observation)
-        .and_then(serde_json::from_value)
-        .map_err(|error| {
-            SkillRunError::Invalid(format!(
-                "serializing credential delivery observation: {error}"
-            ))
-        })?;
-    output.metadata.insert(
-        crate::adapter::CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA.to_owned(),
-        JsonValue::Array(vec![value]),
-    );
-    Ok(())
 }
 
 #[cfg(feature = "cli-tool")]

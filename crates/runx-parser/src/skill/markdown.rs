@@ -5,7 +5,7 @@ use runx_contracts::{JsonObject, JsonValue};
 
 use crate::ParseError;
 
-use super::{RawSkillIr, SkillQualityProfile};
+use super::RawSkillIr;
 
 pub fn parse_skill_markdown(markdown: &str) -> Result<RawSkillIr, ParseError> {
     static SKILL_FRONTMATTER_PATTERN: OnceLock<Result<Regex, String>> = OnceLock::new();
@@ -39,13 +39,6 @@ pub fn parse_skill_markdown(markdown: &str) -> Result<RawSkillIr, ParseError> {
     })
 }
 
-pub fn extract_skill_quality_profile(body: &str) -> Option<SkillQualityProfile> {
-    extract_markdown_section(body, "Quality Profile", 2).map(|content| SkillQualityProfile {
-        heading: "Quality Profile".to_owned(),
-        content,
-    })
-}
-
 fn parse_yaml_object(source: &str, object_error: &str) -> Result<JsonObject, ParseError> {
     crate::assert_yaml_parity_subset("skill_frontmatter", source)?;
     let parsed: JsonValue =
@@ -70,40 +63,4 @@ fn capture_string(captures: &regex::Captures<'_>, index: usize) -> Result<String
             field: "skill".to_owned(),
             message: "Skill markdown must start with YAML frontmatter delimited by ---.".to_owned(),
         })
-}
-
-fn extract_markdown_section(body: &str, heading: &str, level: usize) -> Option<String> {
-    let heading_prefix = "#".repeat(level);
-    let boundary = "#".repeat(level + 1);
-    let lines = body.lines().collect::<Vec<_>>();
-    let start = lines.iter().position(|line| {
-        line.trim()
-            .eq_ignore_ascii_case(&format!("{heading_prefix} {heading}"))
-    })?;
-    let mut collected = Vec::new();
-    for line in lines.iter().skip(start + 1) {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with('#') && !trimmed.starts_with(&boundary) {
-            break;
-        }
-        collected.push(*line);
-    }
-    let content = trim_blank_lines(&collected).join("\n").trim().to_owned();
-    if content.is_empty() {
-        None
-    } else {
-        Some(content)
-    }
-}
-
-fn trim_blank_lines<'a>(lines: &'a [&'a str]) -> Vec<&'a str> {
-    let mut start = 0;
-    let mut end = lines.len();
-    while start < end && lines[start].trim().is_empty() {
-        start += 1;
-    }
-    while end > start && lines[end - 1].trim().is_empty() {
-        end -= 1;
-    }
-    lines[start..end].to_vec()
 }

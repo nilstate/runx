@@ -1,9 +1,10 @@
 use super::{
-    InlineHarnessReport, SkillRunError, SkillRunOverrides, execute_skill_run_with_overrides,
+    PackageHarnessReport, SkillRunError, SkillRunOverrides, execute_skill_run_with_overrides,
 };
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use runx_contracts::{JsonObject, JsonValue};
 use runx_parser::{HarnessCallerFixture, RunnerHarnessCase, SkillRunnerManifest};
@@ -11,8 +12,94 @@ use runx_parser::{HarnessCallerFixture, RunnerHarnessCase, SkillRunnerManifest};
 use crate::RuntimeError;
 use crate::effects::RuntimeEffectRegistry;
 use crate::execution::orchestrator::SkillRunRequest;
+use crate::execution::prepared_skill::missing_required_inputs;
 
 use super::runner_manifest::{load_runner_manifest, resolve_skill_dir, selected_runner};
+
+/// Run every harness case owned by a skill package: inline `harness.cases`
+/// plus conventional `fixtures/*.yaml` files. Discovery is deterministic and
+/// this is the single package entry point used by both the CLI and publishing.
+#[cfg(feature = "cli-tool")]
+pub(crate) fn run_package_harness_with_effects(
+    skill_path: &Path,
+    receipt_dir: Option<&Path>,
+    env: Option<&BTreeMap<String, String>>,
+    effects: &RuntimeEffectRegistry,
+) -> Result<PackageHarnessReport, SkillRunError> {
+    let skill_dir = resolve_skill_dir(skill_path)?;
+    let mut report = run_inline_harness_with_effects(&skill_dir, receipt_dir, env, effects)?;
+    let fixture_paths = conventional_fixture_paths(&skill_dir)?;
+    if fixture_paths.is_empty() {
+        return Ok(report);
+    }
+
+    let mut options = crate::execution::runner::RuntimeOptions::from_env_or_local_development(
+        env.cloned()
+            .unwrap_or_else(crate::services::process_env_snapshot),
+    )?;
+    options.created_at = crate::time::DEFAULT_CREATED_AT.to_owned();
+    options.effects = effects.clone();
+    for fixture_path in fixture_paths {
+        report.case_count += 1;
+        match crate::execution::harness::run_harness_fixture_with_adapter(
+            &fixture_path,
+            super::SkillRunGraphAdapter::default(),
+            options.clone(),
+        ) {
+            Ok(output) => {
+                if matches!(
+                    output.fixture.kind,
+                    crate::execution::harness::HarnessFixtureKind::Graph
+                ) {
+                    report.graph_case_count += 1;
+                }
+                report.case_names.push(output.fixture.name);
+                report.receipt_ids.push(output.receipt.id.to_string());
+            }
+            Err(error) => report
+                .assertion_errors
+                .push(format!("{}: {error}", fixture_path.display())),
+        }
+    }
+    report.assertion_error_count = report.assertion_errors.len();
+    report.status = if report.assertion_errors.is_empty() {
+        "passed"
+    } else {
+        "failed"
+    };
+    Ok(report)
+}
+
+#[cfg(feature = "cli-tool")]
+fn conventional_fixture_paths(skill_dir: &Path) -> Result<Vec<PathBuf>, SkillRunError> {
+    let fixtures_dir = skill_dir.join("fixtures");
+    let entries = match fs::read_dir(&fixtures_dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(source) => {
+            return Err(
+                RuntimeError::io(format!("reading {}", fixtures_dir.display()), source).into(),
+            );
+        }
+    };
+    let mut paths = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|source| {
+            RuntimeError::io(format!("reading {}", fixtures_dir.display()), source)
+        })?;
+        let path = entry.path();
+        if path.is_file()
+            && path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| matches!(extension, "yaml" | "yml"))
+        {
+            paths.push(path);
+        }
+    }
+    paths.sort();
+    Ok(paths)
+}
 
 /// Run a skill's declared inline harness and summarize it. Each declared case is
 /// run through the same path as `runx skill` (so a graph that blocks on an agent
@@ -25,14 +112,14 @@ pub(crate) fn run_inline_harness_with_effects(
     receipt_dir: Option<&Path>,
     env: Option<&BTreeMap<String, String>>,
     effects: &RuntimeEffectRegistry,
-) -> Result<InlineHarnessReport, SkillRunError> {
+) -> Result<PackageHarnessReport, SkillRunError> {
     let skill_dir = resolve_skill_dir(skill_path)?;
     let manifest = load_runner_manifest(&skill_dir)?;
     let Some(harness) = manifest.harness.as_ref() else {
-        return Ok(InlineHarnessReport::not_declared());
+        return Ok(PackageHarnessReport::not_declared());
     };
     if harness.cases.is_empty() {
-        return Ok(InlineHarnessReport::not_declared());
+        return Ok(PackageHarnessReport::not_declared());
     }
 
     let cwd = std::env::current_dir()
@@ -63,7 +150,7 @@ pub(crate) fn run_inline_harness_with_effects(
     } else {
         "failed"
     };
-    Ok(InlineHarnessReport {
+    Ok(PackageHarnessReport {
         assertion_error_count: assertion_errors.len(),
         status,
         case_count: harness.cases.len(),
@@ -89,10 +176,24 @@ fn run_inline_harness_case(
     cwd: &Path,
     effects: &RuntimeEffectRegistry,
 ) -> InlineHarnessCaseOutcome {
-    let is_graph = match selected_runner(manifest, case.runner.as_deref()) {
-        Ok(runner) => runner.source.source_type == runx_parser::SourceKind::Graph,
+    let runner = match selected_runner(manifest, case.runner.as_deref()) {
+        Ok(runner) => runner,
         Err(error) => return inline_harness_case_error(&case.name, error),
     };
+    let is_graph = runner.source.source_type == runx_parser::SourceKind::Graph;
+
+    // Enforce the required-input contract the real `runx skill` prepare stage
+    // applies. The harness executes directly, so without this a missing required
+    // input would seal an empty run instead of blocking, masking the failure.
+    let missing = missing_required_inputs(runner, &case.inputs);
+    if !missing.is_empty() {
+        return InlineHarnessCaseOutcome {
+            is_graph,
+            receipt_id: None,
+            assertion_error: inline_harness_status_error(case, "failure"),
+        };
+    }
+
     let request = inline_harness_case_request(skill_dir, receipt_dir, env, case, cwd);
     let overrides = SkillRunOverrides {
         runner: case.runner.clone(),
@@ -157,8 +258,11 @@ fn inline_harness_expectation_error(
     case: &RunnerHarnessCase,
     output: &JsonValue,
 ) -> Option<String> {
+    inline_harness_status_error(case, inline_harness_actual_status(output))
+}
+
+fn inline_harness_status_error(case: &RunnerHarnessCase, actual: &str) -> Option<String> {
     let expected = case.expect.status.as_deref()?;
-    let actual = inline_harness_actual_status(output);
     (actual != expected).then(|| format!("{}: expected status {expected}, got {actual}", case.name))
 }
 

@@ -1,0 +1,75 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "twitter.read",
+  "version": "0.1.0",
+  "description": "Read X (Twitter) account evidence from the live API or an archive export into the twitter evidence packet.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ],
+    "sandbox": {
+      "profile": "network",
+      "cwd_policy": "skill-directory",
+      "network": true,
+      "writable_paths": [],
+      "require_enforcement": false,
+      "env_allowlist": [
+        "TWITTER_USER_AUTH",
+        "TWITTER_BEARER_TOKEN"
+      ]
+    }
+  },
+  "inputs": {
+    "query": {
+      "type": "string",
+      "required": true,
+      "description": "Evidence query kind: snapshot, posts, mentions, search, following, or followers."
+    },
+    "params": {
+      "type": "json",
+      "required": false,
+      "description": "Query parameters: user_id, q (search text), pagination_token."
+    },
+    "archive_file": {
+      "type": "string",
+      "required": false,
+      "description": "Path to an X archive export file (tweets.js or following.js). When set, the read is offline and no API request is made."
+    },
+    "max_items": {
+      "type": "number",
+      "required": false,
+      "default": 200,
+      "description": "Maximum items collected across pages."
+    },
+    "auth": {
+      "type": "string",
+      "required": false,
+      "default": "user",
+      "description": "user (OAuth 1.0a user context) or app (bearer token)."
+    }
+  },
+  "scopes": [
+    "twitter:read"
+  ],
+  "runx": {
+    "artifacts": {
+      "named_emits": {
+        "twitter_evidence": "twitter.evidence.v1"
+      },
+      "wrap_as": "twitter_evidence"
+    }
+  },
+  "runtime": {
+    "command": "node",
+    "args": [
+      "./run.mjs"
+    ]
+  },
+  "output": {
+    "packet": "twitter.evidence.v1",
+    "wrap_as": "twitter_evidence"
+  },
+  "toolkit_version": "0.1.4"
+}

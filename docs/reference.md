@@ -307,9 +307,9 @@ tools/<namespace>/<tool>/
 artifacts:
 
 ```bash
-pnpm exec tsx packages/cli/src/index.ts tool build --all --json
-pnpm exec tsx packages/cli/src/index.ts dev --lane deterministic --json
-pnpm exec tsx packages/cli/src/index.ts dev --lane repo-integration --json
+runx tool build --all --json
+runx dev --lane deterministic --json
+runx dev --lane repo-integration --json
 ```
 
 `run.mjs` is intentionally checked in as the thin runtime shim that imports the
@@ -320,8 +320,8 @@ authored source. Do not hand-edit generated `manifest.json` or `run.mjs`.
 The official catalog is explicit about why each package is public:
 
 - canonical governed skills: `charge`, `dispute-respond`, `evolve`,
-  `improve-skill`, `least-privilege-auditor`, `overlay-generator`,
-  `policy-author`, `receipt-auditor`, `refund`, `ops-desk`, `send-as`, `spend`,
+  `improve-skill`, `least-privilege`, `overlay`,
+  `policy-author`, `audit-receipt`, `refund`, `ops-desk`, `send-as`, `spend`,
   `weather-forecast`
 - branded provider skills: `nitrosend`, `nws-weather-forecast`, `stripe-pay`,
   `x402-pay`

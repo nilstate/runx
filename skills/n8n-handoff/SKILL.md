@@ -14,29 +14,6 @@ This skill is for the outbound side of the n8n integration story. runx owns the
 policy decision, credential delivery, execution context, and receipt. n8n owns
 its workflow webhook, canvas, branching, fan-out, and downstream notifications.
 
-## Quality Profile
-
-- Purpose: create a professional runx-to-n8n handoff with explicit execution
-  context, receiver scope, audience, idempotency, and receipt expectations.
-- Audience: operators wiring self-hosted n8n today, and hosted connector
-  reviewers evaluating the same contract later.
-- Artifact contract: emit a `handoff_context` artifact in preflight and
-  `handoff_delivery` when the live webhook is called. The context artifact must
-  include platform, event id, idempotency key, handoff scope, handoff audience,
-  execution context, payload, receiver validation requirements, and receipt
-  expectations. Do not introduce a separate packet family unless lifecycle state
-  needs to move beyond the receipt.
-- Evidence bar: the handoff must name the caller/workflow or principal,
-  receiver audience, event id, and dedupe key. Missing or conflicting context is
-  a stop condition.
-- Voice bar: direct operator language; no generic automation claims and no
-  claims that n8n endorses or lists runx before that is true.
-- Strategic bar: prove orchestrator-to-orchestrator handoff while keeping
-  provider secrets in runx and using n8n only as the workflow surface.
-- Stop conditions: stop before the webhook call for missing origin context,
-  malformed event ids, audience/scope mismatches, loopback receiver URLs,
-  obvious raw credentials in payload/context, or missing bearer credential
-  delivery.
 
 ## Runners
 

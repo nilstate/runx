@@ -14,19 +14,18 @@ original charge receipt, reports remaining amount, settlement family, refund
 window, and prior refund references, and leaves authorization to reservation
 and future runtime enforcement.
 
-## Quality Profile
+Trace the refundable amount and family to the linked charge receipt and every
+known prior refund receipt. Never infer permission to cross settlement
+families. If the original receipt, family, requested amount, or prior-refund set
+is ambiguous, return `needs_agent` with open questions and reserve nothing.
 
-- Purpose: make refund eligibility legible before any refund authority is
-  reserved.
-- Audience: provider operators, approval reviewers, registry tooling, and
-  future refund runtime enforcement.
-- Artifact contract: `refund_quote`, `refundable_bounds`,
-  `original_receipt_link`, `settlement_family`, and `open_questions`.
-- Evidence bar: every refundable amount and family must trace to the linked
-  receipt and prior refund receipts.
-- Strategic bar: never infer cross-family refund permission.
-- Stop conditions: return `needs_agent` when the original receipt, settlement
-  family, amount, or prior refund set is ambiguous.
+## Output
+
+- `refund_quote`: normalized requested and eligible refund amounts.
+- `refundable_bounds`: remaining amount, window, and policy limits.
+- `original_receipt_link`: the sealed charge receipt and supporting refs.
+- `settlement_family`: the only family eligible for downstream settlement.
+- `open_questions`: ambiguity that blocks reservation.
 
 ## Inputs
 

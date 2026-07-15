@@ -1,14 +1,15 @@
+import { spawnSync } from "node:child_process";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { scaffoldRunxPackage } from "../packages/cli/src/scaffold.js";
-
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixtureRoot = path.join(workspaceRoot, "fixtures/scaffold/new-docs-demo");
 const fixtureFilesDir = path.join(fixtureRoot, "files");
 const packageName = "docs-demo";
+const runx = process.env.RUNX_DEV_RUST_CLI_BIN
+  ?? path.join(workspaceRoot, "crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
 
 const mode = process.argv.includes("--write") ? "write" : "check";
 const tempRoot = await mkdir(path.join(os.tmpdir(), `runx-scaffold-${process.pid}-`), {
@@ -18,10 +19,17 @@ const generatedRoot = path.join(tempRoot, `runx-scaffold-generated-${process.pid
 
 try {
   await rm(generatedRoot, { recursive: true, force: true });
-  const result = await scaffoldRunxPackage({
-    name: packageName,
-    directory: generatedRoot,
+  const run = spawnSync(runx, ["new", packageName, "--directory", generatedRoot, "--json"], {
+    cwd: workspaceRoot,
+    env: process.env,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
   });
+  if (run.error) throw run.error;
+  if (run.status !== 0) throw new Error(run.stderr || run.stdout || "native scaffold failed");
+  const result = (JSON.parse(run.stdout) as {
+    readonly new: { readonly name: string; readonly files: readonly string[]; readonly next_steps: readonly string[] };
+  }).new;
   const generatedFiles = await collectFiles(generatedRoot);
 
   if (mode === "write") {

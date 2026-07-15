@@ -45,5 +45,6 @@ mod skill_issue_intake;
 mod skill_issue_to_pr;
 mod skill_run;
 mod support;
+#[cfg(feature = "thread-outbox-provider")]
 mod thread_outbox_provider;
 mod tool_catalogs;

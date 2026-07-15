@@ -462,40 +462,10 @@ mod tests {
         LocalAdmissionGrantStatus, SandboxAdmissionDecision,
     };
 
-    #[test]
-    fn admission_decision_round_trips_allow() -> Result<(), serde_json::Error> {
-        let decision = AdmissionDecision::Allow {
-            reasons: vec!["retry policy allowed".to_owned()],
-        };
-
-        let json = serde_json::to_string(&decision)?;
-        let decoded: AdmissionDecision = serde_json::from_str(&json)?;
-
-        assert_eq!(
-            json,
-            r#"{"status":"allow","reasons":["retry policy allowed"]}"#
-        );
-        assert_eq!(decoded, decision);
-        Ok(())
-    }
-
-    #[test]
-    fn admission_decision_round_trips_deny() -> Result<(), serde_json::Error> {
-        let decision = AdmissionDecision::Deny {
-            reasons: vec!["source type 'custom' is not allowed for local execution".to_owned()],
-        };
-
-        let json = serde_json::to_string(&decision)?;
-        let decoded: AdmissionDecision = serde_json::from_str(&json)?;
-
-        assert_eq!(
-            json,
-            r#"{"status":"deny","reasons":["source type 'custom' is not allowed for local execution"]}"#,
-        );
-        assert_eq!(decoded, decision);
-        Ok(())
-    }
-
+    // Allow and Deny wire shapes are pinned end-to-end by the kernel policy
+    // fixtures (fixtures/kernel/policy/retry-admission-*.json) walked in
+    // tests/policy_fixtures.rs and tests/kernel_eval.rs; AllowMarked has no
+    // fixture producing it, so its wire shape is pinned here.
     #[test]
     fn admission_decision_round_trips_allow_marked() -> Result<(), serde_json::Error> {
         let decision = AdmissionDecision::AllowMarked {

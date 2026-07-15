@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/skill_overlay/v1.json",
+  "x-runx-packet-id": "runx.skill_overlay.v1",
+  "x-runx-generated-from": "skills/overlay/X.yaml#root.runners.generate",
+  "type": "object",
+  "required": [
+    "overlay_proposal"
+  ],
+  "properties": {
+    "overlay_proposal": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/data/sql_analysis_plan/v1.json",
+  "x-runx-packet-id": "runx.data.sql_analysis_plan.v1",
+  "x-runx-generated-from": "skills/sql-analyst/X.yaml#root.runners.analyst",
+  "type": "object",
+  "required": [
+    "interpretation",
+    "query_plan",
+    "validation_checks",
+    "verdict"
+  ],
+  "properties": {
+    "interpretation": {
+      "type": "object"
+    },
+    "query_plan": {
+      "type": "object"
+    },
+    "validation_checks": {
+      "type": "array"
+    },
+    "verdict": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

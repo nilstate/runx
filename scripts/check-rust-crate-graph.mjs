@@ -21,11 +21,11 @@ const apiBearingPublishedCrates = new Set([
   "runx-contracts",
   "runx-core",
   "runx-parser",
+  "runx-receipts",
+  "runx-runtime",
 ]);
 
 const reservationVersionCrates = new Set([
-  "runx-receipts",
-  "runx-runtime",
   "runx-sdk",
 ]);
 

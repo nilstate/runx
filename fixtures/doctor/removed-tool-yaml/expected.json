@@ -9,6 +9,7 @@
   "diagnostics": [
     {
       "id": "runx.tool.manifest.removed_format",
+      "instance_id": "sha256:427311d595a28ad1a7b6968a457978f7659d4d584bf79a0b6530e69da93a7dfb",
       "severity": "error",
       "title": "tool.yaml is no longer supported",
       "message": "Tool demo.removed still uses tool.yaml. Runx resolves manifest.json only.",
@@ -30,8 +31,7 @@
           "risk": "medium",
           "requires_human_review": true
         }
-      ],
-      "instance_id": "sha256:427311d595a28ad1a7b6968a457978f7659d4d584bf79a0b6530e69da93a7dfb"
+      ]
     }
   ]
 }

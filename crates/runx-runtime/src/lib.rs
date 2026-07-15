@@ -19,6 +19,7 @@ pub mod adapter;
     feature = "external-adapter"
 ))]
 mod adapter_pipeline;
+mod agent_contract;
 mod agent_invocation;
 pub mod approval;
 pub mod config;
@@ -38,6 +39,7 @@ mod lifecycle;
 pub mod list;
 #[cfg(feature = "thread-outbox-provider")]
 pub mod outbox_provider;
+mod packet_validation;
 pub mod parser_eval;
 mod path_util;
 mod process;
@@ -111,8 +113,8 @@ pub use list::{
     list_authoring_primitives,
 };
 pub use orchestrator::{
-    GraphRunRequest, HarnessRunRequest, InlineHarnessRequest, LocalOrchestrator, OrchestratorError,
-    RunContinuation, RunRequest, RunResult, RunStatus, SkillRunRequest,
+    GraphRunRequest, HarnessRunRequest, LocalOrchestrator, OrchestratorError,
+    PackageHarnessRequest, RunContinuation, RunRequest, RunResult, RunStatus, SkillRunRequest,
 };
 #[cfg(feature = "thread-outbox-provider")]
 pub use outbox_provider::{
@@ -155,7 +157,7 @@ pub use scaffold::{
     InitAction, InitGeneratedValues, RunxInitOptions, RunxInitResult, RunxNewOptions,
     RunxNewResult, ScaffoldError, runx_init, sanitize_runx_package_name, scaffold_runx_package,
 };
-pub use skill_front::InlineHarnessReport;
+pub use skill_front::PackageHarnessReport;
 pub use tool_catalogs::{
     ToolBuildOptions, ToolCatalogError, ToolInspectOptions, ToolSearchOptions, build_tool_catalogs,
     inspect_tool, search_tools,

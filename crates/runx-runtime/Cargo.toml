@@ -1,6 +1,6 @@
 [package]
 name = "runx-runtime"
-version = "0.0.1"
+version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 description = "Native Rust runtime for local runx execution, adapters, harness replay, receipts, and sandboxing."
@@ -10,7 +10,7 @@ homepage.workspace = true
 readme = "README.md"
 keywords = ["runx", "runtime", "agents", "sandbox", "mcp"]
 categories = ["development-tools"]
-include = ["Cargo.toml", "README.md", "src/**/*.rs"]
+include = ["Cargo.toml", "README.md", "assets/VOICE.md", "src/**/*.rs"]
 # Integration tests are compiled as a single binary (tests/integration.rs) so the
 # crate and its heavy deps link once instead of once per test file. Each test file
 # is a module of that binary; see .scafld/specs/active/test-surface-build-consolidation.md.
@@ -59,6 +59,7 @@ runx-receipts.workspace = true
 # read_limited_response_body), so a decompression bomb stays bounded.
 reqwest = { version = "=0.13.4", default-features = false, features = ["rustls-no-provider", "json", "gzip", "brotli", "deflate", "zstd", "http2"], optional = true }
 ring = "0.17.14"
+jsonschema = { version = "0.46.5", default-features = false }
 # Drive rustls with the ring provider (already linked via `ring`) instead of
 # reqwest's default aws-lc-rs, so the vendored aws-lc-sys C crypto blob is not
 # compiled in. ring is then the single, unambiguous process-default provider.
@@ -84,6 +85,9 @@ wait-timeout = "0.2.1"
 [dev-dependencies]
 criterion = "0.7.0"
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
+# Same crate/features as the runtime dependency above; integration tests use it
+# to poll descendant-process death instead of fixed sleeps.
+rustix = { version = "1.1.4", features = ["process"] }
 tempfile = "3.23.0"
 
 [lib]

@@ -15,19 +15,19 @@ This graph profile is registry documentation and harness shape. It does not
 perform live Stripe calls, read merchant credentials, or enable runtime
 forwarding.
 
-## Quality Profile
+The modeled path is complete only when priced bounds become an idempotent
+challenge, verification returns a Stripe-family proof reference, and a sealed
+receipt gates the upstream result. Merchant credential material stays behind
+references. Stop before modeled forwarding when verification cannot name both
+its proof and sealed receipt.
 
-- Purpose: show how provider-side Stripe charge verification fits the governed
-  charge graph.
-- Audience: operators, registry tooling, and future Stripe adapter
-  implementers.
-- Artifact contract: `charge_price_packet`, `charge_challenge_packet`,
-  `charge_verification_packet`, `charge_seal`, and `forwarded_result`.
-- Evidence bar: success requires priced bounds, challenge idempotency,
-  Stripe-family proof ref, receipt ref, and modeled forward gate.
-- Strategic bar: keep Stripe credential material behind references.
-- Stop conditions: stop before modeled forwarding when verification lacks a
-  sealed receipt ref.
+## Output
+
+- `charge_price_packet`: priced bounds and requested provider authority.
+- `charge_challenge_packet`: the idempotent payment-required challenge.
+- `charge_verification_packet`: Stripe-family verification evidence and proof ref.
+- `charge_seal`: the modeled child receipt seal.
+- `forwarded_result`: the modeled upstream result, present only after the seal.
 
 ## Inputs
 

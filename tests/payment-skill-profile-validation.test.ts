@@ -7,12 +7,9 @@ import { authorityTermSchema, contractSchemaMatches, validateContractSchemaForDi
 import { describe, expect, it } from "vitest";
 
 import {
-  parseRunnerManifestYaml,
-  validateRunnerManifest,
-  type SkillRunnerDefinition as RunnerDefinition,
-  type SkillRunnerManifest,
-} from "../packages/cli/src/cli-parser/index.js";
-import {
+  type RunnerDefinition,
+  type ValidatedRunnerManifest as SkillRunnerManifest,
+  validateRunnerManifestYaml,
   validateSkillMarkdown,
 } from "./parser-eval.js";
 
@@ -463,7 +460,7 @@ function resolveNestedProfilePath(skillDir: string, ref: string): string | undef
 
 
 function parseRunnerManifest(profileDocument: string): SkillRunnerManifest {
-  return validateRunnerManifest(parseRunnerManifestYaml(profileDocument));
+  return validateRunnerManifestYaml(profileDocument);
 }
 
 function buildPaymentRegistryFixtureVersion(

@@ -1,0 +1,136 @@
+skill: twitter
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: branded
+  canonical_skill: runx/send-as
+  provider: twitter
+  runtime_path: twitter
+runners:
+  read:
+    default: true
+    type: graph
+    runx:
+      category: growth
+    inputs:
+      query:
+        type: string
+        required: true
+        description: "Evidence query kind: snapshot, posts, mentions, search, following, or followers."
+      params:
+        type: json
+        required: false
+        description: "Query parameters: user_id, q (search text), pagination_token."
+      archive_file:
+        type: string
+        required: false
+        description: Path to an X archive export file (tweets.js or following.js); when set the read is offline.
+      max_items:
+        type: number
+        required: false
+        default: 200
+        description: Maximum items collected across pages.
+      auth:
+        type: string
+        required: false
+        default: user
+        description: user (OAuth 1.0a user context) or app (bearer token).
+    graph:
+      name: twitter-read
+      steps:
+        - id: read
+          tool: twitter.read
+          scopes:
+            - twitter:read
+          inputs:
+            query: "$input.query"
+            params: "$input.params"
+            archive_file: "$input.archive_file"
+            max_items: "$input.max_items"
+            auth: "$input.auth"
+  plan:
+    type: agent-task
+    agent: builder
+    task: twitter-plan
+    outputs:
+      twitter_plan: object
+    artifacts:
+      wrap_as: twitter_plan
+      packet: twitter.plan.v1
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: One bounded objective for this plan.
+      principal:
+        type: string
+        required: true
+        description: The account being operated, for example account:@handle.
+      evidence_json:
+        type: json
+        required: false
+        description: A twitter.evidence.v1 packet (or excerpt) grounding the plan; required for any act that references existing posts or users.
+      operator_policy:
+        type: string
+        required: false
+        description: Operator constraints such as prune criteria, posting cadence, or content boundaries.
+      brand_context:
+        type: json
+        required: false
+        description: Brand-voice or taste-profile packet excerpt for public content.
+      operator_context:
+        type: string
+        required: false
+        description: Extra operator guardrails.
+  execute:
+    type: graph
+    act:
+      purpose: Execute one approved twitter act plan, act by act, and nothing beyond it.
+    inputs:
+      plan_json:
+        type: json
+        required: true
+        description: The twitter.plan.v1 object to execute.
+      plan_digest:
+        type: string
+        required: false
+        description: Expected canonical digest of plan_json; a mismatch is a hard failure.
+      already_executed_act_ids:
+        type: json
+        required: false
+        description: Act ids confirmed executed in a prior run; skipped for idempotent re-execution.
+      max_acts:
+        type: number
+        required: false
+        default: 50
+        description: Per-execution cap on total acts.
+    graph:
+      name: twitter-execute
+      steps:
+        - id: approve
+          run:
+            type: approval
+          inputs:
+            gate_id: twitter.execute.approval
+            reason: Executing this plan publishes to a public timeline or mutates a live X account.
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+        - id: apply
+          tool: twitter.act
+          scopes:
+            - twitter:write
+          mutation: true
+          idempotency_key: twitter-execute
+          inputs:
+            plan_json: "$input.plan_json"
+            plan_digest: "$input.plan_digest"
+            already_executed_act_ids: "$input.already_executed_act_ids"
+            max_acts: "$input.max_acts"
+      policy:
+        guards:
+          - step: apply
+            field: approve.approval_decision.data.approved
+            equals: true

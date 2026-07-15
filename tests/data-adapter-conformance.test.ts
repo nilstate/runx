@@ -135,6 +135,138 @@ describe.each(adapters)("data adapter conformance: $name", (adapter) => {
     }
   });
 
+  it("pages forward by exclusive stream version without changing latest-tail reads", () => {
+    const workspace = tempWorkspace(adapter.name);
+    try {
+      const base = adapter.makeBaseInputs(workspace, uniqueId("forward-page"));
+      for (let index = 1; index <= 3; index += 1) {
+        runAdapter(adapter, workspace, {
+          ...base,
+          operation: "append_event",
+          resource: "board_events",
+          aggregate_id: "paged-stream",
+          expected_version: index - 1,
+          idempotency_key: `paged-stream:${index}`,
+          event: { type: "page.item", payload: { index } },
+        });
+      }
+
+      const tail = expectPacket(runAdapter(adapter, workspace, {
+        ...base,
+        operation: "read_events",
+        resource: "board_events",
+        aggregate_id: "paged-stream",
+        limit: 1,
+      }), {
+        status: "read",
+        operation: "read_events",
+        before_version: 3,
+        after_version: 3,
+      });
+      expect(tail.events.map((event) => recordField(event, "version"))).toEqual([3]);
+
+      const firstPage = expectPacket(runAdapter(adapter, workspace, {
+        ...base,
+        operation: "read_events",
+        resource: "board_events",
+        aggregate_id: "paged-stream",
+        after_version: 0,
+        limit: 2,
+      }), {
+        status: "read",
+        operation: "read_events",
+        before_version: 3,
+        after_version: 3,
+      });
+      expect(firstPage.events.map((event) => recordField(event, "version"))).toEqual([1, 2]);
+
+      const secondPage = expectPacket(runAdapter(adapter, workspace, {
+        ...base,
+        operation: "read_events",
+        resource: "board_events",
+        aggregate_id: "paged-stream",
+        after_version: 2,
+        limit: 2,
+      }), {
+        status: "read",
+        operation: "read_events",
+        before_version: 3,
+        after_version: 3,
+      });
+      expect(secondPage.events.map((event) => recordField(event, "version"))).toEqual([3]);
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps stream-head keyset pages stable when a newer head arrives", () => {
+    const workspace = tempWorkspace(adapter.name);
+    try {
+      const base = adapter.makeBaseInputs(workspace, uniqueId("stable-head-page"));
+      const heads = [
+        ["item-a", "2026-07-14T04:00:00.000Z"],
+        ["item-b", "2026-07-14T03:00:00.000Z"],
+        ["item-c", "2026-07-14T03:00:00.000Z"],
+        ["item-d", "2026-07-14T02:00:00.000Z"],
+      ] as const;
+      for (const [aggregateId, observedAt] of heads) {
+        runAdapter(adapter, workspace, {
+          ...base,
+          operation: "append_event",
+          resource: "board_events",
+          aggregate_id: aggregateId,
+          expected_version: 0,
+          idempotency_key: `${aggregateId}:open:v1`,
+          observed_at: observedAt,
+          event: { type: "item.open", payload: { aggregate_id: aggregateId } },
+        });
+      }
+
+      const first = expectPacket(runAdapter(adapter, workspace, {
+        ...base,
+        operation: "list_stream_heads",
+        resource: "board_events",
+        event_types: ["item.open"],
+        limit: 2,
+      }), {
+        status: "read",
+        operation: "list_stream_heads",
+        before_version: 0,
+        after_version: 0,
+      });
+      expect(first.rows.map((row) => recordField(row, "aggregate_id"))).toEqual(["item-a", "item-b"]);
+
+      runAdapter(adapter, workspace, {
+        ...base,
+        operation: "append_event",
+        resource: "board_events",
+        aggregate_id: "item-new",
+        expected_version: 0,
+        idempotency_key: "item-new:open:v1",
+        observed_at: "2026-07-14T05:00:00.000Z",
+        event: { type: "item.open", payload: { aggregate_id: "item-new" } },
+      });
+
+      const second = expectPacket(runAdapter(adapter, workspace, {
+        ...base,
+        operation: "list_stream_heads",
+        resource: "board_events",
+        event_types: ["item.open"],
+        limit: 2,
+        cursor: recordField(first.projection, "next_cursor"),
+      }), {
+        status: "read",
+        operation: "list_stream_heads",
+        before_version: 0,
+        after_version: 0,
+      });
+      expect(second.rows.map((row) => recordField(row, "aggregate_id"))).toEqual(["item-c", "item-d"]);
+      expect(recordField(second.projection, "has_more")).toBe(false);
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
   it("derives event_type from generic effect transition packets", () => {
     const workspace = tempWorkspace(adapter.name);
     try {
@@ -395,7 +527,7 @@ it("isolates Redis streams by data_source_ref when sources share one key prefix"
 
   const workspace = tempWorkspace(adapter.name);
   try {
-    const keyPrefix = `runx:data-store:source-isolation:${uniqueId("redis")}`;
+    const keyPrefix = `runx:data-store:{source-isolation-${uniqueId("redis")}}`;
     const binding = {
       adapter: "data.redis",
       endpoint: process.env.RUNX_REDIS_URL,
@@ -549,7 +681,7 @@ function redisAdapterCase(): readonly AdapterCase[] {
         data_source_binding: {
           adapter: "data.redis",
           endpoint: redisUrl,
-          key_prefix: `runx:data-store:conformance:${caseId}`,
+          key_prefix: `runx:data-store:conformance:{${caseId}}`,
           resources: {
             board_events: {
               kind: "event_stream",

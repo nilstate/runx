@@ -1,0 +1,172 @@
+skill: run-history
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: context
+harness:
+  cases:
+    - name: catalog-behavior-overview
+      inputs:
+        objective: How is the skill catalog behaving this month, and what should we tighten?
+        scope: workspace
+        period: 30d
+        history_summary: "30-day window: 412 runs, 387 sealed, 25 refused. Maturity across 21 skills: 14 alpha, 5 beta, 2 stable. One skill, doc-bot, granted repo.write but exercised only repo.read across 40 runs."
+        objective_focus: Lead with maturity and unused authority.
+      caller:
+        answers:
+          agent_task.run-history.output:
+            history_report:
+              decision: ready
+              scope: workspace
+              period: 30d
+              ordered_tool_calls:
+                - tool: runx history
+                  purpose: Pull the 30-day run ledger to compute seal and refusal rates.
+                  requires_confirmation: false
+                - tool: runx list
+                  purpose: List skills with their maturity tiers to compute the maturity distribution.
+                  requires_confirmation: false
+              findings:
+                - metric: seal_rate
+                  value: "0.94"
+                  assessment: good
+                - metric: refusal_rate
+                  value: "0.06"
+                  assessment: info
+                - metric: maturity_distribution
+                  value: "14 alpha / 5 beta / 2 stable"
+                  assessment: warning
+                - metric: unused_scope
+                  value: "doc-bot: repo.write granted, never exercised in 40 runs"
+                  assessment: warning
+              recommendations:
+                - finding: Most skills are stuck at alpha with no harness coverage.
+                  lane: maturity-promoter
+                  action: Route the alpha-heavy skills to the maturity promoter to add harness and graph-integration cases.
+                - finding: doc-bot holds repo.write it never exercises.
+                  lane: least-privilege
+                  action: Audit doc-bot's grant and propose narrowing repo.write to repo.read.
+              blockers: []
+              needs_input: []
+              success_checkpoint:
+                milestone: report_delivered
+                description: A read-only 30-day platform report with graded signals and recommendations routed to governance lanes.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: refusal-spike-flagged
+      inputs:
+        objective: One skill seems to be getting refused a lot lately. What is going on?
+        scope: skill
+        period: 7d
+        history_summary: >-
+          7-day window for skill payments-fulfill: 60 runs, 22 refused (refusal_rate 0.37), all refusals
+          cite a payment cap exceeded. Seal rate on the non-refused runs is 1.0.
+      caller:
+        answers:
+          agent_task.run-history.output:
+            history_report:
+              decision: ready
+              scope: skill
+              period: 7d
+              ordered_tool_calls:
+                - tool: runx history
+                  purpose: Pull the 7-day ledger for payments-fulfill and group refusals by reason.
+                  requires_confirmation: false
+              findings:
+                - metric: refusal_rate
+                  value: "0.37"
+                  assessment: warning
+                - metric: refusal_reason
+                  value: "payment cap exceeded (22 of 22 refusals)"
+                  assessment: warning
+                - metric: seal_rate
+                  value: "1.0 on admitted runs"
+                  assessment: good
+              recommendations:
+                - finding: A 37% refusal rate, all from a payment cap, means the bound is working but the cap may be mis-sized for current demand.
+                  lane: audit-receipt
+                  action: Audit a sample of the refused runs' receipts to confirm the refusals were correct, then review the per-period payment cap with the grant owner.
+              blockers: []
+              needs_input: []
+              success_checkpoint:
+                milestone: spike_explained
+                description: The refusal spike is attributed to a payment cap, with an audit-then-review recommendation.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: empty-history-needs-evidence
+      inputs:
+        objective: Show me how our skills are doing.
+      caller:
+        answers:
+          agent_task.run-history.output:
+            history_report:
+              decision: needs_more_evidence
+              scope: all
+              period: ""
+              ordered_tool_calls:
+                - tool: runx history
+                  purpose: Attempt to read the run ledger.
+                  requires_confirmation: false
+              findings:
+                - metric: total_runs
+                  value: "0"
+                  assessment: info
+              recommendations: []
+              blockers: []
+              needs_input:
+                - No runs are recorded yet. Run some governed skills first, or provide a history summary to analyze.
+              success_checkpoint:
+                milestone: awaiting_history
+                description: The report stops for evidence rather than reporting on an empty ledger.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+runners:
+  analyze:
+    default: true
+    type: agent-task
+    agent: researcher
+    task: run-history
+    outputs:
+      history_report: object
+    artifacts:
+      wrap_as: history_report_packet
+      packet: runx.history_report.v1
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: "The history question."
+      scope:
+        type: string
+        required: false
+        description: "workspace, a specific skill, or all."
+      period:
+        type: string
+        required: false
+        description: "e.g. 30d or 90d."
+      history_summary:
+        type: string
+        required: false
+        description: "A sanitized runx history summary when already fetched."
+      objective_focus:
+        type: string
+        required: false
+        description: "Which signals to lead with."

@@ -5,6 +5,8 @@ use runx_contracts::{
     ReceiptSurfaceRef,
 };
 
+use crate::fixture_support::roundtrip;
+
 const FIXTURES: &[&str] = &[
     include_str!("../../../fixtures/contracts/execution/execution-full.json"),
     include_str!("../../../fixtures/contracts/execution/governed-disposition.json"),
@@ -49,14 +51,4 @@ fn assert_roundtrip(fixture: Fixture) -> Result<(), serde_json::Error> {
         FixtureKind::ReceiptOutcome => roundtrip::<ReceiptOutcome>(fixture.expected),
         FixtureKind::ReceiptSurfaceRef => roundtrip::<ReceiptSurfaceRef>(fixture.expected),
     }
-}
-
-fn roundtrip<T>(expected: serde_json::Value) -> Result<(), serde_json::Error>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    let parsed: T = serde_json::from_value(expected.clone())?;
-    let actual = serde_json::to_value(parsed)?;
-    assert_eq!(actual, expected);
-    Ok(())
 }

@@ -504,21 +504,51 @@ fn cli_tool_timeout_kills_direct_child_without_waiting_for_full_script()
 #[cfg(feature = "cli-tool")]
 fn cli_tool_timeout_kills_descendant_processes() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
+    let skill_dir = temp.path().join("skill");
+    fs::create_dir_all(&skill_dir)?;
     let sentinel_path = temp.path().join("descendant-survived");
+    let pid_path = temp.path().join("descendant-pid");
     let sentinel = serde_json::to_string(&path_string(&sentinel_path)?)?;
+    let pid_file = serde_json::to_string(&path_string(&pid_path)?)?;
+    // The parent records the spawned descendant's pid; the test polls that pid
+    // for death instead of sleeping a fixed window.
     let descendant_script = format!(
         "setTimeout(() => require('fs').writeFileSync({sentinel}, 'survived'), 2500); setInterval(() => {{}}, 1000);"
     );
     let parent_script = format!(
-        "require('child_process').spawn(process.execPath, ['-e', {descendant_script:?}], {{ stdio: 'ignore' }}); setTimeout(() => {{}}, 10_000);"
+        "const child = require('child_process').spawn(process.execPath, ['-e', {descendant_script:?}], {{ stdio: 'ignore' }}); require('fs').writeFileSync({pid_file}, String(child.pid)); setTimeout(() => {{}}, 10_000);"
     );
+    // Under the readonly profile the sandbox swallows the pid and sentinel
+    // writes, leaving the survived-descendant assertion vacuous; anchor the
+    // workspace at the test's temp dir (RUNX_CWD) and scope write access to it
+    // so both signals are observable.
+    let mut sandbox_declaration =
+        sandbox(CwdPolicy::SkillDirectory, SandboxProfile::WorkspaceWrite);
+    sandbox_declaration.writable_paths = vec![path_string(temp.path())?];
 
     let started = Instant::now();
-    let output = invoke_node(vec!["-e".to_owned(), parent_script], Some(1))?;
+    let output = CliToolAdapter.invoke(SkillInvocation {
+        skill_name: "contract-test".to_owned(),
+        source: source_with_args(
+            None,
+            Some(sandbox_declaration),
+            vec!["-e".to_owned(), parent_script],
+            Some(1),
+        ),
+        inputs: JsonObject::new(),
+        resolved_inputs: JsonObject::new(),
+        current_context: Vec::new(),
+        skill_directory: skill_dir,
+        env: env_with_local_sandbox_fallback_and([(
+            "RUNX_CWD".to_owned(),
+            path_string(temp.path())?,
+        )]),
+        credential_delivery: CredentialDelivery::none(),
+    })?;
 
     assert_eq!(output.status, InvocationStatus::Failure);
     assert!(started.elapsed() < Duration::from_secs(5));
-    std::thread::sleep(Duration::from_secs(3));
+    crate::support::wait_for_recorded_pid_exit(&pid_path, Duration::from_secs(5))?;
     assert!(
         !sentinel_path.exists(),
         "descendant process survived cli-tool timeout"
@@ -660,6 +690,8 @@ fn env_with_local_sandbox_fallback_and(
     entries: impl IntoIterator<Item = (String, String)>,
 ) -> BTreeMap<String, String> {
     let mut env = env_with_local_sandbox_fallback();
+    env.remove(RUNX_CWD_ENV);
+    env.remove(INIT_CWD_ENV);
     env.extend(entries);
     env
 }

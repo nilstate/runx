@@ -74,17 +74,42 @@ pub(super) fn validate_artifact_contract(
         first_value(record.get("named_emits"), record.get("namedEmits")),
         &format!("{field}.named_emits"),
     )?;
+    let packets = validate_named_emits(record.get("packets"), &format!("{field}.packets"))?;
+    if let Some(packet_outputs) = &packets {
+        let Some(named_outputs) = &named_emits else {
+            return Err(
+                FIELDS.validation_error(format!("{field}.packets requires {field}.named_emits"))
+            );
+        };
+        if let Some(output) = packet_outputs
+            .keys()
+            .find(|output| !named_outputs.contains_key(*output))
+        {
+            return Err(FIELDS.validation_error(format!(
+                "{field}.packets.{output} must name an output declared by {field}.named_emits"
+            )));
+        }
+    }
     let wrap_as = FIELDS.optional_non_empty_string(
         first_value(record.get("wrap_as"), record.get("wrapAs")),
         &format!("{field}.wrap_as"),
     )?;
-    if emits.is_none() && named_emits.is_none() && wrap_as.is_none() {
+    let packet =
+        FIELDS.optional_non_empty_string(record.get("packet"), &format!("{field}.packet"))?;
+    if packet.is_some() && wrap_as.is_none() {
+        return Err(FIELDS.validation_error(format!(
+            "{field}.packet requires {field}.wrap_as. Use named_emits for named packet outputs."
+        )));
+    }
+    if emits.is_none() && named_emits.is_none() && packets.is_none() && wrap_as.is_none() {
         return Ok(None);
     }
     Ok(Some(SkillArtifactContract {
         emits,
         named_emits,
+        packets,
         wrap_as,
+        packet,
     }))
 }
 
@@ -206,4 +231,78 @@ pub(super) fn validate_allowed_tools(
         }
     }
     Ok(Some(values))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use runx_contracts::JsonValue;
+
+    use super::validate_artifact_contract;
+
+    #[test]
+    fn packet_bindings_must_reference_named_outputs() {
+        let artifacts = JsonValue::Object(BTreeMap::from([
+            (
+                "named_emits".to_owned(),
+                JsonValue::Object(BTreeMap::from([(
+                    "plan".to_owned(),
+                    JsonValue::String("plan".to_owned()),
+                )])),
+            ),
+            (
+                "packets".to_owned(),
+                JsonValue::Object(BTreeMap::from([(
+                    "other".to_owned(),
+                    JsonValue::String("runx.plan.v1".to_owned()),
+                )])),
+            ),
+        ]));
+
+        assert!(validate_artifact_contract(Some(&artifacts), "artifacts").is_err());
+    }
+
+    #[test]
+    fn named_output_and_packet_identity_are_preserved_separately()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let artifacts = JsonValue::Object(BTreeMap::from([
+            (
+                "named_emits".to_owned(),
+                JsonValue::Object(BTreeMap::from([(
+                    "plan".to_owned(),
+                    JsonValue::String("plan".to_owned()),
+                )])),
+            ),
+            (
+                "packets".to_owned(),
+                JsonValue::Object(BTreeMap::from([(
+                    "plan".to_owned(),
+                    JsonValue::String("runx.plan.v1".to_owned()),
+                )])),
+            ),
+        ]));
+
+        let Some(contract) = validate_artifact_contract(Some(&artifacts), "artifacts")? else {
+            return Err("artifact contract is missing".into());
+        };
+
+        assert_eq!(
+            contract
+                .named_emits
+                .as_ref()
+                .and_then(|outputs| outputs.get("plan"))
+                .map(String::as_str),
+            Some("plan")
+        );
+        assert_eq!(
+            contract
+                .packets
+                .as_ref()
+                .and_then(|packets| packets.get("plan"))
+                .map(String::as_str),
+            Some("runx.plan.v1")
+        );
+        Ok(())
+    }
 }

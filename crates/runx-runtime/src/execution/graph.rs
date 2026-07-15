@@ -11,7 +11,6 @@ use runx_parser::{
     validate_runner_manifest,
 };
 
-use crate::receipts::paths::RUNX_CWD_ENV;
 use crate::registry::{
     InstallCandidate, InstallLocalSkillOptions, RegistryResolveOptions, create_file_registry_store,
     install_local_skill, materialization_cache_path, materialization_digest_marker,
@@ -30,6 +29,31 @@ pub(crate) struct LoadedStepSkill {
     /// this contract at the OUTER step (the packet, e.g. `research_packet`,
     /// becomes `<step>.<packet>.data`), never the sub-skill's internals.
     pub(crate) artifacts: Option<SkillArtifactContract>,
+    pub(crate) definition: LoadedStepSkillDefinition,
+    pub(crate) registry: Option<LoadedStepSkillRegistryProvenance>,
+}
+
+#[derive(Clone)]
+pub(crate) enum LoadedStepSkillDefinition {
+    Runner(SkillRunnerDefinition),
+    Legacy(ValidatedSkill),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct LoadedStepSkillRegistryProvenance {
+    pub(crate) reference: String,
+    pub(crate) source: String,
+    pub(crate) source_label: String,
+    pub(crate) skill_id: String,
+    pub(crate) version: String,
+    pub(crate) digest: String,
+    pub(crate) package_digest: Option<String>,
+    pub(crate) trust_tier: String,
+}
+
+struct ResolvedStepSkillDirectory {
+    directory: PathBuf,
+    registry: Option<LoadedStepSkillRegistryProvenance>,
 }
 
 #[derive(Default)]
@@ -145,22 +169,37 @@ pub(crate) fn load_step_skill(
     step: &GraphStep,
     options: StepSkillLoadOptions<'_>,
 ) -> Result<LoadedStepSkill, RuntimeError> {
-    let directory = skill_dir(graph_dir, step, options)?;
-    if let Some(runner) = load_step_runner(&directory, step.runner.as_deref())? {
-        return Ok(LoadedStepSkill {
-            name: runner.name,
-            source: runner.source,
+    let resolved = resolve_step_skill_directory(graph_dir, step, options)?;
+    let directory = resolved.directory;
+    let loaded = if let Some(runner) = load_step_runner(&directory, step.runner.as_deref())? {
+        LoadedStepSkill {
+            name: runner.name.clone(),
+            source: runner.source.clone(),
             directory,
-            artifacts: runner.artifacts,
-        });
+            artifacts: runner.artifacts.clone(),
+            definition: LoadedStepSkillDefinition::Runner(runner),
+            registry: resolved.registry,
+        }
+    } else {
+        let skill = load_skill(&directory)?;
+        LoadedStepSkill {
+            name: skill.name.clone(),
+            source: skill.source.clone(),
+            directory,
+            artifacts: skill.artifacts.clone(),
+            definition: LoadedStepSkillDefinition::Legacy(skill),
+            registry: resolved.registry,
+        }
+    };
+    for path in [
+        loaded.directory.join("X.yaml"),
+        loaded.directory.join("SKILL.md"),
+    ] {
+        if path.exists() {
+            super::prepared_skill::verify_prepared_artifact_at_use(options.env, &path)?;
+        }
     }
-    let skill = load_skill(&directory)?;
-    Ok(LoadedStepSkill {
-        name: skill.name,
-        source: skill.source,
-        directory,
-        artifacts: skill.artifacts,
-    })
+    Ok(loaded)
 }
 
 fn load_step_runner(
@@ -233,16 +272,19 @@ pub(crate) fn step_definitions(graph: &ExecutionGraph) -> Vec<SequentialGraphSte
         .collect()
 }
 
-pub(crate) fn skill_dir(
+fn resolve_step_skill_directory(
     graph_dir: &Path,
     step: &GraphStep,
     options: StepSkillLoadOptions<'_>,
-) -> Result<PathBuf, RuntimeError> {
+) -> Result<ResolvedStepSkillDirectory, RuntimeError> {
     if let Some(skill) = &step.skill {
         if is_registry_step_ref(skill) {
             return materialize_registry_step_skill(graph_dir, step, skill, options);
         }
-        return Ok(graph_dir.join(skill));
+        return Ok(ResolvedStepSkillDirectory {
+            directory: graph_dir.join(skill),
+            registry: None,
+        });
     }
     Err(RuntimeError::StepMissingSkill {
         step_id: step.id.clone(),
@@ -255,7 +297,7 @@ fn materialize_registry_step_skill(
     step: &GraphStep,
     reference: &str,
     options: StepSkillLoadOptions<'_>,
-) -> Result<PathBuf, RuntimeError> {
+) -> Result<ResolvedStepSkillDirectory, RuntimeError> {
     let Some(registry_dir) = options.env.get("RUNX_REGISTRY_DIR") else {
         return Err(RuntimeError::InvalidRunStep {
             step_id: step.id.clone(),
@@ -304,6 +346,16 @@ fn materialize_registry_step_skill(
         )
         .as_bytes(),
     );
+    let provenance = LoadedStepSkillRegistryProvenance {
+        reference: reference.to_owned(),
+        source: resolution.source.clone(),
+        source_label: resolution.source_label.clone(),
+        skill_id: resolution.skill_id.clone(),
+        version: resolution.version.clone(),
+        digest: prefixed_digest(&resolution.digest),
+        package_digest: resolution.package_digest.clone(),
+        trust_tier: registry_trust_tier_label(&resolution.trust_tier).to_owned(),
+    };
     let cache_root = runtime_cwd(options.env, graph_dir)
         .join(".runx")
         .join("registry-step-skills")
@@ -353,7 +405,7 @@ fn materialize_registry_step_skill(
         step_id: step.id.clone(),
         reason: format!("nested skill registry ref '{reference}' failed admission: {source}"),
     })?;
-    install
+    let directory = install
         .destination
         .parent()
         .map(Path::to_path_buf)
@@ -363,13 +415,15 @@ fn materialize_registry_step_skill(
                 "nested skill registry ref '{reference}' installed to invalid path {}",
                 install.destination.display()
             ),
-        })
+        })?;
+    Ok(ResolvedStepSkillDirectory {
+        directory,
+        registry: Some(provenance),
+    })
 }
 
 fn runtime_cwd(env: &BTreeMap<String, String>, graph_dir: &Path) -> PathBuf {
-    env.get(RUNX_CWD_ENV)
-        .map(|value| crate::resolve_path_from_user_input(value, env, graph_dir, false))
-        .unwrap_or_else(|| graph_dir.to_path_buf())
+    crate::config::resolve_runx_workspace_base(env, graph_dir)
 }
 
 fn registry_source_fingerprint(registry_dir: &str) -> String {
@@ -385,6 +439,14 @@ fn prefixed_digest(digest: &str) -> String {
         digest.to_owned()
     } else {
         format!("sha256:{digest}")
+    }
+}
+
+fn registry_trust_tier_label(value: &crate::registry::TrustTier) -> &'static str {
+    match value {
+        crate::registry::TrustTier::FirstParty => "first_party",
+        crate::registry::TrustTier::Verified => "verified",
+        crate::registry::TrustTier::Community => "community",
     }
 }
 

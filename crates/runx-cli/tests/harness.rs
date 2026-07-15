@@ -42,7 +42,14 @@ fn scaffolded_next_steps_run_without_signer_env() -> TestResult {
 
     let skill = unsigned_runx_command()?
         .current_dir(&skill_dir)
-        .args(["skill", ".", "--input", "message=hello", "--json"])
+        .args([
+            "skill",
+            ".",
+            "--input",
+            "message=hello",
+            "--json",
+            "--skip-operator-context",
+        ])
         .output()?;
     assert_eq!(
         skill.status.code(),
@@ -58,7 +65,69 @@ fn scaffolded_next_steps_run_without_signer_env() -> TestResult {
 }
 
 #[test]
-fn inline_harness_partial_signer_config_prints_actionable_hint() -> TestResult {
+fn package_mode_runs_inline_and_conventional_fixture_cases() -> TestResult {
+    let root = crate::support::temp_root("runx-package-harness-union");
+    let skill_dir = root.join("skill");
+    let receipt_dir = root.join("receipts");
+    fs::create_dir_all(skill_dir.join("fixtures"))?;
+    write_cli_tool_skill(&skill_dir)?;
+    fs::write(
+        skill_dir.join("fixtures/conventional.yaml"),
+        r#"
+name: conventional
+kind: skill
+target: ..
+runner: default
+expect:
+  status: sealed
+"#,
+    )?;
+
+    let output = unsigned_runx_command()?
+        .env("RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY", "local")
+        .args([
+            "harness",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--receipt-dir",
+            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
+            "--json",
+        ])
+        .output()?;
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
+    assert_eq!(report["status"], "passed");
+    assert_eq!(report["case_count"], 2);
+    let names = report["case_names"]
+        .as_array()
+        .ok_or("missing case_names")?;
+    assert!(names.contains(&serde_json::Value::String("smoke".to_owned())));
+    assert!(names.contains(&serde_json::Value::String("conventional".to_owned())));
+    Ok(())
+}
+
+#[test]
+fn harness_help_is_native() -> TestResult {
+    let output = unsigned_runx_command()?
+        .args(["harness", "--help"])
+        .output()?;
+
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(stdout.contains("runx harness"));
+    assert!(stdout.contains("fixtures/*.yaml"));
+    assert!(output.stderr.is_empty());
+    Ok(())
+}
+
+#[test]
+fn package_harness_partial_signer_config_prints_actionable_hint() -> TestResult {
     let root = crate::support::temp_root("runx-inline-harness-hint");
     let skill_dir = root.join("skill");
     let receipt_dir = root.join("receipts");
@@ -81,7 +150,7 @@ fn inline_harness_partial_signer_config_prints_actionable_hint() -> TestResult {
     let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
     assert_eq!(report["status"], "failed");
     let stderr = String::from_utf8(output.stderr)?;
-    assert!(stderr.contains("inline harnesses seal signed receipts"));
+    assert!(stderr.contains("package harnesses seal signed receipts"));
     assert!(stderr.contains("RUNX_RECEIPT_SIGN_KID"));
 
     Ok(())

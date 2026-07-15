@@ -3,8 +3,8 @@ use std::fmt;
 use runx_contracts::{JsonObject, JsonValue, json_string_field};
 use runx_parser::{
     ParseError, SkillInstallError, SkillInstallOrigin, ValidateSkillMode, ValidateSkillOptions,
-    ValidationError, extract_skill_quality_profile, parse_graph_yaml, parse_runner_manifest_yaml,
-    parse_skill_markdown, parse_tool_manifest_json, runner::resolve_post_run_reflect_policy,
+    ValidationError, parse_graph_yaml, parse_runner_manifest_yaml, parse_skill_markdown,
+    parse_tool_manifest_json, parse_tool_manifest_yaml, runner::resolve_post_run_reflect_policy,
     validate_graph, validate_runner_manifest, validate_skill_artifact_contract,
     validate_skill_install, validate_skill_source, validate_skill_with_options,
     validate_tool_manifest,
@@ -104,10 +104,10 @@ fn is_supported_parser_kind(kind: &str) -> bool {
         "parser.validateSkillMarkdown"
             | "parser.validateRunnerManifestYaml"
             | "parser.validateGraphYaml"
+            | "parser.validateToolManifestYaml"
             | "parser.validateToolManifestJson"
             | "parser.validateSkillSource"
             | "parser.validateSkillArtifactContract"
-            | "parser.extractSkillQualityProfile"
             | "parser.resolvePostRunReflectPolicy"
             | "parser.validateSkillInstall"
     )
@@ -141,6 +141,8 @@ enum ParserInput {
     ValidateRunnerManifestYaml { yaml: String },
     #[serde(rename = "parser.validateGraphYaml")]
     ValidateGraphYaml { yaml: String },
+    #[serde(rename = "parser.validateToolManifestYaml")]
+    ValidateToolManifestYaml { yaml: String },
     #[serde(rename = "parser.validateToolManifestJson")]
     ValidateToolManifestJson { json: String },
     #[serde(rename = "parser.validateSkillSource")]
@@ -156,8 +158,6 @@ enum ParserInput {
         #[serde(default = "default_artifact_field")]
         field: String,
     },
-    #[serde(rename = "parser.extractSkillQualityProfile")]
-    ExtractSkillQualityProfile { body: String },
     #[serde(rename = "parser.resolvePostRunReflectPolicy")]
     ResolvePostRunReflectPolicy {
         #[serde(default)]
@@ -207,6 +207,10 @@ fn evaluate_parser_input(input: ParserDocument) -> Result<JsonValue, ParserEvalE
             let raw = parse_graph_yaml(&yaml)?;
             to_json_value(validate_graph(raw)?)
         }
+        ParserInput::ValidateToolManifestYaml { yaml } => {
+            let raw = parse_tool_manifest_yaml(&yaml)?;
+            to_json_value(validate_tool_manifest(raw)?)
+        }
         ParserInput::ValidateToolManifestJson { json } => {
             let raw = parse_tool_manifest_json(&json)?;
             to_json_value(validate_tool_manifest(raw)?)
@@ -217,9 +221,6 @@ fn evaluate_parser_input(input: ParserDocument) -> Result<JsonValue, ParserEvalE
         ParserInput::ValidateSkillArtifactContract { artifacts, field } => to_json_value(
             validate_skill_artifact_contract(artifacts.as_ref(), &field)?,
         ),
-        ParserInput::ExtractSkillQualityProfile { body } => {
-            to_json_value(extract_skill_quality_profile(&body))
-        }
         ParserInput::ResolvePostRunReflectPolicy { runx, field } => {
             to_json_value(resolve_post_run_reflect_policy(runx.as_ref(), &field)?)
         }

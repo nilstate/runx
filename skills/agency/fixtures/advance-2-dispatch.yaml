@@ -15,14 +15,14 @@ caller:
       reason: The case is open; the smallest useful next move is to draft the doc update within scope.
       dispatch:
         member: writer
-        skill: draft-content
+        skill: ghostwrite
         task: Draft the doc update for the drifted API reference.
         needed_scope:
           - docs.write
         consequence: draft
         verification:
           expected_receipt: runx.receipt.v1
-          readback: draft-content effect for the docs update on case-int-1
+          readback: ghostwrite effect for the docs update on case-int-1
 expect:
   status: sealed
   receipt:

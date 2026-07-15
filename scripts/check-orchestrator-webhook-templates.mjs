@@ -64,7 +64,8 @@ const readme = readText("oss/examples/orchestrator-webhooks/README.md");
 assert(readme.includes("templates, not live endpoints"), "example README must state templates are not live endpoints");
 assert(readme.includes("Do not paste bearer tokens into the manifest file."), "example README must warn against raw bearer tokens");
 assert(
-  readme.includes("--credential orchestrator:bearer:RUNX_N8N_WEBHOOK_TOKEN:orchestrator.n8n.workflow.invoke"),
+  readme.includes("--credential orchestrator:bearer:RUNX_N8N_WEBHOOK_TOKEN") &&
+    readme.includes("--credential-scope orchestrator.n8n.workflow.invoke"),
   "example README must request the n8n handoff scope",
 );
 assert(readme.includes("Professional n8n Handoff Contract"), "example README must describe the n8n handoff contract");

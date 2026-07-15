@@ -10,7 +10,7 @@ import YAML from "yaml";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "..");
 const skillsRoot = path.join(workspaceRoot, "skills");
-const outputPath = path.join(workspaceRoot, "packages", "cli", "src", "official-skills.lock.json");
+const outputPath = path.join(skillsRoot, "official.lock.json");
 const rustOutputPath = path.join(workspaceRoot, "crates", "runx-cli", "src", "official_skills.rs");
 
 const entries = [];

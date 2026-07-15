@@ -10,7 +10,6 @@ const packageRoot = path.join(workspaceRoot, "packages");
 const packageSearchRoots = [packageRoot, path.join(workspaceRoot, "plugins")];
 const runtimeOutDir = path.join(workspaceRoot, ".build", "runtime");
 const tscPath = require.resolve("typescript/bin/tsc");
-const ts = require("typescript");
 
 const mode = process.argv.includes("--pack") ? "pack" : "dev";
 
@@ -74,7 +73,6 @@ async function finalizePackage(directory) {
   }
 
   const dist = path.join(directory, "dist");
-  const isCli = packageJson.name === "@runxhq/cli";
   const isExecutable = Boolean(packageJson.bin?.runx);
 
   if (mode === "pack") {
@@ -84,7 +82,6 @@ async function finalizePackage(directory) {
       compiledPackageRoot: runtimePackageRoot,
       compiledEntry: path.join(dist, "src", "index.js"),
       executable: isExecutable,
-      syncCliAssets: isCli,
     });
     return;
   }
@@ -98,11 +95,10 @@ async function finalizePackage(directory) {
     compiledPackageRoot: runtimePackageRoot,
     compiledEntry: path.join(dist, "src", "index.js"),
     executable: isExecutable,
-    syncCliAssets: isCli,
   });
 }
 
-async function writeDevDist({ directory, dist, compiledPackageRoot, compiledEntry, executable, syncCliAssets: shouldSyncCliAssets }) {
+async function writeDevDist({ directory, dist, compiledPackageRoot, compiledEntry, executable }) {
   await buildDistAtomically({
     dist,
     populate: async (staging) => {
@@ -119,12 +115,9 @@ async function writeDevDist({ directory, dist, compiledPackageRoot, compiledEntr
       }
     },
   });
-  if (shouldSyncCliAssets) {
-    await syncCliAssets(directory);
-  }
 }
 
-async function writePackDist({ directory, dist, compiledPackageRoot, compiledEntry, executable, syncCliAssets: shouldSyncCliAssets }) {
+async function writePackDist({ directory, dist, compiledPackageRoot, compiledEntry, executable }) {
   // Publish mode: produce package-local dist trees that can be packed
   // without .build/runtime and without bundling sibling packages.
   await buildDistAtomically({
@@ -143,9 +136,6 @@ async function writePackDist({ directory, dist, compiledPackageRoot, compiledEnt
       }
     },
   });
-  if (shouldSyncCliAssets) {
-    await syncCliAssets(directory);
-  }
 }
 
 /**
@@ -158,13 +148,6 @@ async function buildDistAtomically({ dist, populate }) {
     await mkdir(staging, { recursive: true });
     await populate(staging);
   });
-}
-
-async function syncCliAssets(directory) {
-  await syncCliTools(directory);
-  await syncCliThreadAdapter(directory);
-  await syncCliSkillRuntimeAssets(directory);
-  await syncOfficialSkillLock(directory);
 }
 
 async function writeEntryWrapper({ dist, compiledEntry, executable }) {
@@ -211,87 +194,6 @@ async function copyIntoDist(source, target) {
   }
   await mkdir(path.dirname(target), { recursive: true });
   await cp(source, target, { recursive: true });
-}
-
-async function syncCliTools(directory) {
-  const source = path.join(workspaceRoot, "tools");
-  const target = path.join(directory, "tools");
-  const compiledTarget = path.join(directory, "dist", "tools");
-  await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
-  if (!(await exists(source))) {
-    await rm(compiledTarget, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
-    return;
-  }
-  await replaceTreeAtomically(compiledTarget, async (staging) => {
-    await copyCliToolRuntimeTree(source, staging);
-    await stripSourceMaps(staging);
-  });
-}
-
-async function copyCliToolRuntimeTree(sourceRoot, targetRoot) {
-  const entries = await readdir(sourceRoot, { withFileTypes: true });
-  for (const entry of entries) {
-    const sourcePath = path.join(sourceRoot, entry.name);
-    const targetPath = path.join(targetRoot, entry.name);
-    if (entry.isDirectory()) {
-      await copyCliToolRuntimeTree(sourcePath, targetPath);
-      continue;
-    }
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    if (sourcePath.endsWith(".ts")) {
-      const sourceText = await readFile(sourcePath, "utf8");
-      const transpiled = ts.transpileModule(sourceText, {
-        compilerOptions: {
-          module: ts.ModuleKind.ESNext,
-          target: ts.ScriptTarget.ES2022,
-          moduleResolution: ts.ModuleResolutionKind.Bundler,
-          verbatimModuleSyntax: true,
-        },
-        fileName: sourcePath,
-      }).outputText;
-      await mkdir(path.dirname(targetPath), { recursive: true });
-      await writeFile(targetPath.replace(/\.ts$/, ".js"), rewriteRelativeTsImports(transpiled), "utf8");
-      continue;
-    }
-
-    if (
-      sourcePath.endsWith(".mjs") ||
-      sourcePath.endsWith(".json") ||
-      sourcePath.endsWith(".mts")
-    ) {
-      await copyFileToTarget(sourcePath, targetPath);
-    }
-  }
-}
-
-async function syncCliThreadAdapter(directory) {
-  const threadRoot = path.join(workspaceRoot, "tools", "thread");
-  const distThreadRoot = path.join(directory, "dist", "tools", "thread");
-  for (const fileName of ["github_adapter.mjs", "github_adapter.d.mts"]) {
-    const source = path.join(threadRoot, fileName);
-    if (!(await exists(source))) {
-      continue;
-    }
-    await copyFileToTarget(source, path.join(distThreadRoot, fileName));
-  }
-}
-
-async function syncCliSkillRuntimeAssets(directory) {
-  const source = path.join(workspaceRoot, "skills");
-  const target = path.join(directory, "skills");
-  if (!(await exists(source))) {
-    await rm(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
-    return;
-  }
-  await replaceTreeAtomically(target, async (staging) => {
-    await copyFilteredTree(source, staging, (filePath) => {
-      const base = path.basename(filePath);
-      return base !== "SKILL.md" && base !== "X.yaml";
-    });
-  });
 }
 
 /**
@@ -360,45 +262,6 @@ async function bestEffortCleanup(operation, action) {
   }
 }
 
-async function syncOfficialSkillLock(directory) {
-  const source = path.join(directory, "src", "official-skills.lock.json");
-  if (!(await exists(source))) {
-    return;
-  }
-  const distTarget = path.join(directory, "dist", "src", "official-skills.lock.json");
-  if (await exists(path.dirname(distTarget))) {
-    await copyFileToTarget(source, distTarget);
-  }
-}
-
-async function copyFilteredTree(sourceRoot, targetRoot, includeFile) {
-  const entries = await readdir(sourceRoot, { withFileTypes: true });
-  let copiedAny = false;
-  for (const entry of entries) {
-    const sourcePath = path.join(sourceRoot, entry.name);
-    const targetPath = path.join(targetRoot, entry.name);
-    if (entry.isDirectory()) {
-      const nestedCopied = await copyFilteredTree(sourcePath, targetPath, includeFile);
-      copiedAny = copiedAny || nestedCopied;
-      continue;
-    }
-    if (!entry.isFile() || !includeFile(sourcePath)) {
-      continue;
-    }
-    await copyFileToTarget(sourcePath, targetPath);
-    copiedAny = true;
-  }
-  if (!copiedAny) {
-    await rm(targetRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
-  }
-  return copiedAny;
-}
-
-async function copyFileToTarget(source, target) {
-  await mkdir(path.dirname(target), { recursive: true });
-  await cp(source, target);
-}
-
 async function stripSourceMaps(directory) {
   if (!(await exists(directory))) {
     return;
@@ -438,12 +301,6 @@ function isErrorCode(error, code) {
 
 function errorMessage(value) {
   return value instanceof Error ? value.message : String(value);
-}
-
-function rewriteRelativeTsImports(source) {
-  return source
-    .replace(/\bfrom\s+(["'])(\.{1,2}\/[^"']+)\.ts\1/gu, "from $1$2.js$1")
-    .replace(/\bimport\(\s*(["'])(\.{1,2}\/[^"']+)\.ts\1\s*\)/gu, "import($1$2.js$1)");
 }
 
 function toPosix(value) {

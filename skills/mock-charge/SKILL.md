@@ -15,19 +15,11 @@ This graph profile is for local harnesses, demos, and contract tests. It makes
 the authority transition visible without claiming executable provider-side
 runtime forwarding.
 
-## Quality Profile
-
-- Purpose: show the provider-side charge graph using deterministic local
-  settlement evidence.
-- Audience: operators, registry tooling, and future runtime implementers.
-- Artifact contract: `charge_price_packet`, `charge_challenge_packet`,
-  `charge_verification_packet`, `charge_seal`, and `forwarded_result`.
-- Evidence bar: success requires price, challenge, verification proof, sealed
-  receipt ref, and a modeled forward gate.
-- Strategic bar: keep mock deterministic and avoid raw rail or merchant
-  credentials.
-- Stop conditions: stop before modeled forwarding when verification lacks a
-  sealed receipt ref.
+The deterministic path is complete only when priced bounds become an
+idempotent challenge, verification produces a mock proof reference, and a
+sealed receipt gates the modeled upstream result. Keep raw rail and merchant
+credentials out of every artifact. If verification cannot name its proof and
+sealed receipt, stop before the forwarding step.
 
 ## Output
 

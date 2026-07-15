@@ -45,7 +45,7 @@ refuses the crossing. The output is a gate decision, not a tidied draft.
 - To move the content anywhere. It has no egress by design; the boundary
   crossing belongs to the caller.
 
-Nearest neighbors are `receipt-auditor` and `least-privilege-auditor`. Those
+Nearest neighbors are `audit-receipt` and `least-privilege`. Those
 read a sealed receipt after a run to judge authority. `redact-pii` runs before
 the fact, on content rather than on a receipt.
 

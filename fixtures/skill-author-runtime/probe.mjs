@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
 import { basename } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 const mode = process.argv[2] ?? "inspect-env";
 
@@ -25,9 +24,6 @@ if (mode === "inspect-stdin") {
   });
 } else if (mode === "large-output") {
   process.stdout.write("a".repeat(2 * 1024 * 1024));
-} else if (mode === "timeout-descendant") {
-  spawnTimeoutDescendant();
-  setInterval(() => undefined, 1000);
 } else {
   const { inputs, source } = readEnvInputs();
   writeJson({
@@ -52,18 +48,6 @@ function readEnvInputs() {
     inputs: JSON.parse(process.env.RUNX_INPUTS_JSON ?? "{}"),
     source: "json",
   };
-}
-
-function spawnTimeoutDescendant() {
-  const sentinelPath = process.env.RUNX_SENTINEL_PATH ?? process.env.RUNX_INPUT_SENTINEL_PATH;
-  if (!sentinelPath) {
-    throw new Error("RUNX_SENTINEL_PATH is required");
-  }
-  const script = [
-    `setTimeout(() => require("node:fs").writeFileSync(${JSON.stringify(sentinelPath)}, "survived"), 300);`,
-    "setInterval(() => undefined, 1000);",
-  ].join("");
-  spawn(process.execPath, ["-e", script], { stdio: "ignore" });
 }
 
 function readStdin() {

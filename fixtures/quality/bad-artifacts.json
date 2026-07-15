@@ -10,7 +10,7 @@
     "expected_codes": ["machine_framing", "builder_framing", "object_leak"]
   },
   {
-    "skill": "draft-content",
+    "skill": "ghostwrite",
     "artifact": "Agent output: TBD",
     "expected_codes": ["machine_framing", "unresolved_placeholder"]
   },

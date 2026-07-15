@@ -12,8 +12,8 @@ correct behavior looks like for a skill, before or after implementation.
 
 A runx harness fixture is a self-contained test case in YAML. It specifies
 exact inputs, the target skill or graph, and assertions against the receipt
-and step outputs. Fixtures are run by the harness runner in
-`packages/runtime-local/src/harness/`.
+and step outputs. Put package fixtures directly under `fixtures/`; `runx harness
+<skill-directory>` discovers them alongside any inline harness cases.
 
 ## Fixture format
 
@@ -58,8 +58,9 @@ Start from the skill contract (SKILL.md + execution profile). Design fixtures fo
   `skill_name`/`source_type` or `graph_name`/`owner` fields.
 - **Missing required input**: one fixture omitting a required input.
   Expect `needs_agent` status.
-- **Tool not found**: if the skill wraps a CLI tool, one fixture with an
-  invalid tool path. Expect failure with meaningful error.
+- **Expected tool rejection**: if the skill wraps a CLI tool, one fixture that
+  makes the tool execute and exit nonzero. Expect `failure` and assert the
+  meaningful error in the sealed receipt.
 - **Governance gates** (composite skills only): one fixture per approval
   or policy transition that matters.
 - **Publication evidence**: for skills intended for registry or public use,
@@ -73,6 +74,12 @@ Test the contract, not the internal wiring.
 
 Fixtures must be reproducible — no network calls, no external state, no
 wall clock dependencies. They should run in seconds.
+
+`expect.status: failure` applies only after the governed tool actually runs and
+returns a failed act. A fixture that cannot be loaded, a runner that cannot be
+resolved, an invalid execution profile, or a tool process that cannot be spawned
+is a broken harness. Those conditions must make `runx harness` exit nonzero;
+never encode them as expected fixture outcomes.
 
 For thread-driven skills, model the fixture inputs using portable runx nouns.
 Prefer `thread_title`, `thread_body`, `thread_locator`, `thread`,
@@ -99,29 +106,6 @@ When the deliverable is a first-party runx skill proposal, prefer the implied
 relative target `../<skill-name>` in harness fixtures instead of unresolved
 placeholder targets. If artifact placement truly needs maintainer input, put
 that in `maintainer_decisions` rather than leaking it into the fixture target.
-
-## Quality Profile
-
-- Purpose: turn the proposed contract into replayable proof and sharpen the
-  proposal while doing it.
-- Audience: implementers and reviewers who need to know what correct behavior
-  means before code exists.
-- Artifact contract: skill spec, execution plan when needed, pain points,
-  catalog fit, maintainer decisions, harness fixtures, and acceptance checks.
-- Evidence bar: fixtures must reflect the declared contract, prior-art
-  constraints, and known failure modes. Do not invent unsupported behavior just
-  to make a fuller matrix.
-- Voice bar: maintainer-facing proposal language. Fixtures can be technical,
-  but the surfaced proposal must not read like a trace, scaffold, or placeholder
-  bundle.
-- Strategic bar: every fixture should protect a user-visible promise, trust
-  boundary, or failure mode that matters for the skill's purpose.
-- Public value bar: do not write fixtures for a skill whose only value is that it
-  exists. Return `not_first_party` or `needs_agent` when the proposal lacks a
-  credible user, operator, maintainer, catalog, or public proof value.
-- Stop conditions: return `needs_agent` when the contract is too vague to
-  harness, and return `not_first_party` when the proposed skill should be reuse,
-  Sourcey/content work, or a graph amendment instead.
 
 ## Output
 

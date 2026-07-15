@@ -50,7 +50,8 @@ the domain skill.
 - Reads data through named queries or read operations declared by a data-source
   adapter.
 - Appends state transitions with idempotency keys and expected versions.
-- Reads projections or event streams so loops can resume from explicit state.
+- Reads projections, event streams, or bounded latest-stream-head pages so
+  loops can resume from explicit state without exporting full history.
 - Produces receipt-bound evidence for data source, resource, operation, params,
   row/event limits, versions, and output digests.
 - Keeps product semantics outside the data layer. Messageboards, CRMs, billing
@@ -88,8 +89,9 @@ the domain skill.
 2. Select the logical data source. Use `data_source_ref` to name the project or
    tenant source; let the project binding choose the adapter. Do not put raw
    database URLs, provider credentials, or SQL in the skill input.
-3. Select a declared operation: named read query, append event, read events, or
-   read projection. Do not synthesize raw provider commands.
+3. Select a declared operation: named read query, append event, read events,
+   read projection, or list stream heads. Do not synthesize raw provider
+   commands.
 4. Check authority. Reads need the narrow resource/query scope; writes need the
    transition scope, idempotency key, and expected version unless the operation
    is explicitly append-only without concurrency.
@@ -175,14 +177,22 @@ state.
   profile.
 - `resource` (required): declared resource, stream, table, keyspace, or
   projection name.
-- `operation` (required for tool-level use): `append_event`, `read_events`, or
-  `read_projection`.
+- `operation` (required for tool-level use): `append_event`, `read_events`,
+  `read_projection`, or `list_stream_heads`.
 - `aggregate_id` (required for event operations): stream or partition key.
 - `event` (required for `append_event`): domain event or transition packet.
 - `idempotency_key` (required for writes): stable retry key.
 - `expected_version` (required when the source enforces concurrency): current
   stream/resource version expected by the caller.
 - `limit` (optional): maximum rows or events to return.
+- `after_version` (optional for `read_events`): return an ascending page whose
+  event versions are strictly greater than this value. Omit it to retain the
+  existing latest-tail read. Compare the last returned event version with
+  `after_version` in the result envelope to know whether another page remains.
+- `event_types` (optional for `list_stream_heads`): at most 20 exact latest
+  event types. No pattern or arbitrary field queries are accepted.
+- `cursor` (optional for `list_stream_heads`): opaque cursor returned by the
+  previous page. Limits are capped at 100.
 - `store_id` (local fixture adapter only): deterministic local store id that
   opts into the bundled `data.local` proof adapter. Omit it for durable local
   SQLite. Production adapters should ignore it.
@@ -262,7 +272,7 @@ Redis uses the same skill and graph inputs. Only the binding changes:
     "tenant://acme/board": {
       "adapter": "data.redis",
       "endpoint": "redis://127.0.0.1:6379/0",
-      "key_prefix": "runx:acme:board",
+      "key_prefix": "runx:{acme-board}",
       "resources": {
         "board_events": {
           "kind": "event_stream",
@@ -276,4 +286,9 @@ Redis uses the same skill and graph inputs. Only the binding changes:
 
 The Redis endpoint must not embed credentials. Use local unauthenticated Redis
 for OSS dogfood, or put production secrets behind a runx credential profile or
-hosted grant.
+hosted grant. For Redis Cluster, the binding's `key_prefix` must contain one
+safe hash tag, such as `{acme-board}`, so the stream, idempotency, and head keys
+touched by an append share one slot and update atomically. Stream-head pages use
+stable keyset cursors rather than mutable offsets. Durable events and
+dispositions must not receive TTLs; production Redis should enable persistence
+and use a non-evicting policy.

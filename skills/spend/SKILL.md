@@ -99,7 +99,7 @@ settle a refund, answer a dispute, or expose unrestricted rail credentials.
 | `mock` | Deterministic local fixtures, CI, and docs. | Mock proof ref, amount, currency, counterparty, idempotency key. | No real funding material; still redact rail session material. |
 | `x402` | A paid resource returns an x402-compatible challenge. | x402 payment proof ref, facilitator or receipt proof ref when available, challenge id, idempotency key. | Do not print wallet private keys, bearer tokens, or raw payment payloads. |
 | `mpp` | An MPP profile is configured for the selected counterparty. | MPP settlement proof ref, profile ref, amount, currency, idempotency key. | Treat profile/session material as secret; output refs only. |
-| `stripe-spt` | Stripe Shared Payment Token test/live path is configured. | Stripe charge id, payment intent id when present, provider event id, scoped SPT ref, idempotency key. | Never accept or emit Stripe secret keys, webhook secrets, card data, PANs, or unrestricted tokens. |
+| `stripe-spt` | An explicit test profile is selected locally, or a hosted Stripe payment provider owns live credential custody. | Stripe charge id, payment intent id when present, provider event id, scoped SPT ref, idempotency key. | The local adapter refuses live profiles; never accept or emit Stripe secret keys, webhook secrets, card data, PANs, or unrestricted tokens. |
 
 Future paths such as CDP must fit this table before they become runnable: named
 authority bounds, scoped credential reference, verifier evidence, redaction

@@ -470,7 +470,6 @@ runners:
       intake_report: object
       change_set: object
       signal: object
-      decision: object
     artifacts:
       wrap_as: issue_intake_packet
       packet: runx.issue.intake.v1

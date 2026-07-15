@@ -6,7 +6,6 @@ use runx_runtime::{DoctorOptions, run_doctor};
 const DOCTOR_FIXTURES: &[&str] = &[
     "cross-package-reach-in",
     "empty-success",
-    "file-budget-exceeded",
     "removed-tool-yaml",
     "skill-fixture-missing",
     "tool-fixture-missing",

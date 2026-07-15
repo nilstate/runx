@@ -35,7 +35,7 @@ harness:
               - option: Lead with enforcement and proving-ground gaps closed in the repo.
                 rationale: Most concrete proof point available now.
             risks: []
-          agent_task.draft-content-draft.output:
+          agent_task.ghostwrite-draft.output:
             content_brief:
               angle: evaluator-oriented daily brief
             draft:
@@ -44,7 +44,7 @@ harness:
               - verify every repo claim
             distribution_notes:
               primary_channel: brief
-          agent_task.draft-content-package.output:
+          agent_task.ghostwrite-package.output:
             publish_packet:
               channel: brief
               headline: "Today's signal: runx tightened its skill surface"
@@ -110,7 +110,7 @@ runners:
           inputs:
             deliverable: daily brief
         - id: draft-brief
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: draft
           scopes:
             - runx:content:draft
@@ -129,7 +129,7 @@ runners:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
         - id: package-brief
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: package
           scopes:
             - runx:content:package

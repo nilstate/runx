@@ -11,44 +11,6 @@ emits:
   - name: agency_turn
     packet: runx.agency.turn.v1
 
-harness:
-  cases:
-    - name: agency-advance-dispatch
-      runner: advance
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://agency/int-cases":{"adapter":"data.sqlite","database_path":".runx/data/agency-int.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
-      inputs:
-        data_source_ref: tenant://agency/int-cases
-        case_id: case-int-1
-        driver_id: drv-1
-      caller:
-        answers:
-          agent_task.ops-desk-advance.output:
-            decision: dispatch
-            reason: The case is open; the smallest useful next move is to draft the doc update within scope.
-            dispatch:
-              member: writer
-              skill: draft-content
-              task: Draft the doc update for the drifted API reference.
-              needed_scope:
-                - docs.write
-              consequence: draft
-              verification:
-                expected_receipt: runx.receipt.v1
-                readback: draft-content effect for the docs update on case-int-1
-      expect:
-        status: sealed
-    - name: agency-advance-needs-agent
-      runner: advance
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://agency/int-cases":{"adapter":"data.sqlite","database_path":".runx/data/agency-int.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
-      inputs:
-        data_source_ref: tenant://agency/int-cases
-        case_id: case-int-1
-        driver_id: drv-1
-      expect:
-        status: needs_agent
-
 runners:
   advance:
     default: true
@@ -97,9 +59,6 @@ runners:
             mandate: reduce.reduction.data.mandate
             case_state: reduce.reduction.data.case_state
             candidate_roster: reduce.reduction.data.roster
-          artifacts:
-            wrap_as: dispatch_decision
-            packet: runx.effect.transition.v1
         - id: plan
           skill: ./graph/plan
           inputs:

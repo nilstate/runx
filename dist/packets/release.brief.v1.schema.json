@@ -6,7 +6,13 @@
   "properties": {
     "summary": { "type": "string" },
     "changes": { "type": "array" },
-    "checks": { "type": "array" },
+    "checks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["pass", "fail", "skipped"]
+      }
+    },
     "publish": { "type": "object", "additionalProperties": true }
   },
   "additionalProperties": true

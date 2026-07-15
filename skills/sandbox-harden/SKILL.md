@@ -22,8 +22,8 @@ The output is a posture recommendation, not an enforced change. A runtime, an
 orchestrator, or an operator applies it. This skill never executes the workload
 and never widens a posture below the supplied baseline without saying why.
 
-How it differs from its neighbors: `least-privilege-auditor` audits API scopes,
-not syscalls; `receipt-auditor` reads a sealed run after the fact. This skill is
+How it differs from its neighbors: `least-privilege` audits API scopes,
+not syscalls; `audit-receipt` reads a sealed run after the fact. This skill is
 the only one that reasons about the seccomp, capability, egress, and filesystem
 posture a workload should run inside before it starts. The recommendation reads
 input only and writes nothing; applying it is a separate runtime act that
@@ -44,10 +44,10 @@ exercises `sandbox:configure` on the named workload and nothing wider.
 - To run, build, or schedule the workload. This skill recommends a posture; a
   runtime, orchestrator, or operator executes the workload under it.
 - To audit which API scopes or grants a subject used. That is
-  `least-privilege-auditor`; it reasons about authority, this one reasons about
+  `least-privilege`; it reasons about authority, this one reasons about
   syscalls, capabilities, egress, and the filesystem.
 - To audit a sealed receipt for over-reach after the fact. That is
-  `receipt-auditor`.
+  `audit-receipt`.
 - To handle, store, or surface the secret material a workload reads. A hardening
   profile names a mount path or a secret handle, never a secret value.
 - To produce a posture for a workload whose identity is unknown. Return

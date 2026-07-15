@@ -6,6 +6,7 @@
   "properties": {
     "findings": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
     "catalog_fit": { "type": "object", "additionalProperties": true },
+    "quality_bar": { "type": "object", "additionalProperties": true },
     "recommended_flow": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
     "sources": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
     "risks": { "type": "array", "items": { "type": "object", "additionalProperties": true } }

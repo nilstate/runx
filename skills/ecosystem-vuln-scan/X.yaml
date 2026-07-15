@@ -36,7 +36,7 @@ harness:
             disclosure_checklist:
               - verify versions
               - verify patch
-          agent_task.draft-content-package.output:
+          agent_task.ghostwrite-package.output:
             publish_packet:
               channel: advisory
               headline: Example advisory
@@ -54,7 +54,7 @@ harness:
     - name: ecosystem-vuln-scan-needs-target
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 
 runners:
@@ -109,7 +109,7 @@ runners:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
         - id: package-advisory
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: package
           scopes:
             - runx:content:package

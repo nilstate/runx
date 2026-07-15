@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/effect/evidence/v1.json",
+  "x-runx-packet-id": "runx.effect.evidence.v1",
+  "x-runx-generated-from": "skills/spend/graph/pay-fulfill-rail/X.yaml#root.runners.mock",
+  "type": "object",
+  "required": [
+    "credential_envelope",
+    "rail_proof",
+    "rail_result",
+    "recovery_hint",
+    "redactions"
+  ],
+  "properties": {
+    "credential_envelope": {
+      "type": "object"
+    },
+    "rail_proof": {
+      "type": "object"
+    },
+    "rail_result": {
+      "type": "object"
+    },
+    "recovery_hint": {
+      "type": "object"
+    },
+    "redactions": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

@@ -144,6 +144,7 @@ fn write_pending_requests(
 
 fn answers_template(requests: &[JsonValue]) -> Option<JsonValue> {
     let mut answers = JsonObject::new();
+    let mut approvals = JsonObject::new();
     for request in requests {
         let Some(request) = request.as_object() else {
             continue;
@@ -151,15 +152,23 @@ fn answers_template(requests: &[JsonValue]) -> Option<JsonValue> {
         let Some(id) = object_string(request, "id") else {
             continue;
         };
-        answers.insert(id.to_owned(), JsonValue::Object(JsonObject::new()));
+        if object_string(request, "kind") == Some("approval") {
+            approvals.insert(id.to_owned(), JsonValue::Bool(false));
+        } else {
+            answers.insert(id.to_owned(), JsonValue::Object(JsonObject::new()));
+        }
     }
-    if answers.is_empty() {
+    if answers.is_empty() && approvals.is_empty() {
         return None;
     }
-    Some(JsonValue::Object(JsonObject::from([(
-        "answers".to_owned(),
-        JsonValue::Object(answers),
-    )])))
+    let mut template = JsonObject::new();
+    if !answers.is_empty() {
+        template.insert("answers".to_owned(), JsonValue::Object(answers));
+    }
+    if !approvals.is_empty() {
+        template.insert("approvals".to_owned(), JsonValue::Object(approvals));
+    }
+    Some(JsonValue::Object(template))
 }
 
 fn write_indented_json(writer: &mut dyn Write, value: &JsonValue) -> io::Result<()> {
@@ -299,6 +308,31 @@ mod tests {
         ));
         assert!(output.contains("answers_template:"));
         assert!(output.contains(r#""request_1": {}"#));
+    }
+
+    #[test]
+    fn text_output_emits_fail_closed_approval_template() {
+        let mut value = base_result();
+        value.insert(
+            "status".to_owned(),
+            JsonValue::String("needs_agent".to_owned()),
+        );
+        value.insert(
+            "requests".to_owned(),
+            JsonValue::Array(vec![JsonValue::Object(JsonObject::from([
+                (
+                    "id".to_owned(),
+                    JsonValue::String("sourcey.discovery.approval".to_owned()),
+                ),
+                ("kind".to_owned(), JsonValue::String("approval".to_owned())),
+            ]))]),
+        );
+
+        let output = render(value);
+
+        assert!(output.contains(r#""approvals""#));
+        assert!(output.contains(r#""sourcey.discovery.approval": false"#));
+        assert!(!output.contains(r#""sourcey.discovery.approval": {}"#));
     }
 
     fn base_result() -> JsonObject {

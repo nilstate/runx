@@ -14,21 +14,20 @@ id, refundable bounds, idempotency key, approval state, and a child payment
 authority term using the existing `refund` verb. It does not call a rail or
 repair receipt state.
 
-## Quality Profile
+Carry the original receipt link, settlement family, amount, currency, and
+idempotency key unchanged from the quote. The child authority may be no broader
+than the linked charge and refundable bounds. Return `policy_denied`—without a
+reservation—when the bounds, family, dispute state, required approval, parent
+authority, or idempotency evidence is missing.
 
-- Purpose: make the refund decision and authority subset visible before any
-  settlement-family refund step.
-- Audience: operators, approval reviewers, registry tooling, and future refund
-  runtime enforcement.
-- Artifact contract: `payment_decision`, `reserved_payment_authority`,
-  `reservation`, `idempotency`, `approval`, and `open_questions`. Refund
-  semantics are carried inside those existing payment reservation fields.
-- Evidence bar: selected refunds must preserve original receipt link,
-  settlement family, amount, currency, and idempotency.
-- Strategic bar: reserve no broader authority than the linked charge receipt
-  and quote allow.
-- Stop conditions: return `policy_denied` when bounds, family, dispute state,
-  approval, or idempotency is missing.
+## Output
+
+- `payment_decision`: selected, declined, blocked, or approval-required refund.
+- `reserved_payment_authority`: the narrowed child refund authority.
+- `reservation`: original receipt, family, amount, and currency binding.
+- `idempotency`: stable refund key and recovery lookup fields.
+- `approval`: required and observed approval state.
+- `open_questions`: unresolved blockers.
 
 ## Inputs
 

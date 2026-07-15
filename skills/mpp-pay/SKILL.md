@@ -18,21 +18,19 @@ This is the settlement-pinned MPP marquee. It keeps provider adaptation below
 the authority gate and returns only proof refs or redacted proof payloads for
 receipt sealing.
 
-## Quality Profile
+Use it from an agent host or operator workflow that needs the whole governed
+payment path, including the approval and receipt evidence a reviewer can inspect.
+It is an execution record, not wallet copy: report what was quoted, selected,
+reserved, fulfilled, recovered, or blocked without turning the rail into the
+authority model.
 
-- Purpose: execute a paid action through runx authority without hiding the
-  payment governance path.
-- Audience: agent hosts, operators, approval reviewers, and receipt verifiers.
-- Artifact contract: `payment_execution`, `payment_quote_packet`,
-  `payment_reservation_packet`, `effect_evidence_packet`, and `recovery_packet`
-  when needed.
-- Evidence bar: every successful execution carries a quote, selected decision,
-  reserved child authority, idempotency key, rail proof ref, and receipt seal
-  requirement.
-- Voice bar: operator-grade execution record; avoid wallet/product marketing.
-- Strategic bar: keep rails pluggable while core owns payment authority.
-- Stop conditions: stop before rail execution when quote, approval, parent
-  authority, reservation, idempotency, or spend capability is missing.
+Successful execution must bind the normalized quote, selected decision,
+attenuated child authority, stable idempotency key, MPP proof reference, and
+receipt-seal requirement. The rail remains replaceable; those governance facts
+do not. Stop before touching the rail when the quote, required approval, parent
+authority, reservation, idempotency material, or spend capability is missing.
+An ambiguous rail result goes to recovery under the same idempotency key; it is
+never reported as success.
 
 ## Output
 

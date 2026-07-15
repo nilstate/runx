@@ -64,7 +64,7 @@ harness:
       inputs:
         question: Which campaigns converted best?
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
   analyst:

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/agency/turn/v1.json",
+  "x-runx-packet-id": "runx.agency.turn.v1",
+  "x-runx-generated-from": "skills/agency/graph/plan/X.yaml#root.runners.default",
+  "type": "object",
+  "required": [
+    "agency_turn",
+    "expected_version",
+    "idempotency_key",
+    "turn_event"
+  ],
+  "properties": {
+    "agency_turn": {
+      "type": "object"
+    },
+    "expected_version": {
+      "type": "integer"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "turn_event": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

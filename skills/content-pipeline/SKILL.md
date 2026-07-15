@@ -13,23 +13,20 @@ It keeps evidence collection, drafting, and publication packaging as separate
 steps so the operator can approve one concrete draft before anything is turned
 into a publish packet.
 
-## Quality Profile
+The research packet must support every substantive public claim. Draft in the
+declared channel's vocabulary for its actual readers; do not turn the graph
+trace into generic thought leadership. A useful result should change something
+for the reader—understanding, a decision, trust, adoption, or a concrete
+follow-up. Return `needs_more_evidence`, `needs_review`, or
+`not_worth_publishing` when the topic is stale, duplicative, weakly supported,
+or true but not useful.
 
-- Purpose: produce one governed public content artifact from evidence,
-  operator intent, and approval.
-- Audience: the declared channel audience and the operator who must stand
-  behind the publication.
-- Artifact contract: research packet, draft content, approval decision, and
-  packaged publish packet.
-- Evidence bar: every public claim must be grounded in the research packet or
-  explicit operator context. Thin evidence narrows or stops the draft.
-- Voice bar: useful public writing, not generic thought leadership or a
-  transcript of the graph.
-- Strategic bar: the piece must create a concrete reader or operator outcome:
-  understanding, decision, trust, adoption, or follow-up.
-- Stop conditions: stop with `needs_more_evidence`, `needs_review`, or
-  `not_worth_publishing` when the topic is true but weak, stale, duplicative,
-  or unsupported.
+## Output
+
+- `research_packet`: bounded sources, verified claims, inference, and gaps.
+- `draft_content`: the reader-facing artifact grounded in that packet.
+- `approval_decision`: the operator's decision on the exact draft.
+- `publish_packet`: approved content and channel metadata, never an implicit publish.
 
 ## Inputs
 

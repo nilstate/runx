@@ -1,0 +1,7 @@
+{
+  "name": "@runxhq/extract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "runx governed skill for deterministic structured extraction from messy HTML or text."
+}

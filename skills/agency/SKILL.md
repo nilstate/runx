@@ -124,7 +124,7 @@ returns `advanced` naming the researcher. The driver runs the researcher and cal
 reviewer approves and the projection shows the docs current, `advance` returns
 `resolved`.
 
-## Quality Bar
+## Turn rules
 
 - Fold every turn from the sealed stream; never infer state the events do not show.
 - Enforce the measurable gate before the model's judgment; never widen a cap.

@@ -31,7 +31,7 @@ harness:
             catalog_fit:
               adjacent_skills:
                 - research
-                - draft-content
+                - ghostwrite
               why_new: The current catalog has primitives for research and drafting, but not one governed content pipeline that binds them into a first-party skill graph.
             maintainer_decisions:
               - question: Should the first release stop at a packaged draft rather than publish?
@@ -120,6 +120,12 @@ harness:
             skill_spec:
               name: write-harness
               note: No change. Upstream review.verdict was pass.
+            pain_points: []
+            catalog_fit:
+              adjacent_skills:
+                - write-harness
+              why_new: No new capability or catalog entry is proposed because the upstream review passed.
+            maintainer_decisions: []
             execution_plan:
               runner: agent-task
               note: No change.

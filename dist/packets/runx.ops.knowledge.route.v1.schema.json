@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/ops/knowledge_route/v1.json",
+  "x-runx-packet-id": "runx.ops.knowledge_route.v1",
+  "x-runx-generated-from": "skills/knowledge-router/X.yaml#root.runners.route",
+  "type": "object",
+  "required": [
+    "escalation_queue",
+    "route",
+    "source_matches",
+    "verdict"
+  ],
+  "properties": {
+    "escalation_queue": {
+      "type": "array"
+    },
+    "route": {
+      "type": "object"
+    },
+    "source_matches": {
+      "type": "array"
+    },
+    "verdict": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -26,7 +26,7 @@ caller:
           - payee is missing
           - requested_scope ceiling is missing
 expect:
-  status: needs_agent
+  status: sealed
   receipt:
     schema: runx.receipt.v1
 metadata:

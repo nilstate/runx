@@ -18,24 +18,6 @@ outreach, skill research, ecosystem briefs, content drafts, issue responses,
 release narratives, and any graph that needs to know what already exists before
 it produces an artifact.
 
-## Quality Profile
-
-- Purpose: prevent low-value duplication and weak strategic choices before a
-  graph writes, publishes, proposes, or mutates anything.
-- Audience: the downstream skill or human reviewer deciding whether the next
-  artifact is worth producing.
-- Artifact contract: concise findings, sources, catalog/comparison fit, risks,
-  and a recommended posture for the current graph purpose.
-- Evidence bar: cite exact docs, source files, receipts, issue threads,
-  external references, or catalog entries; mark uncertainty explicitly.
-- Voice bar: write as a maintainer briefing another maintainer. Do not narrate
-  the research process or describe context as "provided catalog evidence."
-- Strategic bar: explain what this comparison changes about the next artifact:
-  reuse, narrow scope, no action, new skill, better docs angle, safer outreach,
-  or a tighter content claim.
-- Stop conditions: return `needs_more_evidence` when the comparison would rest
-  on guesses, and return `not_worth_pursuing` when the objective is true but
-  not strategically useful for the graph purpose.
 
 Priority order:
 

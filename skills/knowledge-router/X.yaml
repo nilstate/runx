@@ -51,7 +51,7 @@ harness:
       inputs:
         question: Where should this go?
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
   route:

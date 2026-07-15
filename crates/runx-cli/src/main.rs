@@ -7,13 +7,13 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use runx_cli::router::{
-    HarnessPlan, RouterAction, add_help_text, help_text, history_help_text, list_help_text,
-    login_help_text, publish_help_text, registry_help_text, resume_help_text, skill_help_text,
-    verify_help_text,
+    HarnessPlan, RouterAction, add_help_text, connect_help_text, harness_help_text, help_text,
+    history_help_text, list_help_text, login_help_text, publish_help_text, registry_help_text,
+    resume_help_text, skill_help_text, verify_help_text,
 };
 
-const INLINE_HARNESS_SIGNING_HINT: &str = "runx: hint: inline harnesses seal signed receipts; set RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE together, or unset all three to use local-development receipts.";
-const INLINE_HARNESS_STALE_RECEIPT_STORE_HINT: &str = "runx: hint: the receipt store contains entries that do not verify with the current issuer; retry with --receipt-dir \"$(mktemp -d)\" for an isolated harness run.";
+const PACKAGE_HARNESS_SIGNING_HINT: &str = "runx: hint: package harnesses seal signed receipts; set RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE together, or unset all three to use local-development receipts.";
+const PACKAGE_HARNESS_STALE_RECEIPT_STORE_HINT: &str = "runx: hint: the receipt store contains entries that do not verify with the current issuer; retry with --receipt-dir \"$(mktemp -d)\" for an isolated harness run.";
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = env::args_os().skip(1).collect();
@@ -28,6 +28,8 @@ fn main() -> ExitCode {
         }
         RouterAction::PrintHelp => write_stdout(&help_text()),
         RouterAction::PrintAddHelp => write_stdout(&add_help_text()),
+        RouterAction::PrintConnectHelp => write_stdout(&connect_help_text()),
+        RouterAction::PrintHarnessHelp => write_stdout(&harness_help_text()),
         RouterAction::PrintHistoryHelp => write_stdout(&history_help_text()),
         RouterAction::PrintListHelp => write_stdout(&list_help_text()),
         RouterAction::PrintLoginHelp => write_stdout(&login_help_text()),
@@ -55,6 +57,7 @@ fn main() -> ExitCode {
         RouterAction::RunPayment(plan) => runx_cli::payment::run_native_payment(plan),
         RouterAction::RunParser(plan) => runx_cli::parser::run_native_parser(plan),
         RouterAction::RunConfig(plan) => run_native_config(plan),
+        RouterAction::RunConnect(plan) => runx_cli::connect::run_native_connect(plan),
         RouterAction::RunPolicy(plan) => runx_cli::policy::run_native_policy(plan),
         RouterAction::RunPublish(plan) => runx_cli::publish::run_native_publish(plan),
         RouterAction::RunRegistry(plan) => runx_cli::registry::run_native_registry(plan),
@@ -175,7 +178,7 @@ fn run_native_harness(plan: HarnessPlan) -> ExitCode {
             );
             return ExitCode::from(64);
         };
-        return run_inline_harness(Path::new(target), plan.receipt_dir.as_ref());
+        return run_package_harness(Path::new(target), plan.receipt_dir.as_ref());
     }
     run_standalone_harness(plan.fixture_paths)
 }
@@ -237,13 +240,13 @@ fn write_harness_receipts(mut outputs: Vec<runx_contracts::JsonValue>) -> ExitCo
     }
 }
 
-// A skill package (directory or SKILL.md) runs its declared inline
-// `harness.cases`; standalone fixture `.yaml` files replay as receipts.
+// A skill package (directory or SKILL.md) runs its inline `harness.cases` and
+// conventional `fixtures/*.yaml`; standalone fixture paths replay as receipts.
 fn contains_skill_package(paths: &[OsString]) -> bool {
     paths.iter().any(|path| is_skill_package(Path::new(path)))
 }
 
-// A harness target is a skill package (run its declared inline harness) when it
+// A harness target is a skill package when it
 // is a SKILL.md file, or a directory that actually holds a skill package
 // (a SKILL.md or X.yaml). A plain directory of fixture `.yaml` files is NOT a
 // skill package and falls through to standalone fixture replay.
@@ -256,28 +259,28 @@ fn is_skill_package(path: &Path) -> bool {
         .is_some_and(|name| name.eq_ignore_ascii_case("SKILL.md"))
 }
 
-fn run_inline_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> ExitCode {
-    let request = runx_runtime::InlineHarnessRequest {
+fn run_package_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> ExitCode {
+    let request = runx_runtime::PackageHarnessRequest {
         skill_path: skill_path.to_path_buf(),
         receipt_dir: receipt_dir.map(PathBuf::from),
         env: None,
     };
-    let report = match runx_cli::runtime::local_orchestrator().run_inline_harness(&request) {
+    let report = match runx_cli::runtime::local_orchestrator().run_package_harness(&request) {
         Ok(report) => report,
         Err(error) => {
             let error_message = error.to_string();
             let _ignored = write_stderr_line(&format!(
-                "runx: inline harness failed for {}: {error_message}",
+                "runx: package harness failed for {}: {error_message}",
                 skill_path.display()
             ));
-            if let Some(hint) = inline_harness_failure_hint(&error_message) {
+            if let Some(hint) = package_harness_failure_hint(&error_message) {
                 let _ignored = write_stderr_line(hint);
             }
             return ExitCode::from(1);
         }
     };
     if report.status == "failed" {
-        if let Some(hint) = inline_harness_report_hint(&report) {
+        if let Some(hint) = package_harness_report_hint(&report) {
             let _ignored = write_stderr_line(hint);
         }
     }
@@ -300,27 +303,29 @@ fn run_inline_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> Exit
     }
 }
 
-fn inline_harness_failure_hint(message: &str) -> Option<&'static str> {
+fn package_harness_failure_hint(message: &str) -> Option<&'static str> {
     if is_receipt_signing_error(message) {
-        return Some(INLINE_HARNESS_SIGNING_HINT);
+        return Some(PACKAGE_HARNESS_SIGNING_HINT);
     }
     None
 }
 
-fn inline_harness_report_hint(report: &runx_runtime::InlineHarnessReport) -> Option<&'static str> {
+fn package_harness_report_hint(
+    report: &runx_runtime::PackageHarnessReport,
+) -> Option<&'static str> {
     if report
         .assertion_errors
         .iter()
         .any(|error| is_receipt_signing_error(error))
     {
-        return Some(INLINE_HARNESS_SIGNING_HINT);
+        return Some(PACKAGE_HARNESS_SIGNING_HINT);
     }
     if report
         .assertion_errors
         .iter()
         .any(|error| error.contains("receipt store index is stale"))
     {
-        return Some(INLINE_HARNESS_STALE_RECEIPT_STORE_HINT);
+        return Some(PACKAGE_HARNESS_STALE_RECEIPT_STORE_HINT);
     }
     None
 }
@@ -373,31 +378,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn inline_harness_report_hint_recognizes_missing_signer() {
-        let report = failed_inline_harness_report(
+    fn package_harness_report_hint_recognizes_missing_signer() {
+        let report = failed_package_harness_report(
             "smoke: skill run failed: governed runtime receipt signing requires RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE",
         );
 
         assert_eq!(
-            inline_harness_report_hint(&report),
-            Some(INLINE_HARNESS_SIGNING_HINT)
+            package_harness_report_hint(&report),
+            Some(PACKAGE_HARNESS_SIGNING_HINT)
         );
     }
 
     #[test]
-    fn inline_harness_report_hint_recognizes_stale_receipt_store() {
-        let report = failed_inline_harness_report(
+    fn package_harness_report_hint_recognizes_stale_receipt_store() {
+        let report = failed_package_harness_report(
             "smoke: receipt store index is stale: receipt proof is invalid for sha256:abc",
         );
 
         assert_eq!(
-            inline_harness_report_hint(&report),
-            Some(INLINE_HARNESS_STALE_RECEIPT_STORE_HINT)
+            package_harness_report_hint(&report),
+            Some(PACKAGE_HARNESS_STALE_RECEIPT_STORE_HINT)
         );
     }
 
-    fn failed_inline_harness_report(error: &str) -> runx_runtime::InlineHarnessReport {
-        runx_runtime::InlineHarnessReport {
+    fn failed_package_harness_report(error: &str) -> runx_runtime::PackageHarnessReport {
+        runx_runtime::PackageHarnessReport {
             status: "failed",
             case_count: 1,
             assertion_error_count: 1,

@@ -105,7 +105,7 @@ fn load_local_context_skill(
     insert_string(&mut data, "path", skill_path_display.as_ref());
     insert_string(&mut data, "sha256", &digest);
     insert_string(&mut data, "content", &markdown);
-    skill_context_entry(SkillContextEntryInput {
+    let entry = skill_context_entry(SkillContextEntryInput {
         step_id,
         reference,
         env,
@@ -113,7 +113,9 @@ fn load_local_context_skill(
         digest: &digest,
         size_bytes: markdown.len() as u64,
         data,
-    })
+    })?;
+    super::prepared_skill::verify_prepared_artifact_at_use(env, &skill_path)?;
+    Ok(entry)
 }
 
 fn load_registry_context_skill(

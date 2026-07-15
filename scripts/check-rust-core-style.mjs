@@ -120,7 +120,7 @@ async function listRustFiles(directory) {
 }
 
 function checkPatterns(relativePath, source) {
-  if (relativePath.endsWith("_tests.rs")) {
+  if (testSource(relativePath)) {
     return;
   }
   for (const { pattern, reason, allowlist = [] } of disallowedPatterns) {
@@ -136,10 +136,14 @@ function checkPatterns(relativePath, source) {
 }
 
 function productionSource(relativePath, source) {
-  if (relativePath.endsWith("_tests.rs")) {
+  if (testSource(relativePath)) {
     return "";
   }
   return stripCfgTestModules(source);
+}
+
+function testSource(relativePath) {
+  return relativePath.endsWith("_tests.rs") || relativePath.endsWith("/tests.rs");
 }
 
 function stripCfgTestModules(source) {

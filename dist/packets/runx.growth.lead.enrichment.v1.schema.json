@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/growth/lead_enrichment/v1.json",
+  "x-runx-packet-id": "runx.growth.lead_enrichment.v1",
+  "x-runx-generated-from": "skills/lead-enrichment/X.yaml#root.runners.enrich",
+  "type": "object",
+  "required": [
+    "evidence",
+    "lead_profile",
+    "recommended_action",
+    "risks",
+    "verdict"
+  ],
+  "properties": {
+    "evidence": {
+      "type": "array"
+    },
+    "lead_profile": {
+      "type": "object"
+    },
+    "recommended_action": {
+      "type": "object"
+    },
+    "risks": {
+      "type": "array"
+    },
+    "verdict": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

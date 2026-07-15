@@ -1,0 +1,35 @@
+skill: overlay
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: builder
+  visibility: public
+  role: canonical
+runners:
+  generate:
+    default: true
+    type: agent-task
+    agent: builder
+    task: overlay
+    outputs:
+      overlay_proposal: object
+    artifacts:
+      wrap_as: overlay_packet
+      packet: runx.skill_overlay.v1
+    inputs:
+      skill_ref:
+        type: string
+        required: false
+        description: Registry ref of the skill to wrap, e.g. vendor/research@1.2.0.
+      skill_path:
+        type: string
+        required: false
+        description: Local path to a borrowed SKILL.md to wrap.
+      scope_intent:
+        type: string
+        required: false
+        description: What the wrapped skill should be allowed to do, in prose.
+      objective:
+        type: string
+        required: false
+        description: Operator intent that focuses the bound.

@@ -1,0 +1,36 @@
+skill: helpdesk
+version: "0.1.1"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  triage:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      classification: string
+      severity: string
+      confidence: number
+      recommended_path: string
+      evidence: object
+      draft_email: object
+      send_gate: object
+    artifacts:
+      wrap_as: support_triage_packet
+      packet: runx.support.triage_reply.v1
+    inputs:
+      support_request:
+        type: json
+        required: true
+        description: Bounded support request packet.
+      policy:
+        type: json
+        required: false
+        description: Product-safe support policy and signature hints.

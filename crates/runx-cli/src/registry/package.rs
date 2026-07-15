@@ -60,11 +60,17 @@ pub(super) fn read_skill_package(
         })?),
         None => None,
     };
-    let package_files = if include_harness {
+    let mut package_files = if include_harness {
         collect_publish_package_files(&markdown_path, profile_path.as_deref())?
     } else {
         Vec::new()
     };
+    if include_harness
+        && let (Some(profile_document), Some(skill_dir)) =
+            (profile_document.as_deref(), markdown_path.parent())
+    {
+        append_declared_packet_schemas(&mut package_files, profile_document, skill_dir, env, cwd)?;
+    }
     let harness_package_files = if include_harness {
         collect_publish_harness_package_files(
             &markdown_path,
@@ -86,7 +92,6 @@ pub(super) fn read_skill_package(
         PublishHarnessPackage {
             path: None,
             temp_dir: None,
-            fixture_paths: Vec::new(),
         }
     };
     Ok(SkillPackage {
@@ -94,35 +99,187 @@ pub(super) fn read_skill_package(
         profile_document,
         harness_path: harness_package.path,
         harness_temp_dir: harness_package.temp_dir,
-        harness_fixture_paths: harness_package.fixture_paths,
         package_files,
     })
 }
 
+fn append_declared_packet_schemas(
+    files: &mut Vec<HostedSkillPackageFile>,
+    profile_document: &str,
+    skill_dir: &Path,
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+) -> Result<(), RegistryCliError> {
+    let packet_ids = declared_packet_ids(profile_document)?;
+    if packet_ids.is_empty() {
+        return Ok(());
+    }
+    let workspace = runx_runtime::resolve_runx_workspace_base(env, cwd);
+    let search_dirs = [
+        skill_dir.join("packets"),
+        workspace.join("dist").join("packets"),
+    ];
+    let mut schemas = discover_packet_schemas(&packet_ids, &search_dirs)?;
+    for packet_id in packet_ids {
+        let Some((file_name, content)) = schemas.remove(&packet_id) else {
+            return Err(internal_error(format!(
+                "declared packet schema '{packet_id}' was not found"
+            )));
+        };
+        files.push(HostedSkillPackageFile {
+            path: format!("packets/{file_name}"),
+            content,
+        });
+    }
+    files.sort_by(|left, right| left.path.cmp(&right.path));
+    validate_remote_publish_package_limits(files)
+}
+
+fn declared_packet_ids(profile_document: &str) -> Result<BTreeSet<String>, RegistryCliError> {
+    let profile = runx_runtime::parse_runner_manifest_yaml(profile_document).map_err(|error| {
+        internal_error(format!(
+            "failed to parse skill packet declarations: {error}"
+        ))
+    })?;
+    let mut packet_ids = BTreeSet::new();
+    collect_declared_packet_ids(&JsonValue::Object(profile.document), &mut packet_ids);
+    Ok(packet_ids)
+}
+
+fn discover_packet_schemas(
+    packet_ids: &BTreeSet<String>,
+    search_dirs: &[PathBuf],
+) -> Result<BTreeMap<String, (String, String)>, RegistryCliError> {
+    let mut schemas = BTreeMap::<String, (String, String)>::new();
+    for directory in search_dirs {
+        let Ok(entries) = fs::read_dir(directory) else {
+            continue;
+        };
+        let mut paths = entries
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
+            .collect::<Vec<_>>();
+        paths.sort();
+        for path in paths {
+            let Some((packet_id, file_name, content)) = read_packet_schema(&path)? else {
+                continue;
+            };
+            if !packet_ids.contains(&packet_id) {
+                continue;
+            }
+            if let Some((_, existing)) = schemas.get(&packet_id) {
+                if existing != &content {
+                    return Err(internal_error(format!(
+                        "packet schema '{packet_id}' resolves to conflicting documents"
+                    )));
+                }
+                continue;
+            }
+            schemas.insert(packet_id, (file_name, content));
+        }
+    }
+    Ok(schemas)
+}
+
+fn read_packet_schema(path: &Path) -> Result<Option<(String, String, String)>, RegistryCliError> {
+    let content = fs::read_to_string(path).map_err(|error| {
+        internal_error(format!(
+            "failed to read packet schema {}: {error}",
+            path.display()
+        ))
+    })?;
+    let schema = serde_json::from_str::<JsonValue>(&content).map_err(|error| {
+        internal_error(format!(
+            "failed to parse packet schema {}: {error}",
+            path.display()
+        ))
+    })?;
+    let Some(packet_id) = schema
+        .as_object()
+        .and_then(|object| object.get("x-runx-packet-id"))
+        .and_then(JsonValue::as_str)
+    else {
+        return Ok(None);
+    };
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| internal_error(format!("invalid packet schema path {}", path.display())))?;
+    Ok(Some((packet_id.to_owned(), file_name.to_owned(), content)))
+}
+
+fn validate_remote_publish_package_limits(
+    files: &[HostedSkillPackageFile],
+) -> Result<(), RegistryCliError> {
+    if files.len() > MAX_REMOTE_PUBLISH_FILE_COUNT
+        || files
+            .iter()
+            .map(|file| file.content.len() as u64)
+            .sum::<u64>()
+            > MAX_REMOTE_PUBLISH_TOTAL_BYTES
+    {
+        return Err(internal_error(
+            "packet schemas exceed remote publish package limits",
+        ));
+    }
+    Ok(())
+}
+
+fn collect_declared_packet_ids(value: &JsonValue, packet_ids: &mut BTreeSet<String>) {
+    match value {
+        JsonValue::Array(values) => {
+            for value in values {
+                collect_declared_packet_ids(value, packet_ids);
+            }
+        }
+        JsonValue::Object(object) => {
+            if let Some(JsonValue::Object(artifacts)) = object.get("artifacts") {
+                if let Some(packet) = artifacts.get("packet").and_then(JsonValue::as_str) {
+                    packet_ids.insert(packet.to_owned());
+                }
+                if let Some(JsonValue::Object(packets)) = artifacts.get("packets") {
+                    for packet in packets.values().filter_map(JsonValue::as_str) {
+                        packet_ids.insert(packet.to_owned());
+                    }
+                }
+            }
+            for value in object.values() {
+                collect_declared_packet_ids(value, packet_ids);
+            }
+        }
+        JsonValue::Null | JsonValue::Bool(_) | JsonValue::Number(_) | JsonValue::String(_) => {}
+    }
+}
+
 pub(super) fn run_publish_harness(
     harness_path: Option<&Path>,
-    fixture_paths: &[PathBuf],
 ) -> Result<RegistryPublishHarnessReport, RegistryCliError> {
     let Some(harness_path) = harness_path else {
-        return Ok(RegistryPublishHarnessReport::not_declared());
+        return Err(internal_error(
+            "publish requires a skill execution profile and at least one harness case",
+        ));
     };
     let receipt_dir = publish_harness_receipt_dir()?;
-    let request = runx_runtime::InlineHarnessRequest {
+    let request = runx_runtime::PackageHarnessRequest {
         skill_path: harness_path.to_path_buf(),
         receipt_dir: Some(receipt_dir.clone()),
-        env: Some(publish_harness_env()),
+        env: Some(publish_harness_env(&receipt_dir.join("home"))),
     };
-    let report = crate::runtime::local_orchestrator().run_inline_harness(&request);
+    let report = crate::runtime::local_orchestrator().run_package_harness(&request);
     let _ignored = fs::remove_dir_all(&receipt_dir);
     let report = report.map_err(|error| {
         internal_error(format!(
-            "inline harness failed for {}: {error}",
+            "package harness failed for {}: {error}",
             harness_path.display()
         ))
     })?;
     let report = publish_harness_report(report);
-    if report.status == "not_declared" && !fixture_paths.is_empty() {
-        return run_standalone_publish_harness(fixture_paths);
+    if report.case_count == 0 {
+        return Err(internal_error(format!(
+            "Harness failed for {}: no cases were discovered",
+            harness_path.display()
+        )));
     }
     if report.failed() {
         return Err(internal_error(format!(
@@ -134,45 +291,12 @@ pub(super) fn run_publish_harness(
     Ok(report)
 }
 
-fn run_standalone_publish_harness(
-    fixture_paths: &[PathBuf],
-) -> Result<RegistryPublishHarnessReport, RegistryCliError> {
-    let harness_env = publish_harness_env();
-    let mut case_names = Vec::new();
-    let mut receipt_ids = Vec::new();
-    let mut graph_case_count = 0usize;
-    for fixture_path in fixture_paths {
-        let output = runx_runtime::run_harness_fixture_with_env(fixture_path, harness_env.clone())
-            .map_err(|error| {
-                internal_error(format!(
-                    "standalone publish harness failed for {}: {error}",
-                    fixture_path.display()
-                ))
-            })?;
-        if matches!(output.fixture.kind, runx_runtime::HarnessFixtureKind::Graph) {
-            graph_case_count += 1;
-        }
-        case_names.push(output.fixture.name);
-        receipt_ids.push(output.receipt.id.to_string());
-    }
-    Ok(RegistryPublishHarnessReport {
-        status: "passed".to_owned(),
-        case_count: fixture_paths.len(),
-        assertion_error_count: 0,
-        assertion_errors: Vec::new(),
-        case_names,
-        receipt_ids,
-        graph_case_count,
-    })
-}
-
 #[derive(Clone, Debug)]
 pub(super) struct SkillPackage {
     pub(super) markdown: String,
     pub(super) profile_document: Option<String>,
     pub(super) harness_path: Option<PathBuf>,
     pub(super) harness_temp_dir: Option<PathBuf>,
-    pub(super) harness_fixture_paths: Vec<PathBuf>,
     pub(super) package_files: Vec<HostedSkillPackageFile>,
 }
 
@@ -185,7 +309,6 @@ pub(super) struct HostedSkillPackageFile {
 struct PublishHarnessPackage {
     path: Option<PathBuf>,
     temp_dir: Option<PathBuf>,
-    fixture_paths: Vec<PathBuf>,
 }
 
 const MAX_REMOTE_PUBLISH_FILE_BYTES: u64 = 512 * 1024;
@@ -195,9 +318,16 @@ const PUBLISH_HARNESS_SIGNING_KID: &str = "runx-publish-harness-local";
 const PUBLISH_HARNESS_SIGNING_SEED_BASE64: &str = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
 const PUBLISH_HARNESS_SIGNING_ISSUER_TYPE: &str = "ci";
 
-fn publish_harness_env() -> BTreeMap<String, String> {
+fn publish_harness_env(runx_home: &Path) -> BTreeMap<String, String> {
     let mut env = runx_runtime::RuntimeOptions::safe_process_env();
     strip_hosted_publish_env(&mut env);
+    env.remove("RUNX_AGENT_PROVIDER");
+    env.remove("RUNX_AGENT_MODEL");
+    env.remove("RUNX_AGENT_API_KEY");
+    env.insert(
+        "RUNX_HOME".to_owned(),
+        runx_home.to_string_lossy().into_owned(),
+    );
     ensure_publish_harness_signing_env(&mut env);
     env
 }
@@ -244,7 +374,6 @@ fn publish_harness_package(
         return Ok(PublishHarnessPackage {
             path: None,
             temp_dir: None,
-            fixture_paths: Vec::new(),
         });
     };
     let temp_dir = unique_temp_dir("runx-publish-profile-harness")?;
@@ -277,24 +406,23 @@ fn publish_harness_package(
             ))
         })?;
     }
-    let fixture_paths = copy_standalone_publish_fixtures(source_skill_dir, &temp_dir)?;
+    copy_standalone_publish_fixtures(source_skill_dir, &temp_dir)?;
     Ok(PublishHarnessPackage {
         path: Some(temp_dir.clone()),
         temp_dir: Some(temp_dir),
-        fixture_paths,
     })
 }
 
 fn copy_standalone_publish_fixtures(
     source_skill_dir: Option<&Path>,
     temp_dir: &Path,
-) -> Result<Vec<PathBuf>, RegistryCliError> {
+) -> Result<(), RegistryCliError> {
     let Some(source_skill_dir) = source_skill_dir else {
-        return Ok(Vec::new());
+        return Ok(());
     };
     let source_fixtures_dir = source_skill_dir.join("fixtures");
     let Ok(entries) = fs::read_dir(&source_fixtures_dir) else {
-        return Ok(Vec::new());
+        return Ok(());
     };
     let destination_fixtures_dir = temp_dir.join("fixtures");
     fs::create_dir_all(&destination_fixtures_dir).map_err(|error| {
@@ -303,7 +431,6 @@ fn copy_standalone_publish_fixtures(
             destination_fixtures_dir.display()
         ))
     })?;
-    let mut fixture_paths = Vec::new();
     for entry in entries {
         let entry = entry.map_err(|error| {
             internal_error(format!(
@@ -322,10 +449,8 @@ fn copy_standalone_publish_fixtures(
                 source_path.display()
             ))
         })?;
-        fixture_paths.push(destination);
     }
-    fixture_paths.sort();
-    Ok(fixture_paths)
+    Ok(())
 }
 
 fn is_standalone_publish_fixture(path: &Path) -> bool {
@@ -955,7 +1080,7 @@ fn unique_temp_dir(prefix: &str) -> Result<PathBuf, RegistryCliError> {
 }
 
 fn publish_harness_report(
-    report: runx_runtime::InlineHarnessReport,
+    report: runx_runtime::PackageHarnessReport,
 ) -> RegistryPublishHarnessReport {
     RegistryPublishHarnessReport {
         status: report.status.to_owned(),
@@ -973,8 +1098,8 @@ mod tests {
     use super::{
         PUBLISH_HARNESS_SIGNING_ISSUER_TYPE, PUBLISH_HARNESS_SIGNING_KID,
         collect_publish_harness_package_files, collect_publish_package_files,
-        ensure_publish_harness_signing_env, should_reject_remote_publish_file,
-        strip_hosted_publish_env, unique_temp_dir,
+        ensure_publish_harness_signing_env, publish_harness_env, read_skill_package,
+        should_reject_remote_publish_file, strip_hosted_publish_env, unique_temp_dir,
     };
     use std::fs;
 
@@ -1043,6 +1168,18 @@ mod tests {
     }
 
     #[test]
+    fn publish_harness_uses_isolated_agent_config() {
+        let runx_home = std::path::Path::new("/tmp/runx-publish-harness-home");
+
+        let env = publish_harness_env(runx_home);
+
+        assert_eq!(env.get("RUNX_HOME").map(String::as_str), runx_home.to_str());
+        assert!(!env.contains_key("RUNX_AGENT_PROVIDER"));
+        assert!(!env.contains_key("RUNX_AGENT_MODEL"));
+        assert!(!env.contains_key("RUNX_AGENT_API_KEY"));
+    }
+
+    #[test]
     fn remote_publish_rejects_common_secret_file_names() {
         for path in [
             ".env",
@@ -1069,6 +1206,108 @@ mod tests {
                 "{path} should remain publishable as a skill package sidecar"
             );
         }
+    }
+
+    #[test]
+    fn remote_publish_package_includes_declared_packet_schema()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let dir = unique_temp_dir("runx-publish-packet-schema-test")?;
+        fs::write(
+            dir.join("SKILL.md"),
+            "---\nname: packet-skill\ndescription: Packet skill\n---\n# Packet skill\n",
+        )?;
+        fs::write(
+            dir.join("X.yaml"),
+            r#"skill: packet-skill
+runners:
+  main:
+    default: true
+    type: cli-tool
+    command: node
+    args: [run.mjs]
+    outputs:
+      plan: object
+    artifacts:
+      wrap_as: packet
+      packet: runx.test.publish.v1
+"#,
+        )?;
+        fs::write(
+            dir.join("run.mjs"),
+            "console.log(JSON.stringify({plan: {}}))\n",
+        )?;
+        fs::create_dir_all(dir.join("packets"))?;
+        fs::write(
+            dir.join("packets/publish.schema.json"),
+            r#"{"x-runx-packet-id":"runx.test.publish.v1","type":"object"}
+"#,
+        )?;
+
+        let skill_path = dir.to_str().ok_or("skill path is not UTF-8")?;
+        let package = read_skill_package(
+            skill_path,
+            None,
+            &std::collections::BTreeMap::new(),
+            &dir,
+            true,
+        )?;
+
+        assert!(
+            package
+                .package_files
+                .iter()
+                .any(|file| file.path == "packets/publish.schema.json")
+        );
+        if let Some(temp_dir) = package.harness_temp_dir {
+            let _ignored = fs::remove_dir_all(temp_dir);
+        }
+        let _ignored = fs::remove_dir_all(dir);
+        Ok(())
+    }
+
+    #[test]
+    fn remote_publish_rejects_declared_packet_without_schema()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let dir = unique_temp_dir("runx-publish-missing-packet-schema-test")?;
+        fs::write(
+            dir.join("SKILL.md"),
+            "---\nname: packet-skill\ndescription: Packet skill\n---\n# Packet skill\n",
+        )?;
+        fs::write(
+            dir.join("X.yaml"),
+            r#"skill: packet-skill
+runners:
+  main:
+    default: true
+    type: cli-tool
+    command: node
+    args: [run.mjs]
+    outputs:
+      plan: object
+    artifacts:
+      wrap_as: packet
+      packet: runx.test.missing.v1
+"#,
+        )?;
+        fs::write(
+            dir.join("run.mjs"),
+            "console.log(JSON.stringify({plan: {}}))\n",
+        )?;
+
+        let skill_path = dir.to_str().ok_or("skill path is not UTF-8")?;
+        let Err(error) = read_skill_package(
+            skill_path,
+            None,
+            &std::collections::BTreeMap::new(),
+            &dir,
+            true,
+        ) else {
+            return Err("missing packet schema must fail".into());
+        };
+
+        assert!(error.message.contains("was not found"));
+        let _ignored = fs::remove_dir_all(dir);
+        Ok(())
     }
 
     #[test]

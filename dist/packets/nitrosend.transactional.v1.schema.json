@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/nitrosend/transactional/v1.json",
+  "x-runx-packet-id": "nitrosend.transactional.v1",
+  "x-runx-generated-from": "skills/nitrosend/X.yaml#root.runners.send-transactional",
+  "type": "object",
+  "required": [
+    "transactional_plan"
+  ],
+  "properties": {
+    "transactional_plan": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

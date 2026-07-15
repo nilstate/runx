@@ -15,7 +15,52 @@ harness:
       caller:
         answers:
           agent_task.work-plan.output:
+            change_set:
+              change_set_id: change_set_ecosystem_brief
+              thread_locator: objective://ecosystem-brief
+              summary: Build a runx ecosystem-brief flow.
+              category: other
+              severity: medium
+              recommended_lane: design-skill
+              commence_decision: approve
+              action_decision: proceed_to_plan
+              target_surfaces:
+                - surface: runx
+                  kind: repo
+                  mutating: false
+                  rationale: The result is a reviewed first-party skill proposal.
+              shared_invariants:
+                - Keep evidence gathering separate from drafting.
+              success_criteria:
+                - One bounded ecosystem-brief skill proposal is produced.
             objective_summary: Build a runx ecosystem-brief flow.
+            workspace_change_plan:
+              plan_id: workspace_plan_ecosystem_brief
+              change_set_id: change_set_ecosystem_brief
+              objective_summary: Build a runx ecosystem-brief flow.
+              shared_invariants:
+                - Keep evidence gathering separate from drafting.
+              success_criteria:
+                - One bounded ecosystem-brief skill proposal is produced.
+              phases:
+                - id: phase-design
+                  name: Design the candidate skill
+                  depends_on: []
+                  parallelizable: false
+                  repo_change_requests:
+                    - id: ecosystem-brief-skill
+                      repo: runx
+                      task_id: ecosystem-brief-skill
+                      objective: Design and prove the ecosystem-brief skill proposal.
+                      depends_on: []
+                      shared_context_refs:
+                        - change_set.shared_invariants
+                      validation_commands:
+                        - pnpm test tests/official-skill-catalog.test.ts
+                      mutating: false
+              integration_checks:
+                - Research evidence remains explicit in the drafted brief.
+              open_questions: []
             orchestration_steps:
               - id: research
                 skill: ../research
@@ -26,7 +71,7 @@ harness:
                 context_from: []
                 description: Gather the evidence pack.
               - id: draft
-                skill: ../draft-content
+                skill: ../ghostwrite
                 scopes:
                   - runx:content:draft
                 mutating: false
@@ -37,7 +82,7 @@ harness:
             required_skills:
               - name: research
                 exists: true
-              - name: draft-content
+              - name: ghostwrite
                 exists: true
             open_questions: []
           agent_task.prior-art.output:
@@ -49,8 +94,14 @@ harness:
             catalog_fit:
               adjacent_skills:
                 - research
-                - draft-content
+                - ghostwrite
               why_new: The missing capability is the governed graph that turns those adjacent primitives into one reusable first-party ecosystem brief flow.
+            quality_bar:
+              audience: runx skill maintainers
+              artifact: A grounded ecosystem-brief skill design.
+              evidence: Cite existing skill paths and verified project sources.
+              stop_conditions:
+                - Stop if the proposed graph duplicates an existing catalog skill.
             recommended_flow:
               - step: research
               - step: draft
@@ -70,7 +121,7 @@ harness:
             catalog_fit:
               adjacent_skills:
                 - research
-                - draft-content
+                - ghostwrite
               why_new: The current catalog exposes research and drafting separately, but not one first-party skill that turns them into a reusable ecosystem brief flow.
             maintainer_decisions:
               - question: Should the first-party graph stop at a reviewable brief draft?
@@ -106,7 +157,7 @@ harness:
     - name: design-skill-needs-objective
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 
 runners:

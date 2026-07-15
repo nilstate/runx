@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use runx_contracts::{ContextEntry, JsonObject};
+#[cfg(feature = "cli-tool")]
+use runx_contracts::{CredentialDeliveryObservation, JsonValue};
 use runx_parser::SkillSource;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +13,10 @@ use crate::credentials::CredentialDelivery;
 /// Metadata key under which a skill's non-secret credential-delivery
 /// observations are recorded on [`SkillOutput::metadata`].
 pub const CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA: &str = "credential_delivery_observations";
+/// Structured, already-verified contract evidence that the receipt sealer binds
+/// into signed criteria. Producers must populate this only after native
+/// verification succeeds.
+pub const CONTRACT_VERIFICATION_METADATA: &str = "contract_verification";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InvocationStatus {
@@ -44,6 +50,41 @@ impl SkillOutput {
     #[must_use]
     pub fn succeeded(&self) -> bool {
         self.status == InvocationStatus::Success
+    }
+
+    /// Append one non-secret credential observation for receipt sealing. This
+    /// records the runtime boundary observation as supplied; it does not imply
+    /// that credential material entered the invoked subprocess.
+    #[cfg(feature = "cli-tool")]
+    pub(crate) fn record_credential_observation(
+        &mut self,
+        observation: &CredentialDeliveryObservation,
+    ) -> Result<(), RuntimeError> {
+        let value: JsonValue = serde_json::to_value(observation)
+            .and_then(serde_json::from_value)
+            .map_err(|source| {
+                RuntimeError::json("serializing credential delivery observation", source)
+            })?;
+        match self
+            .metadata
+            .get_mut(CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA)
+        {
+            Some(JsonValue::Array(observations)) => observations.push(value),
+            Some(_) => {
+                return Err(RuntimeError::ReceiptInvalid {
+                    message: format!(
+                        "{CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA} metadata must be an array"
+                    ),
+                });
+            }
+            None => {
+                self.metadata.insert(
+                    CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA.to_owned(),
+                    JsonValue::Array(vec![value]),
+                );
+            }
+        }
+        Ok(())
     }
 }
 

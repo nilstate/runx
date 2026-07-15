@@ -16,8 +16,7 @@ for (const forbidden of [
   "rust:crate-graph",
   "rust:style",
   "cutover:legacy-check",
-  "build native runx binary",
-  "build harness fixture oracle binary",
+  "build rust binaries",
   "test:fast",
 ]) {
   if (parallelSourceGroup.includes(forbidden)) {
@@ -31,8 +30,7 @@ for (const required of [
   'step("release version sync"',
   'await runSerialGroup("rust structure checks"',
   'step("cutover:legacy-check"',
-  'step("build native runx binary"',
-  'step("build harness fixture oracle binary"',
+  'step("build rust binaries"',
   'step("build workspace"',
   'step("authoring package contract"',
 ]) {

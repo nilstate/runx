@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/context/brand_voice/v1.json",
+  "x-runx-packet-id": "runx.context.brand_voice.v1",
+  "x-runx-generated-from": "skills/brand-voice/X.yaml#root.runners.voice",
+  "type": "object",
+  "required": [
+    "applicability",
+    "brand",
+    "brand_voice",
+    "decision",
+    "evidence",
+    "receipt_notes",
+    "redactions",
+    "stop_conditions"
+  ],
+  "properties": {
+    "applicability": {
+      "type": "object"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "brand_voice": {
+      "type": "object"
+    },
+    "decision": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "receipt_notes": {
+      "type": "object"
+    },
+    "redactions": {
+      "type": "array"
+    },
+    "stop_conditions": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

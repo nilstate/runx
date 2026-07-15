@@ -3,7 +3,7 @@
 # .scafld/specs/active/test-surface-build-consolidation.md.
 autotests = false
 name = "runx-receipts"
-version = "0.0.1"
+version = "0.0.2"
 edition.workspace = true
 rust-version.workspace = true
 description = "Pure Rust receipt model, canonicalization, and verification parity for runx."

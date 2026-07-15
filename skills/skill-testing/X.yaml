@@ -36,7 +36,7 @@ harness:
             recommendation_report:
               recommendation: publish_trust_audit
               rationale: Strong enough for evaluators once the docs are aligned.
-          agent_task.draft-content-draft.output:
+          agent_task.ghostwrite-draft.output:
             content_brief:
               angle: trust audit
             draft:
@@ -45,7 +45,7 @@ harness:
               - confirm trust-tier language
             distribution_notes:
               primary_channel: trust-audit
-          agent_task.draft-content-package.output:
+          agent_task.ghostwrite-package.output:
             publish_packet:
               channel: trust-audit
               headline: Sourcey trust audit
@@ -63,7 +63,7 @@ harness:
     - name: skill-testing-needs-required-inputs
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
   skill-testing:
@@ -101,7 +101,7 @@ runners:
           scopes:
             - runx:skill-eval:read
         - id: draft-report
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: draft
           scopes:
             - runx:content:draft
@@ -123,7 +123,7 @@ runners:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
         - id: package-report
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: package
           scopes:
             - runx:content:package

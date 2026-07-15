@@ -1,0 +1,38 @@
+skill: least-privilege
+version: "0.1.0"
+catalog:
+  kind: skill
+  audience: operator
+  visibility: public
+  role: canonical
+runners:
+  audit:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      audit_report: object
+      attenuation_proposals: array
+      verdict: string
+    artifacts:
+      wrap_as: least_privilege_packet
+      packet: runx.security.least_privilege.v1
+    inputs:
+      subject:
+        type: string
+        required: false
+        description: "Label for what is being audited: a skill id, grant id, or principal."
+      granted_scopes:
+        type: json
+        required: true
+        description: The scopes currently granted to the subject.
+      usage_summary:
+        type: json
+        required: true
+        description: "Observed usage derived from receipts: for each scope or resource, the verbs actually exercised."
+      objective:
+        type: string
+        required: false
+        description: Operator intent that focuses the review.

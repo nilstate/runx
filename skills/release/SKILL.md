@@ -14,6 +14,13 @@ release implementation. Project-specific topology lives in a release profile
 that names existing commands, workflows, registries, deploy targets, and
 verification readbacks.
 
+Every version and changelog claim must trace to commits, tags, checks, package
+metadata, or explicit operator context. Write release material for package
+consumers: say why this version matters and what they should do next, without
+generic launch language or positive wording that hides a blocker. Stop in
+`prepare` or at approval when checks fail, versioning is unclear, evidence is
+thin, or the announcement would overstate what shipped.
+
 Two runners:
 
 - **`prepare`** (read-only) — survey the commit range since the last tag,
@@ -70,24 +77,6 @@ site/changelog readbacks, package-manager manifests, or any other project-owned
 release acceptance criteria. Emits a `release_report` for operator review and
 public audit.
 
-## Quality Profile
-
-- Purpose: turn release evidence into an audited publish/no-publish decision
-  and, after approval, a versioned release.
-- Audience: maintainers, package consumers, and operators reviewing the release
-  trail.
-- Artifact contract: release brief, changelog, check results, unresolved flags,
-  approval decision, publish report, verification report, and announcement
-  packet.
-- Evidence bar: changelog and version claims must trace to commits, tags,
-  checks, package metadata, or explicit operator context.
-- Voice bar: release writing should be concrete and user-facing. Do not pad
-  with generic launch language or hide blockers behind positive wording.
-- Strategic bar: the release should explain why this version matters and what
-  users should do next.
-- Stop conditions: stop at prepare or approval when checks fail, versioning is
-  unclear, changelog evidence is thin, or the announcement would overstate the
-  release.
 
 ## Inputs
 

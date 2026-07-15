@@ -12,25 +12,6 @@ This graph is the public-facing trust-audit lane.
 It evaluates one skill, turns the findings into a concise report, and then
 packages the approved output for publication or operator handoff.
 
-## Quality Profile
-
-- Purpose: produce a reviewable trust audit for one skill.
-- Audience: operators, catalog maintainers, and users deciding whether to trust
-  or adopt the skill.
-- Artifact contract: review-skill assessment, trust audit draft, approval
-  decision, and publish or handoff packet.
-- Evidence bar: base recommendations on receipts, harness output, source notes,
-  and the skill contract. Missing evidence lowers trust; it does not invite
-  optimistic language.
-- Voice bar: audit report, not marketing copy. Name risks, caveats, and test
-  gaps directly.
-- Strategic bar: make adoption, sandboxing, rejection, or further testing
-  easier.
-- Public value bar: test whether the skill has a credible user, operator,
-  maintainer, or catalog reason to exist. Passing harnesses do not rescue a
-  placeholder, toy, duplicate, or low-value package.
-- Stop conditions: stop at review when trust evidence is insufficient or the
-  skill cannot be bounded.
 
 ## Trust Audit Checks
 
@@ -49,6 +30,19 @@ Before packaging a recommendation, confirm:
   trust, or maintain the skill.
 - The evidence pack contains no secrets, raw credentials, private customer data,
   private email bodies, wallet private keys, or provider response dumps.
+
+Passing a harness is not enough if the package is a placeholder, duplicate, or
+has no credible user, operator, maintainer, or catalog value. Base the result on
+the skill contract, source notes, receipts, and harness output. Stop at review
+when trust evidence is insufficient or the capability cannot be bounded; do not
+turn missing evidence into optimistic audit language.
+
+## Output
+
+- `skill_assessment`: bounded capability and execution-profile findings.
+- `trust_audit_draft`: risks, caveats, evidence, and test gaps.
+- `approval_decision`: adopt, sandbox, reject, or request more evidence.
+- `publish_or_handoff_packet`: approved recommendation for its declared audience.
 
 ## Inputs
 

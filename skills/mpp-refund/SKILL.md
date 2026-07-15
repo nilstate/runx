@@ -13,18 +13,17 @@ settlement against a linked sealed charge receipt.
 This graph profile records registry and harness shape only. It does not call a
 live MPP rail, read rail credentials, or claim runtime refund enforcement.
 
-## Quality Profile
+Every stage must preserve the original receipt reference, MPP settlement
+family, amount, currency, and idempotency key. Credential material remains
+behind references. Stop before modeled settlement when the original receipt
+link, reservation, required approval, or idempotency evidence is missing.
 
-- Purpose: show the provider-initiated refund graph for the MPP family.
-- Audience: operators, registry tooling, and future MPP refund adapter
-  implementers.
-- Artifact contract: `refund_quote_packet`, `refund_reservation_packet`,
-  `refund_approval`, and `refund_rail_packet`.
-- Evidence bar: every step carries the original receipt ref and same settlement
-  family.
-- Strategic bar: keep MPP credential material behind references.
-- Stop conditions: stop before settlement when original receipt link,
-  reservation, approval, or idempotency is missing.
+## Output
+
+- `refund_quote_packet`: refundable bounds tied to the original receipt.
+- `refund_reservation_packet`: the narrowed refund decision and authority.
+- `refund_approval`: approval evidence when policy requires it.
+- `refund_rail_packet`: modeled MPP-family settlement evidence.
 
 ## Inputs
 

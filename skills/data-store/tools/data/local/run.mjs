@@ -16,8 +16,10 @@ if (operation === "append_event") {
   result = readEvents(inputs);
 } else if (operation === "read_projection") {
   result = readProjection(inputs);
+} else if (operation === "list_stream_heads") {
+  result = listStreamHeads(inputs);
 } else {
-  throw new Error("operation must be append_event, read_events, or read_projection");
+  throw new Error("operation must be append_event, read_events, read_projection, or list_stream_heads");
 }
 
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -84,7 +86,7 @@ function appendEvent(rawInputs) {
     event,
     event_digest: eventDigest,
     idempotency_key: idempotencyKey,
-    committed_at: typeof rawInputs.observed_at === "string" ? rawInputs.observed_at : "1970-01-01T00:00:00.000Z",
+    committed_at: committedAt(rawInputs.observed_at),
   };
   stream.events.push(record);
   stream.version = nextVersion;
@@ -134,9 +136,12 @@ function conflictResult(envelope, stream, { idempotency_key, event_digest, reaso
 function readEvents(rawInputs) {
   const envelope = baseEnvelope(rawInputs, "read_events");
   const limit = boundedLimit(rawInputs.limit);
+  const afterVersion = optionalVersion(rawInputs.after_version, "after_version");
   const store = readStore(rawInputs);
   const stream = streamFor(store, envelope.resource, envelope.aggregate_id);
-  const events = stream.events.slice(Math.max(0, stream.events.length - limit));
+  const events = afterVersion === undefined
+    ? stream.events.slice(Math.max(0, stream.events.length - limit))
+    : stream.events.filter((entry) => entry.version > afterVersion).slice(0, limit);
   return {
     ...envelope,
     status: "read",
@@ -187,6 +192,50 @@ function readProjection(rawInputs) {
   };
 }
 
+function listStreamHeads(rawInputs) {
+  const envelope = baseEnvelope(rawInputs, "list_stream_heads");
+  const store = readStore(rawInputs);
+  const limit = boundedHeadLimit(rawInputs.limit);
+  const cursor = decodeHeadCursor(rawInputs.cursor);
+  const eventTypes = new Set(optionalEventTypes(rawInputs.event_types));
+  const streams = store.resources[envelope.resource]?.streams ?? {};
+  const records = Object.entries(streams)
+    .map(([aggregateId, stream]) => {
+      const latest = stream.events.at(-1);
+      return latest ? { aggregate_id: aggregateId, ...latest } : undefined;
+    })
+    .filter(Boolean)
+    .filter((entry) => eventTypes.size === 0 || eventTypes.has(entry.event_type))
+    .sort(compareStreamHeads)
+    .filter((entry) => !cursor || compareStreamHeads(entry, cursor) > 0);
+  const hasMore = records.length > limit;
+  const rows = records.slice(0, limit);
+  const nextCursor = hasMore && rows.length > 0 ? encodeHeadCursor(rows.at(-1)) : null;
+  const page = {
+    limit,
+    count: rows.length,
+    has_more: hasMore,
+    next_cursor: nextCursor,
+  };
+  return {
+    ...envelope,
+    status: "read",
+    before_version: 0,
+    after_version: 0,
+    idempotency_key: null,
+    event_ref: null,
+    event_digest: null,
+    result_digest: sha256Json({ rows, page }),
+    projection_digest: sha256Json(rows.map((row) => [row.aggregate_id, row.version, row.event_digest])),
+    projection: page,
+    events: [],
+    rows,
+    redactions: [],
+    stop_conditions: [],
+    provider_evidence: providerEvidence(store, envelope),
+  };
+}
+
 function baseEnvelope(rawInputs, operation) {
   return {
     schema: SCHEMA,
@@ -194,7 +243,9 @@ function baseEnvelope(rawInputs, operation) {
     provider: PROVIDER,
     operation,
     resource: safeName(stringInput("resource"), "resource"),
-    aggregate_id: safeName(stringInput("aggregate_id"), "aggregate_id"),
+    aggregate_id: operation === "list_stream_heads"
+      ? "stream-heads"
+      : safeName(stringInput("aggregate_id"), "aggregate_id"),
   };
 }
 
@@ -311,6 +362,74 @@ function boundedLimit(value) {
     throw new Error("limit must be an integer from 1 to 500");
   }
   return value;
+}
+
+function boundedHeadLimit(value) {
+  if (value === undefined || value === null) return 50;
+  if (!Number.isInteger(value) || value < 1 || value > 100) {
+    throw new Error("list_stream_heads limit must be an integer from 1 to 100");
+  }
+  return value;
+}
+
+function optionalEventTypes(value) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 20) {
+    throw new Error("event_types must be an array of at most 20 exact event types");
+  }
+  return Array.from(new Set(value.map((entry) => {
+    const token = safeEventToken(entry);
+    if (!token) throw new Error("event_types contains an invalid event type");
+    return token;
+  })));
+}
+
+function compareStreamHeads(left, right) {
+  const time = right.committed_at.localeCompare(left.committed_at);
+  return time === 0 ? left.aggregate_id.localeCompare(right.aggregate_id) : time;
+}
+
+function encodeHeadCursor(row) {
+  return Buffer.from(JSON.stringify({
+    committed_at: row.committed_at,
+    aggregate_id: row.aggregate_id,
+  }), "utf8").toString("base64url");
+}
+
+function decodeHeadCursor(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || value.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new Error("cursor must be an opaque list_stream_heads cursor");
+  }
+  try {
+    const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) throw new Error("invalid cursor");
+    if (typeof decoded.committed_at !== "string" || decoded.committed_at.length > 100 || Number.isNaN(Date.parse(decoded.committed_at))) {
+      throw new Error("invalid committed_at");
+    }
+    return {
+      committed_at: decoded.committed_at,
+      aggregate_id: safeName(decoded.aggregate_id, "aggregate_id"),
+    };
+  } catch {
+    throw new Error("cursor must be an opaque list_stream_heads cursor");
+  }
+}
+
+function optionalVersion(value, field) {
+  if (value === undefined || value === null) return undefined;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${field} must be a non-negative integer`);
+  }
+  return value;
+}
+
+function committedAt(value) {
+  if (value === undefined || value === null) return "1970-01-01T00:00:00.000Z";
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) {
+    throw new Error("observed_at must be ISO-8601");
+  }
+  return new Date(value).toISOString();
 }
 
 function safeName(value, field) {

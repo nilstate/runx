@@ -73,7 +73,9 @@ recorded in the receipt.
 2. Read `account_status_json` from `nitro_get_status`. Trust the snapshot over
    assumptions, and name missing setup as blockers.
 3. Resolve the lane-specific target: audience, trigger, recipient, template,
-   analytics scope, import source, or segment filters.
+   analytics scope, import source, or segment filters. For `segment-from-prose`,
+   use `filter_catalog_json` from the current `nitro://schema` resource; never
+   rely on a remembered filter catalog.
 4. Choose the smallest safe plan. For delivery lanes, choose `scheduled` over
    immediate live when the user is not unambiguous.
 5. Build the shortest ordered tool-call plan:
@@ -149,6 +151,8 @@ authorize a live audience send by itself.
   `source_brief`, `records`, `scope`, `entity_id`, `period`,
   `segment_brief`, `segment_name`, `preview_only` (optional):
   runner-specific inputs.
+- `filter_catalog_json` (required for `segment-from-prose`): the current
+  `filters` object from `nitro://schema`.
 - `operator_context` (optional): extra guardrails, approval posture, or
   scheduling constraints.
 - `client_surface` (optional): caller surface, usually `runx_skill_cli` or

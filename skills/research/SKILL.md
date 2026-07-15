@@ -22,27 +22,14 @@ claims that change the operator's decision.
 
 - State the objective in operational terms.
 - Distinguish verified evidence from inference.
+- Give every important claim a source and confidence.
 - Surface missing evidence instead of inventing it.
 - Bound the result to a concrete deliverable: brief, issue recommendation,
   content outline, or publish/no-publish decision.
+- State what the finding changes: what to write, build, avoid, defer, or review.
+- Return `needs_more_evidence` rather than forcing a speculative conclusion,
+  and `not_worth_publishing` when a true finding is irrelevant to the audience.
 
-## Quality Profile
-
-- Purpose: answer one practical question well enough to change a downstream
-  decision or stop the graph.
-- Audience: the maintainer, operator, author, or follow-on skill that will use
-  the research packet.
-- Artifact contract: `research_brief`, `evidence_log`, `decision_support`, and
-  `risks` with enough specificity to support the declared deliverable.
-- Evidence bar: every important claim names a source and confidence. Separate
-  verified facts from inference and unsupported hypotheses.
-- Voice bar: concise analyst-to-maintainer prose. Do not narrate browsing,
-  cite "general knowledge", or pad with generic market language.
-- Strategic bar: state why the finding matters for the graph purpose: what to
-  write, what not to write, what to build, what to avoid, or what needs review.
-- Stop conditions: return `needs_more_evidence` when the available sources
-  would force a speculative conclusion, and return `not_worth_publishing` when
-  the finding is true but not useful for the declared audience.
 
 ## Output
 

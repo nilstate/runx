@@ -45,13 +45,10 @@ harness:
     - name: research-needs-objective
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 
 runners:
-  agent:
-    type: agent
-
   research:
     default: true
     type: agent-task

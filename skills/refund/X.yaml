@@ -89,7 +89,7 @@ runners:
             reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
           artifacts:
             wrap_as: refund_rail_packet
-            packet: runx.effect.evidence.v1
+            packet: runx.refund.evidence.v1
       policy:
         guards:
           - step: settlement
@@ -197,7 +197,7 @@ runners:
             reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
           artifacts:
             wrap_as: refund_rail_packet
-            packet: runx.effect.evidence.v1
+            packet: runx.refund.evidence.v1
       policy:
         guards:
           - step: settlement
@@ -295,7 +295,7 @@ runners:
             reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
           artifacts:
             wrap_as: refund_rail_packet
-            packet: runx.effect.evidence.v1
+            packet: runx.refund.evidence.v1
       policy:
         guards:
           - step: settlement
@@ -393,7 +393,7 @@ runners:
             reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
           artifacts:
             wrap_as: refund_rail_packet
-            packet: runx.effect.evidence.v1
+            packet: runx.refund.evidence.v1
       policy:
         guards:
           - step: settlement

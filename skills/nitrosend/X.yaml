@@ -212,3 +212,7 @@ runners:
         type: string
         required: false
         description: String boolean. Defaults to true.
+      filter_catalog_json:
+        type: string
+        required: true
+        description: JSON filters object from the current nitro://schema resource.

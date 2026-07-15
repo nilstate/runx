@@ -1,5 +1,5 @@
 skill: governed-outbound
-version: "0.1.1"
+version: "0.1.2"
 
 catalog:
   kind: graph
@@ -8,7 +8,7 @@ catalog:
   role: context
 harness:
   cases:
-    - name: governed-outbound-approved-post
+    - name: governed-outbound-approved-plan
       env:
         RUNX_PROVIDER_PERMISSION_GRANT_ID: provider-send-demo
         RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: runx:net:allowlist
@@ -18,7 +18,7 @@ harness:
           - status.example.com
         channel: "#incidents"
         principal: account:ops-bot
-        claim: A public incident update was gathered, scrubbed of personal data, and posted to the incident channel.
+        claim: A public incident update was gathered, scrubbed of personal data, and authorized for the incident channel.
         operator_context: Post-incident summary; never let customer identifiers reach the channel.
       caller:
         answers:
@@ -54,26 +54,40 @@ harness:
           agent_task.send-as.output:
             send_plan:
               decision: ready
+              action_family: send-as
+              principal:
+                type: account
+                ref: account:ops-bot
+              provider:
+                name: slack
+                account_ref: workspace:incidents
+                runtime_path: channel.post
+              send_class: status
+              channel: chat
               audience:
-                channel: "#incidents"
+                type: channel
+                ref: "#incidents"
+                requires_reconfirmation: false
               content:
-                ref: redaction:redacted
+                draft_ref: redaction:redacted
                 digest: "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
-                preview: scrubbed incident summary, personal spans removed
-              principal: account:ops-bot
-              send_class: broadcast
+                subject_or_title: Incident resolved
               gates:
-                approval_required: true
                 preflight_required: true
+                human_approval_required: true
+                approval_ref: governed-outbound.send.approval
               blockers: []
-              runtime_path: provider.send
               provider_actions:
-                - provider.preflight
-                - provider.send
+                - channel.post
+              evidence_refs:
+                - "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+              success_checkpoint:
+                milestone: provider_delivery_required
+                description: Provider delivery and readback remain required after this plan.
           agent_task.sign-receipt.output:
             attestation:
-              action: governed outbound post
-              claim: A public incident update was gathered, scrubbed of personal data, and posted to the incident channel.
+              action: governed outbound plan
+              claim: A public incident update was gathered, scrubbed of personal data, and authorized for the incident channel.
               principal: account:ops-bot
               evidence_refs:
                 - "sha256:1f0a9c7e4b2d6a8f3c5e1b0d9a7c6e4f2b8d0a1c3e5f7a9b1d3f5a7c9e1b3d5f"
@@ -90,7 +104,7 @@ harness:
     - name: governed-outbound-needs-target
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
   governed-outbound:
@@ -100,7 +114,7 @@ runners:
       url:
         type: string
         required: true
-        description: "Source URL to gather before posting."
+        description: "Source URL to gather before preparing the notification."
       allowlist:
         type: json
         required: true
@@ -156,14 +170,12 @@ runners:
           artifacts:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
-        - id: post-notice
-          label: post the governed notification
+        - id: plan-notice
+          label: authorize the governed notification plan
           skill: ../send-as
           runner: plan
-          scopes:
-            - runx:net:allowlist
           inputs:
-            objective: Deliver the approved scrubbed update to the configured provider surface.
+            objective: Authorize the approved scrubbed update for the configured provider host.
             audience: "$input.channel"
             provider_context: "$input.operator_context"
           context:
@@ -175,14 +187,14 @@ runners:
           scopes:
             - runx:ledger:append
           inputs:
-            action: governed outbound post
+            action: governed outbound plan
           context:
-            evidence: post-notice.send_plan.data
+            evidence: plan-notice.send_plan.data
       policy:
         guards:
-          - step: post-notice
+          - step: plan-notice
             field: approve-send.approval_decision.data.approved
             equals: true
-          - step: post-notice
+          - step: plan-notice
             field: scrub-content.redaction_report.data.decision
             equals: ready

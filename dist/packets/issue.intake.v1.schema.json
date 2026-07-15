@@ -2,11 +2,23 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.runx.ai/runx/issue/intake/v1.json",
   "x-runx-packet-id": "runx.issue.intake.v1",
+  "x-runx-generated-from": "skills/issue-intake/X.yaml#root.runners.intake",
   "type": "object",
+  "required": [
+    "change_set",
+    "intake_report",
+    "signal"
+  ],
   "properties": {
-    "change_set": { "type": "object", "additionalProperties": true },
-    "decision": { "type": "object", "additionalProperties": true },
-    "next_actions": { "type": "array" }
+    "change_set": {
+      "type": "object"
+    },
+    "intake_report": {
+      "type": "object"
+    },
+    "signal": {
+      "type": "object"
+    }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

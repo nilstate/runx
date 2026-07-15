@@ -8,11 +8,10 @@ import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 
 import {
-  parseRunnerManifestYaml,
-  validateRunnerManifest,
-  type SkillRunnerManifest,
-} from "../packages/cli/src/cli-parser/index.js";
-import { validateSkillMarkdown } from "./parser-eval.js";
+  type ValidatedRunnerManifest as SkillRunnerManifest,
+  validateRunnerManifestYaml as validateNativeRunnerManifestYaml,
+  validateSkillMarkdown,
+} from "./parser-eval.js";
 import { resolveRunxBinary } from "./runx-binary.js";
 
 const publicSkillRequiredHeadings = [
@@ -101,8 +100,8 @@ function isPaymentRegistrySkillId(skillId: string): boolean {
 
 const harnessedShowcasePackages = [
   "content-pipeline",
-  "deep-research-brief",
-  "draft-content",
+  "deep-research",
+  "ghostwrite",
   "ecosystem-vuln-scan",
   "evolve",
   "issue-intake",
@@ -157,7 +156,7 @@ describe("official skill catalog", () => {
   it("keeps the public official catalog limited to implemented catalog skills", async () => {
     const publicSkills = officialSkillPackages().filter((skillName) => catalogVisibility(skillName) === "public");
     const entries = JSON.parse(
-      await readFile(path.resolve("packages", "cli", "src", "official-skills.lock.json"), "utf8"),
+      await readFile(path.resolve("skills", "official.lock.json"), "utf8"),
     ) as ReadonlyArray<{ readonly skill_id: string; readonly catalog_visibility?: string }>;
     const publicLockSkills = entries
       .filter((entry) => entry.catalog_visibility === "public")
@@ -233,7 +232,7 @@ describe("official skill catalog", () => {
 
   it("keeps graph stages out of the official skills catalog", async () => {
     const entries = JSON.parse(
-      await readFile(path.resolve("packages", "cli", "src", "official-skills.lock.json"), "utf8"),
+      await readFile(path.resolve("skills", "official.lock.json"), "utf8"),
     ) as ReadonlyArray<{ readonly skill_id: string }>;
     const entryIds = entries.map((entry) => entry.skill_id);
     const ids = new Set(entryIds);
@@ -394,5 +393,5 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function validateRunnerManifestYaml(profileDocument: string): SkillRunnerManifest {
-  return validateRunnerManifest(parseRunnerManifestYaml(profileDocument));
+  return validateNativeRunnerManifestYaml(profileDocument);
 }

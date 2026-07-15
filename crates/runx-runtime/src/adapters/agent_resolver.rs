@@ -9,8 +9,10 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+#[cfg(test)]
+use runx_contracts::OutputType;
 use runx_contracts::{
-    ContextEntry, JsonObject, JsonValue, OutputField, OutputType, ResolutionRequest,
+    ContextEntry, JsonObject, JsonValue, OutputField, ResolutionRequest, output_value_schema,
 };
 
 use super::agent::{AgentResolution, AgentResolver, AgentResolverError};
@@ -62,88 +64,7 @@ impl<T> AnthropicAgentResolver<T> {
 }
 
 fn object_schema() -> JsonValue {
-    let mut schema = JsonObject::new();
-    schema.insert("type".to_owned(), JsonValue::String("object".to_owned()));
-    JsonValue::Object(schema)
-}
-
-fn final_result_schema(output: Option<&BTreeMap<String, OutputField>>) -> JsonValue {
-    let Some(output) = output else {
-        return object_schema();
-    };
-    if output.is_empty() {
-        return object_schema();
-    }
-
-    let mut properties = JsonObject::new();
-    let mut required = Vec::new();
-    for (name, field) in output {
-        properties.insert(name.clone(), output_field_schema(field));
-        if output_field_required(field) {
-            required.push(JsonValue::String(name.clone()));
-        }
-    }
-
-    let mut schema = JsonObject::new();
-    schema.insert("type".to_owned(), JsonValue::String("object".to_owned()));
-    schema.insert("properties".to_owned(), JsonValue::Object(properties));
-    schema.insert("additionalProperties".to_owned(), JsonValue::Bool(false));
-    if !required.is_empty() {
-        schema.insert("required".to_owned(), JsonValue::Array(required));
-    }
-    JsonValue::Object(schema)
-}
-
-fn output_field_required(field: &OutputField) -> bool {
-    match field {
-        OutputField::Type(_) => true,
-        OutputField::Spec(spec) => spec.required.unwrap_or(true),
-    }
-}
-
-fn output_field_schema(field: &OutputField) -> JsonValue {
-    let mut schema = JsonObject::new();
-    match field {
-        OutputField::Type(field_type) => {
-            schema.insert(
-                "type".to_owned(),
-                JsonValue::String(output_type_name(field_type).to_owned()),
-            );
-        }
-        OutputField::Spec(spec) => {
-            if let Some(field_type) = spec.field_type.as_ref() {
-                schema.insert(
-                    "type".to_owned(),
-                    JsonValue::String(output_type_name(field_type).to_owned()),
-                );
-            }
-            if let Some(values) = spec.enum_values.as_ref() {
-                schema.insert(
-                    "enum".to_owned(),
-                    JsonValue::Array(values.iter().cloned().map(JsonValue::String).collect()),
-                );
-            }
-            if let Some(description) = spec.description.as_ref() {
-                schema.insert(
-                    "description".to_owned(),
-                    JsonValue::String(description.clone()),
-                );
-            }
-        }
-    }
-    JsonValue::Object(schema)
-}
-
-const fn output_type_name(field_type: &OutputType) -> &'static str {
-    match field_type {
-        OutputType::String => "string",
-        OutputType::Number => "number",
-        OutputType::Integer => "integer",
-        OutputType::Boolean => "boolean",
-        OutputType::Array => "array",
-        OutputType::Object => "object",
-        OutputType::Null => "null",
-    }
+    output_value_schema(None)
 }
 
 /// The skill's allowed tools plus the final-result tool the model calls to finish.
@@ -163,7 +84,7 @@ fn tool_definitions<'a>(
     tools.push(AgentToolDefinition {
         name: FINAL_RESULT_TOOL.to_owned(),
         description: "Submit the final structured payload for this runx agent act.".to_owned(),
-        input_schema: final_result_schema(output),
+        input_schema: output_value_schema(output),
     });
     tools
 }

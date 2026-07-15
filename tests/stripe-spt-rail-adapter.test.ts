@@ -3,27 +3,27 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
 
 import { validateExternalAdapterManifestContract } from "../packages/contracts/src/index.js";
-import {
-  parseRunnerManifestYaml,
-  validateRunnerManifest,
-} from "../packages/cli/src/cli-parser/index.js";
 
 const stageDir = path.resolve("skills/spend/graph/pay-fulfill-rail");
 const adapterPath = path.join(stageDir, "stripe-spt-fulfill-adapter.mjs");
 
 describe("stripe-spt rail external adapter", () => {
   it("is wired as the pay-fulfill-rail stripe-spt runner", async () => {
-    const manifest = validateRunnerManifest(
-      parseRunnerManifestYaml(await readFile(path.join(stageDir, "X.yaml"), "utf8")),
-    );
+    const manifest = parseYaml(await readFile(path.join(stageDir, "X.yaml"), "utf8")) as {
+      readonly runners: Readonly<Record<string, {
+        readonly source?: unknown;
+        readonly runx?: { readonly payment_authority?: unknown };
+      }>>;
+    };
     const runner = manifest.runners["stripe-spt"];
 
-    expect(runner?.source.type).toBe("external-adapter");
-    expect(runner?.source.raw.external_adapter).toEqual({
+    expect(runner?.source).toMatchObject({ type: "external-adapter" });
+    expect(runner?.source).toMatchObject({ external_adapter: {
       manifest_path: "stripe-spt-fulfill-adapter.manifest.json",
-    });
+    } });
     expect(runner?.runx?.payment_authority).toMatchObject({
       phase: "fulfill",
       rails: ["stripe-spt"],
@@ -104,6 +104,16 @@ describe("stripe-spt rail external adapter", () => {
     expect(response.status).toBe("failed");
     expect(response.stderr).toContain("payment admission amount does not match");
   });
+
+  it("refuses a local live profile instead of reading ambient Stripe secrets", () => {
+    const response = invokeAdapter({
+      ...adapterInputs(),
+      rail_profile_ref: "rail-profile:stripe-spt:live",
+    });
+
+    expect(response.status).toBe("failed");
+    expect(response.stderr).toContain("requires a hosted payment provider");
+  });
 });
 
 function adapterInputs(): Record<string, unknown> {
@@ -130,18 +140,14 @@ function adapterInputs(): Record<string, unknown> {
     idempotency: {
       key: "payment:test-1",
     },
+    rail_profile_ref: "rail-profile:stripe-spt:test",
   };
 }
 
 function invokeAdapter(inputs: Record<string, unknown>): Record<string, unknown> {
   const result = spawnSync(process.execPath, [adapterPath], {
     cwd: stageDir,
-    env: {
-      ...process.env,
-      RUNX_STRIPE_SPT_MOCK: "1",
-      RUNX_STRIPE_SPT_EXECUTOR_MODULE: "",
-      RUNX_STRIPE_SPT_RESTRICTED_KEY: "",
-    },
+    env: process.env,
     input: JSON.stringify({
       schema: "runx.external_adapter.invocation.v1",
       protocol_version: "runx.external_adapter.v1",

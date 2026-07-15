@@ -13,7 +13,7 @@ Turn one bounded opportunity into a concrete skill proposal.
 one reviewable surface. It does not hide the builder capabilities; it composes
 them into one governed proposal flow:
 
-`work-plan` -> `prior-art` -> `write-harness` -> `draft-content`
+`work-plan` -> `prior-art` -> `write-harness` -> `ghostwrite`
 
 Use it when the real output is not code yet, but a candidate skill package and
 proposal packet that a maintainer can review, amend, approve, or reject.
@@ -30,7 +30,7 @@ proposal should:
 - read like a first-party runx skill or graph proposal, not a builder trace
 - identify the concrete pain point being addressed
 - explain fit against the current runx catalog
-- say when the right answer is an amendment to Sourcey, `draft-content`, an
+- say when the right answer is an amendment to Sourcey, `ghostwrite`, an
   existing skill, or an existing graph instead of a new skill
 - describe the concrete artifact a maintainer would ship or use
 - keep issue-thread evidence and approval mechanics as provenance, not proposal
@@ -48,26 +48,6 @@ proposal should:
 - never use `supplied` or `envelope` in proposal prose; if provenance is thin,
   say what source was unavailable in plain maintainer language
 
-## Quality Profile
-
-- Purpose: decide whether one bounded opportunity deserves a first-party runx
-  skill or graph proposal, then produce the proposal packet.
-- Audience: runx maintainers reviewing the catalog, not a model evaluating its
-  own work.
-- Artifact contract: crisp thesis, maintainer pain, catalog fit, full contract
-  with inputs and outputs, sample output shape, boundaries, non-goals, harness
-  fixtures, acceptance checks, and explicit maintainer decisions.
-- Evidence bar: cite the source thread, amendments, catalog entries, and prior
-  art that make the proposal necessary. Do not turn issue discussion into
-  public proposal prose.
-- Voice bar: first-party catalog proposal. It should read like a maintainer
-  wrote it after doing the work.
-- Strategic bar: explain why this should be first-party, why it is not Sourcey,
-  `draft-content`, an existing skill, or a graph amendment, and what strategic
-  runx capability it strengthens.
-- Stop conditions: return `needs_more_evidence`, `needs_review`, or
-  `not_first_party` when the idea is useful but does not deserve a new catalog
-  surface.
 
 It does not silently open PRs, mutate external repos, or imply that a proposed
 skill is already accepted. Those outward moves belong to provider-bound lanes

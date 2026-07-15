@@ -10,8 +10,6 @@ import {
   sha256Hex,
 } from "@runxhq/contracts";
 
-import { hashStable } from "../packages/cli/src/cli-util.js";
-
 interface ArtifactProducer {
   readonly skill: string;
   readonly runner: string;
@@ -120,7 +118,7 @@ function createArtifactEnvelope(options: {
     version: "1" as const,
     data: options.data,
   };
-  const hash = hashStable(payload);
+  const hash = sha256Hex(canonicalJsonStringify(payload));
   return {
     ...payload,
     meta: {

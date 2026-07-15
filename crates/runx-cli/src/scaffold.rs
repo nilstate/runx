@@ -183,20 +183,15 @@ fn new_package_base(env: &std::collections::BTreeMap<String, String>, cwd: &Path
 }
 
 fn resolve_project_dir(env: &std::collections::BTreeMap<String, String>, cwd: &Path) -> PathBuf {
-    if let Some(project_dir) = env.get("RUNX_PROJECT_DIR") {
-        return resolve_user_path(project_dir, env, cwd);
-    }
-    find_nearest_project_runx_dir(cwd)
-        .unwrap_or_else(|| runx_runtime::resolve_runx_workspace_base(env, cwd).join(".runx"))
+    let workspace = runx_runtime::resolve_runx_workspace_base(env, cwd);
+    runx_runtime::resolve_project_runx_dir(env, &workspace)
 }
 
 fn resolve_global_home_dir(
     env: &std::collections::BTreeMap<String, String>,
     cwd: &Path,
 ) -> PathBuf {
-    env.get("RUNX_HOME")
-        .map(|value| resolve_user_path(value, env, cwd))
-        .unwrap_or_else(default_home_runx_dir)
+    runx_runtime::resolve_runx_global_home_dir(env, cwd)
 }
 
 fn resolve_official_skills_dir(
@@ -204,40 +199,8 @@ fn resolve_official_skills_dir(
     cwd: &Path,
     global_home_dir: &Path,
 ) -> PathBuf {
-    env.get("RUNX_OFFICIAL_SKILLS_DIR")
-        .map(|value| resolve_user_path(value, env, cwd))
-        .unwrap_or_else(|| global_home_dir.join("official-skills"))
-}
-
-fn resolve_user_path(
-    value: &str,
-    env: &std::collections::BTreeMap<String, String>,
-    cwd: &Path,
-) -> PathBuf {
-    let path = PathBuf::from(value);
-    if path.is_absolute() {
-        path
-    } else {
-        runx_runtime::resolve_runx_workspace_base(env, cwd).join(path)
-    }
-}
-
-fn find_nearest_project_runx_dir(start: &Path) -> Option<PathBuf> {
-    for current in start.ancestors() {
-        let candidate = current.join(".runx");
-        if candidate.join("project.json").exists() {
-            return Some(candidate);
-        }
-    }
-    None
-}
-
-fn default_home_runx_dir() -> PathBuf {
-    env::var_os("HOME")
-        .or_else(|| env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".runx")
+    let _ = global_home_dir;
+    crate::registry::official_skills_cache_root(env, cwd)
 }
 
 #[derive(Serialize)]

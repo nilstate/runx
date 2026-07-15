@@ -23,6 +23,14 @@ caller:
     agent_task.write-harness.output:
       skill_spec:
         name: improve-skill
+      pain_points:
+        - Structured review context was flattened before the regression harness was authored.
+      catalog_fit:
+        adjacent_skills:
+          - improve-skill
+          - write-harness
+        why_new: Amend the existing improve-skill graph; no new catalog capability is needed.
+      maintainer_decisions: []
       execution_plan:
         runner: graph
       harness_fixture:

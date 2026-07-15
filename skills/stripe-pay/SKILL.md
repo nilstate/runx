@@ -61,9 +61,10 @@ a sealed runx receipt.
    spend capability.
 5. Pause at the spend approval gate when required. A denied or missing approval
    prevents Stripe fulfillment.
-6. Fulfill through the scoped Stripe SPT rail runner. It may use hosted or local
-   credential custody, but the graph passes only references and capability
-   bindings.
+6. Fulfill through the scoped Stripe SPT rail runner. The local runner supports
+   explicit test profiles without credentials. Live settlement requires a
+   hosted payment provider that owns credential custody; the graph passes only
+   references and capability bindings and refuses local live profiles.
 7. Record Stripe evidence as provider event refs, charge/payment-intent refs,
    scoped token refs, hashes, and redaction notes. Never emit raw API keys,
    webhook secrets, card data, or unrestricted token material.
@@ -78,6 +79,8 @@ a sealed runx receipt.
   to another runtime path.
 - **Missing hosted/local Stripe profile:** return `needs_agent`; do not ask the
   agent to paste raw secrets.
+- **Local live profile:** refuse and route to a hosted payment provider; the
+  external-adapter boundary intentionally does not inherit ambient secrets.
 - **Amount or counterparty drift:** stop when Stripe-side state differs from the
   reserved quote.
 - **Approval missing or denied:** do not call Stripe.

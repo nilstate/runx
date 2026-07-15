@@ -282,6 +282,13 @@ fn mcp_process_transport_times_out_and_terminates_child() -> Result<(), RuntimeE
 
     let line_count_after_timeout =
         wait_for_lifecycle_lines(&marker_path, 2, Duration::from_secs(1))?;
+    // Lifecycle lines embed the server's pid; wait for that pid to die instead
+    // of a fixed quiescence window. A dead process cannot append further
+    // heartbeats, so the count comparison below is then race-free.
+    #[cfg(unix)]
+    crate::support::wait_for_pid_exit(lifecycle_pid(&marker_path)?, Duration::from_secs(5))
+        .map_err(|error| runtime_test_error(error.to_string()))?;
+    #[cfg(not(unix))]
     thread::sleep(Duration::from_millis(150));
     assert_eq!(
         lifecycle_line_count(&marker_path)?,
@@ -291,6 +298,18 @@ fn mcp_process_transport_times_out_and_terminates_child() -> Result<(), RuntimeE
 
     let _ = fs::remove_file(&marker_path);
     Ok(())
+}
+
+#[cfg(unix)]
+fn lifecycle_pid(path: &Path) -> Result<i32, RuntimeError> {
+    let contents = fs::read_to_string(path)
+        .map_err(|error| runtime_test_error(format!("reading MCP lifecycle marker: {error}")))?;
+    contents
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|pid| pid.parse().ok())
+        .ok_or_else(|| runtime_test_error("MCP lifecycle marker missing server pid".to_owned()))
 }
 
 #[test]

@@ -32,8 +32,8 @@ authority, receipt, harness, dogfood, registry, and policy-config changes need
 Rust coverage or a TS-free Rust CLI fixture:
 
 ```bash
-cargo test --manifest-path crates/Cargo.toml -p runx-runtime --test payment
-cargo test --manifest-path crates/Cargo.toml -p runx-cli --test x402_native_dogfood
+cargo test --manifest-path crates/Cargo.toml -p runx-pay --test integration
+cargo test --manifest-path crates/Cargo.toml -p runx-cli --test integration -- x402_native_dogfood
 ```
 
 For one file:

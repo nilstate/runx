@@ -442,6 +442,10 @@ pub(crate) fn resolve_and_invoke_local_tool(
         Err(error) if local_lookup_miss(&error) => return Ok(None),
         Err(error) => return Err(catalog_error(request.skill_name, error)),
     };
+    crate::execution::prepared_skill::verify_prepared_artifact_at_use(
+        request.env,
+        &resolution.manifest_path,
+    )?;
 
     let artifacts = resolution.tool.artifacts.clone();
     let declared_inputs = resolution.tool.inputs.clone();
@@ -559,10 +563,7 @@ fn configured_tool_roots(env: &std::collections::BTreeMap<String, String>) -> Ve
 }
 
 fn workspace_root(env: &std::collections::BTreeMap<String, String>, fallback: &Path) -> PathBuf {
-    env.get("RUNX_CWD")
-        .or_else(|| env.get("RUNX_PROJECT_DIR"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| fallback.to_path_buf())
+    crate::config::resolve_runx_workspace_base(env, fallback)
 }
 
 fn local_lookup_miss(error: &ToolCatalogError) -> bool {

@@ -58,7 +58,7 @@ harness:
         lead:
           account_id: acct_empty
       expect:
-        status: needs_agent
+        status: failure
 
 runners:
   enrich:

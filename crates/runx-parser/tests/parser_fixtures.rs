@@ -22,7 +22,6 @@ const SKILL_FIXTURES: &[&str] = &[
     include_str!("../../../fixtures/parser/skills/graph-source.json"),
     include_str!("../../../fixtures/parser/skills/network-sandbox-defaults.json"),
     include_str!("../../../fixtures/parser/skills/portable-agent.json"),
-    include_str!("../../../fixtures/parser/skills/quality-profile.json"),
     include_str!("../../../fixtures/parser/skills/validation-invalid-sandbox-profile.json"),
     include_str!("../../../fixtures/parser/skills/validation-missing-command.json"),
 ];

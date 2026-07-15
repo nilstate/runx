@@ -26,6 +26,7 @@ fn native_skill_pauses_and_resumes_with_run_id() -> Result<(), Box<dyn std::erro
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
             "--thread-title",
             "Docs bug",
         ])
@@ -101,6 +102,7 @@ fn native_skill_resolves_bare_local_skill_and_documented_input_flags()
             "low",
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -114,6 +116,79 @@ fn native_skill_resolves_bare_local_skill_and_documented_input_flags()
             .ok_or("missing skill directory")?,
     );
     assert_eq!(actual_skill_dir.canonicalize()?, skill_dir.canonicalize()?);
+
+    Ok(())
+}
+
+#[test]
+fn native_skill_prints_operator_context_by_default() -> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-skill-operator-context");
+    let skill_dir = write_operator_context_skill(&root)?;
+
+    let output = runx_command()
+        .args([
+            "skill",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--json",
+            "--non-interactive",
+        ])
+        .output()?;
+
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "stderr={}\nstdout={}",
+        String::from_utf8_lossy(&output.stderr),
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let stderr = String::from_utf8(output.stderr)?;
+    assert!(stderr.contains("Prepared run"));
+    assert!(stderr.contains("Steps:"));
+    assert!(stderr.contains("Tools:"));
+    assert!(stderr.contains("Full context: add --full-operator-context"));
+    assert!(!stderr.contains("--- root skill ---"));
+    assert!(!stderr.contains("# Operator Context Fixture"));
+    let stdout = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
+    assert_eq!(stdout["status"], "needs_operator_approval");
+    let digest = stdout["digest"].as_str().ok_or("missing digest")?;
+    assert!(digest.starts_with("sha256:"));
+    assert_eq!(
+        stdout["approval_flag"],
+        format!("--approve-operator-context {digest}")
+    );
+    assert!(stdout.get("retry_command").is_none());
+
+    let full = runx_command()
+        .args([
+            "skill",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--json",
+            "--non-interactive",
+            "--full-operator-context",
+        ])
+        .output()?;
+    assert_eq!(full.status.code(), Some(2));
+    let full_stderr = String::from_utf8(full.stderr)?;
+    assert!(full_stderr.contains("Full operator context"));
+    assert!(full_stderr.contains("--- root skill ---"));
+    assert!(full_stderr.contains("# Operator Context Fixture"));
+    assert!(full_stderr.contains("--- skill node: entry.review ---"));
+    assert!(full_stderr.contains("context skill: ./context/review-rubric"));
+    assert!(full_stderr.contains("tool manifest: example.record at entry.review"));
+
+    let approved = runx_command()
+        .args([
+            "skill",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--json",
+            "--non-interactive",
+            "--approve-operator-context",
+            digest,
+        ])
+        .output()?;
+    assert_eq!(approved.status.code(), Some(2));
+    let approved_stdout = serde_json::from_slice::<serde_json::Value>(&approved.stdout)?;
+    assert_eq!(approved_stdout["status"], "needs_agent");
 
     Ok(())
 }
@@ -135,6 +210,7 @@ fn native_skill_positional_runner_selects_non_default_runner()
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -168,6 +244,7 @@ fn native_skill_exported_shim_resolves_to_source_skill() -> Result<(), Box<dyn s
             "Docs bug",
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -197,6 +274,7 @@ fn native_skill_resolves_trusted_registry_ref() -> Result<(), Box<dyn std::error
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -222,6 +300,7 @@ fn native_skill_registry_run_reports_provenance() -> Result<(), Box<dyn std::err
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&json_output, Some(2))?;
@@ -260,6 +339,7 @@ fn native_skill_registry_run_reports_provenance() -> Result<(), Box<dyn std::err
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     assert_eq!(text_output.status.code(), Some(2));
@@ -292,6 +372,7 @@ fn native_skill_registry_run_reports_provenance_on_execution_error()
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&json_output, Some(1))?;
@@ -328,6 +409,7 @@ fn native_skill_resolves_registry_versions_side_by_side() -> Result<(), Box<dyn 
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let v1_json = assert_json(&v1, Some(2))?;
@@ -341,6 +423,7 @@ fn native_skill_resolves_registry_versions_side_by_side() -> Result<(), Box<dyn 
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
     let v2_json = assert_json(&v2, Some(2))?;
@@ -444,6 +527,7 @@ fn native_skill_text_output_is_concise_for_pending_agent_request()
             "--thread-title",
             "Docs bug",
             "--non-interactive",
+            "--skip-operator-context",
         ])
         .output()?;
 
@@ -629,6 +713,93 @@ runners:
       thread_title:
         type: string
         required: false
+"#,
+    )?;
+    Ok(skill_dir)
+}
+
+fn write_operator_context_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = root.join("operator-context");
+    let child_dir = skill_dir.join("nested-review");
+    fs::create_dir_all(child_dir.join("context/review-rubric"))?;
+    fs::create_dir_all(child_dir.join("tools/example/record"))?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: operator-context\n---\n# Operator Context Fixture\n",
+    )?;
+    fs::write(
+        child_dir.join("SKILL.md"),
+        "---\nname: nested-review\n---\n# Nested Review Skill\n",
+    )?;
+    fs::write(
+        child_dir.join("context/review-rubric/SKILL.md"),
+        "---\nname: review-rubric\nrunx:\n  category: context\n---\n# Review Rubric\n\nproduction bar from context skill\n",
+    )?;
+    fs::write(
+        child_dir.join("tools/example/record/manifest.json"),
+        r#"{
+  "schema": "runx.tool.manifest.v1",
+  "name": "example.record",
+  "description": "Records a reviewed decision.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": ["record.mjs"],
+    "input_mode": "stdin"
+  },
+  "inputs": {
+    "decision": {
+      "type": "string",
+      "required": true
+    }
+  }
+}
+"#,
+    )?;
+    fs::write(
+        child_dir.join("tools/example/record/record.mjs"),
+        "process.stdout.write(JSON.stringify({ decision: 'recorded' }));\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"
+skill: operator-context
+runners:
+  review:
+    default: true
+    type: graph
+    graph:
+      name: operator-context-review
+      steps:
+        - id: review
+          skill: ./nested-review
+"#,
+    )?;
+    fs::write(
+        child_dir.join("X.yaml"),
+        r#"
+skill: nested-review
+runners:
+  nested-review:
+    default: true
+    type: graph
+    graph:
+      name: nested-review
+      steps:
+        - id: verdict
+          run:
+            type: agent-task
+            agent: reviewer
+            task: operator-context-review
+            outputs:
+              decision: string
+          context_skills:
+            - ./context/review-rubric
+          instructions: Judge the work against the context skill.
+        - id: record
+          tool: example.record
+          context:
+            decision: verdict.decision
 "#,
     )?;
     Ok(skill_dir)

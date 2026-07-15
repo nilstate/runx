@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/twitter/plan/v1.json",
+  "x-runx-packet-id": "twitter.plan.v1",
+  "x-runx-generated-from": "skills/twitter/X.yaml#root.runners.plan",
+  "type": "object",
+  "required": [
+    "twitter_plan"
+  ],
+  "properties": {
+    "twitter_plan": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

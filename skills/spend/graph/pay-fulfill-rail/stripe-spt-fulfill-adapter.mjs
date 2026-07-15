@@ -1,10 +1,5 @@
 #!/usr/bin/env node
 
-import { runAdapter } from "../../../../scripts/lib/external-adapter.mjs";
-
-const DEFAULT_STRIPE_EXECUTOR_MODULE =
-  "../../../../../cloud/packages/stripe-executor/dist/index.js";
-
 runAdapter(async ({ inputs }) => {
   const challenge = record(inputs.payment_challenge, "payment_challenge");
   const paymentAdmission = normalizedPaymentAdmission(
@@ -28,12 +23,12 @@ runAdapter(async ({ inputs }) => {
     rail: issuance.rail,
   });
 
-  const executorModule = await resolveStripeExecutorModule();
-  const executor = executorModule.createStripeSptExecutor({
-    restrictedKey: restrictedStripeKey(),
-    api_base_url: optionalString(process.env.RUNX_STRIPE_API_BASE_URL),
-    fetch: process.env.RUNX_STRIPE_SPT_MOCK === "1" ? mockStripeFetch(issuance) : undefined,
-  });
+  if (!isTestRailProfile(inputs.rail_profile_ref)) {
+    throw new Error(
+      "live Stripe SPT fulfillment requires a hosted payment provider; the local external adapter accepts only an explicit test rail_profile_ref",
+    );
+  }
+  const executor = mockStripeExecutorModule().createStripeSptExecutor();
   const charge = await executor.chargeScopedPayment({
     issuance,
     test_payment_method_id: optionalString(inputs.test_payment_method_id),
@@ -90,13 +85,6 @@ runAdapter(async ({ inputs }) => {
   };
 });
 
-async function resolveStripeExecutorModule() {
-  if (process.env.RUNX_STRIPE_SPT_MOCK === "1" && !process.env.RUNX_STRIPE_SPT_EXECUTOR_MODULE) {
-    return mockStripeExecutorModule();
-  }
-  return await importStripeExecutor();
-}
-
 function stripeIssuanceFromInputs({ challenge, paymentAdmission, idempotency }) {
   return {
     rail: "stripe-spt",
@@ -150,44 +138,6 @@ function assertAdmissionMatchesChallenge(admission, challenge) {
   }
 }
 
-async function importStripeExecutor() {
-  const configured = optionalString(process.env.RUNX_STRIPE_SPT_EXECUTOR_MODULE);
-  const moduleUrl = new URL(configured ?? DEFAULT_STRIPE_EXECUTOR_MODULE, import.meta.url);
-  const executorModule = await import(moduleUrl.href);
-  if (typeof executorModule.createStripeSptExecutor !== "function") {
-    throw new Error("Stripe executor module must export createStripeSptExecutor");
-  }
-  return executorModule;
-}
-
-function restrictedStripeKey() {
-  const key = optionalString(process.env.RUNX_STRIPE_SPT_RESTRICTED_KEY);
-  if (key) {
-    return key;
-  }
-  if (process.env.RUNX_STRIPE_SPT_MOCK === "1") {
-    return "rk_test_runx_mock";
-  }
-  throw new Error("RUNX_STRIPE_SPT_RESTRICTED_KEY is required for Stripe SPT fulfillment");
-}
-
-function mockStripeFetch(issuance) {
-  return async (url, init) => {
-    const target = String(url);
-    const id = safeStripeSuffix(issuance.money_movement_id);
-    const body = new URLSearchParams(String(init?.body ?? ""));
-    if (target.endsWith("/v1/test_helpers/shared_payment/granted_tokens")) {
-      assertUsageLimitBody(body, issuance);
-      return jsonResponse({ id: `spt_test_${id}` });
-    }
-    if (target.endsWith("/v1/payment_intents")) {
-      assertUsageLimitBody(body, issuance);
-      return jsonResponse({ id: `pi_test_${id}`, latest_charge: `ch_test_${id}` });
-    }
-    return jsonResponse({ error: { message: `unexpected Stripe endpoint ${target}` } }, 404);
-  };
-}
-
 function mockStripeExecutorModule() {
   return {
     createStripeSptExecutor() {
@@ -220,25 +170,9 @@ function assertMockIssuance(issuance) {
   requiredString(issuance, "admission_token_digest");
 }
 
-function assertUsageLimitBody(body, issuance) {
-  const amount = body.get("usage_limits[max_amount]") ?? body.get("amount");
-  const currency = body.get("usage_limits[currency]") ?? body.get("currency");
-  if (amount !== String(issuance.amount_minor)) {
-    throw new Error("Stripe SPT mock observed a request outside the admitted amount");
-  }
-  if (currency !== issuance.currency.toLowerCase()) {
-    throw new Error("Stripe SPT mock observed a request outside the admitted currency");
-  }
-  if (body.get("metadata[admission_token_digest]") !== issuance.admission_token_digest) {
-    throw new Error("Stripe SPT mock observed a request missing the admission digest");
-  }
-}
-
-function jsonResponse(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+function isTestRailProfile(value) {
+  const profile = optionalString(value);
+  return Boolean(profile && (profile.endsWith(":test") || profile.startsWith("test:")));
 }
 
 function safeStripeSuffix(value) {
@@ -276,6 +210,43 @@ function firstString(values, label) {
 
 function optionalString(value) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function runAdapter(handler) {
+  let input = "";
+  process.stdin.on("data", (chunk) => {
+    input += chunk;
+  });
+  process.stdin.on("end", async () => {
+    let invocation = {};
+    try {
+      invocation = JSON.parse(input.trim() || "{}");
+    } catch {
+      invocation = {};
+    }
+    const frame = (status, output, stderr) => JSON.stringify({
+      schema: "runx.external_adapter.response.v1",
+      protocol_version: "runx.external_adapter.v1",
+      adapter_id: invocation.adapter_id,
+      invocation_id: invocation.invocation_id,
+      status,
+      exit_code: status === "completed" ? 0 : 1,
+      observed_at: new Date().toISOString(),
+      stdout: JSON.stringify({ effect_evidence_packet: { data: output } }),
+      stderr: stderr ?? "",
+      output,
+      artifacts: [],
+      telemetry: [],
+    });
+    const inputs = { ...(invocation.inputs || {}), ...(invocation.resolved_inputs || {}) };
+    try {
+      const output = await handler({ inputs, invocation });
+      process.stdout.write(frame("completed", output ?? {}));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      process.stdout.write(frame("failed", { error: message }, message));
+    }
+  });
 }
 
 function optionalInteger(value) {

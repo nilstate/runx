@@ -69,9 +69,6 @@ harness:
           schema: runx.receipt.v1
 
 runners:
-  agent:
-    type: agent
-
   scan:
     default: true
     type: agent-task

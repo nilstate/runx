@@ -9,7 +9,15 @@
     "authority_decision": { "type": "object" },
     "reservation": { "type": "object" },
     "idempotency": { "type": "object" },
-    "spend_capability_ref": { "type": "string" },
+    "spend_capability_ref": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "credential" },
+        "uri": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "uri"],
+      "additionalProperties": true
+    },
     "approval": { "type": "object" },
     "recovery_plan": { "type": "object" }
   },

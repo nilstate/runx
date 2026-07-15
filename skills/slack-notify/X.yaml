@@ -19,8 +19,10 @@ runners:
     outputs:
       notify_plan: object
     artifacts:
-      wrap_as: notify_plan_packet
-      packet: runx.notify.v1
+      named_emits:
+        notify_plan: notify_plan
+      packets:
+        notify_plan: runx.notify.v1
     runx:
       category: ops
     inputs:

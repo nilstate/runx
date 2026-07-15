@@ -68,3 +68,55 @@ pub(crate) fn read_test_signed_receipt(
     Ok(LocalReceiptStore::new(receipt_dir)
         .read_exact_with_policy(receipt_id, signature_config.signature_policy())?)
 }
+
+/// Waits for a descendant process to die, given a file the descendant wrote its
+/// own pid into at startup: the pid file must appear and `kill(pid, 0)` must then
+/// report ESRCH, all within `deadline`. Kill-the-descendants tests poll this
+/// instead of sleeping a fixed window before asserting the descendant's sentinel
+/// was never written.
+#[cfg(unix)]
+pub(crate) fn wait_for_recorded_pid_exit(
+    pid_path: &Path,
+    deadline: std::time::Duration,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let poll = std::time::Duration::from_millis(10);
+    let started = std::time::Instant::now();
+    let pid = loop {
+        match std::fs::read_to_string(pid_path) {
+            Ok(raw) if !raw.trim().is_empty() => break raw.trim().parse::<i32>()?,
+            _ if started.elapsed() >= deadline => {
+                return Err(format!(
+                    "descendant never recorded its pid at {}",
+                    pid_path.display()
+                )
+                .into());
+            }
+            _ => std::thread::sleep(poll),
+        }
+    };
+    wait_for_pid_exit(pid, deadline.saturating_sub(started.elapsed()))
+}
+
+/// Polls `kill(pid, 0)` until it reports ESRCH, failing if the process is
+/// still alive at `deadline`.
+#[cfg(unix)]
+pub(crate) fn wait_for_pid_exit(
+    pid: i32,
+    deadline: std::time::Duration,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let poll = std::time::Duration::from_millis(10);
+    let started = std::time::Instant::now();
+    let pid = rustix::process::Pid::from_raw(pid).ok_or("invalid pid to wait on")?;
+    loop {
+        if matches!(
+            rustix::process::test_kill_process(pid),
+            Err(rustix::io::Errno::SRCH)
+        ) {
+            return Ok(());
+        }
+        if started.elapsed() >= deadline {
+            return Err(format!("process {pid:?} still alive after {deadline:?}").into());
+        }
+        std::thread::sleep(poll);
+    }
+}

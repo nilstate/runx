@@ -1,6 +1,6 @@
 ---
 name: send-as
-description: Govern a message or campaign send on behalf of a principal, binding channel, audience, content digest, provider evidence, and human approval before delivery.
+description: Plan and authorize a provider-neutral message or campaign send; this skill never delivers, so use a provider adapter for the actual send and its delivery evidence.
 runx:
   category: ops
 ---
@@ -9,8 +9,9 @@ runx:
 
 Govern a message, campaign, or notification sent on behalf of a principal.
 
-`send-as` is the canonical communication-action family. Provider adapter skills
-select concrete sending surfaces, but this skill owns the common authority
+`send-as` is the planning and authority layer for the canonical
+communication-action family. Provider adapter skills select concrete sending
+surfaces and perform delivery; this skill owns the common authority
 model: who is allowed to speak, to whom, through which channel, with what
 content, under which proof, and where the send must stop for human approval.
 
@@ -24,12 +25,14 @@ after the provider-specific lane records delivery evidence and the runx receipt
 seals.
 
 This skill may be used directly for provider-neutral planning, or as the
-canonical family beneath branded provider adapters.
+canonical family beneath branded provider adapters. A sealed `send-as` receipt
+means the plan was sealed. It never means the message was sent.
 
 ## When to use this skill
 
-- An agent needs to send, schedule, or prepare a message on behalf of a user,
-  team, brand, account, or service.
+- An agent needs to plan or authorize a message before a concrete provider
+  adapter sends or schedules it on behalf of a user, team, brand, account, or
+  service.
 - A provider-specific skill needs a shared authority model before it can call a
   send API or MCP tool.
 - The workflow must prove the intended audience, content, consent basis, and
@@ -41,6 +44,8 @@ canonical family beneath branded provider adapters.
 
 - To write copy only. Use a drafting or brand-voice skill unless delivery is in
   scope.
+- To prove delivery. Use the provider-specific adapter and require provider
+  readback evidence; a `send_plan` is not a delivery receipt.
 - To import contacts, enrich leads, verify domains, or configure billing as the
   main objective.
 - To send without a named principal and audience.

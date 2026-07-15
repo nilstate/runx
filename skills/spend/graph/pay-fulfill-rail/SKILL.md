@@ -18,20 +18,11 @@ The skill must receive a scoped spend capability or provider session reference,
 never raw funding material. It returns rail proof for the receipt; it
 does not decide policy, approval, retry, or success.
 
-## Quality Profile
-
-- Purpose: make a rail-specific payment mutation visible as one governed Act.
-- Audience: runtime harness, receipt verifier, rail implementer, and operator.
-- Artifact contract: `rail_result`, `rail_proof`, `credential_envelope`,
-  `redactions`, and `recovery_hint`.
-- Evidence bar: include rail response refs, idempotency key, challenge id, and
-  proof hash/ref. Redact sensitive payload fields.
-- Voice bar: operational status only: fulfilled, declined, retryable,
-  recovered, or ambiguous.
-- Strategic bar: keep provider churn inside the rail runner; keep governance in
-  core.
-- Stop conditions: return `needs_agent` or `ambiguous` when the rail
-  response cannot be tied to the idempotency key and reserved authority.
+Bind the provider response, challenge id, idempotency key, amount, currency,
+counterparty, and proof hash or reference into the rail evidence while
+redacting sensitive fields. Report only operational states—fulfilled, declined,
+retryable, recovered, or ambiguous. Return `needs_agent` or `ambiguous` when the
+response cannot be tied to both the reserved authority and idempotency key.
 
 ## Output
 

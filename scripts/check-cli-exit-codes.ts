@@ -3,13 +3,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
-const cliSourceRoot = path.join(workspaceRoot, "packages", "cli", "src");
+const cliSourceRoot = path.join(workspaceRoot, "crates", "runx-cli", "src");
 const docsPath = path.join(workspaceRoot, "docs", "cli-exit-codes.md");
 
 const sourceCodes = new Set<number>();
-for (const filePath of await collectTypeScriptFiles(cliSourceRoot)) {
+for (const filePath of await collectRustFiles(cliSourceRoot)) {
   const source = await readFile(filePath, "utf8");
-  for (const match of source.matchAll(/\breturn\s+([0-9]+)\s*;/g)) {
+  if (source.includes("ExitCode::SUCCESS")) {
+    sourceCodes.add(0);
+  }
+  for (const match of source.matchAll(/ExitCode::from\(\s*([0-9]+)\s*\)/g)) {
     sourceCodes.add(Number(match[1]));
   }
 }
@@ -33,7 +36,7 @@ if (missing.length > 0 || stale.length > 0) {
   process.exit(1);
 }
 
-async function collectTypeScriptFiles(root: string): Promise<readonly string[]> {
+async function collectRustFiles(root: string): Promise<readonly string[]> {
   const files: string[] = [];
   for (const entry of await readdir(root, { withFileTypes: true })) {
     if (entry.name === "dist" || entry.name === "node_modules") {
@@ -41,10 +44,10 @@ async function collectTypeScriptFiles(root: string): Promise<readonly string[]> 
     }
     const entryPath = path.join(root, entry.name);
     if (entry.isDirectory()) {
-      files.push(...await collectTypeScriptFiles(entryPath));
+      files.push(...await collectRustFiles(entryPath));
       continue;
     }
-    if (entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+    if (entry.isFile() && entry.name.endsWith(".rs") && !entry.name.endsWith("_tests.rs")) {
       files.push(entryPath);
     }
   }

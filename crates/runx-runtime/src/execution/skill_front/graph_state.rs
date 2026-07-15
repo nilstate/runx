@@ -17,13 +17,50 @@ pub(super) fn read_answers(path: &Path) -> Result<JsonObject, SkillRunError> {
         RuntimeError::json(format!("parsing answers file {}", path.display()), source)
     })?;
     let answers = match value {
-        JsonValue::Object(mut object) => match object.remove("answers") {
-            Some(JsonValue::Object(nested)) => nested,
-            Some(_) => return Err(invalid("answers field must be a JSON object")),
-            None => object,
-        },
+        JsonValue::Object(object) => normalize_answers(object)?,
         _ => return Err(invalid("answers file must be a JSON object")),
     };
+    Ok(answers)
+}
+
+fn normalize_answers(mut object: JsonObject) -> Result<JsonObject, SkillRunError> {
+    let nested_shape = object.contains_key("answers") || object.contains_key("approvals");
+    if !nested_shape {
+        return Ok(object);
+    }
+    let extra = object
+        .keys()
+        .filter(|key| !matches!(key.as_str(), "answers" | "approvals"))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !extra.is_empty() {
+        return Err(invalid(format!(
+            "answers file mixes top-level keys [{}] with the nested answers/approvals shape",
+            extra.join(", ")
+        )));
+    }
+    let mut answers = match object.remove("answers") {
+        Some(JsonValue::Object(nested)) => nested,
+        Some(_) => return Err(invalid("answers field must be a JSON object")),
+        None => JsonObject::new(),
+    };
+    let approvals = match object.remove("approvals") {
+        Some(JsonValue::Object(approvals)) => approvals,
+        Some(_) => return Err(invalid("approvals field must be a JSON object")),
+        None => JsonObject::new(),
+    };
+    for (gate_id, decision) in approvals {
+        if !matches!(decision, JsonValue::Bool(_)) {
+            return Err(invalid(format!(
+                "approvals.{gate_id} must be a JSON boolean"
+            )));
+        }
+        if answers.insert(gate_id.clone(), decision).is_some() {
+            return Err(invalid(format!(
+                "request {gate_id} is declared in both answers and approvals"
+            )));
+        }
+    }
     Ok(answers)
 }
 

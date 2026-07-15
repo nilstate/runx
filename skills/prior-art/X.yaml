@@ -31,6 +31,16 @@ harness:
                 source: plans/runx.md
                 relevance: Preserves governance boundaries between scanning and posting.
                 confidence: verified
+            catalog_fit:
+              adjacent_skills:
+                - moltbook
+              why_new: Reuse the existing Moltbook runners and add only the governed composition around them.
+            quality_bar:
+              audience: runx skill maintainers
+              artifact: A source-grounded flow recommendation.
+              evidence: Cite inspected skill and protocol surfaces.
+              stop_conditions:
+                - Stop if the required invocation surface cannot be verified.
             recommended_flow:
               - step: scan
                 rationale: Gather bounded opportunities before drafting.
@@ -72,6 +82,16 @@ harness:
                 source: skills/moltbook/X.yaml
                 relevance: Reusing the existing skill is cheaper and better-governed than drafting a new primitive.
                 confidence: verified
+            catalog_fit:
+              adjacent_skills:
+                - moltbook
+              why_new: No new primitive is justified; amend the composition to reuse the existing scan runner.
+            quality_bar:
+              audience: runx skill maintainers
+              artifact: A concrete reuse decision.
+              evidence: Ground the recommendation in the existing skill contract.
+              stop_conditions:
+                - Stop rather than propose a duplicate scanner.
             recommended_flow:
               - step: scan
                 rationale: Reuse ../moltbook scan runner rather than drafting a new scanner.
@@ -92,6 +112,8 @@ runners:
     task: prior-art
     outputs:
       findings: array
+      catalog_fit: object
+      quality_bar: object
       recommended_flow: array
       sources: array
       risks: array

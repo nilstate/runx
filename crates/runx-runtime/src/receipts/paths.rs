@@ -130,9 +130,7 @@ pub fn resolve_receipt_path(inputs: ReceiptPathInputs<'_>) -> ResolvedReceiptPat
 
 #[must_use]
 pub fn resolve_workspace_base(env: &BTreeMap<String, String>, cwd: &Path) -> PathBuf {
-    env_path(env, RUNX_CWD_ENV)
-        .or_else(|| env_path(env, INIT_CWD_ENV))
-        .map_or_else(|| absolute_cwd(cwd), |path| resolve_from_cwd(path, cwd))
+    crate::config::resolve_runx_workspace_base(env, cwd)
 }
 
 #[must_use]
@@ -188,26 +186,6 @@ fn resolve_from_workspace_base(path: &Path, workspace_base: &Path) -> PathBuf {
         lexical_normalize(path)
     } else {
         lexical_normalize(&workspace_base.join(path))
-    }
-}
-
-fn resolve_from_cwd(path: &Path, cwd: &Path) -> PathBuf {
-    if path.is_absolute() {
-        lexical_normalize(path)
-    } else {
-        lexical_normalize(&absolute_cwd(cwd).join(path))
-    }
-}
-
-fn absolute_cwd(cwd: &Path) -> PathBuf {
-    if cwd.is_absolute() {
-        lexical_normalize(cwd)
-    } else {
-        let base = match std::env::current_dir() {
-            Ok(path) => path,
-            Err(_) => PathBuf::from("."),
-        };
-        lexical_normalize(&base.join(cwd))
     }
 }
 

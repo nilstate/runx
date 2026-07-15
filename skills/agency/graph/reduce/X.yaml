@@ -18,6 +18,8 @@ runners:
       - run.mjs
     artifacts:
       named_emits:
+        reduction: reduction
+      packets:
         reduction: runx.agency.reduction.v1
     inputs:
       events:

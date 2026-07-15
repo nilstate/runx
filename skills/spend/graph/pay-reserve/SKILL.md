@@ -19,22 +19,11 @@ the child payment term is a subset of the parent grant and records the selected
 Decision. This skill names that decision surface and prepares the packet that
 the runtime can enforce.
 
-## Quality Profile
-
-- Purpose: create a reviewable reservation packet that can become a runx
-  Decision and child payment authority term.
-- Audience: the parent harness, approval gate, operator, and rail child
-  harness.
-- Artifact contract: `payment_decision`, `reserved_payment_authority`,
-  `idempotency`, `approval`, `core_requirements`, and `open_questions`.
-- Evidence bar: carry the quote id, source refs, parent authority ref, cap, and
-  approval status through the output.
-- Voice bar: direct operator language. State whether the payment is selected,
-  declined, blocked, or needs approval.
-- Strategic bar: reserve exactly the quoted amount or a narrower cap; never
-  broaden counterparty, rail, realm, operation, period, or currency.
-- Stop conditions: return `needs_agent` if approval, parent authority,
-  idempotency key, or quote evidence is missing.
+Carry the quote id, source references, parent authority reference, amount cap,
+and approval state into the reservation. Reserve exactly the quoted amount or a
+narrower cap; never broaden the counterparty, rail, realm, operation, period, or
+currency. Return `needs_agent` without a child term when the quote evidence,
+parent authority, required approval, or stable idempotency key is missing.
 
 ## Output
 

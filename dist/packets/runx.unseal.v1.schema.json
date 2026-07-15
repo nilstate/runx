@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/unseal/v1.json",
+  "x-runx-packet-id": "runx.unseal.v1",
+  "x-runx-generated-from": "skills/vault-unseal/X.yaml#root.runners.vault-unseal",
+  "type": "object",
+  "required": [
+    "unseal_plan"
+  ],
+  "properties": {
+    "unseal_plan": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

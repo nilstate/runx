@@ -17,8 +17,10 @@ if (operation === "append_event") {
   result = readEvents(inputs);
 } else if (operation === "read_projection") {
   result = readProjection(inputs);
+} else if (operation === "list_stream_heads") {
+  result = listStreamHeads(inputs);
 } else {
-  throw new Error("operation must be append_event, read_events, or read_projection");
+  throw new Error("operation must be append_event, read_events, read_projection, or list_stream_heads");
 }
 
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -87,7 +89,7 @@ function appendEvent(rawInputs) {
     event,
     event_digest: eventDigest,
     idempotency_key: idempotencyKey,
-    committed_at: typeof rawInputs.observed_at === "string" ? rawInputs.observed_at : "1970-01-01T00:00:00.000Z",
+    committed_at: committedAt(rawInputs.observed_at),
   };
 
   try {
@@ -116,6 +118,37 @@ INSERT INTO runx_events (
   ${sqlString(JSON.stringify(event))},
   ${sqlString(record.committed_at)}
 );
+INSERT INTO runx_stream_heads (
+  data_source_ref,
+  resource,
+  aggregate_id,
+  version,
+  event_ref,
+  event_type,
+  event_digest,
+  idempotency_key,
+  event_json,
+  committed_at
+) VALUES (
+  ${sqlString(envelope.data_source_ref)},
+  ${sqlString(envelope.resource)},
+  ${sqlString(envelope.aggregate_id)},
+  ${nextVersion},
+  ${sqlString(eventRef)},
+  ${sqlString(record.event_type)},
+  ${sqlString(eventDigest)},
+  ${sqlString(idempotencyKey)},
+  ${sqlString(JSON.stringify(event))},
+  ${sqlString(record.committed_at)}
+)
+ON CONFLICT (data_source_ref, resource, aggregate_id) DO UPDATE SET
+  version = excluded.version,
+  event_ref = excluded.event_ref,
+  event_type = excluded.event_type,
+  event_digest = excluded.event_digest,
+  idempotency_key = excluded.idempotency_key,
+  event_json = excluded.event_json,
+  committed_at = excluded.committed_at;
 COMMIT;
 `);
   } catch (error) {
@@ -152,8 +185,9 @@ function readEvents(rawInputs) {
 
   const envelope = baseEnvelope(rawInputs, "read_events");
   const limit = boundedLimit(rawInputs.limit);
+  const afterVersion = optionalVersion(rawInputs.after_version, "after_version");
   const current = currentVersion(database, envelope);
-  const rows = queryJson(database, `
+  const rows = afterVersion === undefined ? queryJson(database, `
 SELECT event_ref, version, event_type, event_digest, idempotency_key, committed_at, event_json
 FROM runx_events
 WHERE data_source_ref = ${sqlString(envelope.data_source_ref)}
@@ -161,9 +195,17 @@ WHERE data_source_ref = ${sqlString(envelope.data_source_ref)}
   AND aggregate_id = ${sqlString(envelope.aggregate_id)}
 ORDER BY version DESC
 LIMIT ${limit};
+`).reverse() : queryJson(database, `
+SELECT event_ref, version, event_type, event_digest, idempotency_key, committed_at, event_json
+FROM runx_events
+WHERE data_source_ref = ${sqlString(envelope.data_source_ref)}
+  AND resource = ${sqlString(envelope.resource)}
+  AND aggregate_id = ${sqlString(envelope.aggregate_id)}
+  AND version > ${afterVersion}
+ORDER BY version ASC
+LIMIT ${limit};
 `);
   const events = rows
-    .reverse()
     .map((row) => ({
       event_ref: row.event_ref,
       version: Number(row.version),
@@ -233,6 +275,60 @@ ORDER BY version ASC;
   };
 }
 
+function listStreamHeads(rawInputs) {
+  const database = databasePath(rawInputs);
+  ensureSchema(database);
+
+  const envelope = baseEnvelope(rawInputs, "list_stream_heads");
+  const limit = boundedHeadLimit(rawInputs.limit);
+  const cursor = decodeHeadCursor(rawInputs.cursor);
+  const eventTypes = optionalEventTypes(rawInputs.event_types);
+  const cursorClause = cursor
+    ? `AND (committed_at < ${sqlString(cursor.committed_at)} OR (committed_at = ${sqlString(cursor.committed_at)} AND aggregate_id > ${sqlString(cursor.aggregate_id)}))`
+    : "";
+  const eventTypeClause = eventTypes.length > 0
+    ? `AND event_type IN (${eventTypes.map(sqlString).join(", ")})`
+    : "";
+  const records = queryJson(database, `
+SELECT aggregate_id, version, event_ref, event_type, event_digest, idempotency_key, committed_at, event_json
+FROM runx_stream_heads
+WHERE data_source_ref = ${sqlString(envelope.data_source_ref)}
+  AND resource = ${sqlString(envelope.resource)}
+  ${eventTypeClause}
+  ${cursorClause}
+ORDER BY committed_at DESC, aggregate_id ASC
+LIMIT ${limit + 1};
+`).map(streamHeadRecord);
+  const hasMore = records.length > limit;
+  const rows = records.slice(0, limit);
+  const nextCursor = hasMore && rows.length > 0
+    ? encodeHeadCursor(rows.at(-1))
+    : null;
+  const page = {
+    limit,
+    count: rows.length,
+    has_more: hasMore,
+    next_cursor: nextCursor,
+  };
+  return {
+    ...envelope,
+    status: "read",
+    before_version: 0,
+    after_version: 0,
+    idempotency_key: null,
+    event_ref: null,
+    event_digest: null,
+    result_digest: sha256Json({ rows, page }),
+    projection_digest: sha256Json(rows.map((row) => [row.aggregate_id, row.version, row.event_digest])),
+    projection: page,
+    events: [],
+    rows,
+    redactions: [],
+    stop_conditions: [],
+    provider_evidence: providerEvidence(envelope),
+  };
+}
+
 function conflictResult(envelope, currentVersionValue, { idempotency_key, event_digest, reason, provider_evidence }) {
   const stop = {
     code: "conflict",
@@ -263,7 +359,9 @@ function baseEnvelope(rawInputs, operation) {
     provider: PROVIDER,
     operation,
     resource: safeName(stringInput("resource"), "resource"),
-    aggregate_id: safeName(stringInput("aggregate_id"), "aggregate_id"),
+    aggregate_id: operation === "list_stream_heads"
+      ? "stream-heads"
+      : safeName(stringInput("aggregate_id"), "aggregate_id"),
   };
 }
 
@@ -271,6 +369,7 @@ function ensureSchema(database) {
   fs.mkdirSync(path.dirname(database), { recursive: true });
   execSql(database, `
 PRAGMA journal_mode = WAL;
+PRAGMA busy_timeout = 5000;
 CREATE TABLE IF NOT EXISTS runx_events (
   data_source_ref TEXT NOT NULL DEFAULT '',
   resource TEXT NOT NULL,
@@ -288,10 +387,76 @@ CREATE TABLE IF NOT EXISTS runx_events (
 `);
   migrateLegacySchema(database);
   execSql(database, `
+CREATE TABLE IF NOT EXISTS runx_stream_heads (
+  data_source_ref TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  aggregate_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  event_ref TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  event_digest TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  event_json TEXT NOT NULL,
+  committed_at TEXT NOT NULL,
+  PRIMARY KEY (data_source_ref, resource, aggregate_id)
+);
+CREATE TABLE IF NOT EXISTS runx_data_store_migrations (
+  version TEXT PRIMARY KEY,
+  applied_at TEXT NOT NULL
+);
+INSERT INTO runx_stream_heads (
+  data_source_ref,
+  resource,
+  aggregate_id,
+  version,
+  event_ref,
+  event_type,
+  event_digest,
+  idempotency_key,
+  event_json,
+  committed_at
+)
+SELECT
+  events.data_source_ref,
+  events.resource,
+  events.aggregate_id,
+  events.version,
+  events.event_ref,
+  events.event_type,
+  events.event_digest,
+  events.idempotency_key,
+  events.event_json,
+  events.committed_at
+FROM runx_events AS events
+WHERE NOT EXISTS (
+  SELECT 1 FROM runx_data_store_migrations WHERE version = 'stream-heads-v1'
+)
+AND events.version = (
+  SELECT MAX(candidate.version)
+  FROM runx_events AS candidate
+  WHERE candidate.data_source_ref = events.data_source_ref
+    AND candidate.resource = events.resource
+    AND candidate.aggregate_id = events.aggregate_id
+)
+ON CONFLICT (data_source_ref, resource, aggregate_id) DO UPDATE SET
+  version = excluded.version,
+  event_ref = excluded.event_ref,
+  event_type = excluded.event_type,
+  event_digest = excluded.event_digest,
+  idempotency_key = excluded.idempotency_key,
+  event_json = excluded.event_json,
+  committed_at = excluded.committed_at
+WHERE excluded.version > runx_stream_heads.version;
+INSERT OR IGNORE INTO runx_data_store_migrations (version, applied_at)
+VALUES ('stream-heads-v1', '1970-01-01T00:00:00.000Z');
 CREATE UNIQUE INDEX IF NOT EXISTS runx_events_stream_version_v1
   ON runx_events (data_source_ref, resource, aggregate_id, version);
 CREATE UNIQUE INDEX IF NOT EXISTS runx_events_stream_idempotency_v1
   ON runx_events (data_source_ref, resource, aggregate_id, idempotency_key);
+CREATE INDEX IF NOT EXISTS runx_stream_heads_recent_v1
+  ON runx_stream_heads (data_source_ref, resource, committed_at DESC, aggregate_id ASC);
+CREATE INDEX IF NOT EXISTS runx_stream_heads_type_recent_v1
+  ON runx_stream_heads (data_source_ref, resource, event_type, committed_at DESC, aggregate_id ASC);
 `);
 }
 
@@ -434,7 +599,7 @@ function databasePath(rawInputs) {
 }
 
 function execSql(database, sql) {
-  const result = spawnSync(SQLITE_BIN, [database], {
+  const result = spawnSync(SQLITE_BIN, ["-cmd", ".timeout 5000", database], {
     input: sql,
     encoding: "utf8",
     maxBuffer: 1024 * 1024,
@@ -448,7 +613,7 @@ function execSql(database, sql) {
 }
 
 function queryJson(database, sql) {
-  const result = spawnSync(SQLITE_BIN, ["-json", database], {
+  const result = spawnSync(SQLITE_BIN, ["-cmd", ".timeout 5000", "-json", database], {
     input: sql,
     encoding: "utf8",
     maxBuffer: 1024 * 1024,
@@ -517,6 +682,84 @@ function boundedLimit(value) {
     throw new Error("limit must be an integer from 1 to 500");
   }
   return value;
+}
+
+function boundedHeadLimit(value) {
+  if (value === undefined || value === null) return 50;
+  if (!Number.isInteger(value) || value < 1 || value > 100) {
+    throw new Error("list_stream_heads limit must be an integer from 1 to 100");
+  }
+  return value;
+}
+
+function optionalEventTypes(value) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 20) {
+    throw new Error("event_types must be an array of at most 20 exact event types");
+  }
+  return Array.from(new Set(value.map((entry) => {
+    const token = safeEventToken(entry);
+    if (!token) throw new Error("event_types contains an invalid event type");
+    return token;
+  })));
+}
+
+function streamHeadRecord(row) {
+  return {
+    aggregate_id: row.aggregate_id,
+    version: Number(row.version),
+    event_ref: row.event_ref,
+    event_type: row.event_type,
+    event: JSON.parse(row.event_json),
+    event_digest: row.event_digest,
+    idempotency_key: row.idempotency_key,
+    committed_at: row.committed_at,
+  };
+}
+
+function encodeHeadCursor(row) {
+  return Buffer.from(JSON.stringify({
+    committed_at: row.committed_at,
+    aggregate_id: row.aggregate_id,
+  }), "utf8").toString("base64url");
+}
+
+function decodeHeadCursor(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || value.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new Error("cursor must be an opaque list_stream_heads cursor");
+  }
+  try {
+    const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) throw new Error("invalid cursor");
+    const committedAt = decoded.committed_at;
+    const aggregateId = decoded.aggregate_id;
+    if (typeof committedAt !== "string" || committedAt.length > 100 || Number.isNaN(Date.parse(committedAt))) {
+      throw new Error("invalid committed_at");
+    }
+    return {
+      committed_at: committedAt,
+      aggregate_id: safeName(aggregateId, "aggregate_id"),
+    };
+  } catch {
+    throw new Error("cursor must be an opaque list_stream_heads cursor");
+  }
+}
+
+function optionalVersion(value, field) {
+  if (value === undefined || value === null) return undefined;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${field} must be a non-negative integer`);
+  }
+  return value;
+}
+
+function committedAt(value) {
+  if (value === undefined || value === null) return "1970-01-01T00:00:00.000Z";
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) {
+    throw new Error("observed_at must be ISO-8601");
+  }
+  return new Date(value).toISOString();
 }
 
 function safeName(value, field) {

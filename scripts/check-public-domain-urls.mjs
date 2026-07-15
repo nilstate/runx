@@ -43,7 +43,10 @@ function scanFile(filePath) {
     return;
   }
 
-  const stat = statSync(filePath);
+  const stat = statSync(filePath, { throwIfNoEntry: false });
+  if (!stat) {
+    return;
+  }
   if (stat.size > 5 * 1024 * 1024) {
     return;
   }

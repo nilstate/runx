@@ -86,10 +86,10 @@ pub fn load_export_skills_with_options(
         }
         let skill = read_validated_skill(&skill_dir)?;
         let inputs = export_skill_inputs(&skill, manifest.as_ref());
-        validate_export_skill_name(&skill.name)?;
+        let export_name = export_skill_name(&skill.name)?;
         validate_export_skill_inputs(&inputs)?;
         skills.push(RunxExportSkill {
-            name: skill.name,
+            name: export_name,
             description: skill
                 .description
                 .unwrap_or_else(|| "Run this skill through runx governance.".to_owned()),
@@ -109,6 +109,14 @@ pub fn load_export_skills_with_options(
         });
     }
     skills.sort_by(|left, right| left.name.cmp(&right.name));
+    for pair in skills.windows(2) {
+        if pair[0].name == pair[1].name {
+            return Err(RunxExportLoadError::InvalidArgs(format!(
+                "multiple skills normalize to the export name {:?}",
+                pair[0].name
+            )));
+        }
+    }
     Ok(skills)
 }
 
@@ -137,13 +145,27 @@ fn default_runner(manifest: Option<&SkillRunnerManifest>) -> Option<&SkillRunner
         })
 }
 
-fn validate_export_skill_name(name: &str) -> Result<(), RunxExportLoadError> {
-    if name == "." || name == ".." || name.contains('/') || name.contains('\\') {
+fn export_skill_name(name: &str) -> Result<String, RunxExportLoadError> {
+    if name.contains('\\') {
         return Err(RunxExportLoadError::InvalidArgs(format!(
             "skill name {name:?} cannot be exported because it is not a safe path segment"
         )));
     }
-    Ok(())
+    let segments = name.split('/').collect::<Vec<_>>();
+    if segments.iter().any(|segment| {
+        segment.is_empty()
+            || matches!(*segment, "." | "..")
+            || segment.starts_with('-')
+            || segment.ends_with('-')
+            || !segment.chars().all(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.')
+            })
+    }) {
+        return Err(RunxExportLoadError::InvalidArgs(format!(
+            "skill name {name:?} cannot be exported because it cannot be normalized to a safe name"
+        )));
+    }
+    Ok(segments.join("-"))
 }
 
 fn validate_export_skill_inputs(
@@ -189,33 +211,54 @@ fn discover_skill_paths(root: &Path) -> Result<Vec<PathBuf>, RunxExportLoadError
         paths.push(canonicalize(root, "canonicalizing root skill")?);
     }
     let skills_root = root.join("skills");
-    let entries = match fs::read_dir(&skills_root) {
+    discover_skill_paths_below(&skills_root, &mut paths)?;
+    paths.sort();
+    Ok(paths)
+}
+
+fn discover_skill_paths_below(
+    directory: &Path,
+    paths: &mut Vec<PathBuf>,
+) -> Result<(), RunxExportLoadError> {
+    let entries = match fs::read_dir(directory) {
         Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(paths),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(source) => {
             return Err(RunxExportLoadError::Io {
-                context: format!("reading {}", display_path(&skills_root)),
+                context: format!("reading {}", display_path(directory)),
                 source,
             });
         }
     };
-    let mut candidates = entries
-        .map(|entry| {
-            entry
-                .map(|entry| entry.path())
-                .map_err(|source| RunxExportLoadError::Io {
-                    context: format!("reading {}", display_path(&skills_root)),
-                    source,
-                })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    candidates.sort();
-    for candidate in candidates {
+    let mut directories = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|source| RunxExportLoadError::Io {
+            context: format!("reading {}", display_path(directory)),
+            source,
+        })?;
+        let file_type = entry
+            .file_type()
+            .map_err(|source| RunxExportLoadError::Io {
+                context: format!("reading file type {}", display_path(&entry.path())),
+                source,
+            })?;
+        if file_type.is_dir()
+            && !matches!(
+                entry.file_name().to_string_lossy().as_ref(),
+                ".git" | "node_modules" | "target"
+            )
+        {
+            directories.push(entry.path());
+        }
+    }
+    directories.sort();
+    for candidate in directories {
         if candidate.join("SKILL.md").exists() {
             paths.push(canonicalize(&candidate, "canonicalizing skill directory")?);
         }
+        discover_skill_paths_below(&candidate, paths)?;
     }
-    Ok(paths)
+    Ok(())
 }
 
 fn read_validated_skill(

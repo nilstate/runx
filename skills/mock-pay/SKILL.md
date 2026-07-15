@@ -18,21 +18,13 @@ This is the settlement-pinned mock marquee. It exists for local harnesses,
 demos, and contract tests. It does not claim live provider behavior or accept
 raw funding material.
 
-## Quality Profile
-
-- Purpose: execute a paid action through runx authority without hiding the
-  payment governance path.
-- Audience: agent hosts, operators, approval reviewers, and receipt verifiers.
-- Artifact contract: `payment_execution`, `payment_quote_packet`,
-  `payment_reservation_packet`, `effect_evidence_packet`, and `recovery_packet`
-  when needed.
-- Evidence bar: every successful execution carries a quote, selected decision,
-  reserved child authority, idempotency key, rail proof ref, and receipt seal
-  requirement.
-- Voice bar: operator-grade execution record; avoid wallet/product marketing.
-- Strategic bar: keep rails pluggable while core owns payment authority.
-- Stop conditions: stop before rail execution when quote, approval, parent
-  authority, reservation, idempotency, or spend capability is missing.
+Treat the result as an operator-grade execution record, not as proof of a live
+wallet or provider. A successful case still has to bind the quote, selected
+decision, attenuated child authority, stable idempotency key, deterministic
+rail proof, and receipt-seal requirement. Stop before mock fulfillment when the
+quote, required approval, parent authority, reservation, idempotency material,
+or spend capability is missing; route ambiguous results through recovery under
+the same key.
 
 ## Output
 

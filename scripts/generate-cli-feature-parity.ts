@@ -64,7 +64,8 @@ const commands: readonly CommandMatrixEntry[] = [
   command("config.set", "runx config set <key> <value>", [], ["--json"], "filesystem", ["config", "cli-presentation"], ["config.set.validate"]),
   command("config.get", "runx config get <key>", [], ["--json"], "filesystem", ["config", "cli-presentation"], ["config.get.validate"]),
   command("config.list", "runx config list", [], ["--json"], "filesystem", ["config", "cli-presentation"], ["config.list.execute"]),
-  command("login", "runx login [--provider github|google|gitlab] [--api-base-url url] [--allow-local-api] [--json]", [], ["--provider", "--api-base-url", "--allow-local-api", "--json"], "filesystem", ["config", "cli-presentation"], ["login.validate"]),
+  command("login", "runx login [--provider github|google|gitlab] [--for default|publish] [--from-gh] [--api-base-url url] [--allow-local-api] [--json]", [], ["--provider", "--for", "--from-gh", "--api-base-url", "--allow-local-api", "--json"], "filesystem", ["config", "cli-presentation"], ["login.validate"]),
+  command("connect", "runx connect list|start|status|invoke|revoke ... [-j|--json]", [], ["--scope", "--scope-family", "--authority-kind", "--target-repo", "--target-locator", "--binding", "--grant", "--operation", "--input", "--api-base-url", "--token", "--allow-local-api", "--json", "-j"], "external-stub", ["public-api", "connect", "cli-presentation"], ["connect.execute"]),
   command("policy.inspect", "runx policy inspect <policy.json>", [], ["--json"], "none", ["policy", "cli-presentation"], ["policy.inspect.validate"]),
   command("policy.lint", "runx policy lint <policy.json>", [], ["--json"], "none", ["policy", "cli-presentation"], ["policy.lint.validate"]),
   command("publish", "runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [--json]", [], ["--api-base-url", "--token", "--allow-local-api", "--json"], "external-stub", ["receipts", "cli-presentation"], ["publish.validate"]),
@@ -75,9 +76,9 @@ const commands: readonly CommandMatrixEntry[] = [
   command("dev", "runx dev [root]", [], ["--lane", "--json"], "local-runtime", ["dev", "harness", "receipts"], ["dev.validate"]),
   command("export", "runx export <claude|codex> [skill-ref...]", [], ["--project", "--json"], "filesystem", ["skill-export", "cli-presentation"], ["export.validate"]),
   command("mcp.serve", "runx mcp serve <skill-ref...>", [], ["--receipt-dir"], "adapter", ["mcp", "adapter-mcp"], ["mcp.serve.validate"]),
-  command("skill.run", "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner]", [], ["--registry", "--digest", "--input", "--receipt-dir", "--credential", "--secret-env", "--non-interactive", "--json"], "local-runtime", ["skill-resolution", "graph-runtime", "receipts", "sandbox", "authority", "caller-mediated-resolution", "adapter-cli-tool", "adapter-a2a", "adapter-agent"], ["skill.run.validate"]),
+  command("skill.run", "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner]", [], ["--registry", "--digest", "--input", "--receipt-dir", "--credential", "--credential-scope", "--secret-env", "--non-interactive", "--json"], "local-runtime", ["skill-resolution", "graph-runtime", "receipts", "sandbox", "authority", "caller-mediated-resolution", "adapter-cli-tool", "adapter-a2a", "adapter-agent"], ["skill.run.validate"]),
   command("skill.inspect", "runx skill inspect <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner]", [], ["--registry", "--digest", "--json"], "filesystem", ["skill-resolution", "cli-presentation"], ["skill.inspect.validate"]),
-  command("harness", "runx harness <fixture.yaml...>", [], ["--json"], "local-runtime", ["harness", "receipts", "sandbox"], ["harness.execute"]),
+  command("harness", "runx harness <skill-dir|fixture.yaml...>", [], ["--json", "--help", "-h"], "local-runtime", ["harness", "receipts", "sandbox"], ["harness.execute"]),
   command("tool.build", "runx tool build <tool-dir>|--all", [], ["--all", "--json"], "filesystem", ["tool-catalog", "authoring"], ["tool.build.validate"], { conditionalPositionals: ["<tool-dir>"] }),
   command("tool.search", "runx tool search <query>", [], ["--source", "--json"], "external-stub", ["tool-catalog", "adapter-catalog"], ["tool.search.validate"]),
   command("tool.inspect", "runx tool inspect <ref>", [], ["--source", "--json"], "external-stub", ["tool-catalog", "adapter-catalog"], ["tool.inspect.validate"]),
@@ -103,6 +104,8 @@ const surfaces: readonly RuntimeSurface[] = [
   surface("adapter-catalog", "runx-runtime catalog adapter", "stubbed", ["tool.search", "tool.inspect"], "Catalog adapter inputs and normalized outputs are preserved."),
   surface("adapter-agent", "runx-runtime external agent adapter", "stubbed", ["skill.run", "dev"], "Managed agent calls are represented by local stubs, not live providers."),
   surface("config", "runx-cli", "schema-exact", ["config.set", "config.get", "config.list"], "RUNX_HOME and local config file behavior are part of CLI parity."),
+  surface("public-api", "runx-cli + runx-runtime", "stubbed", ["login", "connect", "publish"], "Public API identity and HTTP transport are resolved once and exercised against deterministic local servers."),
+  surface("connect", "runx-cli + runx cloud", "stubbed", ["connect"], "Provider-neutral grant lifecycle and bounded provider operations use the native CLI against a local API fixture."),
   surface("doctor", "runx-cli + runx-runtime doctor", "semantic", ["doctor"], "Diagnostics can add ids, but the documented command surface must not disappear."),
   surface("dev", "runx-cli", "fixture-backed", ["dev"], "Development lanes run deterministic or recorded harness fixtures."),
   surface("skill-export", "runx-cli + runx-runtime", "semantic", ["export"], "Host-agent shims are generated from validated skill packages and delegate back to governed runx skill execution."),
@@ -122,6 +125,7 @@ const casesExecutedById = new Set([
   "harness.execute",
   "history.execute",
   "list.tools.execute",
+  "connect.execute",
 ]);
 
 const cases: readonly OracleCase[] = [
@@ -146,6 +150,7 @@ const cases: readonly OracleCase[] = [
     proves: ["history", "ledger", "receipts", "cli-presentation"],
   },
   execute("list.tools.execute", "list", ["list", "tools", "--json"], 0, true, [], []),
+  execute("connect.execute", "connect", ["connect", "list", "--api-base-url", "$FIXTURE_CONNECT_API", "--token", "rxk_fixture", "--allow-local-api", "--json"], 0, true, ["\"principal_id\": \"fixture-user\"", "\"grants\""], []),
   ...commands
     .filter((entry) => !entry.cases.some((caseId) => casesExecutedById.has(caseId)))
     .map((entry) => validate(`${entry.id}.validate`, entry.id, entry.parity.surfaces)),

@@ -13,9 +13,8 @@ export default defineConfig({
       "tests/payment-finality-adapters.test.ts",
       "tests/stripe-spt-rail-adapter.test.ts",
     ],
-    // These suites shell out to the debug `runx` binary; its cold start under
-    // parallel load can exceed the 5s default, so give subprocess work headroom.
-    fileParallelism: false,
+    // These suites shell out to the debug `runx` binary; the generous timeouts
+    // absorb its cold start under parallel load.
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },

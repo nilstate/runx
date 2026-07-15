@@ -6,6 +6,8 @@ use runx_contracts::{
     ExternalAdapterResponse,
 };
 
+use crate::fixture_support::roundtrip;
+
 const FIXTURES: &[&str] = &[
     include_str!("../../../fixtures/contracts/external-adapter/cancellation-frame.json"),
     include_str!("../../../fixtures/contracts/external-adapter/credential-request.json"),
@@ -76,14 +78,4 @@ fn assert_roundtrip(fixture: Fixture) -> Result<(), serde_json::Error> {
         FixtureKind::Manifest => roundtrip::<ExternalAdapterManifest>(fixture.expected),
         FixtureKind::Response => roundtrip::<ExternalAdapterResponse>(fixture.expected),
     }
-}
-
-fn roundtrip<T>(expected: serde_json::Value) -> Result<(), serde_json::Error>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    let parsed: T = serde_json::from_value(expected.clone())?;
-    let actual = serde_json::to_value(parsed)?;
-    assert_eq!(actual, expected);
-    Ok(())
 }

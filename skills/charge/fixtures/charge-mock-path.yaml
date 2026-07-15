@@ -29,6 +29,15 @@ caller:
           - mock
       requested_payment_authority:
         authority_ref: authority:payment:charge-price-demo-001
+      price_evidence:
+        source_refs:
+          - policy:provider-demo
+          - tool-call:search.paid
+        redactions: []
+      policy_metadata:
+        provider_realm: test
+        direction: provider_charge
+      open_questions: []
     agent_task.charge-challenge.output:
       effect_required_signal:
         signal_type: effect_required
@@ -40,6 +49,7 @@ caller:
         key: charge:paid-search-001
       accepted_settlement_families:
         - mock
+      open_questions: []
     agent_task.charge-verify.output:
       verification_result:
         status: verified

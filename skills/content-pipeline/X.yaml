@@ -34,7 +34,7 @@ harness:
               - option: Lead with enforcement and proving-ground improvements.
                 rationale: Strongest proof point in the repo.
             risks: []
-          agent_task.draft-content-draft.output:
+          agent_task.ghostwrite-draft.output:
             content_brief:
               angle: show the standard through concrete repo changes
             draft:
@@ -43,7 +43,7 @@ harness:
               - verify all path examples
             distribution_notes:
               primary_channel: blog
-          agent_task.draft-content-package.output:
+          agent_task.ghostwrite-package.output:
             publish_packet:
               channel: blog
               headline: Package-style skills are now enforced in runx
@@ -61,7 +61,7 @@ harness:
     - name: content-pipeline-needs-objective
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 
 runners:
@@ -105,8 +105,8 @@ runners:
             - runx:research:read
           inputs:
             deliverable: content draft
-        - id: draft-content
-          skill: ../draft-content
+        - id: ghostwrite
+          skill: ../ghostwrite
           runner: draft
           scopes:
             - runx:content:draft
@@ -119,19 +119,19 @@ runners:
             gate_id: content-pipeline.publish.approval
             reason: Approve the drafted content before packaging it for publication.
           context:
-            content_brief: draft-content.content_draft_packet.data.content_brief
-            draft: draft-content.content_draft_packet.data.draft
+            content_brief: ghostwrite.content_draft_packet.data.content_brief
+            draft: ghostwrite.content_draft_packet.data.draft
           artifacts:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
         - id: package-publication
-          skill: ../draft-content
+          skill: ../ghostwrite
           runner: package
           scopes:
             - runx:content:package
           context:
-            draft: draft-content.content_draft_packet.data.draft
-            distribution_notes: draft-content.content_draft_packet.data.distribution_notes
+            draft: ghostwrite.content_draft_packet.data.draft
+            distribution_notes: ghostwrite.content_draft_packet.data.distribution_notes
       policy:
         guards:
           - step: package-publication

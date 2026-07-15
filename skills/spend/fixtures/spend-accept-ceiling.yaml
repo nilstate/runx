@@ -113,6 +113,12 @@ caller:
         issued_by_ref:
           type: host
           uri: authority:payment:test
+      challenge_evidence:
+        source_refs:
+          - signal:ch_accept_001
+        redactions: []
+      risk_notes: []
+      open_questions: []
     agent_task.pay-reserve.output:
       payment_decision:
         decision_id: decision_payment_demo_001

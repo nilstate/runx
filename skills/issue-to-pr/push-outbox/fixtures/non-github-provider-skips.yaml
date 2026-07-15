@@ -1,0 +1,29 @@
+name: non-github-provider-skips
+kind: skill
+target: ..
+runner: push
+env:
+  RUNX_GITHUB_TOKEN: fixture-token
+inputs:
+  thread:
+    thread_locator: local://fixtures/issue-to-pr/outbox/1
+    adapter:
+      type: fixture
+      provider: fixture
+  outbox_entry:
+    entry_id: outbox-fixture-1
+    kind: message
+    thread_locator: local://fixtures/issue-to-pr/outbox/1
+    status: approved
+    body: This fixture proves the provider boundary refuses an unrelated adapter.
+  next_status: published
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - provider-push
+metadata:
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: provider_boundary_skip

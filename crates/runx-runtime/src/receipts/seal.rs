@@ -3,7 +3,9 @@
 // receipt builder is split out.
 use std::collections::BTreeMap;
 
-use crate::adapter::{CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA, SkillOutput};
+use crate::adapter::{
+    CONTRACT_VERIFICATION_METADATA, CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA, SkillOutput,
+};
 use crate::effects::{RuntimeEffectRegistry, effect_verification_refs};
 use crate::execution::output_projection::{
     StepOutputProjection, StepOutputRefs, project_step_output,
@@ -15,9 +17,10 @@ use runx_contracts::{
     ActForm, AuthorityAttenuation, AuthoritySubsetResult, AuthorityTerm, Closure,
     ClosureDisposition, CredentialDeliveryObservation, CriterionBinding, CriterionStatus, Decision,
     DecisionChoice, DecisionInputs, DecisionJustification, FanoutReceiptSyncPoint, Intent,
-    JsonObject, Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority,
-    ReceiptEnforcement, ReceiptIdempotency, ReceiptIssuer, ReceiptSchema, Reference, ReferenceType,
-    Seal, SignatureAlgorithm, Subject, json_string_field, receipt_subject_kind,
+    JsonObject, JsonValue, Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct,
+    ReceiptAuthority, ReceiptEnforcement, ReceiptIdempotency, ReceiptIssuer, ReceiptSchema,
+    Reference, ReferenceType, Seal, SignatureAlgorithm, Subject, SuccessCriterion,
+    json_string_field, receipt_subject_kind,
 };
 use runx_receipts::{
     ReceiptProofContext, ReceiptProofContextProvider, ReceiptSignature, ReceiptTreeConfig,
@@ -152,21 +155,20 @@ fn step_receipt_with_disposition_projection_authority_and_policy(
         summary,
     } = params;
     let output_refs = output_refs(output, &projection.refs);
-    let act = RuntimeAct::observation(step_id).close(ActOutcome {
-        disposition: disposition.clone(),
-        succeeded: output.succeeded(),
-        summary: output_summary(output),
-        performed_at: created_at,
-        refs: &output_refs,
-    });
+    let verification = contract_verification_criteria(&output.metadata)?;
+    let act = RuntimeAct::observation(step_id)
+        .with_verified_criteria(verification.criteria.clone(), verification.bindings.clone())
+        .close(ActOutcome {
+            disposition: disposition.clone(),
+            succeeded: output.succeeded(),
+            summary: output_summary(output),
+            performed_at: created_at,
+            refs: &output_refs,
+        });
     let seal_criterion = process_exit_criterion(output, &output_refs);
-    let seal = seal(
-        disposition,
-        reason_code,
-        summary,
-        created_at,
-        vec![seal_criterion],
-    );
+    let mut seal_criteria = vec![seal_criterion];
+    seal_criteria.extend(verification.bindings);
+    let seal = seal(disposition, reason_code, summary, created_at, seal_criteria);
     let decisions = decisions(
         step_id,
         &act,
@@ -207,6 +209,7 @@ pub(crate) struct StepSeal<'a> {
     pub(crate) projection: &'a StepOutputProjection,
     pub(crate) created_at: &'a str,
     pub(crate) authority_grant_refs: Vec<Reference>,
+    pub(crate) operator_refs: Vec<Reference>,
     pub(crate) closure: Option<StepSealClosure>,
 }
 
@@ -244,6 +247,7 @@ pub(crate) fn seal_step(
         projection,
         created_at,
         authority_grant_refs,
+        operator_refs,
         closure,
     } = params;
     let StepSealClosure {
@@ -251,6 +255,20 @@ pub(crate) fn seal_step(
         reason_code,
         summary,
     } = closure.unwrap_or_else(|| StepSealClosure::default_for(output, step_id));
+    let mut projection = StepOutputProjection {
+        outputs: projection.outputs.clone(),
+        claim: projection.claim.clone(),
+        refs: projection.refs.clone(),
+    };
+    for reference in operator_refs {
+        if reference.reference_type == ReferenceType::Artifact {
+            projection.refs.artifact_refs.push(reference.clone());
+        } else {
+            projection.refs.artifact_refs.push(reference.clone());
+            projection.refs.verification_refs.push(reference.clone());
+        }
+        projection.refs.evidence_refs.push(reference);
+    }
     step_receipt_with_disposition_projection_authority_and_policy(
         StepReceiptWithDisposition {
             graph_name,
@@ -262,7 +280,7 @@ pub(crate) fn seal_step(
             reason_code,
             summary,
         },
-        projection,
+        &projection,
         authority_grant_refs,
         signature_policy,
     )
@@ -281,6 +299,196 @@ fn process_exit_criterion(output: &SkillOutput, output_refs: &StepOutputRefs) ->
         evidence_refs: output_refs.evidence_refs.clone(),
         verification_refs: output_refs.verification_refs.clone(),
         summary: Some(output_summary(output).into()),
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct ContractVerificationCriteria {
+    criteria: Vec<SuccessCriterion>,
+    bindings: Vec<CriterionBinding>,
+}
+
+fn contract_verification_criteria(
+    metadata: &JsonObject,
+) -> Result<ContractVerificationCriteria, RuntimeError> {
+    let Some(value) = metadata.get(CONTRACT_VERIFICATION_METADATA) else {
+        return Ok(ContractVerificationCriteria::default());
+    };
+    let JsonValue::Object(verification) = value else {
+        return Err(invalid_contract_verification(
+            "contract_verification must be an object",
+        ));
+    };
+    const ALLOWED_FIELDS: &[&str] = &[
+        "output_contract_sha256",
+        "voice_profile_sha256",
+        "packet_schemas",
+    ];
+    if let Some(field) = verification
+        .keys()
+        .find(|field| !ALLOWED_FIELDS.contains(&field.as_str()))
+    {
+        return Err(invalid_contract_verification(format!(
+            "contract_verification contains undeclared field '{field}'"
+        )));
+    }
+
+    let output_digest = required_verification_digest(verification, "output_contract_sha256")?;
+    let mut result = ContractVerificationCriteria::default();
+    push_verified_criterion(
+        &mut result,
+        "output_contract_verified",
+        "Agent result satisfies its declared output contract",
+        output_digest,
+    );
+    if let Some(digest) = optional_verification_digest(verification, "voice_profile_sha256")? {
+        push_verified_criterion(
+            &mut result,
+            "voice_profile_applied",
+            "Agent invocation used the resolved voice profile",
+            digest,
+        );
+    }
+    append_packet_schema_criterion(&mut result, verification)?;
+    Ok(result)
+}
+
+fn append_packet_schema_criterion(
+    result: &mut ContractVerificationCriteria,
+    verification: &JsonObject,
+) -> Result<(), RuntimeError> {
+    let Some(value) = verification.get("packet_schemas") else {
+        return Ok(());
+    };
+    let JsonValue::Object(entries) = value else {
+        return Err(invalid_contract_verification(
+            "contract_verification.packet_schemas must be an object",
+        ));
+    };
+    if entries.is_empty() {
+        return Err(invalid_contract_verification(
+            "contract_verification.packet_schemas must not be empty",
+        ));
+    }
+    let mut references = Vec::with_capacity(entries.len());
+    for (output, value) in entries {
+        let (packet, digest) = packet_schema_verification(output, value)?;
+        references.push(Reference::with_uri(
+            ReferenceType::Verification,
+            format!("runx:verification:packet_schema_verified:{packet}:{digest}"),
+        ));
+    }
+    let statement = "Agent packet outputs satisfy their declared packet schemas";
+    result.criteria.push(SuccessCriterion {
+        criterion_id: "packet_schemas_verified".into(),
+        statement: statement.into(),
+        required: true,
+    });
+    result.bindings.push(CriterionBinding {
+        criterion_id: "packet_schemas_verified".into(),
+        status: CriterionStatus::Verified,
+        evidence_refs: Vec::new(),
+        verification_refs: references,
+        summary: Some(statement.into()),
+    });
+    Ok(())
+}
+
+fn packet_schema_verification<'a>(
+    output: &str,
+    value: &'a JsonValue,
+) -> Result<(&'a str, &'a str), RuntimeError> {
+    let JsonValue::Object(entry) = value else {
+        return Err(invalid_contract_verification(format!(
+            "contract_verification.packet_schemas.{output} must be an object"
+        )));
+    };
+    const ALLOWED_FIELDS: &[&str] = &["packet", "schema_sha256"];
+    if let Some(field) = entry
+        .keys()
+        .find(|field| !ALLOWED_FIELDS.contains(&field.as_str()))
+    {
+        return Err(invalid_contract_verification(format!(
+            "contract_verification.packet_schemas.{output} contains undeclared field '{field}'"
+        )));
+    }
+    let packet = required_verification_string(entry, output, "packet")?;
+    let digest = required_verification_string(entry, output, "schema_sha256")?;
+    if !digest.starts_with("sha256:") {
+        return Err(invalid_contract_verification(format!(
+            "contract_verification.packet_schemas.{output}.schema_sha256 must be a sha256 digest"
+        )));
+    }
+    Ok((packet, digest))
+}
+
+fn required_verification_string<'a>(
+    entry: &'a JsonObject,
+    output: &str,
+    field: &str,
+) -> Result<&'a str, RuntimeError> {
+    entry
+        .get(field)
+        .and_then(JsonValue::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            invalid_contract_verification(format!(
+                "contract_verification.packet_schemas.{output}.{field} must be a non-empty string"
+            ))
+        })
+}
+
+fn required_verification_digest<'a>(
+    verification: &'a JsonObject,
+    field: &str,
+) -> Result<&'a str, RuntimeError> {
+    optional_verification_digest(verification, field)?.ok_or_else(|| {
+        invalid_contract_verification(format!("contract_verification.{field} is required"))
+    })
+}
+
+fn optional_verification_digest<'a>(
+    verification: &'a JsonObject,
+    field: &str,
+) -> Result<Option<&'a str>, RuntimeError> {
+    let Some(value) = verification.get(field) else {
+        return Ok(None);
+    };
+    let Some(digest) = value.as_str().filter(|value| value.starts_with("sha256:")) else {
+        return Err(invalid_contract_verification(format!(
+            "contract_verification.{field} must be a sha256 digest"
+        )));
+    };
+    Ok(Some(digest))
+}
+
+fn push_verified_criterion(
+    result: &mut ContractVerificationCriteria,
+    criterion_id: &str,
+    statement: &str,
+    digest: &str,
+) {
+    let reference = Reference::with_uri(
+        ReferenceType::Verification,
+        format!("runx:verification:{criterion_id}:{digest}"),
+    );
+    result.criteria.push(SuccessCriterion {
+        criterion_id: criterion_id.into(),
+        statement: statement.into(),
+        required: true,
+    });
+    result.bindings.push(CriterionBinding {
+        criterion_id: criterion_id.into(),
+        status: CriterionStatus::Verified,
+        evidence_refs: Vec::new(),
+        verification_refs: vec![reference],
+        summary: Some(statement.into()),
+    });
+}
+
+fn invalid_contract_verification(message: impl Into<String>) -> RuntimeError {
+    RuntimeError::ReceiptInvalid {
+        message: message.into(),
     }
 }
 
@@ -384,6 +592,7 @@ pub(crate) fn graph_receipt_with_disposition_and_policy(
     // the only graph body digest/signature/proof seal this path needs.
     let mut receipt =
         build_graph_receipt(graph_name, Vec::new(), &sync_points, created_at, &closure);
+    bind_graph_operator_refs(&mut receipt, steps);
     content_address_receipt(&mut receipt, signature_policy)?;
     let parent_ref = Reference::runx(ReferenceType::Receipt, &receipt.id);
 
@@ -407,6 +616,7 @@ pub(crate) fn graph_receipt_with_disposition_and_policy(
     // is unchanged (lineage excluded); only the full digest commits the children.
     let mut receipt =
         build_graph_receipt(graph_name, child_refs, &sync_points, created_at, &closure);
+    bind_graph_operator_refs(&mut receipt, steps);
     seal_receipt_unvalidated(&mut receipt, signature_policy)?;
 
     validate_receipt_tree_with_policy(
@@ -417,6 +627,53 @@ pub(crate) fn graph_receipt_with_disposition_and_policy(
         signature_policy,
     )?;
     Ok(receipt)
+}
+
+fn bind_graph_operator_refs(receipt: &mut Receipt, steps: &[StepRun]) {
+    let mut refs = Vec::<Reference>::new();
+    for reference in steps
+        .iter()
+        .flat_map(|step| step.receipt.acts.iter())
+        .flat_map(|act| act.artifact_refs.iter())
+        .filter(|reference| reference.uri.as_str().contains("operator_context"))
+    {
+        if !refs.iter().any(|existing| existing.uri == reference.uri) {
+            refs.push(reference.clone());
+        }
+    }
+    let artifacts = refs
+        .iter()
+        .filter(|reference| reference.reference_type == ReferenceType::Artifact)
+        .cloned()
+        .collect::<Vec<_>>();
+    let decisions = refs
+        .iter()
+        .filter(|reference| reference.reference_type == ReferenceType::Decision)
+        .cloned()
+        .collect::<Vec<_>>();
+    for act in &mut receipt.acts {
+        act.artifact_refs.extend(artifacts.iter().cloned());
+        act.artifact_refs.extend(decisions.iter().cloned());
+        for criterion in &mut act.criterion_bindings {
+            criterion.evidence_refs.extend(refs.iter().cloned());
+            criterion
+                .verification_refs
+                .extend(decisions.iter().cloned());
+        }
+    }
+    for decision in &mut receipt.decisions {
+        decision.artifact_refs.extend(artifacts.iter().cloned());
+        decision
+            .justification
+            .evidence_refs
+            .extend(refs.iter().cloned());
+    }
+    for criterion in &mut receipt.seal.criteria {
+        criterion.evidence_refs.extend(refs.iter().cloned());
+        criterion
+            .verification_refs
+            .extend(decisions.iter().cloned());
+    }
 }
 
 fn build_graph_receipt(
@@ -698,6 +955,7 @@ pub(crate) struct DomainActReceiptRequest<'a> {
     pub reason_code: String,
     pub seal_summary: String,
     pub frame: DomainActFrame,
+    pub verification_metadata: JsonObject,
     pub signature_policy: RuntimeReceiptSignaturePolicy<'a>,
 }
 
@@ -719,8 +977,10 @@ pub(crate) fn domain_act_receipt(
         reason_code,
         seal_summary,
         frame,
+        verification_metadata,
         signature_policy,
     } = request;
+    let verification = contract_verification_criteria(&verification_metadata)?;
     let status = if succeeded {
         CriterionStatus::Verified
     } else {
@@ -742,16 +1002,18 @@ pub(crate) fn domain_act_receipt(
     let intent = Intent {
         purpose: frame.purpose.clone(),
         legitimacy: frame.legitimacy.clone(),
-        success_criteria: Vec::new(),
+        success_criteria: verification.criteria,
         constraints: Vec::new(),
         derived_from: Vec::new(),
     };
+    let mut criterion_bindings = vec![criterion.clone()];
+    criterion_bindings.extend(verification.bindings.iter().cloned());
     let act = ReceiptAct {
         id: format!("act_{step_id}").into(),
         form: frame.form,
         intent: intent.clone(),
         summary: frame.summary.clone(),
-        criterion_bindings: vec![criterion.clone()],
+        criterion_bindings,
         by: None,
         source_refs: Vec::new(),
         target_refs: frame.target_refs.clone(),
@@ -799,12 +1061,14 @@ pub(crate) fn domain_act_receipt(
             teardown_refs,
         },
     };
+    let mut seal_criteria = vec![criterion];
+    seal_criteria.extend(verification.bindings);
     let seal = seal(
         disposition,
         reason_code,
         seal_summary,
         created_at,
-        vec![criterion],
+        seal_criteria,
     );
     let mut receipt = build_receipt(BuildReceipt {
         id: step_receipt_id(graph_name, step_id, 1),
@@ -1304,6 +1568,103 @@ mod tests {
         let unsealed_digest = canonical_receipt_body_digest(&without_credential_ref)?;
         assert_ne!(sealed_digest, unsealed_digest);
         Ok(())
+    }
+
+    #[test]
+    fn contract_verification_is_bound_into_signed_act_and_seal() -> Result<(), TestError> {
+        let mut verification = JsonObject::new();
+        verification.insert(
+            "output_contract_sha256".to_owned(),
+            JsonValue::String("sha256:output".to_owned()),
+        );
+        verification.insert(
+            "voice_profile_sha256".to_owned(),
+            JsonValue::String("sha256:voice".to_owned()),
+        );
+        verification.insert(
+            "packet_schemas".to_owned(),
+            JsonValue::Object(BTreeMap::from([(
+                "plan".to_owned(),
+                JsonValue::Object(BTreeMap::from([
+                    (
+                        "packet".to_owned(),
+                        JsonValue::String("runx.test.plan.v1".to_owned()),
+                    ),
+                    (
+                        "schema_sha256".to_owned(),
+                        JsonValue::String("sha256:packet".to_owned()),
+                    ),
+                ])),
+            )])),
+        );
+        let mut metadata = JsonObject::new();
+        metadata.insert(
+            CONTRACT_VERIFICATION_METADATA.to_owned(),
+            JsonValue::Object(verification),
+        );
+        let output = SkillOutput {
+            status: InvocationStatus::Success,
+            stdout: "{}".to_owned(),
+            stderr: String::new(),
+            exit_code: Some(0),
+            duration_ms: 1,
+            metadata,
+        };
+
+        let receipt = step_receipt(
+            "agent_graph",
+            "agent_step",
+            1,
+            &output,
+            "2026-05-28T00:00:00Z",
+        )?;
+
+        assert_eq!(receipt.acts[0].intent.success_criteria.len(), 4);
+        assert_eq!(receipt.acts[0].criterion_bindings.len(), 4);
+        assert_eq!(receipt.seal.criteria.len(), 4);
+        assert_eq!(
+            receipt.seal.criteria[1].criterion_id.as_str(),
+            "output_contract_verified"
+        );
+        assert_eq!(
+            receipt.seal.criteria[1].verification_refs[0].reference_type,
+            ReferenceType::Verification
+        );
+        assert!(
+            receipt.seal.criteria[1].verification_refs[0]
+                .uri
+                .as_str()
+                .ends_with("sha256:output")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn malformed_contract_verification_fails_closed() {
+        let mut metadata = JsonObject::new();
+        metadata.insert(
+            CONTRACT_VERIFICATION_METADATA.to_owned(),
+            JsonValue::String("untrusted".to_owned()),
+        );
+        let output = SkillOutput {
+            status: InvocationStatus::Success,
+            stdout: "{}".to_owned(),
+            stderr: String::new(),
+            exit_code: Some(0),
+            duration_ms: 1,
+            metadata,
+        };
+
+        assert!(
+            step_receipt(
+                "agent_graph",
+                "agent_step",
+                1,
+                &output,
+                "2026-05-28T00:00:00Z"
+            )
+            .is_err()
+        );
     }
 
     fn credential_output() -> Result<SkillOutput, TestError> {

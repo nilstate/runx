@@ -171,6 +171,26 @@
       "notes": "RUNX_HOME and local config file behavior are part of CLI parity."
     },
     {
+      "id": "public-api",
+      "owner": "runx-cli + runx-runtime",
+      "parityClass": "stubbed",
+      "coveredBy": [
+        "login",
+        "connect",
+        "publish"
+      ],
+      "notes": "Public API identity and HTTP transport are resolved once and exercised against deterministic local servers."
+    },
+    {
+      "id": "connect",
+      "owner": "runx-cli + runx cloud",
+      "parityClass": "stubbed",
+      "coveredBy": [
+        "connect"
+      ],
+      "notes": "Provider-neutral grant lifecycle and bounded provider operations use the native CLI against a local API fixture."
+    },
+    {
       "id": "doctor",
       "owner": "runx-cli + runx-runtime doctor",
       "parityClass": "semantic",

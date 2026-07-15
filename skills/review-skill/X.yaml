@@ -47,13 +47,10 @@ harness:
     - name: review-skill-needs-skill-ref
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 
 runners:
-  agent:
-    type: agent
-
   evaluate:
     default: true
     type: agent-task

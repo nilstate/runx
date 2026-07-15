@@ -19,8 +19,10 @@ runners:
     outputs:
       sync_plan: object
     artifacts:
-      wrap_as: sync_plan_packet
-      packet: runx.github_sync.v1
+      named_emits:
+        sync_plan: sync_plan
+      packets:
+        sync_plan: runx.github_sync.v1
     runx:
       category: ops
     inputs:
@@ -100,9 +102,6 @@ runners:
             scope: "$input.scope"
           context:
             cursor_projection: read-cursor.data_operation_result.data.projection
-          artifacts:
-            wrap_as: sync_plan_packet
-            packet: runx.github_sync.v1
         - id: append-cursor-event
           skill: ../data-store
           runner: append_event
@@ -113,7 +112,7 @@ runners:
             expected_version: "$input.expected_version"
             idempotency_key: "$input.idempotency_key"
           context:
-            event: plan.sync_plan_packet.data
+            event: plan.sync_plan.data
         - id: readback
           skill: ../data-store
           runner: read_projection

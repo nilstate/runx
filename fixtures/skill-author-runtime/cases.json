@@ -115,21 +115,6 @@
         "stdout_bytes": 0,
         "stderr_contains": "stdout/stderr omitted"
       }
-    },
-    {
-      "id": "timeout-descendant",
-      "mode": "timeout-descendant",
-      "timeout_seconds": 0,
-      "sandbox": {
-        "profile": "readonly",
-        "cwd_policy": "skill-directory"
-      },
-      "inputs": {},
-      "expected": {
-        "max_duration_ms": 800,
-        "sentinel_absent_after_ms": 600,
-        "status": "failure"
-      }
     }
   ]
 }

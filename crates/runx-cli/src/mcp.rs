@@ -151,12 +151,11 @@ pub fn run_native_mcp(plan: McpPlan) -> ExitCode {
 
 fn mcp_execution_env() -> BTreeMap<String, String> {
     let mut env = env::vars().collect::<BTreeMap<_, _>>();
-    if !env.contains_key(runx_runtime::RUNX_CWD_ENV)
-        && let Ok(cwd) = env::current_dir()
-    {
+    if let Ok(cwd) = env::current_dir() {
+        let workspace = runx_runtime::resolve_runx_workspace_base(&env, &cwd);
         env.insert(
             runx_runtime::RUNX_CWD_ENV.to_owned(),
-            cwd.to_string_lossy().into_owned(),
+            workspace.to_string_lossy().into_owned(),
         );
     }
     env

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/ops/inbox_calendar_action_packet/v1.json",
+  "x-runx-packet-id": "runx.ops.inbox_calendar_action_packet.v1",
+  "x-runx-generated-from": "skills/chief-of-staff/X.yaml#root.runners.exec",
+  "type": "object",
+  "required": [
+    "draft_replies",
+    "priority_queue",
+    "risks",
+    "scheduling_proposals",
+    "verdict"
+  ],
+  "properties": {
+    "draft_replies": {
+      "type": "array"
+    },
+    "priority_queue": {
+      "type": "array"
+    },
+    "risks": {
+      "type": "array"
+    },
+    "scheduling_proposals": {
+      "type": "array"
+    },
+    "verdict": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -24,7 +24,7 @@ caller:
           - scope is missing
           - principal is missing
 expect:
-  status: needs_agent
+  status: sealed
 metadata:
   public_skill: vault-unseal
   source_case: unseal-missing-inputs

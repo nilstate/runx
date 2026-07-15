@@ -212,6 +212,16 @@ runners:
         type: json
         required: false
         description: "Optional explicit reflect projection entries for replay or controlled evaluation."
+      data_source_ref:
+        type: string
+        required: false
+        default: local://runx/reflect
+        description: "Provider-neutral state source; unbound local refs use durable project-local SQLite."
+      state_resource:
+        type: string
+        required: false
+        default: reflect_projections
+        description: "Event-stream resource containing reflect.projection.recorded events."
       skill_filter:
         type: string
         required: false
@@ -233,8 +243,24 @@ runners:
     graph:
       name: reflect-digest
       steps:
+        - id: read-reflect-projections
+          label: read durable reflect state
+          skill: ../data-store
+          runner: list_stream_heads
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.state_resource"
+            event_types:
+              - reflect.projection.recorded
+            limit: 100
         - id: load-reflect-projections
           label: load reflect projections
+          inputs:
+            explicit_reflect_projections: "$input.reflect_projections"
+            skill_filter: "$input.skill_filter"
+            since: "$input.since"
+          context:
+            stored_reflect_projections: read-reflect-projections.data_operation_result.data
           run:
             type: cli-tool
             command: node
@@ -242,7 +268,7 @@ runners:
               - ./load_reflect_projections.mjs
           artifacts:
             named_emits:
-              reflect_projections_packet: reflect_projections
+              reflect_projections_packet: reflect_projections_packet
             packets:
               reflect_projections_packet: runx.reflect.projections.v1
         - id: group-reflect-projections
@@ -256,7 +282,7 @@ runners:
               - ./group_reflect_projections.mjs
           artifacts:
             named_emits:
-              grouped_reflections_packet: grouped_reflections
+              grouped_reflections_packet: grouped_reflections_packet
             packets:
               grouped_reflections_packet: runx.reflect.grouped_reflections.v1
         - id: draft-digest

@@ -19,7 +19,7 @@ caller:
         attestation_id: ""
         bound_receipt_ref: ""
 expect:
-  status: needs_agent
+  status: sealed
   receipt:
     schema: runx.receipt.v1
 metadata:

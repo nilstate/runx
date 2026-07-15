@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use crate::cli_args::{flag_value, optional_flag_value, os_arg, split_flag};
 use crate::config::ConfigPlan;
+use crate::connect::ConnectPlan;
 use crate::export::ExportPlan;
 use crate::kernel::{KernelInputSource, KernelPlan};
 use crate::login::LoginPlan;
@@ -36,6 +37,7 @@ pub enum RouterAction {
     RunKernel(KernelPlan),
     RunPayment(PaymentPlan),
     RunConfig(ConfigPlan),
+    RunConnect(ConnectPlan),
     RunPolicy(PolicyPlan),
     RunPublish(PublishPlan),
     RunRegistry(RegistryPlan),
@@ -45,6 +47,8 @@ pub enum RouterAction {
     RunAddUrl(AddUrlPlan),
     PrintHelp,
     PrintAddHelp,
+    PrintConnectHelp,
+    PrintHarnessHelp,
     PrintHistoryHelp,
     PrintListHelp,
     PrintLoginHelp,
@@ -181,6 +185,9 @@ pub fn route_args(args: Vec<OsString>) -> RouterAction {
     }
 
     if first_arg_is(&args, "harness") {
+        if nested_help_requested(&args) {
+            return RouterAction::PrintHarnessHelp;
+        }
         return native_harness_plan(&args);
     }
 
@@ -195,6 +202,14 @@ pub fn route_args(args: Vec<OsString>) -> RouterAction {
         }
         return crate::login::parse_login_plan(&args)
             .map_or_else(RouterAction::Error, RouterAction::RunLogin);
+    }
+
+    if first_arg_is(&args, "connect") {
+        if nested_help_requested(&args) {
+            return RouterAction::PrintConnectHelp;
+        }
+        return crate::connect::parse_connect_plan(&args)
+            .map_or_else(RouterAction::Error, RouterAction::RunConnect);
     }
 
     if first_arg_is(&args, "policy") {
@@ -356,7 +371,8 @@ Commands:
   runx history [query] [--skill s] [--status s] [--source s] [--actor a] [--artifact-type t] [--since iso] [--until iso] [--receipt-dir dir] [--json]
   runx resume <run-id> <answers.json> [-R dir] [-j|--json]
   runx list [tools|skills|graphs|packets|overlays] [--ok-only|--invalid-only] [-j|--json]
-  runx login [--provider github|google|gitlab] [--for default|publish] [--api-base-url url] [--allow-local-api] [-j|--json]
+  runx login [--provider github|google|gitlab] [--for default|publish] [--from-gh] [--api-base-url url] [--allow-local-api] [-j|--json]
+  runx connect list|start|status|invoke|revoke ... [-j|--json]
   runx config set|get|list [provider|model|api-key|public-token] [value] [-j|--json]
   runx policy inspect|lint <policy.json> [--json]
   runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [-j|--json]
@@ -367,7 +383,7 @@ Commands:
   runx dev [root] [--lane lane] [--json]
   runx export <claude|codex> [skill-ref...] [--project] [--json]
   runx mcp serve <skill-ref...> [--receipt-dir dir] [--http-listen [addr]] [--http-allow-non-loopback]
-  runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --secret-env NAME] [-R dir]
+  runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--approve-operator-context digest] [--full-operator-context] [--skip-operator-context] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --credential-scope scope --secret-env NAME] [-R dir]
   runx skill inspect <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-j] [--registry url|path] [--digest sha256]
   runx add <skill-ref|github-url> [--registry url|path] [--version version] [--ref git-ref] [--digest sha256] [--to dir] [--api-base-url url] [--json]
   runx harness <fixture.yaml...|skill-dir|SKILL.md> [-R dir] [-j|--json]
@@ -396,6 +412,22 @@ Options:
   --until iso
   --receipt-dir dir
   --json
+"
+    .to_owned()
+}
+
+pub fn harness_help_text() -> String {
+    "\
+runx harness
+
+Usage:
+  runx harness <fixture.yaml...|skill-dir|SKILL.md> [-R dir] [-j|--json]
+
+Package mode runs both inline harness.cases and sorted fixtures/*.yaml.
+
+Options:
+  -R, --receipt-dir dir
+  -j, --json
 "
     .to_owned()
 }
@@ -435,12 +467,33 @@ pub fn login_help_text() -> String {
 runx login
 
 Usage:
-  runx login [--provider github|google|gitlab] [--for default|publish] [--api-base-url url] [--allow-local-api] [-j|--json]
+  runx login [--provider github|google|gitlab] [--for default|publish] [--from-gh] [--api-base-url url] [--allow-local-api] [-j|--json]
 
 Options:
   --provider provider
   --for purpose
+  --from-gh            Use the active GitHub CLI identity instead of browser OAuth
   --api-base-url url
+  --allow-local-api
+  -j, --json
+"
+    .to_owned()
+}
+
+pub fn connect_help_text() -> String {
+    "\
+runx connect
+
+Usage:
+  runx connect list [-j|--json]
+  runx connect start <provider> --scope <capability> [--scope <capability>...] [--scope-family family] [--authority-kind kind] [--target-repo repo] [--target-locator locator] [--binding id] [-j|--json]
+  runx connect status <session-id> [-j|--json]
+  runx connect invoke --grant <grant-id> --operation <operation> [--input <json-object>] [-j|--json]
+  runx connect revoke <grant-id> [-j|--json]
+
+Environment options:
+  --api-base-url url
+  --token token
   --allow-local-api
   -j, --json
 "
@@ -531,13 +584,17 @@ pub fn skill_help_text() -> String {
 runx skill
 
 Usage:
-  runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --secret-env NAME] [-R dir]
+  runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--approve-operator-context digest] [--full-operator-context] [--skip-operator-context] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --credential-scope scope --secret-env NAME] [-R dir]
   runx skill inspect <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-j] [--registry url|path] [--digest sha256]
 
 Options:
   -p, --profile name       Use a local credential profile from .runx/credentials.json
   -i, --input key=value    Set a structured input; repeat for multiple inputs
   --input-json key=json    Set an input that must parse as JSON
+  --approve-operator-context digest
+                            Run only when the prepared context matches this digest
+  --full-operator-context  Print the complete prepared context before approval
+  --skip-operator-context  Run without context preparation, approval, drift checks, or receipt binding
   -R, --receipts dir       Write receipts under dir
   --receipt-dir dir        Alias for --receipts
   -j, --json               Print machine-readable output
@@ -545,6 +602,7 @@ Options:
   --digest sha256
   --flag value
   --credential descriptor  One-shot local credential descriptor
+  --credential-scope scope One granted scope; repeat for multiple scopes
   --secret-env NAME        Env var holding the one-shot credential secret
 "
     .to_owned()

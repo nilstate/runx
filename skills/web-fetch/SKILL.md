@@ -25,7 +25,7 @@ This is the primitive an agent reaches for when it has already decided which pag
 to read. The decision it makes easier is "can I read this page, and what did it
 actually say", with the answer backed by a digest instead of a remembered
 paraphrase. It differs from the research family: `research` and
-`deep-research-brief` decide *which* sources matter and synthesize across them,
+`deep-research` decide *which* sources matter and synthesize across them,
 while `web-fetch` retrieves exactly one source and refuses anything off the
 allowlist.
 

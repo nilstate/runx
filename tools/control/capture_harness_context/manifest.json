@@ -33,6 +33,9 @@
     "artifacts": {
       "named_emits": {
         "harness_context": "runx.control.harness_context.v1"
+      },
+      "packets": {
+        "harness_context": "runx.control.harness_context.v1"
       }
     }
   },
@@ -45,9 +48,14 @@
   "output": {
     "named_emits": {
       "harness_context": "runx.control.harness_context.v1"
+    },
+    "outputs": {
+      "harness_context": {
+        "packet": "runx.control.harness_context.v1"
+      }
     }
   },
   "source_hash": "sha256:7dcd7b73cf9ec06f3f40d1516c3fb7e0562927bcb4a7e8fe17256aa588acfe48",
-  "schema_hash": "sha256:54d1b403c29670f43adc2fde72cd09bc2e3a134779db69d044cb2b0f3609d409",
+  "schema_hash": "sha256:d023377a4905f738ac01b1ca6f3957a4245b4f41f9021c878d81079cf29e1021",
   "toolkit_version": "0.1.4"
 }

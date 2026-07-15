@@ -23,7 +23,7 @@ caller:
           attempted_host: ""
           allowlist_checked: []
 expect:
-  status: needs_agent
+  status: sealed
 metadata:
   public_skill: web-fetch
   source_case: fetch-missing-inputs

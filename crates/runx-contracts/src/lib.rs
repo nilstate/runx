@@ -62,7 +62,6 @@ pub use act::{
 pub use agent_context::{
     AgentContextEnvelope, AgentContextProfiles, ContextArtifactMeta, ContextArtifactProducer,
     ContextEntry, ContextEntryVersion, ExecutionLocation, ProfileFile, ProvenanceEntry,
-    QualityProfile, QualityProfileSource,
 };
 pub use artifact::{ARTIFACT_SCHEMA, Artifact, ArtifactProducedBy, ArtifactSchema};
 pub use authority::{
@@ -159,7 +158,10 @@ pub use operational_proposal::{
     OperationalProposalRecommendedAction, OperationalProposalRedactionStatus,
     OperationalProposalSchema,
 };
-pub use output::{Output, OutputField, OutputFieldSpec, OutputType};
+pub use output::{
+    Output, OutputField, OutputFieldSpec, OutputType, OutputValidationError,
+    output_contract_digest, output_value_schema, validate_output_value,
+};
 pub use packet_index::{PacketIndex, PacketIndexEntry, PacketIndexSchema};
 pub use policy_proof::{
     AuthorityKind, AuthorityProof, AuthorityProofApprovalDecision,

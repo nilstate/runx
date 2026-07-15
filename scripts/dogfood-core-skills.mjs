@@ -69,23 +69,13 @@ const steps = [
   },
   {
     label: "run workspace doctor",
-    command: pnpm,
-    args: ["exec", "tsx", "packages/cli/src/index.ts", "doctor", "--json"],
-  },
-  {
-    label: "prove TS wrapper x402 mock payment fixtures",
-    command: pnpm,
-    args: ["exec", "vitest", "run", "tests/x402-pay-dogfood-mock.test.ts"],
+    command: rustKernelBin,
+    args: ["doctor", "--json"],
   },
   {
     label: "prove payment skill profiles",
     command: pnpm,
     args: ["exec", "vitest", "run", "tests/payment-skill-profile-validation.test.ts"],
-  },
-  {
-    label: "prove canonical payment graph harnesses",
-    command: pnpm,
-    args: ["exec", "vitest", "run", "tests/payment-graph-harness.test.ts"],
   },
   {
     label: "prove official skills with a fresh caller",

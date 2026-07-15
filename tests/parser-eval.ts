@@ -14,7 +14,7 @@ export interface ValidatedSkill {
 
 export interface ValidatedRunnerManifest {
   readonly skill?: string;
-  readonly catalog?: unknown;
+  readonly catalog?: JsonRecord;
   readonly runners: Record<string, RunnerDefinition>;
   readonly harness?: {
     readonly cases: readonly HarnessCase[];

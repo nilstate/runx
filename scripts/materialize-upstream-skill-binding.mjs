@@ -140,10 +140,9 @@ function validateBinding(binding, skillFrontmatter, observedBlobSha, profileDocu
 }
 
 function publishMaterializedPackage({ outputDir, owner, version, registryDir }) {
-  return execFileSync("pnpm", [
-    "exec",
-    "tsx",
-    "packages/cli/src/index.ts",
+  const runx = process.env.RUNX_DEV_RUST_CLI_BIN
+    ?? path.resolve("crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
+  return execFileSync(runx, [
     "skill",
     "publish",
     outputDir,

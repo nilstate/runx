@@ -17,20 +17,10 @@ is a retry still safe? It must prefer reconciliation over mutation.
 It does not spend. It does not decide success without a proof ref. It reports
 ambiguous states as escalation.
 
-## Quality Profile
-
-- Purpose: prevent double-spend and preserve receipt-before-success after
-  partial failures.
-- Audience: runtime harness, operator, receipt verifier, and rail implementer.
-- Artifact contract: `recovery_assessment`, `rail_lookup`, `proof_refs`,
-  `recommended_action`, and `open_questions`.
-- Evidence bar: tie every recovered outcome to the idempotency key,
-  reservation decision, rail profile, and proof ref.
-- Voice bar: terse incident/recovery language.
-- Strategic bar: make the safe next action obvious: seal recovered proof,
-  retry once under the same key, decline, or escalate.
-- Stop conditions: return `escalate` when rail state cannot prove success,
-  failure, or safe retry.
+Tie every conclusion to the reservation decision, idempotency key, rail
+profile, and proof references. The safe outcomes are deliberately narrow: seal
+recovered proof, retry once under the same key, decline, or escalate. If the
+rail cannot prove success, failure, or a safe same-key retry, return `escalate`.
 
 ## Output
 

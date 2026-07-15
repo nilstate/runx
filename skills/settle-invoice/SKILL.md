@@ -1,6 +1,6 @@
 ---
 name: settle-invoice
-description: Settle a known, approved invoice under a spend-bounded grant, with explicit human approval before money moves.
+description: Plan authority to settle a known invoice under a spend-bounded grant; this skill never moves money, and an approved downstream spend runner must execute payment.
 runx:
   category: payments
 ---

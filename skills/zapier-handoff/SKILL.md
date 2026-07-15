@@ -15,29 +15,6 @@ the public Zapier App Directory app; that app should call hosted runx APIs. This
 skill gives the same execution-context contract to local dogfood and any
 operator-owned Zap that receives governed effects from runx.
 
-## Quality Profile
-
-- Purpose: create a professional runx-to-Zapier handoff with explicit execution
-  context, receiver scope, audience, idempotency, and receipt expectations.
-- Audience: operators wiring Catch Hooks today, and hosted connector reviewers
-  evaluating the same trust contract later.
-- Artifact contract: emit a `handoff_context` artifact in preflight and
-  `handoff_delivery` when the live hook is called. The context artifact must
-  include platform, event id, idempotency key, handoff scope, handoff audience,
-  execution context, payload, receiver validation requirements, and receipt
-  expectations. Do not introduce a separate packet family unless lifecycle state
-  needs to move beyond the receipt.
-- Evidence bar: the handoff must name the caller/workflow or principal,
-  receiver audience, event id, and dedupe key. Missing or conflicting context is
-  a stop condition.
-- Voice bar: direct operator language; no claims that Zapier endorses, lists, or
-  certifies runx before the listing is live.
-- Strategic bar: prove orchestrator-to-orchestrator handoff while keeping
-  payment/asset-transfer skills out of public Zapier v1.
-- Stop conditions: stop before the hook call for missing origin context,
-  malformed event ids, audience/scope mismatches, obvious raw credentials in
-  payload/context, missing bearer credential delivery, or any attempt to treat a
-  local Catch Hook template as the public Zapier app.
 
 ## Runners
 

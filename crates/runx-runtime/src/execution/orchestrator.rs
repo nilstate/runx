@@ -1,3 +1,5 @@
+// rust-style-allow: large-file - the canonical entrypoint keeps request/result
+// types and prepared/unprepared execution dispatch in one reviewable boundary.
 //! Canonical local orchestration entrypoint.
 //!
 //! CLI commands and TypeScript wrappers should enter local skill, graph, and
@@ -11,9 +13,10 @@ use runx_contracts::{ClosureDisposition, JsonValue, Receipt};
 use thiserror::Error;
 
 use super::harness::{HarnessReplayError, HarnessReplayOutput};
+use super::prepared_skill::{PreparedEntryProvenance, PreparedSkillRun, prepare_skill_run};
 #[cfg(feature = "cli-tool")]
 use super::runner::GraphRun;
-use super::skill_front::{InlineHarnessReport, SkillRunError};
+use super::skill_front::{PackageHarnessReport, SkillRunError};
 use crate::effects::RuntimeEffectRegistry;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -83,11 +86,11 @@ pub struct HarnessRunRequest {
     pub fixture_path: PathBuf,
 }
 
-/// Request to run a skill's declared inline harness (`harness.cases`) rather than
-/// a standalone fixture file. `skill_path` is a skill package directory or its
-/// `SKILL.md`; receipts each case seals land under `receipt_dir`.
+/// Request to run every harness case owned by a skill package. `skill_path` is
+/// a package directory or its `SKILL.md`; inline cases and conventional fixture
+/// files share the supplied environment and receipt directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InlineHarnessRequest {
+pub struct PackageHarnessRequest {
     pub skill_path: PathBuf,
     pub receipt_dir: Option<PathBuf>,
     pub env: Option<BTreeMap<String, String>>,
@@ -179,6 +182,51 @@ impl LocalOrchestrator {
         Ok(skill_result(output))
     }
 
+    pub fn prepare_skill(
+        &self,
+        request: SkillRunRequest,
+        runner: Option<&str>,
+        entry: PreparedEntryProvenance,
+    ) -> Result<PreparedSkillRun, OrchestratorError> {
+        Ok(prepare_skill_run(request, runner, entry)?)
+    }
+
+    pub fn run_prepared_skill(
+        &self,
+        prepared: &PreparedSkillRun,
+    ) -> Result<RunResult, OrchestratorError> {
+        if !prepared.is_ready() {
+            return Err(SkillRunError::Invalid(
+                prepared
+                    .report()
+                    .blocked_reason
+                    .clone()
+                    .unwrap_or_else(|| "prepared skill run is blocked".to_owned()),
+            )
+            .into());
+        }
+        if prepared.approval().is_none() {
+            return Err(SkillRunError::Invalid(
+                "prepared skill run requires digest-bound operator approval".to_owned(),
+            )
+            .into());
+        }
+        prepared.verify_artifacts()?;
+        let overrides = super::skill_front::SkillRunOverrides {
+            runner: Some(prepared.selected_runner().to_owned()),
+            seeded_answers: None,
+        };
+        let output = super::skill_front::execute_prepared_skill_run_with_resolved(
+            prepared.request(),
+            &overrides,
+            &self.effects,
+            &prepared.report().request.skill_path,
+            prepared.manifest(),
+            prepared.runner(),
+        )?;
+        Ok(skill_result(output))
+    }
+
     pub fn run_graph(&self, request: &GraphRunRequest) -> Result<RunResult, OrchestratorError> {
         #[cfg(feature = "cli-tool")]
         {
@@ -199,11 +247,12 @@ impl LocalOrchestrator {
         harness_result(self.run_harness_fixture(request)?)
     }
 
-    pub fn run_inline_harness(
+    #[cfg(feature = "cli-tool")]
+    pub fn run_package_harness(
         &self,
-        request: &InlineHarnessRequest,
-    ) -> Result<InlineHarnessReport, OrchestratorError> {
-        Ok(super::skill_front::run_inline_harness_with_effects(
+        request: &PackageHarnessRequest,
+    ) -> Result<PackageHarnessReport, OrchestratorError> {
+        Ok(super::skill_front::run_package_harness_with_effects(
             &request.skill_path,
             request.receipt_dir.as_deref(),
             request.env.as_ref(),

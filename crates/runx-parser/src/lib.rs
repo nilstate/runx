@@ -26,10 +26,9 @@ pub use skill::{
     ActDeclaration, CatalogAudience, CatalogKind, CatalogMetadata, CatalogRole, CatalogVisibility,
     HarnessCallerFixture, HarnessExpectation, InputMode, RawSkillIr, ReceiptExpectation,
     RunnerHarnessCase, RunnerHarnessManifest, SkillArtifactContract, SkillHttpSource,
-    SkillIdempotencyPolicy, SkillInput, SkillMcpServer, SkillQualityProfile, SkillRetryPolicy,
-    SkillRunnerDefinition, SkillSandbox, SkillSource, SourceKind, ValidateSkillMode,
-    ValidateSkillOptions, ValidatedSkill, extract_skill_quality_profile, parse_skill_markdown,
-    validate_skill, validate_skill_artifact_contract, validate_skill_source,
+    SkillIdempotencyPolicy, SkillInput, SkillMcpServer, SkillRetryPolicy, SkillRunnerDefinition,
+    SkillSandbox, SkillSource, SourceKind, ValidateSkillMode, ValidateSkillOptions, ValidatedSkill,
+    parse_skill_markdown, validate_skill, validate_skill_artifact_contract, validate_skill_source,
     validate_skill_with_options,
 };
 pub use tool::{

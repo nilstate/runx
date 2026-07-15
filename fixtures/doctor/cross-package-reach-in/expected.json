@@ -9,21 +9,22 @@
   "diagnostics": [
     {
       "id": "runx.structure.cross_package_reach_in",
+      "instance_id": "sha256:11aae09c0e0732ec663793a0c712026c463f08c63c39f569bd899e6491d9b3c2",
       "severity": "error",
       "title": "Cross-package src reach-in is forbidden",
-      "message": "packages/cli/src/index.ts imports ../../core/src/index.js, reaching into packages/core/src directly.",
+      "message": "packages/sample/src/index.ts imports ../../core/src/index.js, reaching into packages/core/src directly.",
       "target": {
         "kind": "workspace",
-        "ref": "packages/cli/src/index.ts"
+        "ref": "packages/sample/src/index.ts"
       },
       "location": {
-        "path": "packages/cli/src/index.ts"
+        "path": "packages/sample/src/index.ts"
       },
       "evidence": {
+        "resolved_path": "packages/core/src/index.js",
+        "source_package": "sample",
         "specifier": "../../core/src/index.js",
-        "source_package": "cli",
-        "target_package": "core",
-        "resolved_path": "packages/core/src/index.js"
+        "target_package": "core"
       },
       "repairs": [
         {
@@ -33,8 +34,7 @@
           "risk": "low",
           "requires_human_review": false
         }
-      ],
-      "instance_id": "sha256:75b598877662b0da272fa62557e56d1346d5c93a9a17c3e72cec49a2856f64e6"
+      ]
     }
   ]
 }

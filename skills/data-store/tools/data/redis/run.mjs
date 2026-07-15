@@ -16,8 +16,10 @@ if (operation === "append_event") {
   result = readEvents(inputs);
 } else if (operation === "read_projection") {
   result = readProjection(inputs);
+} else if (operation === "list_stream_heads") {
+  result = listStreamHeads(inputs);
 } else {
-  throw new Error("operation must be append_event, read_events, or read_projection");
+  throw new Error("operation must be append_event, read_events, read_projection, or list_stream_heads");
 }
 
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -45,10 +47,16 @@ function appendEvent(rawInputs) {
     event,
     event_digest: eventDigest,
     idempotency_key: idempotencyKey,
-    committed_at: typeof rawInputs.observed_at === "string" ? rawInputs.observed_at : "1970-01-01T00:00:00.000Z",
+    committed_at: committedAt(rawInputs.observed_at),
   };
   const recordDigest = sha256Json(record);
-  const response = redisEval(rawInputs, appendScript(), [keys.stream, keys.idempotency], [
+  const response = redisEval(rawInputs, appendScript(), [
+    keys.stream,
+    keys.idempotency,
+    keys.resourceIndex,
+    keys.resourceHeads,
+    keys.resourceIndexMembers,
+  ], [
     String(expectedVersion),
     idempotencyKey,
     eventDigest,
@@ -56,6 +64,8 @@ function appendEvent(rawInputs) {
     String(nextVersion),
     JSON.stringify(record),
     recordDigest,
+    envelope.aggregate_id,
+    headIndexMember(envelope.aggregate_id, record.committed_at),
   ]);
   const [status, ...fields] = response.split("|");
 
@@ -129,8 +139,11 @@ function appendEvent(rawInputs) {
 function readEvents(rawInputs) {
   const envelope = baseEnvelope(rawInputs, "read_events");
   const limit = boundedLimit(rawInputs.limit);
+  const afterVersion = optionalVersion(rawInputs.after_version, "after_version");
   const keys = redisKeys(rawInputs, envelope);
-  const rows = redis(rawInputs, ["LRANGE", keys.stream, String(-limit), "-1"]);
+  const rows = afterVersion === undefined
+    ? redis(rawInputs, ["LRANGE", keys.stream, String(-limit), "-1"])
+    : redis(rawInputs, ["LRANGE", keys.stream, String(afterVersion), String(afterVersion + limit - 1)]);
   const events = parseJsonLines(rows);
   const current = redisInteger(rawInputs, ["LLEN", keys.stream]);
   return {
@@ -173,6 +186,67 @@ function readProjection(rawInputs) {
   };
 }
 
+function listStreamHeads(rawInputs) {
+  const envelope = baseEnvelope(rawInputs, "list_stream_heads");
+  const keys = redisKeys(rawInputs, envelope);
+  const limit = boundedHeadLimit(rawInputs.limit);
+  const eventTypes = new Set(optionalEventTypes(rawInputs.event_types));
+  const cursor = decodeHeadCursor(rawInputs.cursor);
+  const matches = [];
+  let afterMember = cursor ? headIndexMember(cursor.aggregate_id, cursor.committed_at) : undefined;
+
+  while (matches.length <= limit) {
+    const members = parseRedisLines(redis(rawInputs, [
+      "ZRANGEBYLEX",
+      keys.resourceIndex,
+      afterMember ? `(${afterMember}` : "-",
+      "+",
+      "LIMIT",
+      "0",
+      "100",
+    ]));
+    if (members.length === 0) break;
+    const aggregateIds = members.map(aggregateIdFromHeadIndexMember);
+    const records = parseRedisBulkValues(redis(rawInputs, ["HMGET", keys.resourceHeads, ...aggregateIds]));
+    for (let index = 0; index < members.length && matches.length <= limit; index += 1) {
+      const rawRecord = records[index];
+      if (!rawRecord) continue;
+      const record = JSON.parse(rawRecord);
+      if (headIndexMember(aggregateIds[index], record.committed_at) !== members[index]) continue;
+      if (eventTypes.size === 0 || eventTypes.has(record.event_type)) {
+        matches.push({ aggregate_id: aggregateIds[index], ...record });
+      }
+    }
+    afterMember = members.at(-1);
+  }
+
+  const hasMore = matches.length > limit;
+  const rows = matches.slice(0, limit);
+  const page = {
+    limit,
+    count: rows.length,
+    has_more: hasMore,
+    next_cursor: hasMore ? encodeHeadCursor(rows.at(-1)) : null,
+  };
+  return {
+    ...envelope,
+    status: "read",
+    before_version: 0,
+    after_version: 0,
+    idempotency_key: null,
+    event_ref: null,
+    event_digest: null,
+    result_digest: sha256Json({ rows, page }),
+    projection_digest: sha256Json(rows.map((row) => [row.aggregate_id, row.version, row.event_digest])),
+    projection: page,
+    events: [],
+    rows,
+    redactions: [],
+    stop_conditions: [],
+    provider_evidence: providerEvidence(rawInputs, envelope),
+  };
+}
+
 function appendScript() {
   return `
 local current = redis.call('LLEN', KEYS[1])
@@ -190,6 +264,13 @@ if current ~= expected then
 end
 redis.call('RPUSH', KEYS[1], ARGV[6])
 redis.call('HSET', KEYS[2], ARGV[2], ARGV[3] .. '|' .. ARGV[4] .. '|' .. ARGV[5] .. '|' .. ARGV[7])
+local previous_index_member = redis.call('HGET', KEYS[5], ARGV[8])
+if previous_index_member then
+  redis.call('ZREM', KEYS[3], previous_index_member)
+end
+redis.call('ZADD', KEYS[3], 0, ARGV[9])
+redis.call('HSET', KEYS[4], ARGV[8], ARGV[6])
+redis.call('HSET', KEYS[5], ARGV[8], ARGV[9])
 return 'committed|' .. current .. '|' .. (current + 1) .. '|' .. ARGV[4] .. '|' .. ARGV[3] .. '|' .. ARGV[7]
 `;
 }
@@ -224,7 +305,9 @@ function baseEnvelope(rawInputs, operation) {
     provider: PROVIDER,
     operation,
     resource: safeName(stringInput("resource"), "resource"),
-    aggregate_id: safeName(stringInput("aggregate_id"), "aggregate_id"),
+    aggregate_id: operation === "list_stream_heads"
+      ? "stream-heads"
+      : safeName(stringInput("aggregate_id"), "aggregate_id"),
   };
 }
 
@@ -266,11 +349,18 @@ function redisKeys(rawInputs, envelope) {
     resource: envelope.resource,
     aggregate_id: envelope.aggregate_id,
   });
+  const resourceDigest = sha256Hex({
+    data_source_ref: envelope.data_source_ref,
+    resource: envelope.resource,
+  });
   const prefix = keyPrefix(rawInputs);
   return {
     digest,
     stream: `${prefix}:stream:${digest}`,
     idempotency: `${prefix}:idempotency:${digest}`,
+    resourceIndex: `${prefix}:resource:${resourceDigest}:heads-index-v2`,
+    resourceHeads: `${prefix}:resource:${resourceDigest}:heads-v2`,
+    resourceIndexMembers: `${prefix}:resource:${resourceDigest}:head-index-members-v2`,
   };
 }
 
@@ -325,8 +415,10 @@ function redisUrl(rawInputs) {
 function keyPrefix(rawInputs) {
   const bindingObject = dataSourceBinding(rawInputs);
   const raw = textValue(bindingObject.key_prefix) ?? textValue(rawInputs.key_prefix) ?? "runx:data-store";
-  const pattern = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,191}$/;
-  if (!pattern.test(raw)) {
+  const pattern = /^[A-Za-z0-9][A-Za-z0-9._:{}\/-]{0,191}$/;
+  const hashTag = raw.match(/\{([A-Za-z0-9][A-Za-z0-9._:-]{0,63})\}/);
+  const remainder = hashTag ? raw.replace(hashTag[0], "") : raw;
+  if (!pattern.test(raw) || remainder.includes("{") || remainder.includes("}")) {
     throw new Error("data.redis key_prefix must be a safe Redis key prefix");
   }
   return raw;
@@ -342,6 +434,16 @@ function parseJsonLines(stdout) {
   const text = stdout.trim();
   if (!text) return [];
   return text.split(/\r?\n/).map((line) => JSON.parse(line));
+}
+
+function parseRedisLines(stdout) {
+  const text = stdout.trim();
+  return text ? text.split(/\r?\n/) : [];
+}
+
+function parseRedisBulkValues(stdout) {
+  const text = stdout.replace(/\r?\n$/, "");
+  return text ? text.split(/\r?\n/) : [];
 }
 
 function readValue(name) {
@@ -394,6 +496,92 @@ function boundedLimit(value) {
     throw new Error("limit must be an integer from 1 to 500");
   }
   return value;
+}
+
+function boundedHeadLimit(value) {
+  if (value === undefined || value === null) return 50;
+  if (!Number.isInteger(value) || value < 1 || value > 100) {
+    throw new Error("list_stream_heads limit must be an integer from 1 to 100");
+  }
+  return value;
+}
+
+function optionalEventTypes(value) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 20) {
+    throw new Error("event_types must be an array of at most 20 exact event types");
+  }
+  return Array.from(new Set(value.map((entry) => {
+    const token = safeEventToken(entry);
+    if (!token) throw new Error("event_types contains an invalid event type");
+    return token;
+  })));
+}
+
+function eventScore(value) {
+  const score = Date.parse(value);
+  return Number.isFinite(score) ? score : 0;
+}
+
+function headIndexMember(aggregateId, committedAtValue) {
+  const score = BigInt(eventScore(committedAtValue));
+  const dateOffset = 8_640_000_000_000_000n;
+  const dateRange = dateOffset * 2n;
+  const invertedScore = dateRange - (score + dateOffset);
+  return `${invertedScore.toString().padStart(17, "0")}|${aggregateId}`;
+}
+
+function aggregateIdFromHeadIndexMember(value) {
+  const separator = value.indexOf("|");
+  if (separator !== 17 || !/^\d{17}$/.test(value.slice(0, separator))) {
+    throw new Error("redis stream-head index contains an invalid member");
+  }
+  return safeName(value.slice(separator + 1), "aggregate_id");
+}
+
+function encodeHeadCursor(row) {
+  return Buffer.from(JSON.stringify({
+    committed_at: row.committed_at,
+    aggregate_id: row.aggregate_id,
+  }), "utf8").toString("base64url");
+}
+
+function decodeHeadCursor(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || value.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new Error("cursor must be an opaque list_stream_heads cursor");
+  }
+  try {
+    const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
+      throw new Error("invalid cursor");
+    }
+    if (typeof decoded.committed_at !== "string" || decoded.committed_at.length > 100 || Number.isNaN(Date.parse(decoded.committed_at))) {
+      throw new Error("invalid committed_at");
+    }
+    return {
+      committed_at: decoded.committed_at,
+      aggregate_id: safeName(decoded.aggregate_id, "aggregate_id"),
+    };
+  } catch {
+    throw new Error("cursor must be an opaque list_stream_heads cursor");
+  }
+}
+
+function optionalVersion(value, field) {
+  if (value === undefined || value === null) return undefined;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${field} must be a non-negative integer`);
+  }
+  return value;
+}
+
+function committedAt(value) {
+  if (value === undefined || value === null) return "1970-01-01T00:00:00.000Z";
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) {
+    throw new Error("observed_at must be ISO-8601");
+  }
+  return new Date(value).toISOString();
 }
 
 function safeName(value, field) {

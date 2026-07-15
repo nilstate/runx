@@ -27,7 +27,8 @@ RDIR="$(mktemp -d 2>/dev/null || echo /tmp/runx-byo-http-demo)"
 OUT="$(mktemp 2>/dev/null || echo /tmp/runx-byo-http-output)"
 "$RUNX" skill "$OSS/examples/byo-http-graph" \
   --account-id acct-42 \
-  --credential example-crm:api_key:local-demo:crm.account.read \
+  --credential example-crm:api_key:local-demo \
+  --credential-scope crm.account.read \
   --secret-env RUNX_EXAMPLE_CRM_TOKEN \
   --receipt-dir "$RDIR" \
   --json > "$OUT"

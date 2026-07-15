@@ -255,19 +255,11 @@ fn resolve_policy_path(path: &Path, env: &BTreeMap<String, String>, cwd: &Path) 
     if path.is_absolute() {
         return path.to_path_buf();
     }
-    env.get("RUNX_CWD")
-        .map(PathBuf::from)
-        .or_else(|| env.get("INIT_CWD").map(PathBuf::from))
-        .unwrap_or_else(|| cwd.to_path_buf())
-        .join(path)
+    runx_runtime::resolve_runx_workspace_base(env, cwd).join(path)
 }
 
 fn display_policy_path(path: &Path, env: &BTreeMap<String, String>, cwd: &Path) -> String {
-    let base = env
-        .get("RUNX_CWD")
-        .map(PathBuf::from)
-        .or_else(|| env.get("INIT_CWD").map(PathBuf::from))
-        .unwrap_or_else(|| cwd.to_path_buf());
+    let base = runx_runtime::resolve_runx_workspace_base(env, cwd);
     path.strip_prefix(&base)
         .map(|relative| relative.to_string_lossy().replace('\\', "/"))
         .unwrap_or_else(|_| {

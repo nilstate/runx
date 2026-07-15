@@ -287,15 +287,18 @@ fn provider_process_accepts_runtime_output_envelope() -> Result<(), Box<dyn std:
 #[test]
 fn provider_process_timeout_kills_process_group_descendants()
 -> Result<(), Box<dyn std::error::Error>> {
-    let marker = std::env::temp_dir().join(format!(
-        "runx-thread-outbox-provider-timeout-{}-{}.marker",
+    let unique = format!(
+        "runx-thread-outbox-provider-timeout-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_nanos()
-    ));
+    );
+    let marker = std::env::temp_dir().join(format!("{unique}.marker"));
+    let pid_file = std::env::temp_dir().join(format!("{unique}.pid"));
     let marker_arg = marker.to_string_lossy().into_owned();
-    let manifest = manifest_with_fixture_args(&["spawn-marker", &marker_arg])?;
+    let pid_arg = pid_file.to_string_lossy().into_owned();
+    let manifest = manifest_with_fixture_args(&["spawn-marker", &marker_arg, &pid_arg])?;
     let push = push_fixture()?;
     let supervisor =
         ThreadOutboxProviderProcessSupervisor::new(ThreadOutboxProviderSupervisorOptions {
@@ -310,13 +313,14 @@ fn provider_process_timeout_kills_process_group_descendants()
         result,
         Err(ThreadOutboxProviderSupervisorError::TimedOut { timeout_ms: 100 })
     ));
-    std::thread::sleep(Duration::from_millis(700));
+    crate::support::wait_for_recorded_pid_exit(&pid_file, Duration::from_secs(5))?;
     assert!(
         !marker.exists(),
         "timed-out provider descendant survived and wrote {}",
         marker.display()
     );
     let _ = std::fs::remove_file(marker);
+    let _ = std::fs::remove_file(pid_file);
     Ok(())
 }
 

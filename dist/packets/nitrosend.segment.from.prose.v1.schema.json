@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/nitrosend/segment_from_prose/v1.json",
+  "x-runx-packet-id": "nitrosend.segment_from_prose.v1",
+  "x-runx-generated-from": "skills/nitrosend/X.yaml#root.runners.segment-from-prose",
+  "type": "object",
+  "required": [
+    "segment_plan"
+  ],
+  "properties": {
+    "segment_plan": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

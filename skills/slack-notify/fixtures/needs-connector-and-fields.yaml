@@ -29,7 +29,7 @@ caller:
           - principal is missing
         provider_actions: []
 expect:
-  status: needs_agent
+  status: sealed
 metadata:
   public_skill: slack-notify
   source_case: needs-connector-and-fields

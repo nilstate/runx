@@ -85,10 +85,10 @@ fi
 
 if [ "$MODE" = "spawn-marker" ]; then
   MARKER="${2:?missing marker path}"
-  (
-    sleep 0.4
-    printf 'survived\n' > "$MARKER"
-  ) &
+  PIDFILE="${3:?missing pid path}"
+  # Run the descendant as its own `sh -c` so `$$` is the descendant's pid; the
+  # test polls that pid for death instead of sleeping a fixed window.
+  MARKER="$MARKER" PIDFILE="$PIDFILE" /bin/sh -c 'echo $$ >"$PIDFILE"; sleep 0.4; printf "survived\n" >"$MARKER"' &
   sleep 5
 fi
 

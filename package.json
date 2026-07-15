@@ -62,6 +62,7 @@
     "fixtures:skill-author-runtime:check": "cargo test --manifest-path crates/Cargo.toml -p runx-runtime --features cli-tool --test integration -- skill_author_runtime_fixtures --nocapture",
     "fixtures:cli-parity:check": "tsx scripts/generate-cli-feature-parity.ts --check --canonical-only",
     "fixtures:cli-help:check": "tsx scripts/generate-cli-feature-parity.ts --check-help-coverage --canonical-only",
+    "packet-schemas:check": "tsx scripts/generate-packet-schemas.ts --check",
     "rust:check": "node scripts/check-rust-kernel-parity.mjs",
     "rust:crate-graph": "node scripts/check-rust-crate-graph.mjs",
     "rust:style": "node scripts/check-rust-core-style.mjs",

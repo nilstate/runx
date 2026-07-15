@@ -46,23 +46,6 @@ Prefer fewer steps with clear scope boundaries. Three well-scoped steps
 beat seven single-purpose fragments. Every step should have a clear entry
 condition, action, and exit artifact.
 
-## Quality Profile
-
-- Purpose: turn an objective into a governed plan that preserves authority,
-  evidence, and handoff boundaries.
-- Audience: operators, reviewers, and downstream lanes that must execute from
-  the same parent change artifact.
-- Artifact contract: change set, objective summary, workspace change plan,
-  orchestration steps, required skills, and open questions.
-- Evidence bar: derive the plan from the objective, thread, change set,
-  project context, and known repo surfaces. Missing context becomes an open
-  question, not an invented phase.
-- Voice bar: precise engineering planning. Do not create generic task lists or
-  cognitive-step decomposition that ignores scope boundaries.
-- Strategic bar: the plan should make the smallest governed path obvious:
-  reply, plan, build, fan out, pause, or stop.
-- Stop conditions: return `needs_agent` when the objective, target
-  surfaces, success criteria, or mutation boundaries are unclear.
 
 ## Output
 

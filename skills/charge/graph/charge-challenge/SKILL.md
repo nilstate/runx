@@ -14,19 +14,11 @@ operation can proceed. It carries the priced bounds, idempotency key, accepted
 settlement families, and provider hints. It does not price the operation,
 verify returned credentials, collect funds, or forward the upstream tool call.
 
-## Quality Profile
-
-- Purpose: expose priced provider-side payment requirements without widening
-  authority.
-- Audience: caller agents, provider harnesses, operators, and registry tooling.
-- Artifact contract: `effect_required_signal`, `charge_challenge`,
-  `idempotency`, `accepted_settlement_families`, and `open_questions`.
-- Evidence bar: challenge amounts and families must match the price packet and
-  provider policy.
-- Strategic bar: preserve idempotency and accepted-family clarity before any
-  credential verification starts.
-- Stop conditions: return `needs_agent` when priced authority, idempotency, or
-  accepted settlement families are missing.
+Amounts, currencies, authority bounds, and accepted families must agree with
+the supplied price packet and provider policy. Return `needs_agent` instead of
+emitting a challenge when priced authority, a stable idempotency key, or the
+accepted settlement-family set is missing. Credential verification must never
+start from an incomplete or widened challenge.
 
 ## Output
 

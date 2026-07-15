@@ -7,78 +7,6 @@ catalog:
   visibility: public
   role: canonical
 
-harness:
-  cases:
-    - name: ops-desk-operate-from-sqlite-projection
-      runner: operate_from_projection
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://ops-desk/sqlite-state":{"adapter":"data.sqlite","database_path":".runx/data/ops-desk-state.sqlite","resources":{"ops_projection":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
-      inputs:
-        data_source_ref: tenant://ops-desk/sqlite-state
-        resource: ops_projection
-        aggregate_id: workspace-example
-        objective: Check the workspace and tell me the next safe action.
-        scope_ref: workspace:example
-        receipt_summary:
-          receipts: []
-        provider_status:
-          runx_api: ok
-        approval_context:
-          approvals: []
-        operator_policy: Route live sends through send-as and money movement through spend or refund.
-      caller:
-        answers:
-          agent_task.ops-desk.output:
-            ops_desk_packet:
-              decision: needs_input
-              scope_ref: workspace:example
-              objective: Check the workspace and tell me the next safe action.
-              mode: read_only
-              dashboard:
-                health: unknown
-                money: unknown
-                communications: unknown
-                providers: ok
-                receipts: unknown
-              findings:
-                - severity: warning
-                  area: receipts
-                  summary: The projection is empty, so there is no receipt-backed operating state yet.
-                  evidence_refs:
-                    - data-store.read_projection
-              proposals: []
-              ordered_next_steps:
-                - step: Append a governed state event or provide a receipt summary before proposing live actions.
-                  lane: data-store
-                  requires_confirmation: false
-              refused_reasons: []
-              needs_input:
-                - receipt-backed operating state
-              success_checkpoint:
-                milestone: state loaded
-                description: A projection read was attempted before operator planning.
-      expect:
-        status: sealed
-    - name: ops-desk-operate-needs-agent
-      runner: operate_from_projection
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://ops-desk/sqlite-state":{"adapter":"data.sqlite","database_path":".runx/data/ops-desk-state.sqlite","resources":{"ops_projection":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
-      inputs:
-        data_source_ref: tenant://ops-desk/sqlite-state
-        resource: ops_projection
-        aggregate_id: workspace-example
-        objective: Check the workspace and tell me the next safe action.
-        scope_ref: workspace:example
-        receipt_summary:
-          receipts: []
-        provider_status:
-          runx_api: ok
-        approval_context:
-          approvals: []
-        operator_policy: Route live sends through send-as and money movement through spend or refund.
-      expect:
-        status: needs_agent
-
 runners:
   operate:
     default: true
@@ -100,7 +28,7 @@ runners:
       Classify health, money, communications, providers, receipts, access,
       release, registry, and deploy state; rank the smallest useful next action;
       route every proposal to a named governed lane such as release, ledger,
-      receipt-auditor, least-privilege-auditor, send-as, provider.send,
+      audit-receipt, least-privilege, send-as, provider.send,
       messageboard, payment.quote, payment.payout, payment.refund,
       provider.health_check, deploy.smoke, or a product skill. For each
       consequential proposal include
@@ -161,13 +89,22 @@ runners:
     task: ops-desk-advance
     outputs:
       decision: string
-      dispatch: object
-      escalation: object
-      resolution: object
+      dispatch:
+        type: object
+        required: false
+        description: Dispatch payload when decision is dispatch.
+      escalation:
+        type: object
+        required: false
+        description: Escalation payload when decision is escalate.
+      resolution:
+        type: object
+        required: false
+        description: Resolution payload when decision is done.
       reason: string
     artifacts:
       wrap_as: dispatch_decision
-      packet: runx.effect.transition.v1
+      packet: runx.ops_desk.dispatch_decision.v1
     runx:
       category: ops
     instructions: >

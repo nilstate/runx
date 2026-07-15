@@ -1,0 +1,41 @@
+name: wrap-local-skill-with-digest
+kind: skill
+target: ..
+runner: generate
+inputs:
+  skill_path: ./vendor/summarize/SKILL.md
+  scope_intent: Read-only summarization of files already in the workspace.
+  objective: Pin and govern a local borrowed summarize skill.
+caller:
+  answers:
+    agent_task.overlay.output:
+      overlay_proposal:
+        decision: ready
+        wraps:
+          ref: ""
+          path: ./vendor/summarize/SKILL.md
+          digest: sha256:1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809
+        overlay_path: skills-overlays/vendor/summarize/X.yaml
+        runner:
+          type: agent
+          scopes:
+            - repo.read
+          allowed_tools:
+            - fs.read
+        diagnostics: []
+        rationale: The local SKILL.md resolves and is pinned by digest so a later upstream edit raises runx.overlay.digest.stale. Summarization needs only repo.read bounded to fs.read; no write or network scope is granted.
+        blockers: []
+        needs_input: []
+        success_checkpoint:
+          milestone: overlay_ready
+          description: A digest-pinned overlay wrapping a local summarize skill with read-only scope.
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+metadata:
+  public_skill: overlay
+  source_case: wrap-local-skill-with-digest
+  source: skills-fixture

@@ -242,21 +242,9 @@ fn mcp_sandbox_runtime_metadata(profile: &str) -> JsonObject {
 }
 
 fn workspace_root(env: &BTreeMap<String, String>) -> Result<PathBuf, RuntimeError> {
-    if let Some(path) = env.get("RUNX_CWD").or_else(|| env.get("INIT_CWD")) {
-        return absolute_path(path);
-    }
-    std::env::current_dir().map_err(|source| RuntimeError::io("resolving workspace cwd", source))
-}
-
-fn absolute_path(path: &str) -> Result<PathBuf, RuntimeError> {
-    let path = PathBuf::from(path);
-    if path.is_absolute() {
-        Ok(path)
-    } else {
-        Ok(std::env::current_dir()
-            .map_err(|source| RuntimeError::io("resolving relative workspace cwd", source))?
-            .join(path))
-    }
+    let cwd = std::env::current_dir()
+        .map_err(|source| RuntimeError::io("resolving workspace cwd", source))?;
+    Ok(crate::config::resolve_runx_workspace_base(env, &cwd))
 }
 
 fn path_string(path: &Path) -> String {

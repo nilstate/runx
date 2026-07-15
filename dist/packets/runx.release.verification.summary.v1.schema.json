@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/release/verification_summary/v1.json",
+  "x-runx-packet-id": "runx.release.verification_summary.v1",
+  "x-runx-generated-from": "skills/release/X.yaml#root.runners.release.graph.steps.3",
+  "type": "object"
+}

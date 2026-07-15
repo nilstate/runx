@@ -4,7 +4,7 @@ pub fn redact_sensitive_text(input: &str) -> String {
     )))
 }
 
-#[cfg(feature = "thread-outbox-provider")]
+#[cfg(any(feature = "thread-outbox-provider", feature = "external-adapter"))]
 pub(crate) fn trim_ascii_whitespace(bytes: &[u8]) -> &[u8] {
     let start = bytes
         .iter()

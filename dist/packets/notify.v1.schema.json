@@ -4,23 +4,72 @@
   "x-runx-packet-id": "runx.notify.v1",
   "type": "object",
   "properties": {
-    "decision": { "type": "string" },
-    "channel": { "type": "string" },
+    "decision": {
+      "type": "string",
+      "enum": ["ready", "needs_review", "blocked"]
+    },
+    "principal": { "type": "string", "minLength": 1 },
+    "channel": {
+      "type": "object",
+      "properties": {
+        "ref": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["internal", "external", "shared"]
+        }
+      },
+      "required": ["ref", "name", "kind"],
+      "additionalProperties": false
+    },
     "content": {
       "type": "object",
-      "additionalProperties": true
+      "properties": {
+        "ref": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "length_chars": { "type": "integer", "minimum": 0 },
+        "mentions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      },
+      "required": ["ref", "digest", "length_chars", "mentions"],
+      "additionalProperties": false
     },
-    "principal": { "type": "string" },
-    "send_class": { "type": "string" },
+    "send_class": {
+      "type": "string",
+      "enum": ["direct", "broadcast"]
+    },
     "gates": {
       "type": "object",
-      "additionalProperties": true
+      "properties": {
+        "preflight_required": { "type": "boolean" },
+        "approval_required": { "type": "boolean" },
+        "approval_ref": { "type": "string" }
+      },
+      "required": ["preflight_required", "approval_required", "approval_ref"],
+      "additionalProperties": false
     },
-    "blockers": { "type": "array" },
-    "provider_actions": {
+    "blockers": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "provider_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
     }
   },
-  "additionalProperties": true
+  "required": [
+    "decision",
+    "principal",
+    "channel",
+    "content",
+    "send_class",
+    "gates",
+    "blockers",
+    "provider_actions"
+  ],
+  "additionalProperties": false
 }

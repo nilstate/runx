@@ -16,20 +16,29 @@ use crate::router::AddUrlPlan;
 
 pub fn run_native_add(plan: AddUrlPlan) -> ExitCode {
     let env = crate::history::env_map();
-    let base_url = resolve_public_api_base_url(&plan, &env);
+    let cwd = match std::env::current_dir() {
+        Ok(cwd) => cwd,
+        Err(error) => return fail(&format!("failed to resolve cwd: {error}")),
+    };
+    let environment = match resolve_public_api_environment(&plan, &env, &cwd) {
+        Ok(environment) => environment,
+        Err(error) => return fail(&error.to_string()),
+    };
 
     let repo_ref = match parse_github_repo_ref(&plan.repo) {
         Ok(parsed) => parsed,
         Err(error) => return fail(&error.to_string()),
     };
 
-    let transport = match crate::public_api::transport(false) {
-        Ok(transport) => transport,
-        Err(error) => return fail(&format!("failed to initialize HTTP transport: {error}")),
-    };
+    let transport =
+        match crate::public_api::transport(crate::public_api::private_network_allowed(false, &env))
+        {
+            Ok(transport) => transport,
+            Err(error) => return fail(&format!("failed to initialize HTTP transport: {error}")),
+        };
 
     let options = IndexGithubRepoOptions {
-        base_url: &base_url,
+        base_url: environment.base_url(),
         repo_url: &repo_ref.canonical_url,
         repo_ref: plan.repo_ref.as_deref(),
     };
@@ -40,8 +49,16 @@ pub fn run_native_add(plan: AddUrlPlan) -> ExitCode {
     }
 }
 
-fn resolve_public_api_base_url(plan: &AddUrlPlan, env: &BTreeMap<String, String>) -> String {
-    crate::public_api::resolve_base_url(plan.api_base_url.as_deref(), env)
+fn resolve_public_api_environment(
+    plan: &AddUrlPlan,
+    env: &BTreeMap<String, String>,
+    cwd: &std::path::Path,
+) -> Result<crate::public_api::ApiEnvironment, crate::public_api::ApiEnvironmentError> {
+    crate::public_api::ApiEnvironment::resolve_unauthenticated(
+        plan.api_base_url.as_deref(),
+        env,
+        cwd,
+    )
 }
 
 fn render_result(json: bool, repo_ref: &GithubRepoRef, response: &IndexResponse) -> ExitCode {
@@ -221,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn resolves_base_url_in_precedence_order() {
+    fn resolves_base_url_in_precedence_order() -> Result<(), Box<dyn std::error::Error>> {
         let plan_with_override = AddUrlPlan {
             repo: "https://github.com/runxhq/runx".to_owned(),
             repo_ref: None,
@@ -235,10 +252,9 @@ mod tests {
         );
 
         // Plan override wins, trailing slash stripped.
-        assert_eq!(
-            resolve_public_api_base_url(&plan_with_override, &env),
-            "https://override.example",
-        );
+        let overridden =
+            resolve_public_api_environment(&plan_with_override, &env, &std::env::temp_dir())?;
+        assert_eq!(overridden.base_url(), "https://override.example");
 
         // Without plan override, env takes over.
         let plan_no_override = AddUrlPlan {
@@ -247,17 +263,16 @@ mod tests {
             api_base_url: None,
             json: false,
         };
-        assert_eq!(
-            resolve_public_api_base_url(&plan_no_override, &env),
-            "https://from-env.example",
-        );
+        let from_env =
+            resolve_public_api_environment(&plan_no_override, &env, &std::env::temp_dir())?;
+        assert_eq!(from_env.base_url(), "https://from-env.example");
 
         // Without either, default.
         let empty_env: BTreeMap<String, String> = BTreeMap::new();
-        assert_eq!(
-            resolve_public_api_base_url(&plan_no_override, &empty_env),
-            "https://api.runx.ai",
-        );
+        let default =
+            resolve_public_api_environment(&plan_no_override, &empty_env, &std::env::temp_dir())?;
+        assert_eq!(default.base_url(), "https://api.runx.ai");
+        Ok(())
     }
 
     #[test]

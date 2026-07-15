@@ -16,28 +16,6 @@ what tests or governance gaps block adoption.
 Avoid generic praise. The output should help an operator decide whether to
 adopt, publish, sandbox, or reject the skill.
 
-## Quality Profile
-
-- Purpose: decide whether a bounded skill package is trustworthy and useful
-  enough for adoption, publication, sandboxing, or rejection.
-- Audience: operators and maintainers responsible for capability trust.
-- Artifact contract: capability profile, trust assessment, test matrix, and
-  recommendation report.
-- Evidence bar: base trust on the skill contract, execution profile, fixtures,
-  receipts, source notes, and known failure evidence. Do not infer trust from
-  a confident README alone.
-- Voice bar: direct review notes with concrete blockers and residual risk. No
-  generic praise, marketing language, or "looks good" summaries.
-- Strategic bar: explain whether the skill strengthens the catalog, fills a
-  real operator need, duplicates existing capability, or carries unacceptable
-  trust risk.
-- Public value bar: a skill is not publication-ready merely because it parses or
-  runs once. It should solve a real operator or user problem, be something the
-  catalog would stand behind, and produce evidence a stranger can verify. A
-  wrapper, placeholder, toy, or copied example with no credible adoption path is
-  a reject or sandbox-only recommendation.
-- Stop conditions: return `needs_more_evidence` when receipts or harness proof
-  are missing, and `reject` when the skill cannot be bounded or audited.
 
 ## Review Gates
 
@@ -58,6 +36,11 @@ Check these before recommending adoption or publication:
   inbox content, or provider dumps.
 - The recommendation states who would use or trust the skill and why. If that
   answer is weak, recommend rejection, sandboxing, or a narrower redesign.
+
+Return `needs_more_evidence` when the receipts, harness proof, or source record
+cannot support a trust decision. Reject a package that cannot be bounded or
+audited. A confident README and a green parse do not substitute for user value,
+failure-path evidence, and verifiable execution behavior.
 
 ## Output
 

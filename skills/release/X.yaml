@@ -135,12 +135,12 @@ harness:
       runner: prepare
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
     - name: release-graph-needs-project-root
       inputs: {}
       expect:
-        status: needs_agent
+        status: failure
 
 
 runners:

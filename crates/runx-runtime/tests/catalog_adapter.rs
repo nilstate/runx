@@ -102,6 +102,11 @@ fn catalog_adapter_keeps_fixture_catalog_opt_in() -> Result<(), RuntimeError> {
 fn catalog_adapter_prefers_local_manifest_before_fixture_catalog()
 -> Result<(), Box<dyn std::error::Error>> {
     let case_dir = repo_root()?.join("fixtures/runtime/adapters/catalog/local-precedence");
+    let mut env = tool_root_env(&case_dir);
+    env.insert(
+        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
+        "local".to_owned(),
+    );
     let mut inputs = JsonObject::new();
     inputs.insert(
         "message".to_owned(),
@@ -112,7 +117,7 @@ fn catalog_adapter_prefers_local_manifest_before_fixture_catalog()
         Some("fixture.echo"),
         inputs,
         case_dir,
-        process_env_with_local_sandbox_fallback(),
+        env,
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Success);
@@ -977,13 +982,4 @@ fn process_env() -> BTreeMap<String, String> {
     .into_iter()
     .filter_map(|key| std::env::var(key).ok().map(|value| (key.to_owned(), value)))
     .collect()
-}
-
-fn process_env_with_local_sandbox_fallback() -> BTreeMap<String, String> {
-    let mut env = process_env();
-    env.insert(
-        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
-        "local".to_owned(),
-    );
-    env
 }

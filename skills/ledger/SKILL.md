@@ -46,9 +46,9 @@ for replay or controlled evaluation. When present it uses those rows directly
 instead of shelling `runx history`, which is how the inline harness seeds a
 deterministic ledger without a populated store.
 
-It queries and proves history across many runs; `receipt-auditor` audits the
+It queries and proves history across many runs; `audit-receipt` audits the
 integrity of a single receipt chain. Its nearest neighbor is
-`run-history-analyst`, which also reads the ledger but returns graded platform
+`run-history`, which also reads the ledger but returns graded platform
 metrics (seal rate, refusal rate, maturity spread) and routes them to governance
 lanes. `ledger` answers one precise audit question with the receipt ids that
 match and a verified chain walk, not an aggregate health report.
@@ -63,11 +63,11 @@ match and a verified chain walk, not an aggregate health report.
 
 ## When not to use this skill
 
-- To audit whether one run stayed inside its grant. Use `receipt-auditor`; that
+- To audit whether one run stayed inside its grant. Use `audit-receipt`; that
   is the integrity-of-one-chain question, not the cross-run history question
   `ledger` answers.
-- To narrow a grant from observed usage. Use `least-privilege-auditor`.
-- For a graded platform-health report over many runs. Use `run-history-analyst`.
+- To narrow a grant from observed usage. Use `least-privilege`.
+- For a graded platform-health report over many runs. Use `run-history`.
 - To mutate, redact, export, or archive receipts. This skill is read-only and
   refuses any write framing.
 - To return receipt bodies, act payloads, or any secret-bearing field. Matched

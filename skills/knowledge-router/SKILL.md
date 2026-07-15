@@ -14,17 +14,17 @@ This skill is for triage and routing, not answering the question directly. It
 should tell a consuming graph where to look, who owns the domain, what evidence
 is already available, and which next skill should run.
 
-## Quality Profile
+Each route must name the supplied signal that justified its source match,
+owner, escalation, and next-skill recommendation. Keep the result as a concise
+dispatch note. Return `needs_more_context` when no route is supportable, and
+`manual_review` for legal, billing, security, or destructive requests.
 
-- Purpose: turn ambiguous context into a focused retrieval and ownership plan.
-- Audience: operators, support leads, and downstream skill graphs.
-- Artifact contract: route, source matches, owner/escalation recommendations,
-  and next-skill suggestion.
-- Evidence bar: every route names the supplied signal that justified it.
-- Voice bar: dispatch note, not research prose.
-- Strategic bar: reduce wasted retrieval and route sensitive work to humans.
-- Stop conditions: return `needs_more_context` when no route is supportable and
-  `manual_review` for legal, billing, security, or destructive requests.
+## Output
+
+- `route`: selected knowledge or ownership domain and rationale.
+- `source_matches`: relevant sources with the matching signal.
+- `owner_recommendation`: owner or escalation target.
+- `next_skill`: the bounded follow-up capability, if one is justified.
 
 ## Inputs
 

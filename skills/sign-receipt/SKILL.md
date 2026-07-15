@@ -29,7 +29,7 @@ binding evidence is a signature on a guess, and a signed guess is worse than no
 record at all.
 
 **Distinctness:** it attests work that happened OUTSIDE a run; the runtime
-already signs every hop it executes itself. `receipt-auditor` reads a sealed
+already signs every hop it executes itself. `audit-receipt` reads a sealed
 in-runtime receipt to check authority; `sign-receipt` prepares a new attestation,
 which the runtime seals into a receipt, for work the runtime never saw.
 
@@ -43,7 +43,7 @@ which the runtime seals into a receipt, for work the runtime never saw.
 
 ## When not to use this skill
 
-- To audit a run the runtime executed. That is `receipt-auditor`, which reads an
+- To audit a run the runtime executed. That is `audit-receipt`, which reads an
   existing sealed receipt rather than preparing a new attestation.
 - To execute the action itself. Use the action skill (`spend`, `send-as`,
   `refund`); they seal their own receipts.

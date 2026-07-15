@@ -11,8 +11,10 @@ use runx_contracts::{
 use crate::RuntimeError;
 use crate::adapter::{InvocationStatus, SkillAdapter, SkillInvocation, SkillOutput};
 use crate::adapter_pipeline::{AdapterCapture, AdapterProjection};
+use crate::agent_contract::verified_agent_metadata_with_artifacts;
 use crate::agent_invocation::{
-    AgentActInvocationSourceType, agent_act_resolution_request, build_agent_act_invocation,
+    AgentActInvocationSourceType, agent_act_resolution_request, agent_profile_metadata,
+    build_agent_act_invocation,
 };
 use crate::config::ManagedAgentConfig;
 
@@ -169,23 +171,76 @@ where
 
         let resolution_request =
             agent_act_resolution_request(&request, self.source_type.invocation_source_type())?;
-        match self.resolver.resolve(resolution_request) {
-            Ok(resolution) => {
-                let metadata = native_agent_metadata(
-                    self.source_type,
-                    &request,
-                    &self.config,
-                    "success",
-                    resolution.telemetry.as_ref(),
-                );
-                Ok(success_output(resolution, started, metadata)?)
-            }
+        let profile_metadata = agent_profile_metadata(&resolution_request);
+        match self.resolver.resolve(resolution_request.clone()) {
+            Ok(resolution) => self.finish_resolution(
+                &request,
+                &resolution_request,
+                resolution,
+                started,
+                &profile_metadata,
+            ),
             Err(error) => Ok(failure_output(
                 error.sanitized_message(),
                 started,
-                native_agent_metadata(self.source_type, &request, &self.config, "failure", None),
+                native_agent_metadata(
+                    self.source_type,
+                    &request,
+                    &self.config,
+                    "failure",
+                    None,
+                    &profile_metadata,
+                ),
             )),
         }
+    }
+}
+
+impl<T> AgentAdapter<T> {
+    fn finish_resolution(
+        &self,
+        request: &SkillInvocation,
+        resolution_request: &ResolutionRequest,
+        resolution: AgentResolution,
+        started: Instant,
+        profile_metadata: &JsonObject,
+    ) -> Result<SkillOutput, RuntimeError> {
+        let inline_artifacts = request
+            .source
+            .raw
+            .get("artifacts")
+            .and_then(JsonValue::as_object);
+        let verified_metadata = verified_agent_metadata_with_artifacts(
+            resolution_request,
+            &resolution.response.payload,
+            None,
+            inline_artifacts,
+            &request.skill_directory,
+            &request.env,
+        );
+        let Ok(verified_metadata) = verified_metadata else {
+            return Ok(failure_output(
+                "Managed agent output failed its declared contract.",
+                started,
+                native_agent_metadata(
+                    self.source_type,
+                    request,
+                    &self.config,
+                    "failure",
+                    resolution.telemetry.as_ref(),
+                    profile_metadata,
+                ),
+            ));
+        };
+        let metadata = native_agent_metadata(
+            self.source_type,
+            request,
+            &self.config,
+            "success",
+            resolution.telemetry.as_ref(),
+            &verified_metadata,
+        );
+        success_output(resolution, started, metadata)
     }
 }
 
@@ -240,6 +295,7 @@ fn native_agent_metadata(
     config: &ManagedAgentConfig,
     status: &str,
     telemetry: Option<&AgentExecutionTelemetry>,
+    profile_metadata: &JsonObject,
 ) -> JsonObject {
     let mut root = JsonObject::new();
     let mut entry = JsonObject::new();
@@ -269,6 +325,7 @@ fn native_agent_metadata(
             root.insert("agent_runner".to_owned(), JsonValue::Object(entry));
         }
     }
+    root.extend(profile_metadata.clone());
     root
 }
 

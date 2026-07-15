@@ -261,21 +261,33 @@ fn external_adapter_process_supervisor_timeout_kills_descendant_processes()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let sentinel_path = temp.path().join("descendant-survived");
+    let pid_path = temp.path().join("descendant-pid");
+    // The parent records the backgrounded descendant's pid via `$!`; the test
+    // polls that pid for death instead of sleeping a fixed window.
     let script = write_script(
         temp.path(),
         r#"set -eu
 IFS= read -r _invocation
 (
   /bin/sleep 3
-  printf 'survived' > "$RUNX_DESCENDANT_SENTINEL"
+  printf survived > "$RUNX_DESCENDANT_SENTINEL"
 ) &
+echo $! > "$RUNX_DESCENDANT_PIDFILE"
 /bin/sleep 10
 "#,
     )?;
     let mut manifest = manifest_for_script(&script)?;
     manifest.timeouts.invocation_ms = 1_000;
+    // Under the readonly intent the sandbox swallows the pid and sentinel writes,
+    // leaving the survived-descendant assertion vacuous; anchor the workspace at
+    // the test's temp dir (RUNX_CWD) and scope write access to it so both
+    // signals are observable.
+    manifest.sandbox_intent.profile = "workspace-write".into();
+    manifest.sandbox_intent.writable_paths = Some(vec![path_string(temp.path())?.into()]);
     let invocation = invocation_with_env([
         ("RUNX_DESCENDANT_SENTINEL", path_string(&sentinel_path)?),
+        ("RUNX_DESCENDANT_PIDFILE", path_string(&pid_path)?),
+        ("RUNX_CWD", path_string(temp.path())?),
         local_sandbox_fallback_env(),
     ]);
 
@@ -289,7 +301,7 @@ IFS= read -r _invocation
     };
     assert_eq!(timeout_ms, 1_000);
     assert!(started.elapsed() < Duration::from_secs(5));
-    std::thread::sleep(Duration::from_secs(3));
+    crate::support::wait_for_recorded_pid_exit(&pid_path, Duration::from_secs(5))?;
     assert!(
         !sentinel_path.exists(),
         "descendant process survived external adapter timeout"

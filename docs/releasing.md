@@ -86,6 +86,15 @@ channel that downloads its archives):
 9. **publish-docker** — multi-arch GHCR image (pulls the musl archive from the
    Release; no Rust toolchain in the image build).
 
+GitHub Actions is deliberately disabled on the `winget-pkgs` fork. The fork only
+hosts the PR head branch; the checks that gate a winget submission run on
+`microsoft/winget-pkgs`. Upstream's workflows are written for that repo's
+`pull_request_target` context, where spell check reads only the files a PR
+touches. A push to a fork branch has no PR context, so the same workflow scans
+the whole repository and fails on upstream's own vocabulary (`HKLM`, `UAC`,
+`dsc`) no matter what the manifest contains. Leave Actions off; a red run there
+is not a signal about the release.
+
 ## Installing (end users)
 
 These work the moment a `cli-v*` tag ships, with no package-manager setup:

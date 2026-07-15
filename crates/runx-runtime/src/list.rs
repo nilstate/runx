@@ -12,7 +12,7 @@ pub use runx_contracts::{
 use serde::Deserialize;
 
 use crate::RuntimeError;
-use crate::filesystem::{read_dir_sorted, read_to_string};
+use crate::filesystem::{find_files_named, read_dir_sorted, read_to_string};
 use crate::path_util::{count_yaml_files, display_path, lexical_normalize, project_path};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -142,10 +142,14 @@ fn read_validated_tool_manifest(manifest_path: &Path) -> Result<runx_parser::Val
 fn tool_emits(artifacts: &runx_parser::SkillArtifactContract) -> Vec<RunxListEmit> {
     if let Some(named_emits) = &artifacts.named_emits {
         return named_emits
-            .iter()
-            .map(|(name, packet)| RunxListEmit {
+            .keys()
+            .map(|name| RunxListEmit {
                 name: name.clone(),
-                packet: Some(packet.clone()),
+                packet: artifacts
+                    .packets
+                    .as_ref()
+                    .and_then(|packets| packets.get(name))
+                    .cloned(),
             })
             .collect();
     }
@@ -154,7 +158,7 @@ fn tool_emits(artifacts: &runx_parser::SkillArtifactContract) -> Vec<RunxListEmi
         .iter()
         .map(|name| RunxListEmit {
             name: name.clone(),
-            packet: None,
+            packet: artifacts.packet.clone(),
         })
         .collect()
 }
@@ -439,15 +443,7 @@ fn discover_skill_profile_paths(root: &Path) -> Result<Vec<PathBuf>, RuntimeErro
     if root_profile.exists() {
         paths.push(root_profile);
     }
-    for skill_entry in read_dir_sorted(&root.join("skills"))? {
-        if !skill_entry.is_dir {
-            continue;
-        }
-        let profile_path = skill_entry.path.join("X.yaml");
-        if profile_path.exists() {
-            paths.push(profile_path);
-        }
-    }
+    paths.extend(find_files_named(&root.join("skills"), "X.yaml")?);
     paths.sort();
     Ok(paths)
 }
@@ -513,6 +509,47 @@ mod tests {
         assert_eq!(
             overlay_wraps("name: demo\n  wraps: vendor/base\n"),
             Some("vendor/base".to_owned())
+        );
+    }
+
+    #[test]
+    fn named_emit_lists_only_explicit_packet_binding() {
+        let artifacts = runx_parser::SkillArtifactContract {
+            emits: None,
+            named_emits: Some(BTreeMap::from([("plan".to_owned(), "plan".to_owned())])),
+            packets: Some(BTreeMap::from([(
+                "plan".to_owned(),
+                "runx.plan.v1".to_owned(),
+            )])),
+            wrap_as: None,
+            packet: None,
+        };
+
+        assert_eq!(
+            tool_emits(&artifacts),
+            vec![RunxListEmit {
+                name: "plan".to_owned(),
+                packet: Some("runx.plan.v1".to_owned()),
+            }]
+        );
+    }
+
+    #[test]
+    fn named_emit_output_name_is_not_reported_as_a_packet() {
+        let artifacts = runx_parser::SkillArtifactContract {
+            emits: None,
+            named_emits: Some(BTreeMap::from([("plan".to_owned(), "plan".to_owned())])),
+            packets: None,
+            wrap_as: None,
+            packet: None,
+        };
+
+        assert_eq!(
+            tool_emits(&artifacts),
+            vec![RunxListEmit {
+                name: "plan".to_owned(),
+                packet: None,
+            }]
         );
     }
 

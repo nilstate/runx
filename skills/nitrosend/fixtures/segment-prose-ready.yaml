@@ -6,6 +6,7 @@ inputs:
   segment_brief: Contacts in AU subscribed to email who joined on or after 2026-01-01.
   segment_name: AU Email Subscribers Since Jan 2026
   preview_only: "true"
+  filter_catalog_json: '{"contact_country":{"type":"string","predicates":["eq"]},"contact_subscribed_email":{"type":"boolean","predicates":["true"]},"contact_created_at":{"type":"date","predicates":["gteq"]}}'
 caller:
   answers:
     agent_task.segment-from-prose-plan.output:

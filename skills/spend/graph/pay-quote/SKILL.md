@@ -17,22 +17,11 @@ could satisfy the request.
 It does not authorize spend, reserve budget, call a rail, or receive funding
 credentials. Its output is evidence for a later Decision, not a payment.
 
-## Quality Profile
-
-- Purpose: make a paid tool request legible enough for runx core to decide
-  whether payment authority can be admitted.
-- Audience: the parent harness, approval gate, operator, and downstream rail
-  skill.
-- Artifact contract: `payment_quote`, `requested_payment_authority`,
-  `challenge_evidence`, `risk_notes`, and `open_questions`.
-- Evidence bar: every amount, counterparty, operation, rail, and expiration
-  must come from the challenge, supplied operator intent, or a named inference.
-- Voice bar: concise payment-operations prose. Do not explain payment protocols
-  generically.
-- Strategic bar: preserve the smallest authority shape that could work; do not
-  widen rails, realms, or caps for convenience.
-- Stop conditions: return `needs_agent` when currency, amount, counterparty,
-  operation, rail, or idempotency material is missing.
+Source every amount, currency, counterparty, operation, rail, and expiry from
+the challenge or explicit operator intent; label any permitted inference. Ask
+for the narrowest authority that can work. Return `needs_agent` when a required
+payment fact or stable idempotency seed is missing rather than widening the
+rail, realm, counterparty, cap, or operation for convenience.
 
 ## Output
 

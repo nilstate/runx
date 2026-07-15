@@ -207,13 +207,18 @@ Secrets are delivered per run, never baked into the skill or passed on argv:
 
 ```bash
 runx skill <skill> \
-  --credential <provider>:<auth_mode>:<material_ref>:<scope> \
+  --credential <provider>:<auth_mode>:<material_ref> \
+  --credential-scope <scope> \
   --secret-env NAME
 ```
 
 `--secret-env NAME` names an environment variable to deliver as the secret;
-`--credential`'s final segment is the scope, which must match the tool's declared
-`scopes`. See `examples/byo-http-tool` and `examples/http-tool-catalog`.
+repeat `--credential-scope` for each granted scope. Scopes may use the same
+colon-namespaced vocabulary as tool declarations, such as `twitter:read` or
+`runx:data:append`. The descriptor's entire third segment is the material ref;
+runx never guesses where that reference ends. Each explicit scope must match the
+tool's declared `scopes`. See `examples/byo-http-tool` and
+`examples/http-tool-catalog`.
 
 For repeated local operator runs, keep the secret in project env and put only the
 non-secret descriptor in `.runx/credentials.json`:
@@ -222,8 +227,9 @@ non-secret descriptor in `.runx/credentials.json`:
 {
   "profiles": {
     "operator": {
-      "credential": "frantic:bearer:local://frantic/internal:frantic.review",
-      "secret_env": "INTERNAL_SYNC_SECRET"
+      "credential": "frantic:bearer:local://frantic/internal",
+      "secret_env": "INTERNAL_SYNC_SECRET",
+      "scopes": ["frantic:review"]
     }
   }
 }

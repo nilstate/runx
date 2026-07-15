@@ -15,22 +15,19 @@ It keeps the security flow bounded and reviewable:
 2. draft the advisory
 3. require approval before anything is packaged for publication
 
-## Quality Profile
+Every public claim must trace to the risk packet and a verified advisory source.
+State affected scope, impact, and remediation precisely, without alarmism;
+speculation stays in private operator notes. If severity, exposure,
+remediation, or disclosure authority is unclear, stop at review. If publication
+would not materially help affected users, keep the result as an operator
+remediation packet instead.
 
-- Purpose: compose scan, advisory drafting, and approval into one public-facing
-  security lane.
-- Audience: maintainers, operators, and external readers affected by the
-  advisory.
-- Artifact contract: risk packet, advisory draft, approval decision, and
-  publish packet.
-- Evidence bar: public-facing claims must trace back to the risk packet and
-  verified advisory sources. Speculation remains private operator context.
-- Voice bar: precise advisory language with clear impact, affected scope, and
-  remediation. No sensationalism or generic security filler.
-- Strategic bar: publish only when the advisory materially helps affected
-  users. Otherwise keep the output as an operator remediation packet.
-- Stop conditions: stop at review when severity, exposure, remediation, or
-  disclosure authorization is not clear.
+## Output
+
+- `risk_packet`: inventory, confirmed exposure, possible risk, and remediation evidence.
+- `advisory_draft`: precise affected scope, impact, and next steps.
+- `approval_decision`: disclosure and wording review.
+- `publish_packet`: approved advisory and channel metadata.
 
 ## Inputs
 

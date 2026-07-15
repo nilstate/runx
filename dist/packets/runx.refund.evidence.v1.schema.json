@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/refund/evidence/v1.json",
+  "x-runx-packet-id": "runx.refund.evidence.v1",
+  "x-runx-generated-from": "skills/refund/X.yaml#root.runners.mock.graph.steps.3",
+  "type": "object",
+  "required": [
+    "refund_closure",
+    "refund_proof",
+    "refund_receipt_ref"
+  ],
+  "properties": {
+    "refund_closure": {
+      "type": "object"
+    },
+    "refund_proof": {
+      "type": "object"
+    },
+    "refund_receipt_ref": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

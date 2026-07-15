@@ -11,8 +11,6 @@
     "baseUrl": ".",
     "paths": {
       "@runxhq/authoring": ["packages/authoring/src/index.ts"],
-      "@runxhq/cli": ["packages/cli/src/index.ts"],
-      "@runxhq/cli/*": ["packages/cli/src/*"],
       "@runxhq/contracts": ["packages/contracts/src/index.ts"],
       "@runxhq/host-adapters": ["packages/host-adapters/src/index.ts"]
     }

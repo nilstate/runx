@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/nitrosend/campaign_plan/v1.json",
+  "x-runx-packet-id": "nitrosend.campaign_plan.v1",
+  "x-runx-generated-from": "skills/nitrosend/X.yaml#root.runners.send-campaign",
+  "type": "object",
+  "required": [
+    "campaign_plan"
+  ],
+  "properties": {
+    "campaign_plan": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

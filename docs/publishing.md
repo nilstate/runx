@@ -71,6 +71,16 @@ runx login --for publish
 runx registry publish ./skills/<your-skill>/SKILL.md --registry https://api.runx.ai
 ```
 
+If GitHub's browser consent control is unavailable, use the identity already
+authenticated by GitHub CLI:
+
+```bash
+runx login --provider github --for publish --from-gh
+```
+
+This verifies the active `gh` identity once and stores only the resulting
+purpose-scoped runx credential. It does not store the GitHub CLI credential.
+
 For remote publishes the CLI sends a bounded skill package:
 
 - `SKILL.md` is the portable skill contract and is sent as the primary document.
@@ -96,8 +106,9 @@ instead of trusting a client-supplied summary, while keeping local credentials,
 fixtures, source trees, and build trash out of the registry. The local harness
 still runs first for fast feedback.
 
-`runx login --for publish` opens the hosted sign-in flow and stores a
-purpose-scoped public API token in the encrypted local config at
+`runx login --for publish` opens the hosted sign-in flow. Add `--from-gh` to use
+the active GitHub CLI identity without the browser consent step. Both paths store
+a purpose-scoped public API token in the encrypted local config at
 `public.api_token`. The token can publish and report skills, but it cannot move
 money, mutate hosted billing state, or operate unrelated hosted surfaces. Hosted
 CLI commands use token precedence in this order: an explicit `--token` when the

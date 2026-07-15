@@ -1,14 +1,14 @@
 import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
-
-import { runCli } from "../packages/cli/src/index.js";
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixtureRoot = path.join(workspaceRoot, "fixtures", "doctor");
 const check = process.argv.includes("--check");
+const runx = process.env.RUNX_DEV_RUST_CLI_BIN
+  ?? path.join(workspaceRoot, "crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
 
 interface DoctorFixtureCase {
   readonly name: string;
@@ -75,43 +75,16 @@ runners:
     ],
   },
   {
-    name: "file-budget-exceeded",
-    expectedExitCode: 1,
-    files: [
-      file(
-        "packages/cli/src/index.ts",
-        `${Array.from({ length: 3001 }, (_, index) => `line_${index}`).join("\n")}\n`,
-      ),
-    ],
-  },
-  {
     name: "cross-package-reach-in",
     expectedExitCode: 1,
     files: [
-      file("packages/cli/src/index.ts", `import "../../contracts/src/index.js";\n`),
-      file("packages/contracts/src/index.ts", "export const contracts = true;\n"),
+      file("packages/sample/src/index.ts", `import "../../core/src/index.js";\n`),
+      file("packages/core/src/index.ts", "export const core = true;\n"),
     ],
   },
 ];
 
 const expectedFiles = new Set<string>();
-
-class MemoryWritable extends Writable {
-  private readonly chunks: string[] = [];
-
-  override _write(
-    chunk: Buffer | string,
-    _encoding: BufferEncoding,
-    callback: (error?: Error | null) => void,
-  ): void {
-    this.chunks.push(Buffer.isBuffer(chunk) ? chunk.toString("utf8") : chunk);
-    callback();
-  }
-
-  contents(): string {
-    return this.chunks.join("");
-  }
-}
 
 for (const fixtureCase of cases) {
   await writeWorkspace(fixtureCase);
@@ -144,29 +117,24 @@ async function writeWorkspace(fixtureCase: DoctorFixtureCase): Promise<void> {
 async function runDoctorFixture(fixtureCase: DoctorFixtureCase): Promise<unknown> {
   const workspacePath = path.join(fixtureRoot, fixtureCase.name, "workspace");
   if (!existsSync(workspacePath)) {
-    if (check) {
-      throw new Error(
-        `fixture workspace is missing: ${path.relative(workspaceRoot, workspacePath)}`,
-      );
-    }
     await mkdir(workspacePath, { recursive: true });
   }
-  const stdout = new MemoryWritable();
-  const stderr = new MemoryWritable();
-  const exitCode = await runCli(
-    ["doctor", "--json"],
-    { stdin: process.stdin, stdout: stdout as never, stderr: stderr as never },
-    { ...process.env, RUNX_CWD: workspacePath },
-  );
-  if (exitCode !== fixtureCase.expectedExitCode) {
+  const result = spawnSync(runx, ["doctor", "--json"], {
+    cwd: workspacePath,
+    env: { ...process.env, RUNX_CWD: workspacePath },
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== fixtureCase.expectedExitCode) {
     throw new Error(
-      `${fixtureCase.name}: expected exit ${fixtureCase.expectedExitCode}, got ${exitCode}`,
+      `${fixtureCase.name}: expected exit ${fixtureCase.expectedExitCode}, got ${result.status}`,
     );
   }
-  if (stderr.contents() !== "") {
-    throw new Error(`${fixtureCase.name}: expected empty stderr, got ${JSON.stringify(stderr.contents())}`);
+  if (result.stderr !== "") {
+    throw new Error(`${fixtureCase.name}: expected empty stderr, got ${JSON.stringify(result.stderr)}`);
   }
-  return JSON.parse(stdout.contents());
+  return JSON.parse(result.stdout);
 }
 
 async function writeOrCheck(filePath: string, contents: string): Promise<void> {

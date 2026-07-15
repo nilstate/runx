@@ -48,6 +48,10 @@ pub fn parse_skill_plan(args: &[OsString]) -> Result<SkillPlan, String> {
         registry: state.registry,
         expected_digest: state.expected_digest,
         json: state.json,
+        non_interactive: state.non_interactive,
+        skip_operator_context: state.skip_operator_context,
+        full_operator_context: state.full_operator_context,
+        approve_operator_context: state.approve_operator_context,
         inputs: state.inputs,
         local_credential,
     })
@@ -63,10 +67,15 @@ struct SkillParseState {
     registry: Option<String>,
     expected_digest: Option<String>,
     json: bool,
+    non_interactive: bool,
+    skip_operator_context: bool,
+    full_operator_context: bool,
+    approve_operator_context: Option<String>,
     inspect: bool,
     force_run: bool,
     inputs: BTreeMap<String, JsonValue>,
     credential: Option<CredentialBinding>,
+    credential_scopes: Vec<String>,
     credential_profile: Option<String>,
     secret_env: Option<(String, String)>,
 }
@@ -75,7 +84,6 @@ struct CredentialBinding {
     provider: String,
     auth_mode: String,
     material_ref: String,
-    scopes: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -89,6 +97,7 @@ struct CredentialProfilesFile {
 struct CredentialProfile {
     credential: String,
     secret_env: String,
+    scopes: Vec<String>,
 }
 
 fn parse_credential_binding(value: &str) -> Result<CredentialBinding, String> {
@@ -96,31 +105,36 @@ fn parse_credential_binding(value: &str) -> Result<CredentialBinding, String> {
     let provider = non_empty_credential_part(provider)?;
     let (auth_mode, rest) = rest.split_once(':').ok_or_else(credential_usage_error)?;
     let auth_mode = non_empty_credential_part(auth_mode)?;
-    let (material_ref, scopes) = split_material_ref_and_scopes(rest)?;
+    let material_ref = non_empty_credential_part(rest)?;
     Ok(CredentialBinding {
         provider: provider.to_owned(),
         auth_mode: auth_mode.to_owned(),
-        material_ref,
-        scopes,
+        material_ref: material_ref.to_owned(),
     })
 }
 
-fn split_material_ref_and_scopes(value: &str) -> Result<(String, Vec<String>), String> {
-    let value = non_empty_credential_part(value)?;
-    let Some(index) = value.rfind(':') else {
-        return Ok((value.to_owned(), Vec::new()));
-    };
-    if value[index..].starts_with("://") {
-        return Ok((value.to_owned(), Vec::new()));
+fn parse_credential_scope(value: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("runx skill --credential-scope requires a non-empty scope".to_owned());
     }
-    let material_ref = non_empty_credential_part(&value[..index])?.to_owned();
-    let scopes = value[index + 1..]
-        .split(',')
-        .map(str::trim)
-        .filter(|scope| !scope.is_empty())
-        .map(ToOwned::to_owned)
-        .collect();
-    Ok((material_ref, scopes))
+    Ok(value.to_owned())
+}
+
+fn normalized_credential_scopes(scopes: &[String]) -> Result<Vec<String>, String> {
+    if scopes.is_empty() {
+        return Err(
+            "runx skill credential binding requires at least one --credential-scope <scope>"
+                .to_owned(),
+        );
+    }
+    let mut normalized = scopes
+        .iter()
+        .map(|scope| parse_credential_scope(scope))
+        .collect::<Result<Vec<_>, _>>()?;
+    normalized.sort();
+    normalized.dedup();
+    Ok(normalized)
 }
 
 fn non_empty_credential_part(value: &str) -> Result<&str, String> {
@@ -166,38 +180,54 @@ fn finalize_local_credential(
     env: &BTreeMap<String, String>,
     cwd: &Path,
 ) -> Result<Option<LocalCredentialDescriptor>, String> {
-    if let Some(profile) = state.credential_profile.as_ref() {
-        if state.credential.is_some() || state.secret_env.is_some() {
+    if let Some(profile_name) = state.credential_profile.as_ref() {
+        if state.credential.is_some()
+            || state.secret_env.is_some()
+            || !state.credential_scopes.is_empty()
+        {
             return Err(
-                "runx skill --credential-profile cannot be combined with --credential or --secret-env"
+                "runx skill --credential-profile cannot be combined with --credential, --credential-scope, or --secret-env"
                     .to_owned(),
             );
         }
-        let profile = load_credential_profile(profile, env, cwd)?;
+        let profile = load_credential_profile(profile_name, env, cwd)?;
         let credential = parse_credential_binding(&profile.credential)?;
+        let scopes = normalized_credential_scopes(&profile.scopes).map_err(|error| {
+            format!("runx skill credential profile '{profile_name}' is invalid: {error}")
+        })?;
         let secret_env = parse_secret_env_from(&profile.secret_env, |name| env.get(name).cloned())?;
-        return Ok(Some(local_credential_descriptor(&credential, &secret_env)));
+        return Ok(Some(local_credential_descriptor(
+            &credential,
+            &scopes,
+            &secret_env,
+        )));
     }
-    match (&state.credential, &state.secret_env) {
-        (None, None) => Ok(None),
-        (Some(_), None) => {
-            Err("runx skill --credential requires --secret-env <ENV_VAR>".to_owned())
+    let Some(binding) = state.credential.as_ref() else {
+        if !state.credential_scopes.is_empty() {
+            return Err("runx skill --credential-scope requires --credential".to_owned());
         }
-        (binding, Some((env_var, secret))) => {
-            let binding = binding.as_ref().ok_or_else(|| {
+        return match &state.secret_env {
+            None => Ok(None),
+            Some(_) => Err(
                 "runx skill --secret-env requires --credential <provider>:<auth_mode>:<material_ref>"
-                    .to_owned()
-            })?;
-            Ok(Some(local_credential_descriptor(
-                binding,
-                &(env_var.clone(), secret.clone()),
-            )))
-        }
-    }
+                    .to_owned(),
+            ),
+        };
+    };
+    let Some((env_var, secret)) = state.secret_env.as_ref() else {
+        return Err("runx skill --credential requires --secret-env <ENV_VAR>".to_owned());
+    };
+    let scopes = normalized_credential_scopes(&state.credential_scopes)?;
+    Ok(Some(local_credential_descriptor(
+        binding,
+        &scopes,
+        &(env_var.clone(), secret.clone()),
+    )))
 }
 
 fn local_credential_descriptor(
     binding: &CredentialBinding,
+    scopes: &[String],
     secret_env: &(String, String),
 ) -> LocalCredentialDescriptor {
     LocalCredentialDescriptor {
@@ -205,7 +235,7 @@ fn local_credential_descriptor(
         auth_mode: binding.auth_mode.clone(),
         env_var: secret_env.0.clone(),
         material_ref: binding.material_ref.clone(),
-        scopes: binding.scopes.clone(),
+        scopes: scopes.to_vec(),
         secret: secret_env.1.clone(),
     }
 }
@@ -416,6 +446,17 @@ fn parse_skill_arg(
             index += 1;
             state.credential = Some(parse_credential_binding(&string_arg(args, index)?)?);
         }
+        value if value.starts_with("--credential-scope=") => {
+            state.credential_scopes.push(parse_credential_scope(
+                value.trim_start_matches("--credential-scope="),
+            )?);
+        }
+        "--credential-scope" => {
+            index += 1;
+            state
+                .credential_scopes
+                .push(parse_credential_scope(&string_arg(args, index)?)?);
+        }
         value if value.starts_with("--credential-profile=") => {
             state.credential_profile = Some(non_empty_flag_value(
                 "--credential-profile",
@@ -450,7 +491,42 @@ fn parse_skill_arg(
             state.secret_env = Some(parse_secret_env(&string_arg(args, index)?)?);
         }
         "--json" | "-j" => state.json = true,
-        "--non-interactive" => {}
+        value if value.starts_with("--approve-operator-context=") => {
+            state.approve_operator_context = Some(non_empty_flag_value(
+                "--approve-operator-context",
+                value.trim_start_matches("--approve-operator-context="),
+            )?);
+        }
+        "--approve-operator-context" => {
+            index += 1;
+            state.approve_operator_context = Some(non_empty_flag_value(
+                "--approve-operator-context",
+                &string_arg(args, index)?,
+            )?);
+        }
+        value if value.starts_with("--skip-operator-context=") => {
+            state.skip_operator_context = parse_boolean_flag(
+                "--skip-operator-context",
+                value.trim_start_matches("--skip-operator-context="),
+            )?;
+        }
+        value if value.starts_with("--no-operator-context=") => {
+            state.skip_operator_context = parse_boolean_flag(
+                "--no-operator-context",
+                value.trim_start_matches("--no-operator-context="),
+            )?;
+        }
+        "--skip-operator-context" | "--no-operator-context" => {
+            state.skip_operator_context = true;
+        }
+        value if value.starts_with("--full-operator-context=") => {
+            state.full_operator_context = parse_boolean_flag(
+                "--full-operator-context",
+                value.trim_start_matches("--full-operator-context="),
+            )?;
+        }
+        "--full-operator-context" => state.full_operator_context = true,
+        "--non-interactive" => state.non_interactive = true,
         value if value.starts_with("--") => {
             index = parse_direct_input_arg(args, index, value, &mut state.inputs)?;
         }
@@ -475,6 +551,14 @@ fn non_empty_flag_value(flag: &str, value: &str) -> Result<String, String> {
         return Err(format!("runx skill {flag} requires a non-empty value"));
     }
     Ok(value.to_owned())
+}
+
+fn parse_boolean_flag(flag: &str, value: &str) -> Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "true" | "1" => Ok(true),
+        "false" | "0" => Ok(false),
+        _ => Err(format!("runx skill {flag} expects true or false")),
+    }
 }
 
 fn skill_resume_flag_error() -> String {
@@ -508,7 +592,9 @@ mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{SkillAction, SkillParseState, finalize_local_credential};
+    use super::{
+        SkillAction, SkillParseState, finalize_local_credential, parse_credential_binding,
+    };
 
     #[test]
     fn credential_profile_resolves_project_descriptor_and_env_secret() -> Result<(), String> {
@@ -520,8 +606,9 @@ mod tests {
             r#"{
   "profiles": {
     "example": {
-      "credential": "example:bearer:local://example/internal:example.review",
-      "secret_env": "INTERNAL_SYNC_SECRET"
+      "credential": "example:bearer:local://example/internal",
+      "secret_env": "INTERNAL_SYNC_SECRET",
+      "scopes": ["example:review"]
     }
   }
 }
@@ -550,9 +637,49 @@ mod tests {
         assert_eq!(credential.material_ref, "local://example/internal");
         assert_eq!(credential.env_var, "INTERNAL_SYNC_SECRET");
         assert_eq!(credential.secret, "secret-value");
-        assert_eq!(credential.scopes, vec!["example.review"]);
+        assert_eq!(credential.scopes, vec!["example:review"]);
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn credential_descriptor_preserves_colons_and_scopes_are_explicit() -> Result<(), String> {
+        let binding = parse_credential_binding("twitter:oauth1_user:ref:twitter:primary")?;
+        let state = SkillParseState {
+            credential: Some(binding),
+            credential_scopes: vec![
+                "twitter:write".to_owned(),
+                "twitter:read".to_owned(),
+                "twitter:read".to_owned(),
+            ],
+            secret_env: Some(("TWITTER_TOKEN".to_owned(), "secret-value".to_owned())),
+            ..Default::default()
+        };
+
+        let credential =
+            finalize_local_credential(&state, &Default::default(), &std::env::temp_dir())?
+                .ok_or_else(|| "credential did not resolve".to_owned())?;
+
+        assert_eq!(credential.material_ref, "ref:twitter:primary");
+        assert_eq!(credential.scopes, vec!["twitter:read", "twitter:write"]);
+        Ok(())
+    }
+
+    #[test]
+    fn credential_descriptor_does_not_infer_a_trailing_scope() -> Result<(), String> {
+        let binding = parse_credential_binding("twitter:oauth1_user:ref:twitter:read")?;
+        let state = SkillParseState {
+            credential: Some(binding),
+            secret_env: Some(("TWITTER_TOKEN".to_owned(), "secret-value".to_owned())),
+            ..Default::default()
+        };
+
+        let error = finalize_local_credential(&state, &Default::default(), &std::env::temp_dir())
+            .err()
+            .ok_or_else(|| "descriptor-embedded scope unexpectedly resolved".to_owned())?;
+
+        assert!(error.contains("--credential-scope"));
         Ok(())
     }
 
@@ -712,6 +839,97 @@ mod tests {
     }
 
     #[test]
+    fn skip_operator_context_flag_is_not_a_skill_input() -> Result<(), String> {
+        let args = [
+            "skill",
+            "skills/messageboard",
+            "--skip-operator-context",
+            "--input",
+            "title=hello",
+        ]
+        .into_iter()
+        .map(std::ffi::OsString::from)
+        .collect::<Vec<_>>();
+        let plan = super::parse_skill_plan(&args)?;
+
+        assert!(plan.skip_operator_context);
+        assert_eq!(plan.inputs.len(), 1);
+        assert_eq!(
+            plan.inputs.get("title"),
+            Some(&runx_contracts::JsonValue::String("hello".to_owned()))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn approve_operator_context_flag_is_not_a_skill_input() -> Result<(), String> {
+        let args = [
+            "skill",
+            "skills/messageboard",
+            "--approve-operator-context",
+            "sha256:abc123",
+            "--non-interactive",
+            "--input",
+            "title=hello",
+        ]
+        .into_iter()
+        .map(std::ffi::OsString::from)
+        .collect::<Vec<_>>();
+        let plan = super::parse_skill_plan(&args)?;
+
+        assert_eq!(
+            plan.approve_operator_context.as_deref(),
+            Some("sha256:abc123")
+        );
+        assert!(plan.non_interactive);
+        assert_eq!(plan.inputs.len(), 1);
+        assert!(plan.inputs.contains_key("title"));
+        Ok(())
+    }
+
+    #[test]
+    fn full_operator_context_flag_is_not_a_skill_input() -> Result<(), String> {
+        let args = [
+            "skill",
+            "skills/messageboard",
+            "--full-operator-context",
+            "--input",
+            "title=hello",
+        ]
+        .into_iter()
+        .map(std::ffi::OsString::from)
+        .collect::<Vec<_>>();
+        let plan = super::parse_skill_plan(&args)?;
+
+        assert!(plan.full_operator_context);
+        assert_eq!(plan.inputs.len(), 1);
+        assert!(plan.inputs.contains_key("title"));
+        Ok(())
+    }
+
+    #[test]
+    fn inline_operator_context_flags_are_not_skill_inputs() -> Result<(), String> {
+        let args = [
+            "skill",
+            "skills/messageboard",
+            "--full-operator-context=true",
+            "--skip-operator-context=false",
+            "--input",
+            "title=hello",
+        ]
+        .into_iter()
+        .map(std::ffi::OsString::from)
+        .collect::<Vec<_>>();
+        let plan = super::parse_skill_plan(&args)?;
+
+        assert!(plan.full_operator_context);
+        assert!(!plan.skip_operator_context);
+        assert_eq!(plan.inputs.len(), 1);
+        assert!(plan.inputs.contains_key("title"));
+        Ok(())
+    }
+
+    #[test]
     fn run_flag_executes_zero_input_runner() -> Result<(), String> {
         let args = ["skill", "skills/ops-desk", "refresh", "--run"]
             .into_iter()
@@ -746,13 +964,11 @@ mod tests {
 
     #[test]
     fn credential_parser_keeps_uri_material_ref_intact() -> Result<(), String> {
-        let binding = super::parse_credential_binding(
-            "frantic:bearer:local://frantic/internal:frantic.review,frantic.write",
-        )?;
+        let binding =
+            super::parse_credential_binding("frantic:bearer:local://frantic/internal:primary")?;
         assert_eq!(binding.provider, "frantic");
         assert_eq!(binding.auth_mode, "bearer");
-        assert_eq!(binding.material_ref, "local://frantic/internal");
-        assert_eq!(binding.scopes, vec!["frantic.review", "frantic.write"]);
+        assert_eq!(binding.material_ref, "local://frantic/internal:primary");
         Ok(())
     }
 

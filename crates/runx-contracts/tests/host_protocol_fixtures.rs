@@ -4,6 +4,8 @@ use runx_contracts::{
     ExecutionEvent, HostRunResult, HostRunState, ResolutionRequest, ResolutionResponse,
 };
 
+use crate::fixture_support::roundtrip;
+
 const FIXTURES: &[&str] = &[
     include_str!("../../../fixtures/contracts/host-protocol/event-admitted.json"),
     include_str!("../../../fixtures/contracts/host-protocol/event-auth_resolved.json"),
@@ -66,14 +68,4 @@ fn assert_roundtrip(fixture: Fixture) -> Result<(), serde_json::Error> {
         FixtureKind::RunResult => roundtrip::<HostRunResult>(fixture.expected),
         FixtureKind::RunState => roundtrip::<HostRunState>(fixture.expected),
     }
-}
-
-fn roundtrip<T>(expected: serde_json::Value) -> Result<(), serde_json::Error>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    let parsed: T = serde_json::from_value(expected.clone())?;
-    let actual = serde_json::to_value(parsed)?;
-    assert_eq!(actual, expected);
-    Ok(())
 }

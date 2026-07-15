@@ -40,6 +40,7 @@ pub(crate) struct RuntimeAct {
     summary: NonEmptyString,
     criterion_id: NonEmptyString,
     reason_code: NonEmptyString,
+    verified_bindings: Vec<CriterionBinding>,
 }
 
 impl RuntimeAct {
@@ -63,29 +64,45 @@ impl RuntimeAct {
             summary: format!("Executed graph step {step_id}").into(),
             criterion_id: "process_exit".into(),
             reason_code: "process_exit".into(),
+            verified_bindings: Vec::new(),
         }
+    }
+
+    /// Bind native verification evidence into the act opened for this step.
+    /// Criteria are generic contract proofs; the runtime receipt layer does not
+    /// need provider- or skill-specific knowledge.
+    pub(crate) fn with_verified_criteria(
+        mut self,
+        criteria: Vec<SuccessCriterion>,
+        bindings: Vec<CriterionBinding>,
+    ) -> Self {
+        self.intent.success_criteria.extend(criteria);
+        self.verified_bindings = bindings;
+        self
     }
 
     /// Close the act with its execution outcome, producing the sealed act body.
     pub(crate) fn close(self, outcome: ActOutcome<'_>) -> ReceiptAct {
         let mut artifact_refs = outcome.refs.artifact_refs.clone();
         artifact_refs.extend(outcome.refs.surface_refs.iter().cloned());
+        let mut criterion_bindings = vec![CriterionBinding {
+            criterion_id: self.criterion_id,
+            status: if outcome.succeeded {
+                CriterionStatus::Verified
+            } else {
+                CriterionStatus::Failed
+            },
+            evidence_refs: outcome.refs.evidence_refs.clone(),
+            verification_refs: outcome.refs.verification_refs.clone(),
+            summary: Some(outcome.summary.clone().into()),
+        }];
+        criterion_bindings.extend(self.verified_bindings);
         ReceiptAct {
             id: self.id,
             form: self.form,
             intent: self.intent,
             summary: self.summary,
-            criterion_bindings: vec![CriterionBinding {
-                criterion_id: self.criterion_id,
-                status: if outcome.succeeded {
-                    CriterionStatus::Verified
-                } else {
-                    CriterionStatus::Failed
-                },
-                evidence_refs: outcome.refs.evidence_refs.clone(),
-                verification_refs: outcome.refs.verification_refs.clone(),
-                summary: Some(outcome.summary.clone().into()),
-            }],
+            criterion_bindings,
             by: None,
             source_refs: outcome.refs.source_refs.clone(),
             target_refs: Vec::new(),

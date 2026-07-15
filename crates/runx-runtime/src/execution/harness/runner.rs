@@ -65,18 +65,10 @@ pub enum HarnessReplayError {
         expected: String,
         actual: String,
     },
-    #[error(
-        "{message}; receipt={receipt_id}; disposition={disposition}; reason={reason_code}; summary={summary}; skill_stdout={skill_stdout}; skill_stderr={skill_stderr}"
-    )]
-    ExpectationFailed {
-        message: String,
-        receipt_id: String,
-        disposition: String,
-        reason_code: String,
-        summary: String,
-        skill_stdout: String,
-        skill_stderr: String,
-    },
+    // Boxed: the seven diagnostic strings would otherwise dominate the size of
+    // every Result carrying this enum (clippy::result_large_err).
+    #[error(transparent)]
+    ExpectationFailed(Box<HarnessExpectationFailure>),
     #[error("receipt digest failed: {message}")]
     ReceiptDigest { message: String },
     #[error("receipt proof failed for {receipt_id}: {findings}")]
@@ -92,6 +84,20 @@ pub enum HarnessReplayError {
         "native cli-tool harness replay is unavailable because runx-runtime was built without the cli-tool feature"
     )]
     CliToolFeatureDisabled,
+}
+
+#[derive(Debug, Error)]
+#[error(
+    "{message}; receipt={receipt_id}; disposition={disposition}; reason={reason_code}; summary={summary}; skill_stdout={skill_stdout}; skill_stderr={skill_stderr}"
+)]
+pub struct HarnessExpectationFailure {
+    pub message: String,
+    pub receipt_id: String,
+    pub disposition: String,
+    pub reason_code: String,
+    pub summary: String,
+    pub skill_stdout: String,
+    pub skill_stderr: String,
 }
 
 impl From<crate::execution::skill_front::SkillRunError> for HarnessReplayError {
@@ -168,7 +174,7 @@ fn fixture_runtime_options_from_env(
 ) -> Result<RuntimeOptions, HarnessReplayError> {
     Ok(RuntimeOptions {
         created_at: crate::time::DEFAULT_CREATED_AT.to_owned(),
-        ..RuntimeOptions::from_env(env)?
+        ..RuntimeOptions::from_env_or_local_development(env)?
     })
 }
 
@@ -209,7 +215,7 @@ fn expectation_error_with_output(
     error: HarnessReplayError,
     output: &HarnessReplayOutput,
 ) -> HarnessReplayError {
-    HarnessReplayError::ExpectationFailed {
+    HarnessReplayError::ExpectationFailed(Box::new(HarnessExpectationFailure {
         message: error.to_string(),
         receipt_id: output.receipt.id.to_string(),
         disposition: format!("{:?}", output.receipt.seal.disposition),
@@ -225,7 +231,7 @@ fn expectation_error_with_output(
             .as_ref()
             .map(|skill_output| truncate_diagnostic(&skill_output.stderr))
             .unwrap_or_default(),
-    }
+    }))
 }
 
 fn truncate_diagnostic(value: &str) -> String {
@@ -553,6 +559,7 @@ fn skill_fixture_invocation(
     let runner = load_harness_runner(&skill_dir, fixture.runner.as_deref())?;
     let mut env = options.env.clone();
     env.extend(fixture.env.clone());
+    crate::services::merge_inferred_tool_roots(&mut env, &skill_dir);
     let skill_name = if fixture.runner.is_some() {
         runner
             .as_ref()

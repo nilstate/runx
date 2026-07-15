@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use runx_contracts::JsonValue;
-use runx_runtime::ConfigError;
 use runx_runtime::registry::{
     HttpMethod, HttpRequest, RuntimeHttpError, RuntimeHttpHeader, Transport,
 };
@@ -33,9 +32,8 @@ pub enum PublishCliError {
     UnknownFlag(String),
     ReadReceipt { path: String, message: String },
     InvalidReceiptJson { path: String, message: String },
-    MissingToken,
     TransportInit(RuntimeHttpError),
-    Config(ConfigError),
+    Environment(String),
     Publish(PublishError),
     Serialize(String),
 }
@@ -55,14 +53,10 @@ impl fmt::Display for PublishCliError {
             Self::InvalidReceiptJson { path, message } => {
                 write!(formatter, "receipt {path} is not valid JSON: {message}")
             }
-            Self::MissingToken => write!(
-                formatter,
-                "missing public API token; run `runx login`, pass --token, or set RUNX_PUBLIC_API_TOKEN"
-            ),
             Self::TransportInit(error) => {
                 write!(formatter, "failed to initialize HTTP transport: {error}")
             }
-            Self::Config(error) => write!(formatter, "{error}"),
+            Self::Environment(error) => write!(formatter, "{error}"),
             Self::Publish(error) => write!(formatter, "{error}"),
             Self::Serialize(message) => {
                 write!(formatter, "failed to serialize publish result: {message}")
@@ -79,9 +73,9 @@ impl From<PublishError> for PublishCliError {
     }
 }
 
-impl From<ConfigError> for PublishCliError {
-    fn from(error: ConfigError) -> Self {
-        Self::Config(error)
+impl From<crate::public_api::ApiEnvironmentError> for PublishCliError {
+    fn from(error: crate::public_api::ApiEnvironmentError) -> Self {
+        Self::Environment(error.to_string())
     }
 }
 
@@ -268,15 +262,20 @@ fn run_publish_command(
     cwd: &Path,
 ) -> Result<String, PublishCliError> {
     let receipt = read_receipt_json(&plan.receipt_path)?;
-    let base_url = resolve_public_api_base_url(plan, env);
-    let token = resolve_publish_token(plan, env, cwd)?.ok_or(PublishCliError::MissingToken)?;
+    let environment = crate::public_api::ApiEnvironment::resolve(
+        plan.api_base_url.as_deref(),
+        plan.token.as_deref(),
+        env,
+        cwd,
+    )?;
     let transport = crate::public_api::transport(allow_local_api(plan, env))
         .map_err(PublishCliError::TransportInit)?;
+    let authenticated = environment.authenticate(&transport)?;
     let response = publish_receipt(
         &transport,
         &PublishOptions {
-            base_url: &base_url,
-            token: &token,
+            base_url: authenticated.base_url(),
+            token: authenticated.token(),
             receipt: &receipt,
         },
     )?;
@@ -284,11 +283,7 @@ fn run_publish_command(
 }
 
 fn allow_local_api(plan: &PublishPlan, env: &BTreeMap<String, String>) -> bool {
-    crate::public_api::private_network_allowed(
-        plan.allow_local_api,
-        env,
-        "RUNX_PUBLISH_ALLOW_LOCAL_API",
-    )
+    crate::public_api::private_network_allowed(plan.allow_local_api, env)
 }
 
 fn read_receipt_json(path: &PathBuf) -> Result<JsonValue, PublishCliError> {
@@ -300,18 +295,6 @@ fn read_receipt_json(path: &PathBuf) -> Result<JsonValue, PublishCliError> {
         path: path.display().to_string(),
         message: error.to_string(),
     })
-}
-
-fn resolve_public_api_base_url(plan: &PublishPlan, env: &BTreeMap<String, String>) -> String {
-    crate::public_api::resolve_base_url(plan.api_base_url.as_deref(), env)
-}
-
-fn resolve_publish_token(
-    plan: &PublishPlan,
-    env: &BTreeMap<String, String>,
-    cwd: &Path,
-) -> Result<Option<String>, PublishCliError> {
-    crate::public_api_token::resolve(plan.token.as_deref(), env, cwd).map_err(PublishCliError::from)
 }
 
 fn publish_receipt<T: Transport>(

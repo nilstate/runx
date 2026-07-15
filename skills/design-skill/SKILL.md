@@ -15,12 +15,12 @@ This is a composite graph that composes three reusable builder capabilities:
 high-level goal and produces everything needed to implement and test a
 new skill.
 
-The quality bar is not just structural completeness. The result should read
-like a crisp first-party runx skill proposal that a maintainer could plausibly
-review for the catalog:
+Structural completeness is not enough. The result should read like a crisp
+first-party runx skill proposal that a maintainer could plausibly review for the
+catalog:
 
 - treat "no new skill" as a valid high-quality outcome when the job belongs in
-  Sourcey, `draft-content`, an existing skill, or an existing graph
+  Sourcey, `ghostwrite`, an existing skill, or an existing graph
 - name the concrete operator, maintainer, or workflow pain being solved
 - explain why the current runx catalog does not already cover the job through
   an existing skill or graph
@@ -55,25 +55,6 @@ portable runx nouns, not provider nouns. Prefer `thread_title`,
 adapter-shaped fields such as issue ids, thread URLs, or provider-specific
 review handles.
 
-## Quality Profile
-
-- Purpose: turn a real opportunity into a bounded, testable runx skill or graph
-  package proposal.
-- Audience: runx maintainers deciding whether to implement, reject, or reshape
-  the proposed catalog surface.
-- Artifact contract: SKILL.md proposal, execution plan when needed, inputs,
-  outputs, sample output artifact, boundaries, non-goals, harness fixtures,
-  acceptance checks, catalog fit, and maintainer decisions.
-- Evidence bar: use the objective, thread, current catalog, decomposition, and
-  prior-art findings. Missing source or catalog evidence must become a caveat
-  or stop state.
-- Voice bar: first-party maintainer proposal. Do not write like a builder
-  transcript, execution trace, or self-description.
-- Strategic bar: name the durable runx capability this adds and why reuse or
-  amendment is not enough.
-- Stop conditions: emit `not_first_party`, `needs_more_evidence`, or
-  `needs_review` rather than designing a skill whose pain, audience, contract,
-  or strategic value is weak.
 
 ## What this skill does
 

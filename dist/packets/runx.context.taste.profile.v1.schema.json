@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/context/taste_profile/v1.json",
+  "x-runx-packet-id": "runx.context.taste_profile.v1",
+  "x-runx-generated-from": "skills/taste-profile/X.yaml#root.runners.profile",
+  "type": "object",
+  "required": [
+    "applicability",
+    "decision",
+    "evidence",
+    "receipt_notes",
+    "redactions",
+    "stop_conditions",
+    "subject",
+    "taste_profile"
+  ],
+  "properties": {
+    "applicability": {
+      "type": "object"
+    },
+    "decision": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "receipt_notes": {
+      "type": "object"
+    },
+    "redactions": {
+      "type": "array"
+    },
+    "stop_conditions": {
+      "type": "array"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "taste_profile": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

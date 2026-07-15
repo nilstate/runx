@@ -169,11 +169,7 @@ fn resolve_parser_path(path: &Path, env: &BTreeMap<String, String>, cwd: &Path) 
     if path.is_absolute() {
         return path.to_path_buf();
     }
-    env.get("RUNX_CWD")
-        .map(PathBuf::from)
-        .or_else(|| env.get("INIT_CWD").map(PathBuf::from))
-        .unwrap_or_else(|| cwd.to_path_buf())
-        .join(path)
+    runx_runtime::resolve_runx_workspace_base(env, cwd).join(path)
 }
 
 fn write_error(error: &ParserCliError, json: bool) -> ExitCode {

@@ -76,7 +76,9 @@ fn issue_intake_generated_fixtures_keep_product_skill_source_unchanged()
 -> Result<(), Box<dyn std::error::Error>> {
     let skill = std::fs::read_to_string(repo_root().join("skills/issue-intake/SKILL.md"))?;
     assert!(skill.contains("name: issue-intake"));
-    assert!(skill.contains("Artifact contract: `intake_report`, `change_set`"));
+    assert!(skill.contains("Always emit `change_set` alongside `intake_report`."));
+    assert!(skill.contains("Also emit `signal` when a source event is admitted."));
+    assert!(skill.contains("Close the Runx turn after intake is complete"));
 
     for case_name in [
         "bounded-docs-fix",

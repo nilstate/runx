@@ -4,23 +4,36 @@
   "x-runx-packet-id": "runx.github_sync.v1",
   "type": "object",
   "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["ready", "blocked", "refused", "needs_agent"]
+    },
     "repo": { "type": "string", "minLength": 1 },
     "direction": {
       "type": "string",
       "enum": ["pull", "push"]
     },
-    "resources": {
-      "type": "object",
-      "additionalProperties": true
+    "resources_touched": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
     },
-    "scope": { "type": "string" },
-    "cursor": {
-      "type": "object",
-      "additionalProperties": true
+    "diff_summary": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
     },
-    "planned_actions": { "type": "array" },
-    "stop_conditions": { "type": "array" }
+    "scope_used": { "type": "string", "minLength": 1 },
+    "gates": { "type": "object", "additionalProperties": true },
+    "blockers": { "type": "array", "items": { "type": "string" } }
   },
-  "required": ["repo", "direction", "resources", "scope"],
-  "additionalProperties": true
+  "required": [
+    "decision",
+    "repo",
+    "direction",
+    "resources_touched",
+    "diff_summary",
+    "scope_used",
+    "gates",
+    "blockers"
+  ],
+  "additionalProperties": false
 }

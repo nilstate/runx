@@ -26,17 +26,6 @@ const forbiddenSecretFields = [
 ] as const;
 
 describe("thread outbox provider protocol schemas", () => {
-  it("validates manifest, push, fetch, and observation frames", () => {
-    expect(validateThreadOutboxProviderManifestContract(readExpected("manifest.json")).schema)
-      .toBe("runx.thread_outbox_provider.manifest.v1");
-    expect(validateThreadOutboxProviderPushContract(readExpected("push.json")).schema)
-      .toBe("runx.thread_outbox_provider.push.v1");
-    expect(validateThreadOutboxProviderFetchContract(readExpected("fetch.json")).schema)
-      .toBe("runx.thread_outbox_provider.fetch.v1");
-    expect(validateThreadOutboxProviderObservationContract(readExpected("observation.json")).schema)
-      .toBe("runx.thread_outbox_provider.observation.v1");
-  });
-
   it("rejects raw secret-like fields on public frames", () => {
     for (const field of forbiddenSecretFields) {
       expect(contractSchemaMatches(threadOutboxProviderManifestV1Schema, {

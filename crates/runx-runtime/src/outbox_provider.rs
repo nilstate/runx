@@ -110,9 +110,9 @@ impl ThreadOutboxProviderProcessSupervisor {
                 self.options.output_limit_bytes,
             )
             .args(manifest.transport.args.clone().unwrap_or_default())
-            .env(secret_env_map(credential_delivery))
+            .env(provider_process_env(credential_delivery))
             .stdin(Some(ProcessStdin::new(
-                request_bytes(&request)?,
+                request_bytes(request)?,
                 "writing thread outbox provider request",
             )))
             .timeout(Some(Duration::from_millis(self.options.timeout_ms)))
@@ -162,7 +162,7 @@ impl ThreadOutboxProviderProcessSupervisor {
         }
         let provider_response = parse_provider_response(&output.stdout.bytes, credential_delivery)?;
         let observation = provider_response.observation;
-        validate_observation(manifest, &request, &observation)?;
+        validate_observation(manifest, request, &observation)?;
         Ok(ThreadOutboxProviderProcessOutcome {
             observation,
             provider_output: provider_response.output,
@@ -556,14 +556,35 @@ fn current_dir() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
-fn secret_env_map(
+fn provider_process_env(
     credential_delivery: &CredentialDelivery,
 ) -> std::collections::BTreeMap<String, String> {
-    credential_delivery
-        .secret_env()
-        .iter()
-        .map(|(key, value)| (key.to_owned(), value.to_owned()))
-        .collect()
+    provider_process_env_from(credential_delivery, |key| std::env::var(key).ok())
+}
+
+fn provider_process_env_from(
+    credential_delivery: &CredentialDelivery,
+    mut value_for_key: impl FnMut(&str) -> Option<String>,
+) -> std::collections::BTreeMap<String, String> {
+    let mut env = [
+        "PATH",
+        "SystemRoot",
+        "PATHEXT",
+        "HOME",
+        "TMPDIR",
+        "TMP",
+        "TEMP",
+    ]
+    .into_iter()
+    .filter_map(|key| value_for_key(key).map(|value| (key.to_owned(), value)))
+    .collect::<std::collections::BTreeMap<_, _>>();
+    env.extend(
+        credential_delivery
+            .secret_env()
+            .iter()
+            .map(|(key, value)| (key.to_owned(), value.to_owned())),
+    );
+    env
 }
 
 fn json_error(
@@ -586,4 +607,35 @@ pub fn thread_outbox_provider_forbidden_secret_fields() -> BTreeSet<&'static str
         "password",
         "authorization",
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::provider_process_env_from;
+    use crate::credentials::CredentialDelivery;
+
+    #[test]
+    fn provider_process_env_preserves_host_paths_without_leaking_ambient_secrets() {
+        let env = provider_process_env_from(&CredentialDelivery::none(), |key| match key {
+            "PATH" => Some("/opt/runx/bin:/usr/bin".to_owned()),
+            "HOME" => Some("/private/operator-home".to_owned()),
+            "TMPDIR" => Some("/private/operator-tmp".to_owned()),
+            "AWS_SECRET_ACCESS_KEY" => Some("must-not-cross-boundary".to_owned()),
+            _ => None,
+        });
+
+        assert_eq!(
+            env.get("PATH").map(String::as_str),
+            Some("/opt/runx/bin:/usr/bin")
+        );
+        assert_eq!(
+            env.get("HOME").map(String::as_str),
+            Some("/private/operator-home")
+        );
+        assert_eq!(
+            env.get("TMPDIR").map(String::as_str),
+            Some("/private/operator-tmp")
+        );
+        assert!(!env.contains_key("AWS_SECRET_ACCESS_KEY"));
+    }
 }

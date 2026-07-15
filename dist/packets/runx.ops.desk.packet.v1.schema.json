@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/ops_desk/packet/v1.json",
+  "x-runx-packet-id": "runx.ops_desk.packet.v1",
+  "x-runx-generated-from": "skills/ops-desk/X.yaml#root.runners.operate",
+  "type": "object",
+  "required": [
+    "ops_desk_packet"
+  ],
+  "properties": {
+    "ops_desk_packet": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

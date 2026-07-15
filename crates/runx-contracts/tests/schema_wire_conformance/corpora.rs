@@ -1183,8 +1183,6 @@ pub(super) fn agent_context_envelope_corpus() -> Vec<(&'static str, Value)> {
             });
             v["voice_profile"] =
                 json!({ "root_path": "/r", "path": "voice.md", "sha256": "abc", "content": "" });
-            v["quality_profile"] =
-                json!({ "source": "SKILL.md#quality-profile", "sha256": "abc", "content": "" });
             v["execution_location"] =
                 json!({ "skill_directory": "/skills/demo", "tool_roots": ["/tools"] });
             v["output"] =

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/policy_proposal/v1.json",
+  "x-runx-packet-id": "runx.policy_proposal.v1",
+  "x-runx-generated-from": "skills/policy-author/X.yaml#root.runners.author",
+  "type": "object",
+  "required": [
+    "policy_proposal"
+  ],
+  "properties": {
+    "policy_proposal": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

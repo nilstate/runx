@@ -89,7 +89,7 @@ harness:
                 context_from: []
                 description: Produce a bounded research packet on the ecosystem topic.
               - id: draft-brief
-                skill: ../draft-content
+                skill: ../ghostwrite
                 scopes:
                   - runx:content:draft
                 mutating: false
@@ -109,7 +109,7 @@ harness:
             required_skills:
               - name: research
                 exists: true
-              - name: draft-content
+              - name: ghostwrite
                 exists: true
             open_questions: []
       expect:
@@ -294,7 +294,10 @@ runners:
     task: work-plan
     outputs:
       change_set: object
-      harness_context: object
+      harness_context:
+        type: object
+        required: false
+        description: Preserved harness context when one was supplied.
       objective_summary: string
       workspace_change_plan: object
       orchestration_steps: array

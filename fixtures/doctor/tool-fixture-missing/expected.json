@@ -9,6 +9,7 @@
   "diagnostics": [
     {
       "id": "runx.tool.fixture.missing",
+      "instance_id": "sha256:12bb579c3621d0ac52740cfeeb39a8aec8c7a850916a3c416de97482bcbee041",
       "severity": "error",
       "title": "Tool has no deterministic fixture",
       "message": "Tool demo.echo declares a manifest but has no deterministic fixture.",
@@ -20,8 +21,8 @@
         "path": "tools/demo/echo/manifest.json"
       },
       "evidence": {
-        "fixture_count": 0,
-        "expected_location": "tools/demo/echo/fixtures"
+        "expected_location": "tools/demo/echo/fixtures",
+        "fixture_count": 0
       },
       "repairs": [
         {
@@ -31,8 +32,7 @@
           "risk": "low",
           "requires_human_review": false
         }
-      ],
-      "instance_id": "sha256:12bb579c3621d0ac52740cfeeb39a8aec8c7a850916a3c416de97482bcbee041"
+      ]
     }
   ]
 }

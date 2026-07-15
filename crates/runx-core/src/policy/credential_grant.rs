@@ -309,46 +309,56 @@ mod tests {
     }
 
     #[test]
-    fn non_object_connected_auth_is_rejected() {
+    fn non_object_connected_auth_is_rejected() -> Result<(), Box<dyn std::error::Error>> {
         let auth = JsonValue::String("github".to_owned());
 
-        let error = credential_grant_requirement(Some(&auth)).unwrap_err();
+        let Err(error) = credential_grant_requirement(Some(&auth)) else {
+            return Err("non-object connected auth must be rejected".into());
+        };
 
         assert_eq!(
             error.message(),
             "connected auth must be an object, null, or false"
         );
+        Ok(())
     }
 
     #[test]
-    fn connected_auth_requires_provider() {
+    fn connected_auth_requires_provider() -> Result<(), Box<dyn std::error::Error>> {
         let auth = JsonValue::Object(JsonObject::from_iter([(
             "scopes".to_owned(),
             JsonValue::Array(vec![JsonValue::String("repo:read".to_owned())]),
         )]));
 
-        let error = credential_grant_requirement(Some(&auth)).unwrap_err();
+        let Err(error) = credential_grant_requirement(Some(&auth)) else {
+            return Err("connected auth without provider must be rejected".into());
+        };
 
         assert_eq!(error.message(), "connected auth provider is required");
+        Ok(())
     }
 
     #[test]
-    fn connected_auth_requires_non_empty_scopes() {
+    fn connected_auth_requires_non_empty_scopes() -> Result<(), Box<dyn std::error::Error>> {
         let auth = JsonValue::Object(JsonObject::from_iter([(
             "provider".to_owned(),
             JsonValue::String("github".to_owned()),
         )]));
 
-        let error = credential_grant_requirement(Some(&auth)).unwrap_err();
+        let Err(error) = credential_grant_requirement(Some(&auth)) else {
+            return Err("connected auth without scopes must be rejected".into());
+        };
 
         assert_eq!(
             error.message(),
             "connected auth scopes must include at least one non-empty string"
         );
+        Ok(())
     }
 
     #[test]
-    fn connected_auth_scope_values_must_be_non_empty_strings() {
+    fn connected_auth_scope_values_must_be_non_empty_strings()
+    -> Result<(), Box<dyn std::error::Error>> {
         let auth = JsonValue::Object(JsonObject::from_iter([
             (
                 "provider".to_owned(),
@@ -360,12 +370,15 @@ mod tests {
             ),
         ]));
 
-        let error = credential_grant_requirement(Some(&auth)).unwrap_err();
+        let Err(error) = credential_grant_requirement(Some(&auth)) else {
+            return Err("connected auth with empty scope strings must be rejected".into());
+        };
 
         assert_eq!(
             error.message(),
             "connected auth scopes cannot include empty strings"
         );
+        Ok(())
     }
 
     fn github_repo_read_requirement() -> CredentialGrantRequirement {

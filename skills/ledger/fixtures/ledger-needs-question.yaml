@@ -23,7 +23,7 @@ caller:
         breaks: []
       summary: No audit question was provided, so there is nothing to query against the ledger.
 expect:
-  status: needs_agent
+  status: sealed
   receipt:
     schema: runx.receipt.v1
 metadata:

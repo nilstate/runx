@@ -123,6 +123,33 @@
       ]
     },
     {
+      "id": "connect.execute",
+      "commandId": "connect",
+      "mode": "execute",
+      "argv": [
+        "connect",
+        "list",
+        "--api-base-url",
+        "$FIXTURE_CONNECT_API",
+        "--token",
+        "rxk_fixture",
+        "--allow-local-api",
+        "--json"
+      ],
+      "expectedExitCode": 0,
+      "expectJson": true,
+      "stdoutIncludes": [
+        "\"principal_id\": \"fixture-user\"",
+        "\"grants\""
+      ],
+      "stderrIncludes": [],
+      "proves": [
+        "public-api",
+        "connect",
+        "cli-presentation"
+      ]
+    },
+    {
       "id": "new.validate",
       "commandId": "new",
       "mode": "validate",

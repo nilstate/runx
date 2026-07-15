@@ -1,0 +1,23 @@
+name: list-stream-heads-empty
+kind: skill
+target: ..
+runner: list_stream_heads
+inputs:
+  data_source_ref: local://runx-data-store/list-stream-heads-fixture
+  store_id: data-store-list-stream-heads-v1
+  resource: generic_events
+  event_types:
+    - item.created
+  limit: 10
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - read
+metadata:
+  public_skill: data-store
+  source_case: list-stream-heads-empty
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: list_stream_heads

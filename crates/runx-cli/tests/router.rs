@@ -1,4 +1,5 @@
 use runx_cli::config::{ConfigAction, ConfigPlan};
+use runx_cli::connect::{ConnectAction, ConnectPlan};
 use runx_cli::export::{ExportPlan, Target};
 use runx_cli::kernel::{KernelInputSource, KernelPlan};
 use runx_cli::login::LoginPlan;
@@ -10,8 +11,9 @@ use runx_cli::resume::ResumePlan;
 use runx_cli::router::{
     AddUrlPlan, DevPlan, DoctorMode, DoctorPlan, FilterMode, HarnessPlan, HistoryPlan, InitPlan,
     JsonErrorPlan, ListKind, ListPlan, NewPlan, RouterAction, ToolAction, ToolPlan, add_help_text,
-    help_text, history_help_text, list_help_text, login_help_text, publish_help_text,
-    registry_help_text, route_args, skill_help_text, verify_help_text,
+    connect_help_text, harness_help_text, help_text, history_help_text, list_help_text,
+    login_help_text, publish_help_text, registry_help_text, route_args, skill_help_text,
+    verify_help_text,
 };
 use runx_cli::skill::{SkillAction, SkillPlan};
 use std::fs;
@@ -35,7 +37,7 @@ fn top_level_help_and_version_are_native() {
     );
     assert_help_line(
         &help,
-        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --secret-env NAME] [-R dir]",
+        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--approve-operator-context digest] [--full-operator-context] [--skip-operator-context] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --credential-scope scope --secret-env NAME] [-R dir]",
     );
     assert_help_line(
         &help,
@@ -61,11 +63,11 @@ fn top_level_help_and_version_are_native() {
     );
     assert_help_line(
         &help,
-        "runx login [--provider github|google|gitlab] [--for default|publish] [--api-base-url url] [--allow-local-api] [-j|--json]",
+        "runx login [--provider github|google|gitlab] [--for default|publish] [--from-gh] [--api-base-url url] [--allow-local-api] [-j|--json]",
     );
-    assert!(
-        !help.contains("runx connect"),
-        "native OSS help must not advertise the removed connect brokerage surface"
+    assert_help_line(
+        &help,
+        "runx connect list|start|status|invoke|revoke ... [-j|--json]",
     );
     assert!(
         !help.contains("runx harness <fixture.yaml|skill-dir|SKILL.md>"),
@@ -99,10 +101,12 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
     );
     assert_eq!(plan(&["publish", "--help"]), RouterAction::PrintPublishHelp);
     assert_eq!(plan(&["publish", "-h"]), RouterAction::PrintPublishHelp);
+    assert_eq!(plan(&["harness", "--help"]), RouterAction::PrintHarnessHelp);
+    assert_eq!(plan(&["harness", "-h"]), RouterAction::PrintHarnessHelp);
 
     assert_help_line(
         &skill_help_text(),
-        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --secret-env NAME] [-R dir]",
+        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--approve-operator-context digest] [--full-operator-context] [--skip-operator-context] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --credential-scope scope --secret-env NAME] [-R dir]",
     );
     assert_help_line(
         &skill_help_text(),
@@ -124,6 +128,11 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
         &publish_help_text(),
         "runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [-j|--json]",
     );
+    assert_help_line(
+        &harness_help_text(),
+        "runx harness <fixture.yaml...|skill-dir|SKILL.md> [-R dir] [-j|--json]",
+    );
+    assert!(harness_help_text().contains("inline harness.cases and sorted fixtures/*.yaml"));
 }
 
 #[test]
@@ -132,6 +141,7 @@ fn documented_command_help_is_native() {
     assert_eq!(plan(&["add", "-h"]), RouterAction::PrintAddHelp);
     assert_eq!(plan(&["list", "--help"]), RouterAction::PrintListHelp);
     assert_eq!(plan(&["login", "--help"]), RouterAction::PrintLoginHelp);
+    assert_eq!(plan(&["connect", "--help"]), RouterAction::PrintConnectHelp);
     assert_eq!(
         plan(&["registry", "--help"]),
         RouterAction::PrintRegistryHelp
@@ -149,7 +159,11 @@ fn documented_command_help_is_native() {
     );
     assert_help_line(
         &login_help_text(),
-        "runx login [--provider github|google|gitlab] [--for default|publish] [--api-base-url url] [--allow-local-api] [-j|--json]",
+        "runx login [--provider github|google|gitlab] [--for default|publish] [--from-gh] [--api-base-url url] [--allow-local-api] [-j|--json]",
+    );
+    assert_help_line(
+        &connect_help_text(),
+        "runx connect invoke --grant <grant-id> --operation <operation> [--input <json-object>] [-j|--json]",
     );
     assert_help_line(
         &registry_help_text(),
@@ -167,6 +181,7 @@ fn routes_login_to_native_plan() {
             "github",
             "--for",
             "publish",
+            "--from-gh",
             "--api-base-url",
             "https://runx.test",
             "--json",
@@ -175,6 +190,7 @@ fn routes_login_to_native_plan() {
             provider: Some("github".to_owned()),
             purpose: Some("publish".to_owned()),
             api_base_url: Some("https://runx.test".to_owned()),
+            from_gh: true,
             allow_local_api: false,
             json: true,
         })
@@ -346,6 +362,10 @@ fn routes_canonical_skill_run_to_native_plan() {
             registry: None,
             expected_digest: None,
             json: true,
+            non_interactive: true,
+            skip_operator_context: false,
+            full_operator_context: false,
+            approve_operator_context: None,
             inputs: [
                 (
                     "thread_title".to_owned(),
@@ -432,10 +452,16 @@ fn rejects_legacy_skill_add_shape() {
 }
 
 #[test]
-fn connect_surface_is_removed_from_oss_router() {
+fn routes_connect_to_native_plan() {
     assert_eq!(
-        plan(&["connect", "--json"]),
-        RouterAction::Error("unknown command connect".to_owned())
+        plan(&["connect", "list", "--json"]),
+        RouterAction::RunConnect(ConnectPlan {
+            action: ConnectAction::List,
+            api_base_url: None,
+            token: None,
+            allow_local_api: false,
+            json: true,
+        })
     );
     assert_eq!(
         plan(&["url-add", "github.com/kam/skills"]),

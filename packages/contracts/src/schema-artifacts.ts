@@ -964,32 +964,6 @@ export const runxSchemaArtifacts = {
                             },
                             "type": "array"
                           },
-                          "quality_profile": {
-                            "additionalProperties": false,
-                            "properties": {
-                              "content": {
-                                "type": "string"
-                              },
-                              "sha256": {
-                                "minLength": 1,
-                                "type": "string"
-                              },
-                              "source": {
-                                "anyOf": [
-                                  {
-                                    "const": "SKILL.md#quality-profile",
-                                    "type": "string"
-                                  }
-                                ]
-                              }
-                            },
-                            "required": [
-                              "source",
-                              "sha256",
-                              "content"
-                            ],
-                            "type": "object"
-                          },
                           "run_id": {
                             "minLength": 1,
                             "type": "string"
@@ -6696,32 +6670,6 @@ export const runxSchemaArtifacts = {
             },
             "type": "array"
           },
-          "quality_profile": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "type": "string"
-              },
-              "sha256": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "source": {
-                "anyOf": [
-                  {
-                    "const": "SKILL.md#quality-profile",
-                    "type": "string"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "source",
-              "sha256",
-              "content"
-            ],
-            "type": "object"
-          },
           "run_id": {
             "minLength": 1,
             "type": "string"
@@ -7287,32 +7235,6 @@ export const runxSchemaArtifacts = {
           "type": "object"
         },
         "type": "array"
-      },
-      "quality_profile": {
-        "additionalProperties": false,
-        "properties": {
-          "content": {
-            "type": "string"
-          },
-          "sha256": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "const": "SKILL.md#quality-profile",
-                "type": "string"
-              }
-            ]
-          }
-        },
-        "required": [
-          "source",
-          "sha256",
-          "content"
-        ],
-        "type": "object"
       },
       "run_id": {
         "minLength": 1,
@@ -21993,32 +21915,6 @@ export const runxSchemaArtifacts = {
                           "type": "object"
                         },
                         "type": "array"
-                      },
-                      "quality_profile": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "content": {
-                            "type": "string"
-                          },
-                          "sha256": {
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "source": {
-                            "anyOf": [
-                              {
-                                "const": "SKILL.md#quality-profile",
-                                "type": "string"
-                              }
-                            ]
-                          }
-                        },
-                        "required": [
-                          "source",
-                          "sha256",
-                          "content"
-                        ],
-                        "type": "object"
                       },
                       "run_id": {
                         "minLength": 1,
@@ -43275,32 +43171,6 @@ export const runxSchemaArtifacts = {
                       "type": "object"
                     },
                     "type": "array"
-                  },
-                  "quality_profile": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "content": {
-                        "type": "string"
-                      },
-                      "sha256": {
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      "source": {
-                        "anyOf": [
-                          {
-                            "const": "SKILL.md#quality-profile",
-                            "type": "string"
-                          }
-                        ]
-                      }
-                    },
-                    "required": [
-                      "source",
-                      "sha256",
-                      "content"
-                    ],
-                    "type": "object"
                   },
                   "run_id": {
                     "minLength": 1,

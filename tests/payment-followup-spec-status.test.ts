@@ -45,7 +45,7 @@ describe("payment charge/refund follow-up specs", () => {
 
   it("keeps retired x402 charge/refund names out of shipped skill catalogs", async () => {
     const entries = JSON.parse(
-      await readFile(path.resolve("packages", "cli", "src", "official-skills.lock.json"), "utf8"),
+      await readFile(path.resolve("skills", "official.lock.json"), "utf8"),
     ) as ReadonlyArray<{ readonly skill_id: string }>;
     const registryIds = new Set(entries.map((entry) => entry.skill_id));
 

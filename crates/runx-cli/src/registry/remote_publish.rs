@@ -6,6 +6,8 @@ use runx_runtime::registry::{
     Transport,
 };
 
+#[cfg(test)]
+use super::package::HostedSkillPackageFile;
 use super::package::SkillPackage;
 use super::{RegistryCliError, RegistryPlan, internal_error, usage_error};
 
@@ -43,22 +45,27 @@ pub(super) fn publish_remote_skill_package(
             &transport,
             registry_url,
             &token,
-            &owner,
-            plan.version.as_deref(),
-            plan.upsert,
+            &AdminPublishTarget {
+                owner: &owner,
+                version: plan.version.as_deref(),
+                upsert: plan.upsert,
+            },
             package,
             harness,
         );
     }
-    let token = crate::public_api_token::resolve(None, env, cwd)?.ok_or_else(|| {
-        usage_error("remote registry publish requires `runx login` or RUNX_PUBLIC_API_TOKEN")
-    })?;
+    let environment =
+        crate::public_api::ApiEnvironment::resolve(Some(registry_url), None, env, cwd)
+            .map_err(|error| usage_error(error.to_string()))?;
     let transport = crate::public_api::transport(registry_private_network_allowed(env))
         .map_err(|error| internal_error(error.to_string()))?;
+    let authenticated = environment
+        .authenticate(&transport)
+        .map_err(|error| usage_error(error.to_string()))?;
     publish_remote_skill_package_with_transport(
         &transport,
-        registry_url,
-        &token,
+        authenticated.base_url(),
+        authenticated.token(),
         plan.version.as_deref(),
         package,
     )
@@ -153,34 +160,36 @@ pub(super) fn publish_remote_skill_package_with_transport<T: Transport>(
     Ok(envelope.publish)
 }
 
+pub(super) struct AdminPublishTarget<'a> {
+    pub(super) owner: &'a str,
+    pub(super) version: Option<&'a str>,
+    pub(super) upsert: bool,
+}
+
 pub(super) fn publish_remote_admin_skill_package_with_transport<T: Transport>(
     transport: &T,
     registry_url: &str,
     token: &str,
-    owner: &str,
-    version: Option<&str>,
-    upsert: bool,
+    target: &AdminPublishTarget<'_>,
     package: &SkillPackage,
     harness: &RegistryPublishHarnessReport,
 ) -> Result<HostedSkillPublishResult, RegistryCliError> {
-    let body = hosted_admin_publish_request_body(owner, version, upsert, package, harness)?;
+    let body = hosted_admin_publish_request_body(target, package, harness)?;
     let response = send_hosted_admin_publish_request(transport, registry_url, token, body)?;
     parse_hosted_admin_publish_response(response)
 }
 
 fn hosted_admin_publish_request_body(
-    owner: &str,
-    version: Option<&str>,
-    upsert: bool,
+    target: &AdminPublishTarget<'_>,
     package: &SkillPackage,
     harness: &RegistryPublishHarnessReport,
 ) -> Result<String, RegistryCliError> {
     serde_json::to_string(&HostedAdminSkillPublishRequest {
-        owner,
+        owner: target.owner,
         markdown: &package.markdown,
         profile_document: package.profile_document.as_deref(),
-        version,
-        upsert,
+        version: target.version,
+        upsert: target.upsert,
         package_files: &package.package_files,
         harness,
     })
@@ -242,7 +251,7 @@ fn parse_hosted_admin_publish_response(
 }
 
 fn registry_private_network_allowed(env: &BTreeMap<String, String>) -> bool {
-    crate::public_api::private_network_allowed(false, env, "RUNX_REGISTRY_ALLOW_LOCAL_API")
+    crate::public_api::private_network_allowed(false, env)
 }
 
 #[cfg(test)]
@@ -282,7 +291,6 @@ mod tests {
             profile_document: Some("skill: hello\nversion: \"0.1.0\"\nrunners: {}\n".to_owned()),
             harness_path: None,
             harness_temp_dir: None,
-            harness_fixture_paths: Vec::new(),
             package_files: vec![HostedSkillPackageFile {
                 path: "run.mjs".to_owned(),
                 content: "console.log('hello');\n".to_owned(),
@@ -322,7 +330,8 @@ mod tests {
     }
 
     #[test]
-    fn remote_registry_publish_rejects_unsuccessful_2xx_envelope() {
+    fn remote_registry_publish_rejects_unsuccessful_2xx_envelope()
+    -> Result<(), Box<dyn std::error::Error>> {
         let transport = StubTransport::new(HttpResponse {
             status: 200,
             body: serde_json::json!({
@@ -348,20 +357,22 @@ mod tests {
             profile_document: None,
             harness_path: None,
             harness_temp_dir: None,
-            harness_fixture_paths: Vec::new(),
             package_files: Vec::new(),
         };
 
-        let error = publish_remote_skill_package_with_transport(
+        let result = publish_remote_skill_package_with_transport(
             &transport,
             "https://runx.test/",
             "rxk_secret",
             None,
             &package,
-        )
-        .unwrap_err();
+        );
+        let Err(error) = result else {
+            return Err("unsuccessful 2xx envelope must be rejected".into());
+        };
 
         assert!(error.to_string().contains("unsuccessful status"));
+        Ok(())
     }
 
     #[test]
@@ -405,7 +416,6 @@ mod tests {
             profile_document: Some("skill: hello\nrunners: {}\n".to_owned()),
             harness_path: None,
             harness_temp_dir: None,
-            harness_fixture_paths: Vec::new(),
             package_files: vec![HostedSkillPackageFile {
                 path: "run.mjs".to_owned(),
                 content: "console.log('hello');\n".to_owned(),
@@ -425,9 +435,11 @@ mod tests {
             &transport,
             "https://runx.test/",
             "admin-token",
-            "runx",
-            Some("sha-123"),
-            true,
+            &AdminPublishTarget {
+                owner: "runx",
+                version: Some("sha-123"),
+                upsert: true,
+            },
             &package,
             &harness,
         )?;

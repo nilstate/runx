@@ -15,19 +15,18 @@ query, how to validate it, and how to interpret the result. It does not execute
 SQL, mutate data, or assume access to live databases. A consuming product or
 front supplies schema summaries, sampled rows, and credentialed execution.
 
-## Quality Profile
+Tie every selected table and field to the supplied schema, state the validation
+checks that would catch a misleading result, and keep interpretation separate
+from observed data. Return `needs_schema` when required tables or fields are
+unknown. Return `unsafe_request` for writes, deletes, unbounded export, or broad
+PII access rather than translating them into SQL.
 
-- Purpose: convert a data question into a precise read-only query plan.
-- Audience: operators and analysts reviewing what should be queried before a
-  database front executes anything.
-- Artifact contract: query plan, validation checks, interpretation guidance, and
-  residual risks.
-- Evidence bar: tie each selected table and field to supplied schema context.
-  If the schema is too thin, return `needs_schema`.
-- Voice bar: concise analyst notes. Avoid generic BI advice.
-- Strategic bar: make the next governed read safer and easier to review.
-- Stop conditions: return `needs_schema` when required tables/fields are missing,
-  and `unsafe_request` for write, delete, export-all, or broad PII requests.
+## Output
+
+- `query_plan`: bounded read-only query shape, tables, fields, joins, and limits.
+- `validation_checks`: tests for completeness, duplication, and interpretation errors.
+- `interpretation_guidance`: how to read the result and what it cannot prove.
+- `residual_risks`: schema gaps, privacy concerns, and unresolved assumptions.
 
 ## Inputs
 
@@ -35,4 +34,3 @@ front supplies schema summaries, sampled rows, and credentialed execution.
 - `schema_summary` (required): table and field summaries available to query.
 - `sample_rows` (optional): representative non-sensitive rows.
 - `constraints` (optional): limits, privacy rules, or allowed tables.
-

@@ -234,7 +234,7 @@ async function officialSkillLock(skillId: string): Promise<{
   readonly digest: string;
 }> {
   const officialLock = JSON.parse(
-    await readFile(path.resolve("packages/cli/src/official-skills.lock.json"), "utf8"),
+    await readFile(path.resolve("skills/official.lock.json"), "utf8"),
   ) as ReadonlyArray<{
     readonly skill_id: string;
     readonly version: string;

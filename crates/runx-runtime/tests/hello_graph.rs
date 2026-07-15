@@ -4,41 +4,12 @@ use std::path::Path;
 
 use runx_core::state_machine::GraphStatus;
 use runx_parser::{parse_graph_yaml, validate_graph};
-use runx_receipts::validate_receipt_tree;
 use runx_runtime::adapters::cli_tool::CliToolAdapter;
 use runx_runtime::{NoopHost, Runtime, RuntimeError, RuntimeOptions};
 
-#[test]
-fn hello_graph_runs_to_receipt_tree() -> Result<(), Box<dyn std::error::Error>> {
-    let runtime = Runtime::new(CliToolAdapter, signed_runtime_options()?);
-    let run = runtime.run_graph_file(Path::new("../../examples/hello-graph/graph.yaml"))?;
-
-    assert_eq!(run.graph.name, "hello-graph");
-    assert_eq!(run.state.status, GraphStatus::Succeeded);
-    assert_eq!(
-        run.steps
-            .iter()
-            .map(|step| step.step_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["first", "second"]
-    );
-    assert_eq!(
-        run.steps[0].output.stdout,
-        "{\"message\":\"hello from graph\"}\n"
-    );
-    assert_eq!(
-        run.steps[1].output.stdout,
-        "{\"message\":\"hello from graph\"}\n"
-    );
-
-    let children = run
-        .steps
-        .iter()
-        .map(|step| step.receipt.clone())
-        .collect::<Vec<_>>();
-    assert!(validate_receipt_tree(&run.receipt, &children).is_ok());
-    Ok(())
-}
+// The full hello-graph run (names, statuses, stdout, receipt digests and ids)
+// is pinned against the golden fixture in parity/hello_graph.rs; this module
+// keeps the coverage that fixture cannot express.
 
 #[test]
 fn hello_graph_resumes_from_checkpoint() -> Result<(), Box<dyn std::error::Error>> {
@@ -86,8 +57,4 @@ steps:
         Ok(_) => Err(std::io::Error::other("unsupported run type unexpectedly succeeded").into()),
         Err(other) => Err(std::io::Error::other(format!("unexpected error: {other}")).into()),
     }
-}
-
-fn signed_runtime_options() -> Result<RuntimeOptions, runx_runtime::RuntimeError> {
-    crate::support::signed_runtime_options()
 }

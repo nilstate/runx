@@ -1,15 +1,15 @@
+import { spawnSync } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
-
-import { runCli } from "../packages/cli/src/index.js";
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixtureRoot = path.join(workspaceRoot, "fixtures", "tool-catalogs");
 const oracleRoot = path.join(fixtureRoot, "oracles");
 const check = process.argv.includes("--check");
+const runx = process.env.RUNX_DEV_RUST_CLI_BIN
+  ?? path.join(workspaceRoot, "crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
 
 process.chdir(workspaceRoot);
 
@@ -34,23 +34,6 @@ interface OracleCase {
   readonly cwd: string;
   readonly env?: Readonly<Record<string, string>>;
   readonly expectedStatus: number;
-}
-
-class MemoryWritable extends Writable {
-  private readonly chunks: string[] = [];
-
-  override _write(
-    chunk: Buffer | string,
-    _encoding: BufferEncoding,
-    callback: (error?: Error | null) => void,
-  ): void {
-    this.chunks.push(Buffer.isBuffer(chunk) ? chunk.toString("utf8") : chunk);
-    callback();
-  }
-
-  contents(): string {
-    return this.chunks.join("");
-  }
 }
 
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "runx-tool-catalog-oracles-"));
@@ -137,24 +120,24 @@ async function inspectCases(): Promise<readonly OracleCase[]> {
 }
 
 async function runOracleCase(oracleCase: OracleCase): Promise<void> {
-  const stdout = new MemoryWritable();
-  const stderr = new MemoryWritable();
   const env = deterministicEnv(oracleCase.cwd, path.join(tempRoot, oracleCase.name), oracleCase.env);
-  const status = await runCli(
-    oracleCase.argv,
-    { stdin: process.stdin, stdout: stdout as never, stderr: stderr as never },
+  const result = spawnSync(runx, oracleCase.argv, {
+    cwd: oracleCase.cwd,
     env,
-  );
-  if (status !== oracleCase.expectedStatus) {
-    throw new Error(`${oracleCase.name}: expected status ${oracleCase.expectedStatus}, got ${status}`);
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== oracleCase.expectedStatus) {
+    throw new Error(`${oracleCase.name}: expected status ${oracleCase.expectedStatus}, got ${result.status}`);
   }
 
-  const rawStdout = stdout.contents();
+  const rawStdout = result.stdout;
   const normalizedStdout = normalizeOutput(rawStdout);
-  const normalizedStderr = normalizeOutput(stderr.contents());
+  const normalizedStderr = normalizeOutput(result.stderr);
   await writeOrCheck(oraclePath(oracleCase.name, "stdout"), normalizedStdout);
   await writeOrCheck(oraclePath(oracleCase.name, "stderr"), normalizedStderr);
-  await writeOrCheck(oraclePath(oracleCase.name, "status"), `${status}\n`);
+  await writeOrCheck(oraclePath(oracleCase.name, "status"), `${result.status}\n`);
 
   const parsed = parseJson(normalizedStdout);
   if (parsed !== undefined) {

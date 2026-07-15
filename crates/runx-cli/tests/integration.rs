@@ -7,10 +7,12 @@
 //! building each file as its own binary.
 //! See .scafld/specs/active/test-surface-build-consolidation.md.
 
+mod connect;
 mod doctor;
 mod export;
 mod harness;
 mod kernel;
+mod list;
 mod local_credential;
 mod locality;
 mod mcp_dogfood;

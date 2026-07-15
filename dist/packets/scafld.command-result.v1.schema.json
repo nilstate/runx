@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/scafld/command-result/v1.json",
+  "x-runx-packet-id": "runx.scafld.command_result.v1",
+  "$defs": {
+    "commandResult": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "markdown": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/commandResult" }
+  ],
+  "properties": {
+    "data": { "$ref": "#/$defs/commandResult" }
+  },
+  "additionalProperties": true
+}

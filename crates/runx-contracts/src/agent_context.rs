@@ -89,22 +89,6 @@ pub struct AgentContextProfiles {
     pub conventions: Option<ProfileFile>,
 }
 
-/// The resolved quality profile source. `source` is committed as
-/// `const: "SKILL.md#quality-profile"`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
-pub enum QualityProfileSource {
-    #[serde(rename = "SKILL.md#quality-profile")]
-    SkillMd,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
-#[serde(deny_unknown_fields)]
-pub struct QualityProfile {
-    pub source: QualityProfileSource,
-    pub sha256: NonEmptyString,
-    pub content: String,
-}
-
 /// Where the skill executes from on disk.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
@@ -132,8 +116,6 @@ pub struct AgentContextEnvelope {
     pub context: Option<AgentContextProfiles>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voice_profile: Option<ProfileFile>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub quality_profile: Option<QualityProfile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execution_location: Option<ExecutionLocation>,
     #[serde(skip_serializing_if = "Option::is_none")]
