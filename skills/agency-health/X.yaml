@@ -9,23 +9,59 @@ catalog:
 
 harness:
   cases:
-    - name: live-agency-case-health
-      env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://agency/health-dogfood":{"adapter":"data.sqlite","database_path":".runx/data/agency-health-dogfood.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+    - name: concerning-agency-sealed
+      runner: fold
       inputs:
-        data_source_ref: tenant://agency/health-dogfood
-        agency_ref: agency-health-dogfood
-        case_id: case-health-live-001
+        projection_packet:
+          operation: read_projection
+          status: read
+          aggregate_id: case-health-harness-concerning
+          after_version: 8
+          charter:
+            limits:
+              max_acts: 20
+              max_spend: 1000
+            cumulative:
+              acts: 17
+              spend: 720
+          rows:
+            - {version: 1, committed_at: "2026-07-01T08:00:00Z", event: {payload: {status: advanced}}}
+            - {version: 2, committed_at: "2026-07-01T09:00:00Z", event: {payload: {status: advanced}}}
+            - {version: 3, committed_at: "2026-07-01T10:00:00Z", event: {payload: {status: awaiting_approval}}}
+            - {version: 4, committed_at: "2026-07-02T09:00:00Z", event: {payload: {status: advanced}}}
+            - {version: 5, committed_at: "2026-07-02T10:00:00Z", event: {payload: {status: awaiting_approval}}}
+            - {version: 6, committed_at: "2026-07-03T09:00:00Z", event: {payload: {status: sealed}}}
+            - {version: 7, committed_at: "2026-07-04T09:00:00Z", event: {payload: {status: resolved}}}
+            - {version: 8, committed_at: "2026-07-05T09:00:00Z", event: {payload: {status: advanced}}}
+        ledger_packet:
+          matched_receipts:
+            - {receipt_id: "rcpt_agency_health_001", status: sealed}
+            - {receipt_id: "rcpt_agency_health_002", status: refused}
         period:
           since: "2026-07-01T00:00:00Z"
-          until: "2026-07-31T23:59:59Z"
+          until: "2026-07-10T23:59:59Z"
         health_baseline:
+          threshold_days_stuck: 2
           cap_pressure_pct: 80
           refusal_spike_rate: 0.10
-        ledger_filter:
-          skill_ref: agency
-          status:
-            - sealed
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+    - name: no-case-events-stop
+      runner: fold
+      inputs:
+        projection_packet:
+          operation: read_projection
+          status: read
+          aggregate_id: case-health-harness-empty
+          after_version: 0
+          rows: []
+        ledger_packet:
+          matched_receipts: []
+        period:
+          since: "2026-07-01T00:00:00Z"
+          until: "2026-07-10T23:59:59Z"
       expect:
         status: sealed
         receipt:
@@ -59,7 +95,7 @@ runners:
       health_baseline:
         type: json
         required: false
-        description: Declared cap pressure and refusal spike thresholds.
+        description: Declared stuck-day, cap-pressure, and refusal-spike thresholds.
       ledger_filter:
         type: json
         required: false

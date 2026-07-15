@@ -139,6 +139,15 @@ function gradeFindings({ folded, charter, baseline, ledgerStubs }) {
   const capThreshold = Number(baseline.cap_pressure_pct ?? 80);
   findings.push(finding("cap_usage_pct", capUsage < capThreshold ? "healthy" : capUsage < 95 ? "concerning" : "critical", `cap_usage_pct < ${capThreshold} healthy; < 95 concerning; else critical`, capUsage, charter.case_id, turn, null));
 
+  const stuckThresholdDays = Number(baseline.threshold_days_stuck ?? 2);
+  const referenceAt = Date.parse(periodEnd(baseline, folded));
+  const stuckCases = parked.filter((event) => {
+    const parkedAt = Date.parse(event.at);
+    return Number.isFinite(parkedAt) && Number.isFinite(referenceAt)
+      && (referenceAt - parkedAt) / 86_400_000 >= stuckThresholdDays;
+  }).length;
+  findings.push(finding("stuck_case_count", stuckCases === 0 ? "healthy" : stuckCases <= 2 ? "concerning" : "critical", `stuck_case_count = 0 healthy; <= 2 concerning; else critical after ${stuckThresholdDays} days`, stuckCases, charter.case_id, parked[0]?.version ?? turn, null));
+
   if (parked.length > 0) {
     findings.push(finding("escalation_backlog", parked.length <= 2 ? "healthy" : parked.length <= 5 ? "concerning" : "critical", "escalation_backlog <= 2 healthy; <= 5 concerning; else critical", parked.length, charter.case_id, parked[0].version, null));
   }
@@ -146,6 +155,11 @@ function gradeFindings({ folded, charter, baseline, ledgerStubs }) {
   const refusalThreshold = Number(baseline.refusal_spike_rate ?? 0.1);
   findings.push(finding("refusal_spike_rate", refusalRate <= refusalThreshold ? "healthy" : refusalRate <= refusalThreshold * 2 ? "concerning" : "critical", `refusal_spike_rate <= ${refusalThreshold} healthy; <= ${refusalThreshold * 2} concerning; else critical`, Number(refusalRate.toFixed(3)), charter.case_id, turn, ledgerStub));
   return findings;
+}
+
+function periodEnd(baseline, folded) {
+  if (baseline.reference_at) return baseline.reference_at;
+  return folded.at(-1)?.at;
 }
 
 function finding(metric, assessment, norm, value, caseId, turn, ledgerIdStub) {
