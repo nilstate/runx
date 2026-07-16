@@ -28,6 +28,8 @@ test("config exposes every manifest page once after introduction in catalog grou
   assert.match(config, /repo: "https:\/\/github\.com\/runxhq\/runx"/);
   assert.match(config, /editBranch: "main"/);
   assert.match(config, /editBasePath: "docs\/sourcey-catalog"/);
+  assert.doesNotMatch(config, /from "sourcey"/);
+  assert.match(config, /groups: \[/);
   assert.deepEqual(
     [...config.matchAll(/group: "([^"]+)"/g)].map((match) => match[1]),
     expectedGroups

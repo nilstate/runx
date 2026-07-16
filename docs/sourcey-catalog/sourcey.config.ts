@@ -1,6 +1,4 @@
-import { defineConfig, markdown } from "sourcey";
-
-export default defineConfig({
+export default {
   name: "Runx Governed Skill Catalog",
   siteUrl: "https://github.com",
   baseUrl: "/runxhq/runx",
@@ -16,8 +14,7 @@ export default defineConfig({
       {
         tab: "Skills",
         slug: "",
-        source: markdown({
-          groups: [
+        groups: [
             {
               group: "Introduction",
               pages: ["pages/introduction"],
@@ -42,9 +39,8 @@ export default defineConfig({
               group: "Outbound and tooling",
               pages: ["pages/governed-outbound", "pages/run-history", "pages/sourcey"],
             },
-          ],
-        }),
+        ],
       },
     ],
   },
-});
+};
