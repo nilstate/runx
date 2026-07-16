@@ -1,7 +1,9 @@
 // rust-style-allow: large-file -- local store read/write/index semantics stay
 // together until the receipt-store API finishes the hard-cutover review.
 use std::ffi::OsStr;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, OpenOptions};
+#[cfg(not(windows))]
+use std::fs::File;
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -759,7 +761,18 @@ fn write_temp_file(path: &Path, contents: &[u8], durable: bool) -> Result<(), st
 }
 
 fn sync_directory(path: &Path) -> Result<(), std::io::Error> {
-    File::open(path)?.sync_all()
+    // On Windows, opening a directory handle and calling sync_all fails with
+    // ERROR_ACCESS_DENIED (os error 5). Receipt bytes are already durable via
+    // file.sync_all() in write_temp_file; skip directory fsync on Windows.
+    #[cfg(windows)]
+    {
+        let _ = path;
+        return Ok(());
+    }
+    #[cfg(not(windows))]
+    {
+        File::open(path)?.sync_all()
+    }
 }
 
 fn temp_file_name(file_name: &str) -> String {
