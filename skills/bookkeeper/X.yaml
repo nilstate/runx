@@ -126,6 +126,14 @@ harness:
         receipt:
           schema: runx.receipt.v1
 
+    - name: bookkeeper-needs-transactions
+      inputs:
+        chart_of_accounts:
+          - code: "1000"
+            name: Operating Cash
+      expect:
+        status: needs_agent
+
 runners:
   analyst:
     default: true

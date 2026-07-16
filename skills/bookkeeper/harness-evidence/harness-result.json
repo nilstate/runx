@@ -1,17 +1,19 @@
 {
   "status": "passed",
-  "case_count": 3,
+  "case_count": 4,
   "assertion_error_count": 0,
   "case_names": [
     "bookkeeper-maps-clear-expense",
     "bookkeeper-needs-chart",
-    "bookkeeper-rejects-booking"
+    "bookkeeper-rejects-booking",
+    "bookkeeper-needs-transactions"
   ],
   "receipt_ids": [
-    "sha256:14b3e9db81e766b965b448f0dd88bf039564122c1008416abafe18376a12c238",
-    "sha256:c47da603ca802c651da6cf06517d5d9449906d8381ffdfa6e27a90ff1ba5b5e7",
-    "sha256:08006875d9effa698a7842eab642f358adbb57e5bd8c1aedc8638358e872a249"
+    "sha256:13fb670165121788a99e2f413062a85f1e109d8ba387523a8872417a510dd94c",
+    "sha256:fc0e1974a9b4169025983b1dd51ab7aec1624354d089dd0554a6d211f19d08cd",
+    "sha256:3d328bd802c0fa114c6b04d5b72c27190c409d7e3db86fc0c1481cce123730a3"
   ],
   "runx_version": "runx-cli 0.7.2",
-  "platform": "windows"
+  "package": "zachdreamz/bookkeeper@sha-a1a6ce455c2e",
+  "public_url": "https://runx.ai/x/zachdreamz/bookkeeper"
 }
