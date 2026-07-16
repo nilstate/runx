@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "case_count": 3,
+  "assertion_error_count": 0,
+  "case_names": [
+    "bookkeeper-maps-clear-expense",
+    "bookkeeper-needs-chart",
+    "bookkeeper-rejects-booking"
+  ],
+  "receipt_ids": [
+    "sha256:14b3e9db81e766b965b448f0dd88bf039564122c1008416abafe18376a12c238",
+    "sha256:c47da603ca802c651da6cf06517d5d9449906d8381ffdfa6e27a90ff1ba5b5e7",
+    "sha256:08006875d9effa698a7842eab642f358adbb57e5bd8c1aedc8638358e872a249"
+  ],
+  "runx_version": "runx-cli 0.7.2",
+  "platform": "windows"
+}
