@@ -11,7 +11,8 @@ harness:
   cases:
     - name: complete-template-fetches-source-and-executes-send-as-plan
       inputs:
-        template_source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
+        template:
+          source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
         parties:
           provider:
             legal_name: Northstar Example Services LLC
@@ -77,7 +78,8 @@ harness:
     - name: missing-required-term-refuses-without-proposal
       runner: refusal_check
       inputs:
-        template_source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
+        template:
+          source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
         parties:
           provider:
             legal_name: Northstar Example Services LLC
@@ -120,10 +122,10 @@ runners:
       effect_from: draft_ref
       effect_type: artifact
     inputs:
-      template_source_ref:
-        type: string
+      template:
+        type: object
         required: true
-        description: "Source ref for a template JSON document. repo: and file: refs are resolved and read by the runner at runtime."
+        description: "Template source descriptor. Only template.source_ref is trusted; the template document is fetched from that ref at runtime."
       parties:
         type: object
         required: true
@@ -152,7 +154,7 @@ runners:
               send_as_result: object
               validation: object
           inputs:
-            template_source_ref: "$input.template_source_ref"
+            template: "$input.template"
             parties: "$input.parties"
             terms: "$input.terms"
           artifacts:
@@ -165,14 +167,15 @@ runners:
             field: assemble.contract_draft_packet.data.status
             equals: draft_ready
           skill: ../send-as
-          runner: plan
+          inputs:
+            objective: "$input.terms.send.objective"
+            principal: "$input.terms.send.principal"
+            audience: "$input.terms.send.audience"
+            consent_basis: "$input.terms.send.consent_basis"
+            operator_context: "$input.terms.send.operator_context"
           context:
-            objective: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.objective
-            principal: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.principal
-            audience: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.audience
             content_ref: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.content_ref
-            consent_basis: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.consent_basis
-            operator_context: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.operator_context
+            send_proposal: assemble.contract_draft_packet.data.send_proposal
 
         - id: bind-send-as
           label: bind the executed send-as plan to the draft packet
@@ -207,10 +210,10 @@ runners:
       - run.mjs
       - --fail-on-refusal
     inputs:
-      template_source_ref:
-        type: string
+      template:
+        type: object
         required: true
-        description: "Source ref for a template JSON document to validate without permitting a partial draft."
+        description: "Template source descriptor to validate without permitting a partial draft. Only source_ref is used."
       parties:
         type: object
         required: true

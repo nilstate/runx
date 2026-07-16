@@ -12,8 +12,9 @@ runx:
 # Contract Drafter
 
 `contract-drafter` assembles a review draft from a runtime-fetched template,
-explicit parties, and explicit terms. It reads `template_source_ref`, renders
-only clause text present in that source, records each supplied value that
+explicit parties, and explicit terms. It reads only `template.source_ref` from
+the template input, fetches the template document at run time, renders only
+clause text present in that fetched source, records each supplied value that
 differs from the template baseline, and executes the canonical `runx/send-as`
 planner inside the same graph.
 
@@ -24,10 +25,12 @@ provider-specific preflight under separate authority.
 
 ## Inputs
 
-- `template_source_ref` is a `repo:` or `file:` reference to a template JSON
-  document. The runner reads this source at runtime and refuses when it cannot
-  resolve or parse the document. The source document supplies:
-  - `template_id`, `title`, and a `source_ref` matching `template_source_ref`;
+- `template` is a source descriptor with `source_ref`. The runner trusts only
+  that reference, then reads the template source at runtime from `repo:`,
+  `file:`, `https:`, or `http:`. It refuses when the source cannot be resolved,
+  fetched, parsed, or matched back to the fetched template's own `source_ref`.
+  The source document supplies:
+  - `template_id`, `title`, and a `source_ref` matching `template.source_ref`;
   - `required_party_roles` and `required_terms`;
   - `clauses[]`, each with a stable `id`, `title`, and `body_template`;
   - `baseline`, keyed by term; and
@@ -95,7 +98,7 @@ into a provider call.
 
 Required sequence:
 
-1. Run `contract-drafter` with `template_source_ref`, `parties`, and `terms`.
+1. Run `contract-drafter` with `template.source_ref`, `parties`, and `terms`.
 2. Inspect `draft_doc`, `deviations`, and `send_as_result`.
 3. Obtain explicit human approval for `contract-drafter.send.approval`.
 4. Let the resulting send plan undergo provider preflight in a provider adapter.
@@ -105,7 +108,7 @@ Required sequence:
 ## Harness Cases
 
 - `complete-template-fetches-source-and-executes-send-as-plan` fetches the
-  template from `template_source_ref`, seals a draft with four visible
+  template from `template.source_ref`, seals a draft with four visible
   deviations, invokes `runx/send-as` plan in the same graph, and binds the
   returned plan to the draft.
 - `missing-required-term-refuses-without-proposal` runs `refusal_check`, omits

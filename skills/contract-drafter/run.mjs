@@ -6,35 +6,40 @@ import { fileURLToPath } from "node:url";
 const inputs = readInputs();
 const failOnRefusal = process.argv.includes("--fail-on-refusal");
 const here = dirname(fileURLToPath(import.meta.url));
-let packet;
 
-try {
-  const loaded = loadTemplate(inputs);
-  const template = loaded.template;
-  const parties = asObject(inputs.parties, "parties");
-  const terms = asObject(inputs.terms, "terms");
-  const validation = validate({ template, parties, terms, loaded });
+await main();
 
-  if (validation.errors.length > 0) {
-    packet = refusalPacket({ template, validation });
+async function main() {
+  let packet;
+
+  try {
+    const loaded = await loadTemplate(inputs);
+    const template = loaded.template;
+    const parties = asObject(inputs.parties, "parties");
+    const terms = asObject(inputs.terms, "terms");
+    const validation = validate({ template, parties, terms, loaded });
+
+    if (validation.errors.length > 0) {
+      packet = refusalPacket({ template, validation });
+      emit(packet);
+      if (failOnRefusal) process.exitCode = 2;
+    } else {
+      packet = draftPacket({ template, parties, terms, validation });
+      emit(packet);
+    }
+  } catch (error) {
+    packet = refusalPacket({
+      template: objectOrEmpty(inputs.template),
+      validation: {
+        errors: [error instanceof Error ? error.message : String(error)],
+        required_party_roles: [],
+        required_terms: [],
+        placeholders_checked: [],
+      },
+    });
     emit(packet);
     if (failOnRefusal) process.exitCode = 2;
-  } else {
-    packet = draftPacket({ template, parties, terms, validation });
-    emit(packet);
   }
-} catch (error) {
-  packet = refusalPacket({
-    template: objectOrEmpty(inputs.template),
-    validation: {
-      errors: [error instanceof Error ? error.message : String(error)],
-      required_party_roles: [],
-      required_terms: [],
-      placeholders_checked: [],
-    },
-  });
-  emit(packet);
-  if (failOnRefusal) process.exitCode = 2;
 }
 
 function validate({ template, parties, terms, loaded }) {
@@ -50,7 +55,7 @@ function validate({ template, parties, terms, loaded }) {
   requireText(template.title, "template.title", errors);
   requireText(template.source_ref, "template.source_ref", errors);
   if (text(template.source_ref) !== loaded.source_ref) {
-    errors.push("template.source_ref must match template_source_ref");
+    errors.push("template.source_ref must match requested source_ref");
   }
   if (requiredPartyRoles.length === 0) errors.push("template.required_party_roles must not be empty");
   if (requiredTerms.length === 0) errors.push("template.required_terms must not be empty");
@@ -253,18 +258,39 @@ function refusalPacket({ template, validation }) {
   };
 }
 
-function loadTemplate(input) {
+async function loadTemplate(input) {
   const sourceRef = text(input.template_source_ref) || text(input.template?.source_ref);
-  if (!sourceRef) throw new Error("template_source_ref is required");
-  const path = resolveSourceRef(sourceRef);
-  const raw = readFileSync(path, "utf8");
+  if (!sourceRef) throw new Error("template.source_ref is required");
+  const loaded = await readSourceRef(sourceRef);
+  const raw = loaded.raw;
   const parsed = JSON.parse(raw);
   const template = asObject(parsed.template_id ? parsed : parsed.template, "template source");
   return {
     template,
     source_ref: sourceRef,
-    resolved_path: path,
+    resolved_path: loaded.resolved_path,
     content_digest: sha256(raw),
+  };
+}
+
+async function readSourceRef(sourceRef) {
+  if (sourceRef.startsWith("http://") || sourceRef.startsWith("https://")) {
+    const response = await fetch(sourceRef, {
+      headers: {
+        accept: "application/json,text/plain;q=0.9,*/*;q=0.1",
+        "user-agent": "runx-contract-drafter/0.1.1",
+      },
+    });
+    if (!response.ok) throw new Error(`template.source_ref fetch failed: HTTP ${response.status}`);
+    return {
+      raw: await response.text(),
+      resolved_path: sourceRef,
+    };
+  }
+  const path = resolveSourceRef(sourceRef);
+  return {
+    raw: readFileSync(path, "utf8"),
+    resolved_path: path,
   };
 }
 
@@ -288,7 +314,7 @@ function firstExistingPath(refPath) {
   for (const candidate of candidates.filter(Boolean)) {
     if (existsSync(candidate)) return candidate;
   }
-  throw new Error(`template_source_ref could not be resolved: ${refPath}`);
+  throw new Error(`template.source_ref could not be resolved: ${refPath}`);
 }
 
 function findDeviations(template, terms) {

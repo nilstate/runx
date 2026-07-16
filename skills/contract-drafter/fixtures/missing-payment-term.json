@@ -1,5 +1,7 @@
 {
-  "template_source_ref": "repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json",
+  "template": {
+    "source_ref": "repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json"
+  },
   "parties": {
     "provider": {"legal_name": "Northstar Example Services LLC", "role": "provider"},
     "customer": {"legal_name": "Harbor Example Studio Inc.", "role": "customer"}
@@ -12,11 +14,11 @@
     "governing_law": "Delaware",
     "confidentiality_period": "2 years",
     "send": {
-      "objective": "Prepare the review draft for a separate governed send-as planning run.",
+      "objective": "Execute send-as planning for the review draft in the same sealed graph.",
       "principal": "account:contract-review-demo",
       "audience": {"type": "repository_review", "ref": "RYDE-PLAY/frantic-86-contract-drafter"},
       "consent_basis": "Public maintainer review of a nonbinding synthetic contract fixture.",
-      "operator_context": "Draft only; human approval and provider preflight remain required.",
+      "operator_context": "Contract-drafter composes send-as planning in this run; human approval and provider preflight remain required.",
       "subject_or_title": "Review the services agreement draft"
     }
   }
