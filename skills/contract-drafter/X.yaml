@@ -166,7 +166,17 @@ runners:
           when:
             field: assemble.contract_draft_packet.data.status
             equals: draft_ready
-          skill: ../send-as
+          run:
+            type: agent-task
+            agent: reviewer
+            task: send-as
+            outputs:
+              send_plan: object
+          artifacts:
+            named_emits:
+              send_plan: send_plan
+            packets:
+              send_plan: runx.send_as.plan.v1
           inputs:
             objective: "$input.terms.send.objective"
             principal: "$input.terms.send.principal"
