@@ -1,0 +1,125 @@
+skill: overlay-open-skill-2
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: context
+
+emits:
+  - name: overlay_open_skill_2
+    packet: runx.skill_overlay.v1
+
+runners:
+  govern:
+    default: true
+    type: graph
+    inputs:
+      upstream_url:
+        type: string
+        required: true
+        description: Raw URL to the upstream open-ecosystem SKILL.md at a pinned commit. Fetched at runtime to verify the digest.
+      pinned_digest:
+        type: string
+        required: true
+        description: sha256:<hex> pin for the upstream SKILL.md content. The run refuses when the runtime-computed digest differs.
+      wraps_ref:
+        type: string
+        required: true
+        description: Human-readable upstream ref, e.g. anthropics/skills/skill-creator.
+      license:
+        type: string
+        required: false
+        description: Upstream license (default Apache-2.0).
+      scopes:
+        type: json
+        required: false
+        description: Runner scope bounds.
+      allowed_tools:
+        type: json
+        required: false
+        description: Explicit allowed-tool set the overlay grants.
+      health_baseline:
+        type: json
+        required: false
+        description: Read-only baseline overrides - threshold_days_stuck (stall turn-window), cap_pressure_pct (act/spend cap ceiling), refusal_spike_rate (refusal spike threshold).
+      mutate:
+        type: boolean
+        required: false
+        description: Write/mutate framing - when true the skill refuses (read-only contract).
+      append:
+        type: boolean
+        required: false
+        description: Append framing - refused (read-only contract).
+      advance:
+        type: boolean
+        required: false
+        description: Advance framing - refused (read-only contract).
+    graph:
+      name: overlay-open-skill-2
+      steps:
+        - id: govern
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - -e
+              - "eval(Buffer.from('Ly8gb3ZlcmxheS1vcGVuLXNraWxsLTIgcnVudGltZQovLyBSZWFkcyBhIFJFQUwgdXBzdHJlYW0gb3Blbi1lY29zeXN0ZW0gU0tJTEwubWQgZnJvbSBhIHBpbm5lZCBjb21taXQgVVJMIGF0IHJ1bnRpbWUsCi8vIGNvbXB1dGVzIGl0cyBzaGEyNTYgZGlnZXN0LCBjb21wYXJlcyB0byB0aGUgcGlubmVkIGRpZ2VzdCwgYW5kIGVtaXRzIGEgZ292ZXJuZWQKLy8gb3ZlcmxheSByZXBvcnQgKHNjb3BlIGJvdW5kcyArIGV4cGxpY2l0IGFsbG93ZWRfdG9vbHMpLiBSZWZ1c2VzIHdoZW4gdGhlIGRpZ2VzdAovLyBtaXNtYXRjaCAodXBzdHJlYW0gZHJpZnQgZGV0ZWN0ZWQpIHNvIHRoZSBza2lsbCBuZXZlciBydW5zIHVuc2VlbiB1cHN0cmVhbSBjaGFuZ2VzLgpjb25zdCBodHRwcyA9IHJlcXVpcmUoImh0dHBzIik7CmNvbnN0IGNyeXB0byA9IHJlcXVpcmUoImNyeXB0byIpOwoKY29uc3QgSU5QVVRTID0gSlNPTi5wYXJzZShwcm9jZXNzLmVudi5SVU5YX0lOUFVUU19KU09OIHx8ICJ7fSIpOwpjb25zdCBDT05URVhUID0gSlNPTi5wYXJzZShwcm9jZXNzLmVudi5SVU5YX0NPTlRFWFRfSlNPTiB8fCAie30iKTsKCi8vIFJlYWQtb25seSBndWFyZCAodmVyaWZpZXItZW5mb3JjZWQpOiByZWZ1c2UgbXV0YXRpb24vYXBwZW5kL2FkdmFuY2UuCmlmIChJTlBVVFMubXV0YXRlID09PSB0cnVlIHx8IElOUFVUUy5hcHBlbmQgPT09IHRydWUgfHwgSU5QVVRTLmFkdmFuY2UgPT09IHRydWUpIHsKICBjb25zb2xlLmxvZyhKU09OLnN0cmluZ2lmeSh7CiAgICByZWZ1c2VkOiB7IGFsbG93ZWQ6IGZhbHNlLCByZWFzb246ICJvdmVybGF5LW9wZW4tc2tpbGwtMiBpcyBhIHJlYWQtb25seSBnb3Zlcm5hbmNlIHNraWxsLiBTZXQgbXV0YXRlPWZhbHNlLiIgfSwKICB9KSk7CiAgcHJvY2Vzcy5leGl0KDApOwp9Cgpjb25zdCBVUFNUUkVBTV9VUkwgPSBJTlBVVFMudXBzdHJlYW1fdXJsOwpjb25zdCBQSU5ORURfRElHRVNUID0gSU5QVVRTLnBpbm5lZF9kaWdlc3Q7IC8vIHNoYTI1Njo8aGV4Pgpjb25zdCBXUkFQU19SRUYgPSBJTlBVVFMud3JhcHNfcmVmOwpjb25zdCBMSUNFTlNFID0gSU5QVVRTLmxpY2Vuc2UgfHwgIkFwYWNoZS0yLjAiOwoKaWYgKCFVUFNUUkVBTV9VUkwgfHwgIVBJTk5FRF9ESUdFU1QpIHsKICBjb25zb2xlLmxvZyhKU09OLnN0cmluZ2lmeSh7CiAgICBlcnJvcjogeyBjb2RlOiAicnVueC5vdmVybGF5LmlucHV0Lm1pc3NpbmciLCBtZXNzYWdlOiAidXBzdHJlYW1fdXJsIGFuZCBwaW5uZWRfZGlnZXN0IGFyZSByZXF1aXJlZCIgfSwKICB9KSk7CiAgcHJvY2Vzcy5leGl0KDApOwp9CgpmdW5jdGlvbiBmZXRjaFRleHQodXJsKSB7CiAgcmV0dXJuIG5ldyBQcm9taXNlKChyZXNvbHZlLCByZWplY3QpID0+IHsKICAgIGh0dHBzLmdldCh1cmwsIHsgdGltZW91dDogMjAwMDAgfSwgKHJlcykgPT4gewogICAgICBpZiAocmVzLnN0YXR1c0NvZGUgIT09IDIwMCkgeyByZWplY3QobmV3IEVycm9yKCJIVFRQICIgKyByZXMuc3RhdHVzQ29kZSArICIgZm9yICIgKyB1cmwpKTsgcmV0dXJuOyB9CiAgICAgIGxldCBkYXRhID0gIiI7CiAgICAgIHJlcy5vbigiZGF0YSIsIChjKSA9PiAoZGF0YSArPSBjKSk7CiAgICAgIHJlcy5vbigiZW5kIiwgKCkgPT4gcmVzb2x2ZShkYXRhKSk7CiAgICB9KS5vbigiZXJyb3IiLCByZWplY3QpLm9uKCJ0aW1lb3V0IiwgKCkgPT4gcmVqZWN0KG5ldyBFcnJvcigidGltZW91dCAiICsgdXJsKSkpOwogIH0pOwp9CgooYXN5bmMgKCkgPT4gewogIGxldCB1cHN0cmVhbUNvbnRlbnQsIGNvbXB1dGVkRGlnZXN0LCBkaWdlc3RNYXRjaDsKICB0cnkgewogICAgdXBzdHJlYW1Db250ZW50ID0gYXdhaXQgZmV0Y2hUZXh0KFVQU1RSRUFNX1VSTCk7CiAgICBjb21wdXRlZERpZ2VzdCA9ICJzaGEyNTY6IiArIGNyeXB0by5jcmVhdGVIYXNoKCJzaGEyNTYiKS51cGRhdGUodXBzdHJlYW1Db250ZW50KS5kaWdlc3QoImhleCIpOwogICAgZGlnZXN0TWF0Y2ggPSBjb21wdXRlZERpZ2VzdCA9PT0gUElOTkVEX0RJR0VTVDsKICB9IGNhdGNoIChlKSB7CiAgICBjb25zb2xlLmxvZyhKU09OLnN0cmluZ2lmeSh7CiAgICAgIHJlZnVzZWQ6IHsgYWxsb3dlZDogZmFsc2UsIHJlYXNvbjogInJ1bngub3ZlcmxheS5za2lsbC5taXNzaW5nOiBjb3VsZCBub3QgZmV0Y2ggdXBzdHJlYW0gU0tJTEwubWQgKCIgKyBlLm1lc3NhZ2UgKyAiKSIgfSwKICAgIH0pKTsKICAgIHByb2Nlc3MuZXhpdCgwKTsKICB9CgogIGlmICghZGlnZXN0TWF0Y2gpIHsKICAgIC8vIFVwc3RyZWFtIGRyaWZ0IGRldGVjdGVkIC0+IHJlZnVzZSB0byBydW4gdW5kZXIgc3RhbGUgcGluLgogICAgY29uc29sZS5sb2coSlNPTi5zdHJpbmdpZnkoewogICAgICByZWZ1c2VkOiB7CiAgICAgICAgYWxsb3dlZDogZmFsc2UsCiAgICAgICAgcmVhc29uOiAicnVueC5vdmVybGF5LmRpZ2VzdC5zdGFsZTogdXBzdHJlYW0gZGlnZXN0ICIgKyBjb21wdXRlZERpZ2VzdCArICIgZG9lcyBub3QgbWF0Y2ggcGlubmVkICIgKyBQSU5ORURfRElHRVNUICsgIi4gUmUtcmV2aWV3IGJlZm9yZSBydW5uaW5nLiIsCiAgICAgIH0sCiAgICAgIHVwc3RyZWFtOiB7IHVybDogVVBTVFJFQU1fVVJMLCBjb21wdXRlZF9kaWdlc3Q6IGNvbXB1dGVkRGlnZXN0LCBwaW5uZWRfZGlnZXN0OiBQSU5ORURfRElHRVNUIH0sCiAgICB9KSk7CiAgICBwcm9jZXNzLmV4aXQoMCk7CiAgfQoKICAvLyBEaWdlc3QgbWF0Y2hlcyAtPiBnb3Zlcm5lZCBvdmVybGF5IGlzIHNhZmUgdG8gcnVuLiBFbWl0IHNjb3BlIGJvdW5kcyArIGFsbG93ZWRfdG9vbHMuCiAgY29uc3QgYWxsb3dlZFRvb2xzID0gQXJyYXkuaXNBcnJheShJTlBVVFMuYWxsb3dlZF90b29scykgPyBJTlBVVFMuYWxsb3dlZF90b29scyA6IFsiZnMucmVhZCIsICJ3ZWIucmVhZCJdOwogIGNvbnN0IHNjb3BlcyA9IEFycmF5LmlzQXJyYXkoSU5QVVRTLnNjb3BlcykgPyBJTlBVVFMuc2NvcGVzIDogWyJyZXBvLnJlYWQiLCAid2ViLnJlYWQiXTsKICBjb25zdCBvdmVybGF5ID0gewogICAgZGVjaXNpb246ICJyZWFkeSIsCiAgICB3cmFwczogewogICAgICByZWY6IFdSQVBTX1JFRiwKICAgICAgZGlnZXN0OiBQSU5ORURfRElHRVNULAogICAgICBsaWNlbnNlOiBMSUNFTlNFLAogICAgICBmZXRjaGVkX2F0X3J1bnRpbWU6IHRydWUsCiAgICB9LAogICAgb3ZlcmxheV9wYXRoOiAic2tpbGxzL292ZXJsYXktb3Blbi1za2lsbC0yL1gueWFtbCIsCiAgICBydW5uZXI6IHsKICAgICAgdHlwZTogImdyYXBoIiwKICAgICAgc2NvcGVzOiBzY29wZXMsCiAgICAgIGFsbG93ZWRfdG9vbHM6IGFsbG93ZWRUb29scywKICAgIH0sCiAgICBkaWFnbm9zdGljczogW10sCiAgICByYXRpb25hbGU6ICJVcHN0cmVhbSBvcGVuLWVjb3N5c3RlbSBTS0lMTC5tZCBwaW5uZWQgYnkgY29udGVudCBkaWdlc3QgYW5kIHZlcmlmaWVkIGF0IHJ1bnRpbWU7IG92ZXJsYXkgZ292ZXJucyBpdCB1bmRlciBydW54IGF1dGhvcml0eSB3aXRob3V0IGVkaXRpbmcgdGhlIHVwc3RyZWFtIGZpbGUuIiwKICAgIGdvdmVybmFuY2U6IHsKICAgICAgcmVhZF9vbmx5OiB0cnVlLAogICAgICByZWZ1c2VzX29uX2RpZ2VzdF9taXNtYXRjaDogdHJ1ZSwKICAgICAgZWRpdHNfdXBzdHJlYW06IGZhbHNlLAogICAgfSwKICB9OwogIGNvbnNvbGUubG9nKEpTT04uc3RyaW5naWZ5KHsgb3ZlcmxheV9vcGVuX3NraWxsXzI6IG92ZXJsYXkgfSkpOwp9KSgpOwo='))"
+          inputs:
+            upstream_url: "$input.upstream_url"
+            pinned_digest: "$input.pinned_digest"
+            wraps_ref: "$input.wraps_ref"
+            license: "$input.license"
+            scopes: "$input.scopes"
+            allowed_tools: "$input.allowed_tools"
+            health_baseline: "$input.health_baseline"
+            mutate: "$input.mutate"
+            append: "$input.append"
+            advance: "$input.advance"
+          artifacts:
+            named_emits:
+              overlay_open_skill_2: govern.overlay_open_skill_2
+            packets:
+              overlay_open_skill_2: runx.skill_overlay.v1
+  refuse:
+    default: false
+    type: agent
+    inputs:
+      mutate:
+        type: boolean
+        required: false
+        description: Write framing. When true, the overlay refuses (read-only contract).
+
+harness:
+  cases:
+    - name: overlay-open-skill-2-sealed
+      runner: govern
+      inputs:
+        upstream_url: "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/skill-creator/SKILL.md"
+        pinned_digest: "sha256:dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf"
+        wraps_ref: "anthropics/skills/skill-creator"
+        license: "Apache-2.0"
+        scopes: ["repo.read", "web.read"]
+        allowed_tools: ["fs.read", "web.read"]
+        health_baseline: { threshold_days_stuck: 5, cap_pressure_pct: 90, refusal_spike_rate: 0.2 }
+      expect:
+        status: sealed
+    - name: overlay-open-skill-2-digest-mismatch-stop
+      runner: govern
+      inputs:
+        upstream_url: "https://raw.githubusercontent.com/anthropics/skills/9d2f1ae187231d8199c64b5b762e1bdf2244733d/skills/skill-creator/SKILL.md"
+        pinned_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        wraps_ref: "anthropics/skills/skill-creator"
+        license: "Apache-2.0"
+        scopes: ["repo.read", "web.read"]
+        allowed_tools: ["fs.read", "web.read"]
+        health_baseline: { threshold_days_stuck: 5, cap_pressure_pct: 90, refusal_spike_rate: 0.2 }
+      expect:
+        status: sealed
+    - name: overlay-open-skill-2-readonly-stop
+      runner: refuse
+      inputs:
+        mutate: true
+      expect:
+        status: needs_agent
