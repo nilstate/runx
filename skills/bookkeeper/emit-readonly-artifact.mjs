@@ -35,6 +35,7 @@ function main() {
     categorized: batch.categorized,
     anomalies: batch.anomalies,
     reconciliation: reconciliation.reconciliation,
+    source: reconciliation.source,
     source_refs: batch.source_refs,
     controls: {
       read_only: true,
@@ -43,6 +44,8 @@ function main() {
       categorized_batch_digest: batch.batch_digest,
       reconciliation_digest: reconciliation.reconciliation_digest,
       consumer_step: reconciliation.consumer.step,
+      source_fetch_performed: reconciliation.consumer.source_fetch_verified === true,
+      source_bytes_verified: reconciliation.consumer.source_bytes_verified === true,
       posting_authority: "none",
     },
   };

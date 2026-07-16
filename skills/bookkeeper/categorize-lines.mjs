@@ -57,10 +57,24 @@ function main() {
     fail("A ready source admission is required.");
     return;
   }
-  const transactions = normalizeTransactions(inputs.transactions || []);
-  const chart = normalizeChart(inputs.chart_of_accounts || []);
+  if (
+    !admission.controls?.source_fetch_performed
+    || !admission.controls?.source_bytes_verified
+    || !admission.source?.content_digest
+    || !admission.source?.final_url
+    || !Number.isInteger(admission.source?.status)
+    || admission.source.status < 200
+    || admission.source.status >= 300
+    || admission.source?.exact_bytes_verified !== true
+    || admission.source?.exact_hosts_only !== true
+  ) {
+    fail("Admission must prove an allowlisted runtime source fetch.");
+    return;
+  }
+  const transactions = normalizeTransactions(admission.transactions || []);
+  const chart = normalizeChart(admission.chart_of_accounts || []);
   if (digest(transactions) !== admission.transaction_digest || digest(chart) !== admission.chart_digest) {
-    fail("Transaction or chart bytes changed after admission.");
+    fail("Admitted transaction or chart bytes changed before categorization.");
     return;
   }
   const transactionById = new Map(transactions.map((item) => [item.id, item]));
@@ -112,6 +126,7 @@ function main() {
     decision: "categorized",
     categorized,
     anomalies,
+    source: admission.source,
     source_refs: [...new Set(categorized.map((item) => item.source_ref))],
     account_universe: chart.map(({ code, name, type }) => ({ code, name, type })),
     transaction_digest: admission.transaction_digest,
@@ -123,6 +138,8 @@ function main() {
       ledger_mutation_performed: false,
       invented_accounts: false,
       one_binding_per_transaction: true,
+      source_fetch_performed: true,
+      source_bytes_verified: true,
     },
   };
   process.stdout.write(`${JSON.stringify({ categorized_batch: { ...batchBody, batch_digest: digest(batchBody) } })}\n`);

@@ -1,6 +1,6 @@
 # Deterministic, read-only bookkeeping graph.
 skill: bookkeeper
-version: "1.0.0"
+version: "1.1.0"
 
 catalog:
   kind: graph
@@ -13,28 +13,8 @@ harness:
     - name: sourced-clean-batch-reconciles
       runner: default
       inputs:
-        transactions:
-          - id: stmt-2026-07-001
-            date: "2026-07-01"
-            description: Stripe payout invoice 1042
-            amount_minor: 125000
-            currency: USD
-            counterparty: Stripe
-            source_ref: fixture://bookkeeper/clean-statement#line-1
-          - id: stmt-2026-07-002
-            date: "2026-07-02"
-            description: AWS cloud hosting July
-            amount_minor: -18432
-            currency: USD
-            counterparty: Amazon Web Services
-            source_ref: fixture://bookkeeper/clean-statement#line-2
-          - id: stmt-2026-07-003
-            date: "2026-07-03"
-            description: GitHub Actions usage
-            amount_minor: -4210
-            currency: USD
-            counterparty: GitHub
-            source_ref: fixture://bookkeeper/clean-statement#line-3
+        source_url: https://gist.githubusercontent.com/lihonggangli123-cyber/8e6b53375f6b47a546ca07edb2761e04/raw/68f80cada883babee91177f5c85b080f14c61ac9/clean-statement.json
+        source_allowlist: [gist.githubusercontent.com]
         chart_of_accounts:
           - code: "4000"
             name: Software revenue
@@ -74,14 +54,8 @@ harness:
     - name: ambiguous-account-binding-needs-review
       runner: default
       inputs:
-        transactions:
-          - id: ambiguous-001
-            date: "2026-07-04"
-            description: Cloud platform services
-            amount_minor: -7500
-            currency: USD
-            counterparty: Unknown Platform
-            source_ref: fixture://bookkeeper/ambiguous-statement#line-1
+        source_url: https://gist.githubusercontent.com/lihonggangli123-cyber/8e6b53375f6b47a546ca07edb2761e04/raw/68f80cada883babee91177f5c85b080f14c61ac9/ambiguous-statement.json
+        source_allowlist: [gist.githubusercontent.com]
         chart_of_accounts:
           - code: "6100"
             name: Cloud hosting
@@ -112,14 +86,8 @@ harness:
     - name: statement-balance-mismatch-needs-review
       runner: default
       inputs:
-        transactions:
-          - id: mismatch-001
-            date: "2026-07-05"
-            description: Stripe payout invoice 2001
-            amount_minor: 50000
-            currency: USD
-            counterparty: Stripe
-            source_ref: fixture://bookkeeper/mismatch-statement#line-1
+        source_url: https://gist.githubusercontent.com/lihonggangli123-cyber/8e6b53375f6b47a546ca07edb2761e04/raw/68f80cada883babee91177f5c85b080f14c61ac9/mismatch-statement.json
+        source_allowlist: [gist.githubusercontent.com]
         chart_of_accounts:
           - code: "4000"
             name: Software revenue
@@ -142,15 +110,167 @@ harness:
           state: sealed
           disposition: blocked
 
+    - name: direct-transaction-input-is-refused
+      runner: default
+      inputs:
+        source_url: https://gist.githubusercontent.com/lihonggangli123-cyber/8e6b53375f6b47a546ca07edb2761e04/raw/68f80cada883babee91177f5c85b080f14c61ac9/clean-statement.json
+        source_allowlist: [gist.githubusercontent.com]
+        transactions:
+          - id: caller-injected-001
+            date: "2026-07-01"
+            description: Caller supplied row
+            amount_minor: 1
+            currency: USD
+            counterparty: Caller
+            source_ref: https://example.invalid/caller-row
+        chart_of_accounts:
+          - code: "4000"
+            name: Software revenue
+            type: income
+            match:
+              direction: inflow
+              description_contains: [stripe payout, invoice]
+              counterparty_exact: [Stripe]
+          - code: "6100"
+            name: Cloud hosting
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [aws, cloud hosting]
+              counterparty_exact: [Amazon Web Services]
+          - code: "6200"
+            name: Developer tooling
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [github actions]
+              counterparty_exact: [GitHub]
+        prior_period:
+          currency: USD
+          opening_balance_minor: 250000
+          expected_ending_balance_minor: 352358
+          previous_transaction_ids: [stmt-2026-06-099]
+          known_counterparties: [Stripe, Amazon Web Services, GitHub]
+          average_abs_amount_minor: 30000
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: wildcard-source-allowlist-is-refused
+      runner: default
+      inputs:
+        source_url: https://gist.githubusercontent.com/lihonggangli123-cyber/8e6b53375f6b47a546ca07edb2761e04/raw/68f80cada883babee91177f5c85b080f14c61ac9/clean-statement.json
+        source_allowlist: ["*.githubusercontent.com"]
+        chart_of_accounts:
+          - code: "4000"
+            name: Software revenue
+            type: income
+            match:
+              direction: inflow
+              description_contains: [stripe payout, invoice]
+              counterparty_exact: [Stripe]
+        prior_period:
+          currency: USD
+          opening_balance_minor: 250000
+          expected_ending_balance_minor: 352358
+          previous_transaction_ids: []
+          known_counterparties: [Stripe]
+          average_abs_amount_minor: 30000
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: lossy-text-extraction-is-refused
+      runner: default
+      inputs:
+        source_url: https://gist.githubusercontent.com/lihonggangli123-cyber/8e6b53375f6b47a546ca07edb2761e04/raw/c8f97e07e39f25a4a5dc7cf8a18cb1e6bde718b4/clean-statement.json
+        source_allowlist: [gist.githubusercontent.com]
+        chart_of_accounts:
+          - code: "4000"
+            name: Software revenue
+            type: income
+            match:
+              direction: inflow
+              description_contains: [stripe payout, invoice]
+              counterparty_exact: [Stripe]
+          - code: "6100"
+            name: Cloud hosting
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [aws, cloud hosting]
+              counterparty_exact: [Amazon Web Services]
+          - code: "6200"
+            name: Developer tooling
+            type: expense
+            match:
+              direction: outflow
+              description_contains: [github actions]
+              counterparty_exact: [GitHub]
+        prior_period:
+          currency: USD
+          opening_balance_minor: 250000
+          expected_ending_balance_minor: 352358
+          previous_transaction_ids: [stmt-2026-06-099]
+          known_counterparties: [Stripe, Amazon Web Services, GitHub]
+          average_abs_amount_minor: 30000
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
+    - name: invalid-calendar-date-is-refused
+      runner: default
+      inputs:
+        source_url: https://gist.githubusercontent.com/lihonggangli123-cyber/8e6b53375f6b47a546ca07edb2761e04/raw/761e42d9d931bcf688e59644eb5c61db4709667e/invalid-date-statement.json
+        source_allowlist: [gist.githubusercontent.com]
+        chart_of_accounts:
+          - code: "4000"
+            name: Software revenue
+            type: income
+            match:
+              direction: inflow
+              description_contains: [stripe payout]
+              counterparty_exact: [Stripe]
+        prior_period:
+          currency: USD
+          opening_balance_minor: 100000
+          expected_ending_balance_minor: 150000
+          previous_transaction_ids: []
+          known_counterparties: [Stripe]
+          average_abs_amount_minor: 50000
+      expect:
+        status: policy_denied
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: blocked
+
 runners:
   default:
     default: true
     type: graph
     inputs:
-      transactions:
+      source_url:
+        type: string
+        required: true
+        description: Public HTTP(S) statement URL fetched during the governed run.
+      source_allowlist:
         type: json
         required: true
-        description: Sourced transaction lines using signed integer minor-unit amounts.
+        description: Exact hosts the canonical web-fetch step may contact, including redirect hosts.
+      transactions:
+        type: json
+        required: false
+        description: Reserved typed contract field; direct transaction input is refused because rows must come from source_url.
       chart_of_accounts:
         type: json
         required: true
@@ -162,8 +282,39 @@ runners:
     graph:
       name: bookkeeper-readonly-reconciliation
       steps:
+        - id: validate-source-request
+          label: validate exact source authority before any network read
+          run:
+            type: cli-tool
+            command: node
+            args: [validate-source-request.mjs]
+            outputs:
+              source_request: object
+            sandbox:
+              profile: readonly
+              cwd_policy: skill-directory
+              network: false
+              require_enforcement: false
+          allowed_tools: [shell.exec]
+          artifacts:
+            named_emits:
+              source_request: source_request
+
+        - id: fetch-source
+          label: fetch the allowlisted statement source during this run
+          skill: ../web-fetch
+          runner: web-fetch
+          scopes:
+            - runx:net:allowlist
+          inputs:
+            extract: text
+            max_bytes: 100000
+          context:
+            url: validate-source-request.source_request.data.url
+            allowlist: validate-source-request.source_request.data.allowlist
+
         - id: admit-source
-          label: validate sourced lines and prepare unique existing-account bindings
+          label: parse fetched statement bytes and prepare unique existing-account bindings
           run:
             type: cli-tool
             command: node
@@ -176,6 +327,9 @@ runners:
               network: false
               require_enforcement: false
           allowed_tools: [shell.exec]
+          context:
+            source_request: validate-source-request.source_request.data
+            fetched_source: fetch-source.fetch_result.data
           artifacts:
             named_emits:
               admission: admission
@@ -216,6 +370,7 @@ runners:
           allowed_tools: [shell.exec]
           context:
             categorized_batch: categorize-lines.categorized_batch.data
+            prior_period: admit-source.admission.data.prior_period
           artifacts:
             named_emits:
               reconciliation_packet: reconciliation_packet
@@ -243,6 +398,12 @@ runners:
 
       policy:
         guards:
+          - step: fetch-source
+            field: validate-source-request.source_request.data.decision
+            equals: ready
+          - step: admit-source
+            field: fetch-source.fetch_result.data.decision
+            equals: ready
           - step: categorize-lines
             field: admit-source.admission.data.decision
             equals: ready

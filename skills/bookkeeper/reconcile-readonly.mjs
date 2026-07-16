@@ -24,6 +24,26 @@ function main() {
     process.exitCode = 78;
     return;
   }
+  if (!prior || typeof prior !== "object" || Array.isArray(prior)) {
+    process.stderr.write("runx.bookkeeper.reconciliation.invalid: admitted prior-period controls are missing.\n");
+    process.exitCode = 78;
+    return;
+  }
+  if (
+    !batch.controls?.source_fetch_performed
+    || !batch.controls?.source_bytes_verified
+    || !batch.source?.content_digest
+    || !batch.source?.final_url
+    || !Number.isInteger(batch.source?.status)
+    || batch.source.status < 200
+    || batch.source.status >= 300
+    || batch.source?.exact_bytes_verified !== true
+    || batch.source?.exact_hosts_only !== true
+  ) {
+    process.stderr.write("runx.bookkeeper.reconciliation.invalid: runtime source-fetch evidence is missing.\n");
+    process.exitCode = 78;
+    return;
+  }
   const accountCodes = new Set((batch.account_universe || []).map((item) => item.code));
   const matched = [];
   const unmatched = [];
@@ -84,12 +104,15 @@ function main() {
         expected_ending_balance_minor: expectedEndingBalanceMinor,
       },
     },
+    source: batch.source,
     consumed_batch_digest: batch.batch_digest,
     consumer: {
       step: "reconcile-readonly",
       recomputed_net_movement: true,
       verified_account_membership: true,
       verified_line_coverage: true,
+      source_fetch_verified: true,
+      source_bytes_verified: true,
       ledger_mutation_performed: false,
     },
   };

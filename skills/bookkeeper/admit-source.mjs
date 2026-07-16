@@ -36,8 +36,118 @@ function sourceRef(value, field) {
   return ref;
 }
 
+function contentDigest(value, field) {
+  const valueDigest = safeString(value, field, 71, 71).toLowerCase();
+  if (!/^sha256:[a-f0-9]{64}$/.test(valueDigest)) throw new Error(`${field} must be a sha256 digest.`);
+  return valueDigest;
+}
+
+function readFetchedStatement(inputs) {
+  if (inputs.transactions !== undefined) {
+    throw new Error("transactions must be fetched from source_url; direct transaction input is not accepted.");
+  }
+  const sourceRequest = inputs.source_request;
+  if (!sourceRequest || sourceRequest.decision !== "ready" || !sourceRequest.controls?.exact_hosts_only) {
+    throw new Error("a validated exact-host source_request is required.");
+  }
+  if (!Array.isArray(sourceRequest.allowlist) || sourceRequest.allowlist.length < 1) {
+    throw new Error("source_request.allowlist must contain exact hosts.");
+  }
+  const fetched = inputs.fetched_source;
+  if (!fetched || typeof fetched !== "object" || Array.isArray(fetched)) {
+    throw new Error("fetched_source from web-fetch is required.");
+  }
+  if (fetched.decision !== "ready" || !Number.isInteger(fetched.status) || fetched.status < 200 || fetched.status >= 300) {
+    throw new Error("web-fetch must return a ready 2xx source.");
+  }
+  if (fetched.extract_mode !== "text" || typeof fetched.extracted !== "string" || !fetched.extracted.trim()) {
+    throw new Error("web-fetch must return non-empty text extraction.");
+  }
+  if (fetched.policy?.allowlist_decision !== "allowed") {
+    throw new Error("web-fetch source must pass the declared host allowlist.");
+  }
+
+  const requestedUrl = sourceRef(sourceRequest.url, "source_request.url");
+  const finalUrl = sourceRef(fetched.final_url, "fetched_source.final_url");
+  const finalUrlWithoutFragment = new URL(finalUrl);
+  finalUrlWithoutFragment.hash = "";
+  const finalHost = finalUrlWithoutFragment.hostname.toLowerCase();
+  if (!sourceRequest.allowlist.includes(finalHost)) {
+    throw new Error("web-fetch final host must exactly match source_request.allowlist.");
+  }
+  const checkedHosts = Array.isArray(fetched.policy.allowlist_checked) ? fetched.policy.allowlist_checked : [];
+  if (JSON.stringify(checkedHosts) !== JSON.stringify(sourceRequest.allowlist)) {
+    throw new Error("web-fetch allowlist evidence differs from the validated source request.");
+  }
+  if (fetched.policy.attempted_host !== sourceRequest.host) {
+    throw new Error("web-fetch attempted host differs from the validated source request.");
+  }
+  const fetchedDigest = contentDigest(fetched.content_digest, "fetched_source.content_digest");
+  const extractedBytes = Buffer.from(fetched.extracted, "utf8");
+  const extractedDigest = `sha256:${createHash("sha256").update(extractedBytes).digest("hex")}`;
+  if (extractedDigest !== fetchedDigest || extractedBytes.length !== fetched.provenance?.bytes) {
+    throw new Error("web-fetch text extraction differs from the fetched bytes; source must be compact UTF-8 JSON with no extractor transformations.");
+  }
+  let document;
+  try {
+    document = JSON.parse(fetched.extracted);
+  } catch {
+    throw new Error("fetched statement must be valid JSON.");
+  }
+  if (!document || typeof document !== "object" || Array.isArray(document)) {
+    throw new Error("fetched statement must be a JSON object.");
+  }
+  if (!Array.isArray(document.transactions)) {
+    throw new Error("fetched statement must contain transactions[].");
+  }
+
+  const provenance = fetched.provenance && typeof fetched.provenance === "object" && !Array.isArray(fetched.provenance)
+    ? fetched.provenance
+    : {};
+  if (!Number.isSafeInteger(provenance.bytes) || provenance.bytes < 1) {
+    throw new Error("web-fetch provenance must include a positive byte count.");
+  }
+  if (provenance.truncated === true) {
+    throw new Error("truncated fetched statements are not accepted.");
+  }
+  return {
+    document,
+    transactions: document.transactions.map((transaction, index) => ({
+      ...transaction,
+      currency: transaction?.currency ?? document.currency,
+      source_ref: `${finalUrlWithoutFragment.href}#transactions[${index}]`,
+    })),
+    evidence: {
+      requested_url: requestedUrl,
+      final_url: finalUrlWithoutFragment.href,
+      status: fetched.status,
+      content_digest: fetchedDigest,
+      fetched_at: safeString(provenance.fetched_at, "fetched_source.provenance.fetched_at", 20, 40),
+      bytes: provenance.bytes,
+      redirects: Array.isArray(provenance.redirects) ? provenance.redirects : [],
+      truncated: false,
+      allowlist: sourceRequest.allowlist,
+      exact_hosts_only: true,
+      exact_bytes_verified: true,
+      dataset: document.dataset ? safeString(document.dataset, "fetched_statement.dataset", 1, 160) : null,
+    },
+  };
+}
+
 function directionFor(amountMinor) {
   return amountMinor > 0 ? "inflow" : "outflow";
+}
+
+function realIsoDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() + 1 === month
+    && parsed.getUTCDate() === day;
 }
 
 function normalizedMatcherList(value, field) {
@@ -82,7 +192,8 @@ function emitNeedsReview(inputs, diagnostics, reviewItems = []) {
 function main() {
   const inputs = readInputs();
   try {
-    const transactions = inputs.transactions;
+    const fetchedStatement = readFetchedStatement(inputs);
+    const transactions = fetchedStatement.transactions;
     const chart = inputs.chart_of_accounts;
     const prior = inputs.prior_period;
     if (!Array.isArray(transactions) || transactions.length < 1 || transactions.length > 100) {
@@ -100,11 +211,35 @@ function main() {
     for (const field of ["opening_balance_minor", "expected_ending_balance_minor"]) {
       if (!Number.isSafeInteger(prior[field])) throw new Error(`prior_period.${field} must be a safe integer.`);
     }
-    const previousIds = new Set(Array.isArray(prior.previous_transaction_ids) ? prior.previous_transaction_ids.map(String) : []);
-    const knownCounterparties = new Set(Array.isArray(prior.known_counterparties) ? prior.known_counterparties.map(normalizeText) : []);
+    const previousTransactionIds = Array.isArray(prior.previous_transaction_ids)
+      ? prior.previous_transaction_ids.map((value, index) => safeString(value, `prior_period.previous_transaction_ids[${index}]`, 1, 100))
+      : [];
+    const knownCounterpartyValues = Array.isArray(prior.known_counterparties)
+      ? prior.known_counterparties.map((value, index) => safeString(value, `prior_period.known_counterparties[${index}]`, 1, 120))
+      : [];
+    const previousIds = new Set(previousTransactionIds);
+    const knownCounterparties = new Set(knownCounterpartyValues.map(normalizeText));
     const averageAbs = prior.average_abs_amount_minor;
     if (averageAbs !== undefined && (!Number.isSafeInteger(averageAbs) || averageAbs <= 0)) {
       throw new Error("prior_period.average_abs_amount_minor must be a positive safe integer when supplied.");
+    }
+    const normalizedPrior = {
+      currency,
+      opening_balance_minor: prior.opening_balance_minor,
+      expected_ending_balance_minor: prior.expected_ending_balance_minor,
+      previous_transaction_ids: previousTransactionIds,
+      known_counterparties: knownCounterpartyValues,
+      ...(averageAbs === undefined ? {} : { average_abs_amount_minor: averageAbs }),
+    };
+    const sourceCurrency = safeString(fetchedStatement.document.currency, "fetched_statement.currency", 3, 3).toUpperCase();
+    if (sourceCurrency !== currency) throw new Error("fetched statement currency differs from prior_period.currency.");
+    for (const field of ["opening_balance_minor", "expected_ending_balance_minor"]) {
+      if (!Number.isSafeInteger(fetchedStatement.document[field])) {
+        throw new Error(`fetched_statement.${field} must be a safe integer.`);
+      }
+      if (fetchedStatement.document[field] !== normalizedPrior[field]) {
+        throw new Error(`fetched_statement.${field} differs from prior_period.${field}.`);
+      }
     }
 
     const codes = new Set();
@@ -142,7 +277,7 @@ function main() {
       ids.add(id);
       if (previousIds.has(id)) throw new Error(`transaction ${id} already appears in prior_period.previous_transaction_ids.`);
       const date = safeString(raw.date, `transactions[${index}].date`, 10, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
+      if (!realIsoDate(date)) {
         throw new Error(`transactions[${index}].date must be a real YYYY-MM-DD date.`);
       }
       const description = safeString(raw.description, `transactions[${index}].description`, 2, 240);
@@ -202,8 +337,12 @@ function main() {
       decision: "ready",
       transaction_digest: digest(normalizedTransactions),
       chart_digest: digest(normalizedChart),
-      prior_period_digest: digest(prior),
+      prior_period_digest: digest(normalizedPrior),
       currency,
+      transactions: normalizedTransactions,
+      chart_of_accounts: normalizedChart,
+      prior_period: normalizedPrior,
+      source: fetchedStatement.evidence,
       assignments,
       source_refs: normalizedTransactions.map((item) => item.source_ref),
       anomaly_inputs: {
@@ -215,6 +354,8 @@ function main() {
         ledger_mutation_performed: false,
         invented_accounts: false,
         unique_binding_required: true,
+        source_fetch_performed: true,
+        source_bytes_verified: true,
       },
       diagnostics: [],
     };
