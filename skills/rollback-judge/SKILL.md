@@ -15,9 +15,12 @@ only when the current monitor run failed and a separately supplied prior run
 proves a healthy version.
 
 The skill never deploys, rolls back, publishes, calls a write API, or mints
-authority. It emits a typed answer for the existing
-`release.publish.approval` gate; the `release` skill and a project-declared
-release interface own every downstream effect.
+authority. Its default graph emits a typed answer for the existing
+`release.publish.approval` gate, then passes that answer to a mock release rail
+inside the same run. The mock rail consumes `approved:true` and seals a release
+advance result so the receipt proves the decision was consumed; a real release
+skill or project-declared release interface would own any live downstream
+effect.
 
 ## Source Contract
 
@@ -94,6 +97,13 @@ release_publish_approval:
   answer:
     approved: boolean
     reason: string
+release_execution_result:
+  rail: mock-release
+  gate_id: release.publish.approval
+  consumed: boolean
+  advanced: boolean
+  target_ref: string
+  command_digest: string
 review_record:
   form: review
   signal: { severity, kind }
@@ -106,8 +116,11 @@ source_read:
 
 `source_read` records the API URL, fetched time, response SHA-256, ETag, monitor
 run id, workflow, conclusion, commit SHA, public run URL, and the commit-pinned
-deployment marker. The sealed review act binds the derived decision, reason,
-and release target; callers do not provide `act_decision` or `act_target_ref`.
+deployment marker. `release_execution_result` records the same-run consumption
+of `release.publish.approval` by the mock release rail and whether it advanced.
+The sealed review act binds the derived decision, reason, release target, and
+the consumed release effect; callers do not provide `act_decision` or
+`act_target_ref`.
 
 ## Run
 
@@ -125,5 +138,6 @@ runx skill <owner>/rollback-judge@<version> --registry https://api.runx.ai --jso
 The package includes `fixtures/critical-signal.json` with public, immutable run
 references. Hosted harness replays expected answers tied to those references so
 it remains deterministic; the default `judge` runner used for dogfood performs
-the network reads. The contradictory case receives no answer, stops with
-`needs_agent`, and emits no decision or approval.
+the network reads and the same-run mock release consumption. The contradictory
+case receives no answer, stops with `needs_agent`, and emits no decision or
+approval.

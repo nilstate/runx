@@ -137,8 +137,8 @@ runners:
       reason_step: decide
       reason_from: act_reason
       target_from: monitor_run_ref
-      effect_step: decide
-      effect_from: act_target_ref
+      effect_step: release
+      effect_from: release_effect_ref
       effect_type: tracking_item
     inputs:
       deploy_signal:
@@ -188,6 +188,32 @@ runners:
             forward_fix_evidence: "$input.forward_fix_evidence"
           artifacts:
             wrap_as: rollback_decision_packet
+        - id: release
+          label: consume release.publish.approval in mock release rail
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - release.mjs
+            outputs:
+              release_execution_result: object
+              release_effect_ref: string
+              release_advanced: boolean
+              consumed_gate: object
+          inputs:
+            monitor_run_ref: "$input.monitor_run_ref"
+          context:
+            release_publish_approval: decide.release_publish_approval
+            decision: decide.decision
+            act_target_ref: decide.act_target_ref
+            rollback_decision_packet: decide.rollback_decision_packet.data
+          artifacts:
+            wrap_as: release_execution_packet
+      policy:
+        guards:
+          - step: release
+            field: decide.release_publish_approval.approved
+            equals: true
 
   agent_review:
     type: agent-task
