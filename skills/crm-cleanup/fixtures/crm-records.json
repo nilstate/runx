@@ -2,14 +2,16 @@
   {
     "id": "acme-001",
     "company": "Acme Corp",
-    "account_status": "active",
+    "account_status": "at_risk",
     "next_action": null,
     "owner": "jordan@vendor.io",
     "health_score": 72,
     "last_contact": "2026-06-20",
     "renewal_date": "2026-09-30",
     "arr": 48000,
-    "tags": ["mid-market"]
+    "tags": [
+      "mid-market"
+    ]
   },
   {
     "id": "globex-002",
@@ -21,7 +23,9 @@
     "last_contact": "2026-05-11",
     "renewal_date": "2026-08-15",
     "arr": 21000,
-    "tags": ["smb"]
+    "tags": [
+      "smb"
+    ]
   },
   {
     "id": "initech-003",
@@ -33,6 +37,8 @@
     "last_contact": "2026-04-02",
     "renewal_date": "2026-07-31",
     "arr": 9000,
-    "tags": ["smb"]
+    "tags": [
+      "smb"
+    ]
   }
 ]
