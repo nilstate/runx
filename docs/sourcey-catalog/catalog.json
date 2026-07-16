@@ -1,0 +1,55 @@
+{
+  "source_repository": "https://github.com/runxhq/runx",
+  "source_commit": "5afc25a83edf1c1320df7ac0d78c36f1523b5677",
+  "groups": [
+    {
+      "name": "Operate",
+      "entries": [
+        { "name": "agency", "slug": "agency", "group": "Operate", "path": "skills/agency/SKILL.md" },
+        { "name": "business-ops", "slug": "business-ops", "group": "Operate", "path": "skills/business-ops/SKILL.md" },
+        { "name": "operator-inbox", "slug": "operator-inbox", "group": "Operate", "path": "skills/operator-inbox/SKILL.md" },
+        { "name": "ops-desk", "slug": "ops-desk", "group": "Operate", "path": "skills/ops-desk/SKILL.md" },
+        { "name": "work-plan", "slug": "work-plan", "group": "Operate", "path": "skills/work-plan/SKILL.md" }
+      ]
+    },
+    {
+      "name": "Research and data",
+      "entries": [
+        { "name": "deep-research", "slug": "deep-research", "group": "Research and data", "path": "skills/deep-research/SKILL.md" },
+        { "name": "research", "slug": "research", "group": "Research and data", "path": "skills/research/SKILL.md" },
+        { "name": "data-store", "slug": "data-store", "group": "Research and data", "path": "skills/data-store/SKILL.md" },
+        { "name": "knowledge-router", "slug": "knowledge-router", "group": "Research and data", "path": "skills/knowledge-router/SKILL.md" },
+        { "name": "web-fetch", "slug": "web-fetch", "group": "Research and data", "path": "skills/web-fetch/SKILL.md" }
+      ]
+    },
+    {
+      "name": "GitHub and delivery",
+      "entries": [
+        { "name": "github-sync", "slug": "github-sync", "group": "GitHub and delivery", "path": "skills/github-sync/SKILL.md" },
+        { "name": "issue-intake", "slug": "issue-intake", "group": "GitHub and delivery", "path": "skills/issue-intake/SKILL.md" },
+        { "name": "issue-triage", "slug": "issue-triage", "group": "GitHub and delivery", "path": "skills/issue-triage/SKILL.md" },
+        { "name": "issue-to-pr", "slug": "issue-to-pr", "group": "GitHub and delivery", "path": "skills/issue-to-pr/SKILL.md" },
+        { "name": "release", "slug": "release", "group": "GitHub and delivery", "path": "skills/release/SKILL.md" }
+      ]
+    },
+    {
+      "name": "Safety and review",
+      "entries": [
+        { "name": "audit-receipt", "slug": "audit-receipt", "group": "Safety and review", "path": "skills/audit-receipt/SKILL.md" },
+        { "name": "cve-audit", "slug": "cve-audit", "group": "Safety and review", "path": "skills/cve-audit/SKILL.md" },
+        { "name": "least-privilege", "slug": "least-privilege", "group": "Safety and review", "path": "skills/least-privilege/SKILL.md" },
+        { "name": "policy-author", "slug": "policy-author", "group": "Safety and review", "path": "skills/policy-author/SKILL.md" },
+        { "name": "review-receipt", "slug": "review-receipt", "group": "Safety and review", "path": "skills/review-receipt/SKILL.md" },
+        { "name": "sandbox-harden", "slug": "sandbox-harden", "group": "Safety and review", "path": "skills/sandbox-harden/SKILL.md" }
+      ]
+    },
+    {
+      "name": "Outbound and tooling",
+      "entries": [
+        { "name": "governed-outbound", "slug": "governed-outbound", "group": "Outbound and tooling", "path": "skills/governed-outbound/SKILL.md" },
+        { "name": "run-history", "slug": "run-history", "group": "Outbound and tooling", "path": "skills/run-history/SKILL.md" },
+        { "name": "sourcey", "slug": "sourcey", "group": "Outbound and tooling", "path": "skills/sourcey/SKILL.md" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+# Runx Governed Skill Catalog
+
+> Governed Runx skill catalog pinned to one upstream revision.
+
+## Skills
+
+- [Introduction](/runxhq/runx/pages/introduction.html): Governed Runx skill catalog pinned to one upstream revision.
+- [agency](/runxhq/runx/pages/agency.html): Run a standing, accountable team toward a mandate, one governed turn at a time.
+- [business-ops](/runxhq/runx/pages/business-ops.html): Turn one business signal into a replayable operations graph.
+- [operator-inbox](/runxhq/runx/pages/operator-inbox.html): Maintain a durable action queue without turning a connector into the owner of operator state.
+- [ops-desk](/runxhq/runx/pages/ops-desk.html): Operate a project, workspace, or account from an agent-controlled desk.
+- [work-plan](/runxhq/runx/pages/work-plan.html): Turn a build or automation objective into a bounded governed work plan.
+- [deep-research](/runxhq/runx/pages/deep-research.html): This graph turns one important question into a decision-ready brief.
+- [research](/runxhq/runx/pages/research.html): Research one bounded question and turn it into a decision-ready packet.
+- [data-store](/runxhq/runx/pages/data-store.html): Operate a data source through a governed adapter contract. This skill gives an agent enough context to read, append, or project state without learning provider secrets, inventing SQL, or depending on one storage backend.
+- [knowledge-router](/runxhq/runx/pages/knowledge-router.html): Route one question, source event, or support thread to the right knowledge sources and follow-up path.
+- [web-fetch](/runxhq/runx/pages/web-fetch.html): Fetch one URL, prove it was allowed, extract the part the caller asked for, and return that slice by digest with the provenance needed to trust it later.
+- [github-sync](/runxhq/runx/pages/github-sync.html): Decide exactly what state to move between a GitHub repo and the local graph, in which direction, and whether the agent is even allowed to write.
+- [issue-intake](/runxhq/runx/pages/issue-intake.html): Convert an inbound thread, support report, or operator request into one explicit intake decision plus the parent change artifact that downstream planning or mutation lanes must share.
+- [issue-triage](/runxhq/runx/pages/issue-triage.html): Turn noisy issue streams into bounded, evidence-backed action.
+- [issue-to-pr](/runxhq/runx/pages/issue-to-pr.html): Drive one bounded thread-driven change through the scafld 2.4-compatible lifecycle and package the result as a provider-agnostic draft pull-request packet.
+- [release](/runxhq/runx/pages/release.html): Turn a proposed release into an audited publication. The skill owns the release decision process: evidence gathering, changelog preparation, approval, publish handoff, verification, and announcement. It does not own a project's custom release implementation. Project-specific topology lives in a release profile that names existing commands, workflows, registries, deploy targets, and verification readbacks.
+- [audit-receipt](/runxhq/runx/pages/audit-receipt.html): Audit a sealed run for authority over-reach, using its own receipt as evidence.
+- [cve-audit](/runxhq/runx/pages/cve-audit.html): This skill audits exact npm versions from an immutable `package-lock.json` against the public OSV API. It emits a machine-readable audit result, `evidence.json`, and a finding-by-finding Markdown report. The governed graph in `X.yaml` independently replays every query and seals a delivery packet only when the reported and replayed advisory sets match exactly.
+- [least-privilege](/runxhq/runx/pages/least-privilege.html): Turn granted authority plus observed usage into a bounded attenuation proposal.
+- [policy-author](/runxhq/runx/pages/policy-author.html): Author one governed runx operational policy from intent, and prove it lints.
+- [review-receipt](/runxhq/runx/pages/review-receipt.html): Diagnose what went wrong in a skill or graph execution and propose the smallest change that fixes it.
+- [sandbox-harden](/runxhq/runx/pages/sandbox-harden.html): Decide the narrowest sandbox a workload can run inside without breaking it.
+- [governed-outbound](/runxhq/runx/pages/governed-outbound.html): Take something from outside, make it safe to send, authorize the exact outbound plan, and leave proof. `governed-outbound` prepares the boundary crossing; it does not claim the configured provider delivered anything.
+- [run-history](/runxhq/runx/pages/run-history.html): Turn runx's own run ledger into a governed, read-only report.
+- [sourcey](/runxhq/runx/pages/sourcey.html): Generate a documentation site for a project using Sourcey. Sourcey is a static documentation generator that produces HTML sites from markdown pages, OpenAPI specs, Doxygen XML, and MCP server snapshots.

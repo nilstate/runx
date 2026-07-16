@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>issue-to-pr - Runx Governed Skill Catalog</title><meta name="description" content="Drive one bounded thread-driven change through the scafld 2.4-compatible lifecycle and package the result as a provider-agnostic draft pull-request packet."/><meta name="generator" content="Sourcey 3.6.5"/><link rel="canonical" href="https://github.com/runxhq/runx/pages/issue-to-pr.html"/><meta property="og:title" content="issue-to-pr - Runx Governed Skill Catalog"/><meta property="og:description" content="Drive one bounded thread-driven change through the scafld 2.4-compatible lifecycle and package the result as a provider-agnostic draft pull-request packet."/><meta property="og:type" content="website"/><meta property="og:site_name" content="Runx Governed Skill Catalog"/><meta property="og:url" content="https://github.com/runxhq/runx/pages/issue-to-pr.html"/><meta property="og:image" content="https://github.com/runxhq/runx/_og/pages/issue-to-pr.png"/><meta property="og:image:width" content="1200"/><meta property="og:image:height" content="630"/><meta property="og:image:type" content="image/png"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="issue-to-pr - Runx Governed Skill Catalog"/><meta name="twitter:description" content="Drive one bounded thread-driven change through the scafld 2.4-compatible lifecycle and package the result as a provider-agnostic draft pull-request packet."/><meta name="twitter:image" content="https://github.com/runxhq/runx/_og/pages/issue-to-pr.png"/><meta name="sourcey-search" content="../search-index.json"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap"/><style>
+    :root {
+      --color-primary: 15 118 110;
+      --color-primary-light: 20 184 166;
+      --color-primary-dark: 19 78 74;
+      --color-primary-ink: 19 78 74;
+      --color-background-light: 255 255 255;
+      --color-background-dark: 11 12 16;
+      --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', Menlo, monospace;
+      --sidebar-width: 18rem;
+      --toc-width: 19rem;
+      --content-max-width: 44rem;
+      --header-height: 7.5rem;
+    }
+    html { scroll-padding-top: var(--header-height); }
+    @media (min-width: 1024px) {
+      :root { --header-height: 4rem; }
+    }
+    body { margin: 0; background: rgb(var(--color-background-light)); }
+    .dark body { background: rgb(var(--color-background-dark)); }
+  </style><script>(function(){var t=localStorage.getItem('sourcey-theme');if(t==='dark')document.documentElement.classList.add('dark')})()</script><link rel="stylesheet" href="../sourcey.css"/></head><body id="sourcey"><div id="page" class="relative antialiased text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]"><div id="navbar" class="z-30 fixed lg:sticky top-0 w-full"><div class="absolute w-full h-full flex-none border-b border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-300)/0.06)] bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))]"></div><div class="max-w-[92rem] mx-auto relative"><div class="relative"><div class="flex items-center lg:px-12 h-16 min-w-0 mx-4 lg:mx-0"><div class="h-full relative flex-1 flex items-center gap-x-4 min-w-0 border-b border-[rgb(var(--color-gray-500)/0.08)] dark:border-[rgb(var(--color-gray-300)/0.08)]"><div class="flex-1 flex items-center gap-x-4"><a href="../pages/introduction.html" class="select-none inline-block"><span class="text-sm font-semibold text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))]">Runx Governed Skill Catalog</span></a></div><div class="relative hidden lg:flex items-center flex-1 z-20 gap-2"><button id="search-open" type="button" class="group flex pointer-events-auto rounded-lg w-full items-center text-sm leading-6 h-9 pl-3.5 pr-3 text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))] ring-1 ring-[rgb(var(--color-gray-400)/0.3)] hover:ring-[rgb(var(--color-gray-600)/0.3)] dark:ring-[rgb(var(--color-gray-600)/0.3)] dark:hover:ring-[rgb(var(--color-gray-500)/0.3)] justify-between truncate gap-2 min-w-[43px] cursor-pointer bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))] dark:brightness-110 dark:hover:brightness-125"><div class="flex items-center gap-2 min-w-[42px]"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="min-w-4 flex-none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><div class="truncate min-w-0">Type <kbd>/</kbd> to search</div></div></button></div><div class="flex-1 relative hidden lg:flex items-center ml-auto justify-end space-x-4"><nav class="text-sm"><ul class="flex space-x-6 items-center"></ul></nav><button id="theme-toggle" type="button" aria-label="Toggle theme" class="p-2 flex items-center justify-center cursor-pointer text-[rgb(var(--color-gray-400))] hover:text-[rgb(var(--color-gray-600))] dark:text-[rgb(var(--color-gray-500))] dark:hover:text-[rgb(var(--color-gray-300))]"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" class="h-4 w-4 block dark:hidden"><g stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.11V2"></path><path d="M12.87 3.13L12.24 3.76"></path><path d="M14.89 8H14"></path><path d="M12.87 12.87L12.24 12.24"></path><path d="M8 14.89V14"></path><path d="M3.13 12.87L3.76 12.24"></path><path d="M1.11 8H2"></path><path d="M3.13 3.13L3.76 3.76"></path><circle cx="8" cy="8" r="3.78"></circle></g></svg><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 hidden dark:block"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></button></div><div class="flex lg:hidden items-center gap-3"><button id="search-open-mobile" type="button" aria-label="Search" class="text-[rgb(var(--color-gray-500))] w-8 h-8 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="min-w-4 flex-none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></button><button type="button" data-drawer-slide="right" aria-label="Open menu" class="text-[rgb(var(--color-gray-500))] w-8 h-8 flex items-center justify-center hover:text-[rgb(var(--color-gray-600))]"><svg class="h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"></path></svg></button></div></div></div></div><div class="flex lg:hidden items-center h-14 px-5 text-sm overflow-hidden"><div class="flex items-center min-w-0 space-x-3 leading-6 whitespace-nowrap"><span class="font-semibold text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))] truncate min-w-0">issue-to-pr</span></div></div></div></div><span class="fixed inset-0 bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))] -z-10 pointer-events-none"></span><div class="max-w-[92rem] mx-auto relative px-4 lg:px-8"><div id="sidebar" class="z-20 hidden lg:block fixed bottom-0 right-auto w-[18rem]" style="top: var(--header-height)"><div class="absolute inset-0 z-10 overflow-auto pr-8 pb-10" data-sourcey-sidebar-scroll="true" data-sourcey-sidebar-tab="default"><div class="relative text-sm leading-6"><div class="sticky top-0 h-8 z-10 bg-gradient-to-b from-[rgb(var(--color-background-light))] dark:from-[rgb(var(--color-background-dark))]"></div><nav id="nav" role="navigation"><div class><h5 class="nav-group-label">Introduction</h5><ul class="space-y-px"><li><a href="../pages/introduction.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Introduction</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Operate</h5><ul class="space-y-px"><li><a href="../pages/agency.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">agency</span></a></li><li><a href="../pages/business-ops.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">business-ops</span></a></li><li><a href="../pages/operator-inbox.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">operator-inbox</span></a></li><li><a href="../pages/ops-desk.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">ops-desk</span></a></li><li><a href="../pages/work-plan.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">work-plan</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Research and data</h5><ul class="space-y-px"><li><a href="../pages/deep-research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">deep-research</span></a></li><li><a href="../pages/research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">research</span></a></li><li><a href="../pages/data-store.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">data-store</span></a></li><li><a href="../pages/knowledge-router.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">knowledge-router</span></a></li><li><a href="../pages/web-fetch.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">web-fetch</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">GitHub and delivery</h5><ul class="space-y-px"><li><a href="../pages/github-sync.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">github-sync</span></a></li><li><a href="../pages/issue-intake.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-intake</span></a></li><li><a href="../pages/issue-triage.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-triage</span></a></li><li><a href="../pages/issue-to-pr.html" class="nav-link active"><span class="flex-1 break-words [word-break:break-word]">issue-to-pr</span></a></li><li><a href="../pages/release.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">release</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Safety and review</h5><ul class="space-y-px"><li><a href="../pages/audit-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">audit-receipt</span></a></li><li><a href="../pages/cve-audit.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">cve-audit</span></a></li><li><a href="../pages/least-privilege.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">least-privilege</span></a></li><li><a href="../pages/policy-author.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">policy-author</span></a></li><li><a href="../pages/review-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">review-receipt</span></a></li><li><a href="../pages/sandbox-harden.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">sandbox-harden</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Outbound and tooling</h5><ul class="space-y-px"><li><a href="../pages/governed-outbound.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">governed-outbound</span></a></li><li><a href="../pages/run-history.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">run-history</span></a></li><li><a href="../pages/sourcey.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">sourcey</span></a></li></ul></div></nav></div></div></div><dialog id="mobile-nav" class="mobile-nav-dialog"><nav class="pt-5 pb-3 px-4 flex-1 overflow-y-auto"><div class><h5 class="nav-group-label">Introduction</h5><ul class="space-y-px"><li><a href="../pages/introduction.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Introduction</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Operate</h5><ul class="space-y-px"><li><a href="../pages/agency.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">agency</span></a></li><li><a href="../pages/business-ops.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">business-ops</span></a></li><li><a href="../pages/operator-inbox.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">operator-inbox</span></a></li><li><a href="../pages/ops-desk.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">ops-desk</span></a></li><li><a href="../pages/work-plan.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">work-plan</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Research and data</h5><ul class="space-y-px"><li><a href="../pages/deep-research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">deep-research</span></a></li><li><a href="../pages/research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">research</span></a></li><li><a href="../pages/data-store.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">data-store</span></a></li><li><a href="../pages/knowledge-router.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">knowledge-router</span></a></li><li><a href="../pages/web-fetch.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">web-fetch</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">GitHub and delivery</h5><ul class="space-y-px"><li><a href="../pages/github-sync.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">github-sync</span></a></li><li><a href="../pages/issue-intake.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-intake</span></a></li><li><a href="../pages/issue-triage.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-triage</span></a></li><li><a href="../pages/issue-to-pr.html" class="nav-link active"><span class="flex-1 break-words [word-break:break-word]">issue-to-pr</span></a></li><li><a href="../pages/release.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">release</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Safety and review</h5><ul class="space-y-px"><li><a href="../pages/audit-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">audit-receipt</span></a></li><li><a href="../pages/cve-audit.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">cve-audit</span></a></li><li><a href="../pages/least-privilege.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">least-privilege</span></a></li><li><a href="../pages/policy-author.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">policy-author</span></a></li><li><a href="../pages/review-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">review-receipt</span></a></li><li><a href="../pages/sandbox-harden.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">sandbox-harden</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Outbound and tooling</h5><ul class="space-y-px"><li><a href="../pages/governed-outbound.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">governed-outbound</span></a></li><li><a href="../pages/run-history.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">run-history</span></a></li><li><a href="../pages/sourcey.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">sourcey</span></a></li></ul></div></nav></dialog><main id="docs" class="pt-[8.5rem] lg:pt-10"><div class="flex flex-row-reverse gap-12 box-border w-full"><aside id="toc" class="hidden xl:flex self-start sticky xl:flex-col max-w-[28rem] z-[21]" style="height: calc(100vh - var(--header-height) - 2.5rem); top: calc(var(--header-height) + 2.5rem)"><div class="z-10 hidden xl:flex box-border max-h-full pl-10 w-[19rem]"><div class="text-[rgb(var(--color-gray-600))] text-sm leading-6 w-[16.5rem] overflow-y-auto space-y-2 pb-4 -mt-10 pt-10"><h5 class="font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] flex items-center gap-2"><svg class="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>On this page</h5><nav><ul><li><a href="#lifecycle" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Lifecycle</a></li><li><a href="#thread-story" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Thread Story</a></li><li><a href="#spec-authoring-contract" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Spec Authoring Contract</a></li><li><a href="#fix-authoring-contract" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Fix Authoring Contract</a></li><li><a href="#inputs" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Inputs</a></li><li><a href="#structured-output" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Structured Output</a></li></ul></nav></div></div></aside><div class="relative grow box-border flex-col w-full mx-auto px-1 min-w-0 lg:pl-[23.7rem] lg:-ml-12 xl:w-[calc(100%-28rem)]" id="content-area"><header class="relative leading-none"><div class="mt-0.5 space-y-2.5"><div class="h-5 text-[rgb(var(--color-primary-ink))] dark:text-[rgb(var(--color-primary-light))] text-sm font-semibold">GitHub and delivery</div><div class="flex flex-col sm:flex-row items-start sm:items-center relative gap-2 min-w-0"><h1 class="text-2xl sm:text-3xl text-[rgb(var(--color-gray-900))] tracking-tight dark:text-[rgb(var(--color-gray-200))] font-bold" style="overflow-wrap: anywhere">issue-to-pr</h1></div></div><div class="page-description mt-2 text-lg prose prose-gray dark:prose-invert" style="overflow-wrap: anywhere"><span>Drive one bounded thread-driven change through the scafld 2.4-compatible lifecycle and package the result as a provider-agnostic draft pull-request packet.</span></div></header><div class="prose prose-gray dark:prose-invert relative mt-8 mb-14 max-w-none"><ul>
+<li>Group: GitHub and delivery</li>
+<li>Source: <a href="https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/issue-to-pr/SKILL.md" target="_blank" rel="noopener noreferrer">skills/issue-to-pr/SKILL.md</a></li>
+<li>Commit: <code>5afc25a83edf1c1320df7ac0d78c36f1523b5677</code></li>
+<li>Path: <code>skills/issue-to-pr/SKILL.md</code></li>
+</ul>
+<h1 id="issue-to-pr">Issue to PR</h1>
+<p>Drive one bounded thread-driven change through the scafld 2.4-compatible
+lifecycle and package the result as a provider-agnostic draft pull-request
+packet.</p>
+<p>The graph separates cognition from mutation. Agent phases author the scafld
+markdown spec and the bounded repo change bundle. Deterministic <code>fs.write</code> and
+<code>fs.write_bundle</code> phases are the only places files are written to disk. scafld
+owns the workflow kernel: <code>plan</code>, <code>validate</code>, <code>approve</code>, <code>build_to_review</code>,
+<code>status</code>, <code>review</code>, <code>complete</code>, and <code>handoff</code>. runx owns the explicit authoring
+boundaries, deterministic writes, receipts, and final outbox packaging.</p>
+<p>Branch creation and provider PR mutation are outside scafld. The caller or
+adapter prepares the branch, then passes the intended branch into this lane.
+The lane records that branch in the draft PR packet, and the GitHub adapter
+fails closed if the workspace checkout does not match it. The final
+<code>issue-to-pr-push-outbox</code> step is the only provider push boundary.</p>
+<h2 id="lifecycle">Lifecycle</h2>
+<p>The graph runs:</p>
+<p><code>scafld plan</code> -&gt; author markdown spec -&gt; write spec -&gt; read spec -&gt; validate -&gt;
+approve -&gt; read approved spec -&gt; read declared files -&gt; author fix bundle -&gt;
+write fix bundle -&gt; build to review -&gt; status -&gt; read current branch -&gt; review
+-&gt; complete -&gt; final status -&gt; handoff -&gt; package draft PR outbox -&gt; adapter
+push.</p>
+<p>There are no translation projection steps. <code>scafld handoff</code> is the human handoff
+surface, <code>build_to_review</code> drives bounded native <code>scafld build</code> advances until
+the task is review-ready, and <code>scafld review</code> is the native review boundary.</p>
+<h2 id="thread-story">Thread Story</h2>
+<p>The lane should leave one coherent source-thread story, not a stream of every
+internal event. The durable milestones are:</p>
+<ul>
+<li>source signal and the bounded request</li>
+<li>accountable decision that a PR is justified</li>
+<li>scafld spec approval and declared scope</li>
+<li>build and validation result</li>
+<li>adversarial review result</li>
+<li>draft PR publication</li>
+<li>human merge gate</li>
+<li>final provider outcome when observed</li>
+</ul>
+<p>Comments and PR bodies should summarize those gates with enough evidence for a
+reviewer to act. They must not publish raw local paths, secrets, full command
+dumps, or duplicate retry comments. User-facing labels should use plain terms
+such as spec authoring, fix authoring, review, and human merge gate.</p>
+<h2 id="spec-authoring-contract">Spec Authoring Contract</h2>
+<p>The <code>issue-to-pr-author-spec</code> boundary must emit a full scafld
+2.4-compatible markdown document, not YAML and not a reduced project brief.</p>
+<p>The document must preserve front matter with:</p>
+<ul>
+<li><code>spec_version: '2.0'</code></li>
+<li><code>task_id</code></li>
+<li><code>created</code>: ISO-8601 timestamp</li>
+<li><code>updated</code>: ISO-8601 timestamp</li>
+<li><code>title</code>: non-empty task title, normally <code>thread_title</code></li>
+<li><code>status: draft</code></li>
+<li><code>harden_status: not_run</code></li>
+<li><code>size</code>: one of <code>small</code>, <code>medium</code>, or <code>large</code></li>
+<li><code>risk_level</code></li>
+</ul>
+<p>The body must include the standard scafld 2 sections: Current State, Summary,
+Context, Objectives, Scope, Dependencies, Assumptions, Touchpoints, Risks,
+Acceptance, at least one Phase section, Rollback, Review, Self Eval,
+Deviations, Metadata, Origin, Harden Rounds, and Planning Log.</p>
+<p>The graph normalizes the front matter before writing the spec so current scafld
+schema fields such as <code>title</code> and size stay deterministic even if the authoring
+boundary omits or stales them.</p>
+<p>All changed-file declarations must use concrete repo-relative paths in
+backticks under Context / Files impacted and Phase / Changes. Do not declare
+scafld-managed control-plane artifacts under <code>.scafld/specs</code>,
+<code>.scafld/reviews</code>, <code>.scafld/runs</code>, or old <code>.ai</code> governance paths as repo-change
+scope.</p>
+<p>Documentation and process requests still need a concrete repo file. Prefer
+existing docs surfaces supplied by <code>repo_snapshot.existing_files</code> or
+<code>repo_context</code>, and declare at least one non-governance repo file for an
+approved <code>issue-to-pr</code> lane. Do not leave the repo-change scope empty after the
+decision layer has approved a PR.</p>
+<p>Validation commands must run against the current workspace state after the fix
+bundle is written. Do not depend on git history ranges such as <code>HEAD~1</code> or
+merge-base comparisons. Validation commands, when present, must be direct
+repo-local checks such as test, lint, build, or file-content commands. Never use
+runx runtime internals or <code>graph/scafld/run.mjs</code> as a validation command;
+scafld is already the lifecycle runner around the task.</p>
+<p>For any code change, the approved spec must declare at least one targeted
+test/spec file in the changed-file scope and include at least one executable
+validation command that exercises that target. This applies even when the source
+thread does not explicitly request coverage; code PRs are not publishable from
+this lane without targeted test/spec scope or grounded scafld validation
+evidence. If the source thread asks for tests, specs, regression coverage,
+focused coverage, or request/service coverage, the targeted coverage requirement
+cannot be softened to a generic smoke check. If no existing test/spec path is
+declared but the repository layout makes a conventional path inferable, declare
+that new test/spec file. If no grounded test/spec path or command can be
+inferred from the repo snapshot, stop with a missing-evidence reason instead of
+publishing a code-only PR.</p>
+<p>Preserve source-thread context in the spec's Summary, Origin, and Planning Log
+so later PR packaging can explain why the lane ran and what evidence justified
+the mutation.</p>
+<h2 id="fix-authoring-contract">Fix Authoring Contract</h2>
+<p>The <code>issue-to-pr-apply-fix</code> boundary must emit a bounded <code>fix_bundle</code> with
+<code>files: [{ path, contents }]</code> for every repo file needed to satisfy the approved
+spec. For documentation or process changes, the approved spec, source thread,
+repo snapshot, repo context, and declared file contents are sufficient when they
+identify a narrow edit.</p>
+<p>When <code>repo_snapshot.recommended_files</code> contains concrete repo-relative files,
+treat those files as actionable target evidence even if the generated spec is
+worded conservatively. Read the recommended file and the nearest relevant test
+or spec before blocking. If the source thread includes a runtime exception,
+backtrace, failing command, or named behavior and the recommended file exists,
+prefer the smallest conventional fix plus targeted regression coverage over an
+empty bundle.</p>
+<p>For any production code change, <code>fix_bundle.files</code> must include the smallest
+production fix and a targeted test/spec file, even when the source request does
+not explicitly ask for coverage. Do not publish a code-only fix bundle from this
+lane. If the approved spec, source thread, or acceptance criteria asks for
+tests, specs, regression coverage, focused coverage, or request/service
+coverage, the targeted test/spec file must directly cover that requested
+behavior. If no test file exists, create the narrow conventional test file when
+the repository structure makes that path inferable; otherwise block with the
+missing path and evidence reason.</p>
+<p>If a declared file has <code>exists: false</code> and the approved spec intentionally
+creates it, write the new file when the desired contents are inferable from the
+spec and thread. Do not block solely because the file has no prior contents.</p>
+<p>Return <code>fix_bundle.status: blocked</code> with <code>files: []</code> only when no concrete
+repo-relative target is declared, a required existing file cannot be read, or
+the requested behavior cannot be inferred after inspecting the supplied target
+files. The blocked reason must name the missing evidence and path because an
+empty file bundle is a terminal policy denial before <code>write-fix</code>.</p>
+<h2 id="inputs">Inputs</h2>
+<ul>
+<li><code>task_id</code>: scafld task id.</li>
+<li><code>thread_title</code>: canonical title and default spec title.</li>
+<li><code>thread_body</code>: full thread body or request text when available.</li>
+<li><code>thread_locator</code>: canonical locator for the bounded thread.</li>
+<li><code>thread</code>: portable thread for the current signal surface.</li>
+<li><code>outbox_entry</code>: existing pull-request outbox entry when refreshing a draft.</li>
+<li><code>harness</code>: optional <code>runx.harness.v1</code> packet for the governed run boundary.</li>
+<li><code>signal</code>: optional <code>runx.signal.v1</code> packet. Preserve source references,
+fingerprint, authenticity, and evidence references as stateful context
+instead of reparsing source-thread prose.</li>
+<li><code>decision</code>: optional <code>runx.decision.v1</code> packet. Preserve the accountable
+selection rationale, selected act, and closure when the caller already made
+the lane decision.</li>
+<li><code>target_repo</code>: intended repository slug for PR packaging.</li>
+<li><code>operational_policy</code>: optional <code>runx.operational_policy.v1</code> packet used to
+admit the source, target repo, runner, and source-thread route before PR
+packaging.</li>
+<li><code>source_id</code>: optional operational policy source id.</li>
+<li><code>runner_id</code>: optional operational policy runner id.</li>
+<li><code>repo_snapshot</code>: compact structured snapshot of the target repo.</li>
+<li><code>repo_snapshot_path</code>: optional path to a fuller repo snapshot artifact.</li>
+<li><code>repo_context</code>: textual summary of repo shape and validation hooks.</li>
+<li><code>size</code>: scafld size, default <code>small</code>.</li>
+<li><code>risk</code>: scafld risk, default <code>low</code>.</li>
+<li><code>base</code>: base ref for PR packaging, default <code>main</code>.</li>
+<li><code>fixture</code>: workspace root containing <code>.scafld</code>.</li>
+<li><code>scafld_bin</code>: explicit scafld executable path.</li>
+<li><code>provider</code>, <code>provider_command</code>, <code>provider_binary</code>, <code>model</code>: optional native
+scafld review provider overrides.</li>
+</ul>
+<h2 id="structured-output">Structured Output</h2>
+<p>On success, the lane emits:</p>
+<ul>
+<li><code>draft_pull_request</code>: provider-agnostic PR draft state derived from scafld
+handoff, build, review, completion, status, and current git branch.</li>
+<li><code>outbox_entry</code>: a <code>pull_request</code> outbox entry suitable for adapter push.</li>
+<li><code>push</code>: adapter push result plus refreshed <code>thread</code> when the adapter supports
+push.</li>
+<li>Story metadata suitable for one source-thread reviewer update that summarizes
+the lifecycle gates and points at the human merge decision.</li>
+</ul>
+</div><nav class="mt-12 flex items-stretch justify-between gap-4"><a href="../pages/issue-triage.html" class="group flex flex-col gap-1 px-4 py-3 rounded-lg border border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] hover:border-[rgb(var(--color-primary)/0.4)] dark:hover:border-[rgb(var(--color-primary-light)/0.3)] transition-colors no-underline"><span class="text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">← Previous</span><span class="text-sm font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] group-hover:text-[rgb(var(--color-primary-ink))] dark:group-hover:text-[rgb(var(--color-primary-light))] transition-colors">issue-triage</span></a><a href="../pages/release.html" class="group flex flex-col gap-1 px-4 py-3 rounded-lg border border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] hover:border-[rgb(var(--color-primary)/0.4)] dark:hover:border-[rgb(var(--color-primary-light)/0.3)] transition-colors no-underline text-right ml-auto"><span class="text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">Next →</span><span class="text-sm font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] group-hover:text-[rgb(var(--color-primary-ink))] dark:group-hover:text-[rgb(var(--color-primary-light))] transition-colors">release</span></a></nav><div class="mt-16 mb-8 flex items-center justify-between border-t border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] pt-6 text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]"><a href="https://sourcey.com" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 hover:text-[rgb(var(--color-gray-600))] dark:hover:text-[rgb(var(--color-gray-300))] transition-colors">Built with<img src="https://sourcey.com/sourcey-logo.png" alt="Sourcey" class="h-4 w-4"/></a><div class="flex items-center gap-4"><a href="https://github.com/runxhq/runx/edit/main/docs/sourcey-catalog/pages/issue-to-pr.md" target="_blank" rel="noopener noreferrer" class="hover:text-[rgb(var(--color-gray-600))] dark:hover:text-[rgb(var(--color-gray-300))] transition-colors flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"></path></svg>Edit this page</a></div></div></div></div></main></div><div id="search-dialog" role="dialog" aria-label="Search"><div class="search-dialog-inner"><div class="search-input-row"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="search-input-icon"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"></path></svg><input id="search-input" type="text" placeholder="Search docs..." autocomplete="off" spellcheck="false"/></div><div id="search-results"></div><div class="search-footer"><span class="search-footer-hint"><kbd>↑↓</kbd> navigate</span><span class="search-footer-hint"><kbd>↵</kbd> select</span><span class="search-footer-hint"><kbd>esc</kbd> close</span></div></div></div></div><script src="../sourcey.js" defer></script></body></html>

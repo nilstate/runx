@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>sourcey - Runx Governed Skill Catalog</title><meta name="description" content="Generate a documentation site for a project using Sourcey. Sourcey is a static documentation generator that produces HTML sites from markdown pages, OpenAPI specs, Doxygen XML, and MCP server snapshots."/><meta name="generator" content="Sourcey 3.6.5"/><link rel="canonical" href="https://github.com/runxhq/runx/pages/sourcey.html"/><meta property="og:title" content="sourcey - Runx Governed Skill Catalog"/><meta property="og:description" content="Generate a documentation site for a project using Sourcey. Sourcey is a static documentation generator that produces HTML sites from markdown pages, OpenAPI specs, Doxygen XML, and MCP server snapshots."/><meta property="og:type" content="website"/><meta property="og:site_name" content="Runx Governed Skill Catalog"/><meta property="og:url" content="https://github.com/runxhq/runx/pages/sourcey.html"/><meta property="og:image" content="https://github.com/runxhq/runx/_og/pages/sourcey.png"/><meta property="og:image:width" content="1200"/><meta property="og:image:height" content="630"/><meta property="og:image:type" content="image/png"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="sourcey - Runx Governed Skill Catalog"/><meta name="twitter:description" content="Generate a documentation site for a project using Sourcey. Sourcey is a static documentation generator that produces HTML sites from markdown pages, OpenAPI specs, Doxygen XML, and MCP server snapshots."/><meta name="twitter:image" content="https://github.com/runxhq/runx/_og/pages/sourcey.png"/><meta name="sourcey-search" content="../search-index.json"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap"/><style>
+    :root {
+      --color-primary: 15 118 110;
+      --color-primary-light: 20 184 166;
+      --color-primary-dark: 19 78 74;
+      --color-primary-ink: 19 78 74;
+      --color-background-light: 255 255 255;
+      --color-background-dark: 11 12 16;
+      --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', Menlo, monospace;
+      --sidebar-width: 18rem;
+      --toc-width: 19rem;
+      --content-max-width: 44rem;
+      --header-height: 7.5rem;
+    }
+    html { scroll-padding-top: var(--header-height); }
+    @media (min-width: 1024px) {
+      :root { --header-height: 4rem; }
+    }
+    body { margin: 0; background: rgb(var(--color-background-light)); }
+    .dark body { background: rgb(var(--color-background-dark)); }
+  </style><script>(function(){var t=localStorage.getItem('sourcey-theme');if(t==='dark')document.documentElement.classList.add('dark')})()</script><link rel="stylesheet" href="../sourcey.css"/></head><body id="sourcey"><div id="page" class="relative antialiased text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]"><div id="navbar" class="z-30 fixed lg:sticky top-0 w-full"><div class="absolute w-full h-full flex-none border-b border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-300)/0.06)] bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))]"></div><div class="max-w-[92rem] mx-auto relative"><div class="relative"><div class="flex items-center lg:px-12 h-16 min-w-0 mx-4 lg:mx-0"><div class="h-full relative flex-1 flex items-center gap-x-4 min-w-0 border-b border-[rgb(var(--color-gray-500)/0.08)] dark:border-[rgb(var(--color-gray-300)/0.08)]"><div class="flex-1 flex items-center gap-x-4"><a href="../pages/introduction.html" class="select-none inline-block"><span class="text-sm font-semibold text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))]">Runx Governed Skill Catalog</span></a></div><div class="relative hidden lg:flex items-center flex-1 z-20 gap-2"><button id="search-open" type="button" class="group flex pointer-events-auto rounded-lg w-full items-center text-sm leading-6 h-9 pl-3.5 pr-3 text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))] ring-1 ring-[rgb(var(--color-gray-400)/0.3)] hover:ring-[rgb(var(--color-gray-600)/0.3)] dark:ring-[rgb(var(--color-gray-600)/0.3)] dark:hover:ring-[rgb(var(--color-gray-500)/0.3)] justify-between truncate gap-2 min-w-[43px] cursor-pointer bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))] dark:brightness-110 dark:hover:brightness-125"><div class="flex items-center gap-2 min-w-[42px]"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="min-w-4 flex-none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><div class="truncate min-w-0">Type <kbd>/</kbd> to search</div></div></button></div><div class="flex-1 relative hidden lg:flex items-center ml-auto justify-end space-x-4"><nav class="text-sm"><ul class="flex space-x-6 items-center"></ul></nav><button id="theme-toggle" type="button" aria-label="Toggle theme" class="p-2 flex items-center justify-center cursor-pointer text-[rgb(var(--color-gray-400))] hover:text-[rgb(var(--color-gray-600))] dark:text-[rgb(var(--color-gray-500))] dark:hover:text-[rgb(var(--color-gray-300))]"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" class="h-4 w-4 block dark:hidden"><g stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.11V2"></path><path d="M12.87 3.13L12.24 3.76"></path><path d="M14.89 8H14"></path><path d="M12.87 12.87L12.24 12.24"></path><path d="M8 14.89V14"></path><path d="M3.13 12.87L3.76 12.24"></path><path d="M1.11 8H2"></path><path d="M3.13 3.13L3.76 3.76"></path><circle cx="8" cy="8" r="3.78"></circle></g></svg><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 hidden dark:block"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></button></div><div class="flex lg:hidden items-center gap-3"><button id="search-open-mobile" type="button" aria-label="Search" class="text-[rgb(var(--color-gray-500))] w-8 h-8 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="min-w-4 flex-none"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></button><button type="button" data-drawer-slide="right" aria-label="Open menu" class="text-[rgb(var(--color-gray-500))] w-8 h-8 flex items-center justify-center hover:text-[rgb(var(--color-gray-600))]"><svg class="h-4" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"></path></svg></button></div></div></div></div><div class="flex lg:hidden items-center h-14 px-5 text-sm overflow-hidden"><div class="flex items-center min-w-0 space-x-3 leading-6 whitespace-nowrap"><span class="font-semibold text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))] truncate min-w-0">sourcey</span></div></div></div></div><span class="fixed inset-0 bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))] -z-10 pointer-events-none"></span><div class="max-w-[92rem] mx-auto relative px-4 lg:px-8"><div id="sidebar" class="z-20 hidden lg:block fixed bottom-0 right-auto w-[18rem]" style="top: var(--header-height)"><div class="absolute inset-0 z-10 overflow-auto pr-8 pb-10" data-sourcey-sidebar-scroll="true" data-sourcey-sidebar-tab="default"><div class="relative text-sm leading-6"><div class="sticky top-0 h-8 z-10 bg-gradient-to-b from-[rgb(var(--color-background-light))] dark:from-[rgb(var(--color-background-dark))]"></div><nav id="nav" role="navigation"><div class><h5 class="nav-group-label">Introduction</h5><ul class="space-y-px"><li><a href="../pages/introduction.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Introduction</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Operate</h5><ul class="space-y-px"><li><a href="../pages/agency.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">agency</span></a></li><li><a href="../pages/business-ops.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">business-ops</span></a></li><li><a href="../pages/operator-inbox.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">operator-inbox</span></a></li><li><a href="../pages/ops-desk.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">ops-desk</span></a></li><li><a href="../pages/work-plan.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">work-plan</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Research and data</h5><ul class="space-y-px"><li><a href="../pages/deep-research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">deep-research</span></a></li><li><a href="../pages/research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">research</span></a></li><li><a href="../pages/data-store.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">data-store</span></a></li><li><a href="../pages/knowledge-router.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">knowledge-router</span></a></li><li><a href="../pages/web-fetch.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">web-fetch</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">GitHub and delivery</h5><ul class="space-y-px"><li><a href="../pages/github-sync.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">github-sync</span></a></li><li><a href="../pages/issue-intake.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-intake</span></a></li><li><a href="../pages/issue-triage.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-triage</span></a></li><li><a href="../pages/issue-to-pr.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-to-pr</span></a></li><li><a href="../pages/release.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">release</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Safety and review</h5><ul class="space-y-px"><li><a href="../pages/audit-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">audit-receipt</span></a></li><li><a href="../pages/cve-audit.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">cve-audit</span></a></li><li><a href="../pages/least-privilege.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">least-privilege</span></a></li><li><a href="../pages/policy-author.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">policy-author</span></a></li><li><a href="../pages/review-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">review-receipt</span></a></li><li><a href="../pages/sandbox-harden.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">sandbox-harden</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Outbound and tooling</h5><ul class="space-y-px"><li><a href="../pages/governed-outbound.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">governed-outbound</span></a></li><li><a href="../pages/run-history.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">run-history</span></a></li><li><a href="../pages/sourcey.html" class="nav-link active"><span class="flex-1 break-words [word-break:break-word]">sourcey</span></a></li></ul></div></nav></div></div></div><dialog id="mobile-nav" class="mobile-nav-dialog"><nav class="pt-5 pb-3 px-4 flex-1 overflow-y-auto"><div class><h5 class="nav-group-label">Introduction</h5><ul class="space-y-px"><li><a href="../pages/introduction.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">Introduction</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Operate</h5><ul class="space-y-px"><li><a href="../pages/agency.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">agency</span></a></li><li><a href="../pages/business-ops.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">business-ops</span></a></li><li><a href="../pages/operator-inbox.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">operator-inbox</span></a></li><li><a href="../pages/ops-desk.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">ops-desk</span></a></li><li><a href="../pages/work-plan.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">work-plan</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Research and data</h5><ul class="space-y-px"><li><a href="../pages/deep-research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">deep-research</span></a></li><li><a href="../pages/research.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">research</span></a></li><li><a href="../pages/data-store.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">data-store</span></a></li><li><a href="../pages/knowledge-router.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">knowledge-router</span></a></li><li><a href="../pages/web-fetch.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">web-fetch</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">GitHub and delivery</h5><ul class="space-y-px"><li><a href="../pages/github-sync.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">github-sync</span></a></li><li><a href="../pages/issue-intake.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-intake</span></a></li><li><a href="../pages/issue-triage.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-triage</span></a></li><li><a href="../pages/issue-to-pr.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">issue-to-pr</span></a></li><li><a href="../pages/release.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">release</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Safety and review</h5><ul class="space-y-px"><li><a href="../pages/audit-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">audit-receipt</span></a></li><li><a href="../pages/cve-audit.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">cve-audit</span></a></li><li><a href="../pages/least-privilege.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">least-privilege</span></a></li><li><a href="../pages/policy-author.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">policy-author</span></a></li><li><a href="../pages/review-receipt.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">review-receipt</span></a></li><li><a href="../pages/sandbox-harden.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">sandbox-harden</span></a></li></ul></div><div class="mt-6 lg:mt-8"><h5 class="nav-group-label">Outbound and tooling</h5><ul class="space-y-px"><li><a href="../pages/governed-outbound.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">governed-outbound</span></a></li><li><a href="../pages/run-history.html" class="nav-link"><span class="flex-1 break-words [word-break:break-word]">run-history</span></a></li><li><a href="../pages/sourcey.html" class="nav-link active"><span class="flex-1 break-words [word-break:break-word]">sourcey</span></a></li></ul></div></nav></dialog><main id="docs" class="pt-[8.5rem] lg:pt-10"><div class="flex flex-row-reverse gap-12 box-border w-full"><aside id="toc" class="hidden xl:flex self-start sticky xl:flex-col max-w-[28rem] z-[21]" style="height: calc(100vh - var(--header-height) - 2.5rem); top: calc(var(--header-height) + 2.5rem)"><div class="z-10 hidden xl:flex box-border max-h-full pl-10 w-[19rem]"><div class="text-[rgb(var(--color-gray-600))] text-sm leading-6 w-[16.5rem] overflow-y-auto space-y-2 pb-4 -mt-10 pt-10"><h5 class="font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] flex items-center gap-2"><svg class="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>On this page</h5><nav><ul><li><a href="#what-this-skill-does" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">What this skill does</a></li><li><a href="#when-to-use-this-skill" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">When to use this skill</a></li><li><a href="#when-not-to-use-this-skill" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">When not to use this skill</a></li><li><a href="#documentation-rules" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Documentation rules</a></li><li><a href="#canonical-semantics" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Canonical semantics</a></li><li><a href="#procedure" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Procedure</a></li><li><a href="#discovery-contract" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Discovery contract</a></li><li><a href="#output-schema" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Output schema</a></li><li><a href="#worked-example" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Worked example</a></li><li><a href="#inputs" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Inputs</a></li><li><a href="#repository-contract" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Repository Contract</a></li><li><a href="#astro-host-pattern" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Astro host pattern</a></li><li><a href="#config-reference" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Config reference</a></li><li><a href="#page-format" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Page format</a></li><li><a href="#card-icon-contract" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Card Icon Contract</a></li><li><a href="#edge-cases-and-stop-conditions" class="toc-item break-words block hover:text-[rgb(var(--color-gray-900))] dark:hover:text-[rgb(var(--color-gray-300))] dark:text-[rgb(var(--color-gray-400))] transition-colors py-1 font-medium">Edge cases and stop conditions</a></li></ul></nav></div></div></aside><div class="relative grow box-border flex-col w-full mx-auto px-1 min-w-0 lg:pl-[23.7rem] lg:-ml-12 xl:w-[calc(100%-28rem)]" id="content-area"><header class="relative leading-none"><div class="mt-0.5 space-y-2.5"><div class="h-5 text-[rgb(var(--color-primary-ink))] dark:text-[rgb(var(--color-primary-light))] text-sm font-semibold">Outbound and tooling</div><div class="flex flex-col sm:flex-row items-start sm:items-center relative gap-2 min-w-0"><h1 class="text-2xl sm:text-3xl text-[rgb(var(--color-gray-900))] tracking-tight dark:text-[rgb(var(--color-gray-200))] font-bold" style="overflow-wrap: anywhere">sourcey</h1></div></div><div class="page-description mt-2 text-lg prose prose-gray dark:prose-invert" style="overflow-wrap: anywhere"><span>Generate a documentation site for a project using Sourcey. Sourcey is a static documentation generator that produces HTML sites from markdown pages, OpenAPI specs, Doxygen XML, and MCP server snapshots.</span></div></header><div class="prose prose-gray dark:prose-invert relative mt-8 mb-14 max-w-none"><ul>
+<li>Group: Outbound and tooling</li>
+<li>Source: <a href="https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/sourcey/SKILL.md" target="_blank" rel="noopener noreferrer">skills/sourcey/SKILL.md</a></li>
+<li>Commit: <code>5afc25a83edf1c1320df7ac0d78c36f1523b5677</code></li>
+<li>Path: <code>skills/sourcey/SKILL.md</code></li>
+</ul>
+<h1 id="sourcey">Sourcey</h1>
+<p>Generate a documentation site for a project using Sourcey. Sourcey is a static
+documentation generator that produces HTML sites from markdown pages, OpenAPI
+specs, Doxygen XML, and MCP server snapshots.</p>
+<h2 id="what-this-skill-does">What this skill does</h2>
+<p>By default, runx executes Sourcey as a governed mixed-runner skill:</p>
+<ol>
+<li>discover the bounded documentation scope, evidence, and plan</li>
+<li>request approval</li>
+<li>author the bounded docs/config bundle</li>
+<li>write the source bundle deterministically</li>
+<li>build docs deterministically</li>
+<li>critique the built output in one bounded pass</li>
+<li>apply at most one bounded revision pass</li>
+<li>rebuild and verify the output deterministically</li>
+</ol>
+<p>For already-configured projects, the same <code>sourcey</code> runner stays narrow: the
+discover step can confirm existing config, the author/revise passes can return
+empty bundles, and the deterministic tool steps still perform the build and
+verification work.</p>
+<p>For repository-backed projects, Sourcey owns two separate surfaces: committed
+docs source and generated site output. Keep those separate. Do not mix emitted
+HTML, search indexes, or OG assets back into the authored docs tree.</p>
+<h2 id="when-to-use-this-skill">When to use this skill</h2>
+<ul>
+<li>A project needs a maintainer-grade documentation site generated from real
+repository evidence, existing docs, API specs, Doxygen XML, or MCP snapshots.</li>
+<li>A branded package or product needs Sourcey output with governed discovery,
+approval, authoring, deterministic build, critique, revision, and receipt
+proof.</li>
+<li>A workflow needs to separate authored docs source from generated site output
+while preserving a reviewable receipt trail.</li>
+<li>A maintainer wants CI or deploy to rebuild docs without inventing scope,
+prose, or information architecture at deploy time.</li>
+</ul>
+<h2 id="when-not-to-use-this-skill">When not to use this skill</h2>
+<ul>
+<li>To manufacture documentation when the repository evidence is too thin. Return
+<code>needs_more_evidence</code> or <code>needs_review</code> instead of confident filler.</li>
+<li>To write generated HTML, search indexes, or Open Graph assets back into the
+source docs tree.</li>
+<li>To bypass approval for a new docs plan or to run open-ended critique/revision
+loops.</li>
+<li>To document APIs by hand when an OpenAPI, Doxygen, or MCP source can be used
+directly by Sourcey.</li>
+</ul>
+<h2 id="documentation-rules">Documentation rules</h2>
+<p>Sourcey output should read like native project documentation that a maintainer
+would stand behind:</p>
+<ul>
+<li>build from project evidence, but do not expose the evidence-gathering process
+as page prose</li>
+<li>preserve the project's own terms, priorities, and level of ambition</li>
+<li>make fewer pages with real substance rather than many generic pages</li>
+<li>make a real developer action easier—install, evaluate, integrate, operate, or
+contribute; a polished site with thin content is a failed run</li>
+<li>never use "generated by Sourcey", preview, adoption, migration, scaffold, or
+demo framing unless the project itself uses that framing</li>
+<li>never describe pages as machine output, agent output, or AI-generated docs;
+the site should read like the project maintainer wrote and stands behind it</li>
+<li>when publishing public docs, use a credible durable project, maintainer,
+organization, product, or documentation home. Random personal domains,
+placeholder parent sites, sandbox hosts, preview deploys, throwaway
+subdomains, and unrelated novelty domains are not publication-quality homes</li>
+<li>if the repo evidence is too thin for a strong docs page, surface that as an
+evidence gap instead of manufacturing confident filler</li>
+</ul>
+<h2 id="canonical-semantics">Canonical semantics</h2>
+<p>Complex runx skills share a reusable phase language:</p>
+<ul>
+<li><code>scope</code></li>
+<li><code>ingest</code></li>
+<li><code>model</code></li>
+<li><code>materialize</code></li>
+<li><code>evaluate</code></li>
+<li><code>revise</code></li>
+<li><code>verify</code></li>
+<li><code>ratify</code></li>
+</ul>
+<p>The current Sourcey runner deliberately uses a bounded subset:</p>
+<ul>
+<li><code>discover</code> folds <code>scope + ingest + model</code></li>
+<li><code>approve</code> is <code>ratify</code></li>
+<li><code>author + write-docs + build</code> form <code>materialize</code></li>
+<li><code>critique</code> is <code>evaluate</code></li>
+<li><code>revise + write-revisions + rebuild</code> form <code>revise</code></li>
+<li><code>verify</code> is <code>verify</code></li>
+</ul>
+<p>The current slice uses exactly one bounded revision window. It never loops
+until good and it never critiques indefinitely.</p>
+<p>When <code>docs_inputs</code> is supplied explicitly, treat that as a bounded instruction
+to use the existing config target. Do not overwrite the referenced config or
+invent replacement docs files merely because repository inspection evidence is
+thin. Missing evidence is not the same as missing files.</p>
+<h2 id="procedure">Procedure</h2>
+<ol>
+<li>Inspect the project and discover a bounded documentation plan from real project evidence.</li>
+<li>Approve the discovered plan before authoring.</li>
+<li>Author the bounded Sourcey source bundle.</li>
+<li>Persist that bundle deterministically.</li>
+<li>Run <code>sourcey build</code> deterministically with the discovered or authored config.</li>
+<li>Critique the built output in one bounded evaluation pass.</li>
+<li>Apply at most one bounded revision pass from that critique.</li>
+<li>Rebuild deterministically after the revision bundle is written.</li>
+<li>Verify the output directory contains <code>index.html</code>.</li>
+<li>Inspect the receipt and generated site.</li>
+</ol>
+<p>The deterministic build report should carry enough rendered evidence for an
+external reviewer to reason about the site without hidden file access. At
+minimum that means the generated file list plus index-page title, headings, and
+an excerpt when <code>index.html</code> exists.</p>
+<h2 id="discovery-contract">Discovery contract</h2>
+<p><code>discovery_report</code> may include additional planning metadata, but the canonical
+resolved docs inputs must live under:</p>
+<ul>
+<li><code>discovery_report.discovered.brand_name</code></li>
+<li><code>discovery_report.discovered.homepage_url</code></li>
+<li><code>discovery_report.discovered.docs_inputs</code></li>
+</ul>
+<p>Downstream deterministic build steps consume that nested <code>discovered</code> object.</p>
+<h2 id="output-schema">Output schema</h2>
+<p>Sourcey build produces: HTML pages, <code>sourcey.css</code>, <code>sourcey.js</code>,
+<code>search-index.json</code>, <code>sitemap.xml</code>, <code>llms.txt</code>, <code>llms-full.txt</code>, and
+<code>_og/</code> directory with generated Open Graph images.</p>
+<p>The sealed package includes:</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">discovery_report</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">:</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  discovered</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">:</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">    brand_name</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">string | null</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">    homepage_url</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">string | null</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">    docs_inputs</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">object | null</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">doc_bundle</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">:</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  files</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">array</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  summary</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">string</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">sourcey_build_report</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">:</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  generated_files</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">array</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  index_title</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">string</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  index_headings</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">array</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  index_excerpt</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">string</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">evaluation_report</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">object</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">revision_bundle</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">:</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  files</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">array</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  summary</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">string</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">sourcey_verification_proof</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">:</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  verified</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">boolean</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  index_path</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">string</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">receipt_notes</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">:</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  authority</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">governed docs plan approval</span></span>
+<span class="line"><span style="--shiki-light:#116329;--shiki-dark:#569CD6">  mutation</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">: </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">authored docs source writes only</span></span></code></pre></div>
+</div><h2 id="worked-example">Worked example</h2>
+<p>Input: a project contains <code>README.md</code>, <code>package.json</code>, and a partial <code>docs/</code>
+tree, but no Sourcey config.</p>
+<p>Output: <code>decision: ready</code> after approval; Sourcey discovers the project name,
+homepage, and docs inputs, writes a bounded <code>docs/sourcey.config.ts</code> plus only
+the highest-value missing docs pages, builds to <code>.sourcey/runx-docs</code>, critiques
+the rendered <code>index.html</code>, applies at most one revision bundle, verifies the
+output, and seals a receipt with the build report and verification proof.</p>
+<p>If the project evidence does not support a maintainer-grade site, the run stops
+with <code>needs_more_evidence</code> or <code>needs_review</code> instead of producing filler.</p>
+<h2 id="inputs">Inputs</h2>
+<ul>
+<li><code>project</code> (required): project root directory.</li>
+<li><code>repo_root</code>: optional alias for the project root when Sourcey is composed inside a parent graph that already uses <code>repo_root</code>.</li>
+<li><code>brand_name</code>: project name (discovered from package evidence if omitted).</li>
+<li><code>homepage_url</code>: project homepage (discovered from project evidence if omitted).</li>
+<li><code>docs_inputs</code>: structured docs inputs, e.g. <code>{"mode":"config","config":"docs/sourcey.config.ts"}</code> or <code>{"mode":"openapi","spec":"openapi.yaml"}</code>. Discovered if omitted and may point at authored config produced by the skill.</li>
+<li><code>project_brief</code>: optional grounded brief carrying brand cues, docs audit,
+IA direction, and writing constraints. When present, the authored docs should
+feel like native project docs rather than generic generated scaffolding.</li>
+<li><code>output_dir</code>: generated site output path (default: <code>&lt;project&gt;/.sourcey/runx-docs</code>).</li>
+<li><code>sourcey_bin</code>: explicit sourcey executable path (default: <code>SOURCEY_BIN</code> env or <code>sourcey</code> on PATH).</li>
+</ul>
+<h2 id="repository-contract">Repository Contract</h2>
+<ul>
+<li>Keep authored docs source in the repository, usually under <code>docs/</code> when using
+<code>docs/sourcey.config.ts</code>.</li>
+<li>Keep generated site output in <code>output_dir</code>, separate from the source tree.</li>
+<li>The default generated output path is <code>&lt;project&gt;/.sourcey/runx-docs</code>.</li>
+<li>Generated output should be gitignored unless the project explicitly chooses to
+version release artifacts.</li>
+<li>CI or deploy may run deterministic <code>sourcey build</code> from committed source.</li>
+<li>Deploy must not be the step where docs scope, prose, or IA is invented. Do
+discovery, authoring, and review before deploy.</li>
+<li>For Astro host apps, prefer the first-class <code>sourcey/astro</code> integration over
+a separate prebuild script that writes into <code>public/docs</code>. Keep
+<code>docs/sourcey.config.ts</code> and markdown/spec inputs as source; let <code>astro dev</code>
+serve Sourcey through Vite and <code>astro build</code> write generated docs into the
+final output under the configured route.</li>
+<li>For public publication, include enough proof for an external reviewer to
+inspect the target project, source commit, Sourcey config or input source,
+generated page list, deployment URL, parent domain, and durability of the
+hosting choice.</li>
+</ul>
+<h2 id="astro-host-pattern">Astro host pattern</h2>
+<p>Use this shape when the target already uses Astro and docs should live at a
+path such as <code>/docs</code>:</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0">import</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> { </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">defineConfig</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> } </span><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0">from</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "astro/config"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">;</span></span>
+<span class="line"><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0">import</span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE"> sourcey</span><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0"> from</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "sourcey/astro"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0">export</span><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0"> default</span><span style="--shiki-light:#8250DF;--shiki-dark:#DCDCAA"> defineConfig</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">({</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  site:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "https://example.com"</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  integrations:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span></span>
+<span class="line"><span style="--shiki-light:#8250DF;--shiki-dark:#DCDCAA">    sourcey</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">({</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      config:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "./docs/sourcey.config.ts"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      routeBase:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "/docs"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">    }),</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">  ]</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">})</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">;</span></span></code></pre></div>
+</div><p>Do not add <code>prebuild</code>, <code>build:docs</code>, or committed <code>public/docs</code> artifacts for
+this path unless the project explicitly cannot use Astro integrations. The
+generated output remains reproducible build output, not authored source.</p>
+<h2 id="config-reference">Config reference</h2>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki shiki-themes github-light-default dark-plus" style="--shiki-light:#1f2328;--shiki-dark:#D4D4D4;--shiki-light-bg:#ffffff;--shiki-dark-bg:#1E1E1E" tabindex="0"><code><span class="line"><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0">import</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> { </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">defineConfig</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> } </span><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0">from</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "sourcey"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0">export</span><span style="--shiki-light:#CF222E;--shiki-dark:#C586C0"> default</span><span style="--shiki-light:#8250DF;--shiki-dark:#DCDCAA"> defineConfig</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">({</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  name:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "Project Name"</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  theme:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    preset:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "default"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,             </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// "default" | "minimal" | "api-first"</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    colors:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      primary:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "#hex"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,             </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// required</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      light:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "#hex"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,               </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional, derived from primary</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      dark:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "#hex"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,                </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional, derived from primary</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">    },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    fonts:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      sans:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "Inter"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,               </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      mono:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "monospace"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,           </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">    },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    layout:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      sidebar:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "18rem"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,            </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      toc:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "19rem"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,                </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">      content:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "44rem"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,            </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">    },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    css:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"path/to/custom.css"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">],   </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// optional</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">  }</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  logo:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "path/to/logo.png"</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,       </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// or { light, dark, href }</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  favicon:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "path/to/favicon.ico"</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  repo:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "https://github.com/org/repo"</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  editBranch:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "main"</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  editBasePath:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "docs"</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,            </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// path from repo root to docs source</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  codeSamples:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"curl"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"javascript"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"python"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">]</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,  </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// for OpenAPI tabs</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  navigation:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    tabs:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span></span>
+<span class="line"><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">      // Markdown pages tab</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        tab:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "Documentation"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        slug:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> ""</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,                  </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// empty = default tab</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        groups:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">          { </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">group:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "Getting Started"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">pages:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"introduction"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"quickstart"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">] },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">          { </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">group:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "Guides"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">pages:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"configuration"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"deployment"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">] },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">        ],</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      },</span></span>
+<span class="line"><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">      // OpenAPI tab</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        tab:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "API Reference"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        openapi:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "path/to/openapi.yaml"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      },</span></span>
+<span class="line"><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">      // Doxygen tab</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        tab:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "C++ API"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        doxygen:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">          xml:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "path/to/doxygen/xml"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">          language:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "cpp"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,         </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// "cpp" | "java"</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">          groups:</span><span style="--shiki-light:#0550AE;--shiki-dark:#569CD6"> true</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,            </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// use doxygen groups for nav</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">          index:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "auto"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,           </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// "auto"|"rich"|"structured"|"flat"|"none"</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">        },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      },</span></span>
+<span class="line"><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">      // MCP tab</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        tab:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "Tools"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">        mcp:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "path/to/mcp.json"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">    ],</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">  }</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  navbar:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    links:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">      { </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">type:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "github"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">href:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "https://github.com/org/repo"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> },</span></span>
+<span class="line"><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">      // types: github, twitter, discord, linkedin, youtube, slack,</span></span>
+<span class="line"><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">      //        mastodon, bluesky, reddit, npm, link</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">    ],</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    primary:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> { </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">type:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "button"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">label:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "Demo"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">href:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "/demo"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> },</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">  }</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  footer:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    links:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [{ </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">type:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "github"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">href:</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178"> "https://github.com/org/repo"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> }],</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">  }</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">  search:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> {</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#9CDCFE">    featured:</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4"> [</span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"introduction"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">, </span><span style="--shiki-light:#0A3069;--shiki-dark:#CE9178">"quickstart"</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">],  </span><span style="--shiki-light:#6E7781;--shiki-dark:#6A9955">// top results when empty query</span></span>
+<span class="line"><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">  }</span><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">,</span></span>
+<span class="line"><span style="--shiki-light:#953800;--shiki-dark:#D4D4D4">})</span><span style="--shiki-light:#1F2328;--shiki-dark:#D4D4D4">;</span></span></code></pre></div>
+</div><h2 id="page-format">Page format</h2>
+<p>Pages are markdown files resolved relative to the config file directory.
+If config is at <code>docs/sourcey.config.ts</code>, then page <code>"quickstart"</code> resolves
+to <code>docs/quickstart.md</code>.</p>
+<div class="prose-code-block not-prose">
+<div class="prose-code-copy">
+<button aria-label="Copy code" class="copy-btn" type="button" data-copy-source="code"><svg fill="none" height="18" width="18" xmlns="http://www.w3.org/2000/svg">Copy<path d="M14.25 5.25H7.25C6.14543 5.25 5.25 6.14543 5.25 7.25V14.25C5.25 15.3546 6.14543 16.25 7.25 16.25H14.25C15.3546 16.25 16.25 15.3546 16.25 14.25V7.25C16.25 6.14543 15.3546 5.25 14.25 5.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M2.80103 11.998L1.77203 5.07397C1.61003 3.98097 2.36403 2.96397 3.45603 2.80197L10.38 1.77297C11.313 1.63397 12.19 2.16297 12.528 3.00097" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+</div>
+<div class="prose-code-content"><pre class="shiki" tabindex="0"><code><span class="line"><span>---</span></span>
+<span class="line"><span>title: Page Title</span></span>
+<span class="line"><span>description: One-line description for search and meta tags</span></span>
+<span class="line"><span>---</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>Content here. Standard markdown with code blocks, tables, links.</span></span></code></pre></div>
+</div><h2 id="card-icon-contract">Card Icon Contract</h2>
+<p>Sourcey card icons are Heroicons v2 outline names in kebab-case. The renderer
+returns an empty icon for unknown names, so authoring must use exact names.</p>
+<p>Known-good names for documentation cards include: <code>academic-cap</code>, <code>arrow-path</code>,
+<code>bell</code>, <code>bolt</code>, <code>book-open</code>, <code>chart-bar</code>, <code>check-circle</code>, <code>cloud-arrow-up</code>,
+<code>code-bracket</code>, <code>command-line</code>, <code>cpu-chip</code>, <code>cube</code>, <code>document</code>,
+<code>document-text</code>, <code>exclamation-triangle</code>, <code>globe-alt</code>, <code>key</code>, <code>lifebuoy</code>,
+<code>light-bulb</code>, <code>lock-closed</code>, <code>magnifying-glass</code>, <code>map</code>, <code>rocket-launch</code>,
+<code>server-stack</code>, <code>shield-check</code>, <code>sparkles</code>, and <code>wrench-screwdriver</code>.</p>
+<p>Invalid card icon names are a blocking quality issue. The build report includes
+<code>icon_validation</code>; critique and revision must fix any
+<code>icon_validation.status: "invalid"</code> result before the run is accepted.</p>
+<h2 id="edge-cases-and-stop-conditions">Edge cases and stop conditions</h2>
+<ul>
+<li>Only create tabs for content types the project actually has. Do not add an
+OpenAPI tab if there is no spec file. Do not add a Doxygen tab without XML.</li>
+<li>Do not document APIs by hand when a spec file exists — use the spec tab.</li>
+<li>Keep navigation shallow: 1-2 tabs, 2-4 groups for most projects.</li>
+<li>Use project brand colors if identifiable. Otherwise use a neutral palette.</li>
+<li>Use only exact Heroicons v2 outline names for Sourcey card <code>icon</code>
+attributes; never invent icon names.</li>
+<li>When a grounded brief provides logo, favicon, color, or IA guidance, prefer
+that over generic defaults.</li>
+<li>Match the project's existing voice and terminology.</li>
+<li>Never write docs that describe themselves as a preview, adoption, migration,
+or tool-generated scaffold unless the repo's own evidence explicitly uses that
+framing.</li>
+<li>Do not write generated HTML, search indexes, or OG assets into the authored
+docs source tree.</li>
+<li>If <code>output_dir</code> lives under the repo root, gitignore it or call out the
+missing ignore rule as an operational gap.</li>
+<li>Build output may be regenerated in CI or deploy, but deploy must not author
+or revise docs content.</li>
+<li>Public deployments must be durable and socially credible. Do not treat a
+throwaway preview URL, unrelated personal domain, placeholder parent site, or
+sandbox subdomain as a completed public docs home.</li>
+<li>Do not encode open-ended critique or revision behavior. Critique is one
+bounded evaluation pass. Revision is at most one explicit bounded pass.</li>
+</ul>
+</div><nav class="mt-12 flex items-stretch justify-between gap-4"><a href="../pages/run-history.html" class="group flex flex-col gap-1 px-4 py-3 rounded-lg border border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] hover:border-[rgb(var(--color-primary)/0.4)] dark:hover:border-[rgb(var(--color-primary-light)/0.3)] transition-colors no-underline"><span class="text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">← Previous</span><span class="text-sm font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))] group-hover:text-[rgb(var(--color-primary-ink))] dark:group-hover:text-[rgb(var(--color-primary-light))] transition-colors">run-history</span></a></nav><div class="mt-16 mb-8 flex items-center justify-between border-t border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] pt-6 text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]"><a href="https://sourcey.com" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 hover:text-[rgb(var(--color-gray-600))] dark:hover:text-[rgb(var(--color-gray-300))] transition-colors">Built with<img src="https://sourcey.com/sourcey-logo.png" alt="Sourcey" class="h-4 w-4"/></a><div class="flex items-center gap-4"><a href="https://github.com/runxhq/runx/edit/main/docs/sourcey-catalog/pages/sourcey.md" target="_blank" rel="noopener noreferrer" class="hover:text-[rgb(var(--color-gray-600))] dark:hover:text-[rgb(var(--color-gray-300))] transition-colors flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"></path></svg>Edit this page</a></div></div></div></div></main></div><div id="search-dialog" role="dialog" aria-label="Search"><div class="search-dialog-inner"><div class="search-input-row"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="search-input-icon"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"></path></svg><input id="search-input" type="text" placeholder="Search docs..." autocomplete="off" spellcheck="false"/></div><div id="search-results"></div><div class="search-footer"><span class="search-footer-hint"><kbd>↑↓</kbd> navigate</span><span class="search-footer-hint"><kbd>↵</kbd> select</span><span class="search-footer-hint"><kbd>esc</kbd> close</span></div></div></div></div><script src="../sourcey.js" defer></script></body></html>

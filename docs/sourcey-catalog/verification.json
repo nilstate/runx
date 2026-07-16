@@ -1,0 +1,295 @@
+{
+  "ok": true,
+  "source_repository": "https://github.com/runxhq/runx",
+  "source_commit": "5afc25a83edf1c1320df7ac0d78c36f1523b5677",
+  "coverage": {
+    "manifest_pages": 24,
+    "markdown_pages": 24,
+    "html_pages": 24,
+    "navigation_pages": 24,
+    "search_pages": 24,
+    "source_links": 24,
+    "introduction_pages": 1
+  },
+  "artifacts": {
+    "html_files": 26,
+    "search_records": 202,
+    "llms_txt_bytes": 4747,
+    "llms_full_txt_bytes": 157034
+  },
+  "page_checks": [
+    {
+      "slug": "agency",
+      "source_path": "skills/agency/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/agency/SKILL.md",
+      "markdown_bytes": 6042,
+      "html_bytes": 36772,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "business-ops",
+      "source_path": "skills/business-ops/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/business-ops/SKILL.md",
+      "markdown_bytes": 8446,
+      "html_bytes": 44522,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "operator-inbox",
+      "source_path": "skills/operator-inbox/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/operator-inbox/SKILL.md",
+      "markdown_bytes": 5515,
+      "html_bytes": 31314,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "ops-desk",
+      "source_path": "skills/ops-desk/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/ops-desk/SKILL.md",
+      "markdown_bytes": 14769,
+      "html_bytes": 59460,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "work-plan",
+      "source_path": "skills/work-plan/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/work-plan/SKILL.md",
+      "markdown_bytes": 4825,
+      "html_bytes": 28495,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "deep-research",
+      "source_path": "skills/deep-research/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/deep-research/SKILL.md",
+      "markdown_bytes": 1896,
+      "html_bytes": 25064,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "research",
+      "source_path": "skills/research/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/research/SKILL.md",
+      "markdown_bytes": 2209,
+      "html_bytes": 25754,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "data-store",
+      "source_path": "skills/data-store/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/data-store/SKILL.md",
+      "markdown_bytes": 12592,
+      "html_bytes": 60569,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "knowledge-router",
+      "source_path": "skills/knowledge-router/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/knowledge-router/SKILL.md",
+      "markdown_bytes": 1448,
+      "html_bytes": 24711,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "web-fetch",
+      "source_path": "skills/web-fetch/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/web-fetch/SKILL.md",
+      "markdown_bytes": 6690,
+      "html_bytes": 37606,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "github-sync",
+      "source_path": "skills/github-sync/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/github-sync/SKILL.md",
+      "markdown_bytes": 7831,
+      "html_bytes": 39926,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "issue-intake",
+      "source_path": "skills/issue-intake/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/issue-intake/SKILL.md",
+      "markdown_bytes": 8284,
+      "html_bytes": 33882,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "issue-triage",
+      "source_path": "skills/issue-triage/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/issue-triage/SKILL.md",
+      "markdown_bytes": 2224,
+      "html_bytes": 25447,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "issue-to-pr",
+      "source_path": "skills/issue-to-pr/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/issue-to-pr/SKILL.md",
+      "markdown_bytes": 9973,
+      "html_bytes": 35834,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "release",
+      "source_path": "skills/release/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/release/SKILL.md",
+      "markdown_bytes": 6106,
+      "html_bytes": 33531,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "audit-receipt",
+      "source_path": "skills/audit-receipt/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/audit-receipt/SKILL.md",
+      "markdown_bytes": 6197,
+      "html_bytes": 36880,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "cve-audit",
+      "source_path": "skills/cve-audit/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/cve-audit/SKILL.md",
+      "markdown_bytes": 5110,
+      "html_bytes": 37383,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "least-privilege",
+      "source_path": "skills/least-privilege/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/least-privilege/SKILL.md",
+      "markdown_bytes": 8327,
+      "html_bytes": 50473,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "policy-author",
+      "source_path": "skills/policy-author/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/policy-author/SKILL.md",
+      "markdown_bytes": 7262,
+      "html_bytes": 42097,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "review-receipt",
+      "source_path": "skills/review-receipt/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/review-receipt/SKILL.md",
+      "markdown_bytes": 3634,
+      "html_bytes": 27682,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "sandbox-harden",
+      "source_path": "skills/sandbox-harden/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/sandbox-harden/SKILL.md",
+      "markdown_bytes": 9160,
+      "html_bytes": 40169,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "governed-outbound",
+      "source_path": "skills/governed-outbound/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/governed-outbound/SKILL.md",
+      "markdown_bytes": 5407,
+      "html_bytes": 31413,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "run-history",
+      "source_path": "skills/run-history/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/run-history/SKILL.md",
+      "markdown_bytes": 4568,
+      "html_bytes": 35467,
+      "navigation": true,
+      "search": true
+    },
+    {
+      "slug": "sourcey",
+      "source_path": "skills/sourcey/SKILL.md",
+      "source_url": "https://github.com/runxhq/runx/blob/5afc25a83edf1c1320df7ac0d78c36f1523b5677/skills/sourcey/SKILL.md",
+      "markdown_bytes": 15179,
+      "html_bytes": 71668,
+      "navigation": true,
+      "search": true
+    }
+  ],
+  "broken_links": [],
+  "credential_findings": [],
+  "gaps": [
+    {
+      "id": "missing-worked-examples",
+      "title": "Selected skills lack a worked example section",
+      "affected_paths": [
+        "skills/work-plan/SKILL.md",
+        "skills/deep-research/SKILL.md",
+        "skills/research/SKILL.md",
+        "skills/knowledge-router/SKILL.md",
+        "skills/issue-intake/SKILL.md",
+        "skills/issue-triage/SKILL.md",
+        "skills/issue-to-pr/SKILL.md",
+        "skills/release/SKILL.md",
+        "skills/review-receipt/SKILL.md",
+        "skills/governed-outbound/SKILL.md"
+      ],
+      "measured_fact": "10 of 24 selected skills do not contain the measured heading.",
+      "impact": "Operators cannot validate the expected input-to-output flow from the reference page alone."
+    },
+    {
+      "id": "missing-edge-case-guidance",
+      "title": "Selected skills lack a dedicated edge-case or stop-condition section",
+      "affected_paths": [
+        "skills/work-plan/SKILL.md",
+        "skills/deep-research/SKILL.md",
+        "skills/research/SKILL.md",
+        "skills/knowledge-router/SKILL.md",
+        "skills/issue-intake/SKILL.md",
+        "skills/issue-triage/SKILL.md",
+        "skills/issue-to-pr/SKILL.md",
+        "skills/release/SKILL.md",
+        "skills/review-receipt/SKILL.md",
+        "skills/run-history/SKILL.md"
+      ],
+      "measured_fact": "10 of 24 selected skills do not contain the measured heading.",
+      "impact": "Operators have no single place to check refusal, escalation, and terminal behavior."
+    },
+    {
+      "id": "missing-non-use-guidance",
+      "title": "Selected skills lack a dedicated when-not-to-use section",
+      "affected_paths": [
+        "skills/work-plan/SKILL.md",
+        "skills/deep-research/SKILL.md",
+        "skills/research/SKILL.md",
+        "skills/knowledge-router/SKILL.md",
+        "skills/issue-intake/SKILL.md",
+        "skills/issue-triage/SKILL.md",
+        "skills/issue-to-pr/SKILL.md",
+        "skills/release/SKILL.md",
+        "skills/review-receipt/SKILL.md"
+      ],
+      "measured_fact": "9 of 24 selected skills do not contain the measured heading.",
+      "impact": "Operators must infer when a different skill or workflow is the safer choice."
+    }
+  ]
+}
