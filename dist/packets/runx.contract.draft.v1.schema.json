@@ -10,6 +10,7 @@
     "deviations",
     "draft_doc",
     "draft_ref",
+    "send_as_result",
     "send_proposal",
     "validation"
   ],
@@ -28,6 +29,9 @@
     },
     "draft_ref": {
       "type": "string"
+    },
+    "send_as_result": {
+      "type": "object"
     },
     "send_proposal": {
       "type": "object"

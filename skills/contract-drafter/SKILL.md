@@ -1,6 +1,6 @@
 ---
 name: contract-drafter
-description: Assemble a reviewable contract draft from an explicit template, parties, and terms while exposing every baseline departure and preparing a gated send-as handoff.
+description: Fetch a contract template by source ref, assemble a review draft, expose every baseline departure, and execute the gated send-as planning step in the same graph.
 runx:
   category: business-ops
   tags:
@@ -11,21 +11,23 @@ runx:
 
 # Contract Drafter
 
-`contract-drafter` assembles a review draft from three bounded inputs: a
-template, explicit parties, and explicit terms. It renders only clause text
-present in the template, records each supplied value that differs from the
-template baseline, and emits a gated proposal whose consumer inputs match the
-canonical `runx/send-as` planner.
+`contract-drafter` assembles a review draft from a runtime-fetched template,
+explicit parties, and explicit terms. It reads `template_source_ref`, renders
+only clause text present in that source, records each supplied value that
+differs from the template baseline, and executes the canonical `runx/send-as`
+planner inside the same graph.
 
 The skill does not approve legal terms, provide legal advice, execute a
 signature workflow, contact a recipient, or call a provider. A downstream
-operator must review the draft, approve the proposal, invoke `send-as`, and
-complete any provider-specific preflight under separate authority.
+operator must review the draft, approve the send plan, and complete any
+provider-specific preflight under separate authority.
 
 ## Inputs
 
-- `template` supplies:
-  - `template_id`, `title`, and a checkable `source_ref`;
+- `template_source_ref` is a `repo:` or `file:` reference to a template JSON
+  document. The runner reads this source at runtime and refuses when it cannot
+  resolve or parse the document. The source document supplies:
+  - `template_id`, `title`, and a `source_ref` matching `template_source_ref`;
   - `required_party_roles` and `required_terms`;
   - `clauses[]`, each with a stable `id`, `title`, and `body_template`;
   - `baseline`, keyed by term; and
@@ -47,12 +49,16 @@ fall back to a baseline, guess a missing value, or add a clause.
   source paths used.
 - `deviations[]`: one item per changed baseline value. Every item names the
   clause, term, baseline, and proposed change.
-- `send_proposal`: a `gated_not_sent` packet with `approved: false`. Its
-  `consumer` names `runx/send-as`, runner `plan`, and binds the official planner
-  inputs `objective`, `principal`, `audience`, `content_ref`, `consent_basis`,
-  and `operator_context`.
+- `send_proposal`: a packet with `approved: false` and status
+  `send_as_plan_executed` after the default graph runs. Its `consumer` names
+  `runx/send-as`, runner `plan`, binds the official planner inputs `objective`,
+  `principal`, `audience`, `content_ref`, `consent_basis`, and
+  `operator_context`, and includes the executed send-as plan result.
+- `send_as_result`: the `runx/send-as` plan output bound to the same
+  `draft_ref` and content digest as `draft_doc`.
 - `validation`: the required fields and placeholders checked, plus explicit
-  no-invention and no-send assertions.
+  runtime template fetch, send-as composition, no-invention, and no-provider-send
+  assertions.
 
 The sealed receipt uses a review act and binds the generated `draft_ref` as the
 artifact effect. The receipt proves the draft run occurred; it does not claim
@@ -65,7 +71,9 @@ The run refuses closed and emits `draft_doc: null`, `deviations: []`, and
 
 - a required party or `legal_name` is absent;
 - a required term or baseline term is absent;
-- the template has no checkable source ref or no clauses;
+- the template source ref cannot be resolved or does not match the template
+  `source_ref`;
+- the template has no clauses;
 - a clause id is duplicated;
 - a clause placeholder is unresolved, non-scalar, or outside `parties.*` and
   `terms.*`;
@@ -79,23 +87,27 @@ a failure status. Neither path creates a partial draft.
 
 ## Send-As Boundary
 
-`send_proposal.consumer.inputs` can be passed to the canonical `send-as` plan
-runner after human approval. `send-as` is itself a planning and authority layer;
-a provider adapter remains a further separate step. The contract draft body is
-referenced by digest and draft ref, not silently copied into a provider call.
+The default graph passes `send_proposal.consumer.inputs` to the canonical
+`send-as` plan runner in the same sealed run. `send-as` is itself a planning and
+authority layer; a provider adapter remains a further separate step. The
+contract draft body is referenced by digest and draft ref, not silently copied
+into a provider call.
 
 Required sequence:
 
-1. Run `contract-drafter` and inspect `draft_doc` and `deviations`.
-2. Obtain explicit human approval for `contract-drafter.send.approval`.
-3. Pass the unchanged `send_proposal.consumer.inputs` to `runx/send-as`.
-4. Let the resulting send plan undergo its own approval and provider preflight.
-5. Treat the draft as unsent until a separate provider receipt proves delivery.
+1. Run `contract-drafter` with `template_source_ref`, `parties`, and `terms`.
+2. Inspect `draft_doc`, `deviations`, and `send_as_result`.
+3. Obtain explicit human approval for `contract-drafter.send.approval`.
+4. Let the resulting send plan undergo provider preflight in a provider adapter.
+5. Treat the draft as undelivered until a separate provider receipt proves
+   delivery.
 
 ## Harness Cases
 
-- `complete-template-produces-gated-draft` seals a draft with four visible
-  deviations and a not-approved `runx/send-as` handoff.
+- `complete-template-fetches-source-and-executes-send-as-plan` fetches the
+  template from `template_source_ref`, seals a draft with four visible
+  deviations, invokes `runx/send-as` plan in the same graph, and binds the
+  returned plan to the draft.
 - `missing-required-term-refuses-without-proposal` runs `refusal_check`, omits
   `payment_terms`, returns failure, and emits neither a draft nor a proposal.
 

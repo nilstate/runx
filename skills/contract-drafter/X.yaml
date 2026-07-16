@@ -1,5 +1,5 @@
 skill: contract-drafter
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: skill
@@ -9,52 +9,9 @@ catalog:
 
 harness:
   cases:
-    - name: complete-template-produces-gated-draft
+    - name: complete-template-fetches-source-and-executes-send-as-plan
       inputs:
-        template:
-          template_id: public-services-review-v1
-          title: Services Agreement Review Draft
-          source_ref: repo:skills/contract-drafter/fixtures/complete-draft.json
-          required_party_roles:
-            - provider
-            - customer
-          required_terms:
-            - effective_date
-            - services
-            - fees
-            - payment_terms
-            - liability_cap
-            - governing_law
-            - confidentiality_period
-          baseline:
-            payment_terms: Net 30
-            liability_cap: Fees paid in the prior 12 months
-            governing_law: California
-            confidentiality_period: 3 years
-          term_clauses:
-            payment_terms: fees
-            liability_cap: liability
-            governing_law: governing-law
-            confidentiality_period: confidentiality
-          clauses:
-            - id: parties
-              title: Parties and Effective Date
-              body_template: "[[parties.provider.legal_name]] and [[parties.customer.legal_name]] enter this agreement effective [[terms.effective_date]]."
-            - id: services
-              title: Services
-              body_template: "[[parties.provider.legal_name]] will provide [[terms.services]]."
-            - id: fees
-              title: Fees and Payment
-              body_template: "[[parties.customer.legal_name]] will pay [[terms.fees]] under [[terms.payment_terms]] payment terms."
-            - id: liability
-              title: Limitation of Liability
-              body_template: "The aggregate liability cap is [[terms.liability_cap]]."
-            - id: confidentiality
-              title: Confidentiality
-              body_template: "Confidentiality obligations survive for [[terms.confidentiality_period]]."
-            - id: governing-law
-              title: Governing Law
-              body_template: "The agreement is governed by [[terms.governing_law]]."
+        template_source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
         parties:
           provider:
             legal_name: Northstar Example Services LLC
@@ -71,14 +28,47 @@ harness:
           governing_law: Delaware
           confidentiality_period: 2 years
           send:
-            objective: Prepare the review draft for a separate governed send-as planning run.
+            objective: Execute send-as planning for the review draft in the same sealed graph.
             principal: account:contract-review-demo
             audience:
               type: repository_review
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
-            operator_context: Draft only; human approval and provider preflight remain required.
+            operator_context: Contract-drafter may plan the governed send-as handoff; provider delivery remains outside this skill.
             subject_or_title: Review the services agreement draft
+      caller:
+        answers:
+          agent_task.send-as.output:
+            send_plan:
+              decision: ready
+              action_family: send-as
+              principal:
+                type: account
+                ref: account:contract-review-demo
+              provider:
+                name: review-queue
+                runtime_path: review.plan
+              send_class: contract_review
+              audience:
+                type: repository_review
+                ref: RYDE-PLAY/frantic-86-contract-drafter
+                requires_reconfirmation: true
+              content:
+                draft_ref: runx:contract-draft:placeholder-bound-by-finalizer
+                digest: sha256:placeholder-bound-by-finalizer
+                subject_or_title: Review the services agreement draft
+              gates:
+                preflight_required: true
+                human_approval_required: true
+                approval_ref: contract-drafter.send.approval
+              blockers: []
+              provider_actions:
+                - review.plan
+              evidence_refs:
+                - runx:contract-draft:placeholder-bound-by-finalizer
+              success_checkpoint:
+                milestone: provider_delivery_required
+                description: Provider delivery and readback remain outside contract-drafter after this plan.
       expect:
         status: sealed
         receipt:
@@ -87,44 +77,7 @@ harness:
     - name: missing-required-term-refuses-without-proposal
       runner: refusal_check
       inputs:
-        template:
-          template_id: public-services-review-v1
-          title: Services Agreement Review Draft
-          source_ref: repo:skills/contract-drafter/fixtures/missing-payment-term.json
-          required_party_roles:
-            - provider
-            - customer
-          required_terms:
-            - effective_date
-            - services
-            - fees
-            - payment_terms
-            - liability_cap
-            - governing_law
-          baseline:
-            payment_terms: Net 30
-            liability_cap: Fees paid in the prior 12 months
-            governing_law: California
-          term_clauses:
-            payment_terms: fees
-            liability_cap: liability
-            governing_law: governing-law
-          clauses:
-            - id: parties
-              title: Parties and Effective Date
-              body_template: "[[parties.provider.legal_name]] and [[parties.customer.legal_name]] enter this agreement effective [[terms.effective_date]]."
-            - id: services
-              title: Services
-              body_template: "[[parties.provider.legal_name]] will provide [[terms.services]]."
-            - id: fees
-              title: Fees and Payment
-              body_template: "[[parties.customer.legal_name]] will pay [[terms.fees]] under [[terms.payment_terms]] payment terms."
-            - id: liability
-              title: Limitation of Liability
-              body_template: "The aggregate liability cap is [[terms.liability_cap]]."
-            - id: governing-law
-              title: Governing Law
-              body_template: "The agreement is governed by [[terms.governing_law]]."
+        template_source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
         parties:
           provider:
             legal_name: Northstar Example Services LLC
@@ -138,14 +91,15 @@ harness:
           fees: USD 8,000 per month
           liability_cap: USD 80,000 aggregate
           governing_law: Delaware
+          confidentiality_period: 2 years
           send:
-            objective: Prepare the review draft for a separate governed send-as planning run.
+            objective: Execute send-as planning for the review draft in the same sealed graph.
             principal: account:contract-review-demo
             audience:
               type: repository_review
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
-            operator_context: Draft only; human approval and provider preflight remain required.
+            operator_context: Contract-drafter may plan the governed send-as handoff; provider delivery remains outside this skill.
             subject_or_title: Review the services agreement draft
       expect:
         status: failure
@@ -158,22 +112,22 @@ runners:
     type: graph
     act:
       form: review
-      purpose: Assemble a contract review draft from explicit source fields and record every template departure without sending it.
-      legitimacy: The operator supplied the template, parties, terms, and downstream review context; send-as retains separate authority.
-      reason_step: assemble
+      purpose: Fetch a contract template from its source ref, assemble a review draft, and execute the governed send-as planning step in the same graph.
+      legitimacy: The operator supplied a template source ref, parties, terms, and downstream review context; send-as produces only an approval-gated plan.
+      reason_step: bind-send-as
       reason_from: act_reason
-      effect_step: assemble
+      effect_step: bind-send-as
       effect_from: draft_ref
       effect_type: artifact
     inputs:
-      template:
-        type: object
+      template_source_ref:
+        type: string
         required: true
-        description: "Template with source_ref, required fields, explicit clause bodies, baseline values, and clause mappings."
+        description: "Source ref for a template JSON document. repo: and file: refs are resolved and read by the runner at runtime."
       parties:
         type: object
         required: true
-        description: "Explicit parties keyed by the roles declared in template.required_party_roles."
+        description: "Explicit parties keyed by the roles declared by the fetched template."
       terms:
         type: object
         required: true
@@ -182,7 +136,7 @@ runners:
       name: contract-drafter
       steps:
         - id: assemble
-          label: validate sources and assemble review draft
+          label: fetch template source and assemble review draft
           run:
             type: cli-tool
             command: node
@@ -195,11 +149,53 @@ runners:
               draft_doc: object
               deviations: array
               send_proposal: object
+              send_as_result: object
               validation: object
           inputs:
-            template: "$input.template"
+            template_source_ref: "$input.template_source_ref"
             parties: "$input.parties"
             terms: "$input.terms"
+          artifacts:
+            wrap_as: contract_draft_packet
+            packet: runx.contract_draft.v1
+
+        - id: plan-send
+          label: execute the send-as planning consumer
+          when:
+            field: assemble.contract_draft_packet.data.status
+            equals: draft_ready
+          skill: ../send-as
+          runner: plan
+          context:
+            objective: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.objective
+            principal: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.principal
+            audience: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.audience
+            content_ref: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.content_ref
+            consent_basis: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.consent_basis
+            operator_context: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.operator_context
+
+        - id: bind-send-as
+          label: bind the executed send-as plan to the draft packet
+          when:
+            field: assemble.contract_draft_packet.data.status
+            equals: draft_ready
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - finalize.mjs
+            outputs:
+              act_decision: string
+              act_reason: string
+              draft_ref: string
+              draft_doc: object
+              deviations: array
+              send_proposal: object
+              send_as_result: object
+              validation: object
+          context:
+            draft_packet: assemble.contract_draft_packet.data
+            send_plan: plan-send.send_plan.data
           artifacts:
             wrap_as: contract_draft_packet
             packet: runx.contract_draft.v1
@@ -211,10 +207,10 @@ runners:
       - run.mjs
       - --fail-on-refusal
     inputs:
-      template:
-        type: object
+      template_source_ref:
+        type: string
         required: true
-        description: "Template to validate without permitting a partial draft."
+        description: "Source ref for a template JSON document to validate without permitting a partial draft."
       parties:
         type: object
         required: true
@@ -230,6 +226,7 @@ runners:
       draft_doc: object
       deviations: array
       send_proposal: object
+      send_as_result: object
       validation: object
     artifacts:
       wrap_as: contract_draft_refusal

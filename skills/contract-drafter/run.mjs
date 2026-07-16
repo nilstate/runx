@@ -1,15 +1,19 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const inputs = readInputs();
 const failOnRefusal = process.argv.includes("--fail-on-refusal");
+const here = dirname(fileURLToPath(import.meta.url));
 let packet;
 
 try {
-  const template = asObject(inputs.template, "template");
+  const loaded = loadTemplate(inputs);
+  const template = loaded.template;
   const parties = asObject(inputs.parties, "parties");
   const terms = asObject(inputs.terms, "terms");
-  const validation = validate({ template, parties, terms });
+  const validation = validate({ template, parties, terms, loaded });
 
   if (validation.errors.length > 0) {
     packet = refusalPacket({ template, validation });
@@ -33,7 +37,7 @@ try {
   if (failOnRefusal) process.exitCode = 2;
 }
 
-function validate({ template, parties, terms }) {
+function validate({ template, parties, terms, loaded }) {
   const errors = [];
   const requiredPartyRoles = stringArray(template.required_party_roles);
   const requiredTerms = stringArray(template.required_terms);
@@ -45,6 +49,9 @@ function validate({ template, parties, terms }) {
   requireText(template.template_id, "template.template_id", errors);
   requireText(template.title, "template.title", errors);
   requireText(template.source_ref, "template.source_ref", errors);
+  if (text(template.source_ref) !== loaded.source_ref) {
+    errors.push("template.source_ref must match template_source_ref");
+  }
   if (requiredPartyRoles.length === 0) errors.push("template.required_party_roles must not be empty");
   if (requiredTerms.length === 0) errors.push("template.required_terms must not be empty");
   if (clauses.length === 0) errors.push("template.clauses must not be empty");
@@ -108,6 +115,13 @@ function validate({ template, parties, terms }) {
     required_party_roles: requiredPartyRoles,
     required_terms: requiredTerms,
     placeholders_checked: [...new Set(placeholdersChecked)].sort(),
+    template_source_ref: loaded.source_ref,
+    template_fetch: {
+      source_ref: loaded.source_ref,
+      resolved_path: loaded.resolved_path,
+      content_digest: loaded.content_digest,
+      fetched_at_runtime: true,
+    },
   };
 }
 
@@ -197,6 +211,7 @@ function draftPacket({ template, parties, terms, validation }) {
     draft_doc: draftDoc,
     deviations,
     send_proposal: sendProposal,
+    send_as_result: null,
     validation: {
       ...validation,
       errors: [],
@@ -205,6 +220,7 @@ function draftPacket({ template, parties, terms, validation }) {
       no_invented_clauses: true,
       no_invented_terms: true,
       all_deviations_visible: true,
+      template_loaded_from_source_ref: true,
       no_send_performed: true,
     },
   };
@@ -222,6 +238,7 @@ function refusalPacket({ template, validation }) {
     draft_doc: null,
     deviations: [],
     send_proposal: null,
+    send_as_result: null,
     validation: {
       errors,
       required_party_roles: validation?.required_party_roles || [],
@@ -229,10 +246,49 @@ function refusalPacket({ template, validation }) {
       placeholders_checked: validation?.placeholders_checked || [],
       no_draft_emitted: true,
       no_proposal_emitted: true,
+      template_loaded_from_source_ref: Boolean(validation?.template_fetch?.fetched_at_runtime),
       no_send_performed: true,
     },
     template_id: text(template?.template_id) || null,
   };
+}
+
+function loadTemplate(input) {
+  const sourceRef = text(input.template_source_ref) || text(input.template?.source_ref);
+  if (!sourceRef) throw new Error("template_source_ref is required");
+  const path = resolveSourceRef(sourceRef);
+  const raw = readFileSync(path, "utf8");
+  const parsed = JSON.parse(raw);
+  const template = asObject(parsed.template_id ? parsed : parsed.template, "template source");
+  return {
+    template,
+    source_ref: sourceRef,
+    resolved_path: path,
+    content_digest: sha256(raw),
+  };
+}
+
+function resolveSourceRef(sourceRef) {
+  if (sourceRef.startsWith("repo:")) return firstExistingPath(sourceRef.slice("repo:".length));
+  if (sourceRef.startsWith("file:")) return firstExistingPath(sourceRef.slice("file:".length));
+  return firstExistingPath(sourceRef);
+}
+
+function firstExistingPath(refPath) {
+  const normalized = refPath.replace(/^\/+/, "");
+  const candidates = [
+    isAbsolute(refPath) ? refPath : null,
+    join(process.cwd(), normalized),
+    join(here, normalized),
+    join(here, "..", "..", normalized),
+  ];
+  const skillPrefix = "skills/contract-drafter/";
+  if (normalized.startsWith(skillPrefix)) candidates.push(join(here, normalized.slice(skillPrefix.length)));
+
+  for (const candidate of candidates.filter(Boolean)) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`template_source_ref could not be resolved: ${refPath}`);
 }
 
 function findDeviations(template, terms) {
@@ -294,6 +350,7 @@ function readInputs() {
   if (process.env.RUNX_INPUTS_PATH) return JSON.parse(readFileSync(process.env.RUNX_INPUTS_PATH, "utf8"));
   if (process.env.RUNX_INPUTS_JSON) return JSON.parse(process.env.RUNX_INPUTS_JSON);
   const fromEnv = {
+    template_source_ref: parseEnv("RUNX_INPUT_TEMPLATE_SOURCE_REF"),
     template: parseEnv("RUNX_INPUT_TEMPLATE"),
     parties: parseEnv("RUNX_INPUT_PARTIES"),
     terms: parseEnv("RUNX_INPUT_TERMS"),

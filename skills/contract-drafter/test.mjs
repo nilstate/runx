@@ -14,7 +14,17 @@ assert(complete.output.send_proposal?.consumer?.skill === "runx/send-as", "propo
 assert(complete.output.send_proposal?.consumer?.runner === "plan", "proposal names send-as plan runner");
 assert(complete.output.send_proposal?.gate?.approved === false, "proposal is not pre-approved");
 assert(complete.output.send_proposal?.no_send_performed === true, "runner performs no send");
+assert(complete.output.validation?.template_fetch?.fetched_at_runtime === true, "template is fetched from source_ref at runtime");
+assert(complete.output.validation?.template_loaded_from_source_ref === true, "validation records source_ref load");
 assert(!complete.output.draft_doc.markdown.includes("[["), "all placeholders resolve");
+
+const finalized = finalize(complete.output);
+assert(finalized.status === 0, "finalize exits successfully");
+assert(finalized.output.send_proposal?.status === "send_as_plan_executed", "send-as plan is executed in graph");
+assert(finalized.output.send_as_result?.sealed_in_same_graph === true, "send-as result is bound to the same graph");
+assert(finalized.output.send_as_result?.bound_draft_ref === complete.output.draft_ref, "send-as result binds draft ref");
+assert(finalized.output.send_as_result?.bound_content_digest === complete.output.draft_doc.content_digest, "send-as result binds draft digest");
+assert(finalized.output.validation?.send_as_composed_in_graph === true, "validation records composed send-as step");
 
 const repeat = runFixture("complete-draft.json");
 assert(repeat.status === 0, "repeat fixture exits successfully");
@@ -39,7 +49,8 @@ process.stdout.write(`${JSON.stringify({
     { name: "complete-draft", status: "passed", draft_ref: complete.output.draft_ref, deviations: complete.output.deviations.length },
     { name: "missing-payment-term", status: "passed", refusal: "terms.payment_terms is required" },
     { name: "deterministic-repeat", status: "passed" },
-    { name: "strict-refusal", status: "passed" }
+    { name: "strict-refusal", status: "passed" },
+    { name: "send-as-binding", status: "passed" }
   ]
 }, null, 2)}\n`);
 
@@ -51,6 +62,46 @@ function runFixture(name, args = []) {
   });
   const raw = result.stdout.trim();
   if (!raw) throw new Error(`${name} produced no JSON output: ${result.stderr}`);
+  return { status: result.status, output: JSON.parse(raw) };
+}
+
+function finalize(draftPacket) {
+  const sendPlan = {
+    decision: "ready",
+    action_family: "send-as",
+    principal: {
+      type: "account",
+      ref: "account:contract-review-demo"
+    },
+    provider: {
+      name: "review-queue",
+      runtime_path: "review.plan"
+    },
+    send_class: "contract_review",
+    audience: {
+      type: "repository_review",
+      ref: "RYDE-PLAY/frantic-86-contract-drafter",
+      requires_reconfirmation: true
+    },
+    content: draftPacket.send_proposal.consumer.inputs.content_ref,
+    gates: {
+      preflight_required: true,
+      human_approval_required: true,
+      approval_ref: "contract-drafter.send.approval"
+    },
+    blockers: [],
+    provider_actions: ["review.plan"],
+    success_checkpoint: {
+      milestone: "provider_delivery_required",
+      description: "Provider delivery remains outside contract-drafter."
+    }
+  };
+  const result = spawnSync(process.execPath, [join(here, "finalize.mjs")], {
+    env: { ...process.env, RUNX_INPUTS_JSON: JSON.stringify({ draft_packet: draftPacket, send_plan: sendPlan }) },
+    encoding: "utf8",
+  });
+  const raw = result.stdout.trim();
+  if (!raw) throw new Error(`finalize produced no JSON output: ${result.stderr}`);
   return { status: result.status, output: JSON.parse(raw) };
 }
 
