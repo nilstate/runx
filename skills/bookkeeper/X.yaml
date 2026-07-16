@@ -1,5 +1,5 @@
 skill: bookkeeper
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: skill
@@ -40,28 +40,29 @@ harness:
       caller:
         answers:
           agent_task.bookkeeper.output:
-            mapped_lines:
+            categorized:
               - id: t1
                 account_code: "6100"
                 account_name: Cloud Infrastructure
                 amount: -128.40
                 currency: USD
-                rationale: AWS invoice matches cloud infrastructure expense account.
+                confidence: 0.94
+                reason: AWS invoice matches cloud infrastructure expense account.
               - id: t2
                 account_code: "4000"
                 account_name: Product Revenue
                 amount: 920.00
                 currency: USD
-                rationale: Stripe payout is product revenue cash-in.
-            unmapped_lines: []
+                confidence: 0.91
+                reason: Stripe payout is product revenue cash-in.
             anomalies: []
-            totals_by_account:
-              "6100": -128.40
-              "4000": 920.00
             reconciliation:
-              summary: Both lines map cleanly to existing accounts; no booking performed.
-              residual_risks:
-                - Stripe gross vs net fees not split without fee detail.
+              matched:
+                - id: t1
+                  account_code: "6100"
+                - id: t2
+                  account_code: "4000"
+              unmatched: []
             verdict: ready_for_review
       expect:
         status: sealed
@@ -79,18 +80,16 @@ harness:
       caller:
         answers:
           agent_task.bookkeeper.output:
-            mapped_lines: []
-            unmapped_lines:
-              - id: t9
-                reason: empty chart_of_accounts
+            categorized: []
             anomalies:
               - severity: high
                 code: needs_chart
                 detail: No accounts available for mapping.
-            totals_by_account: {}
             reconciliation:
-              summary: Cannot map without a chart of accounts.
-              residual_risks: []
+              matched: []
+              unmatched:
+                - id: t9
+                  reason: empty chart_of_accounts
             verdict: needs_chart
       expect:
         status: sealed
@@ -110,16 +109,16 @@ harness:
       caller:
         answers:
           agent_task.bookkeeper.output:
-            mapped_lines: []
-            unmapped_lines: []
+            categorized: []
             anomalies:
               - severity: high
                 code: unsafe_request
                 detail: Requested live booking; skill is read-only.
-            totals_by_account: {}
             reconciliation:
-              summary: Refused to book.
-              residual_risks: []
+              matched: []
+              unmatched:
+                - id: t3
+                  reason: unsafe_request
             verdict: unsafe_request
       expect:
         status: sealed
@@ -134,6 +133,48 @@ harness:
       expect:
         status: needs_agent
 
+    - name: bookkeeper-ambiguous-needs-review
+      inputs:
+        transactions:
+          - id: amb1
+            date: "2026-07-10"
+            description: Misc transfer ref 77A
+            amount: -275.00
+            currency: USD
+            counterparty: Unknown
+          - id: amb2
+            date: "2026-07-11"
+            description: Payment received
+            amount: 150.00
+            currency: USD
+        chart_of_accounts:
+          - code: "6100"
+            name: Cloud Infrastructure
+          - code: "4000"
+            name: Product Revenue
+          - code: "1000"
+            name: Operating Cash
+      caller:
+        answers:
+          agent_task.bookkeeper.output:
+            categorized: []
+            anomalies:
+              - severity: medium
+                code: ambiguous_description
+                detail: Misc transfer and generic payment cannot be safely bound to one GL account.
+            reconciliation:
+              matched: []
+              unmatched:
+                - id: amb1
+                  reason: ambiguous_description
+                - id: amb2
+                  reason: ambiguous_description
+            verdict: needs_review
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
 runners:
   analyst:
     default: true
@@ -141,9 +182,7 @@ runners:
     agent: analyst
     task: bookkeeper
     outputs:
-      mapped_lines: array
-      unmapped_lines: array
+      categorized: array
       anomalies: array
-      totals_by_account: object
       reconciliation: object
       verdict: string

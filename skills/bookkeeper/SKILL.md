@@ -20,8 +20,9 @@ reconciliation artifact an operator can review.
   `chart_of_accounts` (no inventing accounts).
 - Flag anomalies: unknown counterparties, out-of-range amounts, unmapped
   descriptions, currency mismatches, duplicate-looking lines.
-- Emit a reconciliation packet: mapped lines, unmapped lines, totals by
-  account, anomaly list, residual risks.
+- Emit a reconciliation packet: `matched` lines, `unmatched` lines, totals,
+  residual risks.
+- Return `needs_review` when transactions are ambiguous or unmappable.
 - Return `needs_chart` when the chart is missing accounts required to map.
 - Return `unsafe_request` if asked to book, post, transfer, or mutate money.
 
@@ -33,9 +34,9 @@ reconciliation artifact an operator can review.
 
 ## Output
 
-- `mapped_lines`: categorized lines with `account_code`, `account_name`, `amount`, rationale
-- `unmapped_lines`: lines that could not be safely categorized
+- `categorized`: array of lines with `account_code`, `account_name`, `amount`,
+  `confidence`, and `reason` (every line binds to an existing chart account)
 - `anomalies`: structured flags with severity
-- `totals_by_account`: rollups for review
-- `reconciliation`: summary + residual risks
-- `verdict`: `ready_for_review` | `needs_chart` | `unsafe_request`
+- `reconciliation`: object with `matched` and `unmatched` arrays (read-only;
+  no ledger mutation)
+- `verdict`: `ready_for_review` | `needs_review` | `needs_chart` | `unsafe_request`
