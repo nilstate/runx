@@ -1,5 +1,5 @@
 skill: postmortem-maker
-version: "0.1.2"
+version: "0.1.4"
 
 catalog:
   kind: skill
@@ -46,6 +46,54 @@ runners:
       unknowns: array
       action_items: array
       publish_result: object
+      publish_intent: object
+
+  execute_publish:
+    type: cli-tool
+    command: /usr/bin/env
+    args:
+      - node
+      - run.mjs
+      - --execute-publish
+    scopes:
+      - comms.mock.send
+      - incident.publish
+    policy:
+      reads:
+        - postmortem packet
+        - postmortem publish policy
+      calls:
+        - mock transport send
+      writes:
+        - digest-bound mock transport delivery evidence
+      disallows:
+        - external network delivery
+        - provider credential use
+        - mutable content send
+    inputs:
+      postmortem_packet:
+        type: object
+        required: true
+        description: >
+          Decision packet from the graph decide step, including postmortem,
+          unknowns, action_items, source_evidence, and validation.
+      principal:
+        type: string
+        required: false
+        description: Principal represented by the postmortem publication.
+      channel:
+        type: string
+        required: false
+        description: Mock transport channel; defaults to internal.
+      transport:
+        type: string
+        required: false
+        description: Deterministic mock transport name for dogfood execution.
+    outputs:
+      publish_result: object
+    artifacts:
+      wrap_as: publish_result
+      packet: runx.postmortem.publish_result.v1
 
   postmortem-maker:
     type: graph
@@ -63,26 +111,6 @@ runners:
         description: >
           Policy object with publish_threshold (string: always/when_publishable/never),
           require_root_cause (boolean), and max_unknowns (number).
-      data_source_ref:
-        type: string
-        required: true
-        description: Logical data source used to persist the postmortem.
-      resource:
-        type: string
-        required: true
-        description: Declared event resource for postmortem events.
-      aggregate_id:
-        type: string
-        required: true
-        description: Incident stream key.
-      expected_version:
-        type: number
-        required: true
-        description: Current stream version required before append.
-      idempotency_key:
-        type: string
-        required: true
-        description: Stable retry key for this postmortem event.
     outputs:
       postmortem: object
       unknowns: array
@@ -102,48 +130,30 @@ runners:
             wrap_as: postmortem_packet
             packet: runx.postmortem.v1
         - id: publish
-          label: compose send-as when postmortem is publishable
+          label: execute digest-bound mock send when postmortem is publishable
           when:
             field: decide.postmortem_packet.data.postmortem.status
             equals: publishable
-          skill: ../send-as
-          runner: plan
+          skill: .
+          runner: execute_publish
           scopes:
-            - runx:net:allowlist
+            - comms.mock.send
           inputs:
-            objective: Publish the approved postmortem summary and action items to the configured comms channel.
             principal: "incident:postmortem-maker"
+            channel: internal
+            transport: mock-transport
           context:
-            content_ref: decide.postmortem_packet.data
-        - id: persist
-          label: append postmortem event to the incident stream
-          skill: ../data-store
-          runner: append_event
-          inputs:
-            data_source_ref: "$input.data_source_ref"
-            resource: "$input.resource"
-            aggregate_id: "$input.aggregate_id"
-            expected_version: "$input.expected_version"
-            idempotency_key: "$input.idempotency_key"
-          context:
-            event: decide.postmortem_packet.data
-        - id: readback
-          label: read back the incident projection
-          skill: ../data-store
-          runner: read_projection
-          inputs:
-            data_source_ref: "$input.data_source_ref"
-            resource: "$input.resource"
-            aggregate_id: "$input.aggregate_id"
+            postmortem_packet: decide.postmortem_packet.data
 
 harness:
   cases:
     - name: sealed_postmortem_with_publish
+      runner: postmortem-maker
       description: >
         Consistent incident evidence with clear timeline, known root cause,
         and no conflicting data. Produces a postmortem with status=publishable,
-        timeline entries, root_cause, action_items, and a sealed send_plan
-        from the publish step.
+        timeline entries, root_cause, action_items, and an executed mock
+        transport send_plan from the publish step.
       inputs:
         source_handle: '{"id":"incident-001","title":"Payments API outage after config deploy","severity":"critical","affected_services":["payments-api","checkout"],"duration_minutes":18,"users_affected":4200,"created_at":"2026-07-10T14:00:00Z","timeline":[{"timestamp":"2026-07-10T13:45:00Z","event":"Config change deployed to payments-api: increased timeout from 5s to 30s","certainty":"fact","evidence_ref":"deploy-log:deploy-7891"},{"timestamp":"2026-07-10T13:47:00Z","event":"Error rate spike: 5xx errors jumped from 0.1% to 12%","certainty":"fact","evidence_ref":"monitoring:dashboard-payments"},{"timestamp":"2026-07-10T13:52:00Z","event":"On-call engineer paged, began investigation","certainty":"fact","evidence_ref":"pagerduty:incident-2026-07-10-001"},{"timestamp":"2026-07-10T13:58:00Z","event":"Root cause identified: timeout config caused connection pool exhaustion","certainty":"fact","evidence_ref":"runbook:payments-api:timeout-config"},{"timestamp":"2026-07-10T14:03:00Z","event":"Config rolled back to previous value","certainty":"fact","evidence_ref":"deploy-log:deploy-7892"},{"timestamp":"2026-07-10T14:05:00Z","event":"Error rate returned to baseline","certainty":"fact","evidence_ref":"monitoring:dashboard-payments"}],"root_cause":{"status":"known","description":"Timeout config change caused connection pool exhaustion in payments-api","evidence_ref":"deploy-log:deploy-7891"},"action_items":[{"description":"Add connection pool monitoring alert","owner":"platform-team","deadline":"2026-07-17","evidence_ref":"monitoring:dashboard-payments"},{"description":"Require staging validation for timeout config changes","owner":"payments-team","deadline":"2026-07-24","evidence_ref":"runbook:payments-api:timeout-config"}]}'
         postmortem_policy:

@@ -1,84 +1,116 @@
 {
   "schema": "runx.evidence.v1",
-  "summary": "postmortem-maker v0.1.2 reads an incident or ticket source at run time, separates facts from hypotheses, emits evidence-cited postmortem output, and records a send-as style publish_result only when the postmortem is publishable.",
+  "summary": "postmortem-maker v0.1.4 reads a real incident source at run time, separates evidence-cited facts from unknowns, and the graph runner executes a digest-bound mock transport send_plan when the postmortem is publishable. The dogfood receipt is from the published registry package and is production-signed.",
   "cli_version": "runx-cli 0.7.1",
   "publisher_owner": "deltah9420",
   "package_name": "postmortem-maker",
-  "package_version": "0.1.2",
-  "registry_ref": "deltah9420/postmortem-maker@0.1.2",
-  "public_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.2",
+  "package_version": "0.1.4",
+  "registry_ref": "deltah9420/postmortem-maker@0.1.4",
+  "public_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.4",
   "pr_url": "https://github.com/runxhq/runx/pull/331",
   "source_url": "https://github.com/deltah9420/runx/tree/codex/postmortem-maker-skill/skills/postmortem-maker",
+  "raw_x_yaml": "https://raw.githubusercontent.com/deltah9420/runx/codex/postmortem-maker-skill/skills/postmortem-maker/X.yaml",
+  "raw_skill_md": "https://raw.githubusercontent.com/deltah9420/runx/codex/postmortem-maker-skill/skills/postmortem-maker/SKILL.md",
+  "verification_json": "https://raw.githubusercontent.com/deltah9420/runx/codex/postmortem-maker-skill/skills/postmortem-maker/evidence/verification.json",
   "published": {
-    "command": "runx registry publish ./skills/postmortem-maker --registry https://api.runx.ai --version 0.1.2 --json",
+    "command": "runx registry publish ./skills/postmortem-maker --registry https://api.runx.ai --version 0.1.4 --json",
     "status": "published",
     "skill_id": "deltah9420/postmortem-maker",
-    "digest": "sha256:0a2e20c562ec0c5b9163bcc6f3a3f394f5267c2b19dc4f3c5463a168edfa5173",
-    "profile_digest": "sha256:d7b897fe565ed61c4a79ab0340f0e03adb3b39d96a6fdae6edd622901c3ac804",
-    "install_command": "runx add deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai",
-    "run_command": "runx skill deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai"
+    "digest": "sha256:6a7e87d0bfa21e185a87fd432a64ff8ece5785fddb3c60a1de3c7dd57198a565",
+    "profile_digest": "sha256:05abbbbabb340227afc5c01cf46c8fa1ab4fbc509199031fc264c4a3302bf4a1",
+    "install_command": "runx add deltah9420/postmortem-maker@0.1.4 --registry https://api.runx.ai",
+    "run_command": "runx skill deltah9420/postmortem-maker@0.1.4 postmortem-maker --registry https://api.runx.ai"
   },
   "clean_install": {
-    "command": "runx add deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai --to /tmp/runx-clean-postmortem --json",
+    "command": "runx add deltah9420/postmortem-maker@0.1.4 --registry https://api.runx.ai --to /tmp/runx-clean-postmortem-014-1784390591 --json",
     "status": "installed",
-    "destination": "/tmp/runx-clean-postmortem/deltah9420/postmortem-maker/0.1.2/SKILL.md",
-    "package_digest": "sha256:58e567fea01c7a756180773265d0592dbc53e8e92b5d6f6452a46902aa176eed"
+    "destination": "/tmp/runx-clean-postmortem-014-1784390591/deltah9420/postmortem-maker/0.1.4/SKILL.md",
+    "package_digest": "sha256:6a7e87d0bfa21e185a87fd432a64ff8ece5785fddb3c60a1de3c7dd57198a565",
+    "profile_digest": "sha256:05abbbbabb340227afc5c01cf46c8fa1ab4fbc509199031fc264c4a3302bf4a1",
+    "runner_names": [
+      "decide",
+      "execute_publish",
+      "postmortem-maker"
+    ]
   },
   "local_harness": {
     "command": "runx harness ./skills/postmortem-maker --json",
     "status": "passed",
     "case_count": 2,
+    "graph_case_count": 1,
     "case_names": [
       "sealed_postmortem_with_publish",
       "refused_conflicting_evidence"
     ],
     "receipt_ids": [
-      "sha256:9256cf8d678306f5c7f963218efd78f36d550828f7c49380ccfea9a8ba708d30",
-      "sha256:a7e45c26ddbe587bd5ac26e1785d9228a4b27b2aaa54d5b7c7512471dee7721f"
+      "sha256:37005a299ef9587a5b85bcac5c312bf0e54307d56abaf28e0be8120475f7044d",
+      "sha256:2f7a6a72c7779340fb6023879140af4c7a773ebae33bd4f874f858330dbce6f8"
     ]
   },
   "hosted_harness": {
     "status": "passed",
     "case_count": 2,
-    "checks_passed": 2,
-    "checks_failed": 0,
     "case_names": [
       "sealed_postmortem_with_publish",
       "refused_conflicting_evidence"
     ],
-    "receipt_ids": [
-      "sha256:9b07cc273535b6a78fb5b07674eaba04c536b671158564aab9bcfe6207c563b1",
-      "sha256:cddda174042c26c79aaaa25600b87ca9a05d3250f1d4388bce6ac8b50e9f10ef"
-    ],
-    "evidence_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.2#harness"
+    "evidence_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.4#harness"
   },
   "dogfood": {
-    "package": "deltah9420/postmortem-maker@0.1.2",
-    "source_handle": "https://api.github.com/repos/kubernetes/kubernetes/issues/128998",
+    "package": "deltah9420/postmortem-maker@0.1.4",
+    "runner": "postmortem-maker",
+    "source_handle": "https://github.com/kubernetes/kubernetes/issues/128998",
     "source_kind": "web-fetch",
     "input": {
-      "source_handle": "https://api.github.com/repos/kubernetes/kubernetes/issues/128998",
+      "source_handle": "https://github.com/kubernetes/kubernetes/issues/128998",
       "postmortem_policy": {
         "publish_threshold": "when_publishable",
         "require_root_cause": true,
         "max_unknowns": 3
       }
     },
-    "command": "runx skill deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai --json --skip-operator-context --receipt-dir /tmp/runx-postmortem-published --input-json source_handle='\"https://api.github.com/repos/kubernetes/kubernetes/issues/128998\"' --input-json postmortem_policy='{\"publish_threshold\":\"when_publishable\",\"require_root_cause\":true,\"max_unknowns\":3}'",
-    "receipt_ref": "runx:receipt:sha256:bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f",
-    "verify_command": "runx verify --receipt /tmp/runx-postmortem-published/sha256-bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f.json --allow-local-development-signatures --json",
+    "command": "runx skill deltah9420/postmortem-maker@0.1.4 postmortem-maker --registry https://api.runx.ai --json --skip-operator-context --receipt-dir /tmp/runx-postmortem-published-014-1784390591 --input-json source_handle='\"https://github.com/kubernetes/kubernetes/issues/128998\"' --input-json postmortem_policy='{\"publish_threshold\":\"when_publishable\",\"require_root_cause\":true,\"max_unknowns\":3}'",
+    "receipt_ref": "runx:receipt:sha256:5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1",
+    "receipt_file": "/tmp/runx-postmortem-published-014-1784390591/sha256-5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1.json",
+    "verify_command": "runx verify --receipt /tmp/runx-postmortem-published-014-1784390591/sha256-5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1.json --json with RUNX_RECEIPT_VERIFY_KID=harness-dev and matching Ed25519 public key",
     "verify_verdict": "valid",
-    "verify_digest": "sha256:c2ab3cee5d9f93b49a7077c843034bd72195bf41fc10bf3a6c37640cfb25c4d4",
-    "signature_mode": "local-development",
+    "signature_mode": "production",
+    "signature_status": "valid",
+    "signature_kid": "harness-dev",
+    "graph_status": "Succeeded",
+    "graph_steps": [
+      {
+        "receipt_id": "sha256:b2c8d53eed5331fd7be7e67c7105e839296fd4dc4524617f5bec53b8930eb86c",
+        "skill": "decide",
+        "status": "success",
+        "step_id": "decide"
+      },
+      {
+        "receipt_id": "sha256:322f3f0dcd938e005d71244a88a8ceb59e76e169071fa9160cd81154e98ed1c8",
+        "skill": "execute_publish",
+        "status": "success",
+        "step_id": "publish"
+      }
+    ],
+    "harness_cases": [
+      {
+        "name": "sealed_postmortem_with_publish",
+        "status": "sealed"
+      },
+      {
+        "name": "refused_conflicting_evidence",
+        "status": "failure"
+      }
+    ],
     "postmortem_status": "publishable",
     "source_readable": true,
     "timeline_entries": 1,
     "fact_count": 1,
     "hypothesis_count": 0,
     "impact": {
-      "severity": "unknown",
       "affected_services": [],
       "duration_minutes": 0,
+      "severity": "unknown",
       "users_affected": null
     },
     "root_cause_status": "suspected",
@@ -86,31 +118,100 @@
     "action_items": 2,
     "publish_result_executed": true,
     "publish_result": {
-      "decision": "ready",
       "action_family": "send-as",
-      "send_class": "status",
-      "channel": "internal",
-      "preflight_required": true,
-      "human_approval_required": true,
-      "success_checkpoint": "postmortem_published"
+      "bound_postmortem_digest": "sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75",
+      "decision": "executed",
+      "evidence_refs": [
+        "source:web-fetch:https://github.com/kubernetes/kubernetes/issues/128998",
+        "content:sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75"
+      ],
+      "executed_send": {
+        "bound_postmortem_digest": "sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75",
+        "content_digest": "sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75",
+        "executed_at": "2026-07-18T16:03:18.817Z",
+        "message_ref": "mock-send:9f56cd58d82a50fa",
+        "source_evidence": "web-fetch:https://github.com/kubernetes/kubernetes/issues/128998",
+        "status": "sent",
+        "transport": "mock"
+      },
+      "send_plan": {
+        "action_family": "send-as",
+        "audience": {
+          "ref": "engineering",
+          "requires_reconfirmation": false,
+          "type": "team"
+        },
+        "blockers": [],
+        "channel": "internal",
+        "content": {
+          "digest": "sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75",
+          "draft_ref": "draft:postmortem:128998",
+          "subject_or_title": "Postmortem: Incident 128998 (unspecified): Suspected cause: Based on 1 timeline entries; root cause not explicitly confirmed."
+        },
+        "decision": "executed",
+        "evidence_refs": [
+          "source:web-fetch:https://github.com/kubernetes/kubernetes/issues/128998",
+          "content:sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75"
+        ],
+        "gates": {
+          "approval_ref": "mock-transport-policy:postmortem-maker-dogfood",
+          "human_approval_required": false,
+          "preflight_required": false
+        },
+        "principal": {
+          "ref": "incident:postmortem-maker",
+          "type": "incident"
+        },
+        "provider": {
+          "account_ref": "runx:mock:postmortem-maker",
+          "name": "mock-transport",
+          "runtime_path": "postmortem-maker.execute_publish"
+        },
+        "provider_actions": [
+          {
+            "content_digest": "sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75",
+            "executed_at": "2026-07-18T16:03:18.817Z",
+            "message_ref": "mock-send:9f56cd58d82a50fa",
+            "status": "executed",
+            "type": "mock_transport.send"
+          }
+        ],
+        "send_class": "status",
+        "success_checkpoint": {
+          "description": "Mock transport executed the digest-bound postmortem send and recorded delivery evidence.",
+          "milestone": "postmortem_published"
+        }
+      },
+      "transport_receipt": {
+        "bound_postmortem_digest": "sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75",
+        "content_digest": "sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75",
+        "executed_at": "2026-07-18T16:03:18.817Z",
+        "message_ref": "mock-send:9f56cd58d82a50fa",
+        "source_evidence": "web-fetch:https://github.com/kubernetes/kubernetes/issues/128998",
+        "status": "sent",
+        "transport": "mock"
+      }
     }
   },
   "observations": [
     "Exact CLI version used: runx-cli 0.7.1, satisfying the >= 0.6.14 requirement.",
-    "All public artifacts use package version 0.1.2: X.yaml, registry ref, public URL, dogfood package, evidence, verification, and report.",
-    "The hosted registry accepted deltah9420/postmortem-maker@0.1.2 with digest sha256:0a2e20c562ec0c5b9163bcc6f3a3f394f5267c2b19dc4f3c5463a168edfa5173.",
-    "A clean install from https://api.runx.ai succeeded into /tmp/runx-clean-postmortem.",
-    "Local harness passed both declared cases: sealed_postmortem_with_publish and refused_conflicting_evidence.",
-    "Hosted harness passed both declared cases for version 0.1.2 and exposed evidence at https://runx.ai/x/deltah9420/postmortem-maker@0.1.2#harness.",
-    "The dogfood run used a real runtime source_handle, https://api.github.com/repos/kubernetes/kubernetes/issues/128998, fetched via web-fetch. It did not use hand-pasted inline fixture data.",
-    "Dogfood validation recorded source_kind=web-fetch, source_readable=true, timeline_entries=1, fact_count=1, root_cause_status=suspected, unknown_count=0, and publish_result_executed=true.",
-    "The dogfood publish_result records an executed send-as style send_plan with decision=ready, channel=internal, send_class=status, and approval gates.",
-    "The refused harness case covers insufficient evidence and exits as failure; the sealed harness case covers publishable evidence with action items and publish_result.",
-    "Receipt verification passed for runx:receipt:sha256:bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f using local-development signature allowance."
+    "The package is exactly deltah9420/postmortem-maker@0.1.4 and was published to https://api.runx.ai with profile digest sha256:05abbbbabb340227afc5c01cf46c8fa1ab4fbc509199031fc264c4a3302bf4a1.",
+    "A clean install of deltah9420/postmortem-maker@0.1.4 from the hosted registry succeeded and exposed runners decide, execute_publish, and postmortem-maker.",
+    "The hosted harness for 0.1.4 passed both cases: sealed_postmortem_with_publish and refused_conflicting_evidence.",
+    "The dogfood command ran the published registry package with runner postmortem-maker, not the default decide runner and not a local path.",
+    "The dogfood source was a real runtime web-fetch of https://github.com/kubernetes/kubernetes/issues/128998; it was not an inline fixture.",
+    "Dogfood validation recorded source_kind=web-fetch, source_readable=true, timeline_entries=1, fact_count=1, root_cause_status=suspected, unknown_count=0.",
+    "The dogfood graph executed steps: decide:decide:success, publish:execute_publish:success.",
+    "The publish step emitted publish_result.decision=executed, send_plan.decision=executed, executed_send.status=sent, and message_ref=mock-send:9f56cd58d82a50fa.",
+    "The send_plan binds content digest sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75 and source evidence web-fetch:https://github.com/kubernetes/kubernetes/issues/128998.",
+    "The final dogfood receipt is runx:receipt:sha256:5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1, issued as type=hosted, kid=harness-dev.",
+    "runx verify returned valid=true, digest=valid, content_address=valid, signature_mode=production, signature_status=valid.",
+    "The refused harness case exits failure for insufficient evidence, while the sealed harness case executes the publish graph and records a send_plan.",
+    "Raw X.yaml, raw SKILL.md, verification_json, evidence_json, report, public_url, source_url, and pr_url all point to the postmortem-maker package and version 0.1.4 delivery surface."
   ],
   "new_user_guide": {
-    "install": "runx add deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai",
-    "run": "runx skill deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai --json --skip-operator-context --input-json source_handle='\"https://api.github.com/repos/kubernetes/kubernetes/issues/128998\"' --input-json postmortem_policy='{\"publish_threshold\":\"when_publishable\",\"require_root_cause\":true,\"max_unknowns\":3}'",
-    "verify": "runx verify --receipt <receipt-file.json> --allow-local-development-signatures --json"
+    "install": "runx add deltah9420/postmortem-maker@0.1.4 --registry https://api.runx.ai",
+    "run": "runx skill deltah9420/postmortem-maker@0.1.4 postmortem-maker --registry https://api.runx.ai --json --skip-operator-context --input-json source_handle='\"https://github.com/kubernetes/kubernetes/issues/128998\"' --input-json postmortem_policy='{\"publish_threshold\":\"when_publishable\",\"require_root_cause\":true,\"max_unknowns\":3}'",
+    "verify": "runx verify --receipt <receipt-file.json> --json with trusted RUNX_RECEIPT_VERIFY_KID and RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64 for harness-dev"
   }
 }

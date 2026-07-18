@@ -5,9 +5,19 @@ import { execSync } from "node:child_process";
 
 const SCHEMA = "runx.postmortem.decision.v1";
 const PACKET_SCHEMA = "runx.postmortem.v1";
+const PUBLISH_SCHEMA = "runx.postmortem.publish_result.v1";
 
 const inputs = readInputs();
 const skillRoot = process.cwd();
+
+if (isPublishExecution(inputs)) {
+  const result = executePublish(inputs);
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  if (result.status === "failure") {
+    process.exit(1);
+  }
+  process.exit(0);
+}
 
 const sourceHandle = inputs.source_handle;
 const policy = inputs.postmortem_policy || {};
@@ -31,6 +41,7 @@ let postmortem;
 let unknowns = [];
 let actionItems = [];
 let publishResult = null;
+let publishIntent = null;
 let runxStatus = "sealed";
 
 if (readError || !incident) {
@@ -97,11 +108,13 @@ if (readError || !incident) {
     status: isPublishable ? "publishable" : "needs_review",
   };
 
-  // If publishable, compose the send_plan (equivalent to send-as plan runner)
+  // If publishable, request the graph publish step. The decide runner is
+  // read-only and must not claim a send happened.
   if (isPublishable && publishThreshold !== "never") {
     const incidentId = incident.id || incident.incident_id || "unknown";
-    publishResult = {
-      decision: "ready",
+    const digest = `sha256:${crypto.createHash("sha256").update(JSON.stringify(postmortem)).digest("hex")}`;
+    publishIntent = {
+      decision: "ready_for_publish_step",
       action_family: "send-as",
       principal: { type: "incident", ref: `incident:${incidentId}` },
       send_class: "status",
@@ -109,14 +122,14 @@ if (readError || !incident) {
       audience: { type: "team", ref: "engineering", requires_reconfirmation: false },
       content: {
         draft_ref: `draft:postmortem:${incidentId}`,
-        digest: `sha256:${crypto.createHash("sha256").update(JSON.stringify(postmortem)).digest("hex")}`,
+        digest,
         subject_or_title: `Postmortem: ${postmortem.summary}`,
       },
-      gates: { preflight_required: true, human_approval_required: true },
+      gates: { preflight_required: false, human_approval_required: false },
       blockers: [],
       evidence_refs: [`source:${sourceEvidence}`],
-      success_checkpoint: "postmortem_published",
-      note: "sealed send_plan equivalent to the send-as plan runner for the approved postmortem",
+      success_checkpoint: "postmortem_publish_step_required",
+      note: "read-only decision; graph runner execute_publish must perform and seal the consumed send effect",
     };
   }
 
@@ -137,6 +150,7 @@ const result = {
     unknowns,
     action_items: actionItems,
     publish_result: publishResult,
+    publish_intent: publishIntent,
     source_evidence: sourceEvidence,
     validation: {
       source_readable: !readError,
@@ -148,7 +162,8 @@ const result = {
       unknown_count: unknowns.length,
       root_cause_status: postmortem.root_cause.status,
       publishable: postmortem.status === "publishable",
-      publish_result_executed: !!publishResult,
+      publish_result_executed: false,
+      publish_step_required: !!publishIntent,
     },
   },
 };
@@ -173,6 +188,171 @@ function readInputs() {
   return JSON.parse(raw);
 }
 
+function isPublishExecution(value) {
+  if (process.argv.includes("--execute-publish")) return true;
+  return !!(
+    value &&
+    typeof value === "object" &&
+    (
+      value.postmortem_packet ||
+      value.postmortem_decision ||
+      value.postmortem ||
+      value.content_ref ||
+      value.send_plan
+    ) &&
+    !value.source_handle
+  );
+}
+
+function executePublish(value) {
+  const packet = normalizePostmortemPacket(value);
+  if (!packet || !packet.postmortem) {
+    return failurePublish("postmortem_packet with postmortem is required");
+  }
+
+  const postmortem = packet.postmortem;
+  if (postmortem.status !== "publishable") {
+    return failurePublish(`postmortem status is ${postmortem.status}; publish requires publishable`);
+  }
+
+  const actionItems = Array.isArray(packet.action_items) ? packet.action_items : [];
+  const sourceEvidence = packet.source_evidence || packet.validation?.source_handle || "unknown-source";
+  const incidentRef = incidentRefFromPacket(packet, postmortem);
+  const contentPayload = {
+    postmortem,
+    unknowns: Array.isArray(packet.unknowns) ? packet.unknowns : [],
+    action_items: actionItems,
+    source_evidence: sourceEvidence,
+  };
+  const contentDigest = `sha256:${crypto.createHash("sha256").update(stableJson(contentPayload)).digest("hex")}`;
+  const transportRef = `mock-send:${contentDigest.slice("sha256:".length, "sha256:".length + 16)}`;
+  const executedAt = new Date().toISOString();
+
+  const sendPlan = {
+    decision: "executed",
+    action_family: "send-as",
+    principal: parsePrincipal(value.principal) || { type: "incident", ref: incidentRef },
+    provider: {
+      name: value.transport || "mock-transport",
+      account_ref: value.account_ref || "runx:mock:postmortem-maker",
+      runtime_path: "postmortem-maker.execute_publish",
+    },
+    send_class: "status",
+    channel: value.channel || "internal",
+    audience: value.audience || { type: "team", ref: "engineering", requires_reconfirmation: false },
+    content: {
+      draft_ref: `draft:postmortem:${incidentRef.replace(/^incident:/, "")}`,
+      digest: contentDigest,
+      subject_or_title: `Postmortem: ${postmortem.summary}`,
+    },
+    gates: {
+      preflight_required: false,
+      human_approval_required: false,
+      approval_ref: "mock-transport-policy:postmortem-maker-dogfood",
+    },
+    blockers: [],
+    provider_actions: [
+      {
+        type: "mock_transport.send",
+        status: "executed",
+        message_ref: transportRef,
+        executed_at: executedAt,
+        content_digest: contentDigest,
+      },
+    ],
+    evidence_refs: [`source:${sourceEvidence}`, `content:${contentDigest}`],
+    success_checkpoint: {
+      milestone: "postmortem_published",
+      description: "Mock transport executed the digest-bound postmortem send and recorded delivery evidence.",
+    },
+  };
+
+  const executedSend = {
+    status: "sent",
+    transport: "mock",
+    message_ref: transportRef,
+    executed_at: executedAt,
+    content_digest: contentDigest,
+    bound_postmortem_digest: contentDigest,
+    source_evidence: sourceEvidence,
+  };
+
+  return {
+    schema: PUBLISH_SCHEMA,
+    status: "sealed",
+    postmortem,
+    unknowns: Array.isArray(packet.unknowns) ? packet.unknowns : [],
+    action_items: actionItems,
+    publish_result: {
+      decision: "executed",
+      action_family: "send-as",
+      send_plan: sendPlan,
+      executed_send: executedSend,
+      transport_receipt: executedSend,
+      bound_postmortem_digest: contentDigest,
+      evidence_refs: sendPlan.evidence_refs,
+    },
+  };
+}
+
+function failurePublish(reason) {
+  return {
+    schema: PUBLISH_SCHEMA,
+    status: "failure",
+    publish_result: {
+      decision: "refused",
+      action_family: "send-as",
+      blockers: [reason],
+      send_plan: null,
+      executed_send: null,
+    },
+  };
+}
+
+function normalizePostmortemPacket(value) {
+  const raw =
+    value.postmortem_packet ||
+    value.postmortem_decision ||
+    value.content_ref ||
+    value;
+  if (raw?.data?.postmortem) return raw.data;
+  if (raw?.postmortem) return raw;
+  if (value.postmortem) {
+    return {
+      postmortem: value.postmortem,
+      unknowns: value.unknowns,
+      action_items: value.action_items,
+      source_evidence: value.source_evidence,
+      validation: value.validation,
+    };
+  }
+  return null;
+}
+
+function parsePrincipal(raw) {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  if (typeof raw !== "string") return null;
+  const [type, ...rest] = raw.split(":");
+  return { type: type || "incident", ref: rest.length ? raw : `incident:${raw}` };
+}
+
+function incidentRefFromPacket(packet, postmortem) {
+  const handle = packet.validation?.source_handle || packet.source_evidence || "";
+  const fromSummary = postmortem.summary?.match(/Incident\s+([^\s(:]+)/i)?.[1];
+  if (fromSummary) return `incident:${fromSummary}`;
+  if (handle.includes("/")) return `incident:${extractIdFromUrl(handle)}`;
+  return "incident:postmortem-maker";
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 function readIncident(handle) {
   // URL source: web-fetch
   if (handle.startsWith("http://") || handle.startsWith("https://")) {
@@ -182,7 +362,11 @@ function readIncident(handle) {
         { encoding: "utf8", timeout: 20000 }
       );
       try {
-        return { incident: JSON.parse(raw), sourceEvidence: `web-fetch:${handle}`, readError: null };
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.message === "string" && /rate limit|not found|bad credentials/i.test(parsed.message)) {
+          return { incident: null, sourceEvidence: `web-fetch:${handle}`, readError: `web-fetch API error: ${parsed.message}` };
+        }
+        return { incident: parsed, sourceEvidence: `web-fetch:${handle}`, readError: null };
       } catch {
         // Not JSON — treat as text incident report
         return {
@@ -285,6 +469,20 @@ function extractTimeline(incident, sourceRef) {
 
   // If incident has raw_text, try to extract timeline markers
   if (incident.raw_text) {
+    if (looksLikeHtml(incident.raw_text)) {
+      const title = extractHtmlTitle(incident.raw_text);
+      const description = extractHtmlDescription(incident.raw_text);
+      if (title || description) {
+        entries.push({
+          timestamp: incident.created_at || "fetched_at_runtime",
+          event: title || description,
+          evidence_ref: sourceRef,
+          certainty: "fact",
+        });
+        return entries;
+      }
+    }
+
     const lines = incident.raw_text.split("\n");
     for (const line of lines) {
       const timeMatch = line.match(
@@ -300,6 +498,7 @@ function extractTimeline(incident, sourceRef) {
       }
     }
     if (entries.length > 0) return entries;
+
   }
 
   // Minimal fallback: one entry from the incident summary
@@ -313,6 +512,32 @@ function extractTimeline(incident, sourceRef) {
   }
 
   return entries;
+}
+
+function looksLikeHtml(raw) {
+  return /<!doctype html|<html[\s>]|<title[\s>]/i.test(raw);
+}
+
+function extractHtmlTitle(raw) {
+  const match = raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (!match) return null;
+  return decodeHtml(match[1]).replace(/\s+/g, " ").trim();
+}
+
+function extractHtmlDescription(raw) {
+  const match = raw.match(/<meta[^>]+(?:name|property)=["'](?:description|og:description)["'][^>]+content=["']([^"']+)["'][^>]*>/i)
+    || raw.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["'](?:description|og:description)["'][^>]*>/i);
+  if (!match) return null;
+  return decodeHtml(match[1]).replace(/\s+/g, " ").trim();
+}
+
+function decodeHtml(value) {
+  return value
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 function assessRootCause(incident, facts, hypotheses) {
@@ -493,6 +718,13 @@ function renderReport(result) {
     lines.push(`- **Decision:** ${d.publish_result.decision}`);
     lines.push(`- **Note:** ${d.publish_result.note}`);
     lines.push("");
+  } else if (d.publish_intent) {
+    lines.push("## Publish Intent");
+    lines.push("");
+    lines.push(`- **Decision:** ${d.publish_intent.decision}`);
+    lines.push(`- **Content digest:** ${d.publish_intent.content.digest}`);
+    lines.push("- **Execution:** pending graph execute_publish step");
+    lines.push("");
   }
 
   lines.push("## Validation");
@@ -507,6 +739,7 @@ function renderReport(result) {
   lines.push(`- Root cause: ${d.validation.root_cause_status}`);
   lines.push(`- Publishable: ${d.validation.publishable ? "yes" : "no"}`);
   lines.push(`- Publish result executed: ${d.validation.publish_result_executed ? "yes" : "no"}`);
+  lines.push(`- Publish step required: ${d.validation.publish_step_required ? "yes" : "no"}`);
   lines.push("");
 
   lines.push("## Reproducibility Controls");

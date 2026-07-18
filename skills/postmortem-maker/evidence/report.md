@@ -1,121 +1,62 @@
-# Postmortem Maker Delivery Report
+# postmortem-maker 0.1.4 delivery report
 
 ## What changed
 
-`postmortem-maker` v0.1.2 is a runx skill that reads a real incident or ticket source at run time, separates facts from hypotheses, produces an evidence-cited postmortem, and records a send-as style publish result only when the postmortem is publishable.
+- Added an explicit execute_publish runner that records a digest-bound mock transport send.
+- Changed the public postmortem-maker graph to run decide -> execute_publish, so dogfood no longer falls through to the read-only decide runner.
+- Removed the inert publish_result overclaim from decide; decide now emits publish_intent and publish_result_executed=false.
+- Hardened web-fetch parsing so GitHub HTML issue pages become clean source evidence instead of noisy script timestamps.
+- Kept refusal behavior for insufficient evidence.
 
-The revision fixes the previous delivery issues:
+## Published package
 
-- All public artifacts now use version `0.1.2`.
-- The dogfood run reads `https://api.github.com/repos/kubernetes/kubernetes/issues/128998` at run time via web-fetch instead of using inline fixture data.
-- Evidence records the real dogfood source, receipt id, clean install, local harness, hosted harness, and receipt verification.
+- Package: deltah9420/postmortem-maker@0.1.4
+- Public URL: https://runx.ai/x/deltah9420/postmortem-maker@0.1.4
+- Registry digest: sha256:6a7e87d0bfa21e185a87fd432a64ff8ece5785fddb3c60a1de3c7dd57198a565
+- Profile digest: sha256:05abbbbabb340227afc5c01cf46c8fa1ab4fbc509199031fc264c4a3302bf4a1
+- PR: https://github.com/runxhq/runx/pull/331
+- Source URL: https://github.com/deltah9420/runx/tree/codex/postmortem-maker-skill/skills/postmortem-maker
+- Raw X.yaml: https://raw.githubusercontent.com/deltah9420/runx/codex/postmortem-maker-skill/skills/postmortem-maker/X.yaml
+- Raw SKILL.md: https://raw.githubusercontent.com/deltah9420/runx/codex/postmortem-maker-skill/skills/postmortem-maker/SKILL.md
+- Verification JSON: https://raw.githubusercontent.com/deltah9420/runx/codex/postmortem-maker-skill/skills/postmortem-maker/evidence/verification.json
 
-## Package
+## Verification
 
-- Owner: `deltah9420`
-- Package: `postmortem-maker`
-- Version: `0.1.2`
-- CLI: `runx-cli 0.7.1`
-- Registry ref: `deltah9420/postmortem-maker@0.1.2`
-- Public URL: `https://runx.ai/x/deltah9420/postmortem-maker@0.1.2`
-- PR: `https://github.com/runxhq/runx/pull/331`
-- Source: `https://github.com/deltah9420/runx/tree/codex/postmortem-maker-skill/skills/postmortem-maker`
+- runx --version: runx-cli 0.7.1
+- Local harness: passed 2 cases, graph_case_count=1.
+- Hosted harness: passed for 0.1.4.
+- Clean install: runx add deltah9420/postmortem-maker@0.1.4 --registry https://api.runx.ai succeeded.
+- Dogfood command ran the published package with runner postmortem-maker.
+- Dogfood source: https://github.com/kubernetes/kubernetes/issues/128998 fetched at run time via web-fetch.
+- Dogfood receipt: runx:receipt:sha256:5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1
+- Receipt signature: production Ed25519, kid harness-dev, runx verify valid.
 
-## Publish And Install
+## Dogfood result
 
-Publish:
-
-```bash
-runx registry publish ./skills/postmortem-maker --registry https://api.runx.ai --version 0.1.2 --json
-```
-
-Published result:
-
-- Status: `published`
-- Skill id: `deltah9420/postmortem-maker`
-- Digest: `sha256:0a2e20c562ec0c5b9163bcc6f3a3f394f5267c2b19dc4f3c5463a168edfa5173`
-- Profile digest: `sha256:d7b897fe565ed61c4a79ab0340f0e03adb3b39d96a6fdae6edd622901c3ac804`
-
-Clean install:
-
-```bash
-runx add deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai --to /tmp/runx-clean-postmortem --json
-```
-
-The clean install succeeded and installed `SKILL.md` under `/tmp/runx-clean-postmortem/deltah9420/postmortem-maker/0.1.2/`.
-
-## Harness
-
-Local harness passed:
-
-- `sealed_postmortem_with_publish`: sealed
-- `refused_conflicting_evidence`: failure
-
-Hosted registry harness passed:
-
-- Case count: 2
-- Checks passed: 2
-- Checks failed: 0
-- Evidence URL: `https://runx.ai/x/deltah9420/postmortem-maker@0.1.2#harness`
-- Hosted receipt ids:
-  - `sha256:9b07cc273535b6a78fb5b07674eaba04c536b671158564aab9bcfe6207c563b1`
-  - `sha256:cddda174042c26c79aaaa25600b87ca9a05d3250f1d4388bce6ac8b50e9f10ef`
-
-## Dogfood
-
-Command:
-
-```bash
-runx skill deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai --json --skip-operator-context --receipt-dir /tmp/runx-postmortem-published \
-  --input-json source_handle='"https://api.github.com/repos/kubernetes/kubernetes/issues/128998"' \
-  --input-json postmortem_policy='{"publish_threshold":"when_publishable","require_root_cause":true,"max_unknowns":3}'
-```
-
-Result:
-
-- Status: `sealed`
-- Receipt: `runx:receipt:sha256:bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f`
-- Source kind: `web-fetch`
-- Source handle: `https://api.github.com/repos/kubernetes/kubernetes/issues/128998`
-- Source readable: yes
+- Graph status: Succeeded
+- Steps: decide (decide) success; publish (execute_publish) success
+- Postmortem status: publishable
 - Timeline entries: 1
-- Facts: 1
-- Hypotheses: 0
-- Impact severity: `unknown`
-- Root cause status: `suspected`
+- Root cause status: suspected
 - Unknowns: 0
 - Action items: 2
-- Publish result executed: yes
-- Publish result decision: `ready`
-- Publish result action family: `send-as`
-- Publish result gates: `preflight_required=true`, `human_approval_required=true`
+- Publish decision: executed
+- Send plan decision: executed
+- Executed send status: sent
+- Message ref: mock-send:9f56cd58d82a50fa
+- Bound content digest: sha256:9f56cd58d82a50fa8836cab20ee892e6384de94636ef274c1d162d14ae527b75
 
-Verify:
+## New user commands
 
-```bash
-runx verify --receipt /tmp/runx-postmortem-published/sha256-bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f.json --allow-local-development-signatures --json
-```
+- Install: runx add deltah9420/postmortem-maker@0.1.4 --registry https://api.runx.ai
+- Run: runx skill deltah9420/postmortem-maker@0.1.4 postmortem-maker --registry https://api.runx.ai --json --skip-operator-context --input-json source_handle='"https://github.com/kubernetes/kubernetes/issues/128998"' --input-json postmortem_policy='{"publish_threshold":"when_publishable","require_root_cause":true,"max_unknowns":3}'
+- Verify: runx verify --receipt <receipt-file.json> --json with trusted RUNX_RECEIPT_VERIFY_KID and RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64 for harness-dev.
 
-Verification passed with valid digest, valid content address, and local-development Ed25519 signature mode.
+## Why this addresses the review
 
-## New User Flow
-
-Install:
-
-```bash
-runx add deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai
-```
-
-Run:
-
-```bash
-runx skill deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai --json --skip-operator-context \
-  --input-json source_handle='"https://api.github.com/repos/kubernetes/kubernetes/issues/128998"' \
-  --input-json postmortem_policy='{"publish_threshold":"when_publishable","require_root_cause":true,"max_unknowns":3}'
-```
-
-Verify:
-
-```bash
-runx verify --receipt <receipt-file.json> --allow-local-development-signatures --json
-```
+- The dogfood no longer invokes the default decide runner.
+- The graph receipt records both decide and execute_publish steps.
+- publish_result is no longer an inert proposal; it contains send_plan.decision=executed and executed_send.status=sent.
+- The send_plan is bound to the postmortem content digest and real source evidence.
+- The receipt is production-signed, not local-development signed.
+- evidence_json.dogfood includes harness_cases with the sealed and refused case statuses.

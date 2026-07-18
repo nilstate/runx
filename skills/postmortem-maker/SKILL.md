@@ -3,8 +3,8 @@ name: postmortem-maker
 description: >
   Turns incident fragments into a traceable postmortem without pretending
   unknowns are facts. Reads from a real source, separates facts from
-  hypotheses, produces the postmortem packet, and when publishable composes
-  send-as to seal the comms send_plan.
+  hypotheses, produces the postmortem packet, and when publishable executes
+  a digest-bound mock transport send_plan.
 runx:
   category: ops
 ---
@@ -14,9 +14,9 @@ runx:
 Postmortem Maker reads an incident record from a real source (a
 data-store read_projection or a web-fetch of a real incident thread),
 separates known facts from hypotheses, produces a postmortem packet with
-action items, and when the postmortem is publishable it composes the
-send-as skill to seal the actual comms send_plan. The read -> reason ->
-publish loop is proven in one sealed dogfood run.
+action items, and when the postmortem is publishable it executes the
+built-in mock transport to seal the actual comms send_plan. The read ->
+reason -> publish loop is proven in one sealed dogfood run.
 
 ## What this skill does
 
@@ -26,10 +26,11 @@ publish loop is proven in one sealed dogfood run.
 4. Identifies unresolved unknowns.
 5. Produces action items with owners and deadlines.
 6. When evidence is consistent and sufficient, marks the postmortem
-   publishable and composes send-as to seal the send_plan.
+   publishable and executes a digest-bound mock send_plan.
 7. When evidence is conflicting or insufficient, emits unknowns and
    publishes nothing.
-8. Persists the postmortem to the data-store as a sealed event.
+8. Leaves durable persistence to a downstream data-store lane when an
+   operator needs it.
 
 ## When to use this skill
 
@@ -64,11 +65,12 @@ publish loop is proven in one sealed dogfood run.
    - Unknown count is within policy.max_unknowns.
 6. **Produce action items**: Each action item has a description,
    owner, deadline, and evidence reference.
-7. **Compose send-as**: When publishable, compose the send-as skill
-   to seal the comms send_plan. The send_plan binds the postmortem
-   summary, action items, and approval gate.
-8. **Persist**: Append the postmortem packet to the data-store as an
-   event on the incident stream.
+7. **Execute publish**: When publishable, execute the mock transport
+   send_plan. The send_plan binds the postmortem summary, action items,
+   source evidence, and content digest.
+8. **Persist later if needed**: A downstream data-store lane can append
+   the postmortem packet to an incident stream, but the public runner
+   does not require storage inputs.
 
 ## Edge cases and stop conditions
 
@@ -76,8 +78,8 @@ publish loop is proven in one sealed dogfood run.
   `source_unreadable`, publish nothing, persist nothing.
 - **Conflicting evidence**: Emit unknowns for each conflict, mark
   postmortem as `needs_review`, do not publish.
-- **Stale expected_version**: Emit stop condition
-  `version_mismatch`, do not write.
+- **Storage required by caller**: Use a downstream data-store lane with
+  explicit version and idempotency controls.
 - **Active unsubscribe or suppression marker**: Escalate to human
   approval, do not publish.
 - **Empty incident**: Emit unknown `no_incident_data`, mark refused.
@@ -111,8 +113,9 @@ action_items:
     deadline: string
     evidence_ref: string
 publish_result:
-  decision: ready|needs_input|denied|refused|null
+  decision: executed|needs_input|denied|refused|null
   send_plan: object|null
+  executed_send: object|null
 ```
 
 ## Inputs
@@ -121,13 +124,6 @@ publish_result:
   URL for web-fetch, or data-store read_projection reference.
 - **postmortem_policy** (object, required): Policy with
   publish_threshold, require_root_cause, max_unknowns.
-- **data_source_ref** (string, required): Data-store reference for
-  persistence.
-- **resource** (string, required): Event resource name.
-- **aggregate_id** (string, required): Incident stream key.
-- **expected_version** (number, required): Optimistic concurrency
-  version.
-- **idempotency_key** (string, required): Stable retry key.
 
 ## Worked example
 
@@ -146,5 +142,5 @@ Given an incident with a clear deployment correlation:
 
 The skill fetches the issue, extracts the available timeline facts,
 marks the root cause as known, suspected, or unknown based on the
-evidence, produces action items, and composes a send-as style
-publish_result with approval gates for the postmortem summary.
+evidence, produces action items, and executes a digest-bound
+publish_result for the postmortem summary.

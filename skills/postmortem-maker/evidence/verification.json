@@ -1,54 +1,85 @@
 {
   "schema": "runx.verify_verdict.v1",
   "valid": true,
-  "verification_method": "local_harness_hosted_harness_clean_install_and_real_source_dogfood",
+  "verification_method": "hosted_harness_clean_install_and_published_graph_dogfood",
   "cli_version": "runx-cli 0.7.1",
-  "package": "deltah9420/postmortem-maker@0.1.2",
-  "public_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.2",
+  "package": "deltah9420/postmortem-maker@0.1.4",
+  "public_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.4",
   "local_harness": {
+    "command": "runx harness ./skills/postmortem-maker --json",
     "status": "passed",
     "case_count": 2,
+    "graph_case_count": 1,
+    "case_names": [
+      "sealed_postmortem_with_publish",
+      "refused_conflicting_evidence"
+    ],
     "receipt_ids": [
-      "sha256:9256cf8d678306f5c7f963218efd78f36d550828f7c49380ccfea9a8ba708d30",
-      "sha256:a7e45c26ddbe587bd5ac26e1785d9228a4b27b2aaa54d5b7c7512471dee7721f"
+      "sha256:37005a299ef9587a5b85bcac5c312bf0e54307d56abaf28e0be8120475f7044d",
+      "sha256:2f7a6a72c7779340fb6023879140af4c7a773ebae33bd4f874f858330dbce6f8"
     ]
   },
   "hosted_harness": {
     "status": "passed",
     "case_count": 2,
-    "checks_passed": 2,
-    "checks_failed": 0,
-    "receipt_ids": [
-      "sha256:9b07cc273535b6a78fb5b07674eaba04c536b671158564aab9bcfe6207c563b1",
-      "sha256:cddda174042c26c79aaaa25600b87ca9a05d3250f1d4388bce6ac8b50e9f10ef"
+    "case_names": [
+      "sealed_postmortem_with_publish",
+      "refused_conflicting_evidence"
     ],
-    "evidence_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.2#harness"
+    "evidence_url": "https://runx.ai/x/deltah9420/postmortem-maker@0.1.4#harness"
   },
   "clean_install": {
+    "command": "runx add deltah9420/postmortem-maker@0.1.4 --registry https://api.runx.ai --to /tmp/runx-clean-postmortem-014-1784390591 --json",
     "status": "installed",
-    "command": "runx add deltah9420/postmortem-maker@0.1.2 --registry https://api.runx.ai --to /tmp/runx-clean-postmortem --json"
+    "destination": "/tmp/runx-clean-postmortem-014-1784390591/deltah9420/postmortem-maker/0.1.4/SKILL.md",
+    "package_digest": "sha256:6a7e87d0bfa21e185a87fd432a64ff8ece5785fddb3c60a1de3c7dd57198a565",
+    "profile_digest": "sha256:05abbbbabb340227afc5c01cf46c8fa1ab4fbc509199031fc264c4a3302bf4a1",
+    "runner_names": [
+      "decide",
+      "execute_publish",
+      "postmortem-maker"
+    ]
   },
   "dogfood": {
-    "receipt_ref": "runx:receipt:sha256:bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f",
-    "receipt_file": "/tmp/runx-postmortem-published/sha256-bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f.json",
-    "source_handle": "https://api.github.com/repos/kubernetes/kubernetes/issues/128998",
+    "receipt_ref": "runx:receipt:sha256:5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1",
+    "receipt_file": "/tmp/runx-postmortem-published-014-1784390591/sha256-5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1.json",
+    "source_handle": "https://github.com/kubernetes/kubernetes/issues/128998",
     "source_kind": "web-fetch",
     "status": "sealed",
+    "graph_status": "Succeeded",
+    "graph_steps": [
+      {
+        "receipt_id": "sha256:b2c8d53eed5331fd7be7e67c7105e839296fd4dc4524617f5bec53b8930eb86c",
+        "skill": "decide",
+        "status": "success",
+        "step_id": "decide"
+      },
+      {
+        "receipt_id": "sha256:322f3f0dcd938e005d71244a88a8ceb59e76e169071fa9160cd81154e98ed1c8",
+        "skill": "execute_publish",
+        "status": "success",
+        "step_id": "publish"
+      }
+    ],
     "postmortem_status": "publishable",
     "timeline_entries": 1,
     "root_cause_status": "suspected",
     "unknown_count": 0,
-    "publish_result_executed": true
+    "publish_result_executed": true,
+    "send_plan_decision": "executed",
+    "executed_send_status": "sent",
+    "message_ref": "mock-send:9f56cd58d82a50fa"
   },
   "receipt_verification": {
-    "command": "runx verify --receipt /tmp/runx-postmortem-published/sha256-bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f.json --allow-local-development-signatures --json",
+    "command": "runx verify --receipt /tmp/runx-postmortem-published-014-1784390591/sha256-5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1.json --json with RUNX_RECEIPT_VERIFY_KID=harness-dev and matching Ed25519 public key",
     "valid": true,
-    "receipt_id": "sha256:bac7e4d4dd205c7c439229ed2f881c4f1010311e7d403dcc388f20227e69993f",
+    "receipt_id": "sha256:5da6197994b6541243596b55de8b717535d6a6dd2d83795fbad0bb6c41b22ec1",
     "digest_status": "valid",
     "content_address_status": "valid",
-    "signature_mode": "local-development",
+    "signature_mode": "production",
     "signature_status": "valid",
-    "signature_kid": "runtime-skeleton"
+    "signature_kid": "harness-dev",
+    "findings": []
   },
   "harness_cases": [
     {
@@ -60,5 +91,5 @@
       "status": "failure"
     }
   ],
-  "notes": "Version, registry ref, public URL, dogfood package, and evidence files are all aligned to 0.1.2. The dogfood source is a real GitHub API URL fetched at run time, not inline fixture data."
+  "notes": "Version, registry ref, public URL, hosted harness, clean install, dogfood package, and evidence files are aligned to 0.1.4. The dogfood receipt is from the published package graph runner and records an executed mock transport send_plan bound to the postmortem digest."
 }
