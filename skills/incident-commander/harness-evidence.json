@@ -1,0 +1,26 @@
+{
+  "schema": "runx.incident_commander.harness_evidence.v1",
+  "runx_version": "runx-cli 0.7.1",
+  "command": "runx harness ./skills/incident-commander -R ../runx-evidence/local-harness --json",
+  "status": "passed",
+  "case_count": 2,
+  "graph_case_count": 2,
+  "assertion_error_count": 0,
+  "case_names": [
+    "status-update-awaits-then-roster-approval-advances",
+    "assign-without-named-roster-owner-needs-agent"
+  ],
+  "case_results": [
+    {
+      "name": "status-update-awaits-then-roster-approval-advances",
+      "status": "sealed",
+      "receipt_id": "sha256:61979601f7dd5c10909aee8d68451b57a22703f5440427944d7cbd2a86e0981e"
+    },
+    {
+      "name": "assign-without-named-roster-owner-needs-agent",
+      "status": "needs_agent",
+      "named_run": null,
+      "caller_answers_supplied": false
+    }
+  ]
+}

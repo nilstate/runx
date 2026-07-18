@@ -1,0 +1,236 @@
+skill: incident-commander
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: context
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: conditional
+
+policy:
+  side_effects: none
+  sends_messages: denied
+  mints_authority: denied
+  persists_state: denied
+  secrets_required: false
+
+emits:
+  - name: incident_turn
+    packet: runx.incident.turn.v1
+
+harness:
+  cases:
+    - name: status-update-awaits-then-roster-approval-advances
+      runner: advance
+      inputs:
+        case_id: inc-sev2-checkout-2026-07-18
+        driver_id: driver-primary
+        incident_objective: send
+        case_state:
+          status: awaiting
+          turn: 4
+          severity: SEV-2
+          scope: checkout-api
+          declared: true
+          pending_escalation:
+            status: awaiting_approval
+            lane: human:incident-reviewer
+            reason: Stakeholder status update requires roster-matched approval.
+            proposed_handoff:
+              skill: send-as
+              runner: plan
+              principal: incident:comms:morgan
+              channel: email
+              audience:
+                list_ref: stakeholders:checkout-api
+                classification: incident-stakeholders
+              content_digest: sha256:4e44f31f628799267f0957c554b8c47d90d2eabf41e5a84248941d28c45955ae
+          evidence_refs:
+            - incident:declaration:inc-sev2-checkout-2026-07-18
+        roster:
+          - role: commander
+            principal: incident:commander:alex
+            skill: ops-desk
+            scope: [incident.command]
+          - role: responder_lead
+            principal: incident:responder:rio
+            skill: incident-response
+            scope: [incident.respond]
+          - role: comms_lead
+            principal: incident:comms:morgan
+            skill: send-as
+            scope: [stakeholder.send]
+        approval:
+          principal: incident:comms:morgan
+          reason: Approved the digest-bound checkout status update for the declared stakeholder audience.
+      caller:
+        answers:
+          agent_task.ops-desk-advance.output:
+            effect_family: incident-commander
+            operation: dispatch
+            decision: dispatch
+            reason: The roster-matched comms approval permits the bounded send-as handoff; a separate downstream run performs the send.
+            escalation: {}
+            resolution: {}
+            dispatch:
+              member: comms_lead
+              skill: send-as
+              task: Plan the approved stakeholder status update using the bound audience and content digest.
+              needed_scope: [stakeholder.send]
+              consequence: stakeholder_send_handoff
+              verification:
+                expected_receipt: runx.receipt.v1
+                readback: A later send-as receipt must be linked before communication is marked delivered.
+          agent_task.incident-commander-review.output:
+            incident_turn:
+              status: advanced
+              case_id: inc-sev2-checkout-2026-07-18
+              turn: 5
+              dispatch:
+                member: comms_lead
+                skill: send-as
+                needed_scope: [stakeholder.send]
+              escalation: null
+              named_run:
+                skill: send-as
+                runner: plan
+                data:
+                  principal: incident:comms:morgan
+                  channel: email
+                  audience:
+                    list_ref: stakeholders:checkout-api
+                    classification: incident-stakeholders
+                  content_digest: sha256:4e44f31f628799267f0957c554b8c47d90d2eabf41e5a84248941d28c45955ae
+              reason: Approval principal matches the comms_lead roster entry; emit only the governed handoff.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - pending
+          - decide
+          - review
+          - enforce
+
+    - name: assign-without-named-roster-owner-needs-agent
+      runner: advance
+      inputs:
+        case_id: inc-sev3-search-2026-07-18
+        driver_id: driver-secondary
+        incident_objective: assign
+        case_state:
+          status: working
+          turn: 1
+          severity: SEV-3
+          scope: search-api
+          declared: true
+          named_owner: null
+          evidence_refs:
+            - incident:declaration:inc-sev3-search-2026-07-18
+        roster:
+          - role: commander
+            principal: incident:commander:sam
+            skill: ops-desk
+            scope: [incident.command]
+          - role: responder_lead
+            principal: incident:responder:lee
+            skill: incident-response
+            scope: [incident.respond]
+          - role: comms_lead
+            principal: incident:comms:pat
+            skill: slack-notify
+            scope: [incident.internal_post]
+      expect:
+        status: needs_agent
+
+runners:
+  advance:
+    default: true
+    type: graph
+    inputs:
+      case_id:
+        type: string
+        required: true
+        description: Declared incident case id from the folded agency case.
+      driver_id:
+        type: string
+        required: true
+        description: Driver advancing this turn; the agency spine binds it into the contention key.
+      incident_objective:
+        type: string
+        required: true
+        description: One of begin, assign, send, resolve, or postmortem.
+      case_state:
+        type: json
+        required: true
+        description: Folded agency case state, including incident severity, scope, turn, pending escalation, and evidence.
+      roster:
+        type: json
+        required: true
+        description: Fixed incident roster containing commander, responder_lead, and comms_lead with principal, skill, and scope ceiling.
+      approval:
+        type: json
+        required: false
+        description: Optional approval with principal and reason, matched exactly against the selected roster entry.
+      member_result:
+        type: json
+        required: false
+        description: Optional downstream outcome and receipt_ref carried back by the agency driver.
+    graph:
+      name: incident-commander-advance
+      steps:
+        - id: pending
+          skill: ./graph/pending
+          inputs:
+            case_id: "$input.case_id"
+            incident_objective: "$input.incident_objective"
+            case_state: "$input.case_state"
+          artifacts:
+            wrap_as: incident_turn
+            packet: runx.incident.turn.v1
+        - id: decide
+          skill: ./graph/ops-desk
+          runner: advance
+          inputs:
+            mandate: "$input.incident_objective"
+            case_state: "$input.case_state"
+            candidate_roster: "$input.roster"
+            scope_ref: "$input.case_id"
+            approval_context: "$input.approval"
+            operator_policy: Incident sends require a roster-matched principal; resolution and delivery require linked receipts.
+        - id: review
+          skill: ./graph/review
+          inputs:
+            case_id: "$input.case_id"
+            driver_id: "$input.driver_id"
+            incident_objective: "$input.incident_objective"
+            case_state: "$input.case_state"
+            roster: "$input.roster"
+            approval: "$input.approval"
+            member_result: "$input.member_result"
+          context:
+            decision: decide.dispatch_decision.data
+          artifacts:
+            wrap_as: incident_review
+            packet: runx.incident.review.v1
+        - id: enforce
+          skill: ./graph/enforce
+          inputs:
+            case_id: "$input.case_id"
+            driver_id: "$input.driver_id"
+            incident_objective: "$input.incident_objective"
+            case_state: "$input.case_state"
+            roster: "$input.roster"
+            approval: "$input.approval"
+            member_result: "$input.member_result"
+          context:
+            decision: decide.dispatch_decision.data
+            proposed_turn: review.incident_review.data.incident_turn
+            prior_turn: pending.incident_turn.data
+          artifacts:
+            wrap_as: incident_turn
+            packet: runx.incident.turn.v1
