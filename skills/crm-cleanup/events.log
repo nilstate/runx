@@ -1,5 +1,0 @@
-{"event":"crm_cleanup_proposal","case_id":"globex-002","write_result":{"before":{},"after":{"account_status":"at_risk"},"changed":true,"sealed_at":"2026-07-16T13:30:15.539Z","transport":"append_event"},"field_updates":[{"field":"account_status","value":"at_risk","source_ref":"globex-002","basis":"transcript at_risk cue"}]}
-{"event":"crm_cleanup_proposal","case_id":"acme-001","write_result":{"before":{},"after":{},"changed":false,"sealed_at":"2026-07-16T13:30:25.891Z","transport":"append_event"},"field_updates":[]}
-{"event":"crm_cleanup_proposal","case_id":"initech-003","write_result":{"before":{},"after":{},"changed":false,"sealed_at":"2026-07-16T13:30:26.014Z","transport":"append_event"},"field_updates":[]}
-{"event":"crm_cleanup_proposal","case_id":"acme-001","write_result":{"before":{},"after":{},"changed":false,"sealed_at":"2026-07-16T13:30:45.802Z","transport":"append_event"},"field_updates":[]}
-{"event":"crm_cleanup_proposal","case_id":"acme-001","write_result":{"before":{},"after":{},"changed":false,"sealed_at":"2026-07-16T13:30:53.276Z","transport":"append_event"},"field_updates":[]}
