@@ -5,6 +5,7 @@ const inputs = readInputs();
 try {
   const draft = asObject(inputs.draft_packet, "draft_packet");
   const sendPlan = unwrapSendPlan(inputs.send_plan);
+  const sendDelivery = asObject(inputs.send_delivery, "send_delivery");
   const proposal = asObject(draft.send_proposal, "draft_packet.send_proposal");
   const expectedContentRef = proposal.consumer?.inputs?.content_ref || {};
 
@@ -15,6 +16,19 @@ try {
   }
   if (text(expectedContentRef.digest) !== text(draft.draft_doc?.content_digest)) {
     bindingErrors.push("send_proposal content_ref digest must bind the draft content digest");
+  }
+  if (sendDelivery.status !== "sent") bindingErrors.push("send_delivery.status must be sent");
+  if (sendDelivery.provider_delivery_performed !== true) {
+    bindingErrors.push("send_delivery.provider_delivery_performed must be true");
+  }
+  if (sendDelivery.readback_verified !== true) {
+    bindingErrors.push("send_delivery.readback_verified must be true");
+  }
+  if (text(sendDelivery.draft_ref) !== text(draft.draft_ref)) {
+    bindingErrors.push("send_delivery.draft_ref must bind the draft_ref");
+  }
+  if (text(sendDelivery.content_digest) !== text(draft.draft_doc?.content_digest)) {
+    bindingErrors.push("send_delivery.content_digest must bind the draft content digest");
   }
 
   if (bindingErrors.length > 0) {
@@ -27,6 +41,7 @@ try {
         ...(draft.validation || {}),
         errors: bindingErrors,
         send_as_composed_in_graph: false,
+        provider_delivery_performed: false,
       },
     });
     process.exitCode = 2;
@@ -40,10 +55,10 @@ try {
       ...draft,
       status: "draft_ready",
       act_decision: "prepared",
-      act_reason: draft.act_reason.replace("status=not_sent", "status=send_as_plan_executed"),
+      act_reason: draft.act_reason.replace("status=not_sent", "status=mock_provider_sent"),
       send_proposal: {
         ...proposal,
-        status: "send_as_plan_executed",
+        status: "mock_provider_sent",
         dispatched_to: {
           skill: "runx/send-as",
           runner: "plan",
@@ -57,9 +72,9 @@ try {
           send_plan: boundSendPlan,
           content_ref: expectedContentRef,
         },
-        provider_action: boundSendPlan.provider_actions || null,
-        provider_delivery_performed: false,
-        no_send_performed: true,
+        provider_action: sendDelivery.provider_actions || boundSendPlan.provider_actions || null,
+        provider_delivery_performed: true,
+        provider_delivery: sendDelivery,
       },
       send_as_result: {
         schema: "runx.contract_send_as_result.v1",
@@ -67,21 +82,26 @@ try {
         runner: "plan",
         sealed_in_same_graph: true,
         send_plan: boundSendPlan,
+        delivery: sendDelivery,
         bound_draft_ref: draft.draft_ref,
         bound_content_digest: draft.draft_doc.content_digest,
+        provider_delivery_performed: true,
+        readback_verified: true,
       },
       validation: {
         ...(draft.validation || {}),
         errors: [],
         send_as_composed_in_graph: true,
         send_as_result_bound_to_draft: true,
-        provider_delivery_performed: false,
-        no_send_performed: true,
+        provider_delivery_performed: true,
+        provider_readback_verified: true,
+        mock_transport_only: sendDelivery.mock_transport === true,
+        live_external_send_performed: sendDelivery.live_external_send_performed === true,
       },
     };
     finalized.draft_doc = {
       ...draft.draft_doc,
-      delivery_status: "send_as_plan_executed",
+      delivery_status: "mock_provider_sent",
     };
     emit(finalized);
   }
@@ -102,7 +122,7 @@ try {
       no_draft_emitted: true,
       no_proposal_emitted: true,
       send_as_composed_in_graph: false,
-      no_send_performed: true,
+      provider_delivery_performed: false,
     },
   });
   process.exitCode = 2;
@@ -120,6 +140,7 @@ function readInputs() {
   const fromEnv = {
     draft_packet: parseEnv("RUNX_INPUT_DRAFT_PACKET"),
     send_plan: parseEnv("RUNX_INPUT_SEND_PLAN"),
+    send_delivery: parseEnv("RUNX_INPUT_SEND_DELIVERY"),
   };
   if (Object.values(fromEnv).some((value) => value !== undefined)) return fromEnv;
   return JSON.parse(readFileSync(0, "utf8"));

@@ -1,6 +1,6 @@
 ---
 name: contract-drafter
-description: Fetch a contract template by source ref, assemble a review draft, expose every baseline departure, and execute the gated send-as planning step in the same graph.
+description: Fetch a contract template by source ref, assemble a review draft, expose every baseline departure, compose send-as, and execute deterministic mock provider delivery/readback in the same graph.
 runx:
   category: business-ops
   tags:
@@ -15,13 +15,14 @@ runx:
 explicit parties, and explicit terms. It reads only `template.source_ref` from
 the template input, fetches the template document at run time, renders only
 clause text present in that fetched source, records each supplied value that
-differs from the template baseline, and executes the canonical `runx/send-as`
-planner inside the same graph.
+differs from the template baseline, composes the canonical `runx/send-as`
+planner inside the same graph, and executes a deterministic mock provider
+delivery/readback bound to the draft.
 
 The skill does not approve legal terms, provide legal advice, execute a
-signature workflow, contact a recipient, or call a provider. A downstream
-operator must review the draft, approve the send plan, and complete any
-provider-specific preflight under separate authority.
+signature workflow, or contact a real recipient. The included provider action
+is a non-live mock review queue used to prove that the `send_proposal` is
+consumed and read back in the same sealed run.
 
 ## Inputs
 
@@ -53,19 +54,21 @@ fall back to a baseline, guess a missing value, or add a clause.
 - `deviations[]`: one item per changed baseline value. Every item names the
   clause, term, baseline, and proposed change.
 - `send_proposal`: a packet with `approved: false` and status
-  `send_as_plan_executed` after the default graph runs. Its `consumer` names
+  `mock_provider_sent` after the default graph runs. Its `consumer` names
   `runx/send-as`, runner `plan`, binds the official planner inputs `objective`,
   `principal`, `audience`, `content_ref`, `consent_basis`, and
-  `operator_context`, and includes the executed send-as plan result.
+  `operator_context`, and includes the executed send-as plan and mock provider
+  delivery/readback result.
 - `send_as_result`: the `runx/send-as` plan output bound to the same
-  `draft_ref` and content digest as `draft_doc`.
+  `draft_ref` and content digest as `draft_doc`, plus the mock delivery result.
 - `validation`: the required fields and placeholders checked, plus explicit
-  runtime template fetch, send-as composition, no-invention, and no-provider-send
-  assertions.
+  runtime template fetch, send-as composition, no-invention, provider delivery,
+  and readback assertions.
 
 The sealed receipt uses a review act and binds the generated `draft_ref` as the
-artifact effect. The receipt proves the draft run occurred; it does not claim
-the draft was legally approved or delivered.
+artifact effect. The receipt proves the draft run and mock provider handoff
+occurred; it does not claim the draft was legally approved or delivered to a
+real external recipient.
 
 ## Refusal Rules
 
@@ -91,26 +94,28 @@ a failure status. Neither path creates a partial draft.
 ## Send-As Boundary
 
 The default graph passes `send_proposal.consumer.inputs` to the canonical
-`send-as` plan runner in the same sealed run. `send-as` is itself a planning and
-authority layer; a provider adapter remains a further separate step. The
-contract draft body is referenced by digest and draft ref, not silently copied
-into a provider call.
+`send-as` plan runner in the same sealed run. The returned plan is then consumed
+by the deterministic `mock-review-queue` provider adapter. That adapter records
+delivery and readback evidence and refuses unless the draft ref and content
+digest match the draft packet. The contract draft body is referenced by digest
+and draft ref, not silently copied into a provider call.
 
 Required sequence:
 
 1. Run `contract-drafter` with `template.source_ref`, `parties`, and `terms`.
 2. Inspect `draft_doc`, `deviations`, and `send_as_result`.
-3. Obtain explicit human approval for `contract-drafter.send.approval`.
-4. Let the resulting send plan undergo provider preflight in a provider adapter.
-5. Treat the draft as undelivered until a separate provider receipt proves
-   delivery.
+3. Inspect the `send_as_result.delivery` packet. It must show
+   `provider_delivery_performed: true`, `readback_verified: true`, and
+   `mock_transport: true`.
+4. For a real recipient, run a separate provider-specific adapter under its own
+   authority. The default runner proves only the non-live mock transport.
 
 ## Harness Cases
 
-- `complete-template-fetches-source-and-executes-send-as-plan` fetches the
+- `complete-template-fetches-source-and-executes-mock-send` fetches the
   template from `template.source_ref`, seals a draft with four visible
-  deviations, invokes `runx/send-as` plan in the same graph, and binds the
-  returned plan to the draft.
+  deviations, invokes `runx/send-as` plan in the same graph, executes the mock
+  provider delivery/readback, and binds both results to the draft.
 - `missing-required-term-refuses-without-proposal` runs `refusal_check`, omits
   `payment_terms`, returns failure, and emits neither a draft nor a proposal.
 

@@ -1,5 +1,5 @@
 skill: contract-drafter
-version: "0.1.1"
+version: "0.1.2"
 
 catalog:
   kind: skill
@@ -9,7 +9,7 @@ catalog:
 
 harness:
   cases:
-    - name: complete-template-fetches-source-and-executes-send-as-plan
+    - name: complete-template-fetches-source-and-executes-mock-send
       inputs:
         template:
           source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
@@ -29,47 +29,18 @@ harness:
           governing_law: Delaware
           confidentiality_period: 2 years
           send:
-            objective: Execute send-as planning for the review draft in the same sealed graph.
+            objective: Execute send-as planning and deterministic mock provider delivery for the review draft in the same sealed graph.
             principal: account:contract-review-demo
+            provider_context:
+              name: mock-review-queue
+              account_ref: provider-account:contract-review-demo
+              runtime_path: mock.review_queue.deliver
             audience:
               type: repository_review
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
-            operator_context: Contract-drafter may plan the governed send-as handoff; provider delivery remains outside this skill.
+            operator_context: Contract-drafter may execute only the deterministic mock review-queue transport; no live external send is authorized.
             subject_or_title: Review the services agreement draft
-      caller:
-        answers:
-          agent_task.send-as.output:
-            send_plan:
-              decision: ready
-              action_family: send-as
-              principal:
-                type: account
-                ref: account:contract-review-demo
-              provider:
-                name: review-queue
-                runtime_path: review.plan
-              send_class: contract_review
-              audience:
-                type: repository_review
-                ref: RYDE-PLAY/frantic-86-contract-drafter
-                requires_reconfirmation: true
-              content:
-                draft_ref: runx:contract-draft:placeholder-bound-by-finalizer
-                digest: sha256:placeholder-bound-by-finalizer
-                subject_or_title: Review the services agreement draft
-              gates:
-                preflight_required: true
-                human_approval_required: true
-                approval_ref: contract-drafter.send.approval
-              blockers: []
-              provider_actions:
-                - review.plan
-              evidence_refs:
-                - runx:contract-draft:placeholder-bound-by-finalizer
-              success_checkpoint:
-                milestone: provider_delivery_required
-                description: Provider delivery and readback remain outside contract-drafter after this plan.
       expect:
         status: sealed
         receipt:
@@ -95,13 +66,17 @@ harness:
           governing_law: Delaware
           confidentiality_period: 2 years
           send:
-            objective: Execute send-as planning for the review draft in the same sealed graph.
+            objective: Execute send-as planning and deterministic mock provider delivery for the review draft in the same sealed graph.
             principal: account:contract-review-demo
+            provider_context:
+              name: mock-review-queue
+              account_ref: provider-account:contract-review-demo
+              runtime_path: mock.review_queue.deliver
             audience:
               type: repository_review
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
-            operator_context: Contract-drafter may plan the governed send-as handoff; provider delivery remains outside this skill.
+            operator_context: Contract-drafter may execute only the deterministic mock review-queue transport; no live external send is authorized.
             subject_or_title: Review the services agreement draft
       expect:
         status: failure
@@ -114,11 +89,11 @@ runners:
     type: graph
     act:
       form: review
-      purpose: Fetch a contract template from its source ref, assemble a review draft, and execute the governed send-as planning step in the same graph.
-      legitimacy: The operator supplied a template source ref, parties, terms, and downstream review context; send-as produces only an approval-gated plan.
-      reason_step: bind-send-as
+      purpose: Fetch a contract template from its source ref, assemble a review draft, compose send-as, and execute a deterministic mock provider delivery/readback in the same graph.
+      legitimacy: The operator supplied a template source ref, parties, terms, and downstream review context; send-as binds authority and the mock provider records non-live delivery evidence.
+      reason_step: bind-send
       reason_from: act_reason
-      effect_step: bind-send-as
+      effect_step: bind-send
       effect_from: draft_ref
       effect_type: artifact
     inputs:
@@ -133,7 +108,7 @@ runners:
       terms:
         type: object
         required: true
-        description: "Explicit deal terms plus the send-as planning inputs under terms.send."
+        description: "Explicit deal terms plus the send-as and mock provider inputs under terms.send."
     graph:
       name: contract-drafter
       steps:
@@ -162,24 +137,16 @@ runners:
             packet: runx.contract_draft.v1
 
         - id: plan-send
-          label: execute the send-as planning consumer
+          label: compose the shipped send-as skill
           when:
             field: assemble.contract_draft_packet.data.status
             equals: draft_ready
-          run:
-            type: agent-task
-            agent: reviewer
-            task: send-as
-            outputs:
-              send_plan: object
-          artifacts:
-            named_emits:
-              send_plan: send_plan
-            packets:
-              send_plan: runx.send_as.plan.v1
+          skill: ./graph/send-as
+          runner: mock_provider_plan
           inputs:
             objective: "$input.terms.send.objective"
             principal: "$input.terms.send.principal"
+            provider_context: "$input.terms.send.provider_context"
             audience: "$input.terms.send.audience"
             consent_basis: "$input.terms.send.consent_basis"
             operator_context: "$input.terms.send.operator_context"
@@ -187,8 +154,29 @@ runners:
             content_ref: assemble.contract_draft_packet.data.send_proposal.consumer.inputs.content_ref
             send_proposal: assemble.contract_draft_packet.data.send_proposal
 
-        - id: bind-send-as
-          label: bind the executed send-as plan to the draft packet
+        - id: mock-provider-send
+          label: execute deterministic mock provider delivery and readback
+          when:
+            field: assemble.contract_draft_packet.data.status
+            equals: draft_ready
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - mock-send.mjs
+            outputs:
+              send_delivery: object
+          context:
+            draft_packet: assemble.contract_draft_packet.data
+            send_plan: plan-send.send_plan.data
+          artifacts:
+            named_emits:
+              send_delivery: send_delivery
+            packets:
+              send_delivery: runx.contract_send_delivery.v1
+
+        - id: bind-send
+          label: bind send-as and mock delivery to the draft packet
           when:
             field: assemble.contract_draft_packet.data.status
             equals: draft_ready
@@ -209,6 +197,7 @@ runners:
           context:
             draft_packet: assemble.contract_draft_packet.data
             send_plan: plan-send.send_plan.data
+            send_delivery: mock-provider-send.send_delivery.data
           artifacts:
             wrap_as: contract_draft_packet
             packet: runx.contract_draft.v1

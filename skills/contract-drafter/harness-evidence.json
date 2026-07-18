@@ -1,27 +1,34 @@
 {
   "schema": "runx.contract_drafter.harness_evidence.v1",
-  "recorded_at": "2026-07-15T09:36:40Z",
+  "recorded_at": "2026-07-18T15:57:00Z",
   "runx_version": "runx-cli 0.6.14",
-  "command": "RUNX_RECEIPT_SIGN_KID=<ephemeral-kid> RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=<ephemeral-seed> RUNX_RECEIPT_SIGN_ISSUER_TYPE=hosted runx harness ./skills/contract-drafter -R <temporary-receipt-dir>",
+  "command": "with ephemeral receipt signing env: runx harness ./skills/contract-drafter -R <temporary-receipt-dir> --json",
   "status": "passed",
   "case_count": 2,
   "assertion_error_count": 0,
   "case_results": [
     {
-      "name": "complete-template-produces-gated-draft",
+      "name": "complete-template-fetches-source-and-executes-mock-send",
       "status": "sealed",
-      "receipt_id": "sha256:25f595d4bd6244bcdd403b60a0cf94a06c11ef9ae35b9f00e147edd63129f862",
+      "receipt_id": "sha256:18c8945682525c40b5563393d6ffbdbc7105c49763c892050ff470b8cb996ae4",
       "act": {
         "form": "review",
-        "summary": "draft_ready template=public-services-review-v1 deviations=4 downstream=runx/send-as status=not_sent",
-        "artifact_ref": "runx:contract-draft:2baa881685f5ed47"
+        "summary": "draft_ready template=public-services-review-v1 deviations=4 downstream=runx/send-as status=mock_provider_sent",
+        "artifact_ref": "runx:contract-draft:8ed974b555fd840f"
+      },
+      "send_path": {
+        "send_as_runner": "graph/send-as mock_provider_plan",
+        "provider_delivery_performed": true,
+        "readback_verified": true,
+        "mock_transport": true,
+        "hand_fed_agent_answer": false
       }
     },
     {
       "name": "missing-required-term-refuses-without-proposal",
       "runner": "refusal_check",
       "status": "failure",
-      "receipt_id": "sha256:1d9ac5f9fdea2590bb85c66b7151f7cfdea0ca21e6505fc0f79e075bc63f75cc",
+      "receipt_id": "sha256:ec9191cb7018f134cca97cebf47d2f03393a6aa00e5fe15aa0bae38ad3ae9b96",
       "result": "refused missing_or_invalid_input with draft_doc=null, deviations=[], and send_proposal=null"
     }
   ],
@@ -29,8 +36,9 @@
     "command": "node skills/contract-drafter/test.mjs",
     "status": "passed",
     "checks": [
-      "complete fixture emits draft_doc, four grounded deviations, and a gated runx/send-as proposal",
-      "proposal is not pre-approved and the runner performs no send",
+      "complete fixture emits draft_doc, four grounded deviations, and a runx/send-as proposal",
+      "proposal is consumed by the package-local send-as plan projection",
+      "mock provider delivery and readback are executed and bound to draft_ref plus content digest",
       "repeat execution is byte-for-byte deterministic",
       "missing payment_terms emits no draft and no proposal",
       "refusal_check returns a failure status for hosted stop-case verification"

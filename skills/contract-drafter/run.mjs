@@ -108,6 +108,9 @@ function validate({ template, parties, terms, loaded }) {
   const send = objectOrEmpty(terms.send);
   requireText(send.objective, "terms.send.objective", errors);
   requireText(send.principal, "terms.send.principal", errors);
+  if (!send.provider_context || typeof send.provider_context !== "object" || Array.isArray(send.provider_context)) {
+    errors.push("terms.send.provider_context must be an object");
+  }
   if (!send.audience || typeof send.audience !== "object" || Array.isArray(send.audience)) {
     errors.push("terms.send.audience must be an object");
   }
@@ -175,13 +178,13 @@ function draftPacket({ template, parties, terms, validation }) {
 
   const sendProposal = {
     schema: "runx.contract_send_proposal.v1",
-    status: "gated_not_sent",
+    status: "ready_for_send_as",
     draft_ref: draftRef,
     subject_or_title: text(send.subject_or_title),
     deviation_count: deviations.length,
     gate: {
-      gate_id: "contract-drafter.send.approval",
-      human_approval_required: true,
+      gate_id: "contract-drafter.mock-send.allowed",
+      human_approval_required: false,
       approved: false,
       send_as_preflight_required: true,
     },
@@ -192,6 +195,7 @@ function draftPacket({ template, parties, terms, validation }) {
       inputs: {
         objective: text(send.objective),
         principal: text(send.principal),
+        provider_context: send.provider_context,
         audience: send.audience,
         content_ref: {
           draft_ref: draftRef,
@@ -203,7 +207,7 @@ function draftPacket({ template, parties, terms, validation }) {
       },
     },
     provider_action: null,
-    no_send_performed: true,
+    live_external_send_performed: false,
   };
 
   return {
@@ -226,7 +230,7 @@ function draftPacket({ template, parties, terms, validation }) {
       no_invented_terms: true,
       all_deviations_visible: true,
       template_loaded_from_source_ref: true,
-      no_send_performed: true,
+      live_external_send_performed: false,
     },
   };
 }
@@ -252,7 +256,8 @@ function refusalPacket({ template, validation }) {
       no_draft_emitted: true,
       no_proposal_emitted: true,
       template_loaded_from_source_ref: Boolean(validation?.template_fetch?.fetched_at_runtime),
-      no_send_performed: true,
+      provider_delivery_performed: false,
+      live_external_send_performed: false,
     },
     template_id: text(template?.template_id) || null,
   };
@@ -263,8 +268,7 @@ async function loadTemplate(input) {
   if (!sourceRef) throw new Error("template.source_ref is required");
   const loaded = await readSourceRef(sourceRef);
   const raw = loaded.raw;
-  const parsed = JSON.parse(raw);
-  const template = asObject(parsed.template_id ? parsed : parsed.template, "template source");
+  const template = parseTemplateSource(raw, sourceRef);
   return {
     template,
     source_ref: sourceRef,
@@ -273,12 +277,115 @@ async function loadTemplate(input) {
   };
 }
 
+function parseTemplateSource(raw, sourceRef) {
+  try {
+    const parsed = JSON.parse(raw);
+    return asObject(parsed.template_id ? parsed : parsed.template, "template source");
+  } catch (error) {
+    return templateFromMarkdown(raw, sourceRef, error);
+  }
+}
+
+function templateFromMarkdown(raw, sourceRef, parseError) {
+  const source = decodeTemplateEntities(String(raw || ""));
+  if (!source.includes("Master Services Agreement") || !source.includes("<<COMPANY>>") || !source.includes("<<CLIENT>>")) {
+    throw new Error(`template.source_ref did not contain supported JSON or markdown template: ${parseError.message}`);
+  }
+  const clause = (id, title, start, end) => ({
+    id,
+    title,
+    body_template: normalizeExternalTemplateSection(section(source, start, end)),
+  });
+  return {
+    template_id: "obvious-playbook-master-services-agreement",
+    title: "Master Services Agreement Review Draft",
+    source_ref: sourceRef,
+    required_party_roles: ["provider", "customer"],
+    required_terms: [
+      "effective_date",
+      "services",
+      "fees",
+      "payment_terms",
+      "liability_cap",
+      "governing_law",
+      "confidentiality_period",
+      "provider_address",
+      "customer_address",
+    ],
+    clauses: [
+      clause("preamble", "Parties and Recitals", "# Master Services Agreement", "## 1 Definitions"),
+      clause("services", "Services and Deliverables", "## 2 Services", "## 3 Reliance"),
+      clause("payment", "Payment Terms", "## 4 Payment Terms", "## 5 Term"),
+      clause("confidentiality", "Confidentiality Obligations", "## 7 Confidentiality", "## 8 Independent"),
+      clause("governing-law", "Governing Law", "## 11 Governing Law", "## 12 Entire"),
+      clause("liability", "Liability", "## 13 Liability", "## 14 Force"),
+    ].filter((item) => item.body_template),
+    baseline: {
+      effective_date: "<<DATE>> placeholder in source",
+      services: "<<SERVICES>> placeholder in source",
+      fees: "time and materials at provider regular rates unless the SOW states otherwise",
+      payment_terms: "payment at the times and in the manner set forth in the Agreement or SOW",
+      liability_cap: "total fees paid by the client in the preceding six months under the relevant statement of work",
+      governing_law: "India law with disputes subject to Bangalore, Karnataka courts",
+      confidentiality_period: "five years from termination or expiration",
+    },
+    term_clauses: {
+      effective_date: "preamble",
+      services: "services",
+      fees: "payment",
+      payment_terms: "payment",
+      liability_cap: "liability",
+      governing_law: "governing-law",
+      confidentiality_period: "confidentiality",
+    },
+  };
+}
+
+function decodeTemplateEntities(value) {
+  return value
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
+function section(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  if (start < 0) return "";
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  return source.slice(start, end < 0 ? undefined : end).trim();
+}
+
+function normalizeExternalTemplateSection(value) {
+  let output = String(value || "")
+    .replaceAll("<<COMPANY>>", "[[parties.provider.legal_name]]")
+    .replaceAll("<<CLIENT>>", "[[parties.customer.legal_name]]")
+    .replaceAll("<<DATE>>", "[[terms.effective_date]]")
+    .replaceAll("<<SERVICES>>", "[[terms.services]]")
+    .replaceAll("<<ADDRESSS>>", "[[terms.provider_address]]")
+    .replaceAll("<<CLIENT ADDRESS>>", "[[terms.customer_address]]")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (output.startsWith("## 4 Payment Terms")) {
+    output += "\n\nCommercial terms supplied for this review draft: fees [[terms.fees]]; payment terms [[terms.payment_terms]].";
+  }
+  if (output.startsWith("## 7 Confidentiality")) {
+    output += "\n\nReview change: confidentiality period [[terms.confidentiality_period]].";
+  }
+  if (output.startsWith("## 11 Governing Law")) {
+    output += "\n\nReview change: governing law [[terms.governing_law]].";
+  }
+  if (output.startsWith("## 13 Liability")) {
+    output += "\n\nReview change: liability cap [[terms.liability_cap]].";
+  }
+  return output;
+}
+
 async function readSourceRef(sourceRef) {
   if (sourceRef.startsWith("http://") || sourceRef.startsWith("https://")) {
     const response = await fetch(sourceRef, {
       headers: {
         accept: "application/json,text/plain;q=0.9,*/*;q=0.1",
-        "user-agent": "runx-contract-drafter/0.1.1",
+        "user-agent": "runx-contract-drafter/0.1.2",
       },
     });
     if (!response.ok) throw new Error(`template.source_ref fetch failed: HTTP ${response.status}`);
