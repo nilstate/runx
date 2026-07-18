@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "case_count": 4,
+  "assertion_error_count": 0,
+  "assertion_errors": [],
+  "case_names": [
+    "in-scope-applies-and-seals",
+    "digest-stale-refuses",
+    "scope-exceeded-refuses",
+    "approval-denied-refuses"
+  ],
+  "receipt_ids": [
+    "sha256:1fec152af33c42e50f9cb5657013f5b6634c0de650055bdb085982f929960160",
+    "sha256:4ea0ca89561dfa4c72a1cd9d9a804f29d99c436fa77e338972591c69b8576ef7",
+    "sha256:22172cc5c6c1bc6deb1f3b102e316666f4390e2fb3b3864537ad621bc7a8c2a8",
+    "sha256:26337c68c691cb7462b233a7f56107c386009a83765a2621ab2f84056d004360"
+  ],
+  "graph_case_count": 0
+}
