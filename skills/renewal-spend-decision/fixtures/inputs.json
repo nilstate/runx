@@ -1,0 +1,13 @@
+{
+  "vendor": "Acme Cloud",
+  "current_spend_usd": 2400,
+  "renewal_date": "2026-09-01",
+  "satisfaction_hint": "low",
+  "usage_signals": [
+    {"metric": "monthly_active_users", "value": 12}
+  ],
+  "alternative_options": [
+    {"name": "Lumen Cloud", "est_spend_usd": 1800, "pros": ["cheaper", "easier api"], "cons": ["migration effort"]}
+  ],
+  "strategic_value": "low"
+}

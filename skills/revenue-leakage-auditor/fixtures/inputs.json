@@ -1,0 +1,14 @@
+{
+  "ledger_lines": [
+    {"date": "2026-07-01", "amount_usd": 99.00, "line_ref": "inv-001", "vendor_hint": "acme pro"},
+    {"date": "2026-07-05", "amount_usd": 49.00, "line_ref": "inv-002", "vendor_hint": "lumen tier"},
+    {"date": "2026-07-12", "amount_usd": 250.00, "line_ref": "inv-003", "vendor_hint": "stripe-rejected"},
+    {"date": "2026-07-15", "amount_usd": 99.00, "line_ref": "inv-004", "vendor_hint": "acme pro"}
+  ],
+  "known_subscriptions": [
+    {"name": "Acme Pro", "expected_amount_usd": 99.00, "cadence_days": 30},
+    {"name": "Lumen Tier", "expected_amount_usd": 49.00, "cadence_days": 30}
+  ],
+  "baseline_window_days": 35,
+  "tolerance_pct": 0.15
+}

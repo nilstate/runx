@@ -1,0 +1,9 @@
+{
+  "parties": [
+    {"role": "buyer", "name": "Acme Corp"},
+    {"role": "seller", "name": "Lumen LLC"}
+  ],
+  "term": "12 months from effective date",
+  "jurisdiction": "Delaware, USA",
+  "payment_terms": "Net-30 USD; late fee 1.5% per month"
+}

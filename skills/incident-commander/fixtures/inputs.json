@@ -1,0 +1,13 @@
+{
+  "signals": [
+    {"source": "monitor", "summary": "5xx rate spiked to 12%", "observed_at": "2026-07-24T08:00:00Z"},
+    {"source": "pager", "summary": "checkout 5xx for 4 minutes", "observed_at": "2026-07-24T08:01:00Z"},
+    {"source": "support", "summary": "customer reports payment failure", "observed_at": "2026-07-24T08:02:00Z"}
+  ],
+  "timeline": [
+    {"at": "2026-07-24T07:58:00Z", "event": "deploy v1.4.2"},
+    {"at": "2026-07-24T08:00:00Z", "event": "5xx alert fires"}
+  ],
+  "services": ["checkout", "payments"],
+  "severity_hint": "sev2"
+}

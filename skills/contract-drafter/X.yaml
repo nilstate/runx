@@ -1,0 +1,58 @@
+skill: contract-drafter
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  draft:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      clauses: array
+      defined_terms: array
+      risk_flags: array
+      missing_fields: array
+      handoff: object
+    artifacts:
+      wrap_as: contract_draft_packet
+      packet: runx.contract.draft.v1
+    inputs:
+      parties:
+        type: json
+        required: true
+        description: Bounded parties array.
+      term:
+        type: json
+        required: true
+        description: Bounded term duration string.
+      jurisdiction:
+        type: json
+        required: false
+        description: Optional jurisdiction hint.
+      payment_terms:
+        type: json
+        required: false
+        description: Optional payment terms.
+      governing_law:
+        type: json
+        required: false
+        description: Optional governing law string.
+      renewal:
+        type: json
+        required: false
+        description: Optional renewal terms.
+      termination_for_convenience:
+        type: json
+        required: false
+        description: Optional termination-for-convenience hint.
+      liability_cap:
+        type: json
+        required: false
+        description: Optional liability cap hint.

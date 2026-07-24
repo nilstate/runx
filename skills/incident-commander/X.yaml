@@ -1,0 +1,44 @@
+skill: incident-commander
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  command:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      severity_assessment: string
+      command_posture: string
+      roles: array
+      comms_plan: array
+      decision_checkpoints: array
+      stop_conditions: array
+      handoff: object
+    artifacts:
+      wrap_as: incident_commander_packet
+      packet: runx.incident.commander.v1
+    inputs:
+      signals:
+        type: json
+        required: true
+        description: Bounded in-flight incident signal stream.
+      timeline:
+        type: json
+        required: false
+        description: Optional sorted event timeline.
+      services:
+        type: json
+        required: false
+        description: Optional impacted service identifiers.
+      severity_hint:
+        type: json
+        required: false
+        description: Optional severity hint sev1..sev4.

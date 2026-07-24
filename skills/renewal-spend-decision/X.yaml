@@ -1,0 +1,55 @@
+skill: renewal-spend-decision
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  decide:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      recommendation: string
+      confidence: number
+      rationale: string
+      alternative_options_summary: array
+      stop_conditions: array
+      handoff: object
+    artifacts:
+      wrap_as: renewal_decision_packet
+      packet: runx.renewal.decision.v1
+    inputs:
+      vendor:
+        type: json
+        required: true
+        description: Vendor name.
+      current_spend_usd:
+        type: json
+        required: true
+        description: Current annual or monthly spend USD.
+      renewal_date:
+        type: json
+        required: true
+        description: ISO renewal date.
+      usage_signals:
+        type: json
+        required: false
+        description: Optional bounded usage signals.
+      alternative_options:
+        type: json
+        required: false
+        description: Optional bounded alternative options.
+      satisfaction_hint:
+        type: json
+        required: false
+        description: Optional low|medium|high satisfaction hint.
+      strategic_value:
+        type: json
+        required: false
+        description: Optional low|medium|high strategic value.
