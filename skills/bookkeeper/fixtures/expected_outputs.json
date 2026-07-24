@@ -1,0 +1,14 @@
+{
+  "case": "happy_path_mixed_transactions",
+  "expected_decision_count": 6,
+  "expected_matched_at_least": 4,
+  "expected_unmatched_at_least": 0,
+  "expected_anomaly_kinds_any": [
+    "missing_date",
+    "currency_mismatch",
+    "suspicious_round_amount"
+  ],
+  "expected_period_set": true,
+  "expected_match_coverage_rate_min": 0.5,
+  "expected_carry_forward_drift_known": true
+}

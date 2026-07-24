@@ -1,0 +1,18 @@
+{
+  "transactions": [
+    {"id": "tx-2026-07-001", "date": "2026-07-03", "amount": 250.00, "currency": "USD", "description": "Invoice 1042 consulting services"},
+    {"id": "tx-2026-07-002", "date": "2026-07-05", "amount": -12.99, "currency": "USD", "description": "Domain renewal"},
+    {"id": "tx-2026-07-003", "date": "2026-07-07", "amount": 1500.00, "currency": "USD", "description": "Wire from Acme Corp"},
+    {"id": "tx-2026-07-004", "date": "2026-07-09", "amount": -45.50, "currency": "USD", "description": "Cloud storage upgrade"},
+    {"id": "tx-2026-07-005", "date": "", "amount": -120.00, "currency": "USD", "description": "Office supplies"},
+    {"id": "tx-2026-07-006", "date": "2026-07-12", "amount": 0, "currency": "USD", "description": "Mystery zero entry"}
+  ],
+  "chart_of_accounts": [
+    {"code": "4000", "name": "Services Revenue", "kind": "income", "keywords": ["invoice", "consulting"]},
+    {"code": "4010", "name": "Product Revenue", "kind": "income", "keywords": ["wire"]},
+    {"code": "6300", "name": "Subscriptions", "kind": "expense", "keywords": ["domain", "subscription"]},
+    {"code": "6400", "name": "Cloud Hosting", "kind": "expense", "keywords": ["cloud", "storage"]},
+    {"code": "6500", "name": "Office Supplies", "kind": "expense", "keywords": ["office", "supplies"]}
+  ],
+  "prior_period": {"closing_balance_usd": 1500.00, "tolerance": 25.00}
+}

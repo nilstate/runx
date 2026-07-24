@@ -1,0 +1,37 @@
+skill: bookkeeper
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+runners:
+  reconcile:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      period: object
+      summary: object
+      decisions: array
+      anomalies: array
+    artifacts:
+      wrap_as: bookkeeper_reconciliation
+      packet: runx.bookkeeper.reconciliation.v1
+    inputs:
+      transactions:
+        type: json
+        required: true
+        description: Bounded flat transaction stream to reconcile.
+      chart_of_accounts:
+        type: json
+        required: true
+        description: Bounded chart of accounts to map transactions against.
+      prior_period:
+        type: json
+        required: false
+        description: Optional carry-forward envelope for prior-period drift checks.
