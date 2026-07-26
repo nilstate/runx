@@ -14,7 +14,7 @@ checked-in `examples/hello-world` package so the commands stay tied to the repo.
 Build the native CLI from the OSS workspace:
 
 ```bash
-cd oss
+cd .
 cargo build --manifest-path crates/Cargo.toml -p runx-cli
 ```
 

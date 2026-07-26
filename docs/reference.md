@@ -12,7 +12,7 @@ The npm CLI package is `@runxhq/cli` and exposes the `runx` binary.
 Start with the checked-in hello-world skill:
 
 ```bash
-cd oss
+cd .
 cargo build --manifest-path crates/Cargo.toml -p runx-cli
 export RUNX_RECEIPT_SIGN_KID=runx-demo-key
 export RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64=QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
@@ -492,7 +492,7 @@ coverage.
 ```bash
 pnpm --dir oss build
 pnpm --dir oss test tests/cli-package.test.ts
-cd oss/packages/cli
+cd crates/runx-cli
 npm pack --dry-run --json
 ```
 
