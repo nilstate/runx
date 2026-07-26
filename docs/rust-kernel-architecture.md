@@ -733,7 +733,7 @@ lints are required; style churn is not.
 
 ## References
 
-- [docs/trusted-kernel-package-truth.md](../../docs/trusted-kernel-package-truth.md)
+- [docs/trusted-kernel-package-truth.md](./trusted-kernel-package-truth.md)
   (repo-root docs)
 - [oss/scripts/check-boundaries.mjs](../scripts/check-boundaries.mjs)
 - [oss/crates/runx-core/src/state_machine.rs](../crates/runx-core/src/state_machine.rs)
