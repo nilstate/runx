@@ -2,7 +2,8 @@
   "description": "Categorize transaction lines into a supplied chart of accounts, flag anomalies, and emit a read-only reconciliation without guessing or mutating a ledger.",
   "name": "bookkeeper",
   "runners": [
-    "default"
+    "default",
+    "frantic-public-receipts"
   ],
   "schema": "runx.skill.inspect.v1",
   "skill_path": "skills/bookkeeper",

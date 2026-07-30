@@ -23,7 +23,7 @@
     "receipt_metadata": {
       "destination": "/home/runner/work/runx/runx/skills/happykawayigt/bookkeeper/0.1.0/SKILL.md",
       "digest": "sha256:6c29c16ce5da85ddec3614966fa84b53fcdeb4a92010b3b1c6e5866ab2094c22",
-      "install_count": 6,
+      "install_count": 7,
       "package_digest": "9f86d282e3a3ece21f6eeaceab1acff7543330807e75868545110f4d1ee63f32",
       "profile_digest": "sha256:29ec8d5fbbd26e9a774509089e7284e09a1e13060dd0f54957f9c926785fbc8b",
       "publisher": {

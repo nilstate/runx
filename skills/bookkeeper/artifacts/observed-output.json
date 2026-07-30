@@ -1,5 +1,8 @@
 {
   "schema": "runx.bookkeeper.result.v1",
+  "source": {
+    "kind": "supplied_transactions"
+  },
   "decision": "ready",
   "categorized": [
     {

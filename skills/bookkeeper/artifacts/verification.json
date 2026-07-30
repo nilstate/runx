@@ -1,6 +1,6 @@
 {
   "schema": "runx.bookkeeper.verification.v1",
-  "generated_at": "2026-07-14T13:43:25.055Z",
+  "generated_at": "2026-07-30T18:53:29.610Z",
   "runx_version": "runx-cli 0.7.1",
   "commands": {
     "install": "runx add happykawayigt/bookkeeper@0.1.0 --registry https://api.runx.ai",
@@ -34,7 +34,7 @@
   },
   "dogfood_run": {
     "closure": {
-      "closed_at": "2026-07-14T13:43:24.942Z",
+      "closed_at": "2026-07-30T18:53:29.493Z",
       "disposition": "closed",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed"
@@ -232,7 +232,7 @@
         {
           "artifact_refs": [],
           "closure": {
-            "closed_at": "2026-07-14T13:43:24.942Z",
+            "closed_at": "2026-07-30T18:53:29.493Z",
             "disposition": "closed",
             "reason_code": "process_exit",
             "summary": "cli-tool exited successfully"
@@ -287,7 +287,7 @@
         "terms": []
       },
       "canonicalization": "runx.receipt.c14n.v1",
-      "created_at": "2026-07-14T13:43:24.942Z",
+      "created_at": "2026-07-30T18:53:29.493Z",
       "decisions": [
         {
           "artifact_refs": [],
@@ -315,8 +315,8 @@
           "selected_harness_ref": null
         }
       ],
-      "digest": "sha256:341211253c6624c864eb30b895d90168cc9cafbc1c73aab627c5dfcdeea5c282",
-      "id": "sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7",
+      "digest": "sha256:c0a9882bc78e4e13525c4ebce70a41276ec1df50f5cda9e93db83bd696450eb9",
+      "id": "sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4",
       "idempotency": {
         "content_hash": "sha256:run_default_57537d102a98-default-content",
         "intent_key": "sha256:run_default_57537d102a98-default-intent",
@@ -333,7 +333,7 @@
       },
       "schema": "runx.receipt.v1",
       "seal": {
-        "closed_at": "2026-07-14T13:43:24.942Z",
+        "closed_at": "2026-07-30T18:53:29.493Z",
         "criteria": [
           {
             "criterion_id": "process_exit",
@@ -344,14 +344,14 @@
           }
         ],
         "disposition": "closed",
-        "last_observed_at": "2026-07-14T13:43:24.942Z",
+        "last_observed_at": "2026-07-30T18:53:29.493Z",
         "reason_code": "process_closed",
         "summary": "cli-tool default completed"
       },
       "signals": [],
       "signature": {
         "alg": "Ed25519",
-        "value": "sig:sha256:341211253c6624c864eb30b895d90168cc9cafbc1c73aab627c5dfcdeea5c282"
+        "value": "sig:sha256:c0a9882bc78e4e13525c4ebce70a41276ec1df50f5cda9e93db83bd696450eb9"
       },
       "subject": {
         "commitments": [],
@@ -362,7 +362,7 @@
         }
       }
     },
-    "receipt_id": "sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7",
+    "receipt_id": "sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4",
     "registry_provenance": {
       "digest": "sha256:6c29c16ce5da85ddec3614966fa84b53fcdeb4a92010b3b1c6e5866ab2094c22",
       "profile_digest": "sha256:29ec8d5fbbd26e9a774509089e7284e09a1e13060dd0f54957f9c926785fbc8b",
@@ -379,12 +379,12 @@
     "skill_name": "bookkeeper",
     "status": "sealed"
   },
-  "receipt_ref": "runx:receipt:sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7",
-  "receipt_id": "sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7",
+  "receipt_ref": "runx:receipt:sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4",
+  "receipt_id": "sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4",
   "receipt": {
     "schema": "runx.receipt.v1",
-    "id": "sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7",
-    "created_at": "2026-07-14T13:43:24.942Z",
+    "id": "sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4",
+    "created_at": "2026-07-30T18:53:29.493Z",
     "canonicalization": "runx.receipt.c14n.v1",
     "issuer": {
       "type": "local",
@@ -393,9 +393,9 @@
     },
     "signature": {
       "alg": "Ed25519",
-      "value": "sig:sha256:341211253c6624c864eb30b895d90168cc9cafbc1c73aab627c5dfcdeea5c282"
+      "value": "sig:sha256:c0a9882bc78e4e13525c4ebce70a41276ec1df50f5cda9e93db83bd696450eb9"
     },
-    "digest": "sha256:341211253c6624c864eb30b895d90168cc9cafbc1c73aab627c5dfcdeea5c282",
+    "digest": "sha256:c0a9882bc78e4e13525c4ebce70a41276ec1df50f5cda9e93db83bd696450eb9",
     "idempotency": {
       "intent_key": "sha256:run_default_57537d102a98-default-intent",
       "trigger_fingerprint": "sha256:run_default_57537d102a98-default-trigger",
@@ -491,7 +491,7 @@
           "disposition": "closed",
           "reason_code": "process_exit",
           "summary": "cli-tool exited successfully",
-          "closed_at": "2026-07-14T13:43:24.942Z"
+          "closed_at": "2026-07-30T18:53:29.493Z"
         }
       }
     ],
@@ -499,8 +499,8 @@
       "disposition": "closed",
       "reason_code": "process_closed",
       "summary": "cli-tool default completed",
-      "closed_at": "2026-07-14T13:43:24.942Z",
-      "last_observed_at": "2026-07-14T13:43:24.942Z",
+      "closed_at": "2026-07-30T18:53:29.493Z",
+      "last_observed_at": "2026-07-30T18:53:29.493Z",
       "criteria": [
         {
           "criterion_id": "process_exit",
@@ -520,17 +520,17 @@
     "valid": true,
     "raw": {
       "schema": "runx.verify_verdict.v1",
-      "receipt_id": "sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7",
+      "receipt_id": "sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4",
       "valid": true,
       "digest": {
         "status": "valid",
-        "expected": "sha256:341211253c6624c864eb30b895d90168cc9cafbc1c73aab627c5dfcdeea5c282",
-        "actual": "sha256:341211253c6624c864eb30b895d90168cc9cafbc1c73aab627c5dfcdeea5c282"
+        "expected": "sha256:c0a9882bc78e4e13525c4ebce70a41276ec1df50f5cda9e93db83bd696450eb9",
+        "actual": "sha256:c0a9882bc78e4e13525c4ebce70a41276ec1df50f5cda9e93db83bd696450eb9"
       },
       "content_address": {
         "status": "valid",
-        "expected": "sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7",
-        "actual": "sha256:457e8d1fa24f59e000be3702bd062b14b96b4613c353e9c92ff4fbe9ddd434e7"
+        "expected": "sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4",
+        "actual": "sha256:8b9b3e869a9a4be627412bc52ec30eaf3203ae5a33034424b2a7fd8813c04ce4"
       },
       "signature": {
         "mode": "local-development",
@@ -546,6 +546,9 @@
   },
   "observed_output": {
     "schema": "runx.bookkeeper.result.v1",
+    "source": {
+      "kind": "supplied_transactions"
+    },
     "decision": "ready",
     "categorized": [
       {
