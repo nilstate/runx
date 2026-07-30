@@ -3,8 +3,9 @@
 This workspace contains the Rust packages that back the `runx` distribution:
 contracts, kernel decisions, parser, receipts, the native runtime, the CLI
 binary, and the blocking SDK. Architectural authority lives in
-[`oss/docs/rust-kernel-architecture.md`](../docs/rust-kernel-architecture.md);
-sequencing lives in [`plans/rust-takeover.md`](../../plans/rust-takeover.md).
+[`docs/rust-kernel-architecture.md`](../docs/rust-kernel-architecture.md);
+the current cutover boundary lives in
+[`docs/ts-interop-boundary.md`](../docs/ts-interop-boundary.md).
 
 ## Commands
 
@@ -30,9 +31,8 @@ before they may be added to `deny.toml`.
 - `runx-cli`: native `runx` binary. Hand-rolled dispatcher across `harness`,
   `connect`, `config`, `policy`, `kernel`, `doctor`, `list`, `history`, `mcp`,
   `tool`, `registry`, `skill`, plus project/router plumbing. Activation
-  versus the npm CLI is recorded by the completed
-  [`rust-cli-rust-cutover`](../.scafld/specs/archive/2026-05/rust-cli-rust-cutover.md)
-  spec.
+  versus the npm CLI is documented by the current
+  [TypeScript interop boundary](../docs/ts-interop-boundary.md).
 - `runx-contracts`: pure public contracts for JSON, host protocol, receipts,
   registry/tool records, act assignment, harness spine, generic authority and
   effect finality, target-repo runner planning, and the post-merge observer.
