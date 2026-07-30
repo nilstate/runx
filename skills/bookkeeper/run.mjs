@@ -1,8 +1,15 @@
 import fs from "node:fs";
+import { loadFranticFundingTransactions } from "./frantic-receipts.mjs";
 
 const SCHEMA = "runx.bookkeeper.result.v1";
 const inputs = readInputs();
-const transactions = requireArray(inputs.transactions, "transactions");
+const fetchedSource = inputs.receipt_urls === undefined
+  ? null
+  : await loadFranticFundingTransactions(inputs.receipt_urls);
+const transactions = requireArray(
+  fetchedSource?.transactions ?? inputs.transactions,
+  fetchedSource ? "fetched transactions" : "transactions",
+);
 const accounts = normalizeAccounts(requireArray(inputs.chart_of_accounts, "chart_of_accounts"));
 const priorPeriod = requireObject(inputs.prior_period, "prior_period");
 const priorTransactions = Array.isArray(priorPeriod.transactions) ? priorPeriod.transactions : [];
@@ -101,6 +108,14 @@ for (const [index, rawTransaction] of transactions.entries()) {
 
 const result = {
   schema: SCHEMA,
+  source: fetchedSource
+    ? {
+        kind: "frantic_public_funding_receipts",
+        receipts: fetchedSource.receipts,
+      }
+    : {
+        kind: "supplied_transactions",
+      },
   decision: needsReview.length === 0 ? "ready" : "needs_review",
   categorized,
   anomalies,

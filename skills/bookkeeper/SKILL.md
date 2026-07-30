@@ -47,6 +47,8 @@ matched or left for review. It never posts entries or changes a live ledger.
   choices before an import.
 - Produce a deterministic reconciliation packet that can be independently
   replayed from the same three inputs.
+- Categorize current public Frantic funding receipts directly from their
+  machine-readable receipt URLs with the `frantic-public-receipts` runner.
 
 ## When not to use this skill
 
@@ -70,6 +72,13 @@ runner can only emit ids from this array and never invents a GL account.
 `prior_period` is an object with an optional `transactions` array. A prior line
 may carry `description`, `amount`, and `account_id`. Exact description-and-amount
 matches are strong evidence only when the referenced account still exists.
+
+The optional `frantic-public-receipts` runner replaces `transactions` with
+`receipt_urls`. Each URL must use the exact
+`https://gofrantic.com/v1/receipts/<id>` endpoint. The runner fetches each public
+`posting.funded` receipt at execution time and derives one worker-liability
+transaction plus one posting-fee transaction from its cents-denominated
+effect. `chart_of_accounts` and `prior_period` remain required.
 
 ## Procedure
 
@@ -106,12 +115,19 @@ matches are strong evidence only when the referenced account still exists.
 - When any line needs review, the runner still prints the complete result packet
   but exits with status 2. Runx records the case as a failed/refused execution
   instead of sealing an ambiguous classification as successful.
-- The runner performs no network requests and writes no files.
+- The default runner performs no network requests. The
+  `frantic-public-receipts` runner can only read the exact allowlisted public
+  receipt endpoint, rejects cross-origin redirects, caps responses at 100 KB,
+  and writes no files.
 
 ## Output
 
 ```json
 {
+  "source": {
+    "kind": "supplied_transactions | frantic_public_funding_receipts",
+    "receipts": []
+  },
   "decision": "ready | needs_review",
   "categorized": [
     {
@@ -139,6 +155,9 @@ matches are strong evidence only when the referenced account still exists.
 a numeric `confidence` and an evidence-based `reason`. `anomalies[]` describes
 data-quality and amount checks. `reconciliation.matched` plus
 `reconciliation.unmatched` always equals `reconciliation.total`.
+For the public-receipt runner, `source.receipts[]` records each URL, Frantic
+receipt reference, posting id, publication time, and SHA-256 digest of the
+fetched response.
 
 ## Local verification
 
@@ -148,6 +167,12 @@ runx skill ./skills/bookkeeper \
   --input transactions='[{"id":"txn-1","description":"ACME invoice payment","amount":1200}]' \
   --input chart-of-accounts='[{"id":"4000","name":"Service revenue","type":"revenue","keywords":["invoice","payment"]}]' \
   --input prior-period='{"transactions":[]}' \
+  --json
+
+runx skill ./skills/bookkeeper frantic-public-receipts \
+  --input-json receipt_urls='["https://gofrantic.com/v1/receipts/563cefce034c"]' \
+  --input-json chart_of_accounts='[{"id":"2100","name":"Funded worker liability","keywords":["worker liability"]},{"id":"6300","name":"Demand-side posting fees","type":"expense","keywords":["posting fee"]}]' \
+  --input-json prior_period='{"transactions":[]}' \
   --json
 ```
 

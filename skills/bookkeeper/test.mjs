@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import {
+  transformFranticReceipt,
+  validateReceiptUrl,
+} from "./frantic-receipts.mjs";
 
 const skillDir = dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +53,50 @@ const allowedAccounts = new Set(["6000", "6200"]);
 for (const entry of ambiguous.categorized) {
   assert.ok(allowedAccounts.has(entry.account_id), "runner invented a GL account");
 }
+
+const receiptBody = JSON.stringify({
+  ok: true,
+  receipt: {
+    ref: "frantic:receipt:test",
+    published_at: "2026-07-12T03:43:49.746Z",
+    payload: {
+      effect: {
+        kind: "posting.funded",
+        posting_id: "p-test",
+        currency: "USD",
+        fee_cents: 80,
+        worker_liability_cents: 800,
+        occurred_at: "2026-07-12T03:43:49.746Z",
+      },
+    },
+  },
+});
+const transformedReceipt = transformFranticReceipt(
+  JSON.parse(receiptBody),
+  "https://gofrantic.com/v1/receipts/test",
+  receiptBody,
+);
+assert.deepEqual(transformedReceipt.transactions, [
+  {
+    id: "frantic:receipt:test:worker-liability",
+    date: "2026-07-12",
+    description: "Frantic p-test worker liability funded",
+    amount: 8,
+    currency: "USD",
+  },
+  {
+    id: "frantic:receipt:test:posting-fee",
+    date: "2026-07-12",
+    description: "Frantic p-test demand-side posting fee",
+    amount: -0.8,
+    currency: "USD",
+  },
+]);
+assert.match(transformedReceipt.source.sha256, /^[0-9a-f]{64}$/);
+assert.throws(
+  () => validateReceiptUrl("https://example.com/v1/receipts/test"),
+  /outside the allowlisted Frantic endpoint/,
+);
 
 process.stdout.write("bookkeeper fixture tests passed\n");
 

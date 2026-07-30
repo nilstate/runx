@@ -10,11 +10,12 @@ catalog:
 runx:
   mutating: false
   policy:
-    data_classification: user_supplied_financial_records
+    data_classification: user_supplied_financial_records_and_public_funding_receipts
     network:
-      allowed: []
+      allowed:
+        - https://gofrantic.com/v1/receipts/
       forbidden:
-        - live ledgers
+        - private or mutable ledger APIs
         - banking APIs
         - payment rails
   artifacts:
@@ -125,3 +126,38 @@ runners:
       anomalies: array
       reconciliation: object
       needs_review: array
+      source: object
+  frantic-public-receipts:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - net:allowlist
+      - public-funding-receipts.read
+    sandbox:
+      profile: network
+      cwd_policy: skill-directory
+      network: true
+      writable_paths: []
+      require_enforcement: false
+    inputs:
+      receipt_urls:
+        type: json
+        required: true
+        description: Public Frantic posting.funded machine receipt URLs from the exact allowlisted endpoint.
+      chart_of_accounts:
+        type: json
+        required: true
+        description: Allowed GL accounts. The skill never creates an account outside this list.
+      prior_period:
+        type: json
+        required: true
+        description: Prior-period transaction evidence used for repeat matches and anomaly baselines.
+    outputs:
+      decision: string
+      categorized: array
+      anomalies: array
+      reconciliation: object
+      needs_review: array
+      source: object
