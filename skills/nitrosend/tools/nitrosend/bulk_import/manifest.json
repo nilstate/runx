@@ -6,14 +6,7 @@
   "source": {
     "type": "cli-tool",
     "command": "node",
-    "args": ["./run.mjs"],
-    "sandbox": {
-      "profile": "network",
-      "cwd_policy": "skill-directory",
-      "network": true,
-      "writable_paths": [],
-      "require_enforcement": false
-    }
+    "args": ["./run.mjs"]
   },
   "inputs": {
     "csv_path": {
@@ -57,7 +50,7 @@
       "description": "Optional public Nitrosend brand SID."
     }
   },
-  "scopes": ["nitrosend:write"],
+  "scopes": ["fs:read", "net:http", "nitrosend:write"],
   "mutating": true,
   "retry": { "max_attempts": 1 },
   "artifacts": {

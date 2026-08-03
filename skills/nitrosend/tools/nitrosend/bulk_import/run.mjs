@@ -63,9 +63,11 @@ export async function invokeBulkImport(inputs, options = {}) {
   }
   let uploadResponse;
   try {
+    const uploadHeaders = new Headers(directUpload.headers);
+    uploadHeaders.set("content-length", String(metadata.upload.byte_size));
     uploadResponse = await fetchImpl(uploadUrl, {
       method: "PUT",
-      headers: directUpload.headers,
+      headers: uploadHeaders,
       body: fs.createReadStream(csvPath),
       duplex: "half",
     });

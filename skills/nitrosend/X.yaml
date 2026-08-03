@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.2.4"
+version: "0.2.5"
 catalog:
   kind: skill
   audience: public
@@ -778,6 +778,8 @@ runners:
         - id: import
           tool: nitrosend.bulk_import
           scopes:
+            - fs:read
+            - net:http
             - nitrosend:write
           mutation: true
           idempotency_key: nitrosend-import-contacts-csv

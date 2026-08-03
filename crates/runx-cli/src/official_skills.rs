@@ -202,7 +202,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/nitrosend",
-        version: "sha-2fabdf00018c",
+        version: "sha-9c04c1d0f400",
         digest: "2deaf0cf381478eee42c254ae0dfeddcdbcd79d0022aad91ab5d40e4b07124d8",
     },
     OfficialSkillLockEntry {

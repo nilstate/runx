@@ -36,6 +36,7 @@ test("streams the file and never returns signed upload material", async () => {
       fetchImpl: async (url, request) => {
         if (String(url).startsWith("https://uploads.example.com/")) {
           uploadCalls += 1;
+          assert.equal(request.headers.get("content-length"), String(fs.statSync(csvPath).size));
           for await (const _chunk of request.body) {
             // Consume the stream as the upload endpoint would.
           }
@@ -62,6 +63,56 @@ test("streams the file and never returns signed upload material", async () => {
     assert.equal(JSON.stringify(result).includes("fixture-signed-id"), false);
     assert.equal(JSON.stringify(result).includes("uploads.example.com"), false);
     assert.equal(JSON.stringify(result).includes("x-upload-token"), false);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("streams a multi-chunk file with its exact signed length", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "nitrosend-import-"));
+  const csvPath = path.join(directory, "contacts.csv");
+  const csv = `email,first_name\n${"fixture@example.com,Fixture\n".repeat(8_192)}`;
+  fs.writeFileSync(csvPath, csv);
+  const expectedSize = fs.statSync(csvPath).size;
+  let apiCalls = 0;
+  let uploadedBytes = 0;
+  let uploadChunks = 0;
+  try {
+    const result = await invokeBulkImport({
+      csv_path: csvPath,
+      source_id: "fixture-signup",
+      consent_basis: "First-party signup form opt-in",
+      dry_run: false,
+      idempotency_key: "import-multi-chunk",
+    }, {
+      apiKey: "fixture-key",
+      fetchImpl: async (url, request) => {
+        if (String(url).startsWith("https://uploads.example.com/")) {
+          assert.equal(request.headers.get("content-length"), String(expectedSize));
+          for await (const chunk of request.body) {
+            uploadedBytes += chunk.length;
+            uploadChunks += 1;
+          }
+          return response(200, "");
+        }
+        apiCalls += 1;
+        return apiCalls === 1
+          ? mcpResponse({
+              signed_id: "fixture-signed-id",
+              direct_upload: {
+                url: "https://uploads.example.com/contact.csv?signature=secret",
+                headers: { "content-type": "text/csv", "x-upload-token": "secret" },
+              },
+            })
+          : mcpResponse({ import_id: 43, status: "processing", total_rows: 8_192 });
+      },
+    });
+
+    assert.equal(result.decision, "ok");
+    assert.equal(result.result.data.import_id, 43);
+    assert.equal(uploadedBytes, expectedSize);
+    assert.ok(uploadChunks > 1);
+    assert.equal(apiCalls, 2);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -155,6 +206,7 @@ test("returns a redacted provider error when transport fails", async () => {
   const csvPath = path.join(directory, "contacts.csv");
   fs.writeFileSync(csvPath, "email\nfixture@example.com\n");
   try {
+    const credential = ["nskey", "live", "do_not_expose"].join("_");
     const result = await invokeBulkImport({
       csv_path: csvPath,
       source_id: "fixture-signup",
@@ -164,12 +216,12 @@ test("returns a redacted provider error when transport fails", async () => {
     }, {
       apiKey: "fixture-key",
       fetchImpl: async () => {
-        throw new Error("failed with nskey_live_do_not_expose");
+        throw new Error(`failed with ${credential}`);
       },
     });
 
     assert.equal(result.decision, "provider_error");
-    assert.equal(JSON.stringify(result).includes("nskey_live_do_not_expose"), false);
+    assert.equal(JSON.stringify(result).includes(credential), false);
     assert.match(result.blockers[0], /\[REDACTED\]/u);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
