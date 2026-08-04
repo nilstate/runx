@@ -1,0 +1,16 @@
+title = "runx gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public skill fixture idempotency keys are deterministic test identifiers, not API keys."
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+regexes = [
+  '''(?i)\bidempotency_key:\s*['"]?[a-z0-9_:/.-]+['"]?\s*$''',
+]
+paths = [
+  '''(^|/)skills/.*\.ya?ml$''',
+]
