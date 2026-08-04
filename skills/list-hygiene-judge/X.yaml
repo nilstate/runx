@@ -138,6 +138,35 @@ harness:
         status: failure
 
 runners:
+  decide:
+    type: cli-tool
+    command: /usr/bin/env
+    args: [node, run.mjs, decide]
+    outputs:
+      decision_plan: object
+    inputs:
+      data_source_ref: { type: string, required: true, description: Logical contact data source. }
+      resource: { type: string, required: true, description: Contact consent resource. }
+      aggregate_id: { type: string, required: true, description: Contact stream key. }
+      expected_version: { type: number, required: true, description: Current compare-and-set version. }
+      idempotency_key: { type: string, required: true, description: Stable transition retry key. }
+      engagement_history: { type: json, required: true, description: Fresh engagement and bounce evidence. }
+      bounce_policy: { type: json, required: true, description: Hard-bounce and decay policy. }
+      current_consent_state: { type: json, required: true, description: Current consent and evidence freshness. }
+
+  finalize:
+    type: cli-tool
+    command: /usr/bin/env
+    args: [node, run.mjs, finalize]
+    outputs:
+      list_hygiene_result: object
+    artifacts:
+      named_emits:
+        list_hygiene_result: list_hygiene_result
+    inputs:
+      decision_plan: { type: json, required: true, description: Admitted list-hygiene decision plan. }
+      recorded_readback: { type: json, required: true, description: Data-store projection read after the optional append. }
+
   judge:
     default: true
     type: graph
@@ -198,12 +227,8 @@ runners:
             current_consent_state: $input.current_consent_state
           context:
             contact_readback: read_contact.data_operation_result.data
-          run:
-            type: javascript
-            module: list-hygiene.mjs
-            export: decideListHygiene
-            outputs:
-              decision_plan: object
+          skill: .
+          runner: decide
 
         - id: append_transition
           when:
@@ -232,12 +257,5 @@ runners:
           context:
             decision_plan: decide.decision_plan
             recorded_readback: readback.data_operation_result.data
-          run:
-            type: javascript
-            module: list-hygiene.mjs
-            export: finalizeListHygiene
-            outputs:
-              list_hygiene_result: object
-          artifacts:
-            named_emits:
-              list_hygiene_result: list_hygiene_result
+          skill: .
+          runner: finalize

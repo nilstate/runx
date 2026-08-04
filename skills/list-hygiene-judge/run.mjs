@@ -1,6 +1,21 @@
+import fs from "node:fs";
+
 const WRITABLE_STATES = new Set(["re_permission", "suppress"]);
 
-export function decideListHygiene(inputs) {
+const operation = process.argv[2];
+const raw = process.env.RUNX_INPUTS_PATH
+  ? fs.readFileSync(process.env.RUNX_INPUTS_PATH, "utf8")
+  : process.env.RUNX_INPUTS_JSON || "{}";
+const inputs = JSON.parse(raw);
+
+let result;
+if (operation === "decide") result = decideListHygiene(inputs);
+else if (operation === "finalize") result = finalizeListHygiene(inputs);
+else throw new Error("expected decide or finalize operation");
+
+process.stdout.write(`${JSON.stringify(result)}\n`);
+
+function decideListHygiene(inputs) {
   const aggregateId = nonempty(inputs.aggregate_id, "aggregate_id");
   const expectedVersion = nonnegativeInteger(inputs.expected_version, "expected_version");
   const idempotencyKey = nonempty(inputs.idempotency_key, "idempotency_key");
@@ -36,7 +51,6 @@ export function decideListHygiene(inputs) {
   const contactReadback = object(inputs.contact_readback);
   const projection = object(contactReadback.projection);
   const projectionVersion = integer(projection.version, 0);
-
   const base = {
     aggregate_id: aggregateId,
     data_source_ref: dataSourceRef,
@@ -104,7 +118,7 @@ export function decideListHygiene(inputs) {
   return planStop(base, "no safe automated consent transition is required", "no_transition_required");
 }
 
-export function finalizeListHygiene(inputs) {
+function finalizeListHygiene(inputs) {
   const plan = object(inputs.decision_plan);
   const readback = object(inputs.recorded_readback);
   const projection = object(readback.projection);
