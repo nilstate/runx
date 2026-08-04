@@ -145,7 +145,7 @@ skill runner or provider tool.
 
 ## Output schema
 
-The graph's public `result` contains one `lane_packets` packet keyed by stable step identity, while `context.step_outputs` and child receipts retain each producer's original output. Every value under `lanes` follows the lane contract shown below:
+The graph's public `result` contains one `lane_packets` packet keyed by stable step identity. Runtime graph context retains producer outputs for nested execution, while machine-readable CLI output omits an exact result-producer duplicate and child receipts bind the execution lineage. Every value under `lanes` follows the lane contract shown below:
 
 ```yaml
 lane_packets:

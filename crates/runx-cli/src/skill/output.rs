@@ -58,7 +58,7 @@ fn closure_disposition_exit_code(disposition: ClosureDisposition) -> ExitCode {
 }
 
 fn write_json_with_exit(value: &JsonValue, exit_code: ExitCode) -> ExitCode {
-    match serde_json::to_string_pretty(value) {
+    match serialize_json_output(value) {
         Ok(json) => {
             let mut stdout = io::stdout().lock();
             let result = stdout
@@ -77,6 +77,35 @@ fn write_json_with_exit(value: &JsonValue, exit_code: ExitCode) -> ExitCode {
             ExitCode::from(1)
         }
     }
+}
+
+fn serialize_json_output(value: &JsonValue) -> Result<String, serde_json::Error> {
+    serde_json::to_string(&project_json_output(value))
+}
+
+fn project_json_output(value: &JsonValue) -> JsonValue {
+    let mut output = value.clone();
+    let JsonValue::Object(object) = &mut output else {
+        return output;
+    };
+    let Some(result) = object.get("result").and_then(JsonValue::as_object).cloned() else {
+        return output;
+    };
+
+    let mut remove_context = false;
+    if let Some(JsonValue::Object(context)) = object.get_mut("context") {
+        if let Some(JsonValue::Object(step_outputs)) = context.get_mut("step_outputs") {
+            step_outputs.retain(|_, value| value.as_object() != Some(&result));
+            if step_outputs.is_empty() {
+                context.remove("step_outputs");
+            }
+        }
+        remove_context = context.is_empty();
+    }
+    if remove_context {
+        object.remove("context");
+    }
+    output
 }
 
 fn write_text_with_exit(
@@ -252,8 +281,51 @@ mod tests {
     use runx_contracts::{JsonObject, JsonValue};
 
     use super::{
-        ResumeHint, closure_disposition_exit_code, skill_result_exit_code, write_skill_text,
+        ResumeHint, closure_disposition_exit_code, serialize_json_output, skill_result_exit_code,
+        write_skill_text,
     };
+
+    #[test]
+    fn json_output_is_compact_and_omits_result_duplicates() {
+        let result = JsonValue::Object(JsonObject::from([
+            ("message".to_owned(), JsonValue::String("ready".to_owned())),
+            (
+                "status".to_owned(),
+                JsonValue::String("complete".to_owned()),
+            ),
+        ]));
+        let value = JsonValue::Object(JsonObject::from([
+            ("result".to_owned(), result.clone()),
+            (
+                "context".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "step_outputs".to_owned(),
+                    JsonValue::Object(JsonObject::from([
+                        ("final".to_owned(), result),
+                        (
+                            "prior".to_owned(),
+                            JsonValue::Object(JsonObject::from([(
+                                "evidence".to_owned(),
+                                JsonValue::String("kept".to_owned()),
+                            )])),
+                        ),
+                        (
+                            "matching_subset".to_owned(),
+                            JsonValue::Object(JsonObject::from([(
+                                "message".to_owned(),
+                                JsonValue::String("ready".to_owned()),
+                            )])),
+                        ),
+                    ])),
+                )])),
+            ),
+        ]));
+
+        assert_eq!(
+            serialize_json_output(&value).expect("serialize JSON output"),
+            r#"{"context":{"step_outputs":{"matching_subset":{"message":"ready"},"prior":{"evidence":"kept"}}},"result":{"message":"ready","status":"complete"}}"#
+        );
+    }
 
     #[test]
     fn terminal_dispositions_have_exhaustive_exit_semantics() {
