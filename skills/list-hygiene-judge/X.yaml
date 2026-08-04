@@ -165,8 +165,8 @@ runners:
       result_from: [finalize]
       steps:
         - id: read_contact
-          skill: ../data-store
-          runner: read_projection
+          tool: data.read_projection
+          scopes: [runx:data:read]
           inputs:
             data_source_ref: $input.data_source_ref
             resource: $input.resource
@@ -195,8 +195,8 @@ runners:
           when:
             field: decide.decision_plan.append_allowed
             equals: true
-          skill: ../data-store
-          runner: append_event
+          tool: data.append_event
+          scopes: [runx:data:append]
           inputs:
             data_source_ref: $input.data_source_ref
             resource: $input.resource
@@ -207,8 +207,8 @@ runners:
             event: decide.decision_plan.event
 
         - id: readback
-          skill: ../data-store
-          runner: read_projection
+          tool: data.read_projection
+          scopes: [runx:data:read]
           inputs:
             data_source_ref: $input.data_source_ref
             resource: $input.resource

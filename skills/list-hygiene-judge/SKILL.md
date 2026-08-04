@@ -17,9 +17,11 @@ send authority, a campaign proposal, or proof that a message was delivered.
 
 ## Operating model
 
-1. Read the contact projection through the provider-neutral `data-store` skill.
-   Bind `data_source_ref`, `resource`, and `aggregate_id` to the contact's event
-   stream. The read establishes the durable version used by the decision.
+1. Read the contact projection through the exact provider-neutral
+   `data.read_projection` operation owned by the canonical `data-store`
+   contract. Bind `data_source_ref`, `resource`, and `aggregate_id` to the
+   contact's event stream. The read establishes the durable version used by the
+   decision.
 2. Admit the supplied engagement and consent evidence only when its status is
    `read`, its `evidence_version` equals `expected_version`, and the durable
    projection has that same version. Missing, unreadable, ambiguous, or stale
@@ -44,8 +46,8 @@ that cannot supply them must repair the upstream evidence read rather than fill
 defaults.
 
 The runner requests only `runx:data:read` and `runx:data:append` through the
-canonical `data-store` capability. The allowed append is intentionally ungated:
-it records contact policy state, not external delivery. The stable
+canonical data operations used by `data-store`. The allowed append is
+intentionally ungated: it records contact policy state, not external delivery. The stable
 `idempotency_key` makes an unchanged retry return the already-recorded version;
 a competing write produces a version conflict and must be retried only after a
 fresh read and new decision.
