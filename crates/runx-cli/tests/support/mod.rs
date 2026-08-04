@@ -228,6 +228,9 @@ runners:
       thread_title:
         type: string
         required: false
+      severity:
+        type: string
+        required: false
 "#,
     )?;
     Ok(skill_dir)

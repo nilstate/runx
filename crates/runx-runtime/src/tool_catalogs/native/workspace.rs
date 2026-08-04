@@ -19,7 +19,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn native_filesystem_roots_accept_workspace_relative_and_explicit_absolute_paths()
+    fn native_filesystem_roots_accept_workspace_relative_paths_and_reject_external_absolute_paths()
     -> Result<(), Box<dyn std::error::Error>> {
         let workspace = tempfile::tempdir()?;
         let external = tempfile::tempdir()?;
@@ -32,14 +32,18 @@ mod tests {
             resolve_repo_root_for("fs.read", ".", &env, workspace.path())?,
             workspace.path().canonicalize()?
         );
-        assert_eq!(
-            resolve_repo_root_for(
-                "fs.read",
-                &external.path().to_string_lossy(),
-                &env,
-                workspace.path(),
-            )?,
-            external.path().canonicalize()?
+        let error = resolve_repo_root_for(
+            "fs.read",
+            &external.path().to_string_lossy(),
+            &env,
+            workspace.path(),
+        )
+        .err()
+        .ok_or("external absolute root unexpectedly resolved")?;
+        assert!(
+            error
+                .to_string()
+                .contains("must be relative to the runtime workspace")
         );
         Ok(())
     }

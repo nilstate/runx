@@ -137,7 +137,13 @@ fn agent_handoff_journey_pauses_recovers_resumes_verifies_and_clears_history() -
         .arg("--json")
         .output()?;
     let malformed = assert_json(&malformed, 1)?;
-    assert_eq!(malformed["status"], "failure");
+    assert_eq!(malformed["status"], "sealed");
+    assert_eq!(malformed["closure"]["disposition"], "failed");
+    assert!(
+        malformed["result"]["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("runner output contract violation"))
+    );
 
     let answers = root.join("answers.json");
     fs::write(

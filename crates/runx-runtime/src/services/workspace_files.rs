@@ -34,6 +34,8 @@ pub enum WorkspaceFileError {
     RootUnavailable(std::io::Error),
     #[error("workspace root is not a directory")]
     RootNotDirectory,
+    #[error("workspace root must be relative to the runtime workspace")]
+    RootEscapesWorkspace,
     #[error("path_scope must be workspace or skill")]
     InvalidPathScope,
     #[error("workspace file {path} is unavailable: {source}")]
@@ -251,6 +253,9 @@ pub(crate) fn resolve_scoped_root(
     let root = std::fs::canonicalize(unresolved).map_err(WorkspaceFileError::RootUnavailable)?;
     if !root.is_dir() {
         return Err(WorkspaceFileError::RootNotDirectory);
+    }
+    if !root.starts_with(&workspace) {
+        return Err(WorkspaceFileError::RootEscapesWorkspace);
     }
     Ok(root)
 }

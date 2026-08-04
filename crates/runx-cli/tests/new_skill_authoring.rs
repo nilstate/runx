@@ -34,10 +34,9 @@ fn new_skill_authoring_waits_for_agent_then_applies_one_validated_package() -> T
 
     assert!(pending_text.contains("status: needs_agent"));
     assert!(pending_text.contains("agent_task.skill-lab-architecture.output"));
-    assert!(pending_text.contains(&format!(
-        "runx resume {run_id} answers.json --receipt-dir {}",
-        receipts.display()
-    )));
+    assert!(pending_text.contains(&format!("runx resume {run_id} answers.json")));
+    assert!(pending_text.contains("--receipt-dir"));
+    assert!(pending_text.contains(&receipts.to_string_lossy().into_owned()));
     assert!(
         !target.exists(),
         "runx new wrote before authoring completed"

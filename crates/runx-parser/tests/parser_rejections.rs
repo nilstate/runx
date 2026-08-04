@@ -341,7 +341,7 @@ fn runner_inputs_reject_definition_overrides_and_invalid_nested_examples() -> Re
     for (declaration, expected) in [
         (
             "{ definition: selector, required: false }",
-            "unknown field 'definition'",
+            "runners.inspect.inputs.resources.definition is not supported",
         ),
         (
             "{ definition: selector }",

@@ -23,7 +23,7 @@ fn archive_volume_independent_twitter_selection_is_identical_across_page_sizes()
     assert_eq!(summary.matched, 6);
     assert_eq!(
         summary.act_ids,
-        [0, 2_000, 4_000, 6_000, 8_000, 10_000].map(|index| format!("del-{index}"))
+        [0, 2_000, 4_000, 6_000, 8_000, 10_000].map(|index| format!("act-del-{index}"))
     );
     Ok(())
 }
