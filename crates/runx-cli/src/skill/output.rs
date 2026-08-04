@@ -286,7 +286,7 @@ mod tests {
     };
 
     #[test]
-    fn json_output_is_compact_and_omits_result_duplicates() {
+    fn json_output_is_compact_and_omits_result_duplicates() -> Result<(), serde_json::Error> {
         let result = JsonValue::Object(JsonObject::from([
             ("message".to_owned(), JsonValue::String("ready".to_owned())),
             (
@@ -321,10 +321,13 @@ mod tests {
             ),
         ]));
 
+        let serialized = serialize_json_output(&value)?;
+
         assert_eq!(
-            serialize_json_output(&value).expect("serialize JSON output"),
+            serialized,
             r#"{"context":{"step_outputs":{"matching_subset":{"message":"ready"},"prior":{"evidence":"kept"}}},"result":{"message":"ready","status":"complete"}}"#
         );
+        Ok(())
     }
 
     #[test]
