@@ -387,7 +387,7 @@ async function readSourceRef(sourceRef) {
     const response = await fetch(sourceRef, {
       headers: {
         accept: "application/json,text/plain;q=0.9,*/*;q=0.1",
-        "user-agent": "runx-contract-drafter/0.1.2",
+        "user-agent": "runx-contract-drafter/0.1.3",
       },
     });
     if (!response.ok) throw new Error(`template.source_ref fetch failed: HTTP ${response.status}`);
