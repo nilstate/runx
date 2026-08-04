@@ -46,6 +46,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         digest: "c6c210735ca826875959c5eb3c2420c50aee52eb3723b19be7369e9da85552a5",
     },
     OfficialSkillLockEntry {
+        skill_id: "runx/contract-drafter",
+        version: "sha-4484cf0dc13b",
+        digest: "a1608d61de01ba1ffd08cf0e11d81e0c30777f4b284b43154bee2d05dbead681",
+    },
+    OfficialSkillLockEntry {
         skill_id: "runx/cve-audit",
         version: "sha-196dc362cbab",
         digest: "07bb8a36ab55908c284910317350083e5ca5403891c34536294d44ee0566dc6c",
