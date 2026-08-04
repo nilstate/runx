@@ -17,7 +17,7 @@ assert(complete.output.send_proposal?.gate?.human_approval_required === true, "p
 assert(complete.output.send_proposal?.provider_action === null, "contract-drafter does not select a provider action");
 assert(complete.output.send_proposal?.live_external_send_performed === false, "contract-drafter performs no live send");
 assert(!Object.prototype.hasOwnProperty.call(complete.output.send_proposal, "provider_delivery_performed"), "proposal does not claim provider delivery");
-assert(complete.output.send_as_result === null, "contract packet does not embed a send-as result");
+assert(!Object.prototype.hasOwnProperty.call(complete.output, "send_as_result"), "contract packet does not embed a send-as result");
 assert(complete.output.validation?.template_fetch?.fetched_at_runtime === true, "template is fetched from source_ref at runtime");
 assert(complete.output.validation?.template_loaded_from_source_ref === true, "validation records source_ref load");
 assert(complete.output.validation?.send_as_canonical_skill === "runx/send-as", "validation records canonical send-as target");
@@ -33,15 +33,15 @@ assert(JSON.stringify(repeat.output) === JSON.stringify(complete.output), "outpu
 const refused = runFixture("missing-payment-term.json");
 assert(refused.status === 0, "missing term seals a refusal without infrastructure failure");
 assert(refused.output.status === "refused", "missing term is refused");
-assert(refused.output.draft_doc === null, "refusal emits no draft");
+assert(!Object.prototype.hasOwnProperty.call(refused.output, "draft_doc"), "refusal emits no draft");
 assert(Array.isArray(refused.output.deviations) && refused.output.deviations.length === 0, "refusal emits no deviations packet");
-assert(refused.output.send_proposal === null, "refusal emits no proposal");
+assert(!Object.prototype.hasOwnProperty.call(refused.output, "send_proposal"), "refusal emits no proposal");
 assert(refused.output.validation.errors.includes("terms.payment_terms is required"), "refusal identifies payment_terms");
 
 const strictRefusal = runFixture("missing-payment-term.json", ["--fail-on-refusal"]);
 assert(strictRefusal.status === 2, "refusal_check exits with a failure status");
-assert(strictRefusal.output.draft_doc === null, "refusal_check emits no draft");
-assert(strictRefusal.output.send_proposal === null, "refusal_check emits no proposal");
+assert(!Object.prototype.hasOwnProperty.call(strictRefusal.output, "draft_doc"), "refusal_check emits no draft");
+assert(!Object.prototype.hasOwnProperty.call(strictRefusal.output, "send_proposal"), "refusal_check emits no proposal");
 
 process.stdout.write(`${JSON.stringify({
   ok: true,

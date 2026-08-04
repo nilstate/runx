@@ -15,8 +15,8 @@ runx:
 explicit parties, and explicit terms. It reads only `template.source_ref` from
 the template input, fetches the template document at run time, renders only
 clause text present in that fetched source, records each supplied value that
-differs from the template baseline, and composes the canonical `runx/send-as`
-planner without executing provider delivery.
+differs from the template baseline, and emits a proposal for the canonical
+`runx/send-as` planner without executing provider delivery.
 
 The skill does not approve legal terms, provide legal advice, execute a
 signature workflow, contact a real recipient, or run a package-local send
@@ -57,9 +57,8 @@ fall back to a baseline, guess a missing value, or add a clause.
   binds the official planner inputs `objective`, `principal`,
   `provider_context`, `audience`, `content_ref`, `consent_basis`, and
   `operator_context`.
-- `send_as_result`: `null` in the contract draft packet. The graph composes
-  canonical `../send-as` as a separate planning step, but provider delivery
-  remains outside `contract-drafter`.
+- `send_as_result`: omitted from the contract draft packet. `contract-drafter`
+  emits the proposal only; run canonical `send-as` separately to plan delivery.
 - `validation`: the required fields and placeholders checked, plus explicit
   runtime template fetch, canonical send-as target, no-invention, and no-send
   boundary assertions.
@@ -70,8 +69,8 @@ the draft was legally approved or delivered to a real external recipient.
 
 ## Refusal Rules
 
-The run refuses closed and emits `draft_doc: null`, `deviations: []`, and
-`send_proposal: null` when any of these conditions holds:
+The run refuses closed and omits `draft_doc` and `send_proposal` while emitting
+`deviations: []` when any of these conditions holds:
 
 - a required party or `legal_name` is absent;
 - a required term or baseline term is absent;
@@ -91,11 +90,11 @@ a failure status. Neither path creates a partial draft.
 
 ## Send-As Boundary
 
-The default graph passes `send_proposal.consumer.inputs` to the repository's
-canonical `../send-as` plan runner. It does not include `./graph/send-as`, a
-package-local `send-as` namesake, `mock-send.mjs`, or any provider adapter.
-The contract draft body is referenced by digest and draft ref, not copied into
-a provider call.
+The default runner emits `send_proposal.consumer.inputs` for the canonical
+`runx/send-as` plan runner. It does not include `./graph/send-as`, a
+package-local `send-as` namesake, `mock-send.mjs`, any graph dependency, or any
+provider adapter. The contract draft body is referenced by digest and draft ref,
+not copied into a provider call.
 
 Required sequence:
 
@@ -108,10 +107,10 @@ Required sequence:
 
 ## Harness Cases
 
-- `complete-template-fetches-source-and-composes-canonical-send-as-plan` fetches the
+- `complete-template-fetches-source-and-emits-canonical-send-as-proposal` fetches the
   template from `template.source_ref`, seals a draft with four visible
-  deviations, invokes canonical `../send-as` plan in the same graph, and leaves
-  provider delivery outside `contract-drafter`.
+  deviations, emits a canonical `runx/send-as` proposal, and leaves planning
+  plus provider delivery outside `contract-drafter`.
 - `missing-required-term-refuses-without-proposal` runs `refusal_check`, omits
   `payment_terms`, returns failure, and emits neither a draft nor a proposal.
 

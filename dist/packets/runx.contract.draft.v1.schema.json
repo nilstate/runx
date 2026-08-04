@@ -2,16 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.runx.ai/runx/contract_draft/v1.json",
   "x-runx-packet-id": "runx.contract_draft.v1",
-  "x-runx-generated-from": "skills/contract-drafter/X.yaml#root.runners.draft.graph.steps.0",
+  "x-runx-generated-from": "skills/contract-drafter/X.yaml#root.runners.draft",
   "type": "object",
   "required": [
     "act_decision",
     "act_reason",
     "deviations",
-    "draft_doc",
     "draft_ref",
-    "send_as_result",
-    "send_proposal",
+    "package",
+    "schema",
+    "status",
     "validation"
   ],
   "properties": {
@@ -30,11 +30,23 @@
     "draft_ref": {
       "type": "string"
     },
+    "package": {
+      "type": "string"
+    },
+    "schema": {
+      "type": "string"
+    },
     "send_as_result": {
       "type": "object"
     },
     "send_proposal": {
       "type": "object"
+    },
+    "status": {
+      "type": "string"
+    },
+    "template_id": {
+      "type": "string"
     },
     "validation": {
       "type": "object"

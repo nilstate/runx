@@ -220,7 +220,6 @@ function draftPacket({ template, parties, terms, validation }) {
     draft_doc: draftDoc,
     deviations,
     send_proposal: sendProposal,
-    send_as_result: null,
     validation: {
       ...validation,
       errors: [],
@@ -240,17 +239,14 @@ function draftPacket({ template, parties, terms, validation }) {
 
 function refusalPacket({ template, validation }) {
   const errors = Array.isArray(validation?.errors) ? validation.errors : ["input validation failed"];
-  return {
+  const packet = {
     schema: "runx.contract_draft.v1",
     package: "contract-drafter",
     status: "refused",
     act_decision: "refused",
     act_reason: `refused missing_or_invalid_input count=${errors.length}`,
     draft_ref: "",
-    draft_doc: null,
     deviations: [],
-    send_proposal: null,
-    send_as_result: null,
     validation: {
       errors,
       required_party_roles: validation?.required_party_roles || [],
@@ -261,8 +257,10 @@ function refusalPacket({ template, validation }) {
       template_loaded_from_source_ref: Boolean(validation?.template_fetch?.fetched_at_runtime),
       live_external_send_performed: false,
     },
-    template_id: text(template?.template_id) || null,
   };
+  const templateId = text(template?.template_id);
+  if (templateId) packet.template_id = templateId;
+  return packet;
 }
 
 async function loadTemplate(input) {
@@ -387,7 +385,7 @@ async function readSourceRef(sourceRef) {
     const response = await fetch(sourceRef, {
       headers: {
         accept: "application/json,text/plain;q=0.9,*/*;q=0.1",
-        "user-agent": "runx-contract-drafter/0.1.3",
+        "user-agent": "runx-contract-drafter/0.1.4",
       },
     });
     if (!response.ok) throw new Error(`template.source_ref fetch failed: HTTP ${response.status}`);
