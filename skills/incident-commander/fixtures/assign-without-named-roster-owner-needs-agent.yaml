@@ -1,32 +1,30 @@
-name: assign-without-named-roster-owner-needs-agent
+name: assignment-without-owner-needs-input
 kind: skill
 target: ..
 runner: advance
 inputs:
-  case_id: inc-sev3-search-2026-07-18
+  case_id: inc-sev3-search
   driver_id: driver-secondary
   incident_objective: assign
-  case_state:
-    status: working
-    turn: 1
-    severity: SEV-3
-    scope: search-api
-    declared: true
-    named_owner: null
-    evidence_refs:
-      - incident:declaration:inc-sev3-search-2026-07-18
+  case_state: { declared: true, severity: SEV-3, scope: search-api, turn: 1 }
   roster:
-    - role: commander
-      principal: incident:commander:sam
-      skill: ops-desk
-      scope: [incident.command]
-    - role: responder_lead
-      principal: incident:responder:lee
-      skill: incident-response
-      scope: [incident.respond]
-    - role: comms_lead
-      principal: incident:comms:pat
-      skill: slack-notify
-      scope: [incident.internal_post]
+    - { role: commander, principal: incident:commander:sam, skill: ops-desk, scope: [incident.command] }
+    - { role: responder_lead, principal: incident:responder:lee, skill: incident-response, scope: [incident.respond] }
+    - { role: comms_lead, principal: incident:comms:pat, skill: slack-notify, scope: [incident.internal_post] }
 expect:
-  status: needs_agent
+  status: sealed
+  steps: [admit, stop]
+  step_outputs:
+    stop:
+      subset:
+        incident_turn:
+          data:
+            decision: needs_input
+            dispatch: null
+            delivery_status: not_sent
+            effect_state: { agency_state: not_persisted, provider_delivery: not_executed }
+            validation:
+              status: fail
+              findings:
+                - { code: incident.assignment.owner, message: assign requires a named roster owner }
+  receipt: { schema: runx.receipt.v1 }

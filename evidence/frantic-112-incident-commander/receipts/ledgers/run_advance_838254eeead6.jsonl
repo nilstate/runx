@@ -1,1 +1,0 @@
-{"type":"run_event","data":{"kind":"resolution_requested","detail":{"resume_skill_ref":"./skills/agency","selected_runner":"advance","step_ids":["agent_task.ops-desk-advance.output"],"step_labels":["agent_task.ops-desk-advance.output"]}},"meta":{"created_at":"2026-07-18T23:44:56.379Z","producer":{"skill":"agency","runner":"advance"}}}

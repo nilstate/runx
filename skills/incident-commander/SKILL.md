@@ -1,176 +1,113 @@
 ---
 name: incident-commander
-description: Advance a declared incident over the runx agency spine with a fixed commander, responder, and communications roster, approval-bound send handoffs, and receipt-backed resolution.
-runx:
-  category: ops
+description: Advance one declared incident through a fixed roster, approval-bound communications planning, and receipt-backed resolution while canonical agency owns durable state.
+registry_owner: mossony
 ---
 
-# Incident commander
+# Incident Commander
 
-Advance one command decision for a declared incident whose durable case is owned
-by the runx `agency` spine. The skill consumes the already-folded case state and
-fixed incident roster, asks `ops-desk` for one bounded move, reviews that move,
-and applies deterministic roster and evidence guards before returning one typed
-`incident_turn`.
+Use this skill for one command decision inside an incident that already belongs
+to a Runx `agency` case. It checks the folded case and fixed roster, asks the
+canonical `ops-desk` skill for one bounded decision, then enforces the incident
+rules before returning `incident_turn`.
 
-The skill does not open or persist a case, append events, send messages, mint
-authority, or resolve approvals. An agency driver owns those actions. A
-communication decision is dispatch-by-naming: this skill may name a separate
-governed `slack-notify` or `send-as` run after approval, but it never executes
-that run.
+The result is local judgment. This skill does not append an agency event, acquire
+a case lease, send a message, call a provider, or close external state. The
+agency driver remains responsible for the expected-version append and for
+binding this run's sealed receipt to the case stream.
 
-## What this skill does
+## Required context
 
-- asks a package-local binding of the official `ops-desk` advance contract for
-  one roster-constrained move;
-- applies a reviewer act and deterministic enforcement to that move;
-- returns one typed, audit-friendly incident turn;
-- names a plan-only communication handoff while leaving execution to a separate
-  governed run.
+Supply `case_id`, `driver_id`, `incident_objective`, folded `case_state`, and a
+fixed `roster`. The objective must be one of `begin`, `assign`, `send`,
+`resolve`, or `postmortem`.
 
-## When to use this skill
+The roster has exactly three entries:
 
-Use this skill when an existing agency case represents a declared incident and
-the next command decision must stay within its fixed roster, approval lane, and
-receipt trail.
+- `commander`, which normally names `ops-desk` and its incident command scope;
+- `responder_lead`, which names the response skill and its allowed scope;
+- `comms_lead`, which names `send-as` or `slack-notify` and its allowed scope.
 
-## When not to use this skill
+Each entry includes a principal, skill, and nonempty scope ceiling. Roles and
+principals must be unique. An `assign` turn also needs `case_state.named_owner`
+to match one roster role or principal.
 
-Do not use it to declare or persist a case, send a message, authenticate an
-approval, mint authority, bypass the agency lease, or substitute an unverified
-string for a receipt. Those responsibilities remain with the agency driver and
-the named governed skill.
+`case_state` is a bounded projection, not the incident event history. Durable
+history stays behind the agency data source. Include declaration status,
+severity, scope, current turn, and only the evidence or pending decision needed
+for this command turn.
 
-## Incident lifecycle
+## Communications
 
-Use `incident_objective` with exactly one of these values:
+A send starts from `case_state.pending_escalation.proposed_handoff`. That object
+binds the exact `comms_lead` principal, `send-as` or `slack-notify`, runner
+`plan`, channel, audience, and SHA-256 content digest.
 
-- `begin`: advance declaration and initial command work.
-- `assign`: dispatch work only when folded state names a roster owner.
-- `send`: gate and name a digest-bound communications handoff.
-- `resolve`: require linked resolution evidence before closure.
-- `postmortem`: dispatch follow-up work within the fixed roster.
+The optional `approval` must contain that same principal and a nonempty reason.
+Without approval, a valid handoff returns `awaiting_approval`. An approval from
+another principal is refused. A matched approval can return a downstream
+planning handoff with state `ready_for_planning`; `delivery_status` remains
+`not_sent` and provider delivery remains `not_executed`.
 
-Inputs are `case_id`, `driver_id`, `incident_objective`, folded `case_state`, and
-the fixed `roster`. `approval` is optional and carries `{ principal, reason }`.
-`member_result` is optional and carries `{ outcome, receipt_ref }` from a
-previously dispatched member.
+Run the named skill separately. `send-as` plans a provider-neutral send.
+`slack-notify` owns its governed Slack delivery lane. Return the later sealed
+receipt through `member_result` and advance the agency case again. A delivery
+claim without `runx:receipt:sha256:<digest>` is refused.
 
-The roster contains exactly `commander`, `responder_lead`, and `comms_lead`.
-Every entry names its principal, skill, and scope ceiling. The enforcement stage
-rejects missing or duplicate roles, mismatched skills, excess scopes, invented
-principals, and incomplete entries.
+## Resolution and durable state
 
-## Communication gate
+Only `resolve` may return `resolved`. It needs either
+`case_state.resolution_evidence_ref` or a successful `member_result` with a
+valid Runx receipt reference. The result still says `agency_state:
+not_persisted`; the agency driver must append the turn under compare-and-swap.
 
-A pending send is represented in folded state as a non-actionable
-`pending_escalation.proposed_handoff`. It binds:
+The normal driver sequence is:
 
-- `skill`: `slack-notify` for an internal post or `send-as` for a stakeholder send;
-- `principal`: the exact `comms_lead` principal;
-- `channel` and `audience`;
-- `content_digest`: a SHA-256 digest of the reviewed content.
+1. Open the case with canonical `agency open` if it does not exist.
+2. Advance agency to obtain the folded state and bounded dispatch context.
+3. Run Incident Commander with that context and keep its sealed receipt.
+4. Pass the result and receipt back to agency for the expected-version append.
+5. Run a named responder or communications skill only when the accepted turn
+   calls for it, then feed that sealed member receipt into the next agency turn.
 
-Without an approval whose principal exactly matches `comms_lead`, the turn stays
-`awaiting_approval` in the human incident-reviewer lane. `named_run` describes
-the bound plan with `executable: false`; it carries no dispatch authority. After
-a match, the turn may become `advanced` and name the bounded handoff. That is
-still not proof of delivery. Delivery requires a later `member_result` linked to
-the receipt emitted by the named communications skill.
+The agency receipt proves persistence. The Incident Commander receipt proves
+the local command decision. A downstream provider receipt and its readback prove
+delivery. Do not substitute one receipt for another owner's effect.
 
-## Agency ownership
+## Outcomes
 
-Durable state and contention remain in `agency`. Its runner reads the event
-stream, folds it, plans one turn, and appends at the folded `expected_version`.
-The idempotency key is `case_id:turn:driver_id`; the ungated compare-and-swap
-append is the per-turn lease, so a racing driver conflicts before any dispatch.
-This package does not compose `data-store` and cannot bypass that lease.
+`incident_turn.decision` is one of:
 
-For a receipt-backed end-to-end run, a driver:
+- `advanced`: a bounded dispatch or verified member result can continue;
+- `awaiting_approval`: a valid communications proposal needs its exact roster
+  principal's approval;
+- `resolved`: linked resolution evidence permits the agency driver to persist
+  closure;
+- `needs_input`: required operator context, such as an assignment owner, is
+  absent;
+- `refused`: supplied state, roster, approval, scope, or evidence contradicts
+  the incident rules.
 
-1. opens the declared incident with `agency open`;
-2. advances `agency`, which appends the dispatch turn under CAS;
-3. runs this package as the named member and records its sealed receipt;
-4. advances `agency` again with that receipt in `member_result`, causing the
-   stream fold and next CAS append to bind the member decision to the case.
+Every result includes case and turn identity, a reason, validation findings,
+and effect state. Missing information is not reported as a negative operational
+fact. A refusal does not mutate the case.
 
-The raw receipts from steps 2 through 4 are the verifiable envelope. A summary
-file is not a substitute for those sealed receipts.
+## Recovery
 
-## Output
+For `needs_input`, correct the folded projection or name the roster owner and
+rerun. For `awaiting_approval`, keep the proposed audience and digest unchanged,
+obtain approval from the exact `comms_lead`, and rerun. For `refused`, resolve
+the listed validation finding rather than weakening the roster or scope. For a
+provider or responder failure, preserve its receipt and let agency decide the
+next bounded turn.
 
-The runner emits one `incident_turn` with status, case id, turn, dispatch or
-escalation, optional named run, and reason. It also records severity and approval
-principal for audit. Expected statuses are `advanced`, `awaiting_approval`,
-`resolved`, `needs_agent`, or `refused`.
-
-```yaml
-incident_turn:
-  status: advanced | awaiting_approval | resolved | needs_agent | refused
-  case_id: string
-  turn: number
-  dispatch: object | null
-  escalation: object | null
-  named_run:
-    skill: slack-notify | send-as
-    runner: plan
-    executable: boolean
-    data:
-      principal: string
-      channel: string
-      audience: object
-      content_digest: sha256:<hex>
-  reason: string
-```
-
-## Procedure
-
-1. Receive a folded, declared incident state and its fixed roster from the
-   agency driver.
-2. Ask the package-local `ops-desk-advance` binding for exactly one move.
-3. Review the move against the incident objective and existing evidence.
-4. Enforce roster role, principal, skill, scope, approval, handoff, owner, and
-   receipt invariants deterministically.
-5. Return one incident turn. The agency driver appends it under the folded
-   version before issuing any named dispatch.
-
-The judgment stops rather than guessing when:
-
-- an assignment has no named owner in folded state;
-- a send lacks a valid roster-bound handoff or matched approval;
-- a dispatch names a role, skill, or scope outside the roster;
-- a delivered communication lacks a `slack-notify` or `send-as` receipt;
-- resolution lacks linked evidence;
-- the incident is undeclared or lacks severity or scope.
-
-## Edge cases and stop conditions
-
-- An unknown ops-desk decision is refused rather than treated as a dispatch.
-- Missing or malformed `needed_scope` is refused.
-- A named assignment owner must resolve to one roster role or principal, and
-  the dispatch must select that role.
-- A communication handoff is fixed to runner `plan`; caller input cannot select
-  a live execution runner.
-- Only the `resolve` objective can close the incident, and its receipt reference
-  must have runx receipt shape.
-
-## Run
-
-Run the local harness before publication:
+Inspect and test the package with the repository-built CLI:
 
 ```text
-runx harness ./skills/incident-commander --json
+./crates/target/debug/runx skill inspect ./skills/incident-commander --json
+./crates/target/debug/runx harness ./skills/incident-commander --json
 ```
 
-After publication, install and run the immutable registry version, then verify
-the dogfood receipt:
-
-```text
-runx add <owner>/incident-commander@0.1.0
-runx skill <owner>/incident-commander@0.1.0 --json
-runx verify --receipt <receipt.json> --json
-```
-
-The package is self-contained. Its internal `ops-desk-advance` binding is scoped
-to this graph and returns only typed judgment; it does not vendor or compose the
-agency state loop, `data-store`, or any execution lane.
+Registry publication is separate from authoring. Preserve the contributor
+identity `mossony/incident-commander`; claim registry availability only after a
+publish readback for the exact package digest.
